@@ -58,8 +58,9 @@ const REACTION_FLOOR := 0.20
 @export_range(0.0, 1.0, 0.01, "suffix:s") var fire_jitter: float = 0.08
 
 @export_group("Movement")
-## Whether the bot walks to stay near the people. Off, it holds where it stands (a test that must
-## not walk: a body the physics engine moves does not repeat to the last bit).
+## Whether the bot walks to keep its order (follow its person, roam, hold a spot). Off, it holds
+## where it stands (a test that must not walk: a body the physics engine moves does not repeat to
+## the last bit).
 @export var follows: bool = true
 
 @export_group("Shopping")

@@ -43,6 +43,18 @@ const BUSY_LOOK := 2
 const PLAN_PATIENCE := 1.2
 ## Seconds of a teammate's walk counted into the place it will be.
 const PREDICT_SECONDS := 1.0
+## The order `HOLD`: the bots of a team stand this far from the spot round it (a lone bot stands on
+## it), arrive within `HOLD_ARRIVE` metres of their place and walk back when `HOLD_LEAVE` metres
+## away. The ring is wide enough that two neighbours' leave zones do not overlap (4 bots: 2.3 m
+## apart), and the farthest a bot may stand is 2.6 m from the spot: inside the 3 m the order
+## promises.
+const ORDER_RING := 1.6
+const HOLD_ARRIVE := 0.5
+const HOLD_LEAVE := 1.0
+## Metres from a held place beyond which a bot hurries (runs) to it, if nothing is near.
+const HOLD_RUN_FROM := 8.0
+## The `ROAM` order: how near counts as at a place, for the legs.
+const ROAM_RADIUS := 1.0
 
 ## The legs the bot walks on, set by the client: the brain asks them which places are blocked.
 var legs: BotLegs
@@ -63,6 +75,11 @@ var on_errand := false
 var _profile: BotProfile
 var _level: BotLevel
 var _follow: BotFollow
+var _roam: BotRoam
+## Whether the order in force is `HOLD` (set each think; `_step_away` reads it).
+var _holding := false
+## Whether the bot has reached its place of the `HOLD` order and stands there.
+var _at_hold := false
 var _steering: BotSteering
 var _spot := Vector3.INF
 var _planned_at := -INF
@@ -83,6 +100,7 @@ func _init(profile: BotProfile, level: BotLevel, dodge_seed: int = 1) -> void:
 	_profile = profile
 	_level = level
 	_follow = BotFollow.new(level)
+	_roam = BotRoam.new(level, dodge_seed ^ 0x40A3)
 	_steering = BotSteering.new(level)
 	_combat = BotCombat.new(profile)
 	_dodge = BotDodge.new(profile, dodge_seed)
@@ -121,8 +139,12 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	if preferred >= 0:
 		intent.target_id = preferred
 	var threat := beliefs.nearest_threat(here, _profile.memory_seconds)
-	var people := _people(beliefs, state.player_id)
+	var order := _standing_order(beliefs)
+	_holding = order == BotOrders.HOLD
+	var people := _people(beliefs, order)
 	var anchor := BotFollow.anchor_of(people)
+	if _holding:
+		anchor = beliefs.order["at"]
 	var plan := BotArsenal.plan(me, held, _distance_to(beliefs, intent.target_id, here), threat)
 	var pack := BotCombat.near_count(beliefs, here, _profile.memory_seconds)
 	intent.melee_ok = BotCombat.may_melee(pack, plan.dry)
@@ -134,17 +156,20 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 			intent.note = "throw"
 		elif rescue != BotRevive.Mode.NONE:
 			pass  # `BotRevive` set the goal and the note.
-		elif _chase(intent, beliefs, here, held, mates, pack, plan.dry):
+		elif not _holding and _chase(intent, beliefs, here, held, mates, pack, plan.dry, order):
 			intent.note = "chase"
-		elif _errand(intent, beliefs, state, threat):
+		elif (not _holding or _pinged_door(state)) and _errand(intent, beliefs, state, threat):
 			on_errand = true
 			intent.note = intent.note if intent.note != "" else "errand"
 		elif kind == BotStance.Kind.HOLD:
 			_hold(intent, beliefs, here, anchor)
 		else:
-			_walk_to_people(intent, here, beliefs, people, anchor, threat)
+			_by_order(intent, beliefs, here, order, people, anchor, threat)
 	if intent.target_id < 0:
-		intent.look_yaw = _glance(beliefs, here)
+		var glance := _glance(beliefs, here)
+		# A roaming bot looking about keeps its own look unless it has something to glance at.
+		if not is_nan(glance) or is_nan(intent.look_yaw):
+			intent.look_yaw = glance
 	_handle_weapon(intent, plan, beliefs.now)
 	if intent.note == "":
 		intent.note = "fight" if intent.target_id >= 0 else "hold"
@@ -176,7 +201,7 @@ func _step_away(
 	var margin := maxf(_profile.retreat_margin, revive.kite_margin())
 	# A bot with no round left stands to fight with the quick melee as one with a bat does.
 	var melee := (held != null and held.is_melee()) or dry
-	var backs := threat < margin and kind != BotStance.Kind.HOLD
+	var backs := threat < margin and kind != BotStance.Kind.HOLD and not _holding
 	if (melee and BotCombat.may_melee(pack, dry)) or throwing:
 		backs = false
 	if not (dodge or keeps_off or backs):
@@ -210,19 +235,150 @@ func _retreat(here: Vector3, beliefs: BotBeliefs, anchor: Vector3) -> Vector3:
 	return _steering.pick(here, threats, toward, _last_reflex)
 
 
-## The people the bot stays with, as the teammates' entries: the humans, or the other bots when
-## there are none (so a team of bots stays together).
-func _people(beliefs: BotBeliefs, me: int) -> Array[Dictionary]:
-	var humans: Array[Dictionary] = []
-	var bots: Array[Dictionary] = []
+## The order the bot lives by: the team's (`BotOrders`), where a follow whose person is gone or
+## dead, and a hold with no place, are a roam.
+func _standing_order(beliefs: BotBeliefs) -> StringName:
+	var order: StringName = beliefs.order.get("order", BotOrders.DEFAULT)
+	if order == BotOrders.FOLLOW:
+		var issuer: Dictionary = beliefs.teammates.get(int(beliefs.order.get("issuer_id", 0)), {})
+		if issuer.is_empty() or issuer.get("dead", false) or int(issuer["id"]) == beliefs.me:
+			return BotOrders.ROAM
+	elif order == BotOrders.HOLD:
+		var at: Vector3 = beliefs.order.get("at", Vector3.INF)
+		if not at.is_finite():
+			return BotOrders.ROAM
+	return order if BotOrders.is_order(order) else BotOrders.DEFAULT
+
+
+## The people the bot stays with, as the teammates' entries: only under the order `FOLLOW`, and then
+## the person who gave it. A roaming or holding bot stays with nobody.
+func _people(beliefs: BotBeliefs, order: StringName) -> Array[Dictionary]:
+	var found: Array[Dictionary] = []
+	if order == BotOrders.FOLLOW:
+		found.append(beliefs.teammates[int(beliefs.order["issuer_id"])])
+	return found
+
+
+## The standing order's stance: walk with the person (`FOLLOW`), stand at the spot (`HOLD`), or go
+## about the lot (`ROAM`).
+func _by_order(
+	intent: BotIntent,
+	beliefs: BotBeliefs,
+	here: Vector3,
+	order: StringName,
+	people: Array[Dictionary],
+	anchor: Vector3,
+	threat: float
+) -> void:
+	if order != BotOrders.ROAM:
+		_roam.drop()
+		_forget_roam(beliefs)
+	match order:
+		BotOrders.FOLLOW:
+			_walk_to_people(intent, here, beliefs, people, anchor, threat)
+		BotOrders.HOLD:
+			_stand_at_spot(intent, beliefs, here, threat)
+		_:
+			_roam_about(intent, beliefs, here)
+
+
+## `HOLD`: be at the spot the order was given, a place of the ring about it by seat, and fight from
+## there. Back to it when a dodge or a revive took the bot away.
+func _stand_at_spot(intent: BotIntent, beliefs: BotBeliefs, here: Vector3, threat: float) -> void:
+	_spot = Vector3.INF
+	if not _profile.follows:
+		return
+	var place := _level.project(
+		(beliefs.order["at"] as Vector3) + _ring_offset(beliefs, ORDER_RING)
+	)
+	var apart := _flat(here, place)
+	_at_hold = apart <= (HOLD_LEAVE if _at_hold else HOLD_ARRIVE)
+	intent.note = "hold_order"
+	if _at_hold:
+		return
+	intent.goal = place
+	intent.goal_radius = HOLD_ARRIVE
+	intent.run = apart > HOLD_RUN_FROM and threat > RUN_SAFE
+
+
+## `ROAM`: walk to a place across the lot, look about from it, go on to another. A bot with a zombie
+## in its sights stands and fights, and takes up the walk afterwards.
+func _roam_about(intent: BotIntent, beliefs: BotBeliefs, here: Vector3) -> void:
+	_spot = Vector3.INF
+	if not _profile.follows:
+		return
+	if intent.target_id >= 0:
+		intent.note = "fight"
+		return
+	var humans: Array[Vector3] = []
 	for id in beliefs.teammates:
-		if id == me:
-			continue
 		var mate: Dictionary = beliefs.teammates[id]
-		if mate.get("dead", false):
-			continue
-		(bots if mate.get("bot", false) else humans).append(mate)
-	return humans if not humans.is_empty() else bots
+		if id != beliefs.me and not mate.get("bot", false) and not mate.get("dead", false):
+			humans.append(mate["pos"])
+	var claimed: Array[Vector3] = []
+	if team != null:
+		for bot_id: int in team.roam:
+			if bot_id != beliefs.me:
+				claimed.append(team.roam[bot_id])
+	var avoid := Callable()
+	var reach := Callable()
+	var mesh := 0
+	if legs != null:
+		avoid = Callable(legs.path, &"is_blocked").bind(beliefs.now)
+		reach = Callable(legs.path, &"probe").bind(beliefs.now)
+		mesh = legs.path.iteration()
+	var goal := _roam.plan(
+		here,
+		beliefs.now,
+		humans,
+		_bot_places(beliefs),
+		claimed,
+		_threat_places(beliefs),
+		avoid,
+		reach,
+		mesh
+	)
+	if goal == Vector3.INF:
+		_forget_roam(beliefs)
+		if _roam.dwelling:
+			intent.look_yaw = _roam.look_yaw
+			intent.note = "roam_look"
+		return
+	if team != null:
+		team.roam[beliefs.me] = goal
+	intent.goal = goal
+	intent.goal_radius = ROAM_RADIUS
+	intent.run = false
+	intent.note = "roam"
+
+
+func _forget_roam(beliefs: BotBeliefs) -> void:
+	if team != null:
+		team.roam.erase(beliefs.me)
+
+
+## Where bot `me` stands in the ring of the bots about a held spot: a lone bot on it, the others
+## spread by seat order `radius` metres out.
+func _ring_offset(beliefs: BotBeliefs, radius: float) -> Vector3:
+	var seats: Array[int] = []
+	for id in beliefs.teammates:
+		var mate: Dictionary = beliefs.teammates[id]
+		if mate.get("bot", false) and not mate.get("dead", false):
+			seats.append(id)
+	seats.sort()
+	var rank := seats.find(beliefs.me)
+	if seats.size() < 2 or rank < 0:
+		return Vector3.ZERO
+	return Vector3(0.0, 0.0, -radius).rotated(Vector3.UP, TAU * float(rank) / float(seats.size()))
+
+
+## Whether a person has a door pinged: the one errand a holding bot goes on, as a ping pulls it.
+func _pinged_door(state: ClientState) -> bool:
+	var board: Dictionary = state.frame.get("pings", {})
+	for from: int in board:
+		if board[from].get("kind", &"") == PingBoard.DOOR:
+			return true
+	return false
 
 
 ## Sets the goal: a place near the people, chosen again now and then, or nowhere when the bot is
@@ -421,7 +577,8 @@ func _chase(
 	held: WeaponDef,
 	mates: Array[Dictionary],
 	pack: int,
-	dry: bool
+	dry: bool,
+	order: StringName
 ) -> bool:
 	var target := beliefs.contact(intent.target_id)
 	if held == null or not held.is_melee() or target.is_empty():
@@ -445,6 +602,9 @@ func _chase(
 		else:
 			(bots if mate.get("bot", false) else humans).append(mate["pos"])
 	var people := humans if not humans.is_empty() else bots
+	# Only a bot under `FOLLOW` is leashed to its people; a roaming one to where it stands.
+	if order == BotOrders.ROAM:
+		people = []
 	if not BotCombat.leash_allows(target["position"], here, people, downed):
 		return false
 	intent.goal = target["position"]
@@ -456,6 +616,7 @@ func _chase(
 ## The stampede: stand at a choke near the people (walls about it) and not run from the runners.
 func _hold(intent: BotIntent, beliefs: BotBeliefs, here: Vector3, anchor: Vector3) -> void:
 	var centre := anchor if anchor != Vector3.INF else here
+	intent.note = "choke"
 	var spot := _stance.choke(here, centre, beliefs.now)
 	if spot == Vector3.INF or _flat(here, spot) < HOLD_RADIUS:
 		return

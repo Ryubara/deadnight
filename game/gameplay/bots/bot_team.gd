@@ -6,8 +6,11 @@ extends RefCounted
 ## own. Plain data: nothing here reads a frame or the rules.
 
 var claims := BotClaims.new()
+## The place each roaming bot is walking to (`BotRoam`), by player id, so two do not pick one.
+var roam: Dictionary = {}
 
 
 ## A bot left the team (its seat was taken by a person, or it was removed): what it held is open.
 func release(bot: int) -> void:
 	claims.release(bot)
+	roam.erase(bot)

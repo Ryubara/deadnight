@@ -57,6 +57,9 @@ var mode := Mode.HUMAN
 var world: NightWorld
 var server: NightServer
 var link: GameLink
+## The person's word to the bots (`BotOrders`): its `issue` puts one order on the link, local or
+## online, and the server's bots read it from every frame. Made with the link.
+var bot_orders := BotOrders.new()
 ## The rules' numbers the client needs (the server's own, or the shipped table online).
 var rules_tuning: RulesTuning
 ## True when the night runs on a game server (`start_remote`).
@@ -162,6 +165,7 @@ func start(
 	server = NightServer.new(world, p_seed, night_tuning, p_rules_tuning, match_settings)
 	rules_tuning = server.rules.tuning
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
+	bot_orders.sender = link.send
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
 	_track_challenges()
@@ -207,6 +211,7 @@ func start_remote(
 	rules_tuning = load(GameRules.DEFAULT_TUNING_PATH)
 	var online := p_link if p_link != null else WebSocketLink.new()
 	link = online
+	bot_orders.sender = link.send
 	state = ClientState.new()
 	_track_challenges()
 	var failure := {"reason": ""}
@@ -664,6 +669,14 @@ func _add_throw_preview(def: GrenadeDef) -> void:
 	preview.hand_reach = night_tuning.grenade_hand_reach
 	preview.release_over = night_tuning.grenade_release_over
 	preview.release_under = night_tuning.grenade_release_under
+
+
+## Orders the bots as this player, standing where they are now: `bot_id` 0 for the team's bots.
+## Returns what was sent (`{}` for an order that cannot be given).
+func give_bot_order(order: StringName, bot_id := 0) -> Dictionary:
+	var body := _body_of(state.player_id)
+	var at := body.global_position if body != null else Vector3.INF
+	return bot_orders.issue(order, state.player_id, at, bot_id)
 
 
 func _human_command() -> NightCommand:

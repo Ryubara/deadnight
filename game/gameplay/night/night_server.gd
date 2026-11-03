@@ -20,7 +20,8 @@ extends RefCounted
 ## client or a HUD draws from.
 ##
 ## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
-## barricades ({id: boards up}), pings ({player_id: {kind, pos, subject, left}}), zombies
+## barricades ({id: boards up}), pings ({player_id: {kind, pos, subject, left}}), bot_orders ({team:
+## {order, issuer_id, at}, bots: {bot id: {...}}}, `BotOrders`), zombies
 ## (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, aim (the aim pose is
 ## held), pitch (the look up or down, `pitch_step`), stance (`PlayerStance` bits), ammo, reserve,
 ## reloading, arms (every weapon carried: id to [ammo, reserve, tier]), points, prompt, reviving
@@ -39,6 +40,8 @@ const LEAVE := &"leave"
 const START_NIGHT := &"start_night"
 ## A player marks something for the others: `ping` {kind, pos, subject}, see `PingBoard`.
 const PING := &"ping"
+## A person gives the bots an order: `order` {order, at, bot_id}, see `BotOrders`.
+const ORDER := BotOrders.ACTION
 ## A player came back on a new connection: `resync` {player_id} tells it the looks again.
 const RESYNC := &"resync"
 ## A client's look, as `LookWire.look` bytes: `look` {player_id, packet}.
@@ -102,9 +105,12 @@ var tuning: NightTuning:
 		if _revive != null:
 			_revive.tuning = value
 			_ping_judge.tuning = value
+			_order_judge.tuning = value
 var tick_count := 0
 ## The marks the players have put up.
 var ping_board := PingBoard.new()
+## The standing orders of the team's bots (`BotOrders`), in every frame.
+var bot_orders := BotOrders.new()
 ## Whether the players' bodies have the Soldier's model. A game server draws nothing, so it leaves
 ## them out (`NightHost`); in one process with its client the same bodies are drawn.
 var drawn_bodies := true
@@ -133,8 +139,9 @@ var _facing_breach: Dictionary[int, StringName] = {}
 var _face_left: Dictionary[int, float] = {}
 ## The teammates raising downed players (held `use` beside a downed one).
 var _revive: ReviveChannel
-## What decides whether a ping is true.
+## What decides whether a ping is true, and whether an order to the bots is taken.
 var _ping_judge: PingJudge
+var _order_judge: OrderJudge
 var _outbox: Array[Dictionary] = []
 var _probe: WorldProbe
 ## Held here: a Callable does not keep its RefCounted alive.
@@ -171,6 +178,7 @@ func _init(
 	sim.board_seconds = rules.tuning.barricades.seconds_per_board
 	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
 	_ping_judge = PingJudge.new(tuning, ping_board, rules, world, sim, _bodies, _announce)
+	_order_judge = OrderJudge.new(tuning, bot_orders, rules, world, _bodies, _announce)
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
 	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
@@ -204,6 +212,8 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			looks.receive(action["player_id"], action["packet"])
 		PING:
 			ping(from_id if from_id > 0 else action.get("player_id", 1), action)
+		ORDER:
+			_order_judge.give(from_id if from_id > 0 else action.get("player_id", 1), action)
 		RESYNC:
 			if _bodies.has(action["player_id"]):
 				looks.sync(action["player_id"])
@@ -295,6 +305,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	PerfProbe.end(&"server.act", began)
 	began = PerfProbe.begin()
 	_outbox.append_array(ping_board.step(delta))
+	bot_orders.step(delta)
 	_throw_grenades(delta)
 	if with_frame:
 		_outbox.append(_frame())
@@ -336,6 +347,8 @@ func _leave(player_id: int) -> void:
 		_repairing.erase(player_id)
 		_revive.forget(player_id)
 		ping_board.forget(player_id)
+		bot_orders.forget_issuer(player_id)
+		bot_orders.forget_bot(player_id)
 		_throwers.erase(player_id)
 		_facing_breach.erase(player_id)
 		_face_left.erase(player_id)
@@ -938,6 +951,7 @@ func _frame() -> Dictionary:
 		"doors": rules.doors_open.duplicate(),
 		"crane": _crane_frame(),
 		"pings": ping_board.marks(),
+		BotOrders.FRAME_KEY: bot_orders.to_frame(),
 		"barricades": rules.barricades.to_dict(),
 		"zombies": _encode_zombies(),
 		"players": players,
