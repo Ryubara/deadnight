@@ -77,6 +77,7 @@ const GRENADE_EVENTS: Array[StringName] = [
 	&"grenade_thrown",
 	&"grenade_dropped",
 	&"grenade_bounced",
+	&"grenade_struck",
 	&"grenade_exploded",
 	&"blast_hit",
 	&"player_blasted",

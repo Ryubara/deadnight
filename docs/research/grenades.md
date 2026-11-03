@@ -125,6 +125,63 @@ game looked finished and a player's throw key did nothing. The wiring, now:
   goes off within 9 m of the thrower, and a zombie 4 m from the centre gets a `blast_hit` with a stun (shorter than
   the core's, which is 1.6 s) and an impulse away from the blast.
 
+## Weight, the dead in the way and the beep (#680)
+
+Player feedback: the grenade floated and rolled, went through zombies, and had no fuse beep once it left the hand. What
+changed (`frag.tres` is the only place for the numbers; every one is a test below):
+
+| A level overarm throw from the hand, 2.65 s of flight on open ground | Before | After |
+| --- | --- | --- |
+| Where it first touches the ground | 8.4 m | 5.8 m |
+| Where it lies | 22.3 m | 10.2 m |
+| The longest lob (any pitch) | 25.7 m | 12.2 m |
+| Underarm toss, where it lies | 8.3 m | 4.4 m |
+| Highest point of a level throw | 1.57 m | 1.47 m |
+
+- **Heavy, not slow.** Gravity 16 to 22 m/s2, the throw lifted 5 degrees (was 8) at 14 m/s (was 15), a floor bounce
+  keeps 22% (was 42%) and loses 45% along the ground (was 20%), it lands under 2.5 m/s (was 1.4) and rolls with 9 m/s2
+  of friction (was 3.5): it arrives, knocks once or twice and stays. The fuse is the same 3.0 s (a test pins it).
+- **The dead are bodies.** `ZombieBump` is one upright capsule per zombie (0.4 m radius, 0.4 to 1.45 m up, sized by
+  the zombie's `hit_scale` like its hit zones), tested in plain vectors against the positions the server has this
+  tick. `GrenadeState.step(delta, cast, bodies)` takes the nearest hit of the world and of the dead; a zombie
+  contact keeps 4% of the speed into the body, 5% along it and adds a 0.2 m/s shove out from it (`GrenadeDef`
+  "Zombies"), so a throw at a zombie stops 0.2 to 0.9 m from it (tested over a grid of pitches and sides; the bound
+  is 1 m), a lob that clears the head is not touched, and a grenade falling onto a head slides off to the feet. A
+  start inside a body is ignored while it moves out and stops at once while it moves in, so a zombie at the
+  thrower's chest cannot trap it.
+- **Every client agrees.** A client flies its copy against the walls only (it has no way to know where the dead were this
+  tick). The server says so when a zombie stops the grenade: `grenade_struck` carries the grenade's whole state at the end
+  of that tick (`GrenadeState.to_dict`) and the view replaces its copy with it and skips its own step for that frame (the
+  frame event follows the grenade's in the same tick). A test steps a copy through the real events and finds it within a
+  millimetre of the server's grenade; a night test does it with the real input and the real view. `grenade_bounced`
+  also names the zombie (`zombie_id`, -1 for the world) so the knock of the contact sounds.
+- **The preview and the bots fly the same code.** `GrenadeArc.predict` takes the same `bodies` (the preview gets the
+  client's zombies, frozen where they stand, so the dotted line stops at the first it meets). The bots' table of flights
+  is made from the real arc, so it followed: they now throw 6 to 12 m out (overarm lobs up to a near-vertical 1.45
+  rad; underarm only reaches 4.4 m and is never planned, a blast must be 6 m from the bot).
+- **The beep** (`grenade_beep`, `tools/audio/recipes.py`; the old `grenade_tick` was a metal click heard only while the
+  pin was in the hand): a clean 1.1 kHz tone with two harmonics, 60 ms, the same every time. `GrenadeSounds` keeps one
+  chain per cook and per grenade in the air; on `grenade_thrown` (or `grenade_dropped`) the cook's chain becomes the
+  grenade's, keeping its next beep due when it was, and each beep is placed at the grenade as the view draws it
+  (`NightView.grenade_position`), so every client hears it from the grenade. It stops at `grenade_exploded` of its own
+  id. The gap is `beep_gap_end + (beep_gap_start - beep_gap_end) * (left / fuse)^1.6` (`NightSoundTuning`): 0.5 s at the
+  pin to 0.09 s at the blast, 14 to 16 beeps in a fuse, and its level swells from -3 to +2 dB.
+- **Audio analysis** (`tools/audio/beep_report.py` on a 60 fps recording of `tests/captures/grenade_pack.tscn`, the
+  game's own service and buses): 14 beeps from the pin to the blast, at 13.34 s, 13.84, 14.22, ..., 16.23 s; the gaps
+  fall 0.50, 0.38, 0.36, 0.29, 0.23, 0.20, 0.18, 0.17, 0.11, 0.16, 0.12, 0.10, 0.11 s (the means of the three thirds
+  are 0.38, 0.19 and 0.12 s; a beep found in a noisy mix can sit a frame off). The beep's tone peaks in the mix are -12
+  dBFS in the hand, -16 dBFS in the air 4 m out, and -26 rising to -23 dBFS lying 8.5 m away behind a wall, against
+  the blast's -5 dBFS peak and -14.6 dBFS over its first 100 ms: a cue under the shots that carries to the end.
+- **Two things the analysis caught.** (1) The first beep was a 2.6 kHz tone at -2 dB: the grenade lying behind a wall
+  came out at -40 to -80 dBFS, nothing at all, because the audio service takes 9 dB off a sound behind a wall and
+  low-passes it at 1.1 kHz, and the web build, which has no filter, takes 13 dB. A warning has to carry through cover:
+  the beep is lower (1.1 kHz, which the low-pass lets through) and `SoundDef.occlusion_scale` (0.35 for the beep, 1
+  for everything else) makes cover take a third of the dulling. (2) At the start the beep in the hand was -9 dBFS at
+  the ear, as loud as the blast's own 100 ms (-14.9 dBFS RMS over the beep's 100 ms), so the bank trim went from -2 to
+  -9 dB. A recording at 10 frames a second could not show either: a sound schedule steps with the frames, so the beeps
+  came out 0.1 s apart and stacked in one frame; read a fuse's timing at 60 (`--write-movie pack.avi --fixed-fps 60`,
+  then `ffmpeg -vn -c:a pcm_s32le`).
+
 ## Open (not part of #357)
 
 - The crawler's hit zones are the standing zombie's. A crawler is lower than its zones; a separate low `Hitbox` table

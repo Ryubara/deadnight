@@ -228,6 +228,9 @@ jobs:
       - name: Press Start on a virtual gamepad in the browser
         # Start is `pause` and `ui_accept`: the night must pause and resume on it, and the pad must play with no mouse lock (#494).
         run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/pad_pause.py repos/deadnight/build/web smoke/pad-pause
+      - name: Look through the person in a night with 3 bots in the browser
+        # A bot's body must never hold the current camera: the probe's `view_is_players` stays true for a night with 3 bots (#702).
+        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/camera_owner.py repos/deadnight/build/web smoke/camera-owner
       - name: Tour the skin shaders in the browser
         # The menu, the three transitions and the credits: fails on a console error or an all-black or all-white frame.
         run: uv run --with playwright==1.64.1 --with pillow python repos/deadnight/tools/web_smoke/skin_tour.py repos/deadnight/build/web smoke/skin-tour --size 1280x720 --hold-ms 500

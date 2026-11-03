@@ -170,7 +170,16 @@ func make_puppet() -> void:
 	set_physics_process(false)
 	var rig := get_node(^"CameraRig") as ThirdPersonCamera
 	rig.set_process(false)
-	(rig.get_node(^"Camera3D") as Camera3D).current = false
+	release_view()
+
+
+## Gives up the view: the body's camera does not start `current`, so a body that enters the tree
+## after the person's never takes the view from it (the scene's camera is `current`, and the last
+## one to enter would win). Call it before the body is in the tree, on every body that is not the
+## one a person plays: a bot, a copy of another machine's player (#702). The camera stays, for
+## aiming.
+func release_view() -> void:
+	(get_node(^"CameraRig/Camera3D") as Camera3D).current = false
 
 
 ## Puts a puppet where the frames say: at `at`, turned `facing`, moving at `velocity` (the gait

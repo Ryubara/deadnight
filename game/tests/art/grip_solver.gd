@@ -233,7 +233,10 @@ func solve(side: String, model: Node3D, spec: Dictionary) -> Dictionary:
 	# Steps 2 and 3, and for a gun the turn about the handle and the slide along the fingers that let
 	# the index finger reach the trigger best (a chibi finger is short: the hand turns the gun).
 	var place := _place(side, model, basis, gs, scale, frame, trigger_socket, 0.0, 0.0)
-	if trigger_socket != null:
+	if spec.has("keep_hold"):
+		# Only the fingers: the model stays where the written grip holds it (Deadnight #716).
+		place = _kept(model, spec.keep_hold, scale, trigger_socket)
+	elif trigger_socket != null:
 		var best_score := INF
 		for roll in range(-30, 31, 10):
 			for shift in [-0.02, -0.01, 0.0, 0.01, 0.02]:
@@ -339,6 +342,22 @@ func _place(
 		"trigger_world": trigger_world,
 		"roll": roll,
 		"shift": shift
+	}
+
+
+## The model at a hold that is kept (`HandGrip.hold`, before scale): {basis, origin, trigger_world,
+## roll, shift} as `_place` returns them; leaves the model there.
+func _kept(model: Node3D, hold: Transform3D, scale: float, trigger_socket: Variant) -> Dictionary:
+	model.transform = hold.scaled_local(Vector3.ONE * scale)
+	var trigger_world := Vector3.ZERO
+	if trigger_socket != null:
+		trigger_world = model.global_transform * (trigger_socket as Transform3D).origin
+	return {
+		"basis": hold.basis,
+		"origin": hold.origin,
+		"trigger_world": trigger_world,
+		"roll": 0.0,
+		"shift": 0.0
 	}
 
 

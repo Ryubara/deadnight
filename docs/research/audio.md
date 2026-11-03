@@ -420,3 +420,56 @@ The wall figure combines the 9 dB occlusion trim, the lowered cutoff and the ext
   (`test_night_occlusion.gd`).
 - The sting's duck (and the rear cue and occlusion low-pass) do not work in the browser. The bus volume does, so the duck
   could be a bus volume on the web; not done.
+
+## The female soldier's voice (#679)
+
+The same 20 moments and 115 takes as the male soldier, in a female voice, for the character choice
+([#678](https://github.com/Ryubara/deadnight/issues/678)). `SoldierVoiceCatalog` builds both sets from the one moments
+table and the one mix (male `vox_<event>_<n>` from `voice/soldier/`, female `voxf_<event>_<n>` from
+`voice/soldier_female/`); a player speaks with the `voice` of their frame entry (`female`, else male).
+
+| What | Value |
+| --- | --- |
+| Service | ElevenLabs text to speech, **Free tier** (a new account, 10,000 characters a month), `mp3_44100_128` |
+| Model, voice | `eleven_v4`; **Sarah**, the premade `EXAVITQu4vr4xnSDxMaL` ("Mature, Reassuring, Confident", young, American) |
+| Settings | the male soldier's: `stability` 0.0, `similarity_boost` 0.8, `style` 0.6 |
+| Recipe | `tools/audio/elevenlabs_voice.py --voice female` reads `tools/audio/soldier_voice_female.json`; same `plan`, `generate`, `encode`, `check`, `credits` |
+| Output | `game/assets/audio/voice/soldier_female/<moment>_<n>.ogg`, `manifest.json`, `LICENSE.md` (Free tier: attribution, no commercial licence) |
+
+- **Why Sarah.** On the Free tier the API serves the premade voices only (the account lists 21: Brian, Adam, Roger,
+  Harry and others male; Sarah, Laura, Jessica, Alice, Matilda, Bella, Lily female). A soldier who talks under stress
+  needs a steady, confident voice that the low stability can then move: Sarah ("mature, reassuring, confident"), not
+  Laura ("sassy, quirky"), Jessica ("playful, bright") or Lily ("velvety actress"). A different premade voice is one
+  line in the json and a re-run.
+- **The lines.** The male set, kept where it fits a woman as it is (most lines: "Reloading, cover me!", "I'm dry, I'm
+  dry!") and changed where it named a man ("Come to papa" is "Come to mama", "cheer a guy up" is "cheer a girl up",
+  "big boy coming through" is "big girl", "Thanks, man" is "Thanks"). The two takes the maintainer approved for the male
+  voice (`round_clear_5`, `streak_7` here) were not samples for her, so every one of her 115 lines was requested.
+- **Levelled like the male takes**, by the same recipe (-20 LUFS, peak limit -1 dBFS). Measured on the decoded files
+  with `tools/audio/analyze.py report` and BS.1770 loudness (`pyloudnorm`):
+
+| 115 takes each | Male | Female |
+| --- | ---: | ---: |
+| Integrated loudness, mean (min to max) | -20.19 LUFS (-20.89 to -19.93) | -20.16 LUFS (-20.68 to -19.89) |
+| Spread (standard deviation) | 0.12 LU | 0.11 LU |
+| Per moment, female minus male | | -0.10 to +0.11 LU |
+| Peak, mean (highest) | -3.5 dBFS (-1.0) | -4.5 dBFS (-0.8) |
+| Clipped samples | 0 | 0 |
+| Length, mean (longest) | 3.75 s (8.5) | 3.85 s (8.3) |
+| Spectral centroid, mean | 3,341 Hz | 3,103 Hz |
+
+  Her takes sit within 0.1 LU of his in every moment and peak a little lower on average; the same
+  `VOICE_DB` (-4 dB) and `LOCAL_DB` (-2 dB) trim therefore holds, and the night-capture numbers above apply to both.
+
+- **Check.** Every take was transcribed (Scribe): 0 of 115 flagged (no tag spoken, no line missing words), so no retake.
+- **Characters.** 6,457 of the 10,000 for the month were used for all of it, 3,543 left (read from
+  `/v1/user/subscription` after the last request). That is the only reliable number: **the account's counter lags the
+  requests by minutes**. It read 3,419 right after generation, 6,333 after the transcripts and 6,457 a little later.
+  The 115 lines are 5,953 characters written and 4,919 without tags; the male set billed 5,054 for 4,674 spoken, so
+  hers was about 5,300 and the Scribe check about 1,150 (the male one cost 976). The split is an estimate, the total
+  is measured. The next retake budget is 3,543, enough for about 60 average lines.
+- **Cost of two sets in the game.** The catalog now holds 230 voice takes; the warm-up and the background preload load
+  every sound, so both sets are loaded (4.5 MB of Ogg each). Loading only the voice a night uses is a follow-up for the
+  character choice (#678), which knows who speaks.
+- **Not heard.** No agent listens; the numbers above are the proof, and the maintainer's ears decide whether Sarah
+  wants another dB or another voice.

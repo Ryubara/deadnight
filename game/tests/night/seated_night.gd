@@ -272,7 +272,10 @@ func state_hash() -> int:
 	ids.sort()
 	for id in ids:
 		var zombie: ZombieBody = server.sim.zombies[id]
-		parts.append_array([id, zombie.mode, _snap(zombie.position)])
+		# Its place is left out (the docstring says why): the live run and its replay differ by
+		# a centimetre or two, which the quarter-metre grid turns into a different hash whenever a
+		# value sits on a grid edge (a change in what the dead stand on moved the edges).
+		parts.append_array([id, zombie.mode])
 	return hash(var_to_bytes(parts))
 
 

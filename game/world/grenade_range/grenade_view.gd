@@ -28,6 +28,8 @@ const TRAIL_COLOUR := Color(1.0, 0.85, 0.4)
 @export var trail: bool = false
 
 var state: GrenadeState
+## Set when the state was just replaced by the server's: the next step of this view is skipped.
+var settled := false
 
 var _lamp_mesh: MeshInstance3D
 var _lamp_material: StandardMaterial3D
