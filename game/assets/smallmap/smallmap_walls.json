@@ -1,0 +1,182 @@
+{
+ "beam_2": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   2.0,
+   0.36,
+   0.509
+  ],
+  "tris": 108
+ },
+ "beam_4": {
+  "budget": 5000,
+  "size_xyz_blender": [
+   4.0,
+   0.36,
+   0.509
+  ],
+  "tris": 108
+ },
+ "beam_6": {
+  "budget": 5000,
+  "size_xyz_blender": [
+   6.0,
+   0.36,
+   0.509
+  ],
+  "tris": 108
+ },
+ "door_purchase": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   1.348,
+   0.125,
+   2.36
+  ],
+  "tris": 388
+ },
+ "floor_edge_broken": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   2.0,
+   2.096,
+   0.21
+  ],
+  "tris": 992
+ },
+ "pillar": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   0.64,
+   0.64,
+   2.8
+  ],
+  "tris": 220
+ },
+ "trim_corner": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   0.46,
+   0.46,
+   2.8
+  ],
+  "tris": 352
+ },
+ "trim_end": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   0.36,
+   0.42,
+   2.8
+  ],
+  "tris": 132
+ },
+ "wall_arch": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   2.0,
+   0.36,
+   2.8
+  ],
+  "tris": 616
+ },
+ "wall_barred": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   2.0,
+   0.3,
+   2.8
+  ],
+  "tris": 360
+ },
+ "wall_broken": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   2.0,
+   0.3,
+   2.8
+  ],
+  "tris": 304
+ },
+ "wall_broken_upper": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   2.0,
+   0.2,
+   2.8
+  ],
+  "tris": 304
+ },
+ "wall_door_narrow": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   2.0,
+   0.38,
+   2.8
+  ],
+  "tris": 488
+ },
+ "wall_door_narrow_upper": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   2.0,
+   0.28,
+   2.8
+  ],
+  "tris": 488
+ },
+ "wall_opening_wide": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   3.0,
+   0.36,
+   2.8
+  ],
+  "tris": 224
+ },
+ "wall_window_glazed": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   2.0,
+   0.44,
+   2.8
+  ],
+  "tris": 772
+ },
+ "wall_window_glazed_upper": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   2.0,
+   0.34,
+   2.8
+  ],
+  "tris": 772
+ },
+ "wall_window_zombie": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   2.0,
+   0.44,
+   2.8
+  ],
+  "tris": 624
+ },
+ "wall_window_zombie_upper": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   2.0,
+   0.34,
+   2.8
+  ],
+  "tris": 624
+ },
+ "window_board": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   1.498,
+   0.06,
+   0.19
+  ],
+  "tris": 112
+ }
+}

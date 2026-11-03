@@ -38,6 +38,8 @@ const DEFAULT_FLASH := 0.3
 var tracers_drawn := 0
 ## The impacts, pooled and capped.
 var impacts := ImpactFx.new()
+## The blood of zombie hits: splashes and the marks they leave, pooled and capped.
+var blood := BloodFx.new()
 
 var _flash: MuzzleFlash
 var _idle: Array[Array] = [[], []]
@@ -49,6 +51,7 @@ var _glow: StandardMaterial3D
 
 func _ready() -> void:
 	add_child(impacts)
+	add_child(blood)
 	set_process(false)
 
 
@@ -83,6 +86,32 @@ func shot(
 			continue
 		if not _is_near_any(end, flesh):
 			impacts.spawn(end, ImpactFx.Kind.WORLD)
+
+
+## The blood of one `damage_dealt` event: a splash at its `point` flung along its `dir`, scaled by
+## the weapon (`weapon_id`), the damage and a headshot, and marks on the ground and the wall behind
+## the zombie when `cast` (`WorldCast.cast`) can find them. An event from an older server has no
+## `dir` or `weapon_id` and bleeds as a bullet does, all round.
+func blood_hit(event: Dictionary, cast: Callable = Callable()) -> void:
+	var def: WeaponDef = null
+	var id: StringName = event.get("weapon_id", &"")
+	if id != &"" and ResourceLoader.exists(WeaponCatalog.DIR + String(id) + ".tres"):
+		def = WeaponCatalog.get_def(id)
+	var kind := blood.tuning.kind_of(def, event.get("melee", false))
+	blood.hit(
+		event["point"],
+		event.get("dir", Vector3.ZERO),
+		kind,
+		event.get("headshot", false),
+		event.get("damage", 0.0),
+		event.get("pellets", 1),
+		cast
+	)
+
+
+## The blood of a zombie a blast hurt: a burst all round at `at`, with marks under it.
+func blood_burst(at: Vector3, damage: float, cast: Callable = Callable()) -> void:
+	blood.hit(at, Vector3.ZERO, BloodTuning.Kind.BLAST, false, damage, 1, cast)
 
 
 ## A spark, a puff and a mark where a shot landed on the world.
@@ -145,6 +174,7 @@ func number(at: Vector3, text: String, headshot: bool) -> void:
 ## hidden, so no shot or kill builds one while it is played.
 func prewarm() -> void:
 	impacts.prewarm()
+	blood.prewarm()
 	for kind in [Kind.TRACER, Kind.NUMBER]:
 		while _made[kind] < (TRACER_POOL if kind == Kind.TRACER else NUMBER_POOL):
 			var live := Live.new()
@@ -161,13 +191,14 @@ func stop_all() -> void:
 	_live.clear()
 	set_process(false)
 	impacts.stop_all()
+	blood.stop_all()
 	if _flash != null:
 		_flash.visible = false
 
 
 ## Whether `node` is part of the effects' own gear, which the warm-up must not free.
 func owns(node: Node) -> bool:
-	if node == impacts or node == _flash:
+	if node == impacts or node == blood or node == _flash:
 		return true
 	for live in _live:
 		if live.node == node:
