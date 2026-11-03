@@ -134,7 +134,8 @@ func test_only_a_gun_with_no_round_anywhere_is_empty() -> void:
 
 
 func test_a_bot_with_a_second_gun_that_still_has_rounds_is_not_empty() -> void:
-	var arms := {PISTOL: [0, 0, 0], SHOTGUN: [6, 4, 0]}
+	# One spare round for the shotgun: under a magazine whatever size the catalogue gives it.
+	var arms := {PISTOL: [0, 0, 0], SHOTGUN: [1, 1, 0]}
 	assert_int(BotNeeds.ammo_level(arms, 3)).is_equal(SHORT)
 
 
