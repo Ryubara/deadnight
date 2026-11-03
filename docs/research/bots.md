@@ -945,3 +945,20 @@ The bands test reads the Veteran's dodge from a few dozen blows: on `main` four 
 seeds read 0.67 (63), and with the tighter contour four seeds read 0.68 (19) and ten read 0.60 (45). The same fight is
 bit-identical from run to run, so the four-seed number is a draw, not noise to average. The test runs eight seeds
 (dodge 0.61 with the tighter contour, band 0.35 to 0.65). The Veteran's true dodge sits near the top of the band.
+
+### Within 12 m counts only the bots that are up
+
+A bot that is downed or dead cannot follow, and the soak counted its time as far: on seed 3 of `main`, 35 000 of about
+290 000 samples. The soak now also prints `down_ticks` and `within_12m_up` (the share of the samples of bots that were
+up). Six seeds, `--tough=3`, 20 minutes:
+
+| | within 12 m, all samples | within 12 m, bots up |
+| --- | --- | --- |
+| `main` before the new contour | 0.83 to 0.93 | 0.90 to 0.93 (mean 0.92) |
+| the new contour | 0.86 to 0.93 | 0.915 to 0.93 (mean 0.92) |
+
+Of the time a bot that is up is far, 83 to 87% is the follow state, running (a bot that is far runs unless a dead one is
+within 4 m) at about the speed of the person's own run: the person's sprint, a shop trip or a door outpaces the bots,
+and they catch up when it stops. Bots standing still while far (waiting for a path query, or a door) are about 5% of
+that time. Stuck seconds differ by half a point between two runs of one seed on a busy machine (the cause is not
+found; the runs are not bit-identical under load), so compare a change over all six seeds and several runs, not one.
