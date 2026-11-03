@@ -264,6 +264,19 @@ Chamfers: 30 mm on props of 1-3 m, 80 mm on the booth, the screen and the marque
 emissive: the marquee's bulbs and the booth's sign are amber and cream swatches; lighting them is the lighting pass's.
 `tools/blender/render_drivein_sheet.py` renders the contact sheet beside the kit Soldier at 0.8.
 
+## Small-map kit
+
+The second map's modular building kit ([small map: art and kit](../research/maps/small-map-art.md), where each
+number comes from) follows these numbers. They live in `tools/blender/smallmap_kit.py`:
+
+| Rule | Value |
+| --- | --- |
+| Grid | 0.5 m snap. Wall modules 1, 2 and 3 m wide, 2.8 m tall, 0.3 m thick (ground) or 0.2 m (upper). A storey is 3.0 m |
+| Openings | purchase doorway 1.4 x 2.4 m, zombie window 1.2 x 1.3 m with its sill at 0.9 m, stair 1.4 m wide with 0.2 m risers and 0.3 m treads |
+| Atlas | the drive-in palette in its own cells plus Plaster `#b3a588`, Sandbag `#a88d62`, Chalk `#ece6d2`, Rust `#7d4b2f` and Soot `#2f2c2a` in its five empty cells, so drive-in props share it |
+| Chamfers | 60 mm on wall pieces and frames, 30 mm on props of 1-3 m |
+| Flat surfaces | plain walls, floors and ceilings stay CSG with a lot pattern, cut per room for the light cap; only shaped pieces are modelled |
+
 ## Measuring again
 
 | Step | Command (pinned Blender, headless) |
