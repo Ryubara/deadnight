@@ -172,10 +172,11 @@ func _on_reload(event: Dictionary) -> void:
 	# The motion's steps are shares of the reload, stretched over the weapon's own reload time as
 	# the motion is, so each sounds on the moment it is drawn and all are over before the reload.
 	var seconds := float(event["seconds"])
+	var lift := _t.own_reload_db if shooter_id == _state.player_id else _t.teammate_reload_db
 	for step: StringName in steps:
 		var sound: StringName = steps[step]
 		for share in motion.event_shares(step):
-			schedule.add(share * seconds, func() -> void: _at_player(sound, shooter_id), tag)
+			schedule.add(share * seconds, func() -> void: _at_player(sound, shooter_id, lift), tag)
 
 
 func _on_equipped(event: Dictionary) -> void:
@@ -189,18 +190,21 @@ static func _reload_tag(player_id: int) -> StringName:
 	return StringName("reload_%d" % player_id)
 
 
-## A sound where `player_id` stands; flat when it is this screen's own player and the frame has
-## no position yet, and nothing for a stranger who is not in the frame.
-func _at_player(sound: StringName, player_id: int) -> void:
+## A sound where `player_id` stands: flat for this screen's own player, at the head of anyone else,
+## and nothing for a stranger who is not in the frame.
+func _at_player(sound: StringName, player_id: int, lift_db := 0.0) -> void:
+	# The player's own hands are at their own ears: flat, as their own shots are (a centred 3D voice
+	# costs 6 dB, and under fire a reload step was then lost in the guns: #683).
+	if player_id == _state.player_id:
+		_play(sound, null, lift_db)
+		return
 	var player: Dictionary = _state.frame.get("players", {}).get(player_id, {})
 	if player.has("pos"):
-		_play(sound, player["pos"] + HEAD_LIFT)
-	elif player_id == _state.player_id:
-		_play(sound, null)
+		_play(sound, player["pos"] + HEAD_LIFT, lift_db)
 
 
-func _play(sound: StringName, at: Variant) -> void:
-	var extra_db := _rng.randf_range(-_t.shot_jitter_db, _t.shot_jitter_db)
+func _play(sound: StringName, at: Variant, lift_db := 0.0) -> void:
+	var extra_db := _rng.randf_range(-_t.shot_jitter_db, _t.shot_jitter_db) + lift_db
 	if play.is_valid():
 		play.call(sound, at, extra_db)
 	else:

@@ -173,6 +173,29 @@ func test_every_firearm_has_reload_steps_of_its_own_mechanism() -> void:
 	)
 
 
+func test_the_players_own_reload_is_flat_and_a_teammates_is_at_his_head() -> void:
+	# The own hands play flat like the own shots (a centred 3D voice costs 6 dB under fire, #683);
+	# a teammate's reload sounds where he stands.
+	_state.apply_events(
+		[
+			{
+				"type": &"frame",
+				"players": {OWN: {"pos": Vector3(1, 0, 2)}, 2: {"pos": Vector3(5, 0, 2)}},
+				"zombies": []
+			}
+		]
+	)
+	_tell({"type": &"reload_started", "shooter_id": OWN, "weapon_id": &"smg", "seconds": 1.9})
+	_tell({"type": &"reload_started", "shooter_id": 2, "weapon_id": &"smg", "seconds": 1.9})
+	_sounds.schedule.advance(2.0)
+	var own := _heard.filter(func(h: Dictionary) -> bool: return h["at"] == null)
+	var mate := _heard.filter(func(h: Dictionary) -> bool: return h["at"] is Vector3)
+	assert_int(own.size()).is_equal(mate.size())
+	assert_int(own.size()).is_greater(3)
+	for h: Dictionary in mate:
+		assert_vector(h["at"] as Vector3).is_equal(Vector3(5, 0, 2) + WeaponSounds.HEAD_LIFT)
+
+
 func test_putting_the_weapon_away_abandons_the_reload() -> void:
 	_tell({"type": &"reload_started", "shooter_id": OWN, "weapon_id": &"shotgun", "seconds": 2.4})
 	_sounds.schedule.advance(0.1)

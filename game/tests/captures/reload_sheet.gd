@@ -5,7 +5,8 @@ extends Node
 ## of its time; one contact sheet per weapon and view. Not part of the game. Run windowed (it saves
 ## what the window draws), off the person's desktop:
 ## `gds godot -- --path game res://tests/captures/reload_sheet.tscn -- --out <dir>
-## [--weapon=rifle] [--frames]` (`--frames` also keeps every frame for a video).
+## [--weapon=rifle] [--frames] [--full] [--measure]` (`--frames` keeps every frame for a video,
+## `--full` each stage's whole frame, `--measure` counts the weapon's pixels on screen).
 
 const SECOND := 60
 const MATE := 2
@@ -31,6 +32,7 @@ var _out := ""
 var _guns: Array[StringName] = GUNS
 var _frames := false
 var _full := false
+var _measure := false
 var _reload_me := false
 var _reload_mate := false
 var _mate_yaw := 0.0
@@ -47,6 +49,8 @@ func _ready() -> void:
 			_frames = true
 		elif argument == "--full":
 			_full = true
+		elif argument == "--measure":
+			_measure = true
 	DirAccess.make_dir_recursive_absolute(_out)
 	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
 	var layer := CanvasLayer.new()
@@ -117,6 +121,9 @@ func _film(weapon_id: StringName, mate: bool) -> void:
 		if now >= SHARES[next] * seconds + 0.1:
 			await RenderingServer.frame_post_draw
 			var image := get_viewport().get_texture().get_image()
+			var body := _night.server.body_of(who) if mate else _night.player()
+			var anim := body.get_node(^"AnimationTree") as PlayerAnimation
+			var shown := _weapon_pixels(anim, image)
 			if _full:
 				image.save_png("%s/%s_%s_%02d.png" % [_out, weapon_id, view, next])
 			# The player's own reload is the whole screen the player has; a teammate's is cropped
@@ -127,12 +134,10 @@ func _film(weapon_id: StringName, mate: bool) -> void:
 			image.convert(Image.FORMAT_RGB8)
 			var cell := Vector2i(next % COLUMNS, next / COLUMNS) * CELL
 			sheet.blit_rect(image, Rect2i(Vector2i.ZERO, CELL), cell)
-			var body := _night.server.body_of(who) if mate else _night.player()
-			var anim := body.get_node(^"AnimationTree") as PlayerAnimation
 			var pose := anim.reload_pose()
 			print(
 				(
-					"STAGE %s %s share %.1f t %.3f weight %.2f left %.2f part %.2f ammo %s turn %s %s"
+					"STAGE %s %s share %.1f t %.3f weight %.2f left %.2f part %.2f ammo %s weapon_px %d"
 					% [
 						weapon_id,
 						view,
@@ -142,8 +147,7 @@ func _film(weapon_id: StringName, mate: bool) -> void:
 						pose.left,
 						pose.part,
 						pose.ammo,
-						pose.weapon_turn,
-						_ammo_note(anim)
+						shown
 					]
 				)
 			)
@@ -152,25 +156,30 @@ func _film(weapon_id: StringName, mate: bool) -> void:
 	await _seconds(0.6)
 
 
-func _ammo_note(anim: PlayerAnimation) -> String:
-	var ammo := anim.reload_ammo()
-	if ammo == null or not ammo.is_visible_in_tree():
-		return ""
-	var skeleton := ammo.get_parent().get_parent() as Skeleton3D
-	var hand := (
-		skeleton.global_transform * skeleton.get_bone_global_pose(skeleton.find_bone("Index1.L"))
-	)
-	var mount := ammo.get_parent() as Node3D
-	var solved := anim.hands().solved_left()
-	return (
-		"ammo %s mount %s solved left %s screen ammo %s"
-		% [
-			ammo.global_position,
-			mount.global_position,
-			solved.origin,
-			get_viewport().get_camera_3d().unproject_position(ammo.global_position)
-		]
-	)
+## How many pixels of `frame` (drawn just now) the weapon and the ammunition in `anim`'s hands
+## make: the frame is drawn again without them and the pixels that change are counted
+## (docs/godot/measuring-effects-on-screen.md in the kit). -1 without `--measure`.
+func _weapon_pixels(anim: PlayerAnimation, frame: Image) -> int:
+	if not _measure:
+		return -1
+	var hidden: Array[Node3D] = [anim.weapon()]
+	if anim.reload_ammo() != null and anim.reload_ammo().visible:
+		hidden.append(anim.reload_ammo())
+	for node in hidden:
+		node.visible = false
+	RenderingServer.force_draw(false)
+	var without := get_viewport().get_texture().get_image()
+	for node in hidden:
+		node.visible = true
+	RenderingServer.force_draw(false)
+	var count := 0
+	for y in range(0, frame.get_height(), 2):
+		for x in range(0, frame.get_width(), 2):
+			var a := frame.get_pixel(x, y)
+			var b := without.get_pixel(x, y)
+			if maxf(absf(a.r - b.r), maxf(absf(a.g - b.g), absf(a.b - b.b))) > 0.08:
+				count += 4
+	return count
 
 
 ## The part of the frame around `who`'s chest, `CROP_METRES` wide where the body is.

@@ -125,12 +125,11 @@ Added in `tools/audio/weapon_recipes.py` (synthesised) and `tools/audio/elevenla
   after, rifle: `rifle_before` against `rifle_after` in the pull request's spectrogram.
 - **Variation costs voices, so the groups have limits.** Tails 4, impacts 6; the SMG's tail has a 0.22 s cooldown.
   Thirteen SMG shots a second still start the report every time.
-- **Reload steps from the clip's frames.** `clips.json` lists the events in frames at 24 a second (the revolver and
-  SMG's `mag_out` 6 and `mag_in` 22; the rifle's `round_in` 20, 32, 44 and `lever` 56; the shotgun's `break_open` 6,
-  `shells_in` 26, `snap_shut` 34). The sounds read those frames (`ClipEvents`) on a `SoundSchedule` the node steps, so a
-  test checks every step 1 ms either side of its frame with no wall time. Not scaled to the weapon's `reload_time`: the
-  animation plays at its own speed, and the rifle's lever (2.33 s) lands after the simulation's 2.2 s reload ends, as the
-  picture does.
+- **Reload steps from the reload's motion (#683).** The steps are events of the weapon's `ReloadMotion`
+  (`gameplay/player/reload/<id>.tres`) at shares of the reload, so they stretch over the weapon's own `reload_time` as
+  the motion does and sound on the moment it draws them; `WeaponSounds.RELOAD` gives each step its sound. They play
+  on a `SoundSchedule` the node steps, so a test checks every step 1 ms either side with no wall time. Before #683 they
+  read the authored `Reload_<Class>` clips' frames (`ClipEvents`, now gone), which the night never played.
 - **World impact versus flesh.** The server sends the pellets' end points in `shot_fired` and the zombie hits in a
   `damage_dealt` right after, so a pellet that ended short of the weapon's range is held until the next step and each
   hit claims the nearest end within 1.5 m; what is left struck the lot. A shotgun's eight pellets ricochet at most

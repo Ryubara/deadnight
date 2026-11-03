@@ -434,9 +434,14 @@ def reload_flare_in(rng: np.random.Generator) -> np.ndarray:
 
 
 def reload_flare_shut(rng: np.random.Generator) -> np.ndarray:
-    """The barrel flicked shut: a latch snap with the alloy's hollow ring, lighter than the shotgun's."""
-    mix = dsp.place(None, _metal_click(rng, _jv(rng, 1000, 0.05), ring=0.04), 0.0, 1.0)
-    return dsp.fade(dsp.place(mix, _hollow(rng, _jv(rng, 610, 0.08), 0.1), 0.0, 0.8), 0.001, 0.03)
+    """The barrel flicked shut: a latch snap, the frame's knock and the alloy's hollow ring, lighter than the
+    shotgun's but long enough to be heard through gunfire (the first version, 0.04 s, was lost: #683)."""
+    mix = dsp.place(None, _metal_click(rng, _jv(rng, 1000, 0.05), ring=0.1), 0.0, 1.0)
+    mix = dsp.place(mix, _thud(rng, _jv(rng, 190, 0.08), 0.16), 0.0, 0.9)
+    mix = dsp.place(mix, _hollow(rng, _jv(rng, 700, 0.08), 0.5), 0.0, 1.0)
+    # The latch catching a moment after the barrel meets the frame.
+    mix = dsp.place(mix, _metal_click(rng, _jv(rng, 1500, 0.05), ring=0.05), 0.035, 0.8)
+    return dsp.fade(mix, 0.001, 0.05)
 
 
 # ---- the generator ----------------------------------------------------------------------------------------------
