@@ -1030,6 +1030,32 @@ decides, the others hold a rule each, so a test pins them one by one):
 - **Tests that stood in the way.** The bot does not hear a round that began by a direct `rules.apply` (see the
   lesson); `SeatedNight.start_round()` hands the answer to the host.
 
+**The bands test stages the dead (#783).** The bands were first read with the dead walking the lot to the bot, and
+that reading belonged to the map as much as to the bots: the maintainer's 20 added field lamps (#719) took the
+Regular's head share from 0.80 to 0.97 and halved the shots (321 to 173, 253 to 131, 140 to 99), with no change to a
+bot. The lot's cars and posts decide where the dead come into view, so any map change moves the numbers. Measured
+with the baked navigation meshes swapped, the same (the fight does not read them); with the new lamps taken out, two
+of three levels back in band (the rest is the dead's route round the lot). The test now fights twice, on the shipped
+map and unchanged by it: the **far fight** (`SeatedNight.stage_the_dead`, each zombie put once 10 to 16 m ahead,
+walking straight at the bot, eight seeds of 50 s, the pistol, endless rounds and health) reads the hit rate and the
+head share, and the **near fight** (the dead put 4 to 6 m ahead with the trigger up, `hold_fire`, eight seeds of
+30 s) reads the dodge. A bot that fires at the dead put near kills them before they swing, at every spawn pace tried
+(a zombie every 0.5 or 1 s: no blow on a Regular or a Veteran; every 0.2 s: 1,583 on a Rookie and 5 on a Veteran in
+the same seconds), so the dodge is read from the legs alone. Local readings
+(main and the maintainer's layout, commit 34867f29, agree):
+
+| | Rookie (weak) | Regular (average) | Veteran (strong) |
+| --- | ---: | ---: | ---: |
+| Shots, 5 to 20 m (main / 34867f29) | 466 / 466 | 258 / 258 | 181 / 181 |
+| Hit rate (level's number) | 0.40 (0.45) | 0.65 (0.65) | 0.76 (0.82) |
+| Head share (level's number) | 0.61 / 0.61 (0.68) | 0.75 / 0.75 (0.81) | 0.88 / 0.88 (0.85) |
+| Dodge, legs alone (band centre) | 0.00 / 0.00 (0.0) | 0.24 / 0.20 (0.3) | 0.65 / 0.64 (0.6) |
+
+The bands stay `SimSkill`'s hit rate (plus or minus 0.12) and head rate (plus or minus 0.10); the dodge is a band of
+its own (centre 0.0 / 0.3 / 0.6, plus or minus 0.2), because the dead pile up round a bot that does not kill them: it
+reads lower than `SimSkill`'s 0.17 / 0.55 / 0.80, which is the chance that a blow misses a player who also shoots.
+`SimSkill` did not move, so no balance batch was needed. The old numbers below are the ones the lot's route gave.
+
 **Measured.** *Bands* (`tests/night/test_bot_bands.gd`; one bot with the pistol and endless rounds and health against a
 stream of walkers at 2.4 m/s, about round 8; hit rate and head share from the shots at a zombie 5 to 20 m away, since
 nearer a shot lands whatever the aim; dodge from the blows that came due on the bot, the share that missed; four seeds
