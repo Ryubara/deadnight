@@ -1,20 +1,28 @@
 class_name GrenadeSounds
 extends Node
-## What a grenade sounds like, from the server's events: the pin and spoon at the throw, a tick
-## while a player cooks one (its rate rises as the fuse runs down, so a cook can be timed by ear),
-## the knock of each bounce (harder when it hits harder) and the blast. A grenade in the air makes
-## no tick: its place is only known at the throw, the bounces and the blast.
+## What a grenade sounds like, from the server's events: the pin and spoon at the throw, a time
+## bomb's beep from the pin to the blast (it comes faster and a little louder as the fuse runs
+## down, in the hand while a player cooks and then from the grenade wherever it lies), the knock of
+## each bounce (harder when it hits harder, a zombie's thud included) and the blast. Every client
+## hears the same beeps: they follow the events, which every client gets, and the schedule's clock.
 
 const HEAD_LIFT := Vector3(0.0, 1.4, 0.0)
 
 ## `Callable(id: StringName, at: Variant, extra_db: float)`; the audio service unless a test
 ## listens instead.
 var play := Callable()
+## `Callable(grenade_id: int) -> Variant`: where that grenade is now (a Vector3), or null when this
+## client does not draw it. The night gives the view's; without it a beep comes from where the
+## grenade was last heard.
+var where_is := Callable()
 var schedule := SoundSchedule.new()
 
 var _t := NightSoundTuning.current()
 var _state: ClientState
-var _cooks: Dictionary[int, int] = {}
+## The beeps running: `{key: {"token", "left", "fuse", "due", "player_id", "grenade_id", "at"}}`.
+## A key is the player's cook (`cook_<id>`) or a grenade in the air (`nade_<id>`).
+var _beeps: Dictionary[StringName, Dictionary] = {}
+var _tokens := 0
 
 
 func setup(state: ClientState) -> void:
@@ -26,10 +34,23 @@ func _process(delta: float) -> void:
 	schedule.advance(delta)
 
 
-## The gap before the next tick when `left` of `fuse` seconds remain.
-static func tick_gap(left: float, fuse: float) -> float:
+## The gap before the next beep when `left` of `fuse` seconds remain: from `beep_gap_start` at the
+## pin to `beep_gap_end` at the blast.
+static func beep_gap(left: float, fuse: float) -> float:
 	var t := NightSoundTuning.current()
-	return lerpf(t.tick_gap_end, t.tick_gap_start, clampf(left / maxf(fuse, 0.001), 0.0, 1.0))
+	var ratio := clampf(left / maxf(fuse, 0.001), 0.0, 1.0)
+	return lerpf(t.beep_gap_end, t.beep_gap_start, pow(ratio, t.beep_curve))
+
+
+## The beep's level when `left` of `fuse` seconds remain: it swells toward the blast.
+static func beep_db(left: float, fuse: float) -> float:
+	var t := NightSoundTuning.current()
+	return lerpf(t.beep_db_end, t.beep_db_start, clampf(left / maxf(fuse, 0.001), 0.0, 1.0))
+
+
+## How many beeps are running (a cook, a grenade in the air), for tests.
+func beeping() -> int:
+	return _beeps.size()
 
 
 func _on_event(event: Dictionary) -> void:
@@ -37,10 +58,12 @@ func _on_event(event: Dictionary) -> void:
 		&"cook_started":
 			_start_cook(event["player_id"], event["fuse"])
 		&"grenade_thrown":
-			_stop_cook(event["thrower_id"])
 			_play(&"grenade_throw", event["position"])
-		&"grenade_dropped", &"cook_rejected":
-			_stop_cook(event.get("thrower_id", event.get("player_id", -1)))
+			_hand_over(event)
+		&"grenade_dropped":
+			_hand_over(event)
+		&"cook_rejected":
+			_stop(_cook_key(event.get("player_id", -1)))
 		&"grenade_bounced":
 			var loud := clampf(float(event["speed"]) / _t.bounce_fast_speed, 0.0, 1.0)
 			_play(
@@ -50,37 +73,90 @@ func _on_event(event: Dictionary) -> void:
 			)
 		&"grenade_exploded":
 			_play(&"grenade_blast", event["point"])
-			_stop_cook(event["thrower_id"])
+			_stop(_nade_key(event["grenade_id"]))
+			if event["in_hand"]:
+				_stop(_cook_key(event["thrower_id"]))
 		&"game_over":
 			schedule.clear()
-			_cooks.clear()
+			_beeps.clear()
 
 
 func _start_cook(player_id: int, fuse: float) -> void:
-	_stop_cook(player_id)
-	var token := schedule.now()
-	_cooks[player_id] = int(token * 1000.0) + 1
-	_tick(player_id, fuse, fuse, _cooks[player_id])
+	_stop(_cook_key(player_id))
+	_begin(_cook_key(player_id), fuse, fuse, player_id, -1, 0.0)
 
 
-func _stop_cook(player_id: int) -> void:
-	if _cooks.erase(player_id):
-		schedule.cancel(_tag(player_id))
+## The pin's beeps go on from the grenade: the cook's chain becomes the grenade's, keeping the beat
+## (the next beep stays due when it was due), with the fuse the server says is left. A player this
+## client did not hear cook (it joined late) starts the chain at the grenade.
+func _hand_over(event: Dictionary) -> void:
+	var thrower: int = event["thrower_id"]
+	var grenade_id: int = event["grenade_id"]
+	var key := _nade_key(grenade_id)
+	var cook := _cook_key(thrower)
+	var fuse: float = event["fuse_left"] + float(event.get("cooked", 0.0))
+	var delay := 0.0
+	if _beeps.has(cook):
+		fuse = _beeps[cook]["fuse"]
+		delay = maxf(_beeps[cook]["due"] - schedule.now(), 0.0)
+		_stop(cook)
+	_begin(key, fuse, event["fuse_left"], thrower, grenade_id, delay)
+	_beeps[key]["at"] = event["position"]
 
 
-## One tick now, the next after a gap that shrinks with the fuse.
-func _tick(player_id: int, fuse: float, left: float, token: int) -> void:
-	if _cooks.get(player_id, 0) != token or left <= 0.0:
+## Starts a chain: the first beep `delay` seconds from now.
+func _begin(
+	key: StringName, fuse: float, left: float, player_id: int, grenade_id: int, delay: float
+) -> void:
+	_tokens += 1
+	var token := _tokens
+	_beeps[key] = {
+		"token": token,
+		"left": left,
+		"fuse": fuse,
+		"due": schedule.now() + delay,
+		"player_id": player_id,
+		"grenade_id": grenade_id,
+		"at": null,
+	}
+	schedule.add(delay, func() -> void: _beep(key, token), key)
+
+
+func _stop(key: StringName) -> void:
+	if _beeps.erase(key):
+		schedule.cancel(key)
+
+
+## One beep now, the next after a gap that shrinks with the fuse.
+func _beep(key: StringName, token: int) -> void:
+	var chain: Dictionary = _beeps.get(key, {})
+	if chain.is_empty() or chain["token"] != token or chain["left"] <= 0.0:
 		return
-	var player: Dictionary = _state.frame.get("players", {}).get(player_id, {})
-	var at: Variant = player["pos"] + HEAD_LIFT if player.has("pos") else null
-	_play(&"grenade_tick", at)
-	var gap := tick_gap(left, fuse)
-	schedule.add(gap, func() -> void: _tick(player_id, fuse, left - gap, token), _tag(player_id))
+	_play(&"grenade_beep", _beep_place(chain), beep_db(chain["left"], chain["fuse"]))
+	var gap := beep_gap(chain["left"], chain["fuse"])
+	chain["left"] -= gap
+	chain["due"] = schedule.now() + gap
+	schedule.add(gap, func() -> void: _beep(key, token), key)
 
 
-static func _tag(player_id: int) -> StringName:
+## Where a beep comes from: the grenade, or the head of the player who holds it.
+func _beep_place(chain: Dictionary) -> Variant:
+	if chain["grenade_id"] >= 0:
+		if where_is.is_valid():
+			var found: Variant = where_is.call(chain["grenade_id"])
+			if found is Vector3:
+				chain["at"] = found
+		return chain["at"]
+	var player: Dictionary = _state.frame.get("players", {}).get(chain["player_id"], {})
+	return player["pos"] + HEAD_LIFT if player.has("pos") else null
+
+
+static func _cook_key(player_id: int) -> StringName:
 	return StringName("cook_%d" % player_id)
+
+
+static func _nade_key(grenade_id: int) -> StringName:
+	return StringName("nade_%d" % grenade_id)
 
 
 func _play(sound: StringName, at: Variant, extra_db := 0.0) -> void:

@@ -73,6 +73,8 @@ var weapon_id: StringName = &""
 var holstered_id: StringName = &""
 var rounds: Dictionary[StringName, Dictionary] = {}
 var weapon_names: Dictionary[StringName, String] = {}
+## The map's own names for its paid links (link id -> name), for the feed's line; empty on the lot.
+var link_names: Dictionary[StringName, String] = {}
 var ammo_free: Array[StringName] = []
 ## The weapons carried by slot, slot 1 first, `&""` for an empty place (`WeaponSlots`), and the
 ## slot (1-based) the weapon in hand is in, 0 for none. How many places the player has: the carry
@@ -490,6 +492,8 @@ func _handler(type: StringName) -> Callable:
 			handler = _on_player_added
 		&"bot_replaced":
 			handler = _on_bot_replaced
+		&"bot_seated":
+			handler = _on_bot_seated
 		&"grenade_count_changed":
 			handler = _on_grenade_count_changed
 		&"player_removed":
@@ -770,6 +774,15 @@ func _on_bot_replaced(event: Dictionary) -> void:
 	if member["bot"]:
 		member["bot"] = false
 		_mark(TEAM)
+
+
+## A bot took the seat of a person who left: the person is gone from the roster (their name is kept
+## for the notice) and the seat is a bot's; the bot's own name arrives as a `player_named`.
+func _on_bot_seated(event: Dictionary) -> void:
+	var member := _member(int(event["player_id"]))
+	left_name = str(member.get("name", "PLAYER %d" % int(event["player_id"])))
+	member["bot"] = true
+	_mark(TEAM)
 
 
 ## The name a roster shows for a team member (an entry of `team`): the name, then BOT for a bot, so

@@ -64,7 +64,7 @@ func _process(_delta: float) -> void:
 
 func _on_played(id: StringName, _position: Variant) -> void:
 	var text := String(id)
-	if text.begins_with("vox_"):
+	if SoldierVoiceCatalog.is_take(id):
 		print("VOICE %.2f %s" % [_now(), id])
 	elif text.begins_with("shot_") or text.begins_with("blast_"):
 		print("GUN %.2f %s" % [_now(), id])

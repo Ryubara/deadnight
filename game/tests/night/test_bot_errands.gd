@@ -443,3 +443,41 @@ func test_an_areas_breaker_stays_off_when_the_tank_is_low() -> void:
 	_seconds(night, 40.0)
 	assert_bool(night.server.rules.generator.circuits[&"concession"]).is_false()
 	night.dispose()
+
+
+## A bot that wants the hearty tonic, at its machine in an area whose circuit is off and whose
+## breaker stands outside the lamps (the lamps' reach is cut to 4 m: the walk to the breaker leaves
+## the area, as the ticket plaza's does). It throws the breaker, then buys,
+## with one change of errand and no flipping.
+func test_a_bot_with_a_purchase_in_a_dark_area_throws_the_breaker_then_buys() -> void:
+	var profile := BotProfile.regular()
+	profile.shopping.assign([&"tonic_hearty"])
+	profile.saves_for.clear()
+	var night := await _night(0, 1, profile)
+	await _open(night, [DOOR])
+	_give(night, 1, 1100)
+	night.level.shop.lamp_reach = 4.0
+	_place(night, 1, Vector3(7.9, 0.0, 0.0))
+	var bought: Array[Dictionary] = []
+	night.on_event = func(event: Dictionary) -> void:
+		if event["type"] == &"purchase_made" and event["item_id"] == &"tonic_hearty":
+			bought.append(event)
+	var bot := _bot(night, 1)
+	var changes := 0
+	var last := ""
+	for tick in 60 * TICKS_PER_SECOND:
+		night.tick()
+		var seen := bot.telemetry.recent()
+		var note: String = "" if seen.is_empty() else seen.back()["intent"]["note"]
+		if note.begins_with("breaker") or note.begins_with("buy tonic"):
+			var errand := note.split(" ")[0]
+			if last != "" and errand != last:
+				changes += 1
+			last = errand
+		if not bought.is_empty():
+			break
+	assert_bool(night.server.rules.generator.circuits[&"concession"]).is_true()
+	assert_int(bought.size()).is_equal(1)
+	assert_int(changes).is_less_equal(1)
+	assert_array(_catcher.lines).is_empty()
+	night.dispose()

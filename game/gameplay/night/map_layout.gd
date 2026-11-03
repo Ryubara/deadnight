@@ -123,6 +123,12 @@ func map_tuning() -> MapTuning:
 	return load(path) as MapTuning if not path.is_empty() else null
 
 
+## What the map calls its links and breaches, or null (the lot: the HUD's own words).
+func words() -> MapWords:
+	var tuning := map_tuning()
+	return tuning.words if tuning != null else null
+
+
 func _collect_players(group: Node) -> void:
 	for marker in group.get_children():
 		_player_markers.append(marker as Marker3D)

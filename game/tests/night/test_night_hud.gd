@@ -250,7 +250,7 @@ func test_the_wall_weapon_the_crane_and_a_locker_each_have_a_card() -> void:
 	var hud: Hud = made["hud"]
 	_stand_at(night, &"weapon_shotgun")
 	assert_str(String(hud.state.prompt["kind"])).is_equal("buy_weapon")
-	assert_str(hud.prompt.title_text).contains("SHOTGUN")
+	assert_str(hud.prompt.title_text).contains("DOUBLE-BARREL")
 	_stand_at(night, &"crane_play")
 	assert_str(String(hud.state.prompt["kind"])).is_equal("buy_crane")
 	assert_str(hud.prompt.title_text).is_equal("PRIZE CRANE")
