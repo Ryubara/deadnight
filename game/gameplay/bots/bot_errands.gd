@@ -60,6 +60,9 @@ const AREA_EMPTY := 15.0
 ## door's stand is 1.5 m from the slab and a hand reaches 3.2 m, so it must come closer than 1.7).
 const ARRIVE := 1.0
 const ARRIVE_DOOR := 0.8
+## Metres of height at most between a bot and its stand for it to count as arrived (a bench above
+## the bot's head is a stair away).
+const ARRIVE_HEIGHT := 1.5
 ## Seconds at a stand with nothing to press before the item is left alone for a while, and the
 ## longest an errand may take.
 const AT_STAND_PATIENCE := 3.0
@@ -104,7 +107,6 @@ var longest_glut := 0.0
 var glut_by_round: Dictionary = {}
 
 var _shop: BotShop
-var _round_health := 0.0  # The health of the dead the last plan weighed its weapons by.
 var _profile: BotProfile
 var _economy: BotEconomy
 ## Item id (or a job's key) to the clock when it may be tried again.
@@ -120,8 +122,8 @@ var _waiting_since: Dictionary = {}
 ## Circuit id to the clock when its area was first found empty.
 var _empty_since: Dictionary = {}
 ## The breaker the bot set out to throw on, and the clock until which it keeps wanting it: the walk
-## to a breaker that stands outside its area's lamps takes the bot out of the area, and without this
-## the bot would stop wanting the circuit, turn back to the shop, and want it again on the way in.
+## to a breaker outside its area's lamps takes the bot out of the area, and without this it would
+## stop wanting the circuit, turn back to the shop, and want it again on the way in.
 var _breaker_id: StringName = &""
 var _breaker_until := -INF
 var _fuelling := false
@@ -134,7 +136,8 @@ var _door_count := -1
 ## A stand's key to `{length, until}`: the metres of walk to it, asked of the legs.
 var _walks: Dictionary = {}
 var _walk_mesh := -1
-## The ammunition stand the bot is walking to for rounds of its own, and whether the callout for a
+## The stand the bot is walking to for a purchase (kept against a second seller of the same thing,
+## `BotEconomy.nearest_by_walk`), and whether the callout for a
 ## need it was held back from has been given since it last was free.
 var _heading := Vector3.INF
 var _announced := false
@@ -350,7 +353,7 @@ func _shopping(
 	if pick.why == BotEconomy.AMMO_PING:
 		_ammo_kept = pick.stand
 		_ammo_until = now + ERRAND_LIMIT
-	_heading = pick.stand if pick.prompt == &"ammo" else Vector3.INF
+	_heading = pick.stand
 	note = "buy %s (%s)" % [pick.item, pick.why]
 	return _carry_out(intent, pick, me, now)
 
@@ -453,7 +456,7 @@ func _carry_out(intent: BotIntent, pick: BotEconomy.Buy, me: Dictionary, now: fl
 		back_off(pick.item, now)
 		return false
 	var radius := ARRIVE_DOOR if pick.prompt == &"door" else ARRIVE
-	if _flat(here, pick.stand) <= radius + 0.5:
+	if _flat(here, pick.stand) <= radius + 0.5 and absf(here.y - pick.stand.y) <= ARRIVE_HEIGHT:
 		if _arrived_at < 0.0:
 			_arrived_at = now
 		intent.keep_weapon = pick.prompt == &"ammo"
@@ -543,7 +546,7 @@ func _hands_wrong(pick: BotEconomy.Buy, prompt: Dictionary, me: Dictionary) -> b
 		return false
 	var held: StringName = me.get("weapon", &"")
 	var replaced: StringName = prompt.get("replaces", held)
-	return replaced != &"" and replaced != BotEconomy.weakest_of(arms, _round_health)
+	return replaced != &"" and replaced != BotEconomy.weakest_of(arms, _economy.last_health)
 
 
 ## At a locker with a blade in hand and the gun to feed in the pack: the rounds are sold for the
@@ -590,12 +593,10 @@ func _view(
 	beliefs: BotBeliefs, state: ClientState, me: Dictionary, frame: Dictionary
 ) -> BotEconomy.View:
 	var view := BotEconomy.View.new()
-	var now := beliefs.now
 	view.points = state.points()
 	view.round_number = int(frame.get("round", 1))
 	view.prepared = beliefs.special_coming
 	view.zombie_health = _economy.zombie_health(view.round_number)
-	_round_health = view.zombie_health
 	view.in_break = frame.get("phase", ACTIVE_PHASE) == BREAK_PHASE
 	view.remaining = int(frame.get("remaining", 0))
 	view.calm_at = calm_at(frame)
@@ -611,7 +612,7 @@ func _view(
 	view.crane_spot = int(crane.get("spot", 0))
 	view.crane_ready = int(crane.get("stage", CraneState.Stage.READY)) == CraneState.Stage.READY
 	view.denied = _denied
-	view.now = now
+	view.now = beliefs.now
 	view.avoid = Callable(self, &"_avoided")
 	if legs != null:
 		view.walk = Callable(self, &"_walk_to")

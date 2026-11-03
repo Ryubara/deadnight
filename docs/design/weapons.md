@@ -115,6 +115,29 @@ runs dry. They are not re-cut at the projector (the re-cut list is the firearms)
   whatever is in hand, so no melee weapon is needed in a slot for emergencies; it replaced the starting crowbar
   ([below](#quick-melee)).
 
+### The wall tier
+
+**A wall spot sells only the weaker guns, on every map** (the maintainer, [#858](https://github.com/Ryubara/deadnight/issues/858)).
+Every weapon has a wall tier, in `WallTier` (`gameplay/weapons/wall_tier.gd`); a wall may sell up to tier 2, and any
+weapon above it is **box only**: the prize crane is the only way to it.
+
+| Tier | Weapons | Wall? |
+| --- | --- | --- |
+| 1, hand | the revolver, the crowbar, the baseball bat, the fire axe, the flare gun | yes |
+| 2, the older long guns | the double-barrel, the Tommy gun, the hunting rifle (the best a wall sells) | yes |
+| 3, box | every other weapon: the pump 870, MP5, M4A1, PPSh, M249, fifty cal, dual pistols, the ray gun, the freeze gun | **no, the box only** |
+
+- **A weapon not named in `WallTier.TIERS` is tier 3**, so a gun added to the catalogue is in the box until someone
+  decides it may hang on a wall; the decision is a row in that table and in this one.
+- **It holds on both maps.** The lot's walls are the double-barrel and the rifle; the second map's nine places are
+  the revolver, the crowbar, the double-barrel (two walls), the Tommy gun, the bat, the flare gun, the axe and, in the
+  cabinet, the rifle. The pump, the MP5 and the M4A1 have no wall on either: the second map asked for new places for them
+  and the maintainer's answer was the box only, and the lot follows the same rule.
+- **Held by a test.** `test_wall_tier.gd` fails when a wall marker of either map, a weapon either map's tuning prices
+  for a wall, or a weapon in a bot's shopping list is above the tier, and when a tier-3 weapon of the catalogue is
+  missing from the box's pool of either map. The bots buy at the spots the map has (`BotEconomy` reads the wall
+  markers), so their lists follow the walls.
+
 ## Quick melee
 
 One button, `V` (the mouse's back button and the pad's d-pad down too), one blow with whatever is in the hands: the
@@ -292,7 +315,7 @@ in [the arsenal](#the-arsenal); the limb multiplier is x0.6 unless a row says ot
 ### The numbers
 
 Per hit is the body zone at point blank; the head multiplier is per pellet. "Working id" is the catalogue id and the
-shop id suffix (`weapon_<id>`); the display name is a tuning string ([names](#display-names-the-maintainers-choice)).
+shop id suffix (`weapon_<id>`); the display name is a tuning string ([names](#display-names-original-names-the-same-guns)).
 
 | Weapon (working id) | Kind | Per hit | Interval | Magazine / reserve (max) | Reload | Spread | Head | Falloff start to end (floor) | Range |
 | --- | --- | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: |
@@ -339,9 +362,9 @@ drawn.
 
 | Weapon | The lot | The small map | Crane weight | Ammunition: rounds for points |
 | --- | --- | --- | ---: | --- |
-| Pump 870 | **wall 700**, past the concession's door | wall 405 (0.9 P) | 2 | 6 for 80 |
-| MP5 | **wall 1,300**, past the yard's door | wall 765 (1.7 P) | 2 | 45 for 90 |
-| M4A1 | **wall 1,600**, past the back lot's door | wall 945 (2.1 P) | 1.5 | 30 for 90 |
+| Pump 870 | the crane only | the box | 2 | 6 for 80 |
+| MP5 | the crane only | the box | 2 | 45 for 90 |
+| M4A1 | the crane only | the box | 1.5 | 30 for 90 |
 | PPSh | crane only | the box | 2 | 75 for 110 |
 | M249 | crane only | the box | 1.5 | 100 for 150 |
 | Fifty cal | crane only | the box | 1.5 | 5 for 100 |
@@ -349,15 +372,14 @@ drawn.
 | Ray gun | crane only | the box | 1.5 (5.3%) | 4 for 180 |
 | Freeze gun | crane only | the box | 1.5 (5.3%) | 3 for 150 |
 
-- **The wall ladder is by worth, not by the genre's price.** The simulator prices a weapon by what an average player does
-  with it ([the research](../research/weapon-roster.md#the-balance-simulator-run)): the pump is a neutral buy (the
-  double-barrel is too), the rifle is worth about a round (10.1 against 9.2 for the revolver alone), the MP5 and the
-  M4A1 about two and a quarter (11.4 and 11.5), and re-cut they reach 14.5 against 12.4 for the re-cut revolver: so the
-  new walls sit above the rifle (1,200), and the M4A1 above the MP5. The genre has the same order (a pump wall under a
-  SMG wall under an assault rifle wall).
-- **The map spots are the build issue's** (#793): the lot's walls are a place on a wall of a room past the named door;
-  the small map has nine places for eight weapons, so three more wall places are needed there or the three walls are
-  box-only on that map (then the ratios are not used).
+- **No wall sells them (#858).** The first plan priced the pump (700), the MP5 (1,300) and the M4A1 (1,600) as walls
+  above the rifle, by what the simulator says each is worth ([the research](../research/weapon-roster.md#the-balance-simulator-run):
+  the MP5 and the M4A1 about two and a quarter rounds, the pump a neutral buy). The maintainer decided otherwise: wall
+  spots are for the weaker guns ([the wall tier](#the-wall-tier)), so these three come only from the box, on the lot
+  and on the second map, and neither map has a place or a price for them. Their worth is why they are in the box's
+  pool at weights 2, 2 and 1.5, and a box-only gun is bought as a gamble of 425 or the lot's crane price, not as a
+  sure buy. The balance gate was run with them on walls ([the run](../research/weapon-roster.md#the-balance-simulator-run)):
+  read again with them in the box only.
 - **The box's pool is the one shop item**, so the weights above are the only thing the crane's tests need
   (`test_crane_pool.gd`: every weapon of the catalogue is in the pool, and 10,000 first rolls are spread by the
   weights). With them the average player's night is up by two rounds ([the run](../research/weapon-roster.md#the-balance-simulator-run)).
@@ -371,13 +393,13 @@ weapon pick of the simulator's players reads the first number.
 | Weapon | Kill rate on round 5, body / head | Round 10 | Round 15 | Kills one load makes, round 10 (head) | Price or source |
 | --- | ---: | ---: | ---: | ---: | --- |
 | Revolver | 49 / 99 | 56 / 113 | 57 / 137 | 17 | start |
-| Pump 870 | 73 / 73 | 62 / 125 | 84 / 126 | 48 | wall 700 |
+| Pump 870 | 73 / 73 | 62 / 125 | 84 / 126 | 48 | crane |
 | Double-barrel | 68 / 68 | 116 / 116 | 117 / 117 | 18 | wall 900, crane |
 | Dual pistols | 75 / 126 | 71 / 161 | 76 / 162 | 24 | crane |
 | PPSh | 82 / 123 | 84 / 126 | 87 / 133 | 15 | crane |
 | Tommy gun | 98 / 197 | 92 / 168 | 97 / 185 | 25 | crane |
-| MP5 | 83 / 167 | 85 / 171 | 90 / 172 | 30 | wall 1,300, crane |
-| M4A1 | 91 / 151 | 97 / 155 | 104 / 174 | 24 | wall 1,600, crane |
+| MP5 | 83 / 167 | 85 / 171 | 90 / 172 | 30 | crane |
+| M4A1 | 91 / 151 | 97 / 155 | 104 / 174 | 24 | crane |
 | M249 | 97 / 146 | 100 / 166 | 106 / 183 | 42 | crane |
 | Hunting rifle | 105 / 105 | 90 / 180 | 121 / 181 | 48 | wall 1,200, crane |
 | Fifty cal | 51 / 51 | 88 / 88 | 89 / 178 | 25 | crane |
@@ -460,25 +482,40 @@ not holding a re-cut rifle, and the re-cut it takes is 1,500 or 3,000 the player
 and special rounds keep their shape**: the freeze does not hold a headliner, and a Stampede or a Crawl Space still
 sends more than 30 bolts. (6) **The ray's blast hurts the shooter**: close shots are a choice.
 
-### Display names: the maintainer's choice
+### Display names: original names, the same guns
 
-Several real names are trademarks (Barrett, Remington, probably MP5 and M4A1). **Which display names ship is the
-maintainer's decision** and is not made here: `display_name` is a tuning string of each definition, so the choice
-changes one line of a `.tres` and the HUD, card and feed follow (`WeaponCatalog` ids stay the working ids). The options,
-for each, as the real name, a generic name and a name in the drive-in's style (these are options, not recommendations,
-and none is checked for a trademark):
+Several real names are trademarks (Barrett, Remington, probably MP5 and M4A1). **The maintainer's decision
+([#857](https://github.com/Ryubara/deadnight/issues/857)): use alternative names and keep the same gun design.** A
+gun whose name is a maker's name, a brand or a model designation gets an original name in the drive-in's voice
+(a concession stand, a projectionist, the picture show); ids, models, stats and sounds stay as they are, and the
+working ids below are what the code, the shop (`weapon_<id>`) and the tests call it. `display_name` is the one string
+the HUD, the prompt cards, the crane's reveal, the feed and "Re-Cut <name>" read (`WeaponDef.display_name`; the
+re-cut is the word Re-Cut before it). The wall plaques are the lot's own text, which the test below reads as well.
 
-| Working id | The real name | A generic name | In the drive-in's style |
-| --- | --- | --- | --- |
-| `ppsh` | PPSh-41 (a Soviet designation, not a brand) | Drum SMG; Burp gun | Reel Gun; Film-Drum SMG |
-| `m249` | M249 SAW (the US designation; its maker's brand is another) | Squad machine gun; Belt-fed LMG | Marathon; Double-Feature Gun |
-| `m4a1` | M4A1 (a Colt designation) | Carbine; Service carbine | Matinee Carbine; Usher's Carbine |
-| `fifty_cal` | Barrett .50cal (a registered brand); ".50 BMG" is a cartridge | Fifty cal; Anti-materiel rifle | Widescreen; Big Screen |
-| `dual_pistols` | none (two pistols) | Dual pistols; Twin pistols | Double Bill; Twin Feature |
-| `mp5` | MP5 (a Heckler and Koch brand) | Submachine gun; 9 mm SMG | Usher SMG; Concession SMG |
-| `pump_870` | Remington 870 MCS (a Remington brand) | Pump shotgun; Pump gun | Popper; Concession Pump |
-| `ray_gun` | Ray Gun (the genre's famous name) | Ray pistol; Blue ray gun | Atom Blaster; Moon-Beam Pistol; Monster-Movie Ray |
-| `freeze_gun` | Freeze Gun (a plain name) | Freeze gun; Frost blaster | Snow-Cone Gun; Cold-Snap Blaster |
+| Working id | Shown to the player as | Why |
+| --- | --- | --- |
+| `mp5` | **Usher SMG** | A Heckler and Koch designation; the ushers carry the reliable, bought-not-gambled gun |
+| `ppsh` | **Reel Gun** | A Soviet designation (not a brand), but a model name: the round drum is a film reel |
+| `m4a1` | **Matinee Carbine** | A Colt designation; the all-rounder of the early show |
+| `m249` | **Double-Feature Gun** | The US designation and a maker's brand; two reels' worth of belt (100 rounds). "Marathon" is another game's title, so it is not used |
+| `pump_870` | **Popper** | A Remington model; the pump is the concession stand's popcorn popper |
+| `fifty_cal` | Fifty cal (unchanged) | A calibre, not a brand: "Barrett" is dropped, the plain word stays |
+| `ray_gun` | **Moonbeam Pistol** | "Ray Gun" is the reference genre's famous name, which GDStudio games do not copy |
+| `freeze_gun` | **Snow-Cone Gun** | Paired with the ray gun's rename: the cold gun is the concession's snow-cone machine |
+| `dual_pistols`, `pistol`, `shotgun`, `rifle`, `flare_gun`, `crowbar`, `baseball_bat`, `fire_axe` | unchanged | Plain words of the language, no maker in them |
+| `smg` | Tommy gun (unchanged) | The Thompson's nickname became the plain word for the gun; "Thompson" itself, the maker, is on the banned list. **Kept for the maintainer to confirm** |
+
+The pull requests that add the guns ([#826](https://github.com/Ryubara/deadnight/pull/826) the six firearms,
+[#823](https://github.com/Ryubara/deadnight/pull/823) the ray and freeze guns) take these names when they land: until
+a gun is in the catalogue its row is only a promise, and the moment its id is, `test_weapon_names` fails unless its
+`display_name` is the chosen one.
+
+**The gate** is `game/tests/weapons/test_weapon_names.gd` with `weapon_name_rules.json` beside it: the `banned` list
+(makers, brands, model designations and other games' famous names, matched as whole words, so "Colton" and "Sawmill"
+pass) and the `chosen` names above. It reads the name of every catalogue weapon and its re-cut, the text of every wall
+plaque and sign in both maps, the feed's lines and the challenges' texts, and fails on any that holds a banned term,
+on two weapons with one name, and on a chosen name that is not shown. To add a name to the list, add a line to the
+JSON; to name a new gun, pick a name that is not on it.
 
 ## Grenades
 

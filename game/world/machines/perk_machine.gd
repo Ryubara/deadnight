@@ -115,6 +115,12 @@ func _physics_process(delta: float) -> void:
 	advance(delta)
 
 
+## The meshes of the machine that never move or change, which the map's batch draws with the rest of
+## the lot (`LotBatcher`). The emblem, the flap and the falling bottle are the machine's own.
+func still_meshes() -> Array[MeshInstance3D]:
+	return MachineParts.meshes_outside(self, [_dropper, _flap, _emblem])
+
+
 ## The shop item this machine sells.
 func item_id() -> StringName:
 	return LOOKS[perk]["item"]

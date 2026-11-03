@@ -7,3 +7,10 @@ extends Resource
 @export var label := ""
 ## The sounds of the family, each a `SoundDef` with its own level, pitch, reach and budget.
 @export var sounds: Array[SoundDef] = []
+## The family's sounds are not decoded to samples behind the night's loading bar: their files are
+## loaded there (cheap), and the samples are made in the background once the night runs, or at
+## the sound's first play (`AudioService.preload_sound_for_night`). A family a night does not play
+## from its first second (a weapon's shots, a voice) takes this; the decode of all the sounds
+## behind the bar was the largest part of the web build's loading, and it grew with every weapon
+## (`docs/research/web-export.md`, "Loading a night").
+@export var deferred := false

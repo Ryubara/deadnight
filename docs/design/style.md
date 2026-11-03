@@ -226,6 +226,8 @@ The lot's props (`tools/blender/build_props.py`, [the lot](map.md#props)) follow
 | Files | `.gltf` + `.bin` per prop, all pointing at one `props_palette.png`, so the texture is loaded once |
 | Triangles | 108-1,454 for props under 3 m (budget 800 / 1.5k), Shipping Container 1,336 (budget 5k); the Tires (1,776) are cut with a collapse decimation to just under the budget, and the Broken Car (5,432) to 2,327, because the lot has 19 wrecks; the far level is Godot's generated LOD |
 | Web cost | the field the night starts on went from 164 draw calls and 2k triangles to 109 and 28k (a car is one model over two hidden blocks, where it was two drawn boxes). On a GPU (Chrome, no frame cap) the night's frame p50 stayed at about 3 ms; in Chromium's software renderer (SwiftShader, CI) it went from 83 to 100 ms, one 60 Hz frame |
+| Tiny props of a model | a small copy of a weapon (the prize crane's case) is the weapon's far level at half its length in the hands (0.24-0.56 m), and all of them are merged into one mesh with the weapons' palette: 20 in the case are 5,352 tris and one draw call (#830, [the crane](../research/mystery-box.md#how-it-looks-and-how-to-film-it)) |
+| Something the player must read | at the camera's eye height or the camera's side, never in front of the Soldier's chest or head: from 2.3 m behind him the head covers the middle of what he faces below about 1.65 m (the prize board's bottom is 1.72 m) |
 | Parked car | the lot's own sedan, 424 tris, five paints: chamfers of 80 mm on body and cabin (the big-prop rule), the rest hard; 76 of them stand on the field, so every part is a plain box or an 8-sided wheel |
 
 ## Modular characters
@@ -267,10 +269,23 @@ after a palette change, `game/tests/captures/drivein_props_night.tscn` frames th
 | Concession counter | 564 | 5,000 | 10.2 x 2.0 x 1.2 |
 | Marquee | 980 | 5,000 | 6.2 x 0.6 x 6.3 |
 | Screen frame, truss, legs, stays | 1,448 | 5,000 | 33.6 x 9.7 x 16.8 |
+| Generator set (yard cage, #853) | 1,872 | 5,000 | 3.2 x 1.52 x 5.51 |
 
 Chamfers: 30 mm on props of 1-3 m, 80 mm on the booth, the screen and the marquee; none on parts under 0.1 m. No
 emissive: the marquee's bulbs and the booth's sign are amber and cream swatches; lighting them is the lighting pass's.
 `tools/blender/render_drivein_sheet.py` renders the contact sheet beside the kit Soldier at 0.8.
+
+The generator set stands in the greybox's 3.2 x 1.6 x 1.8 m `Generator` block, which stays where it was, hidden, as its
+collision: nothing of the model below 1.8 m leaves the block, and the frame, day tank and stack above it have no
+collision (the cage's openings, the camera probes, the slot scan and the walking mesh's key are unchanged). Its parts
+are sized by the sight line over the cage's 3.0 m walls: from the gate (19 m off, the camera about 2.2 m up) the line
+over the wall reaches 3.1 m at the generator, so the red day tank sits with its belly at 3.18 m (axis 3.68 m), the
+amber running light at 4.68 m and the stack's lip at 5.3 m. Below the wall the radiator faces the west opening (the
+midway link sees its fan ring) and the control panel the east one. The running light is the model's amber swatch lit
+by `ModelGlow` from `GeneratorGlow` (`steady`: no shimmer of its own, so it is steady on a healthy tank, flickers with
+the brown-out and is dark when dry), with a 1.6 m halo whose lowest edge (3.88 m) stays over the walls from any side.
+Cost: one surface where the block was one, plus the halo (one draw while lit): +1 draw call, +1,860 triangles in every
+view that sees it (`game/tests/captures/generator_views.tscn` prints the renderer's counts at nine views).
 
 ## Small-map kit
 

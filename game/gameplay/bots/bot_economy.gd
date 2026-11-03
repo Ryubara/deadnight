@@ -53,6 +53,8 @@ static var _dps: Dictionary = {}
 ## The price of the first thing on the list the last `candidates` call found the bot wants (0 when
 ## none), whether or not it could pay.
 var last_next := 0
+## The health of the dead the last `candidates` call weighed the weapons by (0 for none).
+var last_health := 0.0
 
 var _shop: BotShop
 var _profile: BotProfile
@@ -120,7 +122,7 @@ class View:
 	## `Callable(stand: Vector3) -> float`: the metres of walk to a stand on the mesh as it is
 	## (`INF` for none), or unset when the bot has no legs to ask (the straight line then).
 	var walk := Callable()
-	## The ammunition stand the bot is already walking to (`Vector3.INF` for none): it is kept
+	## The stand the bot is already walking to (`Vector3.INF` for none): it is kept
 	## unless another is clearly nearer, so a trip does not turn on every think.
 	var heading := Vector3.INF
 
@@ -176,6 +178,7 @@ func candidates(view: View) -> Array[Buy]:
 		elif _profile.saves_for.has(item_id):
 			break
 	last_next = next
+	last_health = view.zombie_health
 	for weapon in useful(view.arms):
 		var top := _ammo(view, weapon, 0, TOP_OFF, next)
 		if top != null:
@@ -263,7 +266,7 @@ func _weapon(view: View, item: ShopItem) -> Buy:
 	var weapon := WeaponCatalog.catalog_id(item.id)
 	if not view.is_calm() or view.arms.has(weapon) or not worth_taking(view, weapon):
 		return null
-	var stand := _nearest(view, _shop.spots_of(item.id))
+	var stand := nearest_by_walk(view, _shop.spots_of(item.id))
 	if stand == Vector3.INF:
 		return null
 	return _buy(view, item, stand, &"weapon", PLAN)
@@ -282,7 +285,7 @@ func _crane(view: View, item: ShopItem) -> Buy:
 	for spot in _shop.spots_of(item.id):
 		if spot.get("crane_spot", 0) == view.crane_spot:
 			stands.append(spot)
-	var stand := _nearest(view, stands)
+	var stand := nearest_by_walk(view, stands)
 	if stand == Vector3.INF:
 		return null
 	return _buy(view, item, stand, &"crane", PLAN)
@@ -300,7 +303,7 @@ func _recut(view: View, item: ShopItem) -> Buy:
 		cut += 1 if int(counts[2]) > 0 else 0
 	if cut >= _profile.re_cuts:
 		return null
-	var stand := _nearest(view, _shop.spots_of(item.id))
+	var stand := nearest_by_walk(view, _shop.spots_of(item.id))
 	if stand == Vector3.INF:
 		return null
 	return _buy(view, item, stand, &"recut", PLAN)
@@ -316,7 +319,7 @@ func _tonic(view: View, item: ShopItem) -> Buy:
 		return null
 	if PerkEffects.mask_count(view.perks) >= _shop.economy.max_tonics:
 		return null
-	var stand := _nearest(view, _shop.spots_of(item.id))
+	var stand := nearest_by_walk(view, _shop.spots_of(item.id))
 	if stand == Vector3.INF:
 		return null
 	return _buy(view, item, stand, &"tonic", PLAN)
@@ -376,7 +379,7 @@ func _grenades(view: View, keep: int) -> Buy:
 	if view.grenades >= _profile.grenades_wanted or count <= 0:
 		return null
 	var price := ceili(float(item.price_at(view.round_number)) * count / item.amount)
-	var stand := _nearest(view, _shop.spots_by_kind(&"rack"))
+	var stand := nearest_by_walk(view, _shop.spots_by_kind(&"rack"))
 	if stand == Vector3.INF or view.points - price < keep:
 		return null
 	var buy := Buy.new()
@@ -482,13 +485,13 @@ static func nearest_by_walk(view: View, spots: Array[Dictionary]) -> Vector3:
 			near.append(spot)
 	near.sort_custom(
 		func(a: Dictionary, b: Dictionary) -> bool:
-			return _apart(view.here, a["position"]) < _apart(view.here, b["position"])
+			return _reach(view.here, a["position"]) < _reach(view.here, b["position"])
 	)
 	var best := Vector3.INF
 	var best_walk := INF
 	for spot in near.slice(0, WALK_LOOKS):
 		var at: Vector3 = spot["position"]
-		var walk := _apart(view.here, at)
+		var walk := _reach(view.here, at)
 		if view.walk.is_valid():
 			walk = float(view.walk.call(at))
 		if _apart(view.heading, at) < LOCKER_SNAP:
@@ -590,6 +593,12 @@ static func _nearest_point(view: View, points: Array, rise := 0.0) -> Vector3:
 	for point: Vector3 in points:
 		spots.append({"position": point})
 	return _nearest(view, spots, rise)
+
+
+## The flat metres between two points plus `RISE_WEIGHT` for each metre of height between them: a
+## stand on another floor is a stair away (the straight line a bot with no legs has to go by).
+static func _reach(a: Vector3, b: Vector3) -> float:
+	return _apart(a, b) + RISE_WEIGHT * absf(a.y - b.y) if a.is_finite() and b.is_finite() else INF
 
 
 static func _apart(a: Vector3, b: Vector3) -> float:

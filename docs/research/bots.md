@@ -1957,3 +1957,36 @@ changed here.
 
 Not changed, and seen once: a dry holder (0 rounds, 0 in reserve, a walker 2.3 m off) idle for 6.2 s in one baseline night
 (seed 25, none in the 12 after the change); the quick melee of a dry bot is `BotCombat.may_melee`'s and #770's.
+
+## Shopping at the second map's machines (#811, #821)
+
+The overlay's `bot_shopping` now ends, after the last link, the box and the guns, with the hearty tonic (the soda
+fountain), the re-cut (the bench upstairs), the swift rescue and the quick load tonics (ground floor coolers). The three
+dearest coolers (Third Holster, Double Shot, Reload Shock) are left to a person. The profiles' `saves_for` (re-cut,
+hearty) applies to the list, which is why the machines come after every link: a bot saving for a tonic holds back
+everything after it, and a held-back link would hold the whole team's stairs.
+
+**Cause of the flaky solo night (#821): a pick with no memory.** The chooser took "the nearest seller" by flat metres at
+each think. The second map sells the shotgun twice (side room, upstairs); from the stair landing the two are within a
+metre of each other, so the goal flipped every two seconds and the bot paced the landing for the whole break
+(40 s of walking at x 9 to 11 m, no purchase, and no tonic or re-cut either). The lot has one seller of each item, so it
+never showed. Three changes, all in the shopping code:
+
+- `BotEconomy` picks the stand of a weapon, the box, a tonic, the re-cut and a grenade rack with `nearest_by_walk`:
+  the walk length when the bot has legs, else the flat metres plus `RISE_WEIGHT` (8 m) a metre of height, and the
+  stand it is already walking to counts 6 m nearer (`HEADING_CREDIT`).
+- `BotErrands` keeps that heading for every purchase (it kept it for rounds only).
+- An arrival needs the bot within `ARRIVE_HEIGHT` (1.5 m) of the stand's height: a bot under the upstairs bench was
+  flat-close, "arrived", found no prompt and gave the re-cut up.
+
+Measured (`bots_soak.tscn --map=small_indoor`, Regular, seeds 1 to 5, headless; `main` at b96eab2a against this branch):
+
+| | rounds reached | tonics + re-cuts bought | longest stuck |
+| --- | --- | --- | --- |
+| one bot, before | 8, 9, 9, 8, 8 | none | 0.0 s |
+| one bot, after | 18, 9, 18, 18, 17 | tonics 5000 and re-cuts 1500 to 4500 points in 4 nights (seed 2 died at round 9 first) | 1.5 s |
+| four bots, before | 9, 9, 14, 12, 11 | none | 5.1 s |
+| four bots, after | 11, 13, 10, 15, 14 | tonics in 4 of 5 nights, re-cuts in 2 | 2.4 s |
+
+A lone bot that buys the tonics lasts twice the rounds it did: the machines are what the economy's late points are for.
+`test_smallmap_bot_night.gd` holds the solo night over seeds 1, 3, 4 and 7 (it flaked on a seed picked to pass).
