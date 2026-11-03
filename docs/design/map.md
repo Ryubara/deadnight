@@ -252,7 +252,7 @@ the lamps are the warm pools in it ([night environment](../research/night-enviro
 | Concession | 240 m² | 217 m² (90%) | three warm lights; window spill on the field |
 | Midway | 1,104 m² | 373 m² (34%) | two dim lamps and the booth's front light; the alleys dark |
 | Booth | 120 m² | 110 m² (92%) | two lights, and the projector beam (the brightest thing on the map) |
-| Generator yard | 1,932 m² | 451 m² (23%) | four work lamps and the generator's glow, a block in the middle of the ground: lit while the tank has fuel, and the most to lose |
+| Generator yard | 1,932 m² | 451 m² (23%) | four work lamps and the generator's glow, the generator set in its cage (its day tank, stack and running light show over the walls): lit while the tank has fuel, and the most to lose |
 | Back lot | 1,932 m² | 104 m² (5%) | one flickering neon sign |
 | Ticket plaza | 640 m² | 271 m² (42%) | the ticket kiosk, and a wreck's headlights (127 m², the only ground lit with the tank dry) |
 
