@@ -43,6 +43,10 @@ var throw_yaw := 0.0
 var throw_pitch := 0.0
 ## The brain takes back a throw it ordered whose view is still turning (a teammate walked in).
 var throw_abort := false
+## The bot is boxed in (`BotTrapped`): the legs jump from a curated place when they stand at one.
+var trapped := false
+## A line to call out, sent once by the client (`BotSay`): the action, or empty for none.
+var say := {}
 ## A short reason, for the ring buffer of decisions.
 var note := ""
 

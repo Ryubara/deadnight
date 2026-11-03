@@ -144,6 +144,8 @@ func _text_for(event: Dictionary) -> String:
 			text = "%s BLED OUT" % who
 		&"ping_placed":
 			text = "%s: %s" % [who, PING_WORDS.get(event.get("kind", &""), "LOOK")]
+		&"bot_say":
+			text = "%s: %s" % [who, BotSay.text_of(StringName(event.get("line", &"")))]
 		&"circuit_changed":
 			var words: String = CIRCUIT_WORDS.get(event["circuit_id"], "THE LOT")
 			text = "LIGHTS %s: %s" % ["ON" if event["on"] else "OFF", words]

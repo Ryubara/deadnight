@@ -862,6 +862,48 @@ no bot went down while holding**; 94 of the falls were made by hand; two falls b
 measure of the revive). The scenarios (`tests/night/test_bot_revive.gd`) hold 4 to 7, 16 and 23; the risk function and
 the claim table have pure unit tests; a mutant that makes the risk check always say `SAFE` fails scenario 5.
 
+**What shipped in part 2 (the team: errand turn, roles, callouts, trapped logic, pings).**
+
+- `BotTurn`: one bot at a time goes on an errand (the maintainer). A bot asks before it goes and says it went on every
+  think of the errand; the turn lapses a second after the last time, so a bot that finished or was called to a fight
+  gives it up at once, and a bot that kept it 30 s while another waited rests 10 s. `BotTeam.one_errand_at_a_time`
+  turns it off (the soak's `--parallel`), to measure what it costs.
+- `BotRoles`: anchor (the default, at least one for each person), flank (with a person and one bot more than there
+  are people, one bot holds a choke 11 m to the side of the people's heading, `BotStance.choke` rating the place) and
+  maintainer (whoever has the errand turn). Reassigned every 3 s, kept 10 s, one table for the team.
+- `BotSay` (twelve enumerated lines with their words and cooldowns of 20 to 60 s), `SayBoard` (the server's gate, one
+  line a player every 4 s, so a bot that misjudges itself cannot flood the feed) and a new `say` action answered by a
+  `bot_say` event that the feed shows ("NAME: RELOADING!"). `BotCallouts` decides what a bot says from what it
+  perceived: the boss or three runners it believes in (a line about a zombie is refused unless the zombie is a
+  believed contact), a reload with the dead near, a revive begun, the bot asking for cover when hurt with two on it,
+  thanks after a revive, a door bought, the generator low (one bot speaks for the team), a breach open, rounds
+  running low in a lull, being boxed in, and one call for help when it is down. Each line has its cooldown, a bot has
+  a gap (12 s, 5 s before an urgent line) and no more than two lines in any 25 s, so the rate is bounded by
+  construction: under 0.8 a line per bot per ten seconds. (Voicing the lines is left for the audio work.)
+- `BotTrapped`: no free heading for two seconds on end (`BotSteering.pick` finds none) is trapped: the bot fights on
+  (nothing else changes), says so once, writes a `bot_trapped` event and, if a curated place to jump from is within
+  8 m (`BotLink`), goes there and jumps (`BotIntent.trapped`, in the legs). There is no teleport.
+- `BotPings`: a person's `here` sends the nearest bot to hold the place while the mark stands, `enemy` names the first
+  target while the bot sees the zombie, `downed` names the body to raise first, `door` is the errands' (it was
+  already). `ammo` is left to #647.
+
+*Measured* (same soak, 12 game minutes, seeds 1 to 3, a shared machine on which every think p99 was 5 to 40 ms, so no
+cost figure is taken from it): **at most one bot on an errand at any tick in all four runs (the same soak with the
+turn off had all four at once); 62 to 80 callouts a night, 0.28 to 0.38 a bot per ten seconds**, and the revive
+numbers held (seeds 1 to 3: 24, 25 and 24 holds, 23, 23 and 19 raised, 4 let go of by the rule once, one bot down
+while holding in one run). **The turn costs something**: on the same three seeds two nights of three end before 12
+minutes with the turn (round 6 at game seconds 498 and 609; the third is at round 6 when the time is up), two of three
+with the turn off (rounds 7 and 6 at 556 and 503 seconds; the third at round 8), and one of three on main without any
+of this part (round 6 at 527 seconds; the others at rounds 8 and 7): three seeds of a chaotic night say a round or so,
+not more, and the fit work (#231) owns the parity. The roles, the pings and the trapped logic did not engage in these
+no-person soaks; their scenarios (`tests/night/test_bot_team.gd`, `tests/bots/test_bot_trapped.gd`,
+`tests/bots/test_bot_pings.gd`, `tests/bots/test_bot_roles.gd`) hold them. Scenario 15 is a pocket the rig makes
+(every low ray is a wall, the eyes see over it): a lot corner with no way out was not found on the real mesh, so the
+real-lot check is that no bot moved more than a metre in a tick over the soaks (the most was 0.64 m).
+
+**Left for later.** The flare to draw the dead off a body (#646), the ammunition ping (#647), the voice of the lines,
+and the bot's own "downed bot waits for a human" being only one call.
+
 ### Phase 6: filling slots, difficulty and the server
 
 Issue: #230.
