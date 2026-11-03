@@ -766,7 +766,12 @@ func _throw(
 			return false
 		return true
 	_order = null
-	if beliefs.grenades <= 0 or threat < BotGrenadier.SAFE_FROM_SELF or targets.is_empty():
+	if (
+		not _profile.throws_grenades
+		or beliefs.grenades <= 0
+		or threat < BotGrenadier.SAFE_FROM_SELF
+		or targets.is_empty()
+	):
 		return false
 	var throw := _grenadier.plan(
 		here, targets, mates, beliefs.grenades, now, kind == BotStance.Kind.LOW

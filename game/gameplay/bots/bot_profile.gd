@@ -99,6 +99,9 @@ const REACTION_FLOOR := 0.20
 ## glass; the bot that takes every weapon offered enters the first boss night armed as the model's
 ## players are not.
 @export var weighs_by_round: bool = false
+## Whether the bot throws the grenades it carries at a pack (`BotGrenadier`). The simulator's
+## players never throw one, so a level that is to meet the model's does not.
+@export var throws_grenades: bool = true
 ## Grenades under which the bot buys more at a rack when it has points to spare (0: never).
 @export_range(0, 5, 1) var grenades_wanted: int = 2
 ## How many weapons the bot re-cuts in a night.
