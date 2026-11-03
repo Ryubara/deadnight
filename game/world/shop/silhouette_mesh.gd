@@ -33,7 +33,9 @@ const UPRIGHT := Transform3D(Basis(Vector3.BACK, PI / 2.0), Vector3.ZERO)
 const OTHER_IDS := {&"grenades": &"grenade"}
 const MODEL_DIR := "res://assets/weapons/"
 
-static var _cache: Dictionary[StringName, ArrayMesh] = {}
+## Weak, so the meshes live as long as a plaque shows them and no longer: a static that held them
+## would leave their RIDs allocated at exit (the CI exit-leak gate).
+static var _cache: Dictionary[StringName, WeakRef] = {}
 static var _stand_ins: Dictionary[StringName, bool] = {}
 
 
@@ -47,19 +49,22 @@ static func weapon_of(shop_id: StringName) -> StringName:
 static func mesh_for(shop_id: StringName, upright := false) -> ArrayMesh:
 	var weapon := weapon_of(shop_id)
 	var key := StringName("%s|up" % weapon if upright else String(weapon))
-	if not _cache.has(key):
-		var turn := UPRIGHT if upright else Transform3D.IDENTITY
-		var made := _from_model(weapon, turn)
-		_stand_ins[key] = made == null
-		_cache[key] = made if made != null else stand_in(turn)
-	return _cache[key]
+	var held: ArrayMesh = _cache[key].get_ref() if _cache.has(key) else null
+	if held != null:
+		return held
+	var turn := UPRIGHT if upright else Transform3D.IDENTITY
+	var made := _from_model(weapon, turn)
+	_stand_ins[key] = made == null
+	held = made if made != null else stand_in(turn)
+	_cache[key] = weakref(held)
+	return held
 
 
 ## Whether the silhouette of `shop_id` is the stand-in because its model is not in the game yet.
 static func is_stand_in(shop_id: StringName, upright := false) -> bool:
-	mesh_for(shop_id, upright)
+	var held := mesh_for(shop_id, upright)  # keeps the mesh alive while the flag is read
 	var weapon := weapon_of(shop_id)
-	return _stand_ins[StringName("%s|up" % weapon if upright else String(weapon))]
+	return held != null and _stand_ins[StringName("%s|up" % weapon if upright else String(weapon))]
 
 
 ## The model file of a weapon: its own hold file's (`holds/<id>.tres`), else by the folder
