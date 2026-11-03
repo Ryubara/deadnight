@@ -8,6 +8,8 @@ extends RefCounted
 var bots: Array[BotClient] = []
 ## The seats that are bots by player id, shared with every bot (the roster labels them).
 var bot_ids: Dictionary = {}
+## What the bots share (the claims on downed players), the same for every bot.
+var team := BotTeam.new()
 
 
 ## Seats a bot. A client that is run on the host but stands for a person (a test's stand-in for a
@@ -15,9 +17,20 @@ var bot_ids: Dictionary = {}
 func add(bot: BotClient, is_bot: bool = true) -> BotClient:
 	bots.append(bot)
 	bot.bot_ids = bot_ids
+	bot.team = team
 	if is_bot:
 		bot_ids[bot.state.player_id] = true
 	return bot
+
+
+## Takes the bot of seat `player_id` out (its seat went to a person or it was removed): what it
+## claimed is open at once and the others take the seat for no bot's.
+func release(player_id: int) -> void:
+	for i in range(bots.size() - 1, -1, -1):
+		if bots[i].state.player_id == player_id:
+			bots.remove_at(i)
+	bot_ids.erase(player_id)
+	team.release(player_id)
 
 
 ## The events of one server step, to every bot.

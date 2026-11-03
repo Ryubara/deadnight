@@ -182,12 +182,13 @@ gets its grip by placing three empties and running the solver, never by tuning n
 It writes the model's place under the right hand (`hold`, before the hold's `model_scale`), the size it was solved
 at, every finger rotation of both hands, the left hand bone's pose in the model's space, and which parts touch.
 
-**In the game** `PlayerAnimation` puts the model under the hand by its grip and gives the same hold to the arms' IK,
-and `HandGripPose` (a `SkeletonModifier3D` after `WeaponHandsIK`) closes the fingers: the right hand on the held
-item's grip (the weapon, the repair hammer or the grenade shell) while it shows, eased at 20 per second; the left hand
-on the weapon's while the IK holds it there. It also keeps the palm whole: the kit hand is four bones from the wrist
-(`Index1`, `Middle1`, `Pinky1`, `Thumb1`) and the weapon rides `Index1`, so when the IK turned only that one the other
-three stayed with the forearm and the palm tore (every gun's hand in the aim pose before #460).
+**In the game** `HeldWeapon` (what `PlayerAnimation` and the menu's stage both call, #621) puts the model under the
+hand by its grip and gives the same hold to the arms' IK, and `HandGripPose` (a `SkeletonModifier3D` after
+`WeaponHandsIK`) closes the fingers: the right hand on the held item's grip (the weapon, the repair hammer or the
+grenade shell) while it shows, eased at 20 per second; the left hand on the weapon's while the IK holds it there. It
+also keeps the palm whole: the kit hand is four bones from the wrist (`Index1`, `Middle1`, `Pinky1`, `Thumb1`) and the
+weapon rides `Index1`, so when the IK turned only that one the other three stayed with the forearm and the palm tore
+(every gun's hand in the aim pose before #460).
 The left hand goes to the grip's `left_hand` on the weapon where it is after the right arm, and a two-handed gun's
 hold turns the chest 20-30 degrees, left shoulder forward ([How a gun is held](weapon-hold.md#how-a-gun-is-held)):
 the Soldier's 0.66 m arm did not reach a fore-end 0.70-0.81 m from his shoulder, and the clamped hand ended inside the
@@ -274,7 +275,8 @@ weapon clips, so the legs keep their locomotion under it through the same bone f
   45 degrees of both the blow and the player's forward, the head at least 0.15 m out ahead of the fist; the face is
   the model's `Face` node). An `Equip`
   clip's `weapon_visible` frame does not bring the weapon back over it. While the clip holds the arms the hands' IK is
-  switched off, not only blended to 0: at influence 0 it still drew the arms in the gun pose, hiding the swing.
+  switched off at weight 0, which it ends on the clip's arms (`WeaponHandsIK.weight`, not the modifier's own
+  `influence`: at influence 0 it still drew the arms in the gun pose, hiding the swing).
 - **Timing comes from the rules, not the clock.** The night repairs one board every `repair_interval` (night tuning,
   1.0 s) while `use` is held ([hold to repair](rounds.md#the-fences-boards), #297), and each repair is a
   `board_repaired` event naming the player. On each one, `PlayerAnimation.board_repaired(interval)` seeks the clip
@@ -419,7 +421,7 @@ them to the library and `strike()` plays the class's (`play_action(&"Strike")`).
   in one hand swing the whole arm (0.9, 1.0).
 - **The shouldered pose is let go at once.** A gun's arms are the IK pose (`WeaponHandsIK`), which fades out over a
   fifth of a second when a clip takes the arms: the wind-up of a blow was flattened by it (the gun's hand moved 0.26 m
-  instead of 0.5) and the arms popped when it reached zero. `strike()` drops the IK influence to 0 on the first frame.
+  instead of 0.5) and the arms popped when it reached zero. `strike()` drops the IK weight to 0 on the first frame.
 - **Checked against each weapon in the hand** (`game/tests/player/test_quick_melee_strike.gd`): for the revolver, the
   rifle, the shotgun, the bat and the axe the weapon stays shown and in the hand, travels more than 0.35 m from the
   wind-up to the blow, lands ahead of the body, clears the head by 12 cm and is back where it began; `hit` comes once.
@@ -489,7 +491,13 @@ Soldier's library when the tree is built.
 - **Out at once for the arms' work.** The aim, a shot (the hip-fire hold), a reload, a swing, an equip or a grenade
   start the blend-out on their first tick; the one-shot's own fade (0.05 s) covers the carry first. The shot itself is
   not delayed: `muzzle` is frame 0 of Fire and comes in the call that starts it, carry or not. The shouldered pose
-  (`WeaponHandsIK`) gives way to the carry by its weight (`influence = shoulder x (1 - carry)`).
+  (`WeaponHandsIK`) gives way to the carry by its weight (`weight = shoulder x (1 - smoothstep(carry))`, the curve
+  the tree brings the carry clip in on, so the two cross over and neither leads, #619). The first build (#525)
+  scaled the modifier's `influence` linearly and switched it off at 0: the engine blends the chest and the hands by
+  `influence` but draws the upper and lower arms in the IK pose at any value while the modifier is on, so the arms
+  snapped to the carry's (the weapon turned 29 degrees and the left arm 65 in one tick) and the start of the sprint
+  popped. The blend is now done inside the modifier, bone by bone, and `test_sprint_start_blend.gd` draws the start
+  from a stand, a run and the aim and fails on a jump.
 - **In the air it holds still.** Following the sprint sway's rule (the feet make the motion,
   [Camera shake](camera-shake.md#the-sprint-sway)): in the air the clip stops where it is (the Run is not played
   there either) and keeps its weight; it never starts in the air. After the landing the locomotion restarts the Run,
