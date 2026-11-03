@@ -99,14 +99,17 @@ func test_a_new_weapon_takes_the_card_and_replaces_the_one_in_hand() -> void:
 	var night: Night = made["night"]
 	var hud: Hud = made["hud"]
 	var rifle := WeaponCatalog.get_def(&"rifle")
-	# The crowbar is carried from the start, put away behind the pistol.
-	assert_str(hud.health.equipment_text).is_equal("CROWBAR")
+	# The crowbar is carried from the start, put away behind the pistol: the strip has both.
+	assert_array(hud.state.slot_ids).contains_exactly([&"crowbar", &"pistol"])
+	assert_int(hud.state.slot_held).is_equal(2)
 	# What a purchase does: the combat server gives the weapon, its events reach the client. Both
 	# hands are full (#410), so the rifle replaces the pistol in hand and the crowbar stays put away.
 	night.state.apply_events(night.server.combat.apply(CombatAction.give_weapon(1, &"rifle")))
 	assert_str(hud.state.weapon_name).is_equal(rifle.display_name)
 	assert_int(hud.state.ammo_magazine).is_equal(rifle.magazine_size)
-	assert_str(hud.health.equipment_text).is_equal("CROWBAR")
+	# The rifle takes the pistol's place, in the same slot.
+	assert_array(hud.state.slot_ids).contains_exactly([&"crowbar", &"rifle"])
+	assert_int(hud.state.slot_held).is_equal(2)
 	NightFixture.run(night, 3)
 	assert_str(hud.state.weapon_name).is_equal(rifle.display_name)
 	_finish(night, hud)
@@ -247,7 +250,7 @@ func test_the_wall_weapon_the_crane_and_a_locker_each_have_a_card() -> void:
 	var hud: Hud = made["hud"]
 	_stand_at(night, &"weapon_shotgun")
 	assert_str(String(hud.state.prompt["kind"])).is_equal("buy_weapon")
-	assert_str(hud.prompt.title_text).contains("SHOTGUN")
+	assert_str(hud.prompt.title_text).contains("DOUBLE-BARREL")
 	_stand_at(night, &"crane_play")
 	assert_str(String(hud.state.prompt["kind"])).is_equal("buy_crane")
 	assert_str(hud.prompt.title_text).is_equal("PRIZE CRANE")

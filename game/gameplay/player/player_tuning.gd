@@ -69,14 +69,6 @@ extends Resource
 ## buffer: it waits for as long as the body takes.
 @export_range(0.0, 5.0, 0.05, "or_greater", "suffix:s") var hip_fire_buffer := 0.6
 
-@export_group("Reload")
-## The weapon tilts down about the grip while it reloads and comes back up when it is done, timed to
-## the weapon's reload time (`WeaponDef.reload_time`): degrees of the full tilt, and the shares of
-## the reload spent going down and coming back up (the rest holds it down).
-@export_range(0.0, 90.0, 0.5, "or_greater", "suffix:deg") var reload_tilt_degrees := 35.0
-@export_range(0.05, 0.45, 0.01) var reload_dip_in := 0.2
-@export_range(0.05, 0.45, 0.01) var reload_dip_out := 0.25
-
 @export_group("Pivot")
 ## A change of direction wider than this (degrees) is a pivot, not an arc: the body plants,
 ## sheds its speed, turns on the spot, and goes the other way.

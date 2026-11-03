@@ -20,11 +20,11 @@ Postgres) makes the nights and the game servers (`deadnight-server`) run them, o
 1. Open the web build, <https://web-production-f401d1.up.railway.app>, and wait for the menu.
 2. Choose **Play together** (the second item). Then one of:
    - **Quick join**: you land in a public night with room, or a new one starts.
-   - **Create a night**: the lobby opens with a code, an invite link and four seats, you as host. **Copy the link** and
+   - **Create a night**: the lobby opens with a code, an invite link and eight seats, you as host. **Copy the link** and
      send it. A friend who opens the link (`?room=CODE`) reads your lobby first (*Waiting room, Ann is hosting, 1 of 4
      here.*) and presses **Join**; or types the code under **Join with the code**. Everyone sees who is there within a
      couple of seconds. You press **Start the night** when they are in; they press **Play**.
-3. Starting or joining builds the lot and warms it up (about 35 s in Chrome with a graphics card). Up to four share a
+3. Starting or joining builds the lot and warms it up (about 35 s in Chrome with a graphics card). Up to eight share a
    night, and a player who comes later reads *Night in progress, round N* on the same screen and joins it where it is
    (a preview left open follows the night by itself).
 
@@ -79,7 +79,7 @@ real cursor, and a hook refuses a probe started without it.
 Open three terminals.
 
 ```text
-# 1. The server: one night, up to four players. Headless, plain ws://, port 8910 unless told otherwise.
+# 1. The server: one night, up to eight players. Headless, plain ws://, port 8910 unless told otherwise.
 $godot --headless --path game -- --server
 
 # 2. Player one.

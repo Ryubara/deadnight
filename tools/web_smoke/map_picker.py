@@ -2,8 +2,8 @@
 
 Two runs, each from a fresh page: a desktop window (1280 x 720, the keyboard and a mouse) and a phone held sideways
 (844 x 390, mobile emulation, a finger sent as `Input.dispatchTouchEvent`). Each presses Solo on the menu's Play tab and
-expects the Play screen with the map picker (`window.deadnight.play_map` is the chosen map, `play_focus` the control
-with the focus), tries the card of the map that is not built yet (the choice must stay the drive-in lot), starts the
+expects the Play screen with the map picker (`window.deadnight.play_map` is the chosen map, `focus` the name of the control
+with the keyboard), tries the card of the map that is not built yet (the choice must stay the drive-in lot), starts the
 night and reads the map the running night was built on (`night_map`). A build before the change has no picker;
 `--expect-none` accepts that and only takes the screenshots (the "before" half of the pull request's captures).
 
@@ -81,20 +81,12 @@ def desktop_run(page: Page, out: Path, label: str, result: dict) -> None:
         return
     state = full(page)
     result["map_at_open"] = state.get("play_map")
-    # Start has the focus: Up walks the break, the cap and the intensity, then reaches a map card.
-    for _ in range(4):
-        smoke.press(page, "ArrowUp")
-    page.wait_for_timeout(300)
-    walked = [str(full(page).get("play_focus"))]
-    for _ in range(3):
-        if walked[-1] == LOT:
-            break
-        smoke.press(page, "ArrowUp")
-        page.wait_for_timeout(200)
-        walked.append(str(full(page).get("play_focus")))
-    smoke.press(page, "ArrowDown")
-    page.wait_for_timeout(300)
-    walked.append(str(full(page).get("play_focus")))
+    # Start has the focus: Up walks the settings to the map cards; the lot's card is found by its name (a card is
+    # named by its map's id), and Down reaches the card that is not built (#743).
+    smoke.focus_control(page, LOT, "ArrowUp")
+    walked = [smoke.focused_control(page)]
+    smoke.focus_control(page, LOCKED, "ArrowDown", tries=1)
+    walked.append(smoke.focused_control(page))
     result["keyboard_focus"] = walked
     smoke.press(page, "Enter")  # on the card that is not built: nothing is chosen
     page.wait_for_timeout(500)

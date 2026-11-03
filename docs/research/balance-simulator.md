@@ -14,13 +14,15 @@ then the charts; `--compare <folder>` draws a before and after).
 
 ## Measured
 
-- **Speed.** One solo night costs 0.05 to 0.15 s (a step of 0.25 s of game time, a few thousand `apply`
-  calls); four players about 4 times that. 500 nights of all nine cells (3 skills by 1, 2, 4 players) take
-  about 3 minutes on 16 cores with nine processes. The CI gate (five cells, 60 nights, seed 4000) takes 40 s as a
-  whole suite in CI; it took 1 min 53 s when it ran the batch twice, one cell after another ("about 30 s" was never
-  true there). The five cells now run on worker threads (`WorkerThreadPool`), each with its own copy of the tuning,
-  and the shipped batch is run once in `before()`. Nights are node-free `RefCounted` objects, so the only shared state
-  is the weapon cache, filled first by `SimWeapons.warm()`; a test pins that threaded cells equal serial ones.
+- **Speed.** One solo night costs 0.05 to 0.15 s (a step of 0.25 s of game time, a few thousand `apply` calls); four
+  players about 4 times that and eight about 7 times (a night of eight is 0.9 s, 120 nights a cell in 110 s on one
+  process, #690). 500 nights of all nine cells (3 skills by 1, 2, 4 players) take about 3 minutes on 16 cores with nine
+  processes. The CI gate (five cells, 60 nights, seed 4000; a sixth, average by 8, since #690, takes about 47 s on its
+  thread and so sets the time) took 40 s as a whole suite in CI; it took 1 min 53 s when it ran the batch twice, one
+  cell after another ("about 30 s" was never true there). The cells now run on worker threads (`WorkerThreadPool`),
+  each with its own copy of the tuning, and the shipped batch is run once in `before()`. Nights are node-free
+  `RefCounted` objects, so the only shared state is the weapon cache, filled first by `SimWeapons.warm()`; a test pins
+  that threaded cells equal serial ones.
 - **Determinism.** Same seed, same night, on every run (tested). A batch is therefore reproducible, and a
   CI range that passes once passes always; only a change to the rules, the tuning or the model moves it.
 - **A fixed player is a cliff.** With one fixed skill per level, every night of a cell ended in the same
@@ -204,3 +206,39 @@ balance_cli.gd --shopping=weapon_rifle --set=economy.start_points=20000       (w
 ```
 
 A Godot `--import` must have run since the last new `class_name` script.
+
+## The perks (#687)
+
+The six perks are played by the same `buy` the night uses and the effects are read from `PerkEffects`: the wait between
+shots and the reload per player, a revive held for the helper's own time, the shock as a blast on every dead thing in
+reach when a reload starts (with its cooldown and a hold), the carry limit, and what a down takes. What it showed, the
+prices, the limit and the loss are in [Perks: what the simulator said](perks.md). Two things for the next change to the
+model: **a solo night's median round is not a stable number on a hundred nights** (the same seed gave 13 and 10 on 100
+and 150 nights), so compare the mean round and the share of nights that reach round 10 and 14; and **a perk's value
+shows in a team**, not a solo night (the loss on a down is the same 11.8 solo with all three settings and 18.6 to 20.2
+for four).
+
+## The double-barrel (#684)
+
+The pump shotgun (6 shells, 19 a pellet, 0.8 s, 2.4 s reload) became a double-barrel (2 shells, 22 a pellet, 0.3 s
+between barrels, 1.8 s reload, reserve 16 of 32 at most). A first try at 21 a pellet and a 2.0 s reload fell under
+the submachine gun in the weapon pick against round 10's health (`test_sim_weapons`), and the average
+four-player round-15 reach fell from 91% to 64%; 22 and 1.8 s give the pump's kills a second against that health.
+150 nights a cell, seed 1, `tools/balance/run_report.py --brief`, before (the pump) and after:
+
+| Skill, players | Median round before / after | Mean round before / after | Reach r15 before / after |
+| --- | --- | --- | --- |
+| weak, 1 | 4 / 4 | 4.3 / 4.3 | 0% / 0% |
+| weak, 2 | 5 / 5 | 5.3 / 5.4 | 0% / 0% |
+| weak, 4 | 5 / 5 | 6.0 / 6.3 | 0% / 1% |
+| average, 1 | 10 / 10 | 10.6 / 10.4 | 25% / 20% |
+| average, 2 | 13 / 13 | 12.5 / 12.6 | 41% / 36% |
+| average, 4 | 15 / 15 | 15.5 / 14.8 | 91% / 77% |
+| strong, 1 | 16 / 16 | 15.8 / 15.4 | 72% / 66% |
+| strong, 2 | 17 / 19 | 17.2 / 17.8 | 94% / 86% |
+| strong, 4 | 19 / 20 | 18.7 / 19.9 | 100% / 100% |
+
+Every median is the same or a round better; the means of the average and strong one-to-two player cells are a few
+tenths lower (a magazine of two leaves a player waiting under two seconds in a crowd more often), inside what 150
+nights a cell moves. A weapon's magazine and reload time reach the model through `WeaponDef` alone (`SimWeapons`,
+`SimArm.reload` is compared with `WeaponState` in a test), so no model code changed.

@@ -1,0 +1,146 @@
+[gd_resource type="Resource" script_class="MapTuning" format=3]
+
+[ext_resource type="Script" path="res://gameplay/rules/map_tuning.gd" id="1_map"]
+[ext_resource type="Script" path="res://gameplay/rules/shop_item.gd" id="2_item"]
+[ext_resource type="Script" path="res://gameplay/rules/barricade_tuning.gd" id="3_barr"]
+[ext_resource type="Script" path="res://gameplay/rules/crane_tuning.gd" id="4_crane"]
+[ext_resource type="Script" path="res://gameplay/rules/fuel_tuning.gd" id="5_fuel"]
+[ext_resource type="Script" path="res://gameplay/rules/map_words.gd" id="6_words"]
+
+[sub_resource type="Resource" id="Link_side"]
+script = ExtResource("2_item")
+id = &"door_side"
+price = 450
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Link_stairs_start"]
+script = ExtResource("2_item")
+id = &"door_stairs_start"
+price = 450
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Link_stairs_side"]
+script = ExtResource("2_item")
+id = &"door_stairs_side"
+price = 450
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Wall_pistol"]
+script = ExtResource("2_item")
+id = &"weapon_pistol"
+kind = 1
+price = 90
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Wall_crowbar"]
+script = ExtResource("2_item")
+id = &"weapon_crowbar"
+kind = 1
+price = 270
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Wall_shotgun"]
+script = ExtResource("2_item")
+id = &"weapon_shotgun"
+kind = 1
+price = 540
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Wall_smg"]
+script = ExtResource("2_item")
+id = &"weapon_smg"
+kind = 1
+price = 540
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Wall_bat"]
+script = ExtResource("2_item")
+id = &"weapon_baseball_bat"
+kind = 1
+price = 540
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Wall_flare"]
+script = ExtResource("2_item")
+id = &"weapon_flare_gun"
+kind = 1
+price = 630
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Wall_axe"]
+script = ExtResource("2_item")
+id = &"weapon_fire_axe"
+kind = 1
+price = 720
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Cabinet_rifle"]
+script = ExtResource("2_item")
+id = &"weapon_rifle"
+kind = 1
+price = 675
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Box"]
+script = ExtResource("2_item")
+id = &"crane_play"
+kind = 2
+price = 425
+pool = Array[StringName]([&"weapon_shotgun", &"weapon_rifle", &"weapon_smg", &"weapon_flare_gun", &"weapon_baseball_bat", &"weapon_fire_axe", &"weapon_pistol", &"weapon_crowbar"])
+pool_weights = PackedFloat32Array(4, 3, 2, 1, 0.5, 0.5, 1, 1)
+
+[sub_resource type="Resource" id="Windows"]
+script = ExtResource("3_barr")
+ids = Array[StringName]([&"start_1", &"start_2", &"start_3", &"start_4", &"start_5", &"side_1", &"side_2", &"side_breach", &"upper_a1", &"upper_a2", &"upper_b1", &"upper_b2"])
+boards = 5
+seconds_per_board = 1.2
+
+[sub_resource type="Resource" id="TheBox"]
+script = ExtResource("4_crane")
+spot_doors = Array[StringName]([&""])
+start_spot = 0
+spin_seconds = 4.5
+grab_seconds = 12.0
+safe_plays = 3
+leave_chances = PackedFloat32Array()
+breakdown_seconds = 4.0
+refund_fraction = 1.0
+
+[sub_resource type="Resource" id="NoGenerator"]
+script = ExtResource("5_fuel")
+capacity = 100.0
+start_fuel = 100.0
+idle_drain = 0.0
+circuit_drain = Dictionary[StringName, float]({})
+start_circuits = Array[StringName]([])
+round_strain = 0.0
+
+[sub_resource type="Resource" id="Words"]
+script = ExtResource("6_words")
+link_names = Dictionary[StringName, String]({
+&"door_side": "Side room door",
+&"door_stairs_start": "Hall stairs",
+&"door_stairs_side": "Side room stairs"
+})
+link_details = Dictionary[StringName, String]({
+&"door_side": "Opens the side room",
+&"door_stairs_start": "Opens the floor above",
+&"door_stairs_side": "Opens the side room and the floor above"
+})
+breach_name = "Boarded window"
+
+[resource]
+script = ExtResource("1_map")
+id = &"small_indoor"
+dropped_kinds = Array[int]([0, 1, 2, 3, 4, 5, 7])
+items = Array[ExtResource("2_item")]([SubResource("Link_side"), SubResource("Link_stairs_start"), SubResource("Link_stairs_side"), SubResource("Wall_pistol"), SubResource("Wall_crowbar"), SubResource("Wall_shotgun"), SubResource("Wall_smg"), SubResource("Wall_bat"), SubResource("Wall_flare"), SubResource("Wall_axe"), SubResource("Cabinet_rifle"), SubResource("Box")])
+barricades = SubResource("Windows")
+crane = SubResource("TheBox")
+alive_cap = 24
+bot_clear_from = 5.0
+bot_calm_share = 0.6
+bot_hurt_share = 0.0
+bot_team_links = true
+bot_shopping = Array[StringName]([&"door_side", &"weapon_shotgun", &"weapon_smg", &"door_stairs_start", &"weapon_rifle", &"door_stairs_side", &"crane_play", &"weapon_fire_axe", &"weapon_baseball_bat"])
+fuel = SubResource("NoGenerator")
+words = SubResource("Words")

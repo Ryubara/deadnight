@@ -14,7 +14,10 @@ extends RefCounted
 ##   zombies nearest the body first;
 ## - the last one standing, with the risk not clear, *survives* (`SURVIVE`): it does not go, it
 ##   kites (a wide retreat margin), because a downed player gets up when the round ends;
-## - a risk that is too much for any (`UNSAFE`) sends nobody; the bot goes on as before;
+## - a risk that is too much for any (`UNSAFE`) sends nobody to the hold, but the nearest bot that
+##   is not the last one up *stages* (`STAGE`): it keeps `STAGE_FROM` metres from the body (never
+##   farther), shooting the zombies nearest the body first, so that when the pack has gone or been
+##   killed it is a short walk away and the body has time left (#673); the others go on as before.
 ## - the reviver that carries a flare and finds the dead at the body too many to clear in time fires
 ##   it at a spot far from the body (`BotFlare`, mode `LURE`): the dead within the flare's radius
 ##   walk to it for its seconds, the risk check counts them as far away, and the revive goes on.
@@ -29,7 +32,7 @@ extends RefCounted
 ## It reads the bot's beliefs (the teammates' entries carry `bleed`, `reviver`, `revive`) and never
 ## the frame; it writes only into the intent.
 
-enum Mode { NONE, GO, HOLD, CLEAR, COVER, SURVIVE, LURE }
+enum Mode { NONE, GO, HOLD, CLEAR, COVER, SURVIVE, LURE, STAGE }
 
 ## The hold's length and the reach, as the game has them (`HealthTuning.revive_seconds`,
 ## `NightTuning.revive_reach`; a test holds the two together).
@@ -43,6 +46,10 @@ const STAND := 1.0
 const STANDOFF := 7.0
 const COVER_STAND := 4.0
 const COVER_FROM := 7.5
+## Metres from a body judged unsafe at which the nearest bot waits, and the radius of the walk
+## there. The walk from there is `STAGE_FROM * DETOUR / WALK_SPEED`, about 5 s of the 45.
+const STAGE_FROM := 14.0
+const STAGE_STAND := 3.0
 ## A bot farther than this from the body leaves it to the others and goes on as before.
 const COVER_RANGE := 30.0
 ## Metres from the body within which a zombie is shot first.
@@ -58,6 +65,13 @@ const ABORT_ATTACKERS := 2
 const ON_SELF := 2.5
 ## The retreat margin (metres) a bot that survives keeps from the dead.
 const KITE_MARGIN := 5.0
+## A claimant on its way (`GO`) that has come no nearer than `STALL_GAIN` metres in `STALL_SECONDS`
+## is stuck: it gives the claim up and stays out of the body for `STALL_PAUSE` seconds, so the next
+## bot takes it (a bot wedged three metres from a body held the claim, and the others only covered,
+## for 30 s).
+const STALL_SECONDS := 5.0
+const STALL_GAIN := 0.5
+const STALL_PAUSE := 20.0
 ## Seconds a bot that let go waits before it tries again.
 const RETRY_PAUSE := 1.5
 ## Added to the profile's eagerness while the bot is on its way, so the walk is judged more loosely
@@ -81,6 +95,10 @@ const FLARE_LEAD := 1.5
 ## Seconds between two swaps asked for.
 const SWAP_PAUSE := 0.8
 
+## Switches for the soak's A/B runs (`--no-stage`, `--no-stall`); both on in the game.
+static var stage_on := true
+static var stall_on := true
+
 ## Set by the brain.
 var team: BotTeam
 var telemetry: BotTelemetry
@@ -97,8 +115,21 @@ var verdict: BotReviveRisk.Verdict
 ## Seconds a clearing bot was at it, for the metrics.
 var clear_seconds := 0.0
 
+## The brain's word that the bot is low on health with the dead near (`BotPlayState`): it does not
+## go for a body, and lets go of the walk to one, unless it is the last one up.
+var retreating := false
+
+## For each downed player the bot looked at in its last think: why it did or did not go (`why`),
+## the verdict, the metres to the body and who holds the claim, so a bleed-out can say why nobody
+## came (the revive soak prints it).
+var account: Dictionary[int, Dictionary] = {}
+
 var _profile: BotProfile
 var _retry_at := -INF
+var _best_apart := INF
+var _best_at := 0.0
+var _stalled_until := -INF
+var _stalled_victim := 0
 var _health_log: Array[Vector2] = []
 var _flare := BotFlare.new()
 ## The flare ordered and when, the clock before which none is ordered, and the last swap asked for.
@@ -129,50 +160,77 @@ func run(
 	_note_health(now, float(me.get("health", FULL_HEALTH)))
 	var me_id := beliefs.me
 	var down := _downed(beliefs, here)
+	account.clear()
 	if team != null and victim != 0 and not _still_down(beliefs, victim):
 		team.claims.release_victim(victim)
-	if down.is_empty() or team == null:
+	var last := _last_standing(beliefs, me_id)
+	# A low bot with the dead near leaves the body to the others (`BotPlayState`), unless it is the
+	# last one up or has the hold begun.
+	var giving_up := retreating and not last and mode != Mode.HOLD and team != null
+	if giving_up:
+		for mate: Dictionary in down:
+			_account(int(mate["id"]), "retreating", null, _flat(here, mate["pos"]), 0)
+		if victim != 0:
+			team.claims.release_victim(victim)
+	if down.is_empty() or team == null or giving_up:
 		_order = null
 		return _end(Mode.NONE, 0)
-	var last := _last_standing(beliefs, me_id)
 	var threats := _threats(beliefs, round_number)
 	var gun := _gun(me, held)
 	var cover_for := 0
+	var stage_for := 0
 	for mate: Dictionary in down:
 		var id: int = mate["id"]
 		var holder := int(mate.get("reviver", 0))
+		var apart := _flat(here, mate["pos"])
 		if holder != 0 and holder != me_id:
 			cover_for = cover_for if cover_for != 0 else id
+			_account(id, "holder_is_reviving", null, apart, holder)
 			continue
 		var owned := team.claims.held_by(me_id, now)
 		if owned != 0 and owned != id:
+			_account(id, "claim_on_other", null, apart, me_id)
 			continue
 		var holding := mode == Mode.HOLD and victim == id
 		var judged := _judge(mate, here, threats, gun, round_number)
 		if judged.kind == BotReviveRisk.Kind.LATE and not holding:
+			_account(id, "late", judged, apart, team.claims.holder_of(id, now))
 			continue
 		var shot: BotFlare.Shot = null
 		var claimed_by_another := team.claims.holder_of(id, now) not in [0, me_id]
 		if not holding and not claimed_by_another and judged.kind != BotReviveRisk.Kind.SAFE:
 			shot = _flare_shot(beliefs, me, mate, judged, threats, gun, round_number)
 		if judged.kind == BotReviveRisk.Kind.UNSAFE and not holding and shot == null:
+			_account(id, "unsafe", judged, apart, team.claims.holder_of(id, now))
 			if last:
 				return _survive(intent, id, judged)
+			if stage_on and stage_for == 0 and _nearest_bot(beliefs, mate["pos"], here) == me_id:
+				stage_for = id
 			continue
-		var apart := _flat(here, mate["pos"])
+		if stall_on and _stalled(now, id, apart, holding):
+			team.claims.release(me_id)
+			cover_for = cover_for if cover_for != 0 else id
+			_account(id, "stalled", judged, apart, team.claims.holder_of(id, now))
+			continue
 		if not team.claims.request(id, me_id, apart, now, holding):
 			_order = null
 			cover_for = cover_for if cover_for != 0 else id
+			_account(id, "claim_lost", judged, apart, team.claims.holder_of(id, now))
 			continue
+		_account(id, "claimant", judged, apart, me_id)
 		return _claimant(intent, beliefs, me, mate, judged, last, step, shot)
 	_order = null
 	if cover_for != 0:
 		return _cover(intent, beliefs.teammates[cover_for], here)
+	if stage_for != 0:
+		return _stage(intent, beliefs.teammates[stage_for], here)
 	return _end(Mode.NONE, 0)
 
 
 ## The bot went down (or the night began again): nothing is in hand.
 func reset() -> void:
+	_stalled_until = -INF
+	_best_apart = INF
 	mode = Mode.NONE
 	victim = 0
 	verdict = null
@@ -325,6 +383,8 @@ func _cover(intent: BotIntent, mate: Dictionary, here: Vector3) -> Mode:
 	var body: Vector3 = mate["pos"]
 	var apart := _flat(here, body)
 	if apart > COVER_RANGE:
+		if account.has(int(mate["id"])):
+			account[int(mate["id"])]["why"] = "cover_out_of_range"
 		return _end(Mode.NONE, 0)
 	if apart > COVER_FROM:
 		intent.goal = body
@@ -332,6 +392,54 @@ func _cover(intent: BotIntent, mate: Dictionary, here: Vector3) -> Mode:
 		intent.run = false
 	intent.note = "cover"
 	return _end(Mode.COVER, int(mate["id"]))
+
+
+## Whether the bot is to stay off body `id`: it is in its pause, or it was on its way and has come
+## no nearer for `STALL_SECONDS` (this starts the pause).
+func _stalled(now: float, id: int, apart: float, holding: bool) -> bool:
+	if now < _stalled_until and _stalled_victim == id:
+		return true
+	if holding or mode != Mode.GO or victim != id:
+		_best_apart = apart
+		_best_at = now
+		return false
+	if apart < _best_apart - STALL_GAIN:
+		_best_apart = apart
+		_best_at = now
+		return false
+	if now - _best_at < STALL_SECONDS:
+		return false
+	_stalled_until = now + STALL_PAUSE
+	_stalled_victim = id
+	if telemetry != null:
+		telemetry.count(&"revive_stalls")
+	return true
+
+
+func _account(
+	id: int, why: String, judged: BotReviveRisk.Verdict, apart: float, claim: int
+) -> void:
+	account[id] = {
+		"why": why,
+		"verdict": BotReviveRisk.Kind.keys()[judged.kind] if judged != null else "-",
+		"apart": snappedf(apart, 0.1),
+		"claim": claim,
+		"count": judged.count if judged != null else 0,
+		"kill_s": snappedf(judged.kill_seconds, 0.1) if judged != null else 0.0,
+	}
+
+
+## Waits for the pack to go: nearer than `STAGE_FROM` the bot stays where it is (its own fight and
+## retreat rules move it), farther it walks to the ring.
+func _stage(intent: BotIntent, mate: Dictionary, here: Vector3) -> Mode:
+	var body: Vector3 = mate["pos"]
+	var apart := _flat(here, body)
+	if apart > STAGE_FROM + STAGE_STAND:
+		intent.goal = body
+		intent.goal_radius = STAGE_FROM
+		intent.run = apart > STAGE_FROM * 2.0
+	intent.note = "revive_stage"
+	return _end(Mode.STAGE, int(mate["id"]))
 
 
 func _end(next: Mode, for_victim: int) -> Mode:
@@ -514,6 +622,23 @@ func _threats(beliefs: BotBeliefs, round_number: int) -> Array[BotReviveRisk.Thr
 			)
 		)
 	return found
+
+
+## The id of the bot nearest `body` among the bots up (this one at `here`), the lowest id on a tie.
+func _nearest_bot(beliefs: BotBeliefs, body: Vector3, here: Vector3) -> int:
+	var best := beliefs.me
+	var best_apart := _flat(here, body)
+	for id in beliefs.teammates:
+		var mate: Dictionary = beliefs.teammates[id]
+		if id == beliefs.me or not mate.get("bot", false):
+			continue
+		if mate.get("downed", false) or mate.get("dead", false):
+			continue
+		var apart := _flat(mate["pos"], body)
+		if apart < best_apart or (is_equal_approx(apart, best_apart) and id < best):
+			best = id
+			best_apart = apart
+	return best
 
 
 # --- The flare ---

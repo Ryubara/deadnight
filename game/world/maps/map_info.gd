@@ -57,7 +57,7 @@ func players_text() -> String:
 	return "%d to %d players" % [min_players, max_players]
 
 
-## The two facts under the title: `13,200 m² · 1 to 4 players`.
+## The two facts under the title: `13,200 m² · 1 to 8 players`.
 func facts_text() -> String:
 	var parts: Array[String] = []
 	if area_m2 > 0:

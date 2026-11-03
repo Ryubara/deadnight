@@ -46,11 +46,12 @@ func fire_block() -> StringName:
 	return &""
 
 
-## Spends the round and starts the wait, shortened by the carried part of the tick. Call only
-## when `fire_block()` is empty. The wait never ends inside the tick of the shot, so a weapon
-## fires at most once a tick however short its interval.
-func fire() -> void:
-	cooldown = maxf(def.fire_interval - carry, 2.0 * READY_EPSILON)
+## Spends the round and starts the wait, shortened by the carried part of the tick
+## (`interval_scale` is the fire-rate perk's share of it, 1 without). Call only when
+## `fire_block()` is empty. The wait never ends inside the tick of the shot, so a weapon fires at
+## most once a tick however short its interval.
+func fire(interval_scale: float = 1.0) -> void:
+	cooldown = maxf(def.fire_interval * interval_scale - carry, 2.0 * READY_EPSILON)
 	carry = 0.0
 	if uses_ammo():
 		ammo -= 1
@@ -69,8 +70,9 @@ func reload_block() -> StringName:
 	return &""
 
 
-func start_reload() -> void:
-	reload_left = def.reload_time
+## Starts the reload; `time_scale` is the reload perk's share of its time (1 without).
+func start_reload(time_scale: float = 1.0) -> void:
+	reload_left = def.reload_time * time_scale
 
 
 ## Adds rounds to the reserve, never past the weapon's limit. Returns how many fit.

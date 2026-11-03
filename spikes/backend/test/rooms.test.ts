@@ -5,6 +5,7 @@ import { test } from "node:test";
 import { buildApp, GUEST_ID_PREFIX, GUESTS_PER_ADDRESS_PER_HOUR, guestName } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
 import { OffDiscord } from "../src/discord.ts";
+import { MAX_PLAYERS } from "../src/lobbies.ts";
 import { GameServerRegistry } from "../src/servers.ts";
 import { MemoryStore } from "../src/store.ts";
 import { verifyToken } from "../src/tokens.ts";
@@ -115,7 +116,7 @@ test("quick join puts strangers in one public night, then starts another when it
   // The same player asking again gets the same night.
   assert.equal((await call("POST", "/lobbies/quick", a.headers)).json().id, first.id);
 
-  await beat([first.matchId], { [first.matchId]: 4 });
+  await beat([first.matchId], { [first.matchId]: MAX_PLAYERS });
   const next = (await call("POST", "/lobbies/quick", c.headers)).json();
   assert.notEqual(next.id, first.id); // the first is full: a new night
   assert.equal((await call("POST", "/lobbies/quick", d.headers)).json().id, next.id);
@@ -315,17 +316,17 @@ test("the host's map is checked, kept on the lobby, shown in its view and previe
   await app.close();
 });
 
-test("the bot count rides the settings: 0 to 3 whole bots are kept and signed, others are refused, a client without it is still taken", async () => {
+test("the bot count rides the settings: 0 to 7 whole bots are kept and signed, others are refused, a client without it is still taken", async () => {
   const { app, guest, call, config } = await platform();
   const host = await guest("host");
   const lobby = (await call("POST", "/lobbies", host.headers, { maxPlayers: 4 })).json();
   const good = { count_multiplier: 1, max_alive: 0, break_seconds: 0 };
-  for (const bots of [4, -1, 1.5, "2"]) {
+  for (const bots of [8, -1, 1.5, "2"]) {
     const refused = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, { ...good, bots });
     assert.equal(refused.statusCode, 400, String(bots));
     assert.equal(refused.json().error, "bad_settings");
   }
-  const chosen = { ...good, bots: 3 };
+  const chosen = { ...good, bots: 7 };
   const set = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, chosen);
   assert.equal(set.statusCode, 200);
   assert.deepEqual(set.json().settings, chosen);
@@ -333,6 +334,26 @@ test("the bot count rides the settings: 0 to 3 whole bots are kept and signed, o
   const bare = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, good);
   assert.deepEqual(bare.json().settings, good);
   await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, chosen);
+  await call("POST", `/lobbies/${lobby.id}/start`, host.headers);
+  const answer = (await call("POST", `/lobbies/${lobby.id}/ticket`, host.headers)).json();
+  assert.deepEqual(verifyToken(config.ticketSecret, "ticket", answer.ticket)?.settings, chosen);
+  await app.close();
+});
+
+test("the bot skill rides the settings: 0 to 2 whole numbers are kept and signed, others are refused", async () => {
+  const { app, guest, call, config } = await platform();
+  const host = await guest("host");
+  const lobby = (await call("POST", "/lobbies", host.headers, { maxPlayers: 4 })).json();
+  const good = { count_multiplier: 1, max_alive: 0, break_seconds: 0, bots: 2 };
+  for (const bot_skill of [3, -1, 0.5, "1"]) {
+    const refused = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, { ...good, bot_skill });
+    assert.equal(refused.statusCode, 400, String(bot_skill));
+    assert.equal(refused.json().error, "bad_settings");
+  }
+  const chosen = { ...good, bot_skill: 2 };
+  const set = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, chosen);
+  assert.equal(set.statusCode, 200);
+  assert.deepEqual(set.json().settings, chosen);
   await call("POST", `/lobbies/${lobby.id}/start`, host.headers);
   const answer = (await call("POST", `/lobbies/${lobby.id}/ticket`, host.headers)).json();
   assert.deepEqual(verifyToken(config.ticketSecret, "ticket", answer.ticket)?.settings, chosen);

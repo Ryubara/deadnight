@@ -1,3 +1,4 @@
+# gdlint:disable=max-file-lines
 class_name NightServer
 extends RefCounted
 ## The authority of one night: the rules, the zombies, the weapons and the players' bodies, joined
@@ -25,8 +26,9 @@ extends RefCounted
 ## prompt, reviving (the teammate this one is raising, 0 for none), revive (0 to 1: how far the hold
 ## on this one, when downed, has got), ack (the `seq` of the command this step used: a predicting
 ## client replays from it), kills, downs, revives, dead (bled out), bleed (seconds a downed player
-## has left) and reviver (who is raising this one, 0 for nobody)}}. Single-player runs this beside
-## the client, joined by a `LoopbackLink`.
+## has left), reviver (who is raising this one, 0 for nobody), perks (the tonics had as bits, see
+## `PerkEffects.mask_of`) and self_revive (seconds left of the revive perk's own, 0 for none)}}.
+## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
 ## Ticks between the asks which areas the map has taken in (a quarter second).
 const SPAWN_RETRY_TICKS := 15
@@ -77,6 +79,7 @@ const GRENADE_EVENTS: Array[StringName] = [
 	&"grenade_thrown",
 	&"grenade_dropped",
 	&"grenade_bounced",
+	&"grenade_struck",
 	&"grenade_exploded",
 	&"blast_hit",
 	&"player_blasted",
@@ -145,6 +148,8 @@ var _probe: WorldProbe
 var _cast: WorldCast
 ## Each player's side of a throw: the grenade buttons of their commands as cook and throw actions.
 var _throwers: Dictionary[int, GrenadeThrower] = {}
+## The shock perk's waits (`ShockPlay`).
+var _shocks := ShockPlay.new()
 
 
 func _init(
@@ -169,8 +174,7 @@ func _init(
 	sim = ZombieSim.new(null, p_seed)
 	sim.rounds = rules.tuning.rounds
 	sim.pathing = NavmeshPathing.new(world.map())
-	sim.lit_probe = world.is_lit
-	sim.gates = world.gates()
+	world.equip(sim, _probe.callable())
 	sim.barricades = rules.barricades
 	sim.board_seconds = rules.tuning.barricades.seconds_per_board
 	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
@@ -203,8 +207,8 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			_join(action["player_id"], action.get("local", false), action.get("bot", false))
 		LEAVE:
 			_leave(action["player_id"])
-		SEAT_PERSON:
-			rules.apply(RulesAction.seat_person(action["player_id"]))
+		SEAT_PERSON, RulesAction.SEAT_BOT:
+			rules.apply({"type": action["type"], "player_id": action["player_id"]})
 		START_NIGHT:
 			rules.apply(RulesAction.start())
 		LOOK:
@@ -241,9 +245,7 @@ func submit(player_id: int, command: NightCommand) -> void:
 		command.view_tick = _view_tick_of(command.view_step)
 	var old: NightCommand = _pending.get(player_id)
 	if old != null:
-		command.reload = command.reload or old.reload
-		command.use = command.use or old.use
-		command.swap = command.swap or old.swap
+		command.inherit_edges(old)
 		command.motion.jump = command.motion.jump or old.motion.jump
 		command.motion.melee = command.motion.melee or old.motion.melee
 		command.motion.swap_shoulder = command.motion.swap_shoulder or old.motion.swap_shoulder
@@ -290,6 +292,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	PerfProbe.end(&"server.zombies", began)
 	began = PerfProbe.begin()
 	rules.apply(RulesAction.tick(delta, _revive.held_targets()))
+	_shocks.step(delta)
 	PerfProbe.end(&"server.rules", began)
 	began = PerfProbe.begin()
 	var target_list := _target_list()
@@ -352,6 +355,7 @@ func _leave(player_id: int) -> void:
 		bot_orders.forget(player_id)
 		say_board.forget(player_id)
 		_throwers.erase(player_id)
+		_shocks.forget(player_id)
 		_facing_breach.erase(player_id)
 		_face_left.erase(player_id)
 		looks.leave(player_id)
@@ -589,6 +593,18 @@ func _combat(action: Dictionary) -> void:
 		if event["type"] == &"lure_started":
 			sim.add_lure(event["lure_id"], event["point"], event["radius"], event["seconds"])
 		_outbox.append(event)
+		if event["type"] == &"reload_started":
+			_shock(event["shooter_id"])
+
+
+## The shock perk (`ShockPlay`): a reload gives off a shock round the player.
+func _shock(player_id: int) -> void:
+	var body := _bodies.get(player_id) as Player
+	if body == null:
+		return
+	var burst := _shocks.fire(rules, sim, player_id, body.global_position)
+	if not burst.is_empty():
+		_outbox.append(burst)
 
 
 func _target_list() -> Array:
@@ -625,10 +641,12 @@ func _act(player_id: int, delta: float) -> void:
 		_shoot(player_id, command, delta)
 	if command.swap:
 		_combat(CombatAction.swap(player_id))
+	if command.slot != WeaponSlots.NONE:
+		_combat(CombatAction.select_slot(player_id, command.slot))
 	if _bodies[player_id].state.melee_ready:
 		_repairing[player_id] = &""
 		_quick_melee(player_id, command, delta)
-	if command.swap or command.fire or command.reload:
+	if command.swap or command.slot != WeaponSlots.NONE or command.fire or command.reload:
 		_repairing[player_id] = &""
 	if command.use:
 		_use(player_id)
@@ -636,9 +654,7 @@ func _act(player_id: int, delta: float) -> void:
 	_revive.hold(player_id, command.use_held)
 	_face_breach(player_id, delta)
 	# Edges are used once.
-	command.reload = false
-	command.use = false
-	command.swap = false
+	command.clear_edges()
 
 
 func _shoot(player_id: int, command: NightCommand, delta: float) -> void:
@@ -746,7 +762,7 @@ func _spot_offer(player_id: int, here: Vector3) -> Dictionary:
 	var best := {}
 	var best_apart := INF
 	for spot in world.shop_spots():
-		var apart := _flat(here, spot["position"])
+		var apart := world.reach_distance(here, spot["position"])
 		if apart > tuning.use_reach or apart >= best_apart:
 			continue
 		var offer := _offer_at(player_id, spot)
@@ -941,6 +957,8 @@ func _frame() -> Dictionary:
 			"revives": rules.revives_of(player_id),
 			"dead": rules.is_dead(player_id),
 			"bleed": rules.bleed_left_of(player_id),
+			"perks": PerkEffects.mask_of(rules, player_id),
+			"self_revive": rules.players[player_id].self_revive_left,
 		}
 		if pings.has(player_id):
 			players[player_id]["ping"] = pings[player_id]

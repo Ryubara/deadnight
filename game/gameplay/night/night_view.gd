@@ -13,6 +13,8 @@ const NUMBER_LIFT := Vector3(0.0, 0.3, 0.0)
 const GRENADE_SCALE := 2.0
 ## Lifts a blast's damage number over the zombie's head.
 const BLAST_NUMBER_LIFT := Vector3(0.0, 2.0, 0.0)
+## How hard the shock perk shakes the local player's view (trauma, 0 to 1).
+const SHOCK_SHAKE := 0.25
 ## Where the gibs of a zombie a blast killed start, and how hard they are thrown up.
 const GIB_LIFT := Vector3(0.0, 1.0, 0.0)
 const GIB_THROW := 2.0
@@ -46,6 +48,8 @@ var _state: ClientState
 ## The projectiles in the air, by the server's id: each a copy of the server's shot, stepped with
 ## the same code on every frame, and ended by the server's burst.
 var _projectile_views: Dictionary[int, ProjectileView] = {}
+## Shocks drawn so far: each one's bolts start from a different seed.
+var _shocks := 0
 ## The world's first surface on a segment, as the server's shots see it (made on the first shot).
 var _probe: WorldProbe
 ## The grenades in the air, by the server's id: each a copy of the server's grenade, stepped with
@@ -150,6 +154,13 @@ func grenades_in_flight() -> int:
 	return _grenade_views.size()
 
 
+## Where the grenade with this id is now on this client (a Vector3), or null when none is drawn:
+## the fuse's beep comes from there.
+func grenade_position(grenade_id: int) -> Variant:
+	var grenade: GrenadeView = _grenade_views.get(grenade_id)
+	return grenade.state.position if grenade != null else null
+
+
 ## How many projectiles (flares) are in the air on this client.
 func projectiles_in_flight() -> int:
 	return _projectile_views.size()
@@ -203,6 +214,8 @@ func _on_event(event: Dictionary) -> void:
 			_step_projectiles()
 		&"grenade_thrown", &"grenade_dropped":
 			_launch_grenade(event)
+		&"grenade_struck":
+			_strike_grenade(event)
 		&"grenade_exploded":
 			_blast(event)
 		&"blast_hit":
@@ -217,6 +230,8 @@ func _on_event(event: Dictionary) -> void:
 			show_strike(event["shooter_id"])
 		&"reload_started":
 			show_reload(event["shooter_id"], event["seconds"])
+		&"shock_burst":
+			_show_shock(event)
 		&"damage_dealt":
 			began = PerfProbe.begin()
 			if event["melee"]:
@@ -248,6 +263,19 @@ func _on_event(event: Dictionary) -> void:
 			var at: Variant = barricade_points.get(StringName(event["barricade_id"]))
 			if at is Vector3:
 				effects.spark(at + BOARD_LIFT)
+
+
+## The shock perk's burst: the shock shader's ring and bolts on the ground round the player, the
+## zap, and a shake of the view when it is the local player's own.
+func _show_shock(event: Dictionary) -> void:
+	var shock := ShockEffect.new()
+	add_child(shock)
+	shock.play(event["point"], event["radius"], int(event["player_id"]) * 7 + _shocks)
+	_shocks += 1
+	Audio.play(&"shock_zap", event["point"])
+	var body := bodies.call(int(event["player_id"])) as Player
+	if body != null and int(event["player_id"]) == _state.player_id:
+		body.camera_rig.add_shake(SHOCK_SHAKE)
 
 
 func _launch_projectile(event: Dictionary) -> void:
@@ -313,8 +341,21 @@ func _launch_grenade(event: Dictionary) -> void:
 
 func _step_grenades() -> void:
 	for view in _grenade_views.values():
-		view.state.step(step, _cast.callable())
+		if view.settled:
+			view.settled = false
+		else:
+			view.state.step(step, _cast.callable())
 		view.follow(step)
+
+
+## A zombie stopped a grenade: the copy flies without the dead, so it takes the server's grenade as
+## it stands at the end of that tick and skips this tick's own step (the frame follows the event).
+func _strike_grenade(event: Dictionary) -> void:
+	var view: GrenadeView = _grenade_views.get(event["grenade_id"])
+	if view == null:
+		return
+	view.state = GrenadeState.from_dict(_grenade_def, event["state"])
+	view.settled = true
 
 
 func _blast(event: Dictionary) -> void:

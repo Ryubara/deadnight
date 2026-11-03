@@ -1,0 +1,147 @@
+[gd_resource type="Resource" script_class="ReloadMotion" format=3]
+
+[ext_resource type="Script" path="res://gameplay/player/reload/reload_key.gd" id="1_utx33"]
+[ext_resource type="Script" path="res://gameplay/player/reload/reload_motion.gd" id="2_je456"]
+
+[sub_resource type="Resource" id="Resource_sg3fs"]
+script = ExtResource("1_utx33")
+
+[sub_resource type="Resource" id="Resource_b7b5c"]
+script = ExtResource("1_utx33")
+at = 0.1
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(20, -35, 60)
+chest_lean = 6.0
+chest_turn = 25.0
+
+[sub_resource type="Resource" id="Resource_o6dky"]
+script = ExtResource("1_utx33")
+at = 0.22
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(20, -35, 60)
+chest_lean = 6.0
+chest_turn = 25.0
+left = 1.0
+left_space = 1
+left_point = Vector3(-0.2, 0.05, -0.05)
+ammo = true
+
+[sub_resource type="Resource" id="Resource_h3o7a"]
+script = ExtResource("1_utx33")
+at = 0.32
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(20, -35, 60)
+chest_lean = 6.0
+chest_turn = 25.0
+left = 1.0
+left_point = Vector3(-0.16, -0.04, -0.14)
+ammo = true
+
+[sub_resource type="Resource" id="Resource_qffth"]
+script = ExtResource("1_utx33")
+at = 0.37
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(20, -35, 60)
+chest_lean = 6.0
+chest_turn = 25.0
+left = 1.0
+left_point = Vector3(-0.15, -0.03, -0.08)
+ammo = true
+
+[sub_resource type="Resource" id="Resource_0bxss"]
+script = ExtResource("1_utx33")
+at = 0.42
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(20, -35, 60)
+chest_lean = 6.0
+chest_turn = 25.0
+left = 1.0
+left_point = Vector3(-0.16, -0.04, -0.14)
+ammo = true
+
+[sub_resource type="Resource" id="Resource_0ca3k"]
+script = ExtResource("1_utx33")
+at = 0.47
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(20, -35, 60)
+chest_lean = 6.0
+chest_turn = 25.0
+left = 1.0
+left_point = Vector3(-0.15, -0.03, -0.08)
+ammo = true
+
+[sub_resource type="Resource" id="Resource_e5idq"]
+script = ExtResource("1_utx33")
+at = 0.52
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(20, -35, 60)
+chest_lean = 6.0
+chest_turn = 25.0
+left = 1.0
+left_point = Vector3(-0.16, -0.04, -0.14)
+ammo = true
+
+[sub_resource type="Resource" id="Resource_y3ct5"]
+script = ExtResource("1_utx33")
+at = 0.5700000000000001
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(20, -35, 60)
+chest_lean = 6.0
+chest_turn = 25.0
+left = 1.0
+left_point = Vector3(-0.15, -0.03, -0.08)
+
+[sub_resource type="Resource" id="Resource_jm23i"]
+script = ExtResource("1_utx33")
+at = 0.6200000000000001
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(20, -35, 60)
+chest_lean = 6.0
+chest_turn = 25.0
+left = 1.0
+left_point = Vector3(-0.16, -0.04, -0.14)
+
+[sub_resource type="Resource" id="Resource_m56pl"]
+script = ExtResource("1_utx33")
+at = 0.7
+weapon_offset = Vector3(0.18, 0.08, 0.08)
+weapon_turn = Vector3(10, -30, 10)
+chest_lean = 6.0
+chest_turn = 25.0
+
+[sub_resource type="Resource" id="Resource_m3j0y"]
+script = ExtResource("1_utx33")
+at = 0.78
+weapon_offset = Vector3(0.18, 0.06, 0.08)
+weapon_turn = Vector3(0, -30, 10)
+chest_lean = 6.0
+chest_turn = 25.0
+part = 1.0
+
+[sub_resource type="Resource" id="Resource_cd1vw"]
+script = ExtResource("1_utx33")
+at = 0.86
+weapon_offset = Vector3(0.03, 0.06, 0.05)
+weapon_turn = Vector3(8, -4, 4)
+chest_lean = 6.0
+chest_turn = 4.1666665735344095
+
+[sub_resource type="Resource" id="Resource_d6eyb"]
+script = ExtResource("1_utx33")
+at = 1.0
+
+[resource]
+script = ExtResource("2_je456")
+mechanism = &"lever"
+part_node = &"Lever"
+part_axis = Vector3(0, 0, 1)
+part_turn = -50.0
+ammo_scene = "res://assets/weapons/lever_rifle/lever_rifle_ammo.glb"
+ammo_offset = Vector3(0, 0.3, 0)
+ammo_turn = Vector3(0, 0, 90)
+keys = Array[ExtResource("1_utx33")]([SubResource("Resource_sg3fs"), SubResource("Resource_b7b5c"), SubResource("Resource_o6dky"), SubResource("Resource_h3o7a"), SubResource("Resource_qffth"), SubResource("Resource_0bxss"), SubResource("Resource_0ca3k"), SubResource("Resource_e5idq"), SubResource("Resource_y3ct5"), SubResource("Resource_jm23i"), SubResource("Resource_m56pl"), SubResource("Resource_m3j0y"), SubResource("Resource_cd1vw"), SubResource("Resource_d6eyb")])
+events = Dictionary[StringName, PackedFloat32Array]({
+&"lever": PackedFloat32Array(0.8),
+&"pouch": PackedFloat32Array(0.2),
+&"round_in": PackedFloat32Array(0.36, 0.46, 0.56)
+})

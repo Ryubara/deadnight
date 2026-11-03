@@ -12,8 +12,17 @@ extends RefCounted
 ## can do it), and the turn moves on to the next every `TURN_SECONDS` the job stays undone
 ## (`docs/research/bots.md#economy`).
 ##
+## A need of the bot's own (rounds, `BotNeeds`) is let through only as the standing order allows: a
+## roaming bot goes freely, one that follows goes when the stand is near the person (or its gun is
+## empty), one that holds goes when its reserve is under a magazine. A bot held back says so once
+## (`NEED_HELD_BACK`). The rule is the table of `BotNeeds`, not a branch here.
+##
 ## It reads the frame the bot is shown (the players, their points, the prompt, the circuits, the
 ## tank, the boards, the doors, the pings) and the shop it was given; nothing of the rules.
+
+## What `_shopping` may pick: anything on the list, only the rounds a person marked, or only what a
+## bot that holds a spot may leave for (the marked rounds and its own need for rounds).
+enum Scope { ALL, MARKED, NEEDS }
 
 ## The frame's `phase` for a break and for a round (a bot names no rules class; a test holds these
 ## to the rules' phase enum).
@@ -29,7 +38,8 @@ const CLAIM_GRACE := 20.0
 const PING_DEFER := 10.0
 ## Metres from a door within which a person holding the price has the first claim.
 const CLAIM_RADIUS := 15.0
-## Health share under which a teammate is in trouble (no door is bought while one is).
+## Health share under which a teammate is in trouble (no door is bought while one is);
+## `BotShop.hurt_share` starts at this.
 const HURT_SHARE := 0.5
 ## Fraction of the tank above the low line at which fuel buying stops.
 const FILL_MARGIN := 0.15
@@ -54,15 +64,32 @@ const ERRAND_LIMIT := 60.0
 const UNREACHABLE_BACK_OFF := 180.0
 ## Seconds without a sight or a sound of the dead that make a lull in a round.
 const LULL_SECONDS := 10.0
-## The share of a round's dead that, once only this many are left, makes a lull to go shopping in.
+## The share of a round's dead that, once only this many are left, makes a lull to go shopping in
+## (`BotShop.calm_share` starts at this).
 const CALM_SHARE := 0.25
 ## Seconds between two looks at what to buy.
 const PLAN_EVERY := 0.5
 ## Seconds between two swaps asked for at a locker.
 const SWAP_GAP := 1.0
+## Seconds a walk to a stand is remembered, before the legs are asked again.
+const WALK_KEEP := 3.0
+## The moment a bot held back from a need puts in its beliefs (the callouts say it).
+const NEED_HELD_BACK := &"need_held_back"
 
 ## The legs the bot walks on (set by the brain): their word that a stand cannot be reached.
 var legs: BotLegs
+## The team's claims on the links to buy (set by the brain), and whether the errand just run was a
+## link bought for the team (it does not take the one-errand turn).
+var links: BotClaims
+var linking := false
+## The standing order of the bot (`BotOrders`) and the place its people are at (the person it
+## follows, or the spot it holds; `Vector3.INF` for none): set by the brain each think, read by the
+## table of needs.
+var order: StringName = BotOrders.ROAM
+var anchor := Vector3.INF
+## Set by the brain when the bot is Safe (`BotPlayState`): it keeps its distance, so it looks at a
+## person's ping and its own need for rounds only, and goes for rounds only with an empty gun.
+var keeps_distance := false
 ## What the bot decided last, for the ring buffer, and how many of each kind it began.
 var note := ""
 var counts: Dictionary = {}
@@ -86,6 +113,11 @@ var _ammo_until := -INF
 var _waiting_since: Dictionary = {}
 ## Circuit id to the clock when its area was first found empty.
 var _empty_since: Dictionary = {}
+## The breaker the bot set out to throw on, and the clock until which it keeps wanting it: the walk
+## to a breaker that stands outside its area's lamps takes the bot out of the area, and without this
+## the bot would stop wanting the circuit, turn back to the shop, and want it again on the way in.
+var _breaker_id: StringName = &""
+var _breaker_until := -INF
 var _fuelling := false
 var _last_item: StringName = &""
 var _begun := 0.0
@@ -93,6 +125,13 @@ var _clock := 0.0
 ## A stand's key to the clock until which the bot leaves it alone (it found no way there).
 var _unreachable: Dictionary = {}
 var _door_count := -1
+## A stand's key to `{length, until}`: the metres of walk to it, asked of the legs.
+var _walks: Dictionary = {}
+var _walk_mesh := -1
+## The ammunition stand the bot is walking to for rounds of its own, and whether the callout for a
+## need it was held back from has been given since it last was free.
+var _heading := Vector3.INF
+var _announced := false
 ## A stand's key to whether a walk reaches it on the mesh as it is (asked once for each new mesh).
 var _probed: Dictionary = {}
 var _mesh := -1
@@ -142,8 +181,19 @@ func back_off(item_id: StringName, now: float) -> void:
 
 
 ## Sets the intent for an errand and returns true, or returns false when the bot has none (or is
-## in a fight). `threat` is the metres to the nearest dead it knows of.
-func run(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: float) -> bool:
+## in a fight). `threat` is the metres to the nearest dead it knows of. With `needs_only` (a bot
+## that holds a spot) only what a person's ping names and the bot's own need for rounds are looked
+## at: the rest of the errands wait for an order that lets the bot go. Without `may_go` (the
+## one-errand turn) the link job is all the bot may do.
+func run(
+	intent: BotIntent,
+	beliefs: BotBeliefs,
+	state: ClientState,
+	threat: float,
+	needs_only := false,
+	may_go := true
+) -> bool:
+	linking = false
 	var me := state.me()
 	if me.is_empty() or me.get("downed", false) or not state.has_frame():
 		return false
@@ -159,30 +209,42 @@ func run(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: flo
 		_planned_at = -INF
 	if now - _planned_at >= PLAN_EVERY or beliefs.purchased_at > _planned_at:
 		_plan(beliefs, state, me, frame)
-	if threat < CLEAR_FROM:
+	if threat < _shop.clear_from:
 		_last_item = &""
+		_heading = Vector3.INF
 		_arrived_at = -1.0
 		return false
 	var crane := _crane_wait(intent, me, frame, state.player_id)
 	if crane:
 		return true
-	for job in [&"marked", &"fuel", &"circuits", &"shopping", &"repairs"]:
+	# A bot that holds a spot leaves it for no link.
+	if not needs_only and _link(intent, beliefs, state, me):
+		linking = true
+		counts["links"] = int(counts.get("links", 0)) + 1
+		return true
+	var jobs: Array[StringName] = [&"marked", &"fuel", &"circuits", &"shopping", &"repairs"]
+	if needs_only or keeps_distance:
+		jobs = [&"marked", &"needs"]
+	for job in jobs if may_go else []:
 		var took := false
 		match job:
 			&"marked":
-				took = _shopping(intent, beliefs, state, me, frame, true)
+				took = _shopping(intent, beliefs, state, me, frame, Scope.MARKED)
+			&"needs":
+				took = _shopping(intent, beliefs, state, me, frame, Scope.NEEDS)
 			&"fuel":
 				took = _fuel(intent, beliefs, state, me, frame)
 			&"circuits":
 				took = _circuits(intent, beliefs, state, me, frame)
 			&"shopping":
-				took = _shopping(intent, beliefs, state, me, frame)
+				took = _shopping(intent, beliefs, state, me, frame, Scope.ALL)
 			&"repairs":
 				took = _repairs(intent, beliefs, state, me, frame)
 		if took:
 			counts[job] = int(counts.get(job, 0)) + 1
 			return true
 	_last_item = &""
+	_heading = Vector3.INF
 	_arrived_at = -1.0
 	_post_arrived = -1.0
 	note = ""
@@ -223,19 +285,29 @@ func _shopping(
 	state: ClientState,
 	me: Dictionary,
 	frame: Dictionary,
-	marked_only := false
+	scope: Scope
 ) -> bool:
 	var now := beliefs.now
 	var pick: BotEconomy.Buy = null
+	var held_back := false
 	for buy in _found:
-		if marked_only and buy.why != BotEconomy.AMMO_PING:
+		if scope == Scope.MARKED and buy.why != BotEconomy.AMMO_PING:
 			continue
+		if scope == Scope.NEEDS and buy.why != BotEconomy.AMMO_PING and not _is_ammo_need(buy):
+			continue
+		if _is_ammo_need(buy):
+			var verdict := _verdict(buy, me)
+			held_back = held_back or verdict == BotNeeds.Verdict.STAY_AND_SAY
+			if verdict != BotNeeds.Verdict.GO:
+				continue
 		if _team_turn(buy, beliefs, frame, state.player_id):
 			if buy.item == _last_item:
 				pick = buy
 				break
 			if pick == null:
 				pick = buy
+	if scope != Scope.MARKED:
+		_announce(beliefs, held_back)
 	if pick == null:
 		return false
 	if pick.item != _last_item:
@@ -248,8 +320,57 @@ func _shopping(
 	if pick.why == BotEconomy.AMMO_PING:
 		_ammo_kept = pick.stand
 		_ammo_until = now + ERRAND_LIMIT
+	_heading = pick.stand if pick.prompt == &"ammo" else Vector3.INF
 	note = "buy %s (%s)" % [pick.item, pick.why]
 	return _carry_out(intent, pick, me, now)
+
+
+## The team's link rule (a map whose overlay sets `BotShop.team_links`): a link the bot can pay for
+## in a calm with no dead near is bought by the nearest bot that is free, whatever the one-errand
+## turn says; the bots busy or far away cover. Claims go by distance (`BotClaims`), and a bot that
+## stops being free lets go of its claim within the lease.
+func _link(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, me: Dictionary) -> bool:
+	if links == null or not _shop.team_links:
+		return false
+	var now := beliefs.now
+	for buy in _found:
+		if buy.prompt != &"door" or (buy.why != BotEconomy.PLAN and buy.why != BotEconomy.PING):
+			continue
+		var apart := _flat(me["pos"], buy.stand)
+		if not links.request(String(buy.item).hash(), state.player_id, apart, now):
+			continue
+		if buy.item != _last_item:
+			_last_item = buy.item
+			_begun = now
+			_arrived_at = -1.0
+		note = "link %s" % buy.item
+		return _carry_out(intent, buy, me, now)
+	return false
+
+
+## Whether `buy` is rounds the bot wants for itself: not a person's ping (which sits above the
+## orders) but a need or a top-off. A top-off of a gun the bot is short of is that gun's need.
+func _is_ammo_need(buy: BotEconomy.Buy) -> bool:
+	return buy.prompt == &"ammo" and buy.why != BotEconomy.AMMO_PING
+
+
+## What the table of needs says about this purchase of rounds under the standing order. A trip
+## begun is given a little more leash.
+func _verdict(buy: BotEconomy.Buy, me: Dictionary) -> BotNeeds.Verdict:
+	var level := BotNeeds.ammo_level(me.get("arms", {}), _profile.ammo_floor_mags)
+	if keeps_distance and level < BotNeeds.Level.EMPTY:
+		return BotNeeds.Verdict.STAY
+	var slack := BotNeeds.UNDERWAY_SLACK if _flat(_heading, buy.stand) < 1.0 else 0.0
+	var near := BotNeeds.is_near(buy.stand, _here, anchor, slack)
+	return BotNeeds.verdict(BotNeeds.Need.AMMO, order, level, near)
+
+
+## A bot held back from its need says so once, and again only after it has been free of the hold.
+func _announce(beliefs: BotBeliefs, held_back: bool) -> void:
+	if held_back and not _announced:
+		beliefs.moments.append({"kind": NEED_HELD_BACK})
+		counts["held_back"] = int(counts.get("held_back", 0)) + 1
+	_announced = held_back
 
 
 ## Looks at the shop again: what the bot would buy now, and how long it has held more than twice
@@ -341,6 +462,20 @@ func _avoided(stand: Vector3) -> bool:
 	return not _probed[key]
 
 
+## The metres of walk to `stand` (`INF` for none), asked of the legs and kept for `WALK_KEEP`
+## seconds; the answers go with the mesh.
+func _walk_to(stand: Vector3) -> float:
+	if legs.path.iteration() != _walk_mesh:
+		_walk_mesh = legs.path.iteration()
+		_walks.clear()
+	var key := _key(stand)
+	var kept: Dictionary = _walks.get(key, {})
+	if kept.is_empty() or float(kept["until"]) <= _clock:
+		kept = {"length": legs.path.walk_length(_here, stand, _clock), "until": _clock + WALK_KEEP}
+		_walks[key] = kept
+	return float(kept["length"])
+
+
 static func _key(stand: Vector3) -> Vector2i:
 	return Vector2i(roundi(stand.x * 2.0), roundi(stand.z * 2.0))
 
@@ -385,7 +520,7 @@ func calm_at(frame: Dictionary) -> int:
 	if round_number != _round or remaining > _peak:
 		_peak = remaining if round_number != _round else maxi(_peak, remaining)
 		_round = round_number
-	return maxi(BotEconomy.CALM_REMAINING, ceili(float(_peak) * CALM_SHARE))
+	return maxi(BotEconomy.CALM_REMAINING, ceili(float(_peak) * _shop.calm_share))
 
 
 ## Whether the frame shows a break or a lull in a round.
@@ -426,12 +561,16 @@ func _view(
 	view.grenades = beliefs.grenades
 	view.doors_open = frame.get("doors", [])
 	view.bought = state.bought
+	view.perks = int(me.get("perks", 0))
 	var crane: Dictionary = frame.get("crane", {})
 	view.crane_spot = int(crane.get("spot", 0))
 	view.crane_ready = int(crane.get("stage", CraneState.Stage.READY)) == CraneState.Stage.READY
 	view.denied = _denied
 	view.now = now
 	view.avoid = Callable(self, &"_avoided")
+	if legs != null:
+		view.walk = Callable(self, &"_walk_to")
+	view.heading = _heading
 	_etiquette(view, beliefs, frame, state.player_id)
 	return view
 
@@ -445,7 +584,10 @@ func _etiquette(view: BotEconomy.View, beliefs: BotBeliefs, frame: Dictionary, m
 		var player: Dictionary = players[id]
 		if id == me_id or player.get("dead", false):
 			continue
-		if player.get("downed", false) or float(player.get("health", 100.0)) < 100.0 * HURT_SHARE:
+		if (
+			player.get("downed", false)
+			or float(player.get("health", 100.0)) < 100.0 * _shop.hurt_share
+		):
 			trouble = true
 	for door_id in _shop.unlocked_doors(view.doors_open):
 		var price := _shop.economy.item(door_id).price_at(view.round_number)
@@ -619,6 +761,7 @@ func _circuits(
 	if prompt.get("kind", &"") == &"circuit" and prompt.get("id", &"") == best_id:
 		intent.use = true
 		intent.note = note
+		_commit_breaker(best_id, circuits, now)
 		return true
 	if best_apart <= ARRIVE + 0.5:
 		# At the post but the prompt names another (a door or a spot is nearer): give it a moment.
@@ -628,13 +771,25 @@ func _circuits(
 			_denied["circuit:%s" % best_id] = now + BACK_OFF
 			_post_arrived = -1.0
 			return false
+		_commit_breaker(best_id, circuits, now)
 		return true
 	if _cannot_reach(_shop.circuit_stands[best_id], now):
 		return false
 	intent.goal = _shop.circuit_stands[best_id]
 	intent.goal_radius = ARRIVE
 	intent.note = note
+	_commit_breaker(best_id, circuits, now)
 	return true
+
+
+## Keeps the breaker wanted while the bot is on its way to throw it on (for one errand limit from
+## the start); one the bot goes to throw off is not kept: it would be thrown back on at once.
+func _commit_breaker(circuit_id: StringName, circuits: Dictionary, now: float) -> void:
+	if circuits.get(circuit_id, false):
+		return
+	if circuit_id != _breaker_id or now >= _breaker_until:
+		_breaker_id = circuit_id
+		_breaker_until = now + ERRAND_LIMIT
 
 
 ## Whether the bot wants `circuit_id` on. The field's stays on; an area's is on while a person is in
@@ -649,6 +804,8 @@ func _wants_circuit(
 		return fraction > 0.0 or on_now
 	if not frame.get("doors", []).has(door):
 		return false
+	if on_now and circuit_id == _breaker_id:
+		_breaker_id = &""
 	var line := _shop.fuel.low_fraction + (0.0 if on_now else FILL_MARGIN)
 	if fraction < line:
 		return false
@@ -656,7 +813,8 @@ func _wants_circuit(
 		_empty_since.erase(circuit_id)
 		return true
 	if not on_now:
-		return false
+		# The bot is on its way to this breaker and the walk took it out of the area: it goes on.
+		return circuit_id == _breaker_id and beliefs.now < _breaker_until
 	if not _empty_since.has(circuit_id):
 		_empty_since[circuit_id] = beliefs.now
 	return beliefs.now - float(_empty_since[circuit_id]) < AREA_EMPTY

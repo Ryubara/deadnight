@@ -127,7 +127,7 @@ nets out against its cost. Examples (illustrative; the real weapons are the art 
 
 | Weapon | Base | Trim | Trade |
 | --- | --- | --- | --- |
-| Shotgun | even spread | **Choke**: tight pattern, long reach | slower pump; punishes a miss |
+| Shotgun | even spread | **Choke**: tight pattern, long reach | slower second barrel; punishes a miss |
 | Shotgun | even spread | **Wide**: loose pattern, forgiving | short reach; hits fewer of a far pack |
 | Submachine gun | steady | **Drum**: bigger magazine | slow reload; heavier; you commit |
 | Rifle | steady | **Tracer**: shots paint the target for the whole team for 1.5 s | fewer rounds per reload; the team sees it, you do not hit harder |

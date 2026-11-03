@@ -67,7 +67,6 @@ MATERIALS = {
     "road_kiosk": ("blocks", "#d8cfb5", None),
     "road_line": (None, "#d1ab46", None),
     "door": ("shutter", "#d1ab46", None),
-    "roadblock": ("concrete", "#818491", None),
     "breach_ground": ("gravel", "#3d3829", None),
     "line_paint": (None, "#d8d2bc", None),
     "plaque": (None, "#e8c37a", "#8a6414"),

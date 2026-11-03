@@ -130,6 +130,26 @@ test("the live Discord client exchanges the code and reads the user (fetch stubb
   assert.deepEqual(calls, ["POST https://discord.com/api/oauth2/token", "GET https://discord.com/api/users/@me"]);
 });
 
+test("the sign-in answers with the player's own access token (the Activity's authenticate() needs it) and never the client secret", async () => {
+  const fetchStub = (async (url: string) => {
+    const body = url.endsWith("/oauth2/token")
+      ? { access_token: "players-own-token", scope: "identify" }
+      : { id: "42", username: "zed", avatar: null };
+    return new Response(JSON.stringify(body));
+  }) as unknown as typeof fetch;
+  const app = buildApp({
+    config: loadConfig(liveEnv),
+    store: new MemoryStore(),
+    discord: new LiveDiscord("cid", "the-client-secret", fetchStub),
+    registry: new GameServerRegistry(),
+  });
+  const response = await app.inject({ method: "POST", url: "/auth/discord", payload: { code: "any" } });
+  await app.close();
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json().access_token, "players-own-token");
+  assert.ok(!response.body.includes("the-client-secret"), "the client secret never goes to the client");
+});
+
 /** A fetch that never answers on its own and rejects when its signal fires, like the real one. */
 const hangingFetch = ((_url: string, init?: RequestInit) =>
   new Promise((_resolve, reject) => {

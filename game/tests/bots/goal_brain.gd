@@ -12,6 +12,8 @@ var errands: Array[Vector3] = []
 var legs: BotLegs
 ## Whether to run to the goal.
 var run := false
+## The radius at which the bot counts as there.
+var radius := 1.0
 var _now := 0.0
 
 
@@ -23,7 +25,7 @@ func think(beliefs: BotBeliefs, _state: ClientState) -> BotIntent:
 		if legs == null or not legs.path.is_blocked(errand, _now):
 			intent.goal = errand
 			break
-	intent.goal_radius = 1.0
+	intent.goal_radius = radius
 	intent.run = run
 	intent.note = "errand"
 	return intent

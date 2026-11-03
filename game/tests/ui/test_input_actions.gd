@@ -22,6 +22,9 @@ const GAMEPLAY: Array[StringName] = [
 	&"reload",
 	&"interact",
 	&"swap_weapon",
+	&"weapon_slot_1",
+	&"weapon_slot_2",
+	&"weapon_slot_3",
 	&"pause",
 	&"scoreboard",
 	&"throw_grenade",
@@ -92,6 +95,27 @@ func test_the_wheel_the_ping_and_the_shoulder_are_on_the_keys_the_maintainer_ask
 		for event in InputMap.action_get_events(action):
 			if event is InputEventJoypadButton:
 				assert_int(event.device).is_equal(-1)
+
+
+func test_the_number_keys_take_the_weapon_slots_and_the_swap_stays_where_it_was() -> void:
+	# 1 and 2 pick the first and second weapon (#682), 3 is the third slot's; none of them is on a pad
+	# (the pad and the phone swap with one button) and none shares a key with another action.
+	assert_array(_keys_of(&"weapon_slot_1")).contains_exactly([KEY_1])
+	assert_array(_keys_of(&"weapon_slot_2")).contains_exactly([KEY_2])
+	assert_array(_keys_of(&"weapon_slot_3")).contains_exactly([KEY_3])
+	for action in WeaponSlots.ACTIONS:
+		assert_str(_pad_of(action)).is_equal("")
+	assert_array(_keys_of(&"swap_weapon")).contains_exactly([KEY_F])
+	assert_str(_pad_of(&"swap_weapon")).is_equal("button 11")
+	var seen := {}
+	for action in GAMEPLAY:
+		for key in _keys_of(action):
+			(
+				assert_bool(seen.has(key))
+				. override_failure_message("%s and %s share a key" % [seen.get(key), action])
+				. is_false()
+			)
+			seen[key] = action
 
 
 func _keys_of(action: StringName) -> Array[int]:

@@ -247,6 +247,12 @@ chamfered boxes and 6-12-sided cylinders at game scale (a player is 1.8 m), one 
 `#e8a33a`, sign red `#b8322e`, teal, chrome, glass, popcorn, concrete), roughness 0.415, metallic 0. Each has a scene
 in `game/world/drive_in/fixtures/` with hidden CSG collision (what the navigation and the camera tests read).
 
+The atlas stores every swatch as its sRGB value, the hex the builder's `PALETTE` names (a byte image's `pixels` in
+Blender are the stored values: `palette_image()` writes the hex as it is, as `build_props.py` and `smallmap_kit.py`
+do). Until #651 it stored the linear value, so every prop drew far darker than its colour (Concrete `#9a968c` as
+`#524e43`); `game/tests/world/test_drivein_palette.gd` reads cells back against the hex. To check a lot capture
+after a palette change, `game/tests/captures/drivein_props_night.tscn` frames the props up close at night.
+
 | Prop | Tris | Budget | Size (m, w x d x h) |
 | --- | ---: | ---: | --- |
 | Speaker post (player-only collision) | 328 | 800 | 0.83 x 0.32 x 1.46 |

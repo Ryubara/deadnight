@@ -23,7 +23,7 @@ The HUD reads one object, `HudState` (plain numbers, strings, arrays and diction
 | The local player's readings | `facing` (a property; `set_ammo` and `set_equipment` are for tools and captures, the weapons' events and the frame fill them), `set_prompt`, `set_area`, `set_markers` (the night fills it every frame, `NightMarkers`), `set_player_name` (`set_health` is for tools and captures) | what the rules do not own: which way you face, what is in reach, where the player stands |
 | HUD additions to the rules' events | optional `world` (a `Vector3`) on `zombie_damaged`, or `screen_x`, `screen_y` (0 to 1) | the night's binding adds `world` (the zombie, lifted to the head or the chest); the crosshair draws the number over that point through its `projector` every frame, so it stays on the wound while the camera turns and hides while the point is behind the lens. `screen_x`/`screen_y` place a number once, for tools |
 
-The ammo card and the equipment slot are the local player's only: another player's `ammo_added`, shot or reload leaves
+The ammo card and the weapon slots are the local player's only: another player's `ammo_added`, shot or reload leaves
 them alone (a teammate's rounds are not shown anywhere).
 
 Events for other players change their container (points, down state) and leave your own readings alone. Unknown events are
@@ -40,7 +40,8 @@ local player) into the direction on screen.
 | `HudFuel` | top right, **only for a moment** | the generator card: the tank as 20 segments, a percentage or `LOW` or `NO POWER`, one bulb per circuit with its sign's word beside it, in two columns (`SCREEN`, `SNACKS`, `BOOTH`, `BACK LOT`). Slides down into the column and fades in when the night makes progress at the generator, holds 4 s, leaves (see below) |
 | `HudFeed` | top right, under the generator card (at the top while it is away) | what happened on the lot ("RUBY OPENED THE CONCESSION STAND", someone down, generator warnings), then who joined or left; one line each, 480 units wide (wider than the column), ending on the cards' right text line: a long line shrinks toward 20, then ends in an ellipsis (a cleared special round adds `DOUBLE FEATURE CLEARED  +440 EACH`) |
 | `HudPoints` | bottom left | **a container per player**, `[portrait][points]` (see below), you first, then the others by id |
-| `HudHealth` | bottom left, under the players | a card: `HEALTH n` and the grenade count on one row, a bar of ten ticks (or `DOWN` and what to hope for), then the equipment: the weapon put away last, by name (no rounds; the ammo card says the rounds), cut to the room |
+| `HudHealth` | bottom left, under the players | a card: `HEALTH n` and the grenade count on one row, a bar of ten ticks (or `DOWN` and what to hope for). The weapon put away used to be named under the bar; the slot strip shows it now, one home for what is carried |
+| `HudSlots` | bottom right, **above the ammo card**, as wide as it (with the touch controls up: bottom left, under the health card, as wide as it) | the weapons carried, by slot ([see below](#the-weapon-slots)) |
 | `HudAmmo` | bottom right | magazine as a big numeral, reserve beside it on the same baseline, the weapon name on a coloured bar; hot orange when low; `RELOADING` while a reload runs; `--` for a weapon with no ammunition (the crowbar) |
 | `HudBanner` | top centre | a marquee board with chasing bulbs, on the top margin level with the corner cards: `ROUND N`, `ROUND N SURVIVED`, `THE LIGHTS GO OUT`, and an area's name as you enter it (an area never replaces a round banner). A special round starts with its name (`DOUBLE FEATURE`) over what it brings (`THE HEADLINER ARRIVES`, `2 HEADLINERS ARRIVE`, `ONLY RUNNERS`); clearing one puts `DOUBLE FEATURE CLEARED  +440` under `ROUND 5 SURVIVED`; a late joiner into one sees its banner once |
 | `HudMarquee` | top centre, under the banner | in the break before a special round, `COMING UP - ROUND 5 - IN 24` over the round's name in big letters that flicker like a failing neon sign (steady with reduced motion) over what it brings, between two rows of bulbs (the banner's); gone as the round starts. A HUD that joins in the break reads it from the schedule |
@@ -61,16 +62,43 @@ shakes the card and says why in place of the price. The breach's card
 says "HOLD TO NAIL BOARDS UP": holding the button keeps putting boards back
 ([rules](rounds.md#the-fences-boards)).
 
+## The weapon slots
+
+Two numbered places (`HudSlots`, a `HudSlotCell` each; three when the perk that carries a third weapon is in, #687: the
+places are `HudState.slot_count`, the cells share the card's width) show what is carried: the **silhouette** of each
+weapon with the **number of the key that takes it in hand** (`1`, `2`, `3`). The one in hand is the lit place: amber
+paper, dark ink; the one put away is cream on dark paper; an empty place is its number alone, dim. No rounds here: the
+ammo card is their one home. A player reads "what do I have, which is in my hand" in half a second, and the key is on
+the card.
+
+- **The order is the server's.** `arms` in the frame lists the weapons in slot order (`CombatServer` keeps a loadout in
+  its slots' order); the HUD reads it (`HudLoadout.sync`) and the events alone fill the same order. A weapon bought with
+  full hands sits in the slot of the weapon it replaces, so the numbers never trade places.
+- **The silhouettes are the models.** `WeaponSilhouettes` draws each weapon's own glb (the one the Soldier holds, from its
+  hold file) from the side with every surface flat white into a transparent texture, once, the first time it is
+  needed; the part tints it. A new weapon model has its silhouette with its hold file. Sizes follow the weapons' lengths
+  (never under 58 percent of the longest) so a pistol reads as a pistol; a club that stands on its end in the model is
+  laid along the width, its long side from the grip pointing right like a barrel.
+- **On a phone the strip moves** under the health card (`Hud.touch_layout`, set when the touch layer comes up): the
+  bottom right corner is the right thumb's (Fire and Melee sit exactly where the strip would). A left hand flips the
+  column and the strip with it.
+- **Keys:** `1` and `2` (and `3`) pick that slot's weapon; the slot in hand and an empty slot do nothing; the swap
+  button (F, the pad's d-pad up, the touch SWAP) goes on to the next one ([weapons](weapons.md#carrying-weapons)).
+
 ## Players' points
 
 Each player in the lot has a container: a square **portrait** on the left and the **points box** on its right, in the
-colour of the player's seat (`LookCatalog.armband_colour`: red, cyan, yellow, green, the colour of the armband they wear
-in the lot, so the colour on the HUD and on the arm is one). The box carries the name small at its left and the points at
-its right, on one baseline; the number takes the dark or the light ink, whichever has the better contrast on the seat's
-colour (at least 4.5, a test checks all four). Your own container is first and larger (66 units high, a teammate's 48),
-the others follow by player id; one to four are shown, a row made when a player joins and freed when they leave. A downed
-player's portrait dims, their box darkens and the name says `DOWN`. There is no party ticket any more: the containers
-are the party list.
+colour of the player's seat (`LookCatalog.armband_colour`: red, cyan, yellow, green, orange, violet, pink, white: eight
+seats, eight colours; the colour of the armband they wear in the lot, so the colour on the HUD and on the arm is one).
+The box carries the name small at its left and the points at its right, on one baseline; the number takes the dark or
+the light ink, whichever has the better contrast on the seat's colour (at least 4.5, a test checks all eight). Your own
+container is first and larger (66 units high, a teammate's 48), the others follow by player id; one to eight are shown,
+a row made when a player joins and freed when they leave. With more than four players the teammates' boxes are the
+**compact** size (`HudPlayerBox.COMPACT_HEIGHT`, 32 units, the name and the points one size smaller,
+`HudPoints.COMPACT_FROM`), so a party of eight stands in the height of about five boxes of the old size: 66 + 7 x 32 +
+the gaps is 296 units, and the left column still ends under the health card on the smallest canvas (1536 x 864) with
+the challenge prompt between it and the round card. A downed player's portrait dims, their box darkens and the name
+says `DOWN`. There is no party ticket any more: the containers are the party list.
 
 The portrait is the Soldier as the player wears it, a head-and-shoulders render of the game's own model
 (`CharacterAssembler`, the assembler the wardrobe and the lot use) in a tiny 3D world of its own, drawn once and then left
@@ -207,7 +235,7 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   clear box (`test_hud_challenge.gd`).
 - **Caps keep a 28-zombie round readable.** Three gain rows, eight damage numbers, six damage arcs, three events and one
   notice at a time; the oldest goes first.
-- **Notices on the right.** Joins and leaves sit under the event list, not at the left edge: with four players, an
+- **Notices on the right.** Joins and leaves sit under the event list, not at the left edge: with eight players, an
   objective and a downed health stack, the left column is full on a 1536 x 864 canvas.
 - **Outlined text.** Every label has a dark outline and a hard shadow so it holds on the lit lot and on the dark.
 - **Colour means something.** Amber is points and light, hot orange or red is danger and low (round numeral, low
@@ -218,7 +246,7 @@ fades without sliding. A new step of the generator's quest (the circuit switches
 The project stretches the canvas to 1920 x 1080 (and wider or taller for other window shapes); the UI scale setting
 divides it (0.8 to 1.25). The HUD lays out in canvas units with anchors; `HudStyle.UNIT` is the one number that sizes
 it against the first draft. A test builds the busiest
-HUD (four players, you down, a long prompt, a banner, full lists), and the same with the longest content the game allows
+HUD (eight players, you down, a long prompt, a banner, full lists), and the same with the longest content the game allows
 (20-character names, round 123, 99,999,999 points, 999 / 9999 ammo, a 23-character weapon, a long prompt and notices),
 at every window from 1024 x 768 to 4K at each UI scale, in three typefaces, and checks that every part is inside the
 screen and none overlaps another. The smallest text is 20 canvas units: 13 px
@@ -247,7 +275,7 @@ chasing bulbs, no pulsing (the low-health frame and low-fuel tank hold steady); 
 marquee, the banner, the reward line and a late joiner into a special round), `test_hud_snapshot.gd` (a late joiner
 against the HUD that saw every event), `test_hud_refresh.gd` (changes announced, nodes made and a time budget for
 the break and a kill batch), `test_hud_parts.gd` (every part, the prompt with simulated input and device switching),
-`test_hud_players.gd` (a container per player, one to four: colours, local first, down, the portrait),
+`test_hud_players.gd` (a container per player, one to eight: colours, local first, down, the portrait),
 `test_hud_reticle.gd` (the reticle: present, centred, small, scaled by the viewport stretch, hidden under a menu or
 while down, editable), `test_hud_generator_panel.gd` (when the card shows and its stepped timing),
 `test_hud_grid.gd` (the grid, measured at every canvas: shared edges, gaps, text lines, no label leaving its part),

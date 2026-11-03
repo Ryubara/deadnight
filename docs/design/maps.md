@@ -15,7 +15,7 @@ scene lands. Issue #624.
 | `title`, `blurb` | The card's name and a line about the map |
 | `scene_path` | The scene `NightWorld` builds: the same node layout as `world/drive_in_greybox.tscn` (doors, spawns, lamps, switches, fuel) |
 | `preview_path` | The card's picture, 16:9 (`assets/ui/maps/`); none draws the locked card's hatched stub |
-| `area_m2`, `min_players`, `max_players` | What the card says: `13,200 m² · 1 to 4 players` |
+| `area_m2`, `min_players`, `max_players` | What the card says: `13,200 m² · 1 to 8 players` |
 | `shipped` | False while the map is not built: listed, locked, never loaded |
 
 `MapRegistry.of(id)` is the map to load: an id nobody knows, or a map that is not playable yet, is the drive-in lot,
@@ -32,8 +32,14 @@ address typed on the Join screen knows nothing of the map).
 3. Set `shipped = true` and `scene_path`; add its id to `PLAYABLE_MAPS` in `spikes/backend/src/settings.ts` (a test
    compares the two lists, `test_the_backend_lists_the_maps_the_game_can_play`).
 
+A map with its own prices, windows or caps names a rules overlay in its scene's `metadata/tuning` (`MapTuning`, laid
+over a copy of the shared table by `NightWorld.rules_for`: the night and the balance simulator do it already; a client
+that builds the map from a WELCOME must too, before the snapshot's tuning id is compared). A scene with floors, its own
+spawn groups and saved meshes is read through `MapLayout` ([the second map](smallmap.md#what-a-night-reads-from-a-map-scene)).
+
 The small indoor map's entry (`small_indoor.tres`) already exists with `shipped = false`; its name, "The back rooms",
-is a working title until the greybox lands.
+is a working title. Its scene plays (the links, windows, buys and box are set up, #632) and the tests and captures build
+it with `Night.scene` / `NightWorld.scene`; the picker unlocks it when its entry gets a `scene_path` and `shipped`.
 
 ## The choice is a match setting
 

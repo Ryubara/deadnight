@@ -219,7 +219,7 @@ func test_two_players_meet_the_host_starts_and_a_third_joins_mid_match(
 	# Bo looks at the code (joined to nothing) and then joins: each sees the other.
 	var seen := await bo.api.preview(code)
 	assert_str(LobbyScreen.preview_text(seen["preview"])).is_equal(
-		"Waiting room. Ann is hosting, 1 of 4 here."
+		"Waiting room. Ann is hosting, 1 of 8 here."
 	)
 	assert_array(_names(ann)).is_equal(["Ann"])
 	var joined := await bo.api.join_code(code)
@@ -285,7 +285,7 @@ func test_two_players_meet_the_host_starts_and_a_third_joins_mid_match(
 	assert_bool(heard).is_true()
 	var in_progress: Dictionary = read[0]
 	assert_str(LobbyScreen.preview_text(in_progress)).is_equal(
-		"Night in progress, round 3. 2 of 4 here."
+		"Night in progress, round 3. 2 of 8 here."
 	)
 	assert_bool(in_progress["full"]).is_false()
 
@@ -368,7 +368,7 @@ func test_a_full_night_turns_the_next_player_away_with_the_room_it_has(
 	host.lobby = made["lobby"]
 	var code: String = host.lobby["code"]
 	var guests: Array[Guest] = []
-	for guest_name in ["G1", "G2", "G3"]:
+	for guest_name in ["G1", "G2", "G3", "G4", "G5", "G6", "G7"]:
 		var guest := await _guest(guest_name)
 		var joined := await guest.api.join_code(code)
 		assert_bool(joined["ok"]).is_true()
@@ -377,11 +377,11 @@ func test_a_full_night_turns_the_next_player_away_with_the_room_it_has(
 	var late := await _guest("Late")
 	var full := await late.api.preview(code)
 	assert_bool(full["preview"]["full"]).is_true()
-	assert_str(LobbyScreen.preview_text(full["preview"])).is_equal("That night is full (4 of 4).")
+	assert_str(LobbyScreen.preview_text(full["preview"])).is_equal("That night is full (8 of 8).")
 	var refused := await late.api.join_code(code)
 	assert_bool(refused["ok"]).is_false()
 	assert_str(refused["error"]).is_equal("full")
-	assert_str(refused["text"]).is_equal("That night is full (4 of 4).")
+	assert_str(refused["text"]).is_equal("That night is full.")
 	# A seat that frees up is taken.
 	await guests[2].api.leave(guests[2].lobby)
 	assert_bool((await late.api.join_code(code))["ok"]).is_true()
