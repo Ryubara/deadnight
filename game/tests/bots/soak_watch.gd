@@ -79,6 +79,8 @@ var _round_marks: Dictionary = {}
 ## night is read round by round against the simulator's own (`damage`, `died_in`).
 var _round_damage: Dictionary = {}
 var _round_downs: Dictionary = {}
+## By round, then zombie type: [blows that landed, their damage].
+var _round_blows: Dictionary = {}
 var _round_kit: Dictionary = {}
 
 
@@ -153,6 +155,14 @@ func hear(event: Dictionary) -> void:
 			_tally(event["player_id"])["downs"] += 1
 			var down_round: int = night.server.rules.round_number
 			_round_downs[down_round] = int(_round_downs.get(down_round, 0)) + 1
+		&"player_damaged":
+			var blow_round: int = night.server.rules.round_number
+			var by_type: Dictionary = _round_blows.get(blow_round, {})
+			var landed: Array = by_type.get(String(event["zombie_type"]), [0, 0.0])
+			landed[0] += 1
+			landed[1] += float(event["damage"])
+			by_type[String(event["zombie_type"])] = landed
+			_round_blows[blow_round] = by_type
 		&"player_died":
 			_tally(event["player_id"])["deaths"] += 1
 		&"player_hurt":
@@ -517,6 +527,7 @@ func report() -> Dictionary:
 		"round_marks": _round_marks,
 		"round_damage": _round_damage,
 		"round_downs": _round_downs,
+		"round_blows": _round_blows,
 		"round_kit": _round_kit,
 		"end": _end_state(),
 		"bots": bots,
