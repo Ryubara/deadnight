@@ -71,10 +71,24 @@ and `game/ui/screens/main_menu.gd`.
 - **A hovered button is paint, and a scroll area cuts paint** (#628). `UIButton` grows 3.5 percent on hover; the lobby's
   rows are full-width buttons in a `ScrollContainer`, which clips at its own rectangle, so "Copy the link" lost its
   left edge. Two shared rules: the button grows only by the room it has inside its nearest clipping ancestor, and the
-  theme keeps `UITokens.hover_room` free at the left and right of every `ScrollContainer` (not above and below: screens
-  compute a scroll area's height from its content). A button flush with the first or last row of an area grows
-  sideways only. The focus ring above the first and below the last row of an area is still cut (#644). `test_hover_room.gd`
-  hovers every button of every menu screen at 720p, 1080p and the phone canvas, scrolled to the top, end and middle.
+  theme keeps `UITokens.hover_room` free at the left and right of every `ScrollContainer`. A button flush with the
+  first or last row of an area grows sideways only.
+- **The focus ring was cut above the first row and below the last** (#644). The first fix left the top and bottom out
+  because the lobby's `_fit` and the credits' `_scroll_end` computed heights from the content, and its sweep only grew
+  the ring sideways. The theme now keeps `UITokens.scroll_room` (12 units: the ring's 9 grown with the button, and the
+  growth of a row up to 80 units tall) above and below every `ScrollContainer`; the lobby's `_fit` adds
+  `UIScroll.margins(scroll)` to its content, and `credits_screen._scroll_end` reads the bar's `page`, the inner height.
+  A screen that sizes a scroll area from its content, or asks how far it scrolls, does the same. `test_hover_room.gd`
+  hovers and focuses every button of every menu screen at 720p, 1080p and the phone canvas, scrolled to the top, end
+  and middle, with the ring grown on all four sides (it failed on main with 9 lobby failures), and measures the lobby's
+  last row at the end of its area and the only row of a plain area. **The margin alone is not enough with the
+  keyboard:** a scroll area's `follow_focus` scrolls the control's own rectangle into view and stops at its edge, so a
+  row reached with Down sat flush with the edge and its ring was cut (rows 3 to 7 of a list, the first row on the way
+  back). `UIRouter` listens to `gui_focus_changed` and, when a key or a pad moved the focus (never a hovering mouse),
+  `UIFocusRing.keep_in_view` scrolls the rest of the way (`scroll_room`), after the area's own follow. `HoverSweep.walk`
+  focuses every button in a scroll area and measures the ring (it fails with the listener off).
+  `tests/captures/scroll_ring_tour.tscn` takes the pictures (the lobby's last row, a list's first and last row), windowed
+  or as the web build's main scene with `?shot=lobby_last&phone=1`.
 
 ## Tests
 
