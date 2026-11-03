@@ -89,9 +89,9 @@ func test_the_layer_follows_the_weapon_not_the_player() -> void:
 
 
 func test_every_weapon_that_can_be_re_cut_gets_the_layer_in_its_shot() -> void:
-	var spec := UpgradeTuning.new()
-	assert_array(spec.weapons).is_not_empty()
-	for weapon: StringName in spec.weapons:
+	var ids := UpgradeTuning.shipped().catalogue_weapon_ids()
+	assert_array(ids).is_not_empty()
+	for weapon: StringName in ids:
 		_heard.clear()
 		_frame({weapon: 1})
 		_shot(weapon)
