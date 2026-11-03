@@ -358,6 +358,23 @@ bot's errand to a bought door is judged on the map the purchase left.
 Proof: `game/tests/night/test_spawns_wait_for_the_map.gd` (no spawns in the new room straight after the purchase or in
 600 ticks without frames; they join with frames; every door of the shop in order gives its area's markers to the dead).
 
+### A dead tearing the boards of a window it was not at (#810)
+
+A night stopped closing a round: one dead left, `mode ATTACK g=start_4 tear=0.1..0.9`, a metre and a half outside the
+east wall of the second map between windows 4 and 5, out of sight, and the bot's note `boards start_4` for eight
+minutes (mend, tear, mend). A `ZombieGate` was a line across the gap with no width, so on a wall of windows it was the
+whole wall: a dead that came for window 4 and whose path led along the wall to window 5 met the clamp 0.9 m short of
+the line, 5 m from window 4's gap, and stood there tearing window 4's boards at the rate the bot mended them. (The
+lot's breaches were the same kind of line.) A night is not repeatable by seed, so the stall is found by sets of nights.
+
+A gate now has the width of its gap (`ZombieGate.half_width`, the barricade's `board_half`): a zombie is held and
+tears only while it is within that width and `ZombieGate.SPAN_SLACK` (0.5 m) of it. When it leaves that width its
+`gate_id` is not kept: it takes the gate whose gap it has come up to (outside the line, within `ZombieGate.REACH`,
+1.5 m, and in front of the gap), or none while it walks beside the wall. `_keep_outside_the_boards` and the strand
+watch use the same width. Proof: `game/tests/zombies/test_zombie_gates.gd`, two windows on one wall and a path along
+it (the dead beside the wall tears nothing, takes the far window's gate when it comes to it, walks through once that
+is open).
+
 ### Dead stranded in a pocket of the mesh (#770)
 
 The nightly soak's Follow nights ended three times by its "a round of eight minutes" stop with one dead walker alive:

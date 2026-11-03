@@ -116,6 +116,8 @@ var _sprinting := false
 var _interact_verb := ""
 var _last_insets := Vector4.ZERO
 var _was_mirrored := false
+## `_look_key()` at the last draw.
+var _drawn_key := 0
 
 
 func _ready() -> void:
@@ -246,7 +248,43 @@ func _process(delta: float) -> void:
 		if verb == "":
 			_drop_button(TouchLayout.INTERACT)
 	if _active:
+		_redraw_if_changed()
+
+
+## Redraws only when what the buttons show has changed. Every `draw_circle` and `draw_arc` is a
+## polygon the Compatibility renderer builds into its own vertex array and buffers, and redrawing
+## about forty of them every frame made the web page create, and its WebGL id tables keep, some
+## two hundred objects a frame (the page's heap grew 50 MB a minute, #834).
+func _redraw_if_changed() -> void:
+	var key := _look_key()
+	if key != _drawn_key:
+		_drawn_key = key
 		queue_redraw()
+
+
+## A number that differs whenever anything `_draw` reads differs: what is held, the stick, the
+## verb on the interact button, the layout, the opacity and the look.
+func _look_key() -> int:
+	var held := PackedStringArray()
+	for touch: Dictionary in _touches.values():
+		held.append(String(touch.get(&"button", &"")))
+	held.sort()
+	var stick: Variant = [_stick_origin, _stick_pos] if _stick_index >= 0 else null
+	return hash(
+		[
+			held,
+			_aim_latched,
+			_stick_index,
+			stick,
+			_sprinting,
+			_interact_verb,
+			opacity,
+			touch_scale,
+			left_handed,
+			_circles,
+			UITokens.active().get_instance_id(),
+		]
+	)
 
 
 func _input(event: InputEvent) -> void:
