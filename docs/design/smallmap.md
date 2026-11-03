@@ -167,6 +167,10 @@ carried sells its rounds. The box has **one place and never moves**: its `leave_
 it down; it needs no link (the walls around it are the side room's). The prizes are the lot's (the shotgun heaviest).
 At most **24 dead stand at once**, whatever the round and the party (`alive_cap`, on a desktop and in the browser).
 
+**The nine places are all there are** (#858): a wall sells only the weaker guns ([the wall
+tier](weapons.md#the-wall-tier)), so the pump 870, the MP5 and the M4A1 get no place on this map; they come only from
+the box, with the other guns above the tier. `test_wall_tier.gd` fails on a tenth wall that sells one.
+
 ### What the map leaves out
 
 Nacht has no perks, no upgrade and no power. The map has no power either: no generator, breaker post or fuel can (the
