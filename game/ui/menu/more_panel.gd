@@ -48,6 +48,7 @@ func _ready() -> void:
 	name_field.name = "PlayerName"
 	name_field.placeholder_text = MenuProfile.DEFAULT_NAME
 	name_field.max_length = MenuProfile.MAX_NAME
+	UiSounds.wire_field(name_field)
 	name_field.custom_minimum_size.x = width(context.compact)
 	name_field.text = _saved_name()
 	name_field.text_submitted.connect(func(_text: String) -> void: save_name())

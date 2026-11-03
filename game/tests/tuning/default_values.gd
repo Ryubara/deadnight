@@ -289,6 +289,7 @@ const SOUND_MIX := {
 	{
 		&"ui": 4,
 		&"ui_hint": 1,
+		&"ui_moment": 1,
 		&"challenge": 1,
 		&"gun": 12,
 		&"reload": 4,

@@ -26,11 +26,23 @@ func _init(compact := false) -> void:
 	set_tab(MenuTab.Id.PLAY)
 
 
-## Marks `to` as the active tab (it does not emit).
-func set_tab(to: MenuTab.Id) -> void:
+## Marks `to` as the active tab (it does not emit). A change of tab, with the bar on the stage,
+## is the tab sound: higher when the tab is further on (`step` is the direction a key or a bumper
+## went, 0 for a click, which goes by the order of the bar).
+func set_tab(to: MenuTab.Id, step := 0) -> void:
+	if to != tab and is_inside_tree():
+		var direction := step
+		if direction == 0:
+			direction = 1 if MenuTab.ORDER.find(to) > MenuTab.ORDER.find(tab) else -1
+		UiSounds.tab(self, signi(direction))
 	tab = to
 	for id: MenuTab.Id in _buttons:
 		(_buttons[id] as TabButton).active = id == to
+
+
+## The bar's own sound is the tab sound; the tabs' buttons only hint.
+func ui_sound_role() -> StringName:
+	return &"tab_bar"
 
 
 func button(id: MenuTab.Id) -> Button:
@@ -53,6 +65,7 @@ class TabButton:
 			queue_redraw()
 
 	func _init(tab_id: MenuTab.Id, compact := false) -> void:
+		UiSounds.wire(self)
 		id = tab_id
 		if compact:
 			type_size = MenuTabBar.COMPACT_SIZE
@@ -70,6 +83,9 @@ class TabButton:
 		focus_exited.connect(queue_redraw)
 		mouse_entered.connect(queue_redraw)
 		mouse_exited.connect(queue_redraw)
+
+	func ui_sound_role() -> StringName:
+		return &"tab"
 
 	func _draw() -> void:
 		var lit := has_focus() or is_hovered()
