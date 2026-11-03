@@ -5,15 +5,15 @@
 [resource]
 script = ExtResource("1_hold")
 weapon_class = &"Dual"
-scene = "res://assets/weapons/revolver/revolver.glb"
-model_scale = 2.275
-real_length = 0.31
-model_length = 0.31
+scene = "res://assets/weapons/service_pistol/service_pistol.glb"
+model_scale = 1.95
+real_length = 0.216
+model_length = 0.25
 shouldered = true
 grip_offset = Vector3(0.28, -0.05, -0.42)
 support = Vector3(0, 0, 0)
-muzzle = Vector3(-0.235, 0.045, 0)
-butt = Vector3(0.075, 0, 0)
+muzzle = Vector3(-0.17, 0.045, 0)
+butt = Vector3(0.074, 0, 0)
 pitch_offset_deg = 0.0
 size_factor = 1.75
 dual = true

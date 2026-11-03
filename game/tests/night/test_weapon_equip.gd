@@ -18,11 +18,11 @@ const EXPECTED := {
 	&"flare_gun": [&"Pistol", "res://assets/weapons/flare_gun/flare_gun.glb"],
 	&"baseball_bat": [&"Melee", "res://assets/weapons/baseball_bat/baseball_bat.glb"],
 	&"fire_axe": [&"Melee", "res://assets/weapons/fire_axe/fire_axe.glb"],
-	&"dual_pistols": [&"Dual", "res://assets/weapons/revolver/revolver.glb"],
+	&"dual_pistols": [&"Dual", "res://assets/weapons/service_pistol/service_pistol.glb"],
 }
-## A weapon drawn with another's model until its own lands (the pair's pistol model is #797's,
-## which waits on #786): it may share that model, and is taken off this list with its own glb.
-const STAND_INS := {&"dual_pistols": &"pistol"}
+## A weapon drawn with another's model until its own lands: it may share that model, and is taken
+## off this list with its own glb. None now (the pair has the service pistol, #797).
+const STAND_INS := {}
 
 
 func _start() -> Night:

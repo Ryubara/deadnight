@@ -65,7 +65,7 @@ the real command, its own model drawn).
 | `flare_gun` | `flare_gun` | **Crane** only (1); becomes a lure (#439) | 90 + blast 60 / 0.8 s |
 | `baseball_bat` | `baseball_bat` | **Crane** only (0.5) | 60 / 0.4 s, sweeps 4 |
 | `fire_axe` | `fire_axe` | **Crane** only (0.5) | 150 / 0.9 s, head x2.5 |
-| `revolver` twice (the pistol model of #797 replaces it) | `dual_pistols`, the Dual Pistols | **Crane** only (2.5), on both maps | 17 / 0.15 s, a hand each shot |
+| `service_pistol` twice (#797) | `dual_pistols`, the Dual Pistols | **Crane** only (2.5), on both maps | 17 / 0.15 s, a hand each shot |
 | none: not a weapon | `quick_melee` (`QUICK_MELEE`, not in `IDS`) | Every player, on `V`; never carried, bought or won | 40 / 0.6 s, 1.6 m |
 | `hammer` | none | A tool: the repair clip's prop, not a weapon (see below) | |
 | `grenade` | none (`frag.tres` is its own system) | Thrown, not a crane prize: the start (2) and the shop's grenades | 150 blast |

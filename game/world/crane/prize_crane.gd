@@ -36,8 +36,7 @@ const MODELS := {
 	&"weapon_fire_axe": "res://assets/weapons/fire_axe/fire_axe.glb",
 	&"weapon_pistol": "res://assets/weapons/revolver/revolver.glb",
 	&"weapon_crowbar": "res://assets/weapons/crowbar/crowbar.glb",
-	# The revolver again until the pistol model of #786 lands.
-	&"weapon_dual_pistols": "res://assets/weapons/revolver/revolver.glb",
+	&"weapon_dual_pistols": "res://assets/weapons/service_pistol/service_pistol.glb",
 }
 ## How long a model is drawn on the stage, in metres; the others use `MODEL_LENGTH`. The flare gun
 ## is a pistol and stays small beside the long guns.

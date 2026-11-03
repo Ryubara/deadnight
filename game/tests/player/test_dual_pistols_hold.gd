@@ -102,7 +102,7 @@ func test_the_pair_is_two_guns_the_left_one_the_right_one_mirrored() -> void:
 	assert_bool(right.visible and left.visible).is_true()
 	assert_str(left.get_parent().get_parent().get_class()).is_equal("Skeleton3D")
 	assert_str(str(_animation.weapon_hold().scene)).is_equal(
-		"res://assets/weapons/revolver/revolver.glb"
+		"res://assets/weapons/service_pistol/service_pistol.glb"
 	)
 	# One model drawn twice: the left in a mirror, so its basis turns the other way about.
 	assert_float(right.global_basis.determinant()).is_greater(0.0)
