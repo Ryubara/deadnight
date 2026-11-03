@@ -74,6 +74,10 @@ var steering: BotSteering
 ## Filled when the ladder reaches its last rung: `{position, goal, path, rungs}`. The owner reads it
 ## and clears it (`take_report`); a callable would tie this object to its owner.
 var report: Dictionary = {}
+## The goal the last step stood at the end of the path to without being within its radius (the mesh
+## ends short of it, `BotPath.REACHED_SHORT`), or `Vector3.INF`: a brain that waits for the bot to
+## be near its goal must give the goal up (`BotRoam`), the legs can take the bot no nearer.
+var stopped_short_of := Vector3.INF
 ## Seconds spent giving way, and seconds standing in a gap.
 var yielded_seconds := 0.0
 var blocking_seconds := 0.0
@@ -137,6 +141,7 @@ func step(
 	wish = Vector3.ZERO
 	sprint = false
 	jump = false
+	stopped_short_of = Vector3.INF
 	var here: Vector3 = me.get("pos", Vector3.ZERO)
 	if me.get("downed", false) or me.is_empty():
 		_idle(here)
@@ -288,6 +293,7 @@ func _base_direction(here: Vector3, intent: BotIntent, now: float) -> Vector3:
 	if status != BotPath.Status.OK:
 		return Vector3.ZERO
 	if path.arrived(here, radius):
+		stopped_short_of = intent.goal
 		return Vector3.ZERO
 	return path.direction(here)
 

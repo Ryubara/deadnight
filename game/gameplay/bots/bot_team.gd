@@ -14,6 +14,9 @@ var lures: Array[Dictionary] = []
 ## The claims on the links to buy (`BotErrands._link`): the nearest free bot to a link holds it.
 ## Keyed by the link id's hash, with the same lease and steal margin as a body's claim.
 var links := BotClaims.new()
+## The claims on the last zombies of a round that are hunted (`BotHunt`): the nearest free bot to a
+## zombie holds it, keyed by the zombie's id.
+var hunts := BotClaims.new()
 ## Whose turn it is to go on an errand (one bot at a time).
 var turn := BotTurn.new()
 ## Whether the errands go one bot at a time (off only to measure what the turn costs).
@@ -40,5 +43,6 @@ func active_lures(now: float) -> Array[Dictionary]:
 func release(bot: int) -> void:
 	claims.release(bot)
 	links.release(bot)
+	hunts.release(bot)
 	roam.erase(bot)
 	turn.release(bot)
