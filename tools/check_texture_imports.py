@@ -39,6 +39,8 @@ RULES: list[tuple[str, dict[str, str]]] = [
     # The lot's 256 px greyscale ground and wall textures repeat every few metres: without mipmaps the far ground
     # shimmers (docs/design/style.md, the lot's textures).
     ("game/assets/lot/textures/*", TILING),
+    # The small map's chalk lettering is read from across a room at a slant: mipmaps keep it from sparkling.
+    ("game/assets/smallmap/chalk_messages.*", TILING),
 ]
 
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".svg", ".tga", ".bmp", ".exr", ".hdr", ".ktx2")
