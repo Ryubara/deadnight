@@ -62,7 +62,15 @@ def godot_path() -> str:
 
 
 def run_cell(
-    godot: str, out: Path, skill: str, players: int, nights: int, seed: int, step: float, sets: list[str] | None = None
+    godot: str,
+    out: Path,
+    skill: str,
+    players: int,
+    nights: int,
+    seed: int,
+    step: float,
+    sets: list[str] | None = None,
+    map_id: str = "",
 ) -> dict:
     path = out / "cells" / f"{skill}_{players}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -81,6 +89,7 @@ def run_cell(
         f"--step={step}",
         f"--out={path}",
         *[f"--set={s}" for s in sets or []],
+        *([f"--map={map_id}"] if map_id else []),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if "SCRIPT ERROR" in result.stdout + result.stderr or not path.exists():
@@ -374,6 +383,9 @@ def main() -> None:
     parser.add_argument(
         "--set", action="append", default=[], help="a tuning override, path=value (see TuningOverrides)"
     )
+    parser.add_argument(
+        "--map", default="", help="a map's rules overlay laid over the table (small_indoor); default: the lot"
+    )
     parser.add_argument("--brief", action="store_true", help="no charts, only the tables")
     parser.add_argument("--compare", type=Path, help="a report folder to draw as 'before' in compare.png")
     parser.add_argument("--reuse", action="store_true", help="draw from the cells already in --out")
@@ -394,7 +406,9 @@ def main() -> None:
     else:
         with ThreadPoolExecutor(max_workers=max(1, min(args.jobs, len(keys)))) as pool:
             futures = {
-                k: pool.submit(run_cell, godot, args.out, k[0], k[1], args.nights, args.seed, args.step, args.set)
+                k: pool.submit(
+                    run_cell, godot, args.out, k[0], k[1], args.nights, args.seed, args.step, args.set, args.map
+                )
                 for k in keys
             }
             cells = {k: f.result() for k, f in futures.items()}

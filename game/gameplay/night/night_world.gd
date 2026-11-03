@@ -1,3 +1,4 @@
+# gdlint: disable=max-public-methods
 class_name NightWorld
 extends Node3D
 ## The place a night happens in: the map's scene (the drive-in greybox, or another entry of
@@ -15,14 +16,11 @@ const NAV_WAIT_FRAMES := 600
 const NAV_REACHED := 1.0
 ## Metres into the field, from the boards, that a player puts them back from.
 const REPAIR_SPOT := 1.4
-## The areas whose zombie spawns open with a door (the field's are always open).
-const DOOR_AREAS := {
-	&"door_concession": ["Midway"],
-	&"door_yard": ["GeneratorYard"],
-	&"door_booth": ["ProjectionBooth"],
-	&"door_back_lot": ["BackLot"],
-	&"door_road": ["Road"],
-}
+## A scene to build instead of the map's own (`MapInfo.scene_path`): a test or a capture that plays
+## a map the picker does not offer yet (the second map). Set before `build`. A map is a scene with
+## the lot's nodes (`Doors`, `ShopSpots`, `Lighting`, the barricades) and either the lot's `Field/`
+## spawn groups or the flat ones of the second map (`MapLayout`).
+var scene: PackedScene
 
 var greybox: Node3D
 ## The map this world was built from (`build`).
@@ -35,6 +33,9 @@ var navigation: DoorNavigation
 var switches: LotSwitches
 ## The lot's fuel can spots, where a player buys fuel for the generator.
 var fuel: LotFuel
+
+## Where the dead rise and the players start (`MapLayout`), read from the scene.
+var layout: MapLayout
 
 var _door_nodes: Dictionary[StringName, Node3D] = {}
 ## The open areas the map walks to (`_walkable`).
@@ -50,8 +51,9 @@ var _generator: GeneratorState
 func build(info: MapInfo = null) -> void:
 	map_info = info if info != null and info.is_playable() else MapRegistry.default_map()
 	WebProbe.mark("lot: instantiate")
-	greybox = map_info.load_scene().instantiate()
+	greybox = (scene if scene != null else map_info.load_scene()).instantiate()
 	add_child(greybox)
+	layout = MapLayout.new(greybox)
 	WebProbe.mark("lot: in the tree")
 	doors = greybox.get_node("Doors") as LotDoors
 	for door in doors.get_children():
@@ -63,6 +65,7 @@ func build(info: MapInfo = null) -> void:
 		await get_tree().physics_frame
 	WebProbe.mark("lot: settled")
 	navigation = DoorNavigation.new()
+	navigation.saved = layout.navmeshes()
 	add_child(navigation)
 	navigation.setup(greybox, doors)
 	for _i in NAV_WAIT_FRAMES:
@@ -79,6 +82,41 @@ func map() -> RID:
 	return get_world_3d().navigation_map
 
 
+## The rules table the night on this map plays by: `base` (the shared table, the lot's) with the
+## map's own overlay laid over it, or `base` itself for a map that has none.
+func rules_for(base: RulesTuning) -> RulesTuning:
+	var overlay := layout.map_tuning() if layout != null else null
+	return overlay.apply(base) if overlay != null else base
+
+
+## Gives the zombie simulation what it needs of this map: which ground is lit, the breaches, the
+## storey (0 for one floor) and `sight`, the way it sees walls.
+func equip(sim: ZombieSim, sight: Callable) -> void:
+	sim.lit_probe = is_lit
+	sim.gates = gates()
+	sim.set_floors(storey(), sight)
+
+
+## The height of one storey of the map, or 0 for a map of one floor (the lot).
+func storey() -> float:
+	return layout.storey() if layout != null else 0.0
+
+
+## How far a press at `a` reaches `b`: the flat distance, or infinity when `b` is on another floor.
+func reach_distance(a: Vector3, b: Vector3) -> float:
+	if not on_level(a, b):
+		return INF
+	return Vector2(a.x - b.x, a.z - b.z).length()
+
+
+## Whether `a` and `b` are on one floor: always on a map of one, else within half a storey in
+## height. What a press reaches is judged by this as well as by the flat distance, so a player
+## upstairs is not in reach of a door or a wall below.
+func on_level(a: Vector3, b: Vector3) -> bool:
+	var height := storey()
+	return height <= 0.0 or absf(a.y - b.y) <= height * 0.5
+
+
 ## Where the lamps that light the ground hang, by the circuit each hangs on (a sign's glow lights
 ## none): a bot tells which circuit is lighting the ground people stand on.
 func lamp_points() -> Dictionary:
@@ -92,14 +130,15 @@ func lamp_points() -> Dictionary:
 	return found
 
 
-## True once the navigation map finds a way across the field, between its first two spawn points
-## (the field is never walled off). The map's iteration id is no sign of it: in the browser it
-## stays at 1 while the map already answers, and waiting for a second one cost the full
-## `NAV_WAIT_FRAMES` (10 s) before every night (#335).
+## True once the navigation map finds a way across the open ground the night starts on, between
+## its first two spawn points (the field is never walled off; the second map's front yard neither).
+## The map's iteration id is no sign of it: in the browser it stays at 1 while the map already
+## answers, and waiting for a second one cost the full `NAV_WAIT_FRAMES` (10 s) before every night
+## (#335).
 func _map_answers() -> bool:
-	var spawns := greybox.get_node("Field/ZombieSpawns").get_children()
-	var from := (spawns[0] as Marker3D).global_position
-	var to := (spawns[1] as Marker3D).global_position
+	var spawns := layout.start_spawns()
+	var from := spawns[0].global_position
+	var to := spawns[1].global_position
 	var way := NavigationServer3D.map_get_path(map(), from, to, true)
 	return not way.is_empty() and way[way.size() - 1].distance_to(to) < NAV_REACHED
 
@@ -152,11 +191,12 @@ func door_stands(door_id: StringName) -> Array[Vector3]:
 
 ## The areas the dead can come from: the field, and the area behind each door that is open.
 func open_areas() -> Array[String]:
-	var areas: Array[String] = ["Field"]
+	var areas: Array[String] = layout.start_areas()
 	for door_id: StringName in _door_nodes:
 		if _door_nodes[door_id].has_meta(&"open"):
-			for area: String in DOOR_AREAS.get(door_id, []):
-				areas.append(area)
+			for area: String in layout.door_areas(_door_nodes[door_id], door_id):
+				if not areas.has(area):
+					areas.append(area)
 	return areas
 
 
@@ -171,28 +211,25 @@ func spawn_points() -> Array[Vector3]:
 	for area in open_areas():
 		if not _walkable(area):
 			continue
-		for marker in _spawn_markers(area):
+		for marker in layout.spawn_markers(area):
 			points.append(marker.global_position)
 	return points
-
-
-func _spawn_markers(area: String) -> Array[Marker3D]:
-	var markers: Array[Marker3D] = []
-	var group := greybox.get_node_or_null(area + "/ZombieSpawns")
-	if group != null:
-		for marker in group.get_children():
-			markers.append(marker as Marker3D)
-	return markers
 
 
 ## Whether the map walks from the field to every spawn point of `area`. An area stays walkable once
 ## it has been (a door never closes again), so each is asked until it answers, then never again.
 func _walkable(area: String) -> bool:
-	if area == "Field" or _walkable_areas.has(area):
+	if layout.start_areas().has(area) or _walkable_areas.has(area):
 		return true
-	var from := (greybox.get_node("Field/ZombieSpawns").get_child(0) as Marker3D).global_position
-	for marker in _spawn_markers(area):
+	var start := layout.start_spawns()[0].global_position
+	for marker in layout.spawn_markers(area):
+		var from := start
 		var to := marker.global_position
+		var id := StringName(marker.get_meta(&"barricade_id", ""))
+		if _barricades.has(id):
+			# A window's dead rise outside it and must walk in: from where they rise to the inside.
+			from = to
+			to = _barricades[id].standing_point(REPAIR_SPOT)
 		var way := NavigationServer3D.map_get_path(map(), from, to, true)
 		if way.is_empty() or _flat(way[way.size() - 1], to) >= NAV_REACHED:
 			return false
@@ -267,11 +304,11 @@ func gates() -> Dictionary[StringName, ZombieGate]:
 	return found
 
 
-## The breach each zombie spawn point lies outside, by point (the field's; the other areas'
-## spawns are already inside).
+## The breach each zombie spawn point lies outside, by point (the lot's other areas' spawns are
+## already inside and name none).
 func spawn_gates() -> Dictionary[Vector3, StringName]:
 	var found: Dictionary[Vector3, StringName] = {}
-	for marker in greybox.get_node("Field/ZombieSpawns").get_children():
+	for marker in layout.all_spawns():
 		var id := StringName(marker.get_meta(&"barricade_id", ""))
 		if id != &"":
 			found[(marker as Marker3D).global_position] = id
@@ -288,8 +325,8 @@ func _on_rules_event(event: Dictionary) -> void:
 
 
 func player_spawn(index: int) -> Vector3:
-	var markers := greybox.get_node("Field/PlayerSpawns").get_children()
-	return (markers[index % markers.size()] as Marker3D).global_position
+	var markers := layout.player_markers()
+	return markers[index % markers.size()].global_position
 
 
 ## Whether the ground at `point` is lit: a lamp within reach whose circuit the rules' generator
@@ -308,6 +345,10 @@ func add_body(spawn: Vector3, local_input: bool, drawn: bool = true) -> Player:
 	body.capture_mouse = local_input
 	if not drawn:
 		body.strip_model()
+	if not local_input:
+		# Only the person's own body owns the current camera: a bot's, which enters the tree after
+		# it, would take the view (#702).
+		body.release_view()
 	add_child(body)
 	body.teleport(spawn)
 	body.set_physics_process(false)

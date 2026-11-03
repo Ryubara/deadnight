@@ -8,9 +8,11 @@ extends Node
 ##
 ## `godot --headless --path game res://tests/captures/bots_move_soak.tscn -- --seed=1 --minutes=20`
 ## Arguments after `--`: `--seed=N`, `--minutes=M` (game minutes), `--bots=N` (default 4),
-## `--speed=N` (ticks per frame, default 40), `--count=X` (the dead's number, a fraction of the
-## shipped), `--tough=X` (every player's health, a multiple of the shipped: the soak measures how
-## bots walk, not whether they live), `--episodes` (print each bot's stuck episodes) and
+## `--speed=N` (ticks per frame, default 40), `--doors` (the stand-in is given the points and buys
+## every door at the start, so the whole lot is walked, the ticket plaza too), `--count=X` (the
+## dead's number, a fraction of the shipped), `--tough=X` (every player's health, a multiple of the
+## shipped: the soak measures how bots walk, not whether they live), `--episodes` (print each
+## bot's stuck episodes) and
 ## `--trace=FILE` (write every bot's position twice a second, one line each, to FILE),
 ## `--shop` (the bots do errands too: shopping, boards, the generator), `--idle` (print each time a
 ## bot has stood with nothing to do for six seconds), `--map=FILE` (write the footprints of the
@@ -128,6 +130,8 @@ func _ready() -> void:
 		_trace = FileAccess.open(String(_args["trace"]), FileAccess.WRITE)
 	_night.state.event_received.connect(_on_event)
 	_night.ticked.connect(_on_tick)
+	if _args.has("doors"):
+		_buy_every_door()
 
 
 ## `--profile=name:value,name:value` sets those numbers of every bot's profile (tuning the play
@@ -211,6 +215,15 @@ func _seat_the_bots() -> void:
 				level
 			)
 		)
+
+
+## Every door, in the shop's order, bought for the stand-in with points it was given.
+func _buy_every_door() -> void:
+	for item: StringName in [
+		&"door_concession", &"door_yard", &"door_booth", &"door_back_lot", &"door_road"
+	]:
+		_night.server.rules.apply(RulesAction.grant_points(Night.PLAYER_ID, 100000))
+		_night.server.apply(RulesAction.buy(Night.PLAYER_ID, item), Night.PLAYER_ID)
 
 
 func _send(action: Dictionary, id: int) -> void:

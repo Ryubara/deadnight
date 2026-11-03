@@ -265,6 +265,20 @@ We do not teleport in v1.
 
 `stuck_seconds`, `longest_stuck_episode` and `ladder_depth` are first-class metrics ([Testing](#how-to-test-bots-so-they-are-not-buggy)).
 
+### Goals the body cannot reach (#677)
+
+The walking mesh runs through each breach's gap into the pocket the dead break in from, and the breach's boards sit on a
+physics layer of their own (players only) that the bots' sight ray does not look at. A goal in the pocket, or past the
+fence within the 3 m snap, was therefore "on the mesh" with a good path, and the bot stood against the boards climbing
+the ladder: 5 to 11 s episodes in a probe (the issue's 21 s was a roaming bot that kept coming back). Now a new path is
+checked as a body walks it (`BotPath.walkable`: a ray along each segment at 0.15 m, `BotLevel.walk`, which sees walls and
+boards and looks past people and zombies, `WorldProbe.static_distance`). Stopped with more than 1 m of path left, the
+goal is marked unreachable at once (`walled_marks`) and the brain takes another; stopped with less, the path is cut
+0.45 m before the thing, so a goal at the fence's own edge is walked to as near as the body gets. The roam's reach
+question (`probe`) goes through the same check. `tests/night/test_bot_fence.gd` sends one bot to five pockets and to the
+fence's edge (longest stuck under 3 s; 5 to 11 s on `main`); the old negative control for a wall the mesh does not know
+turns the check off, since the check now sees such a wall.
+
 ## Economy
 
 The bot knows the shop table (prices, prerequisites, plan order) because every client has it. It shops from the
@@ -342,6 +356,17 @@ everyone is down. So the last bot with humans down revives only if the risk chec
 the end of the round, and it does not hold back from a revive that is safe.
 
 **A downed bot** waits for a human: it does not crawl (no mechanic), and its callout fires once.
+
+**Coming back for an unsafe body (#673).** A body judged `UNSAFE` (a pack, or one or two bosses whose kill time is 34 s
+and 67 s) sends nobody to the hold, and until #673 a bot that was not the last one up went on as before, so when the
+pack had gone the walk was longer than the clock had left (`LATE`). Now the nearest bot that is not the last one
+*stages* (`BotRevive.Mode.STAGE`): 14 m from the body (a walk of about 5 s of the 45), shooting the zombies nearest the
+body first, and the usual verdict, claim and hold take over the moment it is clear. A claimant on its way that has come
+no nearer than 0.5 m in 5 s is stuck (seed 7 of the soak: a bot three metres from a body with a zero wish held the claim
+for 30 s while the two others only covered): it gives the claim up and stays out of that body for 20 s. The revive soak
+prints a `BLEED` line for every body that bleeds out: per bot the seconds by reason and mode over the whole fall
+(`unsafe/STAGE`, `late/NONE`, `claim_lost/COVER`...), the closest it came, and its last account (why, verdict, how many
+zombies and the kill seconds, distance, claim). Measure: [the numbers](#revive-return-soak-673).
 
 ## Team roles and communication
 
@@ -915,12 +940,13 @@ decides, the others hold a rule each, so a test pins them one by one):
   and a top-up under 70% when nothing is within 16 m; a swap to the loaded weapon that is 1.4 times better at the
   range of the fight (the simulator's `SWITCH_GAIN`) and to the crowbar when every gun is dry; the crowbar goes back
   to a gun that can fire.
-- **`BotGrenadier`**: a grenade at a pack of three (two in Crawl Space) within 3 m of each other, 3 to 14 m away, as
+- **`BotGrenadier`**: a grenade at a pack of three (two in Crawl Space) within 3 m of each other, 3 to 12 m away, as
   the pack will stand when the 3 s fuse runs out (it keeps walking), when the blast is 6 m or more from the bot and
   **4 m plus a margin of 1.5 m from every teammate** (where they stand and where they will be by then; the margin is
   the scatter of a real throw, see the lesson on the rolling grenade), with an open arc and 6 s since the last. The
-  pitch comes from a table of real flights made once with `GrenadeArc` on flat ground: a grenade bounces and rolls for
-  the whole fuse, so a short throw is a lob (underarm up to 7.5 m, steep overarm to 14 m). The motor turns, holds the
+  pitch comes from a table of real flights made once with `GrenadeArc` on flat ground: the heavy grenade (#680) lies
+  4 to 12 m out and hardly rolls, so a short throw is a lob (underarm up to 4 m, steep overarm to 12 m). The plan flies
+  the walls only; a zombie in the way stops the real grenade at its feet. The motor turns, holds the
   button for two ticks and keeps the view still while the arm swings; the brain takes the order back if a teammate
   walks in.
 - **`BotDodge`**: a swing that began on the frame (`attack_at` on the contact) and that would still reach the bot
@@ -1188,21 +1214,48 @@ before this rule too; it is #673.
 
 ### Phase 6: filling slots, difficulty and the server
 
-Issue: #230.
+Issue: #230 (the room setting and the seating came first, with #643).
 
-The server fills empty slots with bots on a room setting (off, fill to two, fill to four), labels them in the lobby and
-the HUD, handles a human joining or leaving a bot's slot, gives the profiles names and looks, and exposes a kill-switch
-and a per-room bot cap, to the [decisions](#decisions-of-the-maintainer). **Done when**: a networked match over
-the real transport with two humans and two bots runs 10 minutes in CI without a divergence or an `ERROR` (with #56);
-the server's measured bot cost is inside the budget; a human takes over a slot mid-round without losing the round.
+**What shipped.** The room's **Bots** setting (0 to 3, #643) and a **Bot skill** setting (rookie, regular, veteran) fill
+the empty seats of a night, for Solo and for a host's room alike, in [Rounds, points and fuel](../design/rounds.md#bots).
+It is not the "off, fill to two, fill to four" of the first draft: the count is the host's, and the server's own limits
+sit above it.
 
-**Slot filling shipped early (#643).** The room setting and the seating part of this phase landed with the match
-settings: a **Bots** setting of 0 to 3 (`MatchSettings.bots`, one panel for Solo and a host's room), seated by
-`NightBots` in the seats people leave free, a person who joins taking a bot's seat as it stands, bots labelled `BOT`
-in the HUD and the lobby, all in [Rounds, points and fuel](../design/rounds.md#bots). It is not the "off, fill to two,
-fill to four" of the first draft: the count is the host's. What stays with #230: the per-room cap and kill-switch,
-the cost budget, a human who leaves handing the body (not a new body) to a bot, names and looks per profile, and the
-maintainer's open questions. All seated bots play the shipped regular profile; a room has no difficulty setting yet.
+| Part | How it is built |
+| --- | --- |
+| Slot filling | `NightBots` seats bots in the highest free seats up to `target(setting, people, limit)`; a person with no free seat takes the lowest bot's seat as it stands (`hand_over`, `bot_replaced`), and **a person who leaves hands the seat to a bot as it stands** (`adopt`, `bot_seated`: the same body, points, weapons and health), so decision 7 holds both ways |
+| Difficulty | `MatchSettings.bot_skill` picks the `BotProfile` of every bot (`BotProfile.for_skill`); the rules never read it, a test holds the night's numbers equal across skills |
+| Names and looks | `BotRoster`: a cast of three per skill (Pip, Dale, Moe; Ash, Fern, Moss; Rex, Sarge, Hawk), each a name and a catalogue preset look sent through the look server like a person's; the lobby shows the same names before the night begins |
+| Labels | `BOT` after the name in the HUD, the scoreboard, the lobby and the feed; `PlayerState.bot` rides every snapshot, so the roster API marks the seat; no bot flag exists in a command (the bots send the same plain actions through `apply`, and a person's seat is told apart only by the rules) |
+| Limits | `MAX_BOTS` caps one room (0 to 3), `BOT_BUDGET` shares a number of bots among the open rooms, `BOTS_OFF` is the kill-switch; a limit that drops sends the highest seats' bots away at once and the night goes on (`BotLimits`, `GameServer.set_bot_limits`, `NightHost.set_bot_limit`) |
+| Marked in the stats | the room's stats line carries `bots`; the rules mark every bot seat, so nothing that reads `player_added.bot` can pay a bot account progression (there is none yet) |
+
+**Proof.**
+
+- **Ten minutes over the real transport** (`tests/captures/bots_slots_soak.tscn`, its own CI job `bots-soak`, two
+  scenarios of ten game minutes each at `--fixed-fps 60`, about three and a half minutes of wall time). `pair`: two
+  autopilot clients and two bots, round 7 reached, 36,000 ticks, the worst predicted body 0.70 m from the server's
+  (the limit is 2.5 m), 1,191 seat checks with no client showing a seat the server did not hold, no stuck episode, no
+  engine error in the verbose log. `churn`: a setting of 3, people join at 0, 10, 30 and 50% of the run and leave at
+  70, 80 and 90%; the bots were 3, 2, 1, 0 and then 1, 2, 3 after each change as the rule says, the night was never
+  rebuilt, the round never went back, and the three people who took a bot's seat kept its body and its kills.
+  The server's step (the server, two clients and two or three bots in one process) averaged 1.4 to 1.5 ms of the 16.7 ms
+  tick and its worst step outside a client joining was 9.9 ms.
+- **The bots' own cost** (`test_bot_server_cost.gd`, a test): three bots with 40 zombies on the lot, 900 ticks, the
+  part of the tick that is theirs (hearing the step and deciding). Measured on a loaded machine that ran the reference
+  piece of GDScript 1.6 times slower than the machine the budget was set on: **mean 628 microseconds a tick (3.8% of a
+  60 Hz tick), worst 1.25 ms**. The budget it holds, scaled by the machine's speed: mean under 5% of the tick, worst
+  tick under 1.5 ms (a half millisecond for each bot's think). Scaled back to the reference machine the mean is about
+  2.3%. After main's flare rule landed the same test reads a mean of 780 to 970 microseconds (5 to 6% of the tick on
+  that machine, 1.5 to 1.7 times slower than the reference), a 95th percentile of 1.2 to 1.6 ms and a 99th of 1.8 to
+  3.4 ms. The test judges the 95th percentile (budget 1.5 ms scaled) and prints the 99th and the worst tick, which on a
+  shared machine is a tick the scheduler took (3 to 70 ms with the flare rule on and off alike, the median unchanged
+  at about 0.73 ms); the budget of the 99th percentile failed under load from other jobs, as did the decision-cost
+  scenario 26 of `test_bot_night.gd`.
+- **The seating, skill and limits**: `test_room_bot_slots.gd` (a room over a socket: the skill names, dresses and drives
+  the bots; a cap; the kill-switch at the start and thrown mid-night and lifted; a budget shared by two rooms; a person
+  leaving hands the body to a bot and a third person takes it back), `test_night_bot_skill.gd`, `test_bot_limits.gd`,
+  `test_bot_roster.gd`, and the rules' tests.
 
 ### Phase 7: validation at scale and tuning
 
@@ -1222,12 +1275,12 @@ They are decisions now, not options; the phases build to them.
 | # | Question | Decision | What it means in the build |
 | --- | --- | --- | --- |
 | 1 | Teleport as a last resort? | **No teleporting bots.** | The stuck ladder ends in a report (`bot_stuck`) and a walk back along the breadcrumb trail, never a jump to the humans. A bot that cannot reach anyone fights where it stands. |
-| 2 | Label bots? | **Yes, bots are labelled as bots.** | A mark in the lobby, the roster, the HUD's player box and the feed (`BOT` after the name); never in the command, which stays identical to a person's. The name comes from the profile (Phase 6). |
+| 2 | Label bots? | **Yes, bots are labelled as bots.** | A mark in the lobby, the roster, the HUD's player box and the feed (`BOT` after the name); never in the command, which stays identical to a person's. The name comes from the profile's cast (Phase 6, built: `BotRoster`). |
 | 3 | Do bots earn account progression? | **Bots earn points in the night, not XP.** | In-night points work as for a person (a bot buys doors with what it kills for). Account XP, rescue pay and mastery are never paid to a bot, and a night with bots is marked in the stats. The progression code reads `player_revived.reviver_id` and `player_added.bot` to skip bots; a bot that revives a human farms nothing. |
 | 4 | Player scaling | **Bots count for zombie scaling.** | The boss health, the alive cap and the spawn rate scale with the number of seated players, bots included (a bot is a player to the rules: `add_player`). Phase 7 may weight a bot below one; the default is one. |
 | 5 | Can people give bots orders? | **Orders by pings only.** *Superseded 2026-11-02 (#641): pings stay, and a command wheel adds three standing orders.* | The five pings of Phase 0 (`PingBoard.KINDS`: here, door, ammo, enemy, downed) pull a bot whatever its order. The standing orders are **Follow**, **Roam** and **Hold** ([Orders](#orders-follow-roam-and-hold-641)); there is still no text. |
 | 6 | Voice | **No bot voice for now.** | Callouts are `bot_say` lines in the feed only; no audio assets are made for them until the maintainer asks. |
-| 7 | A human takes a bot's slot | **A joining human inherits the bot's slot.** | The human gets the bot's seat, body, points, weapons, ammunition, grenades and health as they stand, and the bot is removed in the same tick. No reason to leave and rejoin. A human who leaves leaves the slot to a bot again (Phase 6). |
+| 7 | A human takes a bot's slot | **A joining human inherits the bot's slot.** | The human gets the bot's seat, body, points, weapons, ammunition, grenades and health as they stand, and the bot is removed in the same tick. No reason to leave and rejoin. A human who leaves leaves the slot to a bot again, as it stands (Phase 6, built: `NightBots.adopt`). |
 
 ## Sources
 
@@ -1324,3 +1377,54 @@ the scratch folder of the task, not in the repository.
 The two gates still open on #564 need a quiet machine to settle: stuck under 1% per seed needs several batches of each
 setup to see a change smaller than the noise, and the think p99 read 1 to 14 ms in these runs because other agents
 were running. Measure both with nothing else running.
+
+## Revive return soak (#673)
+
+Two parts, measured differently.
+
+**The scenarios** (`tests/bots/test_bot_revive_return.gd`, the bots' beliefs on a clock with walking bots, so a rule is
+the only difference between two runs). A person lies by a pack of 14 (`UNSAFE`), two bots stand 45 m off, the pack
+goes at a given second of the 45 s clock:
+
+| Pack goes at | Raised at, rules off | Raised at, staging on |
+| --- | --- | --- |
+| 30 s | 42.3 s | 36.3 s |
+| 32 s | never (bled out) | 38.3 s |
+| 34 s | never | 40.3 s |
+| 36 s | never | 42.3 s |
+| 38 s | never | 44.3 s |
+| 40 s | never | never |
+
+Staging moves the last second a pack can go and still leave a body to raise from between 30 s and 32 s
+to between 38 s and 40 s. A stuck claimant
+(nearer the body, its position never changes; the bot behind it is not 2 m nearer, so it never steals): without the
+stall rule the person is never raised, with it the bot behind takes the claim after 5 s and raises at 9.6 s.
+
+**The soak** (`tests/captures/bots_revive_soak.tscn`, four mixed bots, a fall forced every 10 s, 12 minutes, seeds 1 to
+48, off = `--no-stage --no-stall`): bodies that bled out with a bot still up, per 1000 forced falls, by cause read from
+the `BLEED` lines (the cause scheme is in the pull request):
+
+| Cause | Off (49 of 2193) | On (46 of 2348) |
+| --- | --- | --- |
+| All | 22.3 | 19.6 |
+| The last bot up, risk not clear (not for this rule) | 8.2 | 6.0 |
+| Claimant stuck on `GO` | 0.9 | 0.9 |
+| Unsafe for 10 s or more, then `LATE` | 5.0 | 6.0 |
+| `LATE` without a long unsafe spell | 7.3 | 4.7 |
+| Other | 0.9 | 2.1 |
+
+The soak does not show the gain the scenarios do: 49 and 46 bleed-outs are within what the seeds move between runs (the
+untargeted rows move by as much). The bleed-outs that stay are mostly packs and bosses that keep the body to the end
+(a staged bot 12 m away with under 4 s left is `LATE`), which no rule here can help. Staging costs no raises: raises per
+forced fall 0.94 off, 1.01 on; the nights that ended early were 15 of 24 either way in the first 24 seeds.
+
+## A breaker the bot walks away from (#706)
+
+An area's breaker is wanted only while a person (the bot itself when none is up) is within a lamp's reach of the
+area. The breaker's stand can lie outside that reach, so the walk to it ended the want: the bot turned to its shopping,
+walked back in, wanted the breaker again, and flipped between `breaker <area>` and `buy <item>` at every plan (the ticket
+plaza's perk machine showed it). `BotErrands` now keeps the breaker it set out to throw on (`_breaker_id`, for one
+`ERRAND_LIMIT`) until the circuit is on; one it goes to throw off is not kept. Test:
+`test_a_bot_with_a_purchase_in_a_dark_area_throws_the_breaker_then_buys` in
+`tests/night/test_bot_errands.gd` (the lamps' reach is cut to 4 m on the shipped lot so the breaker stands outside the
+area). A want that depends on where the bot stands needs a commitment for the walk it causes.

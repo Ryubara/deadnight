@@ -29,7 +29,8 @@ const CLAIM_GRACE := 20.0
 const PING_DEFER := 10.0
 ## Metres from a door within which a person holding the price has the first claim.
 const CLAIM_RADIUS := 15.0
-## Health share under which a teammate is in trouble (no door is bought while one is).
+## Health share under which a teammate is in trouble (no door is bought while one is);
+## `BotShop.hurt_share` starts at this.
 const HURT_SHARE := 0.5
 ## Fraction of the tank above the low line at which fuel buying stops.
 const FILL_MARGIN := 0.15
@@ -54,7 +55,8 @@ const ERRAND_LIMIT := 60.0
 const UNREACHABLE_BACK_OFF := 180.0
 ## Seconds without a sight or a sound of the dead that make a lull in a round.
 const LULL_SECONDS := 10.0
-## The share of a round's dead that, once only this many are left, makes a lull to go shopping in.
+## The share of a round's dead that, once only this many are left, makes a lull to go shopping in
+## (`BotShop.calm_share` starts at this).
 const CALM_SHARE := 0.25
 ## Seconds between two looks at what to buy.
 const PLAN_EVERY := 0.5
@@ -86,6 +88,11 @@ var _ammo_until := -INF
 var _waiting_since: Dictionary = {}
 ## Circuit id to the clock when its area was first found empty.
 var _empty_since: Dictionary = {}
+## The breaker the bot set out to throw on, and the clock until which it keeps wanting it: the walk
+## to a breaker that stands outside its area's lamps takes the bot out of the area, and without this
+## the bot would stop wanting the circuit, turn back to the shop, and want it again on the way in.
+var _breaker_id: StringName = &""
+var _breaker_until := -INF
 var _fuelling := false
 var _last_item: StringName = &""
 var _begun := 0.0
@@ -159,7 +166,7 @@ func run(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: flo
 		_planned_at = -INF
 	if now - _planned_at >= PLAN_EVERY or beliefs.purchased_at > _planned_at:
 		_plan(beliefs, state, me, frame)
-	if threat < CLEAR_FROM:
+	if threat < _shop.clear_from:
 		_last_item = &""
 		_arrived_at = -1.0
 		return false
@@ -385,7 +392,7 @@ func calm_at(frame: Dictionary) -> int:
 	if round_number != _round or remaining > _peak:
 		_peak = remaining if round_number != _round else maxi(_peak, remaining)
 		_round = round_number
-	return maxi(BotEconomy.CALM_REMAINING, ceili(float(_peak) * CALM_SHARE))
+	return maxi(BotEconomy.CALM_REMAINING, ceili(float(_peak) * _shop.calm_share))
 
 
 ## Whether the frame shows a break or a lull in a round.
@@ -445,7 +452,10 @@ func _etiquette(view: BotEconomy.View, beliefs: BotBeliefs, frame: Dictionary, m
 		var player: Dictionary = players[id]
 		if id == me_id or player.get("dead", false):
 			continue
-		if player.get("downed", false) or float(player.get("health", 100.0)) < 100.0 * HURT_SHARE:
+		if (
+			player.get("downed", false)
+			or float(player.get("health", 100.0)) < 100.0 * _shop.hurt_share
+		):
 			trouble = true
 	for door_id in _shop.unlocked_doors(view.doors_open):
 		var price := _shop.economy.item(door_id).price_at(view.round_number)
@@ -619,6 +629,7 @@ func _circuits(
 	if prompt.get("kind", &"") == &"circuit" and prompt.get("id", &"") == best_id:
 		intent.use = true
 		intent.note = note
+		_commit_breaker(best_id, circuits, now)
 		return true
 	if best_apart <= ARRIVE + 0.5:
 		# At the post but the prompt names another (a door or a spot is nearer): give it a moment.
@@ -628,13 +639,25 @@ func _circuits(
 			_denied["circuit:%s" % best_id] = now + BACK_OFF
 			_post_arrived = -1.0
 			return false
+		_commit_breaker(best_id, circuits, now)
 		return true
 	if _cannot_reach(_shop.circuit_stands[best_id], now):
 		return false
 	intent.goal = _shop.circuit_stands[best_id]
 	intent.goal_radius = ARRIVE
 	intent.note = note
+	_commit_breaker(best_id, circuits, now)
 	return true
+
+
+## Keeps the breaker wanted while the bot is on its way to throw it on (for one errand limit from
+## the start); one the bot goes to throw off is not kept: it would be thrown back on at once.
+func _commit_breaker(circuit_id: StringName, circuits: Dictionary, now: float) -> void:
+	if circuits.get(circuit_id, false):
+		return
+	if circuit_id != _breaker_id or now >= _breaker_until:
+		_breaker_id = circuit_id
+		_breaker_until = now + ERRAND_LIMIT
 
 
 ## Whether the bot wants `circuit_id` on. The field's stays on; an area's is on while a person is in
@@ -649,6 +672,8 @@ func _wants_circuit(
 		return fraction > 0.0 or on_now
 	if not frame.get("doors", []).has(door):
 		return false
+	if on_now and circuit_id == _breaker_id:
+		_breaker_id = &""
 	var line := _shop.fuel.low_fraction + (0.0 if on_now else FILL_MARGIN)
 	if fraction < line:
 		return false
@@ -656,7 +681,8 @@ func _wants_circuit(
 		_empty_since.erase(circuit_id)
 		return true
 	if not on_now:
-		return false
+		# The bot is on its way to this breaker and the walk took it out of the area: it goes on.
+		return circuit_id == _breaker_id and beliefs.now < _breaker_until
 	if not _empty_since.has(circuit_id):
 		_empty_since[circuit_id] = beliefs.now
 	return beliefs.now - float(_empty_since[circuit_id]) < AREA_EMPTY

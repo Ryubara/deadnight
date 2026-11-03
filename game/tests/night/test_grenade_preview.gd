@@ -110,9 +110,9 @@ func test_the_line_is_where_the_grenade_flies() -> void:
 
 
 func test_looking_higher_throws_farther_up_to_the_high_arc() -> void:
-	_tick(_holding(0.2))
+	_tick(_holding(0.0))
 	var flat := _night.preview.landing()
-	_tick(_holding(0.7))
+	_tick(_holding(0.35))
 	var high := _night.preview.landing()
 	var hand := _night.player().global_position
 	assert_float(Vector2(high.x - hand.x, high.z - hand.z).length()).is_greater(
@@ -153,3 +153,21 @@ func test_nothing_is_shown_with_no_grenades_left_or_when_downed() -> void:
 	assert_bool(_night.preview.visible).is_false()
 	_night.preview.follow(_holding(), _night.player(), Night.STEP, false)
 	assert_bool(_night.preview.visible).is_true()
+
+
+func test_a_zombie_in_the_way_stops_the_line_beside_it() -> void:
+	var normal := _night.preview.zombies
+	_night.preview.zombies = Callable()
+	_tick(_holding(0.05))
+	var through := _night.preview.landing()
+	# The zombie stands under the line, a few samples out, where the grenade is still in the air.
+	var line := _night.preview.points()
+	var at := line[3]
+	at.y = through.y
+	var dead: Array[Dictionary] = [{"id": 99, "position": at}]
+	_night.preview.zombies = func() -> Array[Dictionary]: return dead
+	_tick(_holding(0.05))
+	var stopped := _night.preview.landing()
+	_night.preview.zombies = normal
+	assert_float(Vector2(stopped.x - at.x, stopped.z - at.z).length()).is_less(1.0)
+	assert_float(Vector2(through.x - at.x, through.z - at.z).length()).is_greater(2.0)

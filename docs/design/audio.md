@@ -5,10 +5,11 @@ every level and limit, is `sound_catalog.gd`.
 
 ## Where the sounds come from
 
-Of the 402 sound files in `game/assets/audio/`, **246 are synthesised** by the scripts in `tools/audio/` (how:
-[research](../research/audio.md)): original work, committed, and changed by editing a number. **41 are generated with
-ElevenLabs Sound Effects** and **115 with ElevenLabs text to speech** (the soldier's voice) on the free tier, which is
-third-party output: attribution required, not licensed for commercial use, to be relicensed or replaced before a
+Of the 508 sound files in `game/assets/audio/`, **249 are synthesised** by the scripts in `tools/audio/` (how:
+[research](../research/audio.md)): original work, committed, and changed by editing a number. **29 are generated with
+ElevenLabs Sound Effects** and **230 with ElevenLabs text to speech** (the male and the female soldier's
+voices) on the free tier, which is third-party output: attribution required, not licensed for commercial use, to be
+relicensed or replaced before a
 commercial release
 ([#252](https://github.com/Ryubara/deadnight/issues/252)). The Credits screen names ElevenLabs.
 
@@ -16,8 +17,9 @@ commercial release
 | --- | --- | --- | --- |
 | `zombie/` `alert_4..6`, `attack_4..6`, `death_3..5`, `groan_5..7`, `groan_brute_4..5`, `groan_crawler_4..5`, `hurt_4..6`, `roar_3..4`, `shriek_3..5` | 24 | ElevenLabs (models v2 and v3), extra takes of the dead's voices | [`zombie/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/zombie/LICENSE.md), every prompt in `zombie/eleven.json` |
 | `eleven/` | 5 | ElevenLabs (model v2): the generator's engine loop, power-down and power-up, the door purchase | [`eleven/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/eleven/LICENSE.md), every prompt in it |
-| `voice/soldier/` | 115 | ElevenLabs text to speech (model `eleven_v4`, the premade voice Brian): the soldier's barks, see [The soldiers' voices](#the-soldiers-voices) | [`voice/soldier/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/voice/soldier/LICENSE.md), every line, setting and seed in `manifest.json` |
-| the other 48 files in `zombie/`, and `ambience/`, `grenade/`, `guns/`, `melee/`, `music/`, `shop/`, `steps/`, `stings/`, `ui/`, `world/` (11, 8, 72, 5, 2, 2, 48, 3, 9 and 38 files) | 246 | synthesised by `tools/audio/` (`generate.py` and the recipe files), seeded from each sound's name | none: nothing in them is third-party (see [`tools/audio/README.md`](https://github.com/Ryubara/deadnight/blob/main/tools/audio/README.md)) |
+| `voice/soldier/` | 115 | ElevenLabs text to speech (model `eleven_v4`, the premade voice Brian): the male soldier's barks, see [The soldiers' voices](#the-soldiers-voices) | [`voice/soldier/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/voice/soldier/LICENSE.md), every line, setting and seed in `manifest.json` |
+| `voice/soldier_female/` | 115 | ElevenLabs text to speech, Free tier (model `eleven_v4`, the premade voice Sarah): the same moments and takes in the female soldier's voice | [`voice/soldier_female/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/voice/soldier_female/LICENSE.md), every line, setting and seed in `manifest.json` |
+| the other 48 files in `zombie/`, and `ambience/`, `grenade/`, `guns/`, `melee/`, `music/`, `shop/`, `steps/`, `stings/`, `ui/`, `world/` (11, 8, 72, 5, 2, 2, 48, 3, 11 and 39 files) | 249 | synthesised by `tools/audio/` (`generate.py` and the recipe files), seeded from each sound's name | none: nothing in them is third-party (see [`tools/audio/README.md`](https://github.com/Ryubara/deadnight/blob/main/tools/audio/README.md)) |
 
 The decision to use the ElevenLabs takes is recorded in two places, which say it differently:
 [#252](https://github.com/Ryubara/deadnight/issues/252) states a maintainer decision of 2026-11-01 to use the free tier
@@ -78,7 +80,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | Reloads | `reload_pistol_mag_out/_in`, `reload_smg_mag_out/_in`, `reload_rifle_round/_lever`, `reload_shotgun_open/_shells/_shut` | one sound for each event frame of the reload clip |
 | Steps | `step_asphalt`, `step_gravel`, `step_own_asphalt`, `step_own_gravel` | eight takes each; gravel is a spray of tiny grains; the `own` pair is the local player's softer set ([footsteps](#footsteps)) |
 | The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` and the per-type sounds below | one throat model, different pitch curves, vowels, rasp and growl; the groans, snarls, hurts, deaths, shrieks and roars also have ElevenLabs takes as extra variants (see above) |
-| Grenades | `grenade_tick`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the tick is one fixed pitch whose rate rises with the fuse, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
+| Grenades | `grenade_beep`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the beep is a time bomb's (a clean 2.6 kHz tone, 60 ms, one fixed pitch) from the pin to the blast, from the player's head while it is cooked and then from the grenade wherever it lies, every player hears it placed in 3D; its gap shrinks from 0.5 s to 0.09 s and it swells 5 dB, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
 | The lot | `generator_hum` (loops), `generator_engine` (loops), `generator_start`, `generator_up`, `generator_sputter`, `generator_down`, `generator_down_air`, `breaker_on`, `breaker_off` | see [The lot's machines](#the-lots-machines) |
 | The shop | `door_unlock`, `door_buy`, `buy_weapon`, `buy_ammo`, `buy_fuel`, `buy_tonic`, `buy_recut`, `deny`, `points_tick`, `points_kill` | what each purchase sounds like (besides `till_ring`), the refusal's buzzer and the points |
 | The crane | `crane_spin`, `crane_claw_drop`, `crane_claw_lift`, `crane_prize`, `crane_break`, `crane_move` | the prize crane's play, from the rules' `crane_*` events, at the crane: `crane_spin_started` is the claw going down and a carnival jingle that slows down (5.4 s, a bell at 4.6 s as the 4.5 s spin ends), `crane_prize_ready` the claw hauling up and, 0.35 s later, the prize ding, `crane_prize_taken` the rack's clack, `crane_breakdown` sputter, sparks and power-down, `crane_moved` a whoosh and a clunk, and a refused take the buzzer |
@@ -175,10 +177,14 @@ A hardened soldier who talks like a person in the moment, not a caption for it: 
 nearly had me, back off, back off!". Each line is first person with contractions, fillers, breaths and exclamations, of
 uneven length, with the feeling in the words first and an ElevenLabs v4 audio tag (`[breathing hard]`, `[laughs]`) second
 (the first sample, written as instructions, read like a narrator: [research](../research/audio.md#the-soldiers-voice-384)).
-One voice, Brian,
-for everyone: the player's own comes flat (in their head), a teammate's from where they stand.
+Two
+voices say the same moments, with the same number of takes: Brian (male) and Sarah (female, her own words where a
+line reads better that way). A player speaks with the voice their frame entry names (`voice`: `male` or `female`;
+male when it names none), so the character choice ([#678](https://github.com/Ryubara/deadnight/issues/678)) only
+has to set that field. The player's own voice comes flat (in their head), a teammate's from where they stand.
 `SoldierVoice` (`gameplay/night/`) turns what the server sent into **moments** and `VoiceDirector` decides whether
-and which take speaks; the table of moments, takes and ranks is `SoldierVoiceCatalog`.
+and which take speaks; the table of moments, takes and ranks is `SoldierVoiceCatalog`. The female takes are
+`voxf_<moment>_<n>` (the male `vox_<moment>_<n>`), built from the same table and the same mix numbers.
 
 | Moment (takes) | Said when |
 | --- | --- |
@@ -296,7 +302,9 @@ stride sooner, a crouched creep slower, standing and flight are silent.
   cars, crates and the ground are not on it, so a wall hides a shot and a car does not. A fully blocked sound is
   9 dB quieter and low-passed at 1.1 kHz, and counts as half as
   loud when the budget compares it (in the web build a further `NO_FILTER_OCCLUSION_DB`, 4 dB, below). Measured in a
-  capture: a rifle shot behind a wall was 10 dB down and its centre of energy fell from 3.1 kHz to 0.5 kHz.
+  capture: a rifle shot behind a wall was 10 dB down and its centre of energy fell from 3.1 kHz to 0.5 kHz. A sound
+  def's `occlusion_scale` (1 by default) takes only that share of it: a warning that has to carry through cover, the
+  grenade's fuse beep, has 0.35 (4 dB down at most, a low-pass at 3.6 kHz).
 - **Ducking.** A sting lowers the `Duck` bus, so Effects and Ambience, by its `duck_db` (9 dB for `round_start`, 5 for
   `round_end`) at 80 dB/s, holds it for the sting's front (1.6 s, 0.8 s) and lets go at 14 dB/s. The curve is pinned in
   `tests/core/test_audio_mix.gd`.

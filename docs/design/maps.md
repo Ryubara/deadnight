@@ -32,8 +32,14 @@ address typed on the Join screen knows nothing of the map).
 3. Set `shipped = true` and `scene_path`; add its id to `PLAYABLE_MAPS` in `spikes/backend/src/settings.ts` (a test
    compares the two lists, `test_the_backend_lists_the_maps_the_game_can_play`).
 
+A map with its own prices, windows or caps names a rules overlay in its scene's `metadata/tuning` (`MapTuning`, laid
+over a copy of the shared table by `NightWorld.rules_for`: the night and the balance simulator do it already; a client
+that builds the map from a WELCOME must too, before the snapshot's tuning id is compared). A scene with floors, its own
+spawn groups and saved meshes is read through `MapLayout` ([the second map](smallmap.md#what-a-night-reads-from-a-map-scene)).
+
 The small indoor map's entry (`small_indoor.tres`) already exists with `shipped = false`; its name, "The back rooms",
-is a working title until the greybox lands.
+is a working title. Its scene plays (the links, windows, buys and box are set up, #632) and the tests and captures build
+it with `Night.scene` / `NightWorld.scene`; the picker unlocks it when its entry gets a `scene_path` and `shipped`.
 
 ## The choice is a match setting
 
