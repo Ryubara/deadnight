@@ -211,13 +211,17 @@ static func _add_scroll_bars(theme: Theme, t: UITokens) -> void:
 			theme.set_stylebox(part, kind, _pill(thumbs[part], thickness))
 
 
-## Every ScrollContainer keeps `hover_room` free at its left and right: a scroll area cuts off what
-## sticks out of it, and a hovered button grows past its slot (#628). The sides only: the height of
-## a scroll area is a number the screens compute from its content.
+## Every ScrollContainer keeps `hover_room` free at its left and right and `scroll_room` above and
+## below: a scroll area cuts off what sticks out of it, and a hovered button grows past its slot
+## (#628) while the focus ring is drawn outside the button (#644). The margin is empty space at the
+## ends of the content only; a screen that sizes the area from its content adds
+## `UIScroll.margins` to it.
 static func _add_scroll_room(theme: Theme, t: UITokens) -> void:
 	var room := StyleBoxEmpty.new()
 	room.content_margin_left = t.hover_room
 	room.content_margin_right = t.hover_room
+	room.content_margin_top = t.scroll_room
+	room.content_margin_bottom = t.scroll_room
 	theme.set_stylebox(&"panel", &"ScrollContainer", room)
 
 

@@ -74,7 +74,8 @@ func test_scroll_by_moves_the_list_and_clamps_at_both_ends() -> void:
 	screen.scroll_by(-100.0)
 	assert_int(screen.scroll.scroll_vertical).is_equal(0)
 	screen.scroll_by(100.0)
-	var end := int(screen.scroll.get_v_scroll_bar().max_value - screen.scroll.size.y)
+	var bar := screen.scroll.get_v_scroll_bar()
+	var end := int(bar.max_value - bar.page)
 	assert_int(screen.scroll.scroll_vertical).is_between(end - 1, end)
 
 

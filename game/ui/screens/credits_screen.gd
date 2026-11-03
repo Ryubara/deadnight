@@ -76,7 +76,8 @@ func scroll_by(steps: float, pages := false) -> void:
 
 ## Where the list ends, in scroll units.
 func _scroll_end() -> float:
-	return maxf(scroll.get_v_scroll_bar().max_value - scroll.size.y, 0.0)
+	var bar := scroll.get_v_scroll_bar()
+	return maxf(bar.max_value - bar.page, 0.0)
 
 
 func _line_height() -> float:
