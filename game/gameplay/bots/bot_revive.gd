@@ -67,6 +67,9 @@ var team: BotTeam
 var telemetry: BotTelemetry
 var rounds: RoundTuning
 
+## The downed player a person pinged (`BotPings.downed`), raised first; 0 for none.
+var pinged := 0
+
 ## What the bot is doing about whom, and the verdict that led to it.
 var mode := Mode.NONE
 var victim := 0
@@ -360,6 +363,8 @@ func _downed(beliefs: BotBeliefs, here: Vector3) -> Array[Dictionary]:
 			found.append(mate)
 	found.sort_custom(
 		func(a: Dictionary, b: Dictionary) -> bool:
+			if (int(a["id"]) == pinged) != (int(b["id"]) == pinged):
+				return int(a["id"]) == pinged
 			var a_bot: bool = a.get("bot", false)
 			var b_bot: bool = b.get("bot", false)
 			if a_bot != b_bot:

@@ -39,6 +39,9 @@ var grenades := START_GRENADES
 var special: StringName = &""
 ## The purchases the server refused since the brain last looked: `{item, result}`.
 var denials: Array[Dictionary] = []
+## Things that happened to the bot or the night since the brain last looked, for the callouts:
+## `{kind}` (`revived`, `door_bought`, `fuel_low`, `breach_open`, `trapped`).
+var moments: Array[Dictionary] = []
 ## The clock when the bot last bought something.
 var purchased_at := -INF
 ## Rays the last look cast: how busy this think already was.

@@ -8,6 +8,7 @@ extends Node
 ## `godot --headless --path game res://tests/captures/bots_revive_soak.tscn
 ##   -- --seed=1 --minutes=10`
 ## Arguments after `--`: `--seed=N`, `--minutes=M` (game minutes), `--bots=N` (default 4),
+## `--parallel` (the errands do not wait for a turn: what the turn costs),
 ## `--human` (a stand-in person at seat 1 stands in the lot: the bots stay with it and raise it),
 ## `--tough=X` (every player's health, a multiple of the shipped),
 ## `--profile=rookie|regular|veteran|mixed` (default mixed), `--trace` (a line every 15 s),
@@ -29,6 +30,8 @@ var _ticks_in_round := 0
 var _rounds := 0
 var _pick := RandomNumberGenerator.new()
 var _forced := 0
+var _last_at: Dictionary = {}
+var _max_step := 0.0
 
 
 func _ready() -> void:
@@ -47,6 +50,7 @@ func _ready() -> void:
 	_night.gather()
 	_night.on_event = _on_event
 	_pick.seed = seed_value
+	_night.host.team.one_errand_at_a_time = not _args.has("parallel")
 	_night.start_round()
 	var limit := int(float(_args.get("minutes", 10)) * 60.0 * 60.0)
 	var ticks := 0
@@ -54,6 +58,7 @@ func _ready() -> void:
 		_night.tick()
 		ticks += 1
 		_watch_errands()
+		_watch_steps()
 		var every := int(float(_args.get("forced", 0.0)) * 60.0)
 		if every > 0 and ticks % every == 0 and _night.server.rules.phase == GameRules.Phase.ACTIVE:
 			_put_one_down()
@@ -69,6 +74,16 @@ func _ready() -> void:
 	_night.dispose()
 	await get_tree().process_frame
 	get_tree().quit()
+
+
+## The farthest a bot moved in one tick: a bot that is teleported would show.
+func _watch_steps() -> void:
+	for bot in _night.host.bots:
+		var id := bot.state.player_id
+		var at := _night.server.body_of(id).global_position
+		if _last_at.has(id):
+			_max_step = maxf(_max_step, (at - _last_at[id]).length())
+		_last_at[id] = at
 
 
 ## A seeded pick of the bots on their feet goes down, if two others stay up.
@@ -158,8 +173,10 @@ func _report(ticks: int) -> void:
 	var successes := 0
 	var deaths := 0
 	var aborts := 0
+	var lines := 0
 	for bot in _night.host.bots:
 		var counters := bot.telemetry.counters
+		lines += int(counters.get(&"callouts", 0))
 		attempts += int(counters.get(&"revive_attempts", 0))
 		successes += int(counters.get(&"revive_successes", 0))
 		deaths += int(counters.get(&"deaths_reviving", 0))
@@ -176,6 +193,8 @@ func _report(ticks: int) -> void:
 					"aborts": int(counters.get(&"revive_aborts", 0)),
 					"deaths_reviving": int(counters.get(&"deaths_reviving", 0)),
 					"callouts": int(counters.get(&"callouts", 0)),
+					"trapped": int(counters.get(&"bot_trapped", 0)),
+					"role": (bot.brain as BotFightBrain).role,
 					"stuck_longest": snappedf(bot.legs.stuck.longest(), 0.1),
 					"think_us_p99": bot.telemetry.think_us(0.99),
 				}
@@ -196,7 +215,11 @@ func _report(ticks: int) -> void:
 		"aborts": aborts,
 		"deaths_reviving": deaths,
 		"deaths_share": snappedf(float(deaths) / float(maxi(attempts, 1)), 0.01),
+		"callouts": lines,
+		"callouts_per_bot_per_10s":
+		snappedf(float(lines) / (float(_night.host.bots.size()) * float(ticks) / 600.0), 0.001),
 		"most_on_an_errand": _most_errands,
+		"max_step_m_per_tick": snappedf(_max_step, 0.01),
 		"ticks_two_on_errands": _both_errands,
 		"bots": bots,
 	}
