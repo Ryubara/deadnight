@@ -290,14 +290,17 @@ test("the host's map is checked, kept on the lobby, shown in its view and previe
   const code = { code: lobby.code };
   assert.equal((await call("POST", "/lobbies/preview", host.headers, code)).json().map, "drive_in");
 
-  // Only a map the game can play is taken: a map that is listed but not built, a made-up one and a wrong type are refused.
+  // Only a map the game can play is taken: a made-up one and a wrong type are refused (the second map ships, so it is taken).
   const rules = { count_multiplier: 1, max_alive: 0, break_seconds: 0 };
   const put = (body: object) => call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, body);
-  for (const map of ["small_indoor", "nope", "", 7, null]) {
+  for (const map of ["nope", "", 7, null]) {
     const refused = await put({ ...rules, map });
     assert.equal(refused.statusCode, 400, JSON.stringify(map));
     assert.equal(refused.json().error, "bad_settings");
   }
+  const second = await put({ ...rules, map: "small_indoor" });
+  assert.equal(second.statusCode, 200);
+  assert.equal(second.json().map, "small_indoor");
   const set = await put({ ...rules, map: "drive_in" });
   assert.equal(set.statusCode, 200);
   assert.deepEqual(set.json().settings, { ...rules, map: "drive_in" });

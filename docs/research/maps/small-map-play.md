@@ -83,6 +83,53 @@ only) gave, for four bots, six rounds, four seeds (`tests/captures/swing_rate.ts
 The swings now begin at the lot's distance. The ticks in reach without a swing are down from 739 to 270 (the lot: 86):
 the rest are the counter and the racks, which the ray should stop at.
 
+## Shipped and dressed: the soak and the phone profile (#792)
+
+The soak harness (`tests/captures/bots_soak.tscn`, #778) takes `--map=small_indoor`: the night is built from the map's
+scene and played by its rules overlay. Regular bots, rounds capped at 15, headless at 60 ticks a second. The branch is
+the dressed map; the **baseline is the commit the branch began from** (`1a4e3016`, a detached checkout with only the
+registry entry and the `--map` option added, so the undressed greybox plays), measured on the same machine, the same
+seeds.
+
+| Cell | Dressed | Baseline |
+| --- | --- | --- |
+| One bot, seeds 2 to 11 | rounds 10, 10, 10, 11, 10, 8, 10, 10, 10, 10 | seeds 2 to 3: 10, 10; seeds 4 to 11: 13, 10, 14, 11, 10, 10, 13, 9 |
+| One bot, seed 1 | **stalled in round 1** ("a round that would not end") | round 10 |
+| One bot, seed 11 | round 10 | **stalled in round 9** (same kind) |
+| Four bots, seeds 1 to 3 | rounds 10, 10, 11; seed 1: a bot idle 19 s under Roam | rounds 10, 10, 15 (the cap); idle 5.6 to 19 s in seeds 2 and 3 |
+| A person stand-in and three bots, seeds 1 to 3 | rounds 14, 14, 14, no gate broken | not run |
+
+No bot stuck for more than 4.6 s anywhere; no engine error (two runs of the dressed map printed "no saved navigation
+mesh" because the scene was written while they ran: they are not counted).
+
+**The stalled round (both maps, one seed in eleven each).** A dead of the east windows whose path to the bot crosses
+another window's gap stops at its own gate's line (`ZombieGate` is a line across the wall with no width, so the dead
+stops anywhere along it), out of sight behind the wall, and tears that gate's boards; the bot mends them, forever. The
+trace of the dressed seed 1: `Z1 (17.3, 10.6) g=start_4 tear=0.1...0.9`, a metre and a half past the wall between two
+windows, the bot's note `boards start_4`. The undressed map does it on seed 11 with the same signature. Not caused by the
+dressing; an issue holds it.
+
+The idle bots under Roam in a night of four are the bots' (#767, #768, #770): the baseline shows them on two of three
+seeds.
+
+### The phone profile
+
+`tools/web_smoke/phone_frames.py` (the page of a phone, pixel ratio 3 capped at 2, the processor slowed 4 times, the
+autopilot night; the page takes `map=small_indoor`, #792), one minute each, unpaced, on a shared machine that was running
+other agents' work (22 Godot programs at one point: the frame times moved 2 times between runs of the same page, so read
+the counts, and the milliseconds only as a rough order):
+
+| | Draw calls (3D) | Triangles | Objects | Frame p50 / p95 / p99 (ms) |
+| --- | ---: | ---: | ---: | --- |
+| The lot, round 1 | 1,057 (891) | 164,588 | 1,397 | 126 / 235 / 345 (485 frames) |
+| The back rooms, round 1 | 541 to 581 (323 to 362) | 64,478 to 68,411 | 1,120 to 1,153 | 62 / 189 / 268 (810 frames); an earlier run 330 at p95 |
+
+The dressed map draws about half the lot's calls and 40 % of its triangles, so #728's budget (the lot's 770 to 1,050 calls
+and 150,000 to 165,000 triangles) holds with room. What the dressing adds is overdraw, not geometry: each moon shaft,
+pool, halo and cone is an additive card (about 140 in all), and on a weak GPU that is the cost to watch; the backdrop
+adds 21,400 primitives from a window ([the group 5 page](small-map-art.md#the-backdrop)). Not measured: a phone, and the
+software-GPU profile (`--software`) that shows fill cost.
+
 ## What is open
 
 - **A round that never ended.** In some nights (one in seven of these, and one of the first run) a bot stood alive for the

@@ -38,13 +38,16 @@ func _ready() -> void:
 	await _still("2-solo")
 	var screen := UIRouter.top() as PlayScreen
 	if screen != null:
-		# The keyboard walks onto the card of the map that is not built and presses it.
-		# The locked card is under the lot's on the desktop and beside it on a phone.
+		# The keyboard walks onto the second map's card and presses it (#792: it is built now).
+		# It is under the lot's on the desktop and beside it on a phone.
 		screen.panel.map_picker.card_for("drive_in").grab_focus()
 		await _key(KEY_RIGHT if MenuScale.is_phone(get_window().size) else KEY_DOWN)
 		await _key(KEY_ENTER)
-		print("  after Enter on the locked card the map is ", screen.panel.map_picker.selected_id)
-		await _still("3-solo-locked-card")
+		print(
+			"  after Enter on the second map's card the map is ",
+			screen.panel.map_picker.selected_id
+		)
+		await _still("3-solo-second-card")
 		UIRouter.pop()
 		await UIRouter.idle
 	await _room(true, "4-host-lobby")

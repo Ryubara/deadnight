@@ -6,10 +6,11 @@ our own. The look and its kit are [small map: art and kit](../research/maps/smal
 through the windows (the drive-in's world in the distance) is #638's; the links, windows, buys and the box are
 [Playing it](#playing-it-links-windows-buys-and-the-box) below (#632).
 
-The greybox is `game/world/smallmap/smallmap_greybox.tscn`, written by `tools/world/build_smallmap_greybox.py`
-(run it from the repository root; a rerun leaves the scene unchanged). It is its own scene: the map picker (#624)
-wires it into the night later. Its walls, floors and ceilings already wear the kit's shell materials (#633); the
-kit's modelled pieces (`game/world/smallmap/fixtures/`) go into its sockets later.
+The map is `game/world/smallmap/smallmap_greybox.tscn`, written by `tools/world/build_smallmap_greybox.py` and
+`tools/world/build_smallmap_dress.py` (run the first from the repository root; a rerun leaves the scene unchanged). It
+is shipped (#792): the picker's second card, "The back rooms", builds it. The greybox is the collision, the walking
+mesh, the sockets and the shell materials (#631, #633); the dressing puts the kit's modelled pieces, lamps, machines
+and the backdrop on those sockets ([Dressed](#dressed-792) below).
 
 ![The greybox from above: the ground floor, and the upper floor with the ring's lap in yellow](smallmap-plan.png)
 
@@ -168,11 +169,11 @@ At most **24 dead stand at once**, whatever the round and the party (`alive_cap`
 
 ### What the map leaves out
 
-Nacht has no perks, no upgrade and no power, and so far neither has this map: no generator, breaker post, fuel can,
-tonic or re-cut bench (the tank never drains, there are no circuits, and the lamps hang on the `battery` circuit that
-is always lit so the dead keep their lit pace under them). Whether any of it comes to this map is the **maintainer's**
-decision (formula rows 25 and 30); this is the formula's default, in force until it is answered, and adding any of it
-back is one more row in this overlay plus its marker in the scene.
+Nacht has no perks, no upgrade and no power. The map has no power either: no generator, breaker post or fuel can (the
+tank never drains, there are no circuits, and the lamps hang on the `battery` circuit that is always lit so the dead
+keep their lit pace under them). The formula's default for the machines (row 25) was "none", asked of the maintainer;
+issue 792 brings the lot's own (the six tonics and the re-cut bench) at the shared table's prices, so the overlay no
+longer drops the tonic and upgrade kinds ([Machines](#machines)).
 
 ### Floors for the dead
 
@@ -217,6 +218,45 @@ meeting the player's body it was five: #764); the first link was bought in round
 twelve windows were torn, and the most dead at once was 20. `test_smallmap_bot_night.gd`
 plays a short night of one and of four in the tests; `test_smallmap_economy.gd`, `_links.gd`, `_buys.gd` and
 `_windows.gd` pin rows 20 to 26 and every link, buy and window; the shoulder-camera captures are on the pull request.
+
+## Dressed (#792)
+
+`build_smallmap_dress.py` is called by the greybox builder after every box is written, so the scene stays one file from
+one script. What each socket wears, and what moved to make it fit:
+
+| Socket | Wears | What moved |
+| --- | --- | --- |
+| Windows (11) | the kit's window module (`wall_window_zombie`, `_upper` upstairs); boards in the module's own slots on the room side | the wall's gap runs to the module's 2.8 m top (a `Lintel` body fills it); the sill, jambs and blocker are collision only |
+| The breach | a kit post each side of the gap, a beam across its top, walked-over rubble | the gap runs to 2.8 m as the windows' do; the dead's 1.6 m way is unchanged |
+| Door (hall to side room), upstairs opening | the kit's wide opening (`wall_opening_wide`), its own hidden jambs and lintel | the wall's gap is the module's 3 m wide; the clear opening is the 2.0 x 2.4 m it was |
+| The door's leaf, the stairs' blockers | `door_purchase` stretched to 2 m, `debris_blocker` stretched to the 2 m flight; each with a `DoorGlow` of the far room's lamp | the slab stays (hidden): the walking mesh and `LotDoors` are as they were |
+| The two flights | the kit's `stair_straight` stretched to 2.0 x 5.1 x 3.4 m over the greybox's hidden ramp (rails off, the flight has a wall each side) | none: the ramp is what is walked on |
+| Pillars, racks | the kit's pillar to 2.8 m with a block band above it; two shelf racks a bay, squat as their 1.2 m collision so the view over them stays open | the boxes are hidden collision now |
+| Lamps | `PendantLight` (`hang` 0.4 m: the kit's lamp hangs from 2.8 m, the ceiling is 3.2 m): one real light each (the `powered_light` group), a halo, a pool and a cone of haze | the 8 omni lamps at 2.9 m, range 8, are these lights at 2.45 m, range 5.5 |
+| Extra light | decor pendants (no light slot) over the box and each shop wall, wall lanterns at the three links, moon shafts in six windows, chalk messages in four places | none |
+| Cabinet | the kit's `tall_cabinet` with the plaque on end in its recess | the cabinet's box is the fixture's |
+| Clutter | filing cabinets, chairs, tipped tables, a rubble cone, walked-over rubble, helmets, radios and lanterns (`Dressing`) | solid pieces stand against walls and in corners; the saved walking meshes are baked again |
+| Outside | the backdrop (`backdrop.tscn`); the yard is the backdrop's 62 x 54 m, frosted ground, its boundary a wire fence seen through (the boxes that stop the dead are hidden); the north fence stands on the bank | the yard grew from 50 x 56 m; the haze is 0.035 (the lot's 0.013 barely shows in a 6 m room) |
+
+Not done: the kit's pitched roof (`roof_bay`) and a broken bay's top light. The roof can be seen from nowhere a player
+stands (the ceilings are flat slabs under it and the windows look out sideways), so it would cost triangles for no
+picture; a hole in a ceiling with moon through it is an art issue of its own.
+
+### Machines
+
+The lot's machines, one to a place that has the room for it (each is its `ShopProps` instance, a hidden block that holds
+its place in the walking mesh and a `ShopSpots` marker 0.7 to 1.1 m in front of it):
+
+| Where | Machine | Item and price |
+| --- | --- | --- |
+| Hall, west wall between the two plaques | soda fountain | hearty health tonic, 1000 |
+| Side room, north wall (the shop wall) | Quick Load and Swift Rescue coolers | 2500 and 1500 |
+| Upstairs, over the side room: south wall | re-cut bench, Third Holster cooler | re-cut 1500, Third Holster 3000 |
+| Upstairs, north wall | Double Shot and Reload Shock coolers | 3000 and 2000 |
+
+The dearest are on the farthest walls, as the weapons' prices climb. The perk coolers are drawn at 0.85 so their emblem
+(3.55 m at full size) clears the 3.2 m ceiling. The prices are the shared table's (one source); the bots do not shop
+at the machines yet (the map's `bot_shopping` list is the links, guns and the box), so the machines are a person's.
 
 ## Sockets for the kit and for the night
 
