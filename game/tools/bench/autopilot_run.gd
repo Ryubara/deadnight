@@ -7,17 +7,17 @@ extends Node
 ## grows; the shop, the doors and the generator are the bot's, as in play.
 ##
 ## Arguments (`?autopilot&count=3&alive=40`, or `-- --autopilot --count=3`):
-##   `rounds=N`   stop once round N has started and been played for `hold` seconds (default 5)
-##   `hold=S`     seconds the last round is played (default 20)
-##   `count=X`    the match setting's count multiplier (X times as many dead, as fast)
-##   `alive=N`    the match setting's most alive at once (0 is the tuned curve)
-##   `tough=X`    the dead have X times the health: the bot cannot clear them, so the crowd grows to
-##                the cap and stands there (a big crowd without waiting for round 20; default 1)
-##   `crowd=N`    the first round brings N zombies (the tuned 6 otherwise); with `tough`, a crowd
-##                that stands at once
-##   `break=S`    seconds of break between rounds (0 is the tuned break)
-##   `seconds=S`  stop after S seconds of night whatever round it is (default 600)
-##   `out=PATH`   on a desktop: write the report there and quit
+## `rounds=N` stop once round N has started and been played for `hold` seconds (default 5)
+## `hold=S` seconds the last round is played (default 20)
+## `count=X` the match setting's count multiplier (X times as many dead, as fast)
+## `alive=N` the match setting's most alive at once (0 is the tuned curve)
+## `tough=X` the dead have X times the health: the bot cannot clear them, so the crowd grows to
+## the cap and stands there (a big crowd without waiting for round 20; default 1)
+## `crowd=N` the first round brings N zombies (the tuned 6 otherwise); with `tough`, a crowd
+## that stands at once
+## `break=S` seconds of break between rounds (0 is the tuned break)
+## `seconds=S` stop after S seconds of night whatever round it is (default 600)
+## `out=PATH` on a desktop: write the report there and quit
 ## The report is `window.deadnightRounds` (JSON text) in a browser, and a `AUTOPILOT_RUN` line on a
 ## desktop: for each round the frames, the frame's mean, median, 95th and 99th percentile and
 ## worst (ms), the worst second (the mean frame time of the worst 1 s of frames), the most and the
@@ -64,6 +64,9 @@ func _ready() -> void:
 	_hold = _args.get_float("hold", DEFAULT_HOLD)
 	_cap_seconds = _args.get_float("seconds", DEFAULT_SECONDS)
 	_out = _args.get_string("out")
+	LotBatcher.enabled = _args.get_string("batch", "1") != "0"
+	LotBatcher.keep_sources = _args.get_string("batch") == "toggle"
+	LotBatcher.small_range = _args.get_float("smallrange", 0.0)
 	NightScreen.match_settings = settings_from(_args)
 	NightScreen.start_mode = Night.Mode.AUTOPILOT
 	NightScreen.start_seed = Night.SEED
