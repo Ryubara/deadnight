@@ -29,6 +29,8 @@ var _stage := {}
 var _frame_seen := 0
 var _last_frame_usec := 0
 var _reported := false
+## What a subclass adds to the report (a bench that measures something of its own).
+var _extra := {}
 
 
 ## Paths through the navigation map, with the time they took.
@@ -245,6 +247,7 @@ func _report() -> void:
 		"navigation_calls_per_frame":
 		snappedf(_timed.calls / (n + SETTLE_FRAMES), 0.1) if _timed != null else 0.0,
 	}
+	out.merge(_extra)
 	var json := JSON.stringify(out)
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("window.__bench = %s;" % json)

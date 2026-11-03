@@ -1,0 +1,38 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/smallmap/wall_broken_upper.gltf" id="model"]
+
+[node name="WallBrokenUpper" type="Node3D"]
+
+[node name="Model" parent="." instance=ExtResource("model")]
+
+[node name="Blocker1" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
+visible = false
+use_collision = true
+size = Vector3(2, 0.7, 0.2)
+
+[node name="Blocker2" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.81, 1.25, 0)
+visible = false
+use_collision = true
+size = Vector3(0.38, 1.1, 0.2)
+
+[node name="Blocker3" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.73, 1.25, 0)
+visible = false
+use_collision = true
+size = Vector3(0.54, 1.1, 0.2)
+
+[node name="Blocker4" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.01, 0)
+visible = false
+use_collision = true
+size = Vector3(2, 0.42, 0.2)
+
+[node name="Blocker5" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.08, 1.25, 0)
+visible = false
+use_collision = true
+collision_layer = 2
+size = Vector3(1.08, 1.1, 0.2)
