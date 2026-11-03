@@ -64,8 +64,8 @@ the real command, its own model drawn).
 | `lever_rifle` | `rifle`, the Hunting rifle | **Wall** 1,200, and the **crane** (3) | 95 / 0.5 s |
 | `tommy_gun` | `smg`, the Tommy gun | **Crane** only (2) | 14 / 0.075 s |
 | `flare_gun` | `flare_gun` | **Crane** only (1); becomes a lure (#439) | 90 + blast 60 / 0.8 s |
-| `ray_gun` | `ray_gun`, the Ray gun | **Crane** only (1.5); [wonder weapons](#wonder-weapons-and-status-effects) | 300 + blast 160 / 0.45 s |
-| `freeze_gun` | `freeze_gun`, the Freeze gun | **Crane** only (1.5) | 30 + bloom freezes / 0.8 s |
+| `ray_gun` | `ray_gun`, the Moonbeam Pistol | **Crane** only (1.5); [wonder weapons](#wonder-weapons-and-status-effects) | 300 + blast 160 / 0.45 s |
+| `freeze_gun` | `freeze_gun`, the Snow-Cone Gun | **Crane** only (1.5) | 30 + bloom freezes / 0.8 s |
 | `baseball_bat` | `baseball_bat` | **Crane** only (0.5) | 60 / 0.4 s, sweeps 4 |
 | `fire_axe` | `fire_axe` | **Crane** only (0.5) | 150 / 0.9 s, head x2.5 |
 | `service_pistol` twice (#797) | `dual_pistols`, the Dual Pistols | **Crane** only (2.5), on both maps | 17 / 0.15 s, a hand each shot |

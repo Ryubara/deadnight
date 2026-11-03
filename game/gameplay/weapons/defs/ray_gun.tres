@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"ray_gun"
-display_name = "Ray gun"
+display_name = "Moonbeam Pistol"
 kind = 1
 automatic = false
 damage = 300
