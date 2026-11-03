@@ -23,8 +23,11 @@ Each finger has one job until it lifts, tracked by its touch index, so move, loo
 | Jump, Reload, Swap, Grenade | an arc round Fire | `jump`, `reload`, `swap_weapon`, `throw_grenade`. Grenade is held while the pin is out and lets go to throw; a drag that starts on it also looks (#599), because the right thumb is on it for the whole hold and the left has the stick, so the throw can be aimed |
 | Shoulder swap ("SIDE") | small, above Swap, outside the middle of the screen | `swap_shoulder`: the camera moves to the other shoulder, to see round a corner |
 | Melee | small, on the far right edge below Fire and above the ammo card (60 left, 310 up) | `quick_melee` (#588): a tap is one blow with whatever is in hand, at once; the server's 0.6 s cooldown holds a thumb that taps again and a finger that stays down is still one blow ([quick melee](weapons.md#quick-melee)) |
+| Bots ("BOTS") | small, on the far right edge above Melee (60 left, 405 up) | `bot_wheel` (#642): **hold** it and the bot command wheel opens over the middle of the screen; **drag** from where the thumb landed toward Follow (up), Roam (down right) or Hold (down left) and let go to give that order; letting go in the middle, or a tap, gives none. The view does not turn while it is held ([bot wheel](../research/bot-wheel.md)) |
+| Ping | small, top edge, right of Pause (538 right of the safe edge, 80 down) | `ping` (#642): a tap marks what the crosshair is on for the team, as Z, the middle mouse button and the pad's d-pad right do; the server's one mark a second per player holds a thumb that taps again |
 | Interact | left of Fire, only with a HUD prompt | `interact`; its caption says what it does (OPEN, BUY, HOLD for a broken fence, which keeps nailing boards while held, FUEL, SWITCH, TAKE, REVIVE) ([hold at a broken fence](rounds.md#the-fences-boards)) |
 | Pause | top, beside the round card | `pause` |
+| Scoreboard | under Pause | `scoreboard` while a finger is on it |
 
 Everything presses the game's own input actions, so the player and the night read touch like a key. Look goes out as mouse
 motion in mouse pixels, so the sensitivity setting, the ADS slow-down and invert Y apply. A press lasts at least 90 ms so
