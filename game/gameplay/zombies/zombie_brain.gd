@@ -65,6 +65,17 @@ static func stun(zombie: ZombieBody, seconds: float) -> void:
 		zombie.stun_seconds = maxf(seconds, 0.0)
 
 
+## It is held where it stands (a status that halts it): a swing in the air or a stagger is over, and
+## it stops. Whatever it was doing, it walks again from the chase when the hold ends.
+static func hold(zombie: ZombieBody) -> void:
+	if zombie.mode == ZombieBody.Mode.ATTACK or zombie.mode == ZombieBody.Mode.STAGGER:
+		zombie.enter(ZombieBody.Mode.CHASE)
+	zombie.velocity = Vector3.ZERO
+	zombie.push = Vector3.ZERO
+	zombie.move_speed = 0.0
+	zombie.tearing = false
+
+
 static func die(zombie: ZombieBody) -> void:
 	if zombie.mode != ZombieBody.Mode.DYING:
 		zombie.enter(ZombieBody.Mode.DYING)
