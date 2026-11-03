@@ -91,6 +91,9 @@ var bots: NightBots
 ## The match settings, set before `start`: the night's zombie intensity, alive cap and break. After
 ## `start_remote` they are the ones the server's WELCOME carried.
 var match_settings := MatchSettings.new()
+## The map's scene, set before `start`, for a night that is not on the registry's choice (a test, a
+## capture); empty builds the map the match settings name (`NightWorld.scene`).
+var scene: PackedScene
 ## `start_remote` only: the map to build before the server's WELCOME says which it is on (the lobby
 ## the player joined knows it); empty is the default map. A WELCOME that names another one has the
 ## world built again on that map.
@@ -173,10 +176,13 @@ func start(
 		await get_tree().process_frame
 		await get_tree().process_frame
 	world = NightWorld.new()
+	world.scene = scene
 	add_child(world)
 	await world.build(MapRegistry.of(match_settings.map))
 	loading.emit(BUILD_SHARE, "Setting up")
-	server = NightServer.new(world, p_seed, night_tuning, p_rules_tuning, match_settings)
+	# A map with its own rules overlay plays by it, over the shared table (or over the table given).
+	var table := p_rules_tuning if p_rules_tuning != null else load(GameRules.DEFAULT_TUNING_PATH)
+	server = NightServer.new(world, p_seed, night_tuning, world.rules_for(table), match_settings)
 	rules_tuning = server.rules.tuning
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
 	bot_orders.sender = link.send

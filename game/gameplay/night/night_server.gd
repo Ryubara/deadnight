@@ -169,8 +169,7 @@ func _init(
 	sim = ZombieSim.new(null, p_seed)
 	sim.rounds = rules.tuning.rounds
 	sim.pathing = NavmeshPathing.new(world.map())
-	sim.lit_probe = world.is_lit
-	sim.gates = world.gates()
+	world.equip(sim, _probe.callable())
 	sim.barricades = rules.barricades
 	sim.board_seconds = rules.tuning.barricades.seconds_per_board
 	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
@@ -746,7 +745,7 @@ func _spot_offer(player_id: int, here: Vector3) -> Dictionary:
 	var best := {}
 	var best_apart := INF
 	for spot in world.shop_spots():
-		var apart := _flat(here, spot["position"])
+		var apart := world.reach_distance(here, spot["position"])
 		if apart > tuning.use_reach or apart >= best_apart:
 			continue
 		var offer := _offer_at(player_id, spot)
