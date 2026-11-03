@@ -10,7 +10,20 @@ const OWN := 1
 const OTHER := 2
 const MUZZLE := Vector3(0.3, 1.45, -0.4)
 const CAMERA_AT := Vector3(0.6, 1.6, 2.3)
-const FIREARMS: Array[StringName] = [&"pistol", &"smg", &"rifle", &"shotgun", &"flare_gun"]
+const FIREARMS: Array[StringName] = [
+	&"pistol",
+	&"smg",
+	&"rifle",
+	&"shotgun",
+	&"flare_gun",
+	&"ppsh",
+	&"m249",
+	&"m4a1",
+	&"fifty_cal",
+	&"mp5",
+	&"pump_870",
+	&"dual_pistols",
+]
 const TABLE := "res://tests/night/gun_levels.json"
 ## A shot is at least this many LU above the night's beds (integrated, measured alone): one shot's
 ## loudest 400 ms, and a two second burst as a whole.

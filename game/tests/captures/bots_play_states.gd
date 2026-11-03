@@ -82,7 +82,7 @@ func _seat_the_bot() -> void:
 	state.player_id = SEAT
 	_host.add(
 		BotClient.new(
-			state, BotProfile.regular(), 100 + SEAT, Callable(self, &"_send").bind(SEAT), level
+			state, BotProfile.veteran(), 100 + SEAT, Callable(self, &"_send").bind(SEAT), level
 		)
 	)
 

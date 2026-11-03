@@ -110,9 +110,9 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | Group | Ids | Notes |
 | --- | --- | --- |
 | UI | `ui_hover`, `ui_focus`, `ui_tick`, `ui_press`, `ui_back`, `ui_push`, `ui_pop` | relay clacks and a rising or falling film whoosh; hover and focus together make one sound |
-| Guns | `shot_<gun>`, `tail_<gun>` for the pistol (the revolver), SMG, rifle and shotgun; `shot_flare`, `burst_flare`; `dry_fire`, `weapon_swap` | see [The guns](#the-guns) |
+| Guns | `shot_<gun>`, `tail_<gun>` for the pistol (the revolver), SMG, rifle and shotgun; `shot_flare`, `burst_flare`; `dry_fire`, `weapon_swap`; for the PPSh, M249, M4A1, .50 calibre, MP5, 870 pump and dual pistols (`ppsh`, `m249`, `m4a1`, `fifty_cal`, `mp5`, `pump_870`, `dual_pistols`) `shot_`, `tail_`, `equip_` and `dry_` plus the id | see [The guns](#the-guns) |
 | Impacts | `impact_flesh`, `impact_head`, `impact_world` | a wet thump, the same with a crack and a knock, and a round on asphalt or sheet metal with a ricochet's whine |
-| Reloads | `reload_revolver_open/_eject/_rounds/_close`, `reload_smg_mag_out/_in/_bolt`, `reload_rifle_round/_lever`, `reload_shotgun_open/_eject/_shells/_shut`, `reload_flare_open/_eject/_in/_shut`, `reload_pouch` | one sound for each step of the weapon's reload motion ([reloads](#reloads)) |
+| Reloads | `reload_revolver_open/_eject/_rounds/_close`, `reload_smg_mag_out/_in/_bolt`, `reload_rifle_round/_lever`, `reload_shotgun_open/_eject/_shells/_shut`, `reload_flare_open/_eject/_in/_shut`, `reload_pouch`; the second batch's `reload_ppsh_drum_out/_drum_in/_bolt`, `reload_m249_cover_open/_belt/_cover_shut/_charge`, `reload_m4a1_mag_out/_mag_in/_bolt`, `reload_fifty_mag_out/_mag_in/_bolt`, `reload_mp5_mag_out/_mag_in/_bolt`, `reload_pump_shell/_stroke`, `reload_dual_mag_out/_mag_in/_slide` | one sound for each step of the weapon's reload motion ([reloads](#reloads)) |
 | Steps | `step_asphalt`, `step_gravel`, `step_own_asphalt`, `step_own_gravel` | eight takes each; gravel is a spray of tiny grains; the `own` pair is the local player's softer set ([footsteps](#footsteps)) |
 | The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` and the per-type sounds below | one throat model, different pitch curves, vowels, rasp and growl; the groans, snarls, hurts, deaths, shrieks and roars also have ElevenLabs takes as extra variants (see above) |
 | Grenades | `grenade_beep`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the beep is a time bomb's (a clean 2.6 kHz tone, 60 ms, one fixed pitch) from the pin to the blast, from the player's head while it is cooked and then from the grenade wherever it lies, every player hears it placed in 3D; its gap shrinks from 0.5 s to 0.09 s and it swells 5 dB, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
@@ -126,6 +126,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | The soldiers | `vox_<moment>_<n>` | 115 takes of 21 moments, played by `SoldierVoice`: see [The soldiers' voices](#the-soldiers-voices); they replace the synthesised `player_hurt` and `player_downed` |
 | Stings | `round_start`, `round_end`, `special_round` | stereo, on Music; `round_start` ducks Effects 9 dB; `special_round` (3.5 s, on the rules' `special_round_announced`, a higher priority so it takes the one sting voice from the `round_end` that is still sounding) 9 dB for 2.2 s |
 | Beds | `bed_crickets`, `bed_highway`, `bed_projector`, `bed_score`, `bed_tension` | loops under everything, see below |
+| The wind | `bed_wind`, `wind_gust`, `wind_creak`, `wind_rattle`, `wind_flap` | a quiet base layer and gusts that come and go at random, with a detail now and then: see [The wind](#the-wind) |
 | The second map | `bed_room_tone`, `bed_roof_wind`, `yard_wind`, `yard_fire`, `yard_wire`, `yard_road`, `yard_rattle`, `debris_clear`, `step_wood`, `step_own_wood` | the depot's room tone, the wind under its roof and the cold yard heard through its windows, the debris blocker coming off a stair and feet on wood: [the second map's sound](../research/maps/small-map-audio.md) |
 
 ### The beds
@@ -133,7 +134,9 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 The night is never silent. Three looping beds start with the night and fade in over three seconds; all sit well under a
 footstep (14 to 22 dB), so they are felt when they stop rather than heard.
 
-- **Crickets** (24 s): eight insects, each its own pitch (3.7 to 5.3 kHz) and chirp rate, singing in bursts.
+- **Crickets** (24 s): eight insects, each its own pitch (3.7 to 5.3 kHz) and chirp rate (1.0 to 2.1 chirps a second
+  each), singing in bursts, at -26 dB: half as loud to the ear as the original -16 dB, and half the chirps
+  (maintainer, #781).
 - **A distant highway** (32 s): a low rumble that swells and thins, and six passes of a car or truck whose pitch falls.
 - **The projector** (12 s, a loop in the world, not flat): the gate's 24 clatters a second over a motor and a fan, from
   the middle of the projection booth, so it is only heard near it (35 m, `unit_size` 4).
@@ -146,6 +149,35 @@ footstep (14 to 22 dB), so they are felt when they stop rather than heard.
   3.7 to 8.1 LU above the crickets ([measured](../research/audio.md#the-breaks-levels-382)), so the intermission reads as
   music over a quieter night. A bed fades in at 20 dB/s, so in a 5 s break the score is at full level for only the
   last two seconds or so before it fades out at 30 dB/s; a special round's break (15 s) plays it in full.
+- **The crickets again** (maintainer, #781). Still too much after that cut, so "50% quieter" was read from the original
+  level (-16 dB, before the cut above), and as half as loud to the ear: -10 dB, to -26 dB, because perceived loudness
+  halves for every 10 dB (halving the amplitude is only -6 dB, which reads as about two thirds as loud). The chirp
+  rate is half the original, the same insects with every other chirp gone. The score is now 5.9 dB over them by trim.
+  Why the first cut fell short, and the numbers:
+  [the crickets, cut again](../research/audio.md#the-crickets-cut-again-781).
+
+### The wind
+
+The drive-in has a wind that is never the same twice, built the way shipped games build theirs: a quiet steady base and
+gusts on top, each gust a played sound, never an effect on a bus ([the research](../research/wind.md)). `WindSounds`
+(a child of `NightSounds`) starts with the night and stops with it like the beds.
+
+- **The base** (`bed_wind`, 30 s loop, Ambience): low air, under the crickets and the highway, felt more than heard. Its
+  level wanders by a quarter of a dB at a time over a 3 dB range, and swells 2 dB with a gust that is blowing.
+- **Gusts** (`wind_gust`, eight files from 3.6 to 11.5 s): each file has its own rise and fall and its own colour (the
+  low-pass opens from 130 Hz to 400 to 1400 Hz as the gust strengthens; one file has a thin whistle that only shows
+  at its top). Each play is a 3D sound 10 to 16 m from the listener on a random bearing that drifts round while it lasts
+  (so it crosses the stereo field and follows a walking player), at its own pitch (plus or minus 2 semitones, which
+  changes its length and colour again) and its own level (0 to 4 dB under the strongest). The lull between gusts is
+  1.5 to 26 s, skewed short, and now and then (8%) 35 to 60 s: the empty minute. A night rolls its own character
+  first (the lulls scaled 0.7 to 1.4, the whole wind -2.5 to +1 dB). Gusts never overlap; a night's draws come from
+  one seed (`WindPlan`), so a test or a capture replays them.
+- **Details** (`wind_creak`, `wind_rattle`, `wind_flap`: a sign on a rusted hinge, a loose sheet of tin, a tarp): on
+  about one gust in seven, a strong one, 14 to 30 m off, a quarter to over half way into it.
+- **Levels** ([measured](../research/wind.md#levels), a quiet night's Ambience bus): the base about -50 LUFS
+  (momentary), 16 LU under the beds together (-33); a gust peaks at -40.5 to -37.6, 9 to 12 LU over the base and 0.6
+  to 4 LU over the beds at that moment; the wind adds 0.2 LU to the night's loudness. A gun shot (-12 to -17 LUFS in
+  its loudest 400 ms) is 21 LU or more over a gust.
 
 All four are built to loop: every event that runs past the end wraps to the start and every filter is applied to the
 whole loop at once, so the seam is smaller than the largest step inside the file (measured in
