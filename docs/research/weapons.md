@@ -2,6 +2,8 @@
 
 How Deadnight's first original weapons were built in the Toon Shooter kit's style (issue #16), and what we learned.
 The rules come from the [style bible](../design/style.md#weapons); this page records how to meet them by script.
+The ten measured from their files, and the plan for the nine that follow (#786), are
+[Weapon models](weapon-models.md).
 
 ## Third-person view
 

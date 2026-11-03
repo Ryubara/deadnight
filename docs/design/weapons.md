@@ -228,14 +228,14 @@ distance down to the floor and holds there to the range.
 
 Shots to kill at close range (head / body), against the health in [the rounds table](rounds.md#the-tuning-table):
 
-| Weapon | Round 1 (50) | Round 5 (82) | Round 10 (121) | Damage a second (body) | With reloads |
+| Weapon | Round 1 (50) | Round 5 (82) | Round 10 (140) | Damage a second (body) | With reloads |
 | --- | --- | --- | --- | ---: | ---: |
 | Revolver | 1 / 3 | 2 / 4 | 3 / 6 | 86 | 59 |
-| Tommy gun | 2 / 4 | 3 / 6 | 5 / 9 | 187 | 101 |
+| Tommy gun | 2 / 4 | 3 / 6 | 5 / 10 | 187 | 101 |
 | Double-barrel | 1 / 1 | 1 / 1 | 1 / 1 | 587 | 147 |
 | Hunting rifle | 1 / 1 | 1 / 1 | 1 / 2 | 190 | 123 |
 | Flare gun | none | none | none | 0 | 0 |
-| Crowbar | 1 / 2 | 1 / 2 | 2 / 3 | 82 | 82 |
+| Crowbar | 1 / 2 | 1 / 2 | 3 / 4 | 82 | 82 |
 | Baseball bat | 1 / 1 | 1 / 2 | 2 / 3 | 150 | 150 |
 | Fire axe | 1 / 1 | 1 / 1 | 1 / 1 | 167 | 167 |
 
@@ -277,6 +277,207 @@ damage, rounded up. "With reloads" is the sustained rate over a whole magazine a
 - **Ammo is the other economy.** Reserves are small on purpose (a round-10 zombie is 5 revolver body shots), so
   headshots and melee are worth more than the points they pay. Ammunition is sold ([Rounds](rounds.md#ammunition));
   the weapon carry limit is not decided here; see the open questions.
+
+## The nine new weapons (#785)
+
+**Planned, not built.** Nine weapons are added to the eight (seventeen in all): six firearms
+([#793](https://github.com/Ryubara/deadnight/issues/793)), the two wonder weapons and the status effects they need
+([#788](https://github.com/Ryubara/deadnight/issues/788)) and the dual pistols
+([#789](https://github.com/Ryubara/deadnight/issues/789)). This section is the one place their numbers are decided; the
+build issues copy them into `defs/<id>.tres`. The evidence is [the roster research](../research/weapon-roster.md), the
+re-cut of each is [on the re-cut page](upgrades.md#the-re-cut-plan-for-seventeen-weapons-785). Falloff and zones read as
+in [the arsenal](#the-arsenal); the limb multiplier is x0.6 unless a row says otherwise.
+
+### The numbers
+
+Per hit is the body zone at point blank; the head multiplier is per pellet. "Working id" is the catalogue id and the
+shop id suffix (`weapon_<id>`); the display name is a tuning string ([names](#display-names-the-maintainers-choice)).
+
+| Weapon (working id) | Kind | Per hit | Interval | Magazine / reserve (max) | Reload | Spread | Head | Falloff start to end (floor) | Range |
+| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: |
+| MP5 (`mp5`) | hitscan, auto | 15 | 0.10 s | 30 / 120 (180) | 1.9 s | 1.4 deg | x2.0 | 12 to 34 m (55%) | 55 m |
+| PPSh (`ppsh`) | hitscan, auto | 10 | 0.055 s | 50 / 100 (200) | 2.8 s | 3.2 deg | x1.5 | 8 to 24 m (45%) | 40 m |
+| M4A1 (`m4a1`) | hitscan, auto | 20 | 0.11 s | 30 / 90 (150) | 2.1 s | 1.0 deg | x1.75 | 22 to 55 m (65%) | 90 m |
+| M249 (`m249`) | hitscan, auto, pierces 1 | 15 | 0.09 s | 100 / 150 (250) | 5.0 s | 2.6 deg | x1.75 | 14 to 40 m (55%) | 70 m |
+| Fifty cal (`fifty_cal`) | hitscan, semi, pierces 4 (x0.7 each) | 220 | 0.9 s | 5 / 20 (40) | 3.4 s | 0.15 deg | x2.0 (limb x0.8) | none (100%) | 150 m |
+| Pump 870 (`pump_870`) | hitscan, semi, 6 pellets | 22 x 6 | 0.65 s | 6 / 42 (66) | 2.8 s | 5.0 deg | x1.5 | 10 to 26 m (45%) | 35 m |
+| Dual pistols (`dual_pistols`) | hitscan, auto, alternating hands | 17 | 0.15 s (0.30 s a gun) | 24 / 72 (120) | 1.6 s | 2.4 deg | x2.25 | 10 to 28 m (50%) | 45 m |
+| Ray gun (`ray_gun`) | `PROJECTILE`, 55 m/s, flat, 1.3 s of flight | 300 direct (head x1.5, limb x0.7) + blast 160 | 0.45 s | 10 / 40 (60) | 2.6 s | 0 | x1.5 | none | 70 m |
+| Freeze gun (`freeze_gun`) | `PROJECTILE`, 45 m/s, flat, 1.3 s of flight | 30 direct, no blast, freezes | 0.8 s | 6 / 24 (36) | 3.0 s | 0 | x1.0 | none | 60 m |
+
+What each one is for (the genre's role, in our numbers):
+
+- **MP5, the reliable SMG**: a precise automatic (1.4 degrees, x2 head) that is bought, not gambled for; a head hit on a
+  round-5 zombie is 3 shots. It does what the Tommy gun does a little more kindly and a little slower.
+- **PPSh, the drum**: the most bullets (50, and 200 at most) and the worst aim (3.2 degrees, x1.5 head, 45% at 24 m):
+  it sprays bodies and rewards a crowd at your feet. Box only.
+- **M4A1, the carbine**: the all-rounder at range (1.0 degree, 65% of its hit still at 55 m, a magazine of 30 on an
+  automatic): the best aim and reach of the automatics, a steady body-shot rate (97 a second on round 10, against the
+  rifle's 90), dearer than the rifle, with none of its piercing and none of its one-shot heads.
+- **M249, the belt-fed**: 100 rounds, a **5 second reload** that is the cost (a crowd takes you while it is open);
+  pierces one zombie; the most kills from one load (62 on round 5). Box only.
+- **Fifty cal, the anti-materiel rifle**: five rounds, each a body kill on any round to 13 (a head kill to 18),
+  piercing four zombies in a line (x0.7 each), no falloff at all; slow (0.9 s) and starved of ammunition (20, 40 at
+  most). Box only: it is the late-round weapon the model cannot value (the simulator does not model piercing).
+- **Pump 870, the cheap wall**: six shells of 132 close in: one shell kills any zombie to round 9 and two to round 14;
+  short range (35 m), slow (0.65 s), a long tube to refill (2.8 s). It is the cheapest wall (700) and the weakest
+  late, so it gets an element on its re-cut ([fire](upgrades.md#the-four-elements)).
+- **Dual pistols, the sidearm pair**: two revolvers' worth of rate at a lighter hit (17, x2.25 head), the biggest magazine
+  of a pistol (24) and no precision (2.4 degrees on every pull). Box only. The mechanics are
+  [below](#the-dual-pistols).
+- **Ray gun and freeze gun, the pair**: [below](#the-wonder-weapons).
+
+### Where they are and what they cost
+
+The lot's prices are in points; the second map's are its own ratios to its link price **P = 450**
+([the shop formula](smallmap.md#the-shop-formula-rows-22-to-25)) and each stays within 10% of its ratio
+(`test_smallmap_economy.gd` recomputes them). "Weight" is the crane's pool weight (`crane_play`), against the existing
+eight's 13 (shotgun 4, rifle 3, Tommy gun 2, flare gun 1, revolver 1, crowbar 1, bat 0.5, axe 0.5): the pool is **28.5**
+with the nine. A wall weapon is also in the crane, as the shotgun and rifle are; a weapon the player carries is never
+drawn.
+
+| Weapon | The lot | The small map | Crane weight | Ammunition: rounds for points |
+| --- | --- | --- | ---: | --- |
+| Pump 870 | **wall 700**, past the concession's door | wall 405 (0.9 P) | 2 | 6 for 80 |
+| MP5 | **wall 1,300**, past the yard's door | wall 765 (1.7 P) | 2 | 45 for 90 |
+| M4A1 | **wall 1,600**, past the back lot's door | wall 945 (2.1 P) | 1.5 | 30 for 90 |
+| PPSh | crane only | the box | 2 | 75 for 110 |
+| M249 | crane only | the box | 1.5 | 100 for 150 |
+| Fifty cal | crane only | the box | 1.5 | 5 for 100 |
+| Dual pistols | crane only | the box | 2.5 | 24 for 70 |
+| Ray gun | crane only | the box | 1.5 (5.3%) | 4 for 180 |
+| Freeze gun | crane only | the box | 1.5 (5.3%) | 3 for 150 |
+
+- **The wall ladder is by worth, not by the genre's price.** The simulator prices a weapon by what an average player does
+  with it ([the research](../research/weapon-roster.md#the-balance-simulator-run)): the pump is a neutral buy (the
+  double-barrel is too), the rifle is worth about a round (10.1 against 9.2 for the revolver alone), the MP5 and the
+  M4A1 about two and a quarter (11.4 and 11.5), and re-cut they reach 14.5 against 12.4 for the re-cut revolver: so the
+  new walls sit above the rifle (1,200), and the M4A1 above the MP5. The genre has the same order (a pump wall under a
+  SMG wall under an assault rifle wall).
+- **The map spots are the build issue's** (#793): the lot's walls are a place on a wall of a room past the named door;
+  the small map has nine places for eight weapons, so three more wall places are needed there or the three walls are
+  box-only on that map (then the ratios are not used).
+- **The box's pool is the one shop item**, so the weights above are the only thing the crane's tests need
+  (`test_crane_pool.gd`: every weapon of the catalogue is in the pool, and 10,000 first rolls are spread by the
+  weights). With them the average player's night is up by two rounds ([the run](../research/weapon-roster.md#the-balance-simulator-run)).
+
+### Where each stands against the others
+
+Kills a second on a round's zombie, the weapon's cycle with its reload (`WeaponWorth.sustained_dps` against that
+round's health), a body hit and a head hit, then the kills one load (magazine plus reserve) makes with head hits. The
+weapon pick of the simulator's players reads the first number.
+
+| Weapon | Kill rate on round 5, body / head | Round 10 | Round 15 | Kills one load makes, round 10 (head) | Price or source |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Revolver | 49 / 99 | 56 / 113 | 57 / 137 | 17 | start |
+| Pump 870 | 73 / 73 | 62 / 125 | 84 / 126 | 48 | wall 700 |
+| Double-barrel | 68 / 68 | 116 / 116 | 117 / 117 | 18 | wall 900, crane |
+| Dual pistols | 75 / 126 | 71 / 161 | 76 / 162 | 24 | crane |
+| PPSh | 82 / 123 | 84 / 126 | 87 / 133 | 15 | crane |
+| Tommy gun | 98 / 197 | 92 / 168 | 97 / 185 | 25 | crane |
+| MP5 | 83 / 167 | 85 / 171 | 90 / 172 | 30 | wall 1,300, crane |
+| M4A1 | 91 / 151 | 97 / 155 | 104 / 174 | 24 | wall 1,600, crane |
+| M249 | 97 / 146 | 100 / 166 | 106 / 183 | 42 | crane |
+| Hunting rifle | 105 / 105 | 90 / 180 | 121 / 181 | 48 | wall 1,200, crane |
+| Fifty cal | 51 / 51 | 88 / 88 | 89 / 178 | 25 | crane |
+
+**None is strictly better than another at its price or source**: each pair that one beats on a number above is parted
+by something else (the price or the rarity, the reload, the aim and the head multiplier, the range, the piercing). The
+cases to read: the **MP5** beats the Tommy gun a little on aim, falloff and load and loses a little on body rate, and
+costs 1,300 for a sure buy against a 550 gamble; the **M4A1** beats the rifle on body rate to round 10 and on
+magazine, uptime and the re-cut (11.5 against 10.1, and 14.5 against 11.4) at 400 more, and loses to it on piercing,
+range (the rifle is 120 m) and the one-shot head kill (the rifle's 237 kills a head to round 13); the **M249** beats the
+Tommy gun on load and a little on rate and pays a 5 second reload and the box's odds; the **dual pistols** beat the
+revolver on rate and magazine and lose it the one-shot head (the revolver kills a round-1 zombie with one head hit); the
+**fifty cal** is the slowest and the leanest of all and the only one that kills a line of zombies and a late
+round's heavy ones in one hit. The only exception to "at its price" is the **wonder pair**, which are one-hit kills
+for most of the night and are held down by rarity and ammunition, not by price ([below](#the-wonder-weapons)).
+
+### The dual pistols
+
+The decision for [#789](https://github.com/Ryubara/deadnight/issues/789), from how the genre fires two guns
+([research](../research/weapon-roster.md#dual-pistols)):
+
+- **One trigger, alternating hands.** Each pull fires the next hand's gun (right, left, right...): one trigger on every
+  input (mouse, pad, touch), no second button to learn. Each hand has its own cooldown (0.30 s), so a shot leaves every
+  0.15 s. `automatic = true`: holding the trigger keeps alternating.
+- **Two muzzles, one aim.** Each shot leaves its own hand's `Muzzle` (the left and right guns, 0.18 m either side of the
+  aim line at the server's muzzle offset) toward the same crosshair point; the server still owns the muzzle
+  ([built for a server](#built-for-a-server)).
+- **Ammunition.** The HUD shows one number, 24, which is two magazines of 12 shot in turn; the reserve is 72 (120 at
+  most). **One reload for both**, 1.6 s with both hands (an independent reload per hand, as the modern shooters do, is
+  not built: the first version keeps one counter).
+- **Aim.** The aim button gives the same aim weight (camera and the two arms) as every weapon, with **no extra
+  tightening**: 2.4 degrees on every pull, and no zoom beyond the hip-fire's, which is what the genre's dual pistols give
+  up (they cannot aim down the sights) for the doubled ammunition and rate.
+- **The animation** needs the two-handed hold ([#789](https://github.com/Ryubara/deadnight/issues/789), `weapon-hold.md`):
+  both hands carry a gun, no support hand; the swap, reload and quick melee clips play with both guns in the hands.
+- **The re-cut** is the standard one with an element, [shock](upgrades.md#the-four-elements).
+
+### The wonder weapons
+
+For [#788](https://github.com/Ryubara/deadnight/issues/788). Both are `PROJECTILE`s in the flare gun's flight code
+(`ProjectileState`, `projectile_burst`), found **only in the crane**, weight 1.5 each of 28.5 (5.3% of a spin; about 10%
+that one of the two shows in a spin and about 15% in an average night's one to two plays). A player who gives one up
+puts it back in the pool as every weapon does.
+
+| | Ray gun | Freeze gun |
+| --- | --- | --- |
+| The shot | a bolt, 55 m/s, no gravity, bursts on the first zombie or wall | a bolt, 45 m/s, no gravity, bursts on the first zombie or wall |
+| Direct hit | **300** (head x1.5 = 450, limb x0.7): a body kill to round 15 (282), a head kill to round 18 (429) | 30 (a hit that does no more than pay a hit) |
+| Blast | **160 at the centre, sliding to 30% at 3.0 m**; only the others in the blast take it (the one hit takes the direct hit only, as the flare); a line of sight is not asked | none; a **frost bloom, 2.2 m radius**, at the burst |
+| Hits the shooter | **25% of the blast** inside 3.0 m (40 at the very centre); a teammate takes nothing (as the grenade's rule) | no |
+| The effect | none: it is a hard hit and a blast | everything in the bloom **freezes for 3 s** (below) |
+| Ammunition | 10 / 40 (60), reload 2.6 s, 0.45 s a shot | 6 / 24 (36), reload 3.0 s, 0.8 s a shot |
+| Re-cut (once, 1,500) | direct 525, blast 280, magazine 15, reserve 60 (90): a body kill to round 19, a head kill to 22 | magazine 9, reserve 36 (54), **the bloom 2.8 m and its one-bolt band 20 rounds long** (below) |
+
+**The freeze.** A frozen zombie stands still for **3 seconds**: it neither walks nor strikes, and it keeps what it was
+tearing. **Any hit on a frozen zombie kills it at once and shatters it** (any weapon of any player, a blast, a melee
+blow, a grenade; **not** the freeze gun's own bolt, which only refreshes the 3 s): the kill pays what its killer's hit
+would (the melee price of 130 for a knife blow, which is the genre's own freeze-then-knife play) and the client breaks
+it into pieces (a gib, never a rule). Thawed after 3 s, it goes on, with its health as it was.
+
+- **It does not pass through anything.** The bolt bursts on the first zombie or wall; the 2.2 m bloom is the several
+  zombies it freezes (a cluster of three or four in the alley). Passing through a line would make a lane of ice for 3
+  s of the whole night.
+- **The freeze takes more bolts as the night climbs**, as the genre's does ("as the rounds climb it takes more shots to
+  freeze", the Winter's Howl page): **one bolt freezes on rounds 1 to 10, two on 11 to 20, three on 21 to 30**; the first
+  bolts slow the zombie to 40% for 3 s (a bolt and a half-frozen walk). The re-cut moves each band 10 rounds on.
+- **The headliner (a boss) never freezes**: it is slowed to 40% for 3 s and takes the direct hit; so a boss night is not
+  trivialised, as the genre's Pentagon Thief is only slowed. A brute (x3 health) freezes and a shatter kills it: that is
+  what the gun is for.
+- **The ammunition is the limit**: 30 bolts a load and 36 at most, each worth a few zombies, against a night's
+  hundreds (round 20 sends 54 alone); a bolt costs 50 points of ammunition against a kill's 60 to 70.
+
+**How the pair stays strong without ending the curve.** (1) **Rarity**: 5.3% a spin each, so most nights have neither
+(the gate's average cells, with them in the pool, gain two rounds, not ten). (2) **Ammunition**: both are small
+reserves with dear rounds (45 and 50 points a round against the rifle's 10 and the Tommy gun's 1.5), and the crane's
+prize is only a weapon the player lacks. (3) **They have a ceiling by round, not a wall**: the ray gun's one-hit window
+closes at round 15 body and 18 head (21 and 22 re-cut), then it needs two or three bolts a zombie; the freeze needs more
+bolts as the rounds climb; both ceilings are numbers in the definition. (4) **Two weapon slots**: either one is a slot
+not holding a re-cut rifle, and the re-cut it takes is 1,500 or 3,000 the player does not spend on a perk. (5) **Bosses
+and special rounds keep their shape**: the freeze does not hold a headliner, and a Stampede or a Crawl Space still
+sends more than 30 bolts. (6) **The ray's blast hurts the shooter**: close shots are a choice.
+
+### Display names: the maintainer's choice
+
+Several real names are trademarks (Barrett, Remington, probably MP5 and M4A1). **Which display names ship is the
+maintainer's decision** and is not made here: `display_name` is a tuning string of each definition, so the choice
+changes one line of a `.tres` and the HUD, card and feed follow (`WeaponCatalog` ids stay the working ids). The options,
+for each, as the real name, a generic name and a name in the drive-in's style (these are options, not recommendations,
+and none is checked for a trademark):
+
+| Working id | The real name | A generic name | In the drive-in's style |
+| --- | --- | --- | --- |
+| `ppsh` | PPSh-41 (a Soviet designation, not a brand) | Drum SMG; Burp gun | Reel Gun; Film-Drum SMG |
+| `m249` | M249 SAW (the US designation; its maker's brand is another) | Squad machine gun; Belt-fed LMG | Marathon; Double-Feature Gun |
+| `m4a1` | M4A1 (a Colt designation) | Carbine; Service carbine | Matinee Carbine; Usher's Carbine |
+| `fifty_cal` | Barrett .50cal (a registered brand); ".50 BMG" is a cartridge | Fifty cal; Anti-materiel rifle | Widescreen; Big Screen |
+| `dual_pistols` | none (two pistols) | Dual pistols; Twin pistols | Double Bill; Twin Feature |
+| `mp5` | MP5 (a Heckler and Koch brand) | Submachine gun; 9 mm SMG | Usher SMG; Concession SMG |
+| `pump_870` | Remington 870 MCS (a Remington brand) | Pump shotgun; Pump gun | Popper; Concession Pump |
+| `ray_gun` | Ray Gun (the genre's famous name) | Ray pistol; Blue ray gun | Atom Blaster; Moon-Beam Pistol; Monster-Movie Ray |
+| `freeze_gun` | Freeze Gun (a plain name) | Freeze gun; Frost blaster | Snow-Cone Gun; Cold-Snap Blaster |
 
 ## Grenades
 

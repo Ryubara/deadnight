@@ -46,6 +46,13 @@ const CLOSING_FULL := 3.0
 const COURTESY_DEGREES := 7.0
 const COURTESY_RANGE := 25.0
 const COURTESY_NEAR := 6.0
+## Seconds a zombie is left to a person before it is the bot's too: a person who has kept their aim
+## on it that long is not killing it (a dry gun, a wall in the way), and the bot holding fire for
+## them stood idle for the whole round (the soak, #770).
+const COURTESY_SECONDS := 3.0
+## The most one look at the clock adds to those seconds (a bot that was dead or on an errand and did
+## not choose for a while does not count that time as the person's).
+const COURTESY_COUNT_CAP := 0.5
 ## Zombies within `PACK_RADIUS` metres of the bot that make a pack, and the size of one.
 const PACK_RADIUS := 4.0
 const PACK_SIZE := 3
@@ -56,6 +63,10 @@ const RESCUE_REACH := 3.5
 
 var _profile: BotProfile
 var _committed := -1
+## By zombie id: the seconds it has been left to a person (`COURTESY_SECONDS`), and when the bot
+## last counted them.
+var _left_to_them := {}
+var _counted_at := -INF
 
 
 func _init(profile: BotProfile) -> void:
@@ -76,15 +87,27 @@ func choose(
 ) -> int:
 	var best := -1
 	var best_score := -INF
+	var span := 0.0 if _counted_at == -INF else minf(now - _counted_at, COURTESY_COUNT_CAP)
+	_counted_at = now
+	# The seconds of the zombies still in sight (a person who looks away for a moment does not give
+	# the zombie back to the person for another three).
+	var counted: Dictionary = {}
 	for contact in candidates:
+		var seconds: float = _left_to_them.get(contact["id"], 0.0)
 		if courtesy_holds(contact, here, mates):
-			continue
+			seconds += span
+			counted[contact["id"]] = seconds
+			if seconds < COURTESY_SECONDS:
+				continue
+		elif seconds > 0.0:
+			counted[contact["id"]] = seconds
 		var score := utility(contact, here, held, mates, now, blow_age, health)
 		if contact["id"] == _committed:
 			score += W_COMMIT
 		if score > best_score:
 			best_score = score
 			best = contact["id"]
+	_left_to_them = counted
 	_committed = best
 	return best
 
@@ -141,10 +164,14 @@ static func closing_speed(contact: Dictionary, here: Vector3) -> float:
 
 ## Whether the zombie is a person's to shoot: a person (not a bot) aims at it from no farther than
 ## `COURTESY_RANGE`, and it is still `COURTESY_NEAR` metres or more from the bot and not swinging.
-## A person who works on a zombie is earning their points on it; the bot takes what is near.
+## A person who works on a zombie is earning their points on it; the bot takes what is near. A boss
+## is never theirs alone: it takes the whole team's rounds, and a bot that waited for the person to
+## finish it stood idle for seconds at 6 to 8 metres from it (#769).
 static func courtesy_holds(contact: Dictionary, here: Vector3, mates: Array[Dictionary]) -> bool:
 	var at: Vector3 = contact["position"]
 	if _flat(here, at) < COURTESY_NEAR or contact["mode"] == ZombieBody.Mode.ATTACK:
+		return false
+	if ZombieModels.is_boss(contact.get("look", ZombieModels.DEFAULT)):
 		return false
 	for mate in mates:
 		if mate.get("bot", false) or mate.get("dead", false) or mate.get("downed", false):

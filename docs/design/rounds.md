@@ -290,10 +290,11 @@ started. The defaults are today's game exactly, and every shipped test runs on t
 Defaults as shipped. Zombie counts show one, two and four players ([eight](#eight-players-690) below). "Light" is the
 ambient level the world reads (1 is day): round 1 is the lot's night as built and round 14 the darkest it gets, with
 the ambient light, moon, sky and fog dimmed in step and eased over the break (`NightLight`). Counts follow `4 +
-1.3(r-1) + 0.07(r-1)²`, times `1 + 0.6` for each extra player. Health climbs 8 a round to round 8, then compounds by 7%
-a round (it was 5% until weapons could be re-cut, [the re-cut](upgrades.md)). The runner, crawler and brute columns are
-each type's share of the round (the first round of a type brings an exact number instead: see the types below); special
-rounds replace the mix.
+1.3(r-1) + 0.07(r-1)²`, times `1 + 0.6` for each extra player. Health climbs 8 a round to round 8, then compounds by
+**15%** a round (it was 5%, then 7% until the headshot retune, [#745](#the-headshot-retune-745); this table showed the
+7% curve until [#785](../research/weapon-roster.md) corrected it: round 10 is 140, not 121). The runner, crawler and
+brute columns are each type's share of the round (the first round of a type brings an exact number instead: see the
+types below); special rounds replace the mix.
 
 | Round | Zombies 1p / 2p / 4p | Health | Walk m/s, lit | Runners | Crawlers | Brutes | Spawn every | Alive cap 1p | Light |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -304,10 +305,10 @@ rounds replace the mix.
 | 5 | 10 / 17 / 29 | 82 | 1.84 | 10% | 0% | 0% | 2.72 s | 9 | 0.46 |
 | 6 | 12 / 20 / 34 | 90 | 2.00 | 14% | 5% | 0% | 2.61 s | 10 | 0.42 |
 | 8 | 17 / 26 / 46 | 106 | 2.32 | 22% | 9% | 3% | 2.40 s | 12 | 0.35 |
-| 10 | 21 / 34 / 60 | 121 | 2.64 | 30% | 10% | 5% | 2.22 s | 13 | 0.28 |
-| 15 | 36 / 57 / 101 | 170 | 3.44 | 30% | 10% | 6% | 1.81 s | 17 | 0.15 |
-| 20 | 54 / 86 / 151 | 239 | 4.24 | 30% | 10% | 6% | 1.47 s | 21 | 0.15 |
-| 30 | 101 / 161 / 282 | 470 | 5.00 | 30% | 10% | 6% | 0.98 s | 28 | 0.15 |
+| 10 | 21 / 34 / 60 | 140 | 2.64 | 30% | 10% | 5% | 2.22 s | 13 | 0.28 |
+| 15 | 36 / 57 / 101 | 282 | 3.44 | 30% | 10% | 6% | 1.81 s | 17 | 0.15 |
+| 20 | 54 / 86 / 151 | 567 | 4.24 | 30% | 10% | 6% | 1.47 s | 21 | 0.15 |
+| 30 | 101 / 161 / 282 | 2,294 | 5.00 | 30% | 10% | 6% | 0.98 s | 28 | 0.15 |
 
 Points (everything is per player):
 

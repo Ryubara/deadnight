@@ -24,6 +24,17 @@ var weapon: Node3D
 var offhand: Node3D
 var hold: WeaponHold
 var grip: HandGrip
+## Whether the weapon in the hand is re-cut and wears the skin (`RecutSkin`, Deadnight #787): kept
+## across weapons, so the one put in the hand next is dressed the same until it is told otherwise
+## (`set_recut`). The skin is on the surface's material, so it follows the weapon through every
+## view: the night's bodies (the player's own, the others'), the menu's.
+var recut := false
+
+var _skin: RecutSkin
+var _skin_off: RecutSkin
+## 0 to 1: how far the skin's ignition has run (1 is finished); `advance` moves it.
+var _ignition := 1.0
+var _style: RecutStyle = RecutStyle.shipped()
 
 
 func _init(skeleton: Skeleton3D) -> void:
@@ -70,6 +81,8 @@ func hold_weapon(weapon_class: StringName, new_hold: WeaponHold) -> Node3D:
 	if offhand != null:
 		offhand.free()
 		offhand = null
+	_skin = null
+	_skin_off = null
 	hold = new_hold
 	hands.hold = hold
 	grip = null
@@ -94,6 +107,10 @@ func hold_weapon(weapon_class: StringName, new_hold: WeaponHold) -> Node3D:
 	if hold.dual:
 		offhand = _mirrored_copy(in_hand)
 		offmount.add_child(offhand)
+	if recut:
+		_skin = RecutSkin.wear(weapon, 1.0, _style)
+		if offhand != null:
+			_skin_off = RecutSkin.wear(offhand, 1.0, _style)
 	return weapon
 
 
@@ -110,6 +127,48 @@ func _mirrored_copy(in_hand: Transform3D) -> Node3D:
 	if copy.find_child(PlayerAnimation.MUZZLE_NODE, true, false) == null:
 		copy.add_child(make_muzzle(hold))
 	return copy
+
+
+## Dresses the weapon in the hand in the re-cut skin, or takes it off, and keeps that for the
+## weapons
+## put in the hand after it. `ignite` sweeps the skin on over `RecutStyle.ignite_seconds` (the
+## weapon
+## has just been re-cut) instead of showing it finished; `advance` runs the sweep.
+func set_recut(on: bool, ignite: bool = false) -> void:
+	if on == recut:
+		return
+	recut = on
+	if weapon == null:
+		return
+	if on:
+		_ignition = 0.0 if ignite else 1.0
+		_skin = RecutSkin.wear(weapon, _ignition, _style)
+		if offhand != null:
+			_skin_off = RecutSkin.wear(offhand, _ignition, _style)
+	else:
+		RecutSkin.strip(weapon)
+		_skin = null
+		if offhand != null:
+			RecutSkin.strip(offhand)
+		_skin_off = null
+
+
+## Runs the skin's ignition on by `delta` seconds (the view's frame time).
+func advance(delta: float) -> void:
+	if _skin == null or _ignition >= 1.0:
+		return
+	_ignition = minf(_ignition + delta / maxf(_style.ignite_seconds, 0.01), 1.0)
+	_skin.reveal = _ignition
+	# The flash of the front's first moment: it falls as the skin goes over.
+	_skin.boost = 1.2 * pow(1.0 - _ignition, 2.0)
+	if _skin_off != null:
+		_skin_off.reveal = _skin.reveal
+		_skin_off.boost = _skin.boost
+
+
+## Whether the weapon in the hand wears the skin now.
+func is_skinned() -> bool:
+	return weapon != null and RecutSkin.worn_by(weapon) != null
 
 
 ## Whether the arms are posed to hold the weapon at the shoulder (a gun), not left to a clip

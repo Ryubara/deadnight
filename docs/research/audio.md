@@ -53,8 +53,8 @@ Added in `tools/audio/night_recipes.py`, rendered by the same `generate.py` (whi
   Measured seam (last sample to first, against the largest step inside the file): crickets 0.0027 (0.578), highway
   0.0000 (0.034), projector 0.011 (0.074), score 0.003 (0.020): all under the in-file steps, so no click.
 - **Crickets:** a pulse is a 16 ms Hann-windowed sine with a quiet second harmonic, three to a chirp 24 ms apart; the
-  chirp rate is rounded to a whole number per loop; each insect's loudness follows a slow wandering curve, so they
-  sing in bursts instead of droning.
+  chirp rate is rounded to a whole number per loop (1.0 to 2.1 a second each since #781, from 2.0 to 4.2); each
+  insect's loudness follows a slow wandering curve, so they sing in bursts instead of droning.
 - **Highway:** a ring-filtered rumble under a slow swell, plus six passes (3.5 to 6.5 s, a sine-squared swell) of
   band-passed noise whose centre falls from about 850 Hz to about 450 Hz (the doppler of a car going by) over a faint
   low saw for the engine.
@@ -311,6 +311,77 @@ while the whole bed moves only 0.3 to 0.4 LU. The break is not louder, it is the
 **A 5 s break is short for a 3 s fade-in**: the score reaches its level after 3 s and starts its 2 s
 fade-out at 5 s, so a break plays about 2 s of it at full level (a special round's 15 s plays it whole). A quicker fade
 is a one-number change (`AudioService.BED_FADE_IN_DB_PER_S`) if the maintainer wants the music heard in full.
+
+## The crickets, cut again (#781)
+
+The maintainer: "We need to lower cricket sounds by 50%, and reduce the rate at which they play by 50% as well." The
+crickets were already cut once (#382, -2.5 dB, above) and were still too much. Now `bed_crickets` is **-26 dB** and the
+file has half the chirps a second.
+
+**The base is the original -16 dB, and "half" is half as loud to the ear.** The first reading here took "50% quieter"
+from the level after #382 (-18.5) and as half the amplitude (-6 dB, to -24.5); the maintainer corrected both: the 50%
+is from the original level (-16, before the cut above), and they chose half as loud to the ear. Perceived loudness
+halves for every 10 dB (the usual rule of thumb: about 2^(dB/10), the sone scale), so half as loud is -10 dB, -16 to -26.
+Half the amplitude is only -6.02 dB, which the ear hears as about 0.65 of the loudness, not 0.5. The chirp rate stays
+half the original (12.71 of 25.38 a second).
+
+**Why the first cut was not enough.** It was a number checked against numbers. #382's proof was a loudness table of the
+crickets under the score; the one comparison with the highway read the crickets 2.6 LU *under* it, so by the meter they
+were already quiet. But the crickets sing at 3.4 to 5.7 kHz and the highway bed has almost nothing there (-93.7 dBFS
+against the crickets' -44.3: 49.5 dB), so the highway never masks them: what decides whether they are noticed is the
+quiet night, not the other beds, and the meter's broadband gap says nothing about it. 2.5 dB is also about the smallest
+step an ear notices, and the cut touched one of two things: the level, never the density (25 chirps a second scheduled
+over the eight, 14 of them sung, in the highest band the ear is most sensitive to). Nobody put a quiet stretch of the
+night in front of the cut and asked whether the chirping still stood out. Check next time: a bed that is a narrow tone
+is judged in its own band against what is in that band, and by what it does (rate, bursts) as well as by how loud.
+
+Numbers in the paragraph above that are read at -18.5 (the highway gap of 2.6 LU, the crickets' -44.3 dBFS band) are the
+state the maintainer reacted to; the tables below put the original -16 beside the result.
+
+**The rate.** The recipe keeps the draw it always made (`CRICKET_DRAW_HZ`, 2.0 to 4.2 chirps a second each, and the draws
+of every later value) and keeps `CRICKET_RATE_SCALE` = 0.5 of the chirps: the same eight insects (pitch, bursts, place),
+every other chirp gone, so each now sings 1.0 to 2.1 a second and a whole number of chirps in the 24 s loop (it still
+loops cleanly). With the scale at 1.0 the recipe renders the old file bit for bit. Narrowing the draw to
+`uniform(1.0, 2.1)` was tried first and drew another set of eight (10.8 chirps a second, not half of 25.4: a different
+random stream, not the same crickets). **The file is normalised to its peak**: with half the chirps overlapping less, the
+same -3 dBFS peak made each chirp 2 dB louder, so the entry's peak is now -5 dBFS (`CRICKET_PEAK_DB`) and the loudest
+chirp in the file is as loud as before; `volume_db` is then the whole cut of a chirp (-10.0 dB from the original).
+
+Measured with `tools/audio/cricket_levels.py` (the catalog's `volume_db` laid over the decoded file; ebur128 from the
+pinned ffmpeg; the highway at its -18 dB; `check` pins the rate range and the whole chirps a loop):
+
+| What | Original (-16 dB) | After (-26 dB) |
+| --- | ---: | ---: |
+| Chirps a second, all eight, scheduled by the recipe | 25.38 | 12.71 |
+| Chirps a second sung (a chirp is dropped when its cricket is not singing) | 14.42 | 7.21 |
+| Each cricket, chirps a second | 2.00 to 4.08 | 1.00 to 2.04 |
+| Chirps a second told apart in the file (a lower bound, chirps overlap) | 8.08 | 5.00 |
+| Loudest chirp (band envelope), dB | -27.8 | -37.8 (-10.0) |
+| Crickets in 3.4 to 5.7 kHz, dBFS rms | -41.8 | -53.8 (-12.0) |
+| Crickets alone, 24 s | -38.2 LUFS | -49.9 LUFS (-11.7) |
+| Crickets against the highway bed, integrated | -0.1 LU | -11.8 LU |
+| Crickets against the highway bed, in the crickets' band | +52.0 dB | +40.0 dB |
+| Crickets + highway | -35.1 LUFS (+3.0 over the highway alone) | -37.9 LUFS (+0.2) |
+| Score minus crickets, trims | -4.1 dB (the score at -22) | +5.9 dB (the score at -20.1) |
+
+The crickets are still heard over the highway in the sense that matters: in their own band they stand 40.0 dB over it
+(nothing there masks them), and at the unit distance they sit 18.7 dB under one's own footstep on wood (-53.4 against
+-34.7). On the quiet night (below) they are 12 dB down in their band and the chirps come half as often. The second map has
+no crickets.
+
+**A quiet stretch of the night** (`game/tests/captures/audio_quiet_night.tscn`: the lot at dusk, the rules paused in the
+intro, so only the beds play, 30 s through Movie Maker; `cricket_levels.py capture` reads its `night.wav`), 4 to 30 s,
+through the real service and buses, at the original level and now:
+
+| The whole mix | Original (-16 dB) | After (-26 dB) |
+| --- | ---: | ---: |
+| Mix, integrated | -35.0 LUFS | -36.4 LUFS |
+| Crickets' band 3.4 to 5.7 kHz, dBFS rms | -43.6 | -55.6 |
+| Loudest chirp in the band, dB | -29.7 | -39.7 |
+| Chirps a second told apart | 8.12 | 5.12 |
+
+The mix moves only 1.4 LU (the highway is most of its energy) and the crickets' band 12 dB: the cut is in the crickets,
+not in the night. The spectrogram of the two nights is attached to the pull request.
 
 ## The soldier's voice (#384)
 
