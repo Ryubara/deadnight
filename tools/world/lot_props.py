@@ -9,7 +9,8 @@ shapes with collision only), what the player walks into and what the camera's sp
 
 Where props go (docs/design/map.md): against walls or in clusters with no slot between them narrower than a passage,
 never in a door, a breach or its apron, a camera passage or a shop spot, and nothing a player can step up on stands
-within a jump of a taller block (a crate beside a container would be a stair out of the lot).
+within the body's reach (1.25 m, not the jump's 1.1) of a taller block, and a wall stands 0.5 m over the tallest prop
+beside it plus that reach (a crate beside a container would be a stair out of the lot: #845, test_plaza_escape.gd).
 """
 
 import json

@@ -82,12 +82,14 @@ func test_nothing_of_the_lot_lies_past_the_plazas_wall() -> void:
 	assert_array(past).is_empty()
 
 
-func test_the_plaza_is_shut_by_walls_at_the_height_of_the_perimeter() -> void:
-	# A closed room: the end wall and both sides at the perimeter's 3.0 m, so nobody leaves over them.
+func test_the_plaza_is_shut_by_walls_higher_than_the_perimeter() -> void:
+	# A closed room: the end wall and both sides at 4.2 m, over the perimeter's 3.0 m, because the
+	# lot's junk stacked against them reaches 1.71 m and the body climbs 1.25 m (#845;
+	# test_plaza_escape.gd runs the hops).
 	add_child(_lot)
 	for wall_name: String in ["FenceEnd0", "SideW0", "SideE0"]:
 		var wall := _lot.get_node("Road/%s" % wall_name) as CSGBox3D
-		assert_float(wall.size.y).override_failure_message(wall_name).is_equal(3.0)
+		assert_float(wall.size.y).override_failure_message(wall_name).is_between(4.19, 4.21)
 	var end := _lot.get_node("Road/FenceEnd0") as CSGBox3D
 	assert_float(end.size.x).is_equal(PLAZA.size.x)
 	assert_float(end.global_position.z).is_equal(PLAZA.end.y)

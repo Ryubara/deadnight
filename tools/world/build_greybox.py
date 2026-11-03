@@ -69,6 +69,11 @@ MIDWAY_LINK_Z = 20.0
 # The lot's outer walls are higher than the tallest platform beside them (a car roof, 1.65 m) plus a full jump (the
 # player's 1.1 m, PlayerTuning.jump_height) plus a margin, so nobody leaves the map from a roof (docs/design/map.md).
 PERIMETER_H = 3.0
+# The plaza's end and side walls stand higher still (#845). The lot's junk is stacked against them (a small container,
+# 1.71 m, in the south-west corner), and the real body climbs 1.25 m, not the jump's 1.1 (docs/research/map-review.md):
+# from the container's top a 3.0 m wall was 1.29 m up, a sprint-jump over its corner. 4.2 m is the tallest prop plus
+# the reach plus 1.2 m, so no chain of hops from the plaza floor gets over (`test_plaza_escape.gd` pins the margin).
+PLAZA_WALL_H = 4.2
 # The breaches in the field's fence: a gap of BREACH_WIDTH closed by BOARDS boards, each BOARD_PITCH above the last (from
 # the ground to the fence's top, so nobody jumps out over the boards), and
 # an apron outside (APRON_DEPTH deep, APRON_WIDTH wide, walled in) where the dead stand before they tear the boards off.
@@ -106,6 +111,14 @@ SWITCHES = [
 PROJECTOR_LENS = (0.0, 5.11, 24.37)
 SCREEN_CENTRE = (0.0, 10.0)
 SCREEN_FACE_Z = -47.4
+# The projector's spot stands just inside the booth's north wall, behind the port. A spot's forward is its -Z, and the
+# builder's yaw 0 leaves -Z pointing north: a yaw of 180 turned it to the road and lit the plaza through the wall (#840).
+# Its pitch equals its half-angle, so the cone's lower edge runs level at the spot's own height: nothing lower than
+# the port (the stand's roof, the cars, the ground) is in the cone, which is all the renderer knows of a spot (it lights
+# a mesh by the cone's box, and a mesh has at most `max_lights_per_object` lights). 70 m on, the axis meets the
+# screen's face 14 m up, and the cone, 8.6 m across from there, covers the middle of the screen.
+BOOTH_SPOT = (0.0, 5.4, 22.3)
+BOOTH_SPOT_ANGLE = 7.0
 # The ticket plaza behind the road door ends here, at the lot's wall (#686); the perk machine stands against it.
 PLAZA_END = 58.0
 WRECK_X = -9.0
@@ -160,6 +173,12 @@ FIELD_LAMPS = [
     (-56.5698, -0.03959632, -6.20401),
     (22.056038, 0, -8.007768),
 ]
+# The six lamps over the breach aprons (`Lamp18` to `Lamp23`, 0.5 m from each zombie spawn, #703) burn dim: the
+# breach reads, so the dead are seen coming, without the dead arriving in a spotlight (the maintainer's, #850).
+# This is the share of a post's light (its omni light, lens, halo and pool) they give; `tests/world/test_apron_lamps.gd`
+# holds it. The rules' reach (`LightTuning.lamp_reach`, 6 m) is unchanged: the first 6 m of the dead's walk are lit.
+APRON_LAMPS = range(18, 24)
+APRON_LAMP_DIM = 0.4
 # The south fence leaves a wider opening between the field and the stand (the maintainer's, #703): it ends this far
 # from the middle on each side (the west piece at -16.2052, the east at 16.2051).
 FENCE_S_END = (-16.2052, 16.2051)
@@ -891,7 +910,8 @@ def build() -> None:
     lamps_f = lamps(field, "screen_lot")
     field_lamps_xz = [(x, z) for x, _, z in FIELD_LAMPS]
     for i, at in enumerate(FIELD_LAMPS, start=1):
-        instance(lamps_f, f"Lamp{i}", "lamp", at)
+        props = {"dim": str(APRON_LAMP_DIM)} if i in APRON_LAMPS else None
+        instance(lamps_f, f"Lamp{i}", "lamp", at, props=props)
     omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
     # The projected picture (the face, the spill below it) follows the screen's lamp (LotScreen).
     instance(
@@ -1009,7 +1029,7 @@ def build() -> None:
     block(booth, "FilmRacks", -3.8, -1.4, 30, 31.6, 2.2, "booth_prop")
     block(booth, "Projector", -1.0, 1.0, 24.5, 26.0, 1.3, "booth_prop", 4.05)
     bl = lamps(booth, "booth")
-    spot(bl, "ProjectorBeam", (0, 5.4, 22.3), 180, -5.0, 6.0, 100, 7, "#e8f0ff")
+    spot(bl, "ProjectorBeam", BOOTH_SPOT, 0, BOOTH_SPOT_ANGLE, 6.0, 100, BOOTH_SPOT_ANGLE, "#e8f0ff")
     omni(bl, "Lower", (0, 3.0, 27), 1.0, 8, "#c9a8ff")
     omni(bl, "Upper", (0, 6.6, 27), 0.9, 7, "#c9a8ff")
     # The projector's beam from the port to the screen, burning with the screen's lamp.
@@ -1032,7 +1052,8 @@ def build() -> None:
     wall(yard, "CageS", "x", 21, 36, 44, 3.0, "yard_wall")
     wall(yard, "CageW", "z", 36, 15, 21, 3.0, "yard_wall", [(18, REAR_EXIT, 0, 2.4)])
     wall(yard, "CageE", "z", 44, 15, 21, 3.0, "yard_wall", [(18, REAR_EXIT, 0, 2.4)])
-    box(yard, "Generator", (3.2, 1.8, 1.6), (40, 0.9, 18), "yard_gen")
+    # The generator's block: hidden, its collision only; the generator set (drivein_props, `GeneratorSet`) is drawn.
+    box(yard, "Generator", (3.2, 1.8, 1.6), (40, 0.9, 18), "yard_gen", visible=False)
     for i, ty in enumerate((6, 12)):
         node(
             f"FuelTank{i + 1}", "CSGCylinder3D", yard,
@@ -1044,6 +1065,15 @@ def build() -> None:
     for i, (lx, lz) in enumerate([(35, 12), (45, 12), (35, 24), (45, 24)], start=1):
         instance(yl, f"WorkLamp{i}", "lamp", (lx, 0, lz))
     omni(yl, "GeneratorGlow", (40, 2.4, 18), 1.4, 8, "#f0e26a")
+    # The generator's running light and panel lamps burn with its glow (ModelGlow): `mains` follows the tank, so they
+    # are steady while it is healthy, flicker in the brown-out and go dark when it is dry. Its halo (1.6 m) sits round
+    # the beacon 4.68 m up, so its lowest edge (3.88 m) stays over the cage's 3.0 m walls from every side.
+    node(
+        "GeneratorSetGlow", "Node3D", yl,
+        {"script": 'ExtResource("model_glow")', "light_path": 'NodePath("../GeneratorGlow")',
+         "model_path": 'NodePath("../../GeneratorSet")', "amber_energy": "1.6", "cream_glow": "0.25",
+         "steady": "true", "halo_size": "1.6", "halo_at": "Vector3(0.6, 4.68, 0)", "halo_energy": "1.2"},
+    )  # fmt: skip
     breaches_of(yard, YARD_BREACHES, "yard_wall", {})
     label(yard, "Label", "5  GENERATOR YARD", (39, 0.6, 31), 110)
 
@@ -1083,11 +1113,13 @@ def build() -> None:
     road = group("Road", ".")
     floor_tiles(road, "Plaza", -16, 16, 38, PLAZA_END, "road_ground")
     wall(road, "FenceS", "x", 38, -16, 16, 2.6, "road_wall", [(0, 4, 0, 2.6)])
-    wall(
-        road, "SideW", "z", -16, 38, PLAZA_END, PERIMETER_H, "road_wall", gaps_on(PLAZA_BREACHES, "x", -16, PERIMETER_H)
-    )
-    wall(road, "SideE", "z", 16, 38, PLAZA_END, PERIMETER_H, "road_wall", gaps_on(PLAZA_BREACHES, "x", 16, PERIMETER_H))
-    wall(road, "FenceEnd", "x", PLAZA_END, -16, 16, PERIMETER_H, "road_wall")
+    # The breaches' gaps stop at the perimeter's 3.0 m and the taller wall closes over them, so nothing climbs out over
+    # the boards (#849).
+    plaza_gaps_w = gaps_on(PLAZA_BREACHES, "x", -16, PERIMETER_H)
+    plaza_gaps_e = gaps_on(PLAZA_BREACHES, "x", 16, PERIMETER_H)
+    wall(road, "SideW", "z", -16, 38, PLAZA_END, PLAZA_WALL_H, "road_wall", plaza_gaps_w)
+    wall(road, "SideE", "z", 16, 38, PLAZA_END, PLAZA_WALL_H, "road_wall", plaza_gaps_e)
+    wall(road, "FenceEnd", "x", PLAZA_END, -16, 16, PLAZA_WALL_H, "road_wall")
     for sx in (-1, 1):
         tag = "W" if sx < 0 else "E"
         block(road, f"Kiosk{tag}", sx * 6 - 1.2, sx * 6 + 1.2, 44, 46.4, 2.4, "road_kiosk")

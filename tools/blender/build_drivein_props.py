@@ -367,8 +367,103 @@ def picnic_table(p):
         p.box((0.08, 0.66, 0.06), (x, 0, 0.68), "DarkWood", 0.0)
 
 
+GEN_TANK_Z = 3.68  # the day tank's axis: the whole tank clears the cage's 3.0 m walls from the gate and the midway
+
+
+def generator(p):
+    """The yard's generator set (#853) on its skid, in the greybox's 3.2 x 1.6 m block: the radiator to -X (west, the
+    cage opening the midway sees), the engine, the alternator and its control box to +X. A red day tank rides a frame
+    over it, and the exhaust stack and the amber running light stand above the cage's 3 m walls, so the gate and the
+    midway see a generator over the corrugated wall. Faces -Y (Godot +Z, the road) like every prop; north is +Y. Below
+    1.8 m it stays inside the block (the block is its collision); the frame, tank and stack above it have none.
+    """
+    # The skid: two rails and three cross members.
+    for y in (-0.62, 0.62):
+        p.box((3.2, 0.16, 0.16), (0, y, 0.08), "DarkGrey", 0.02)
+    for x in (-1.2, 0.0, 1.2):
+        p.box((0.14, 1.24, 0.1), (x, 0, 0.13), "DarkGrey", 0.0)
+    # The engine block, its sump and the rocker cover with three cooling ribs each side.
+    p.box((1.3, 0.9, 0.8), (-0.4, 0, 0.62), "Yellow", BEVEL)
+    p.box((1.1, 0.7, 0.14), (-0.4, 0, 0.2), "DarkGrey", 0.02)
+    p.box((1.2, 0.62, 0.22), (-0.4, 0, 1.13), "DarkGrey", BEVEL)
+    for i in range(3):
+        for s in (-1, 1):
+            p.box((0.06, 0.08, 0.5), (-0.8 + i * 0.4, s * 0.48, 0.66), "DarkGrey", 0.0)
+    # The radiator at the west end: a yellow shroud, a black core with slats and the fan guard's ring.
+    p.box((0.34, 1.4, 1.55), (-1.38, 0, 0.98), "Yellow", BEVEL)
+    p.box((0.04, 1.2, 1.3), (-1.555, 0, 0.98), "Black", 0.0)
+    for i in range(6):
+        p.box((0.04, 1.2, 0.05), (-1.565, 0, 0.42 + i * 0.22), "Grey2", 0.0)
+    p.cyl(0.52, 0.05, (-1.57, 0, 0.98), "Grey", sides=12, rot=(0, 90, 0))
+    p.cyl(0.42, 0.06, (-1.57, 0, 0.98), "Black", sides=12, rot=(0, 90, 0))
+    p.cyl(0.1, 0.04, (-1.58, 0, 0.98), "Grey2", sides=6, rot=(0, 90, 0))
+    p.box((0.2, 0.12, 0.12), (-1.38, 0, 1.82), "Chrome", 0.0)  # the filler cap
+    # Hoses from the radiator to the engine.
+    p.cyl(0.06, 0.4, (-1.05, 0.25, 1.2), "Black", sides=6, rot=(0, 90, 0))
+    p.cyl(0.06, 0.4, (-1.05, -0.25, 0.42), "Black", sides=6, rot=(0, 90, 0))
+    # The alternator: a grey drum on the engine's east end, ribbed, with the control box on top.
+    p.cyl(0.5, 0.86, (0.75, 0, 0.66), "Grey", sides=12, rot=(0, 90, 0))
+    for x in (0.42, 0.75, 1.08):
+        p.cyl(0.53, 0.06, (x, 0, 0.66), "Grey2", sides=12, rot=(0, 90, 0))
+    p.box((0.3, 1.0, 1.3), (1.42, 0, 0.82), "Yellow", BEVEL)  # the end housing and terminal box
+    p.box((0.62, 0.84, 0.5), (0.8, 0, 1.45), "Yellow", BEVEL)  # the control box over the drum
+    p.box((0.04, 0.64, 0.34), (1.12, 0, 1.47), "Cream", 0.0)  # its panel, to the east opening
+    for y in (-0.18, 0.04):
+        p.cyl(0.08, 0.03, (1.14, y, 1.5), "Black", sides=8, rot=(0, 90, 0))  # two gauges
+    p.box((0.05, 0.07, 0.07), (1.14, 0.22, 1.56), "Amber", 0.0)  # the run lamp
+    p.box((0.05, 0.07, 0.07), (1.14, 0.22, 1.42), "SignRed", 0.0)  # the stop button
+    for s in (-1, 1):  # a panel each long side too, seen through the cage's gaps and from the doors
+        p.box((0.4, 0.04, 0.28), (0.8, s * 0.43, 1.47), "Cream", 0.0)
+        p.box((0.07, 0.05, 0.07), (0.95, s * 0.45, 1.47), "Amber", 0.0)
+    # Exhaust: the manifold off the engine's north side up into a muffler, then the stack, its rain cap and soot.
+    p.box((0.9, 0.12, 0.12), (-0.4, 0.52, 0.95), "DarkGrey", 0.0)
+    p.cyl(0.07, 0.6, (-0.05, 0.56, 1.25), "DarkGrey", sides=6)
+    p.cyl(0.2, 1.1, (-0.25, 0.56, 1.66), "DarkGrey", sides=10, rot=(0, 90, 0))
+    p.cyl(0.21, 0.06, (-0.75, 0.56, 1.66), "Grey2", sides=10, rot=(0, 90, 0))
+    p.cyl(0.21, 0.06, (0.25, 0.56, 1.66), "Grey2", sides=10, rot=(0, 90, 0))
+    stack_top = 5.3
+    p.cyl(0.12, stack_top - 1.75, (0.2, 0.62, (stack_top + 1.75) / 2), "DarkGrey", sides=8)
+    p.cyl(0.15, 0.1, (0.2, 0.62, GEN_TANK_Z - 0.4), "Grey2", sides=8)  # a clamp where the stack passes the frame
+    p.cyl(0.14, 0.22, (0.2, 0.62, stack_top - 0.08), "Black", sides=8)  # the sooted lip
+    # The rain flap, hinged north.
+    p.box((0.34, 0.34, 0.03), (0.2, 0.66, stack_top + 0.12), "Grey2", 0.0, rot=(-25, 0, 0))
+    # The day tank's frame: four posts from the skid and two saddles.
+    for x in (-1.15, 1.15):
+        for y in (-0.6, 0.6):
+            p.box((0.09, 0.09, GEN_TANK_Z - 0.35), (x, y, (GEN_TANK_Z - 0.35) / 2 + 0.16), "Grey2", 0.0)
+        p.box((0.12, 1.3, 0.1), (x, 0, GEN_TANK_Z - 0.4), "Grey2", 0.0)
+        p.box((0.16, 0.8, 0.14), (x * 0.7, 0, GEN_TANK_Z - 0.38), "DarkGrey", 0.0)  # the saddle
+    p.box((2.4, 0.08, 0.08), (0, 0.6, GEN_TANK_Z - 0.4), "Grey2", 0.0)
+    p.box((2.4, 0.08, 0.08), (0, -0.6, GEN_TANK_Z - 0.4), "Grey2", 0.0)
+    # The day tank: red, two straps, the filler neck and a big gauge on its north end, a level sight down the side.
+    p.cyl(0.5, 2.4, (0, 0, GEN_TANK_Z), "Red", sides=12, rot=(0, 90, 0))
+    for x in (-1.21, 1.21):
+        p.cyl(0.44, 0.04, (x, 0, GEN_TANK_Z), "DarkGrey", sides=12, rot=(0, 90, 0))
+    for x in (-0.55, 0.55):
+        p.cyl(0.515, 0.07, (x, 0, GEN_TANK_Z), "Black", sides=12, rot=(0, 90, 0))
+    p.cyl(0.08, 0.16, (-0.7, 0, GEN_TANK_Z + 0.54), "Grey2", sides=6)
+    p.cyl(0.11, 0.06, (-0.7, 0, GEN_TANK_Z + 0.64), "Yellow", sides=6)
+    p.box((0.9, 0.05, 0.1), (-0.3, 0.49, GEN_TANK_Z + 0.08), "Cream", 0.0)  # the level sight, north side
+    p.box((0.9, 0.05, 0.1), (-0.3, -0.49, GEN_TANK_Z + 0.08), "Cream", 0.0)
+    # The fuel line: down from the tank's belly, along the frame and into the engine.
+    p.cyl(0.04, GEN_TANK_Z - 0.5 - 1.24, (-0.95, -0.3, (GEN_TANK_Z - 0.5 + 1.24) / 2), "Chrome", sides=6)
+    p.cyl(0.04, 0.55, (-0.95 + 0.27, -0.3, 1.24), "Chrome", sides=6, rot=(0, 90, 0))
+    p.cyl(0.06, 0.1, (-0.95, -0.3, GEN_TANK_Z - 0.52), "Grey2", sides=6)  # the valve
+    # The running light on the tank's crown: an amber dome in a wire cage, on a short mast over the stack's height
+    # line, so it shows over the wall; it burns with the generator (ModelGlow on GeneratorGlow).
+    p.cyl(0.05, 0.3, (0.6, 0, GEN_TANK_Z + 0.62), "Grey2", sides=6)
+    p.cyl(0.2, 0.08, (0.6, 0, GEN_TANK_Z + 0.8), "DarkGrey", sides=8)
+    p.cyl(0.17, 0.32, (0.6, 0, GEN_TANK_Z + 1.0), "Amber", sides=8)
+    p.cyl(0.17, 0.08, (0.6, 0, GEN_TANK_Z + 1.2), "Amber", sides=8, r2=0.08)
+    for a in (0, 90):
+        p.box((0.38, 0.025, 0.025), (0.6, 0, GEN_TANK_Z + 1.0), "DarkGrey", 0.0, rot=(0, 0, a))
+    p.box((0.025, 0.025, 0.36), (0.6, 0.185, GEN_TANK_Z + 1.0), "DarkGrey", 0.0)
+    p.box((0.025, 0.025, 0.36), (0.6, -0.185, GEN_TANK_Z + 1.0), "DarkGrey", 0.0)
+
+
 PROPS = {
     # name: (builder, triangle budget: under 1 m 800, 1-3 m 1.5k, over 3 m 5k)
+    "generator": (generator, 5000),
     "speaker_post": (speaker_post, 800),
     "ticket_booth": (ticket_booth, 1500),
     "concession_counter": (concession_counter, 5000),
@@ -438,7 +533,9 @@ def main():
     img = palette_image(palette_path)
     mat = atlas_material(img)
     only = set(filter(None, args.only.split(",")))
-    report = {}
+    # `--only` rebuilds some props: the others keep their rows.
+    report_path = out / "drivein_props.json"
+    report = json.loads(report_path.read_text(encoding="utf-8")) if only and report_path.exists() else {}
     for name, (fn, budget) in PROPS.items():
         if only and name not in only:
             continue
@@ -458,9 +555,7 @@ def main():
         report[name] = info
         if not args.blend:
             bpy.data.objects.remove(o, do_unlink=True)
-    (out / "drivein_props.json").write_text(
-        json.dumps(report, indent=1, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
-    )
+    report_path.write_text(json.dumps(report, indent=1, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
     if args.blend:
         bpy.ops.wm.save_as_mainfile(filepath=str(Path(args.blend).resolve()))
 

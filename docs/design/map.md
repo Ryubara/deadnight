@@ -65,7 +65,10 @@ Rules the greybox is built to:
   to 2.75 m: the outer walls (the field's north, west and east fences, the yard's east and the back lot's west) are
   3.0 m, `PERIMETER_H` in the generator, up from 2.4 m. The fences between the field and the yard and back lot stay
   2.4 m: nothing reachable stands within a jump of them, and a door's slab is 2.6 m. The plaza's end and side walls
-  are 3.0 m as well. `test_drive_in_jump_reach.gd` bakes the walking mesh with the jump
+  are 4.2 m (`PLAZA_WALL_H`): the junk stacked against them reaches 1.71 m and the real body climbs 1.25 m, not the
+  jump's 1.1 m, so a 3.0 m wall was one container and a corner away ([#845](https://github.com/Ryubara/deadnight/issues/845);
+  `test_plaza_escape.gd` runs the old hops and a sweep of hops from the plaza's floor, and pins the margin of 0.5 m over
+  the reach above the tallest prop at each wall). `test_drive_in_jump_reach.gd` bakes the walking mesh with the jump
   as its climb for each door still closed (and what needs it), finds the platforms a player can reach, checks that no
   closed slab, closed area's wall, field fence or perimeter wall has its top within a jump of one, and runs the real
   player body (`PlayerSimulation`, sprinting and jumping) from the middle and edges of every car roof near a perimeter
@@ -96,6 +99,9 @@ plaque only names the weapon).
 | Grenade rack | the stand's east wall, in the alley on the midway side, plaque at `(10.26, 3.0)`, spot at `(11.4, 3.0)` | `grenades`: as many as fit the pack (two a purchase, up to five), at their share of the price | a place to restock the throwable, opened with the concession; the stand's front wall is full (windows, door, shotgun, breaker) |
 | Third Holster machine (the plaza's) | the middle of the plaza's south wall, at `(0, 57.2)`, facing the gate, spot at `(0, 56.0)` | `tonic_third_holster`: a third weapon ([the perks](perks.md)) | the last door's own machine (2,000), at the far end of the court from its gate: the dearest perk behind the dearest door |
 | Ammunition lockers (5) | the avenue (field), the stand (its north-east corner), the midway, the yard, the back lot | rounds for the weapon in hand, as many as fit | one in the open from the start, one more in each area that opens, so a fight is never a long walk from rounds |
+
+The wall spots sell only the weaker guns ([the wall tier](weapons.md#the-wall-tier), #858): the lot's two are the
+double-barrel and the rifle, the best a wall sells, and the guns above the tier come only from the prize crane.
 
 ### The crane's places
 
@@ -130,8 +136,9 @@ lit by their own colour so they read in the dark (captures in the pull request).
 The road door (`door_road`, 2,000, the back lot first) opens the lot's last area: a court 32 m by 20 m behind the
 midway's south fence, `Road` in the scene. It used to open onto a road, a 124 m strip of asphalt with a roadblock, two
 wrecks and walls 1.6 m high that stopped in the dark. Nobody had decided what the road was for, and it showed from the
-plaza ([#686](https://github.com/Ryubara/deadnight/issues/686)). The road is gone: the plaza ends at a 3.0 m wall at
-z = 58, the lot's perimeter height, with the lot's own junk stacked against it (a broken-down wreck nose-in, a container
+plaza ([#686](https://github.com/Ryubara/deadnight/issues/686)). The road is gone: the plaza ends at a 4.2 m wall at
+z = 58 (the side walls too: higher than the lot's 3.0 m perimeter, see "Nobody leaves by jumping" above),
+with the lot's own junk stacked against it (a broken-down wreck nose-in, a container
 and a small one, a dumpster, crates, tyres), so nothing of the lot lies past it and nothing is seen to end.
 
 | What | Where |
@@ -245,26 +252,40 @@ the lamps are the warm pools in it ([night environment](../research/night-enviro
 
 | Area | Floor | Lit by the rules, every circuit on | What lights it |
 | --- | ---: | ---: | --- |
-| Screen field | 5,952 m² | 975 m² (16%) | eight lamp posts and the screen's glow: a strip 21 m wide and 36 m long down the avenue, and a disc at each flank post; the rim is dark |
+| Screen field | 5,952 m² | 1,953 m² (33%) | 28 lamp posts and the screen's glow: 22 across the rows and the flanks, and **six dim ones, one over each breach's spawn** ([below](#the-fences-breaches)); the rim between them is dark |
 | Concession | 240 m² | 217 m² (90%) | three warm lights; window spill on the field |
-| Midway | 1,104 m² | 373 m² (34%) | two dim lamps and the booth's front light; the alleys dark |
+| Midway | 1,104 m² | 487 m² (44%) | two dim lamps and the booth's front light, and the field's posts at its north end; the alleys dark |
 | Booth | 120 m² | 110 m² (92%) | two lights, and the projector beam (the brightest thing on the map) |
-| Generator yard | 1,932 m² | 451 m² (23%) | four work lamps and the generator's glow, a block in the middle of the ground: lit while the tank has fuel, and the most to lose |
-| Back lot | 1,932 m² | 104 m² (5%) | one flickering neon sign |
-| Ticket plaza | 640 m² | 271 m² (42%) | the ticket kiosk, and a wreck's headlights (127 m², the only ground lit with the tank dry) |
+| Generator yard | 1,932 m² | 463 m² (24%) | four work lamps and the generator's glow, the generator set in its cage (its day tank, stack and running light show over the walls): lit while the tank has fuel, and the most to lose |
+| Back lot | 1,932 m² | 580 m² (30%) | posts of the field's circuit round its edge (476 m²) and one flickering neon sign (104 m²) |
+| Ticket plaza | 640 m² | 274 m² (43%) | the ticket kiosk, and a wreck's headlights (127 m², the only ground lit with the tank dry) |
 
-"Lit" is the rules' word, not the eye's: ground within 6 m (`LotLamps.LAMP_REACH`) of a lamp whose circuit is on,
+"Lit" is the rules' word, not the eye's: ground within 6 m (`LightTuning.lamp_reach`) of a lamp whose circuit is on,
 counted on a 0.5 m grid over each floor. It is the ground where the dead keep their round's pace, and
 `game/tools/lot/lot_report.gd` prints this table and the ones in the two sections below. The glow in the capture
 above reaches further than 6 m, so the picture looks lighter than the rule is; the table replaces the shares that
 were read off that capture by eye (a third of the field, four fifths of the yard), which the measurement did not
 bear out.
 
-The dead come in at the field's breaches ([below](#the-fences-breaches)) at the start, 31 to 47 m from the nearest
-lamp: they arrive out of the dark 25% faster than their round's pace, and under a lit lamp they drop back to it: the
-light does not slow the dead, it only withholds the speed-up, which is why every lamp costs fuel
-([rounds](rounds.md#why-these-numbers)). When the generator dies the lamps go with it: the field is dark but for the
-screen, the yard goes black, and the only fuel is across the lot.
+The dead come in at the field's breaches ([below](#the-fences-breaches)) at the start, each with a dim lamp over its
+spawn, and the next lamp 11 to 23 m away. Under a lit lamp they keep to their round's pace and out of its 6 m they are
+25% faster: the light does not slow the dead, it only withholds the speed-up, which is why every lamp costs fuel
+([rounds](rounds.md#why-these-numbers)). So the rule at a breach is: **the breach is dimly lit, the field is dark**. The
+dead are seen coming out of the apron, and for their first 6 m they walk at their round's pace, then they are fast. The
+later areas' breaches ([below](#the-later-areas-breaches-849)) have no lamp of their own. When the generator dies the
+lamps go with it: the field is dark but for the screen, the yard goes black, and the only fuel is across the lot.
+
+### The apron lamps
+
+The maintainer placed a lamp post inside each of the six aprons, 0.5 m from the spawn (#703). They burn dim (#850: keep
+them, but dim, so the dead are seen coming without arriving in a spotlight). A post's `dim` (0 to 1) scales its omni
+light, its lens, its halo and its pool of glow on the ground together; the six are set to **0.4**
+(`APRON_LAMP_DIM` in `tools/world/build_greybox.py`, held by `tests/world/test_apron_lamps.gd`, which allows 0.25 to 0.5):
+the light's energy 2.8 becomes 1.12, the lens 3.0 becomes 1.2, the halo 0.9 becomes 0.36 and the pool 0.5 becomes 0.2.
+Nothing is added: the same six lights and the same cards, so the draw calls and each mesh's light count are the ones
+the lot had. The lamps stay on the field's circuit and the rules' 6 m is untouched, so the aprons still count as lit
+while the circuit is on and the tank has fuel; the simulator confirms the pace barely moves
+([rounds](rounds.md#the-first-6-m-on-lit-ground-850)).
 
 ## The fence's breaches
 
@@ -326,7 +347,7 @@ Each `Lamps` group carries `metadata/circuit`, and every light below it takes th
 
 | Circuit | Lamps |
 | --- | --- |
-| `screen_lot` (on at the start) | the field's eight lamp posts, the screen's glow |
+| `screen_lot` (on at the start) | the field's 28 lamp posts (six of them the dim [apron lamps](#the-apron-lamps)), the screen's glow |
 | `concession` | the stand's three interior lights, the midway's two lamps |
 | `booth` | the projector beam, the booth's two lights |
 | `back_lot` | the neon sign, the ticket kiosk in the ticket plaza |
@@ -429,7 +450,7 @@ go dark when the tank runs dry. A player choosing what to give up wants the grou
 
 | Circuit | Lights | Ground it lights | Draw a minute, round 1 / 30 | Ground per unit of draw |
 | --- | --- | --- | --- | ---: |
-| `screen_lot` | the field's posts and the screen's glow | 969 m² of the field | 3.6 / 6.7 | 269 m² |
+| `screen_lot` | the field's posts and the screen's glow | 1,947 m² of the field, 476 in the back lot, 169 in the midway, 16 elsewhere | 3.6 / 6.7 | 724 m² |
 | `concession` | the stand, the midway's two lamps | 217 m² in the stand, 206 m² in the midway, 69 m² outside them | 3.0 / 5.6 | 164 m² |
 | `booth` | the booth and the projector beam | 110 m² in the booth, 168 m² in the midway | 4.8 / 9.0 | 58 m² |
 | `back_lot` | the neon sign, the ticket kiosk | 104 m² in the back lot, 112 m² in the plaza | 4.2 / 7.9 | 51 m² |
@@ -450,7 +471,7 @@ A new door adds its area's spawns to the pool, and a spawn is chosen by an equal
 
 | Area | Spawns | Metres from the nearest lamp | Boards to tear |
 | --- | ---: | --- | --- |
-| Field (the six aprons) | 6 | 31 to 47 | yes, five at each breach |
+| Field (the six aprons) | 6 | 0.5 (the apron's dim lamp); the next lamp 11 to 23 | yes, five at each breach |
 | Midway (with the concession), two bays | 2 | 2 and 6 | yes, five |
 | Generator yard, three aprons | 3 | 18 to 22 | yes, five |
 | Back lot, three aprons | 3 | 14 to 19 | yes, five |
@@ -465,9 +486,10 @@ A new door adds its area's spawns to the pool, and a spawn is chosen by an equal
 | and the plaza | 17 | 35% |
 
 Before #849 only the field's were behind boards, so this share was the share of the pool with a wall to tear down, and
-a spawn inside an area was bare ground 3 to 21 m from a lamp. Now every spawn is behind five boards, and what buying a
+a spawn inside an area was bare ground 3 to 19 m from a lamp. Now every spawn is behind five boards, and what buying a
 door changes is where the dead stand: nearer the area the players are in, behind that area's own boards, and away from
-the field. A team that opens every area has the field's breaches as a third of the pressure. That is the closing in:
+the field. The field's breaches are 0.5 m from a dim lamp and 11 to 23 m from the next; the later ones have none of
+their own. A team that opens every area has the field's breaches as a third of the pressure. That is the closing in:
 the lot opens outward and the dead open with it.
 
 ### Proposed, not built
@@ -490,15 +512,15 @@ the side the player arrives from, and four capsules abreast need 2.8 m (2 x 0.35
 | Door | Slab | Opening | Nearest lamp of the circuit that serves it | Nearest field breach spawn |
 | --- | --- | ---: | --- | ---: |
 | Concession (350) | the stand's front, (0, -3.6) | 3 m | 1.6 m (the stand's light): bought in the light | 64 m |
-| Generator yard (500) | the gate in the field's south fence, (40, -4) | 4 m | 17 m (the work lamps): bought in the dark | 32 m |
+| Generator yard (500) | the gate in the field's south fence, (40, -4) | 4 m | 17 m (the work lamps); the field's nearest post is 11 m away: bought in the dark | 32 m |
 | Booth (750) | the booth's front, (0, 22.2), in the midway | 3 m | 0.1 m (the booth's light) | 79 m |
-| Back lot (1250) | the gate in the field's south fence, (-40, -4) | 4 m | 38 m (the neon sign): bought in the dark | 32 m |
+| Back lot (1250) | the gate in the field's south fence, (-40, -4) | 4 m | 38 m (the neon sign); the field's post is 5 m away: bought at the edge of the field's light | 32 m |
 | Plaza (2000) | the plaza's gate, (0, 38) | 4 m | 6.0 m (the kiosk): at the edge of lit | 89 m |
 
-The yard's and the back lot's gates are the odd ones. They stand in the field's far south fence, 30 m from the nearest
-field lamp and 32 m from the nearest breach, so buying them is a team move into the dark where the dead are 25% faster,
-not an errand for one. The start is no closer to danger: the players spawn 33 to 38 m from the nearest breach (eight
-places, two rows of four, 3 m apart: #690).
+The yard's and the back lot's gates are the odd ones. They stand in the field's far south fence, 11 m and 5 m from the
+nearest field lamp and 32 m from the nearest breach, so buying the yard's is a team move into the dark where the dead
+are 25% faster, not an errand for one (the back lot's gate is at the edge of a post's 6 m). The start is no closer to
+danger: the players spawn 33 to 38 m from the nearest breach (eight places, two rows of four, 3 m apart: #690).
 
 ### Where a downed player can be revived
 
@@ -508,12 +530,14 @@ the lit ground at least 30 m from every spawn that is open, which is little:
 
 | Pocket | Size | Where | When |
 | --- | ---: | --- | --- |
-| The avenue | 858 m² | centre (0, -25), the lit strip below the screen | always, while the field's circuit is on |
+| The avenue | 1,107 m² (1,069 once the back lot is open) | centre (-1, -22), the lit ground below the screen | always, while the field's circuit is on |
 | The stand | 192 m² | centre (0, 2) | after the concession, while its circuit is on |
+| The back lot's lit edge | 79 m² | centre (-22, 0), by the field's posts | after the back lot |
 
-There is none in the yard, the booth, the back lot or the plaza: the yard's door puts three spawns in the safest ground,
-18 to 22 m from its lamps (outside its east and south walls now). A team that goes deeper than the stand has
-nowhere to put a downed player down safely.
+The yard (7 m²) and the midway (1 m²) have specks, the booth and the plaza none: the yard's door puts three spawns in
+the safest ground, 18 to 22 m from its lamps (outside its east and south walls now). A team that goes deeper than
+the stand has little to put a downed player down in. (`lot_report.gd` prints these; the six apron lamps are 0.5 m from
+their spawns and change none of them.)
 
 ### How the team shares the loops
 

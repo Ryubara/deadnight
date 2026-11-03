@@ -432,6 +432,7 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), NIGHT_LOAD_TIMEOUT_S)
     running = page.evaluate("performance.now()")
     result["loading"] = loading_report(page.evaluate("window.__linkFrames"), pressed, running)
+    result["loading"]["steps"] = loading_steps(page.evaluate("window.deadnight_marks || []"), pressed, running)
     page.wait_for_timeout(1500)
     page.screenshot(path=out / "night.png")
 
@@ -519,6 +520,21 @@ def night_load_problems(result: dict, gpu: bool, deployed: bool) -> list[str]:
         "loading slower (docs/research/web-export.md, 'Loading a night')"
     )
     return [message]
+
+
+def loading_steps(marks: list[list], pressed: float, running: float) -> list[list]:
+    """Where the loading time went: the first time the game marked each step (`WebProbe.mark`: the loading screen's own
+    text, without its "(3 of 19)" counter), as [seconds after Play, step]. A failed `[loading]` check says how long the
+    night took; this says which step took it (the sounds, the lot, the effects), so a slow runner and a slow change tell
+    apart in the artifact."""
+    steps: list[list] = []
+    seen: set[str] = set()
+    for label, at in marks:
+        name = label.split(" (")[0]
+        if name not in seen and pressed <= at <= running:
+            seen.add(name)
+            steps.append([round((at - pressed) / 1000, 2), name])
+    return steps
 
 
 def loading_report(frames: list[list[float]], pressed: float, running: float) -> dict:
