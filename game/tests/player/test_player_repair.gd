@@ -197,13 +197,13 @@ func test_the_face_leads_the_blow() -> void:
 
 
 func test_the_arm_ik_is_off_while_the_clip_holds_the_arms() -> void:
-	# At influence 0 the IK modifier still overrode the arms in the drawn pose (only a rendered
-	# frame shows it), so the repair's swing and the hammer never showed: it is switched off.
+	# While a clip holds the arms the IK has no weight and the modifier is off, so the repair's swing
+	# and the hammer are the clip's alone.
 	_step(30)
 	assert_bool(_animation.hands().active).is_true()  # the rifle shouldered at rest
 	_animation.board_repaired(1.0)
 	_step(30)
-	assert_float(_animation.hands().influence).is_equal(0.0)
+	assert_float(_animation.hands().weight).is_equal(0.0)
 	assert_bool(_animation.hands().active).is_false()
 	_animation.stop_repair()
 	_step(30)
