@@ -167,6 +167,40 @@ func test_the_case_holds_a_tiny_far_model_of_every_prize_and_no_plush() -> void:
 	assert_int(triangles).is_less(PILE_TRIANGLE_BUDGET)
 
 
+## Every weapon model with a hold file is ready for the pool before it is a prize (the models of
+## #822 landed before their catalogue entries): a pool of all of them puts a tiny far model of
+## each in the case, every one at least once, still one draw call and under the plush's triangles.
+## The grenade is thrown, not won, and `melee` is the bat's second hold.
+func test_a_pool_of_every_modelled_weapon_fills_the_case_within_the_budget() -> void:
+	var pool: Array[StringName] = []
+	for file in DirAccess.get_files_at(PrizeCrane.HOLDS_DIR):
+		var id := file.trim_suffix(".remap").get_basename()
+		if file.ends_with(".tres") or file.ends_with(".tres.remap"):
+			if id not in ["grenade", "melee"] and not pool.has(StringName("weapon_" + id)):
+				pool.append(StringName("weapon_" + id))
+	for id in ["weapon_mp5", "weapon_ppsh", "weapon_m4a1", "weapon_dual_pistols"]:
+		assert_array(pool).contains([StringName(id)])
+	var crane: PrizeCrane = auto_free(PrizeCrane.new())
+	add_child(crane)
+	crane.configure(RulesFixture.tuning().crane, pool)
+	var expected := 0
+	for prize in pool:
+		var far := PrizeCrane.far_model_of(prize)
+		assert_str(far).override_failure_message("%s has no far level" % prize).is_not_empty()
+		(
+			assert_bool(crane.pile_weapons().has(prize))
+			. override_failure_message("no tiny %s in the case" % prize)
+			. is_true()
+		)
+	for prize in crane.pile_weapons():
+		expected += _triangles(load(PrizeCrane.far_model_of(prize)) as PackedScene)
+	var mesh := crane.pile_mesh()
+	assert_int(mesh.get_surface_count()).is_equal(1)
+	var triangles := (mesh.surface_get_arrays(0)[Mesh.ARRAY_INDEX] as PackedInt32Array).size() / 3
+	assert_int(triangles).is_equal(expected)
+	assert_int(triangles).is_less(PILE_TRIANGLE_BUDGET)
+
+
 ## A prize added to the pool before its model has a stand-in in the case and on the board, and
 ## the crane needs no edit for it.
 func test_a_prize_with_no_model_yet_still_lies_in_the_case() -> void:
