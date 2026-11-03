@@ -33,11 +33,22 @@ func test_a_gun_close_up_is_held_to_its_own_level() -> void:
 
 
 func test_a_sound_without_a_cap_keeps_the_engines_ceiling() -> void:
-	var def := SoundCatalog.get_def(&"board_tear")
+	var def := SoundCatalog.get_def(&"grenade_bounce")
 	assert_float(def.near_cap_db).is_equal(INF)
-	var player := _audio.play(&"board_tear", Vector3(0.0, 0.0, -2.0)) as AudioStreamPlayer3D
+	var player := _audio.play(&"grenade_bounce", Vector3(0.0, 0.0, -2.0)) as AudioStreamPlayer3D
 	assert_object(player).is_not_null()
 	assert_float(player.max_db).is_equal(3.0)
+
+
+func test_a_loud_sound_is_held_under_its_trim_close_up() -> void:
+	# A negative cap puts the near level under the trim (#753): the last board has a +4 dB trim and
+	# is held more than 9 dB under it, so a shot landing on it leaves room under full scale.
+	var def := SoundCatalog.get_def(&"board_last")
+	assert_float(def.near_cap_db).is_less(0.0)
+	var player := _audio.play(&"board_last", Vector3(0.0, 0.0, -2.0)) as AudioStreamPlayer3D
+	assert_object(player).is_not_null()
+	assert_float(player.max_db).is_equal_approx(player.volume_db + def.near_cap_db, 0.001)
+	assert_float(player.max_db).is_less(player.volume_db)
 
 
 func test_a_sound_without_a_cap_after_a_capped_one_on_one_slot_keeps_the_engines_ceiling() -> void:
@@ -46,7 +57,7 @@ func test_a_sound_without_a_cap_after_a_capped_one_on_one_slot_keeps_the_engines
 	assert_float(capped.max_db).is_less(3.0)
 	# Everything stopped, so the next sound takes the same slot (the lowest free one).
 	_audio.stop_all()
-	var uncapped := _audio.play(&"board_tear", Vector3(0.0, 0.0, -2.0)) as AudioStreamPlayer3D
+	var uncapped := _audio.play(&"grenade_bounce", Vector3(0.0, 0.0, -2.0)) as AudioStreamPlayer3D
 	assert_object(uncapped).is_same(capped)
 	assert_float(uncapped.max_db).is_equal(AudioService.ENGINE_MAX_DB)
 
