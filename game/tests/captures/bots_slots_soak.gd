@@ -27,7 +27,7 @@ const HZ := 60
 const MOST_AHEAD := 2.5
 ## Ticks after a seat change in which the clients' seat lists may still lag the server's.
 const SETTLE_TICKS := 120
-const SEATS := 4
+const SEATS := NightHost.MAX_PLAYERS
 ## Ticks the lot takes to warm up; the host's worst step is read after them.
 const WARM_TICKS := 1200
 
