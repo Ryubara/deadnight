@@ -44,6 +44,7 @@ const WEAPONS := {
 	"rule: BotMotor fires it in bursts of three to five (automatic); its shot is wider on the move",
 	"fifty_cal": "rule: BotMotor fires it like the pistol (the shot pierces the line of the dead)",
 	"pump_870": "rule: BotMotor fires it like the pistol; BotArsenal reloads it shell by shell",
+	"dual_pistols": "rule: BotMotor fires it like the pistol (the hands alternate on the server)",
 }
 ## `PingBoard.KINDS`: what a bot does about each mark a person puts up.
 const PINGS := {

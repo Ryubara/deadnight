@@ -27,6 +27,7 @@ const ITEM_NAMES := {
 	&"ammo_shotgun": "BOUGHT AMMUNITION",
 	&"ammo_rifle": "BOUGHT AMMUNITION",
 	&"ammo_flare_gun": "BOUGHT AMMUNITION",
+	&"ammo_dual_pistols": "BOUGHT AMMUNITION",
 	&"fuel_can": "FILLED THE GENERATOR",
 	&"upgrade_weapon": "HAD A WEAPON RE-CUT",
 	&"tonic_hearty": "DRANK THE HEARTY HEALTH TONIC",

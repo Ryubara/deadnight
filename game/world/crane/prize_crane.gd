@@ -42,6 +42,7 @@ const MODELS := {
 	&"weapon_m249": "res://assets/weapons/m249/m249.glb",
 	&"weapon_fifty_cal": "res://assets/weapons/fifty_cal/fifty_cal.glb",
 	&"weapon_pump_870": "res://assets/weapons/pump_870/pump_870.glb",
+	&"weapon_dual_pistols": "res://assets/weapons/service_pistol/service_pistol.glb",
 }
 ## The prizes whose models are loaded when the first play starts, not when the night does (a night
 ## that never plays the crane never loads them: #793, the web's night-load time).
@@ -62,6 +63,7 @@ const MODEL_LENGTHS := {
 	&"weapon_fire_axe": 1.3,
 	&"weapon_pistol": 0.8,
 	&"weapon_crowbar": 1.3,
+	&"weapon_dual_pistols": 0.8,
 }
 ## The cycling starts this quick (seconds between weapons) and slows to the slow one.
 const CYCLE_FAST := 0.07

@@ -24,7 +24,7 @@ func _fire(night: Night, weapon_id: StringName) -> int:
 
 func test_the_night_plays_the_layer_over_the_shot_of_every_re_cut_weapon() -> void:
 	var night := await _start()
-	for weapon_id in UpgradeTuning.new().weapons:
+	for weapon_id in UpgradeTuning.shipped().catalogue_weapon_ids():
 		var before := await _fire(night, weapon_id)
 		(
 			assert_int(before)

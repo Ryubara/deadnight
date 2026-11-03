@@ -98,12 +98,12 @@ func show_repair(player_id: int) -> void:
 
 ## The shooter's Soldier plays the attack of the weapon he fired: a swing for a melee weapon, the
 ## fire clip (and its recoil) for a gun. Every client draws every player's attack from the same
-## `shot_fired` event.
-func show_attack(player_id: int, weapon: WeaponDef) -> void:
+## `shot_fired` event. A dual weapon's shot is for `hand` (0 the right, 1 the left): that gun kicks.
+func show_attack(player_id: int, weapon: WeaponDef, hand := 0) -> void:
 	var body: Node3D = bodies.call(player_id)
 	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
 	if animation != null:
-		animation.play_action(&"Swing" if weapon.is_melee() else &"Fire")
+		animation.play_action(&"Swing" if weapon.is_melee() else &"Fire", hand)
 
 
 ## The quick melee: the Soldier strikes with what he holds (`Strike_<Class>`). Every client draws
@@ -190,10 +190,11 @@ func _show_shot(event: Dictionary) -> void:
 	var shooter: int = event.get("shooter_id", -1)  # the warm-up's sample shot has none
 	var body := bodies.call(shooter) as Player
 	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
-	var muzzle: Node3D = animation.muzzle_point() if animation != null else null
+	var hand: int = event.get("hand", 0)
+	var muzzle: Node3D = animation.muzzle_point(hand) if animation != null else null
 	effects.shot(def, event["muzzle"], event["ends"], event.get("flesh", []), muzzle)
 	if shooter > 0:
-		show_attack(shooter, def)
+		show_attack(shooter, def, hand)
 	if body != null and shooter == _state.player_id:
 		body.camera_rig.add_shake(def.shake_trauma)
 

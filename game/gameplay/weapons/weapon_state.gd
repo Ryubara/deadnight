@@ -26,6 +26,11 @@ var round_left: float = 0.0
 var loaded_last_tick: int = 0
 ## The reload the last shot ended (a by-round reload a round had been loaded into).
 var interrupted: bool = false
+## The hand of the last shot of a dual weapon (`WeaponDef.dual`): 0 the right, 1 the left. The
+## shots alternate, right first, and a reload does not change whose turn it is. Always 0 for a
+## weapon held in one hand.
+var hand: int = 0
+var _next_hand: int = 0
 
 
 func _init(p_def: WeaponDef) -> void:
@@ -66,6 +71,9 @@ func fire(interval_scale: float = 1.0) -> void:
 	carry = 0.0
 	if uses_ammo():
 		ammo -= 1
+	if def.dual:
+		hand = _next_hand
+		_next_hand = 1 - _next_hand
 
 
 ## Why a reload cannot start (`&"reloading"`, `&"full"`, `&"no_reserve"`, `&"melee"`), or `&""`.

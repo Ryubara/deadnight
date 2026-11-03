@@ -102,6 +102,42 @@ fist at the rule's size), the muzzle and butt points of the model, and `grips/gr
 from them; it shows with the cook clip's `grenade_visible` event and goes with `release`. The capture
 (`weapon_hold_sheet.tscn -- --only=grenade`) adds a close view of the hand and one from the front.
 
+## The dual pistols
+
+`dual_pistols` is the first weapon held in both hands (#789): a pistol in each, the shots alternating. Its hold file
+(`holds/dual_pistols.tres`, class `Dual`, `dual = true`) is the revolver's model twice, the left one **the right one
+mirrored** (the model of #797 replaces the revolver when it lands). It is built the way the rest of the hold is, by the
+hands' IK, plus six arm clips from Blender ([Animation](animation.md#dual-pistols)).
+
+- **The rig is an exact mirror**: every left bone's rest rotation is its right one's with `y` and `z` negated (measured
+  in Godot on the Soldier and in Blender: the left hand ended 0.0 m from the right's reflection). So nothing is solved
+  for the left hand: `HeldWeapon` puts a second copy of the model on `Index1.L` at the right one's place with `x` turned
+  about (`WeaponHandsIK.MIRROR`: a node whose basis turns the other way draws the model in a mirror), the left fingers
+  are the grip's right-hand ones with `y` and `z` negated (`HandGrip.mirrored()`, `HandGripPose.left_mirrors`), and the
+  left arm reaches the mirror of the right arm's pose (`WeaponHandsIK._reach_offhand`). One builder serves the night,
+  other players' bodies and the menu's soldier, so all three show both guns.
+- **Where the guns are**: `grip_offset` is the right gun's, from the right shoulder joint; the left gun's is its mirror
+  from the left shoulder (0.28 m out, 0.05 down, 0.42 forward), so the pair is about 0.7 m apart. Each barrel turns in
+  to meet the crosshair's point 12 m ahead from where it is, so both cross the ray there (the rule of one gun, per
+  gun). The shoulder camera is over the right shoulder: the right gun shows beside the head and the left hand on the
+  other side, with its gun hidden by the head (the head is as wide as the arms' span from behind); the left gun is plain
+  from the side and the front and in other players' views.
+- **Recoil is per gun**: the shot's `hand` (0 right, 1 left; the server numbers it, `WeaponState.hand`) kicks that gun
+  back and up (`recoil`, `recoil_left`) and flashes that gun's muzzle (`PlayerAnimation.muzzle_point(hand)`), for every
+  player alike.
+- **Reload**: one reload for both (`reload/dual_pistols.tres`): both pistols come in toward the chest, turn up and both
+  cylinders open (the part moves on the second model too, `ReloadView.offpart`), a pause, close, and back to the aim.
+  No hand leaves a gun for the belt, so the reload's `left` stays 0 and the fingers stay closed.
+- **Around the aim**: equip, unequip, the sprint and the quick melee are clips (`Aim_Dual`, `Fire_Dual`, `Equip_Dual`,
+  `Unequip_Dual`, `Strike_Dual`, `Sprint_Dual`): the Pistol clips with the left arm the right's mirrored (the sprint's
+  left arm is the right's half a stride on, so the pistols pump against each other). Down, a revive and the repair hide
+  both guns with the weapon.
+- **Tests**: `test_dual_pistols_hold.gd` (both grips on their targets within 3 cm, both hands within 1 cm of their grip,
+  both barrels within 1.5 degrees of the crosshair's point, the pair level and apart, the left fingers the right's
+  mirrored, no part of either hand more than 2 mm into its gun and every contact within 5 mm standing, aiming, firing
+  from either hand, running and sprinting) and `test_dual_pistols_view.gd` (the flash on the gun that fired, the kick on
+  that gun, another player's body).
+
 ## Per weapon
 
 | Weapon | Grip from the shoulder joint (m) | Support (model units) | Notes |
@@ -110,6 +146,7 @@ from them; it shows with the cook clip's `grenade_visible` event and goes with `
 | Double shotgun | right 0, down 0.09, forward 0.41 | -0.36, -0.03 | the same, the stock a little longer; chest turned 30 degrees |
 | Tommy gun | right 0, down 0.09, forward 0.39 | -0.37, -0.045 (the foregrip) | stock at the shoulder, left hand on the foregrip; chest turned 30 degrees |
 | Revolver, flare gun | right 0.10, down 0.05, forward 0.42 | none | one hand: the right arm out toward the aim, the left stays with the clip |
+| Dual pistols | right 0.28, down 0.05, forward 0.42 (the left gun mirrored, from the left shoulder) | none | a pistol in each hand ([above](#the-dual-pistols)) |
 | Baseball bat, crowbar, fire axe | the kit's grip, `shouldered = false` | none | one hand, as the Swing clip moves it; two hands on the grip is open work |
 
 The grip moved forward with the bigger stocks of #460 (by the butt's growth), so the stock stays at the shoulder, and
@@ -144,7 +181,7 @@ Each weapon id of the catalogue has **its own hold file**, `game/gameplay/player
 grip), so no two weapons share a model: the crowbar is not the bat, the Tommy gun is not the lever rifle.
 `WeaponHoldMap` (`game/gameplay/player/weapon_hold_map.gd`) gives the clip class of each id (rifle Rifle, shotgun
 Shotgun, SMG Rifle, the PPSh, MP5, M4A1, M249 and .50 calibre Rifle, the 870 pump Shotgun, revolver and flare gun
-Pistol, every melee weapon Melee); `PlayerAnimation.equip(id)`
+Pistol, the dual pistols Dual, every melee weapon Melee); `PlayerAnimation.equip(id)`
 takes the class's clips and the id's own hold (`WeaponHoldMap.hold_for`). A hold whose `scene` is not in
 `assets/weapons/` yet
 (`WeaponHold.has_model`) leaves the hand empty, never another weapon's model: `WeaponHoldMap.no_model()` lists those

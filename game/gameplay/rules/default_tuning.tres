@@ -95,8 +95,8 @@ script = ExtResource("1_skww1")
 id = &"crane_play"
 kind = 2
 price = 550
-pool = Array[StringName]([&"weapon_shotgun", &"weapon_rifle", &"weapon_smg", &"weapon_flare_gun", &"weapon_baseball_bat", &"weapon_fire_axe", &"weapon_pistol", &"weapon_crowbar", &"weapon_pump_870", &"weapon_mp5", &"weapon_m4a1", &"weapon_ppsh", &"weapon_m249", &"weapon_fifty_cal"])
-pool_weights = PackedFloat32Array(4, 3, 2, 1, 0.5, 0.5, 1, 1, 2, 2, 1.5, 2, 1.5, 1.5)
+pool = Array[StringName]([&"weapon_shotgun", &"weapon_rifle", &"weapon_smg", &"weapon_flare_gun", &"weapon_baseball_bat", &"weapon_fire_axe", &"weapon_pistol", &"weapon_crowbar", &"weapon_pump_870", &"weapon_mp5", &"weapon_m4a1", &"weapon_ppsh", &"weapon_m249", &"weapon_fifty_cal", &"weapon_dual_pistols"])
+pool_weights = PackedFloat32Array(4, 3, 2, 1, 0.5, 0.5, 1, 1, 2, 2, 1.5, 2, 1.5, 1.5, 0.5)
 
 [sub_resource type="Resource" id="Resource_0d3wl"]
 script = ExtResource("1_skww1")
@@ -276,6 +276,15 @@ amount = 6.0
 weapon = &"pump_870"
 pool_weights = PackedFloat32Array()
 
+[sub_resource type="Resource" id="Resource_ammo_dual_pistols"]
+script = ExtResource("1_skww1")
+id = &"ammo_dual_pistols"
+kind = 6
+price = 70
+amount = 24.0
+weapon = &"dual_pistols"
+pool_weights = PackedFloat32Array()
+
 [sub_resource type="Resource" id="Resource_6sif2"]
 script = ExtResource("2_tud1d")
 start_points = 200
@@ -291,7 +300,7 @@ round_bonus_base = 20
 round_bonus_per_round = 10
 down_penalty_fraction = 0.1
 max_tonics = 4
-items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_wall_pump"), SubResource("Resource_wall_mp5"), SubResource("Resource_wall_m4a1"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_tri1"), SubResource("Resource_arc1"), SubResource("Resource_upgr1"), SubResource("Resource_utxut"), SubResource("Resource_gren1"), SubResource("Resource_ammo_pistol"), SubResource("Resource_ammo_smg"), SubResource("Resource_ammo_shotgun"), SubResource("Resource_ammo_rifle"), SubResource("Resource_ammo_flare_gun"), SubResource("Resource_ammo_ppsh"), SubResource("Resource_ammo_mp5"), SubResource("Resource_ammo_m4a1"), SubResource("Resource_ammo_m249"), SubResource("Resource_ammo_fifty_cal"), SubResource("Resource_ammo_pump_870")])
+items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_tri1"), SubResource("Resource_arc1"), SubResource("Resource_upgr1"), SubResource("Resource_utxut"), SubResource("Resource_gren1"), SubResource("Resource_ammo_pistol"), SubResource("Resource_ammo_smg"), SubResource("Resource_ammo_shotgun"), SubResource("Resource_ammo_rifle"), SubResource("Resource_ammo_flare_gun"), SubResource("Resource_ammo_dual_pistols"), SubResource("Resource_wall_pump"), SubResource("Resource_wall_mp5"), SubResource("Resource_wall_m4a1"), SubResource("Resource_ammo_ppsh"), SubResource("Resource_ammo_mp5"), SubResource("Resource_ammo_m4a1"), SubResource("Resource_ammo_m249"), SubResource("Resource_ammo_fifty_cal"), SubResource("Resource_ammo_pump_870")])
 
 [sub_resource type="Resource" id="Resource_df3qj"]
 script = ExtResource("3_bgcg8")

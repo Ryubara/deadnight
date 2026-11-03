@@ -230,7 +230,7 @@ a strong-solo ceiling of 19 for the roster of seventeen (`BalanceTargets.MEDIAN_
 roster is run when its weapons land (see the pull request of #794).
 
 **What it did to the gate.** Medians of the gate's six cells (60 nights, seed 4000; weak solo, average 1, 2, 4 and 8,
-strong solo), ranges 4 to 9, 8 to 14, 11 to 16, 12 to 17, 14 to 20, 12 to 18:
+strong solo), ranges 4 to 9, 8 to 14, 11 to 16, 12 to 17, 14 to 20, 12 to 19 (widened, #789):
 
 | Step | Medians | Gate |
 | --- | --- | --- |

@@ -20,14 +20,14 @@ come from one script, so this page and the file cannot drift:
 ## Naming
 
 - **`<Action>_<Class>`** for anything a weapon changes: `Aim_Rifle`, `Fire_Shotgun`, `Reload_Pistol`,
-  `Swing_Melee`, `Equip_Melee`. Classes: **Rifle, Shotgun, Pistol, Melee**.
+  `Swing_Melee`, `Equip_Melee`. Classes: **Rifle, Shotgun, Pistol, Melee**, and **Dual** (a pistol in each hand, [below](#dual-pistols)).
 - **Bare names** for whole-body clips: `Idle`, `Walk`, `Run`, `Downed`; a whole-body clip with a variant is
   `<State>_<Variant>`: `Downed_Idle`, `Downed_Crawl`, `Revive_Kneel` ([Downed and revive](#downed-and-revive)).
 - **Kit names stay** for kit clips we use as they are: `HitReact` is the hit, `Death` is going down. Renaming them
   would break the other kit characters that share the library.
 
 Which weapon is which class: lever rifle is Rifle, double shotgun is Shotgun, baseball bat and fire axe are Melee.
-The revolver and the flare gun are Pistol, the Tommy gun Rifle, the crowbar Melee
+The revolver and the flare gun are Pistol, the dual pistols Dual, the Tommy gun Rifle, the crowbar Melee
 ([Weapons in the hands](weapon-hold.md#which-weapon-is-which)). The night plays `Swing` or `Fire` on every
 `shot_fired` ([attacks](weapon-hold.md#attacks-on-the-soldier)).
 
@@ -595,6 +595,38 @@ Soldier's library when the tree is built.
   `game/tests/night/test_night_sprint_carry.gd` (sprint commands through the real night carry the weapon, and the
   first shot after the sprint comes on the same tick as one from a standstill). Captures:
   `game/tests/captures/sprint_carry_tour.tscn`.
+
+## Dual pistols
+
+The first weapon held in both hands (#789, the hold: [Weapons in the hands](weapon-hold.md#the-dual-pistols)). The aim,
+the fire and the reload are the hands' IK and the reload motion, which pose both arms; six `upper` clips, class `Dual`,
+cover what the arms do around them, in their own file (`game/assets/characters/soldier/dual/soldier_dual.glb` with its
+`clips.json`, added to the Soldier's library by `PlayerAnimation` through `DualClips`):
+
+| Clip | Plays | Frames | Events |
+| --- | --- | --- | --- |
+| Aim_Dual | loop | 48 | - |
+| Fire_Dual | once | 6 | muzzle 0, can_fire_again 6 |
+| Equip_Dual | once | 10 | weapon_visible 2, ready 10 |
+| Unequip_Dual | once | 10 | weapon_hidden 8 |
+| Strike_Dual | once | 13 | whoosh 3, hit 6, can_strike_again 13 (the [quick melee](#quick-melee): both pistols come down together) |
+| Sprint_Dual | loop | 17 | - (Run's cycle, see [Sprint carry](#sprint-carry)) |
+
+**Made by mirroring.** The kit rig is an exact mirror: each left bone's local rotation is the right one's with `y` and `z`
+negated (the Blender build asserts the left hand ends within 2 mm of the right's reflection, and prints 0.0). Every
+Dual clip is the matching Pistol clip's poses with `Shoulder`, `UpperArm`, `LowerArm` and `Index1` of the left side set
+to the right side's, flipped by that rule (`mirror_arm`, `dual` in `tools/blender/soldier_clips.py`); the chest, which both
+arms hang from, keeps its own twist. The sprint's left arm is the right's, half a stride on (`shifted`), so the two arms
+pump against each other as a runner's do. `Fire_Dual` is one kick on both arms for the clip's pose only: which gun kicks
+is the IK's, per shot (`WeaponHandsIK.recoil` and `recoil_left`, from the shot's `hand`).
+
+```sh
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Aim_Dual,Fire_Dual,Equip_Dual,Unequip_Dual,Strike_Dual,Sprint_Dual     --out game/assets/characters/soldier/dual/soldier_dual.glb
+gds godot -- --path game res://tests/captures/dual_pistols_tour.tscn --write-movie <abs>/f.png --fixed-fps 30     --quit-after 285 [-- --view=side|front|rear|top]     # hold, aim, fire, reload, sprint, sprint into the aim, the blow
+```
+
+Rebuilding the Strike file with `--clips Strike_` also writes `Strike_Dual` into it; the library takes the first copy it
+meets, so the two are the same clip.
 
 ## How the clips are made
 

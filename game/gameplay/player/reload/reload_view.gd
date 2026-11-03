@@ -20,6 +20,8 @@ var weight := 0.0
 ## ammunition the left hand brings (null for none).
 var part: Node3D
 var ammo: Node3D
+## The left gun's moving part of a dual weapon (the same part in the second model), or null.
+var offpart: Node3D
 
 var _motion: ReloadMotion
 var _left := 0.0
@@ -27,6 +29,7 @@ var _length := 1.0
 ## How many rounds the reload loads, for a by-round motion (0: not told).
 var _rounds := 0
 var _part_rest := Transform3D.IDENTITY
+var _offpart_rest := Transform3D.IDENTITY
 var _mount: BoneAttachment3D
 ## The ammunition is the part, taken where it was (the drum): placed by the hand, not the motion.
 var _ammo_from_part := false
@@ -42,12 +45,17 @@ func _init(skeleton: Skeleton3D) -> void:
 
 
 ## The weapon `weapon_id` is now `weapon` (its model in the hand, at `model_scale`): its motion,
-## its moving part and its ammunition. A class or a weapon that does not reload has none.
-func setup(weapon_id: StringName, weapon: Node3D, model_scale: float) -> void:
+## its moving part and its ammunition. A class or a weapon that does not reload has none. A dual
+## weapon's second gun is `offhand`: its part moves with the first's.
+func setup(
+	weapon_id: StringName, weapon: Node3D, model_scale: float, offhand: Node3D = null
+) -> void:
 	_motion = ReloadMotion.for_weapon(weapon_id) if weapon_id != &"" else null
 	_model_scale = model_scale
 	part = null
+	offpart = null
 	_part_rest = Transform3D.IDENTITY
+	_offpart_rest = Transform3D.IDENTITY
 	if ammo != null:
 		ammo.free()
 		ammo = null
@@ -58,6 +66,10 @@ func setup(weapon_id: StringName, weapon: Node3D, model_scale: float) -> void:
 		part = weapon.find_child(String(_motion.part_node), true, false) as Node3D
 		if part != null:
 			_part_rest = part.transform
+		if offhand != null:
+			offpart = offhand.find_child(String(_motion.part_node), true, false) as Node3D
+			if offpart != null:
+				_offpart_rest = offpart.transform
 	if _motion.ammo_scene != "":
 		ammo = (load(_motion.ammo_scene) as PackedScene).instantiate() as Node3D
 		ammo.name = "Ammo"
@@ -114,6 +126,9 @@ func _pose_part(weapon_shown: bool) -> void:
 	if part != null and _motion != null:
 		part.transform = _motion.part_transform(_part_rest, pose.part * weight)
 		part.visible = pose.part_shown or weight <= 0.5
+		if offpart != null:
+			offpart.transform = _motion.part_transform(_offpart_rest, pose.part * weight)
+			offpart.visible = part.visible
 	if ammo == null:
 		return
 	if holding and not ammo.visible and _motion.ammo_is_part and part != null:
