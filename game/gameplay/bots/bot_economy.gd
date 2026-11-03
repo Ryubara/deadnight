@@ -293,7 +293,8 @@ func _recut(view: View, item: ShopItem) -> Buy:
 func _tonic(view: View, item: ShopItem) -> Buy:
 	if not view.is_calm() or item.effect == ShopItem.Effect.NONE:
 		return null
-	if PerkEffects.mask_has(_shop.economy, view.perks, item.id):
+	var bit := _shop.tonic_order().find(item.id)
+	if bit >= 0 and (view.perks & (1 << bit)) != 0:
 		return null
 	if PerkEffects.mask_count(view.perks) >= _shop.economy.max_tonics:
 		return null
