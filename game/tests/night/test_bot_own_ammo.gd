@@ -54,7 +54,7 @@ func _night(open: bool, profile: BotProfile = null) -> SeatedNight:
 	var night := await NightFixture.seat(self, 2, tuning, SEED, true)
 	night.human(PERSON)
 	night.seat(BOT, profile if profile != null else BotProfile.regular(), SEED + BOT)
-	await night.settle(12)
+	await night.settle(SETTLE_FRAMES)
 	if open:
 		night.open_door(DOOR)
 		await night.settle(SETTLE_FRAMES)
