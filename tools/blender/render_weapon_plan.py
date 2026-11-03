@@ -11,7 +11,8 @@ ruler with the Soldier's height (1.4 m) marked. Its hand and effect points show 
 yellow, `Support` blue, `Muzzle` red. `--plan` adds each planned weapon of a JSON list ({id, row, length, height,
 grip_from_muzzle}) as a box of its planned size in the game beside its row. `--silhouette` draws every model flat
 black on white with no dots or labels, at `--px-per-m` (42 is a teammate 8 m away on a phone, 130 the player's own
-weapon): what a shape keeps at that size is what reads. `--far` draws the far levels.
+weapon): what a shape keeps at that size is what reads. `--far` draws the far levels. `--add id=row@model_scale` adds a
+model that no hold file names yet at the end of a row (#797: `--add ray_gun=pistols@2.275`).
 """
 
 import argparse
@@ -126,6 +127,7 @@ def main():
     ap.add_argument("--silhouette", action="store_true")
     ap.add_argument("--far", action="store_true")
     ap.add_argument("--px-per-m", type=int, default=360)
+    ap.add_argument("--add", action="append", default=[], help="id=row@model_scale: a model with no hold file yet")
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args(argv)
 
@@ -136,6 +138,11 @@ def main():
     plan_mat = flat_material("Plan", (0.75, 0.2, 0.55))
     dots = {k: flat_material(k, c) for k, c in DOTS.items()}
     scales = hold_scales(args.root)
+    for spec in args.add:
+        name, _, rest = spec.partition("=")
+        row, _, scale = rest.partition("@")
+        ROWS[row] = [*ROWS[row], name]
+        scales[name] = float(scale)
     plan = json.loads(args.plan.read_text(encoding="utf-8")) if args.plan else []
     label = not args.silhouette
 
