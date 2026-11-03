@@ -78,7 +78,7 @@ static func _chase(
 ) -> void:
 	if not has_target:
 		return
-	if _flat_distance(zombie.position, target_pos) <= tuning.reach:
+	if _in_reach(zombie, tuning, target_pos, 0.0):
 		zombie.enter(ZombieBody.Mode.ATTACK)
 		return
 	var to_waypoint := waypoint - zombie.position
@@ -99,7 +99,7 @@ static func _attack(
 		_turn_toward(zombie, to_target, tuning.turn_rate * delta)
 		if not zombie.struck and zombie.mode_time >= profile.windup:
 			zombie.struck = true
-			if to_target.length() <= tuning.reach + tuning.strike_slack:
+			if _in_reach(zombie, tuning, target_pos, tuning.strike_slack):
 				strike = {
 					"zombie_id": zombie.id,
 					"target_id": zombie.target_id,
@@ -114,6 +114,17 @@ static func _attack(
 static func _turn_toward(zombie: ZombieBody, direction: Vector3, max_step: float) -> void:
 	if direction.length_squared() > 0.0001:
 		zombie.yaw = lerp_angle(zombie.yaw, atan2(direction.x, direction.z), minf(1.0, max_step))
+
+
+## Whether the target is within a swing: close along the ground (`slack` metres more allowed) and
+## not a storey above or below (the roost's floor is between the zombie under it and the person).
+static func _in_reach(
+	zombie: ZombieBody, tuning: ZombieTuning, target_pos: Vector3, slack: float
+) -> bool:
+	return (
+		_flat_distance(zombie.position, target_pos) <= tuning.reach + slack
+		and absf(zombie.position.y - target_pos.y) <= tuning.reach_height
+	)
 
 
 static func _flat_distance(a: Vector3, b: Vector3) -> float:

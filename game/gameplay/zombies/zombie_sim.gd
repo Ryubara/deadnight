@@ -245,10 +245,41 @@ func _think(
 	zombie.tearing = false
 	if zombie.gate_id != &"":
 		_work_the_boards(zombie, delta, events)
-	# Height stays where it spawned: the lot is flat. A path point sits above the floor by a baker
-	# offset (twice the cell height), so using its height needs that taken off first.
 	zombie.position += (zombie.velocity + zombie.push) * delta
+	_settle_on_ground(zombie, delta)
 	zombie.push = zombie.push.move_toward(Vector3.ZERO, tuning.push_decay * delta)
+
+
+## Lifts or lowers the zombie to the floor its path runs on, at most `tuning.climb_speed` a second.
+## The path lies on the navigation mesh, above the floor by `pathing.ground_offset()`; the height
+## is read off the segment of the path the zombie is on. A zombie that kept the height it spawned
+## at (the lot was taken for flat) walked the booth's ramp under it: the next repath snapped its
+## ground-level position to the floor beside the ramp, and that path led back to the ramp's foot.
+## A path that is a straight line to a target (no ground offset) carries no floor, and the zombie
+## keeps its height.
+func _settle_on_ground(zombie: ZombieBody, delta: float) -> void:
+	var offset := pathing.ground_offset()
+	if is_nan(offset) or zombie.path.is_empty() or not zombie.is_alive():
+		return
+	var ground := _ground_under(zombie) - offset
+	zombie.position.y = move_toward(zombie.position.y, ground, tuning.climb_speed * delta)
+
+
+## The height of the path under the zombie: the segment it walks is the one that ends at its
+## waypoint, and the height is where the zombie's shadow falls along it.
+func _ground_under(zombie: ZombieBody) -> float:
+	var path := zombie.path
+	var to_index := mini(zombie.path_index, path.size() - 1)
+	if to_index == 0:
+		return path[0].y
+	var from := path[to_index - 1]
+	var to := path[to_index]
+	var along := Vector2(to.x - from.x, to.z - from.z)
+	var length_squared := along.length_squared()
+	if length_squared < COINCIDENT_DISTANCE * COINCIDENT_DISTANCE:
+		return to.y
+	var here := Vector2(zombie.position.x - from.x, zombie.position.z - from.z)
+	return lerpf(from.y, to.y, clampf(here.dot(along) / length_squared, 0.0, 1.0))
 
 
 ## The nearest lure that calls this zombie, or null: one within its radius, unless the zombie is
@@ -413,7 +444,11 @@ func _push_on(zombie: ZombieBody, radius: float) -> Vector3:
 				# Most of the neighbours in the nine cells are farther than the radius: no square
 				# root for them.
 				var away := here - other.position
-				if away.x * away.x + away.z * away.z < radius_squared:
+				# One above the other (the ramp over the floor beside it) do not touch.
+				if (
+					away.x * away.x + away.z * away.z < radius_squared
+					and absf(away.y) < tuning.separation_height
+				):
 					push += _push_from(zombie, other, radius)
 	# A pile of coincident zombies adds up a push from each; the sum is bounded so no tick throws one.
 	return push.limit_length(tuning.separation_max_speed)
