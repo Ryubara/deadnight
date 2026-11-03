@@ -432,7 +432,7 @@ same order; `BotOrders.current(frame, bot_id)` is how a bot (and the wheel's HUD
 | --- | --- |
 | Follow | Within 12 m of the person for 95% of the time a bot is up (outside errands), stuck under 1% of walking time, no episode over 10 s: #564's numbers, measured with `--order=follow`. |
 | Roam | No idle bot: none stands with nothing to do (its note says roam or hold and it does not move) for more than 8 s (a look about at a place lasts 2 to 5 s). No stuck episode over 10 s and stuck under 1% of walking time. Buys and kills like the simulator: points spent over earned within 20% of the simulator's 0.80 to 0.87 (the mean of the bots), and the bots' kills no fewer than Follow's on the same seed. The bots spread: most of the time beyond 12 m of the person and 5 m or more from each other. |
-| Hold | Within 3 m of the spot for 92% of the time a bot is under the stance (not on a trip for a revive, a ping, a dodge or an errand), no episode stuck over 10 s. |
+| Hold | Within 3 m of the spot for 92% of the time a bot is under the stance (not on a trip for a revive, a ping, a dodge or an errand; the walk home is part of the trip), no episode stuck over 10 s, none idle over 5 s with a zombie in view. |
 | Every order | A downed person and a ping each pull a bot, and it goes back to its order. |
 
 **Measured** (the move soak, `game/tests/captures/bots_move_soak.tscn`, `--tough=3`, 20 game minutes, seeds 1 to 3, four
@@ -1490,8 +1490,8 @@ start):
 The nine parity cells hold the hard gates in 71 of 72 nights; the one is a Regular idle for over 8 s under Roam. No
 engine `ERROR` in any of the 96 nights, no stuck episode over 10 s, no rejected-buy loop, stuck share under 0.16% of
 walking time in every cell without a person. The cells with a person do not hold all their gates: Hold keeps the spot
-for 86 to 96% of the time under the stance (median 92%, 10 of 24 bots under the 92% gate;
-[#769](https://github.com/Ryubara/deadnight/issues/769)) and Follow and Roam with a person left, in three nights of
+for 86 to 96% of the time under the stance (median 92%, 10 of 24 bots under the 92% gate; the causes and the fix are
+[Hold and a boss](#hold-and-a-boss-769), #769) and Follow and Roam with a person left, in three nights of
 sixteen, a round that did not end (a boss alive in round 14 or 15) and once a bot idle beside a zombie
 ([#770](https://github.com/Ryubara/deadnight/issues/770)).
 
@@ -1758,3 +1758,52 @@ plaza's perk machine showed it). `BotErrands` now keeps the breaker it set out t
 `test_a_bot_with_a_purchase_in_a_dark_area_throws_the_breaker_then_buys` in
 `tests/night/test_bot_errands.gd` (the lamps' reach is cut to 4 m on the shipped lot so the breaker stands outside the
 area). A want that depends on where the bot stands needs a commitment for the walk it causes.
+
+## Hold and a boss (#769)
+
+The first nightly soak (#231) found the Hold cell (a person stand-in and three Regular bots) with 10 of 24 bots under the
+gate's 92% and, in 3 nights, a holder that stood 5 to 8 s with the headliner at 6 to 8 m, a pistol with rounds, and no
+shot and no step. The causes, found with the soak's own samples (`off_after`, `away_notes`, `trips` and the idle sample's
+`target_id` and `left_to_a_person`, all in `SoakWatch`):
+
+1. **The idle holder was kill courtesy.** The idle sample read `target_id -1` with the boss believed and in sight, 6.6
+   to 8.3 m off, in all 3 of 3 samples of a boss (`left_to_a_person: true`). `BotCombat.courtesy_holds` leaves a
+   zombie 6 m or more away to a person aiming at it, and the person aims at the boss for as long as it lives. A boss is
+   no one's kill: `courtesy_holds` is false for it. Test: `test_a_boss_is_never_left_to_a_person`.
+2. **A boss keep-off with no limit, and a walk back into it.** `BotProfile.boss_keep` (6 m) backs a bot off the headliner
+   under every order. A holder that backed off ran up to 14 m from the spot, the boss followed it to the spot (it
+   walks to where the bots are), and the holder walked back toward the boss as soon as it was 6 m away: 400 to 2600 ticks
+   of `hold_order` off the spot per bot-night after a `retreat`. A holder now keeps off a boss only while it is within
+   `hold_back` (4 m) of the spot, as a Safe one backs off, and a holder off its place does not walk to a place the boss
+   stands at (`hold_back`, it fights from where it is) until the boss is not there. Tests in `test_bot_hold_boss.gd`
+   (three of four fail on the code before).
+3. **The gate counted the walk home from a trip.** The Hold gate is "within 3 m of the spot for 92% of the time the bot
+   is under the stance, not on a trip for a revive, a ping, a dodge or an errand", but the watch took the note
+   `hold_order` for the stance, and the walk home carries it. The watch now holds a trip from the first note that is not
+   the stance until the bot is back within 3 m, and reports the share both ways (`stance_share`: the gate;
+   `stance_share_all`: the walk home counted) with the time away (`away_seconds`, its notes, the three longest trips).
+
+**Measured** (12 nights each, seeds 21 to 26 and 31 to 36 on two runs, `--profile=regular --bots=3 --person
+--order=hold`, the baseline a detached checkout of `main` at 1a4e3016 with the same watch):
+
+| | Before | After |
+| --- | ---: | ---: |
+| Nights that broke a gate | 5 of 12 | **0 of 12** |
+| Bots idle over 5 s with a zombie in view | 4 of 36 (longest 6.2 s) | **0 of 36** (longest 3.8 s) |
+| Stance share, trips excluded (the gate) | median 99.4%, 1 bot under 92% | median 99.4%, **none** under 92% |
+| Stance share, the walk home counted | median 92.6%, 13 bots under 92% | median 94.5%, 9 under 92% |
+| Round reached | median 9.5 (6 to 10) | median 10.5 (8 to 12) |
+| Downs per bot-hour | 7.7 | 7.9 |
+| Kills per bot-minute | 2.90 | 3.42 |
+
+**Where the time off the spot goes** (seconds per bot-hour up, the 6 nights with the breakdown; about 18 to 20% of the
+time is away either way, and it is mostly the order's own trips): rounds for the pistol 205 (a holder with a pistol and
+1000 to 2000 points goes eight times a night; the shop is #768's), standing off a boss at the spot 162 (27 before: they
+no longer run from it and no longer walk into it, and shoot it from 4 to 6 m while it lives), the walk home 137 (194
+before), the stampede's choke 114 (the round's stance replaces the order's), retreating 56 (147 before), a revive 33.
+A trip is a line of the report, not a gate: the choke of a stampede lasts a minute and a boss at the spot keeps the
+holders off it as long as it lives. The shopping of a holder (it has the points and never buys a better gun) is not
+changed here.
+
+Not changed, and seen once: a dry holder (0 rounds, 0 in reserve, a walker 2.3 m off) idle for 6.2 s in one baseline night
+(seed 25, none in the 12 after the change); the quick melee of a dry bot is `BotCombat.may_melee`'s and #770's.
