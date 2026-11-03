@@ -81,6 +81,16 @@ static func mask_has(economy: EconomyTuning, mask: int, tonic_id: StringName) ->
 	return at >= 0 and (mask & (1 << at)) != 0
 
 
+## Whether the frame's `perks` mask holds a tonic with this effect (what a client can read of
+## another player's perks without their state).
+static func mask_has_effect(economy: EconomyTuning, mask: int, effect: ShopItem.Effect) -> bool:
+	var order := tonic_ids(economy)
+	for at in order.size():
+		if (mask & (1 << at)) != 0 and economy.item(order[at]).effect == effect:
+			return true
+	return false
+
+
 ## How many tonics a frame's `perks` mask holds.
 static func mask_count(mask: int) -> int:
 	var count := 0

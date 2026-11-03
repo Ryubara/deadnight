@@ -10,6 +10,7 @@ const QUICK_MELEE := &"quick_melee"
 const GIVE_WEAPON := &"give_weapon"
 const EQUIP := &"equip"
 const SWAP := &"swap"
+const SELECT_SLOT := &"select_slot"
 const ADD_AMMO := &"add_ammo"
 const UPGRADE_WEAPON := &"upgrade_weapon"
 const REMOVE_WEAPONS := &"remove_weapons"
@@ -76,6 +77,12 @@ static func equip(player_id: int, weapon_id: StringName) -> Dictionary:
 ## given; the last goes round to the first).
 static func swap(player_id: int) -> Dictionary:
 	return {"type": SWAP, "player_id": player_id}
+
+
+## Takes the weapon in carry slot `slot` (1 is the first carried, `WeaponSlots`) in hand. An empty
+## slot, and the slot already in hand, change nothing and say nothing.
+static func select_slot(player_id: int, slot: int) -> Dictionary:
+	return {"type": SELECT_SLOT, "player_id": player_id, "slot": slot}
 
 
 ## Puts up to `rounds` into the reserve of a weapon the player carries (never past its limit).

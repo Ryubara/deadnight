@@ -259,3 +259,19 @@ func test_the_snapshot_keeps_the_self_revives_and_a_restored_copy_agrees() -> vo
 	assert_str(String(copy.from_dict(solo.to_dict()))).is_empty()
 	assert_float(copy.players[1].self_revive_left).is_equal(solo.players[1].self_revive_left)
 	assert_float(copy.players[1].self_revive_left).is_greater(0.0)
+
+
+func test_a_frames_perk_bits_say_which_effects_the_player_has() -> void:
+	var economy := _t.economy
+	var order := PerkEffects.tonic_ids(economy)
+	var holster := 1 << order.find(&"tonic_third_holster")
+	var shock := 1 << order.find(&"tonic_reload_shock")
+	(
+		assert_bool(PerkEffects.mask_has_effect(economy, holster, ShopItem.Effect.EXTRA_WEAPON))
+		. is_true()
+	)
+	(
+		assert_bool(PerkEffects.mask_has_effect(economy, shock, ShopItem.Effect.EXTRA_WEAPON))
+		. is_false()
+	)
+	assert_bool(PerkEffects.mask_has_effect(economy, 0, ShopItem.Effect.EXTRA_WEAPON)).is_false()

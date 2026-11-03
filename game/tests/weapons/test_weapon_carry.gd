@@ -52,7 +52,8 @@ func test_the_replaced_weapon_is_gone_with_its_rounds_and_cannot_be_equipped() -
 
 func test_a_weapon_named_to_replace_goes_instead_of_the_one_in_hand() -> void:
 	_server.apply(CombatAction.give_weapon(1, &"shotgun", &"crowbar"))
-	assert_array(_ids()).contains_exactly([&"pistol", &"shotgun"])
+	# The shotgun takes the crowbar's slot (1): a slot keeps its place (#682).
+	assert_array(_ids()).is_equal([&"shotgun", &"pistol"])
 	assert_str(_server.weapon_of(1).def.id).is_equal("shotgun")
 
 
@@ -70,7 +71,7 @@ func test_the_replace_works_while_the_other_weapon_is_in_hand() -> void:
 	assert_str(_server.weapon_of(1).def.id).is_equal("crowbar")
 	var events := _server.apply(CombatAction.give_weapon(1, &"rifle"))
 	assert_str(WeaponsFixture.of(events, &"weapon_replaced")[0]["dropped"]).is_equal("crowbar")
-	assert_array(_ids()).contains_exactly([&"pistol", &"rifle"])
+	assert_array(_ids()).is_equal([&"rifle", &"pistol"])
 
 
 func test_a_melee_weapon_takes_a_slot_like_a_gun() -> void:
@@ -97,3 +98,14 @@ func test_a_replace_puts_away_a_reload_in_progress() -> void:
 	_server.apply(CombatAction.give_weapon(1, &"rifle"))
 	assert_array(_ids()).contains_exactly([&"crowbar", &"rifle"])
 	assert_bool(_server.weapon_of(1).is_reloading()).is_false()
+
+
+func test_a_slot_key_takes_the_weapon_of_that_slot_and_an_empty_or_held_slot_does_nothing() -> void:
+	# Carried: crowbar (slot 1), pistol (slot 2, in hand).
+	assert_array(_server.apply(CombatAction.select_slot(1, 2))).is_empty()
+	assert_array(_server.apply(CombatAction.select_slot(1, 3))).is_empty()
+	assert_array(_server.apply(CombatAction.select_slot(1, 0))).is_empty()
+	assert_str(_server.weapon_of(1).def.id).is_equal("pistol")
+	var events := _server.apply(CombatAction.select_slot(1, 1))
+	assert_str(WeaponsFixture.of(events, &"weapon_equipped")[0]["weapon_id"]).is_equal("crowbar")
+	assert_str(_server.weapon_of(1).def.id).is_equal("crowbar")

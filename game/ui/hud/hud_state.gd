@@ -26,6 +26,8 @@ const TEAM := &"team"
 const FUEL := &"fuel"
 const HEALTH := &"health"
 const AMMO := &"ammo"
+## The weapon slots: what sits in each and which one is in hand (`HudSlots`).
+const SLOTS := &"slots"
 const POINTS := &"points"
 const PROMPT := &"prompt"
 const MARKERS := &"markers"
@@ -72,6 +74,12 @@ var holstered_id: StringName = &""
 var rounds: Dictionary[StringName, Dictionary] = {}
 var weapon_names: Dictionary[StringName, String] = {}
 var ammo_free: Array[StringName] = []
+## The weapons carried by slot, slot 1 first, `&""` for an empty place (`WeaponSlots`), and the
+## slot (1-based) the weapon in hand is in, 0 for none. How many places the player has: the carry
+## limit, raised by the perk that carries one more (#687).
+var slot_ids: Array[StringName] = []
+var slot_held := 0
+var slot_count := WeaponSlots.count()
 var points := 0
 ## The local player's grenades.
 var grenades := 0
@@ -215,6 +223,20 @@ func set_ammo(magazine: int, reserve: int, weapon := "", reloading := false, use
 	_assign(&"ammo_used", used, AMMO)
 	if weapon != "":
 		_assign(&"weapon_name", weapon, AMMO)
+	_flush()
+
+
+## The weapons by slot and the slot in hand. The HUD draws the places up to `slot_count` (or as
+## many as there are weapons).
+func set_slots(ids: Array[StringName], held: int) -> void:
+	_assign(&"slot_ids", ids, SLOTS)
+	_assign(&"slot_held", held, SLOTS)
+	_flush()
+
+
+## How many places the player carries weapons in (the carry limit, a perk adds one).
+func set_slot_count(count: int) -> void:
+	_assign(&"slot_count", clampi(count, 1, WeaponSlots.MAX), SLOTS)
 	_flush()
 
 

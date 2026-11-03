@@ -96,11 +96,11 @@ crackle over a mains buzz, a recipe, no ElevenLabs).
 
 ## Which perk the road area gets
 
-[#686](https://github.com/Ryubara/deadnight/issues/686) closes the unfinished road and keeps a small area with a
-perk found nowhere else. **The Third Holster** fits it: it is the dearest perk and the road's door (2,000) the
-dearest door, a third weapon is the one perk worth walking to the end of the lot for, and it changes how the whole
-carry works, so it is the one a team plans a night around. Until #686 lands the machine stands on the ticket plaza,
-just behind the road's door; the issue moves it with the area.
+[#686](https://github.com/Ryubara/deadnight/issues/686) closed the unfinished road and gave the ticket plaza behind
+the road's door one perk machine, left as a second soda fountain until these perks landed. **The Third Holster** takes
+it: it is the dearest perk and the road's door (2,000) the dearest door, a third weapon is the one perk worth walking to
+the end of the lot for, and it changes how the whole carry works, so it is the one a team plans a night around. The
+machine stands against the plaza's south wall over the area's own hidden block (`Road/PerkMachine`).
 
 ## What it asks of the rest
 

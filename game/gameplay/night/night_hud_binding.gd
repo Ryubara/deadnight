@@ -17,7 +17,7 @@ const DOOR_NAMES := {
 	&"door_yard": "Generator yard",
 	&"door_booth": "Projection booth",
 	&"door_back_lot": "Back lot",
-	&"door_road": "The road",
+	&"door_road": "The ticket plaza",
 }
 ## How high over a zombie's feet its damage number starts: a headshot over the head, any other hit
 ## at the chest.
@@ -43,6 +43,7 @@ var _weapon_names: Dictionary[StringName, String] = {}
 var _fuel: FuelTuning
 var _upgrade: UpgradeTuning
 var _perks: PerkTuning
+var _economy: EconomyTuning
 ## Units a whole can adds, by shop item: what the card says a can is worth.
 var _can_units: Dictionary[StringName, int] = {}
 
@@ -64,6 +65,7 @@ func _init(hud: Hud, state: ClientState, tuning: RulesTuning, looks: LookRegistr
 	_fuel = fuel
 	_upgrade = tuning.upgrade
 	_perks = tuning.perks
+	_economy = tuning.economy
 	for item in tuning.economy.items:
 		if item.kind == ShopItem.Kind.FUEL:
 			_can_units[item.id] = int(item.amount)
@@ -136,6 +138,11 @@ func _on_frame() -> void:
 	# server holds, every tick, so rounds that came by any road show now, and a HUD that joined
 	# late (it heard no event) takes the weapon in hand.
 	HudLoadout.sync(me, state)
+	# The third weapon perk adds a place to the weapon slots; losing it takes the place away.
+	var places := WeaponSlots.count()
+	if PerkEffects.mask_has_effect(_economy, int(me.get("perks", 0)), ShopItem.Effect.EXTRA_WEAPON):
+		places += _perks.extra_weapons
+	state.set_slot_count(places)
 	show_prompt(me["prompt"])
 
 
