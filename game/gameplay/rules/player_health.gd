@@ -13,11 +13,16 @@ static func start(player: PlayerState, tuning: HealthTuning) -> void:
 	player.since_blow = tuning.regen_delay
 
 
-## A blow takes health off (never more than is left), restarts the wait before it mends, and downs
-## the player at zero. The caller has checked the player is up and the round is on.
+## A blow (a `RulesAction.blow`: damage, bearing, source_id, harm, by_id) takes health off (never
+## more than is left), restarts the wait before it mends, and downs the player at zero. The caller
+## has checked the player is up and the round is on.
 static func hurt(
-	player: PlayerState, damage: float, bearing: float, source_id: int, bleed_seconds: float = 0.0
+	player: PlayerState, blow: Dictionary, bleed_seconds: float = 0.0
 ) -> Array[Dictionary]:
+	var damage: float = blow["damage"]
+	var bearing: float = blow.get("bearing", 0.0)
+	var harm: StringName = blow.get("harm", &"")
+	var by_id: int = blow.get("by_id", 0)
 	var dealt := minf(damage, player.health)
 	player.health -= dealt
 	player.since_blow = 0.0
@@ -29,18 +34,25 @@ static func hurt(
 			"health": player.health,
 			"max_health": player.max_health,
 			"bearing": bearing,
-			"source_id": source_id,
+			"source_id": blow.get("source_id", -1),
+			"harm": harm,
+			"by_id": by_id,
 		}
 	]
 	if player.health <= 0.0:
-		events.append(down(player, &"blow", bearing, bleed_seconds))
+		events.append(down(player, &"blow", bearing, bleed_seconds, harm, by_id))
 	return events
 
 
 ## The player goes down: no health left, and `bleed_seconds` to live unless a teammate gets them
 ## up. `cause` is `blow` or `forced`.
 static func down(
-	player: PlayerState, cause: StringName, bearing: float, bleed_seconds: float = 0.0
+	player: PlayerState,
+	cause: StringName,
+	bearing: float,
+	bleed_seconds: float = 0.0,
+	harm: StringName = &"",
+	by_id: int = 0
 ) -> Dictionary:
 	player.downed = true
 	player.dead = false
@@ -53,6 +65,8 @@ static func down(
 		"cause": cause,
 		"bearing": bearing,
 		"bleed_seconds": bleed_seconds,
+		"harm": harm,
+		"by_id": by_id,
 	}
 
 

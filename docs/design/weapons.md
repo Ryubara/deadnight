@@ -500,15 +500,16 @@ grenade. A grenade held while walking goes with the player, so one that goes off
 Which zombies a blast can hit is the rules' answer, never a list the server keeps.
 
 **Down with the pin out.** A player who is downed (or leaves) while cooking **drops the grenade at their feet and its
-fuse keeps running**: it is spent, it is not given back, and it hurts whoever is near, the downed player included (40%),
-which makes a revive during a cook a risk the team can see. The throw that follows is refused (`player_downed`); a
+fuse keeps running**: it is spent, it is not given back, and it hurts whoever is near by the player blast rule below
+(a player already on the ground takes no blow), which makes a revive during a cook a risk the team can see: a teammate
+kneeling at the downed player is inside the full radius. The throw that follows is refused (`player_downed`); a
 revived player starts again with a fresh pin.
 
 **In the night.** The server throws for every player on their command's grenade buttons (G, the right shoulder
 button and the touch Grenade button for the overarm throw; H and the left shoulder button for the toss), only while a
 round is on and the player is up and has one. The count drops at the pin, so a grenade cooked to the end and let go
-in the hand is spent and costs the thrower 40% of the blast. The Soldier cooks and throws with his own clips. Wired
-and proven in #351: [Grenades research](../research/grenades.md#in-the-night-351).
+in the hand is spent and downs the thrower ([blast on players](#blast-on-players)). The Soldier cooks and throws
+with his own clips. Wired and proven in #351: [Grenades research](../research/grenades.md#in-the-night-351).
 
 | Thing | Number |
 | --- | --- |
@@ -521,10 +522,40 @@ and proven in #351: [Grenades research](../research/grenades.md#in-the-night-351
 | Cover | a line from the blast (0.25 m up) to each of the six hit parts; a part with something solid in the way takes nothing |
 | Shares of the blast | legs 25% each, body 25%, arms 10% each, head 5% (a blast goes off low) |
 | Knockback, stun | up to 7 m/s along the ground and 3 m/s up, 1.6 s stun, both falling off like the damage |
-| Thrower | takes 40% of what a zombie would at that spot, cover included; other players take nothing (a server flag turns friendly fire on) |
+| Players | all of their health in the hand and within 1 m of the blast, then less to nothing at 8 m, the thrower and the team alike, none behind a wall ([blast on players](#blast-on-players)) |
 | Authority | hand within 1 m of 1.45 m above the server's feet; client speed at most 7.5 m/s; a dropped grenade starts 0.3 m above the feet |
 | Carry | start with 2, every round start tops up to 3, at most 5; the shop sells 2 for 150 (+5 a round) |
 | Kill points | 40 for a zombie the blast kills (a hit that does not kill pays the usual 4) |
+
+### Blast on players
+
+The maintainer, 2026-11-03: grenades hurt the player too; 100% if it blows up in the hand, full damage only super close,
+falling off with distance. One rule (`PlayerBlast`, `game/gameplay/rules/player_blast.gd`) serves every blast that can
+hurt a player; the grenade is its first user and the ray gun's splash on its own shooter (25%) is the second.
+
+- **A share of the player's health bar**, not a damage number: full is always "down", from full health or not, and a
+  tonic that raises the bar does not make a grenade at the feet safer.
+- **In the hand: all of it**, wall or no wall (the grenade is in their hand), the thrower alone.
+- **Full radius 1 m** (`player_full_radius`): a body's width and an arm's reach, so a grenade in the hand, at the feet or
+  against the player takes all of it and one a pace away is already less. A grenade dropped at a downed player's feet
+  takes a kneeling reviver whole.
+- **Then it eases out to nothing at the blast radius (8 m)**: `(1 - t)^2`, t the way across from 1 m to 8 m. 2 m away is
+  73% of the health, 3 m 51%, 4 m 33%, 5 m 18%, 6 m 8%, 7 m 2%: a few metres off hurts and rarely downs, and two close
+  ones in a row will. The ease is steep first so that "close" stays deadly and the long tail is a graze that mends.
+- **Walls:** the line from the blast to the chest (1 m up) must be clear of walls and props (cover slack 0.12 m); a
+  player is no cover, a teammate does not shield another.
+- **Teammates take the same as the thrower.** The task's brief says so and the maintainer's words name "the player", not
+  the thrower; the genre is not one answer (some co-op zombie games keep only self damage, others hurt everyone), so
+  this is the brief's choice and **open for the maintainer** if a team should be spared. There is no friendly-fire flag
+  any more: one rule is easier to read on the screen and to test.
+- **Shown:** the hurt player's red arc points at the blast; the feed says `YOUR OWN GRENADE HIT YOU  -42` or `MOE'S
+  GRENADE HIT YOU  -42` on the hurt player's own screen (a blast that does not down), and on a down `RUBY BLEW THEMSELVES
+  UP` or `MOE WAS BLOWN UP BY RUBY'S GRENADE` on every screen. The server's `player_hurt` and `player_downed` carry
+  `harm` (`grenade`) and `by_id`.
+- **Bots** throw only where the blast takes under a tenth of anyone's health at the bot's and a teammate's spot, with a
+  margin for the grenade not landing where it was aimed and the teammate walking on (`BotGrenadier.harmless_apart`, 5.8
+  m, so 6 m from itself and 7.5 m from a teammate). They do not yet back off from a live grenade; no dodge of that kind
+  existed and the parity work tunes the bots.
 
 A grenade is a sure kill only early: at 150 it kills a round-1 zombie (50) out to 6.0 m and a round-5 one (82) out to
 4.7 m; from round 12 (139) only near the centre of the blast, and no round-14 one (159) at all (the climb is 7% a round).
