@@ -95,11 +95,12 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 14 added each player's `self_revives` and `self_revive_left` (the revive perk), 13 the carry
-## (`weapons`, `recuts_lost`), 12 `revives`, `dead`, `bleed_left`, 11 `downs` and `night_time`, 10
-## `match_settings`, 9 `upgraded` weapons, 8 the crane, 7 `barricades`, 6 health, 5 the plan and
-## a zombie's type. Two older layouts both called themselves 4; older snapshots are `bad_version`.
-const SNAPSHOT_VERSION := 14
+## 15 took `recuts_lost` out of each player (a re-cut costs the same every time, #909), 14 added
+## each player's `self_revives` and `self_revive_left` (the revive perk), 13 the carry (`weapons`),
+## 12 `revives`, `dead`, `bleed_left`, 11 `downs` and `night_time`, 10 `match_settings`, 9
+## `upgraded` weapons, 8 the crane, 7 `barricades`, 6 health, 5 the plan and a zombie's type. Two
+## older layouts both called themselves 4; older snapshots are `bad_version`.
+const SNAPSHOT_VERSION := 15
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -274,7 +275,7 @@ func is_door_open(door_id: StringName) -> bool:
 
 
 ## What an item costs right now, or -1 when there is no such item. With a `player_id`, what that
-## player pays: a re-cut costs more for each weapon they have re-cut already (-1 for no player).
+## player pays (the same for every player today; -1 for no such player).
 func price_of(item_id: StringName, player_id: int = -1) -> int:
 	var item := tuning.economy.item(item_id)
 	if item == null:

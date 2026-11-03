@@ -90,19 +90,18 @@ func test_a_crane_prize_without_a_named_weapon_releases_the_oldest() -> void:
 	assert_array(_carried()).contains_exactly([&"weapon_pistol", ready["weapon"]])
 
 
-func test_a_recut_goes_with_the_weapon_but_its_price_step_stays() -> void:
-	var step := _rules.tuning.upgrade.price_step
+func test_a_recut_goes_with_the_weapon_and_the_next_one_costs_the_same() -> void:
 	var base := _rules.price_of(&"upgrade_weapon", 1)
 	_rules.apply(RulesAction.buy(1, &"upgrade_weapon", -1, &"pistol"))
 	assert_array(_rules.players[1].upgraded).contains_exactly([&"pistol"])
-	assert_int(_rules.price_of(&"upgrade_weapon", 1)).is_equal(base + step)
+	assert_int(_rules.price_of(&"upgrade_weapon", 1)).is_equal(base)
 	_rules.apply(RulesAction.buy(1, &"weapon_shotgun", -1, &"pistol"))
 	assert_array(_rules.players[1].upgraded).is_empty()
-	assert_int(_rules.price_of(&"upgrade_weapon", 1)).is_equal(base + step)
-	# The next re-cut is for the shotgun, and costs the step.
+	assert_int(_rules.price_of(&"upgrade_weapon", 1)).is_equal(base)
+	# The next re-cut is for the shotgun, and costs the same.
 	var before := _rules.points_of(1)
 	_rules.apply(RulesAction.buy(1, &"upgrade_weapon", -1, &"shotgun"))
-	assert_int(before - _rules.points_of(1)).is_equal(base + step)
+	assert_int(before - _rules.points_of(1)).is_equal(base)
 
 
 func test_the_carry_survives_a_snapshot() -> void:
