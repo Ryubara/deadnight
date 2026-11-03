@@ -15,13 +15,13 @@ var id: StringName = AVERAGE
 var accuracy: float = 0.65
 ## Of the shots that land: the share that hit the head, the limbs, and (against a boss) the weak
 ## spot.
-var head_rate: float = 0.15
+var head_rate: float = 0.81
 var limb_rate: float = 0.1
 var weak_spot_rate: float = 0.45
 ## Share of time spent actually shooting (the rest is moving, reloading, looking).
 var uptime: float = 0.85
 ## Chance a plain blow misses the player (kiting, backing off, a step aside).
-var dodge: float = 0.3
+var dodge: float = 0.55
 ## How well a telegraphed blow is read: the chance a blow lands is multiplied by
 ## `exp(-telegraph_seconds * read)`.
 var read: float = 0.5
@@ -89,11 +89,11 @@ static func named(skill_id: StringName) -> SimSkill:
 	match skill_id:
 		WEAK:
 			skill.accuracy = 0.45
-			skill.head_rate = 0.06
+			skill.head_rate = 0.68
 			skill.limb_rate = 0.12
 			skill.weak_spot_rate = 0.2
 			skill.uptime = 0.75
-			skill.dodge = 0.12
+			skill.dodge = 0.17
 			skill.read = 0.25
 			skill.light_use = 0.1
 			skill.swaps = false
@@ -119,11 +119,11 @@ static func named(skill_id: StringName) -> SimSkill:
 			)
 		STRONG:
 			skill.accuracy = 0.82
-			skill.head_rate = 0.3
+			skill.head_rate = 0.85
 			skill.limb_rate = 0.08
 			skill.weak_spot_rate = 0.75
 			skill.uptime = 0.92
-			skill.dodge = 0.5
+			skill.dodge = 0.8
 			skill.read = 0.9
 			skill.light_use = 0.55
 			skill.ammo_topoff = 1.0

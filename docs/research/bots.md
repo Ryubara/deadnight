@@ -50,7 +50,7 @@ magnitude).
 | `RulesAction` | `rules/rules_action.gd` | The only way to change the night; validated by one schema. Bots never send these: the server turns commands into them. |
 | Autopilot | `night/autopilot.gd` | Moves with the navigation mesh, backs away inside 7 m, shoots the nearest zombie in sight (camera and barrel both clear), reloads, buys the next door, repairs boards. Plays five rounds alive (measured below). |
 | Zombie navigation | `zombies/navmesh_baker.gd` | One mesh (cell 0.25, agent radius 0.5, height 1.75, climb 0.25, slope 45 degrees, contour error 1.0 cell); rebaked when a door opens. The bot uses `NavigationServer3D.map_get_path` on it. |
-| Balance simulator | `tools/balance/` | `SimSkill` levels (weak, average, strong) with accuracy 0.45 / 0.65 / 0.82, head rate 0.06 / 0.15 / 0.30, dodge, read; the reference for "like a human". |
+| Balance simulator | `tools/balance/` | `SimSkill` levels (weak, average, strong) with accuracy 0.45 / 0.65 / 0.82, head rate 0.68 / 0.81 / 0.85 (0.06 / 0.15 / 0.30 before the hit zones followed the bodies, #745), dodge, read; the reference for "like a human". |
 
 ### Gaps a bot would meet (each is a phase item)
 
@@ -216,8 +216,11 @@ hardest shipped profile reacts in 0.22 s. Our floor is 0.20 s and no profile goe
 | Revive eagerness (risk it accepts) | low | medium | medium |
 
 Calibration target: a profile's measured hit rate, head share and dodge land inside the corresponding
-`SimSkill` (weak 0.45 / 0.06 / 0.12, average 0.65 / 0.15 / 0.30, strong 0.82 / 0.30 / 0.50) so the simulator and the
-bots tell the same story; the profile numbers move to meet it, the simulator's do not. **The table above is the
+`SimSkill` (weak 0.45 / 0.68 / 0.17, average 0.65 / 0.81 / 0.55, strong 0.82 / 0.85 / 0.80) so the simulator and the
+bots tell the same story; the profile numbers move to meet it, the simulator's do not (**except** when the world under
+them changes: the hit zones that follow the bodies, #694, moved the head share from 6 / 15 / 30% to about 68 / 81 / 85%
+and the dodge, so `SimSkill` was set to the bots' new readings and the game retuned around it, #745: see
+[the balance simulator](balance-simulator.md#the-headshot-retune-745)). **The table above is the
 phase 3 result** (the proposal was 3.0 / 1.8 / 1.0 degrees of track error, 0.05 / 0.12 / 0.20 head-aim and a retreat
 margin of 5 / 7 / 9 m): a bot that fires only when its view is on target hits nearly everything it fires at, so the
 misses had to come from a trigger that fires when the view is roughly there (`fire_slop`) and from a wide wander of the

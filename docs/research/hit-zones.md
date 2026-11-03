@@ -72,10 +72,17 @@ and the mesh come apart.
 
 ## Not done, and what it moves
 
-- **Headshots are common now.** The head is half the figure and its zone now is too: the bots, aimed at the chest, land
-  67 to 88% of their hits on the head (the bands test, `test_bot_bands.gd`, had 6 to 30% from the 0.22 m ball). The
-  hit rates stayed where `SimSkill` has them. The balance simulator's head rates, the headshot multipliers and the
-  health tuning were set with the old zones and want a pass of their own.
+- **Headshots are common now, and the game is balanced around that (#745).** The head is half the figure and its zone
+  now is too: the bots, aimed at the chest, land 64 to 88% of their hits on the head (the bands test,
+  `test_bot_bands.gd`; 6 to 30% from the old 0.22 m ball). `SimSkill`'s head rate and dodge were set to those readings
+  and the game retuned around them (the headshot kill pays 70, health climbs 15% a round after round 8, the brute has
+  3 times a walker's health; [the numbers](balance-simulator.md#the-headshot-retune-745)). The zones were **not**
+  changed. **Open for the maintainer: keep a head this big, or shrink the head zone?** The measured cost of keeping it
+  is that a shot no longer chooses between head and body (about 90% of kills are headshots at every skill level, the
+  `x2.5` bonus is a flat damage bonus and "aiming pays" of [weapons](../design/weapons.md#why-these-numbers) is
+  weaker), and the retune had to take points and late health to hold the gate's ranges. A smaller zone (the skull, not the
+  whole chibi head) would give the bonus back to aim; the multipliers, pay and health could then go back toward their
+  old values, and `SimSkill`'s head rates would be measured again.
 - Grenade blasts still weigh the six standing shapes (`Hitbox.STANDING`, `BlastModel`).
 - The bots and the touch aim assist still aim at the old upright points (a crawler's low, `ZombieModels.aim_scale`);
   the touch assist's own test measures its thumb bot on the standing set the simulator's numbers came from.

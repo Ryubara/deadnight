@@ -61,9 +61,9 @@ func test_kills_pay_by_how_they_were_made() -> void:
 	RulesFixture.kill(_rules, 1, ids[0])
 	assert_int(_rules.points_of(1)).is_equal(200 + 60)
 	RulesFixture.kill(_rules, 1, ids[1], RulesAction.ZONE_HEAD)
-	assert_int(_rules.points_of(1)).is_equal(260 + 100)
+	assert_int(_rules.points_of(1)).is_equal(260 + 70)
 	RulesFixture.kill(_rules, 1, ids[2], RulesAction.ZONE_BODY, true)
-	assert_int(_rules.points_of(1)).is_equal(360 + 130)
+	assert_int(_rules.points_of(1)).is_equal(330 + 130)
 
 
 func test_the_kill_is_credited_and_counted() -> void:
@@ -103,14 +103,14 @@ func test_farming_one_zombie_with_many_small_hits_pays_a_bounded_purse() -> void
 	assert_int(_rules.points_of(1)).is_equal(200 + 4 * 8)
 	assert_float(_health_left(_zombie)).is_between(_first_health - 11.0, _first_health - 9.0)
 	RulesFixture.kill(_rules, 1, _zombie, RulesAction.ZONE_HEAD)
-	assert_int(_rules.points_of(1)).is_equal(200 + 4 * 8 + 100)
+	assert_int(_rules.points_of(1)).is_equal(200 + 4 * 8 + 70)
 
 
 func test_farming_with_real_damage_ends_at_the_kill() -> void:
 	for _i in 1000:
 		_hit(RulesAction.ZONE_HEAD, 20.0)
 	# Hits of 20 against 60 health: two paid hits, then the kill; the rest hit a dead zombie.
-	assert_int(_rules.points_of(1)).is_equal(200 + 2 * 8 + 100)
+	assert_int(_rules.points_of(1)).is_equal(200 + 2 * 8 + 70)
 	assert_int(_log.count(&"zombie_removed")).is_equal(1)
 
 
