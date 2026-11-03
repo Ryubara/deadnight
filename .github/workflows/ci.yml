@@ -174,20 +174,13 @@ jobs:
             echo "RESULT $*: leak lines $(grep -cE 'leaked at exit|still in use' one.log), passed $(grep -c PASSED one.log)"
             grep -E "ObjectDB instances|RID allocations|resources still in use" one.log | head -4 || true
           }
-          s=res://tests/world/test_wall_silhouettes.gd
-          one -a $s
-          names=$(grep -o "^func test_[a-z0-9_]*" repos/deadnight/game/tests/world/test_wall_silhouettes.gd | sed 's/func //')
-          for t in $names; do
-            skip=()
-            for o in $names; do [ "$o" = "$t" ] || skip+=(-i "tests/world/test_wall_silhouettes.gd:$o"); done
-            echo "only $t"
-            one -a $s "${skip[@]}"
-          done
-          one -a res://tests/world/test_shop_spots.gd
-          one -a res://tests/captures
-          one -a res://tests/tours
-          one -a res://tests/world
-          one -a res://tests/rules
+          sh6="-a res://tests/captures -a res://tests/night/test_bot_train.gd -a res://tests/rules -a res://tests/tours -a res://tests/world"
+          echo "A: the whole shard"
+          one $sh6
+          echo "B: the whole shard without the wall silhouette suite"
+          one $sh6 -i tests/world/test_wall_silhouettes.gd
+          echo "C: world, rules and the bot train, no captures or tours"
+          one -a res://tests/night/test_bot_train.gd -a res://tests/rules -a res://tests/world
       - name: List what leaked at exit
         # `--verbose` (night and test steps) makes the engine name each leaked instance and resource; this keeps just
         # those lines, so a failed leak check says which objects it was (issue #487).
