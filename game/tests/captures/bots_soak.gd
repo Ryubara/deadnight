@@ -17,9 +17,9 @@ extends Node
 ## minutes after which a night is stopped, default 45), `--stall-minutes=M` (a round longer than
 ## this is stopped and reported as a stalled round, default 8), `--budget=S` (wall seconds after
 ## which no new night starts, default 0: none), `--watch=SEAT` (a line a second of what that seat
-## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke),
-## `--tune=NAME:NUMBER,...` (profile fields moved for a sweep) and `--quiet` (no trace line a
-## minute).
+## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke;
+## `--watch=far` is a line for each bot beyond 20 m of a person up), `--tune=NAME:NUMBER,...`
+## (profile fields moved for a sweep) and `--quiet` (no trace line a minute).
 ## Prints `SOAKNIGHT {json}` for each night and `SOAKCELL {json}` at the end.
 
 const STEP := Night.STEP
@@ -139,7 +139,10 @@ func _play(seed_value: int) -> Dictionary:
 			and ticks >= int(_args.get("from", 0))
 		):
 			for seat_id in String(_args["watch"]).split(",", false):
-				_print_seat(night, int(seat_id), ticks)
+				if seat_id == "far":
+					_print_far(night, people, ticks)
+				else:
+					_print_seat(night, int(seat_id), ticks)
 		if (
 			_args.has("tail")
 			and ticks % int(_args.get("every", 60)) == 0
@@ -204,6 +207,56 @@ func _print_seat(night: SeatedNight, id: int, ticks: int) -> void:
 		if zombie != null:
 			line += (" Z(%.1f,%.1f m%d)" % [zombie.position.x, zombie.position.z, zombie.mode])
 		print(line)
+
+
+## A line for each bot up and beyond 20 m of a person up (`--watch=far`): what it does, where the
+## person is, and the dead near it, for finding why a Follow bot is far.
+func _print_far(night: SeatedNight, people: Array[int], ticks: int) -> void:
+	for bot in night.host.bots:
+		var body := night.server.body_of(bot.state.player_id)
+		var here := body.global_position
+		if night.frame["players"].get(bot.state.player_id, {}).get("downed", true):
+			continue
+		for person_id in people:
+			if night.frame["players"].get(person_id, {}).get("downed", true):
+				continue
+			var person := night.server.body_of(person_id).global_position
+			if Vector2(person.x - here.x, person.z - here.z).length() < 20.0:
+				continue
+			var near := 0
+			var nearest := INF
+			for zombie: ZombieBody in night.server.sim.zombies.values():
+				if zombie.mode == ZombieBody.Mode.DYING:
+					continue
+				var apart := zombie.position.distance_to(here)
+				nearest = minf(nearest, apart)
+				near += 1 if apart < 12.0 else 0
+			print(
+				(
+					(
+						"FAR t=%d seat %d note=%s at=(%.1f,%.1f) person=(%.1f,%.1f) v=%.1f goal=%s"
+						+ " reflex=%s run=%s path=%s wp=%d near12=%d nearest=%.1f round=%d"
+					)
+					% [
+						ticks,
+						bot.state.player_id,
+						bot.intent.note,
+						here.x,
+						here.z,
+						person.x,
+						person.z,
+						Vector2(body.velocity.x, body.velocity.z).length(),
+						bot.intent.goal.snappedf(0.1),
+						bot.intent.reflex.snappedf(0.1),
+						bot.intent.run,
+						str(bot.legs.path.last_status),
+						bot.legs.path.points.size(),
+						near,
+						nearest,
+						night.server.rules.round_number,
+					]
+				)
+			)
 
 
 ## The dead left in a round that has gone on `--tail=SECONDS` and the people: where each one stands
