@@ -36,8 +36,9 @@ The server decides every hit. The client shows the shot at once and the server's
   player sees a muzzle flash on the weapon, then a small spark, puff and mark where it ended on something (when it
   ended short of its range) or a small red puff on a zombie, and no bullet and no streak ([Shot
   feedback](shot-feedback.md), [Camera shake](camera-shake.md)). A weapon may set `WeaponDef.tracer` (off by default) to
-  draw a streak from the muzzle to each end, for a future beam-like hitscan weapon; none of the shipped weapons does.
-- **`PROJECTILE`** (the flare gun): a body that flies on the server's fixed step and bursts (`projectile_spawned`,
+  draw a streak from the muzzle to each end, for a beam-like hitscan weapon: only the freeze gun does, in its own
+  icy colour (`bolt_core_colour`).
+- **`PROJECTILE`** (the flare gun, the ray gun): a body that flies on the server's fixed step and bursts (`projectile_spawned`,
   `projectile_burst`); the shot itself draws only the muzzle flash. **Future launchers and ray guns use `PROJECTILE`**,
   so a travelling shot is always a real body with its own flight, not a drawn line. In the night `NightView` draws
   each one as a `ProjectileView` (a hot core, a flickering halo and a short spark trail), flown with the server's
@@ -63,6 +64,8 @@ the real command, its own model drawn).
 | `lever_rifle` | `rifle`, the Hunting rifle | **Wall** 1,200, and the **crane** (3) | 95 / 0.5 s |
 | `tommy_gun` | `smg`, the Tommy gun | **Crane** only (2) | 14 / 0.075 s |
 | `flare_gun` | `flare_gun` | **Crane** only (1); becomes a lure (#439) | 90 + blast 60 / 0.8 s |
+| `ray_gun` | `ray_gun`, the Moonbeam Pistol | **Crane** only (1.5); [wonder weapons](#wonder-weapons-and-status-effects) | 300 + blast 160 / 0.45 s |
+| `freeze_gun` | `freeze_gun`, the Snow-Cone Gun | **Crane** only (1.5) | 30 + bloom freezes / 0.8 s |
 | `baseball_bat` | `baseball_bat` | **Crane** only (0.5) | 60 / 0.4 s, sweeps 4 |
 | `fire_axe` | `fire_axe` | **Crane** only (0.5) | 150 / 0.9 s, head x2.5 |
 | `mp5` ([models](../research/weapon-models.md)) | `mp5`, the Usher SMG | **Crane** only (2) | 15 / 0.10 s |
@@ -214,6 +217,49 @@ is worth 1.5 times the weakest they carry, and play the crane only when some pri
 that margin they buy in circles. A player who carries no melee weapon falls back on the quick melee's blow in the
 simulator (the same definition the server sweeps with), and a free hand is worth that blow: a weapon that does less is
 not worth a slot or its price.
+
+## Wonder weapons and status effects
+
+The ray gun and the freeze gun ([#788](https://github.com/Ryubara/deadnight/issues/788)); the numbers and why are
+[below](#the-wonder-weapons), the code is this. Their models are #797's (the freeze gun is held as a rifle, the
+ray gun as a pistol), and their sounds are #791's
+(`EnergySounds`, which hears the combat server's `status_applied` and `status_ended` for the freeze).
+
+- **Ray gun** (`ray_gun`): a `PROJECTILE` weapon like the flare gun, but fast, straight and blue: the bolt is drawn in
+  `bolt_core_colour` and `bolt_halo_colour` (`ProjectileView`) and bursts in a swelling blue sphere (`BoltBurst`) the
+  size of its splash. The bolt hurts the zombie it meets and the burst every other zombie within `splash_radius` by
+  `splash_damage` sliding to `splash_min_fraction` at the edge (`DamageModel.splash`, the flare's own code). **It hurts
+  its shooter** by `self_splash_share` (25%) of the splash at the shooter's distance from the burst, measured to the
+  chest (`NightServer._hurt_the_shooter`, which hands the number to `_blast_player`, the one place a blast becomes
+  damage to a player); a teammate takes nothing.
+- **Freeze gun** (`freeze_gun`): a `PROJECTILE` weapon whose bolt does 30 and, where it bursts (a zombie or a wall),
+  puts its status on **every zombie in the bloom** (`splash_radius` 2.2 m; `status` frozen for 3 s).
+  A frozen zombie stops moving and attacking, keeps its pose and wears an ice shell. **Any hit on it kills it and it
+  shatters** (a shot of any weapon but this one's own, a melee blow, the quick melee, a grenade's blast): the hit takes
+  all the health the zombie has left, pays the kill the hit pays, and the zombie is gone at once with no corpse and no
+  blood while the pieces of ice fly and fade (`zombie_shattered`, `IceShatter`). The hit that freezes never shatters,
+  and the freeze gun's own bolt on a frozen zombie only starts the 3 s again (`RulesAction.hit`'s `keeps`).
+- **Per zombie kind, not per round** (the maintainer's decision, replacing the research's 1/2/3 bolts by round):
+  `ZombieType.freeze_bolts` is how many bolts freeze that kind (an ordinary zombie 1, a **brute 3**: the first two
+  only slow it to 40% for 3 s, `chilled`, and the count is kept while the slow lasts) and `ZombieType.freezable`
+  says whether it can be frozen at all: **bosses are not** (the headliner is only slowed, whatever the bolts), so a
+  boss night keeps its shape. A frozen brute shatters on one hit like any other. The balance simulator does not
+  model the freeze, so it needs no round factor.
+
+**Status effects** are one system, not a freeze: a `StatusDef` (`weapons/status/defs/<id>.tres`: `frozen`,
+`chilled`) says what a status does while it lasts (`halts`, `speed_scale`, `shatters`, whether the zombie kind gates
+it, what a kind that cannot take it gets, the shell's colour) and a `WeaponDef` says which one it puts on and for how
+long. The server's `StatusBoard` (owned by `CombatServer`) keeps the seconds left of every status on every zombie and
+the bolts counted so far, runs them down on the combat clock and answers `status_applied` and `status_ended` events;
+the night server tells the zombie simulation (`ZombieSim.set_status`), and the rules read the board
+(`GameRules.statuses`) to kill a hit zombie that is under one that shatters. The snapshot carries the status in the
+zombie's mode byte (`ZombieCodec`, protocol 14), so every client draws it (`ZombieView.set_status`, `StatusLook`: one
+shell material for every zombie under a status, built in the warm-up). A new element for the re-cut (#794) is a new
+`StatusDef` file, an id in `StatusCatalog` and a `status` on the weapon; [what it taught](../research/status-effects.md).
+
+Bots (`BotMotor`, `WeaponWorth`): a frozen zombie is a contact with a `status`; one shot kills it, so the bot shoots it
+once and waits half a second for the kill before it tries again, and never in a burst; a bot does not fire the ray gun
+at a zombie inside its own splash. `WeaponWorth` rates a weapon whose hit shatters by two pulls to a kill at most.
 
 ## The shoulder camera
 
@@ -508,7 +554,7 @@ puts it back in the pool as every weapon does.
 | Hits the shooter | **25% of the blast** inside 3.0 m (40 at the very centre); a teammate takes nothing (as the grenade's rule) | no |
 | The effect | none: it is a hard hit and a blast | everything in the bloom **freezes for 3 s** (below) |
 | Ammunition | 10 / 40 (60), reload 2.6 s, 0.45 s a shot | 6 / 24 (36), reload 3.0 s, 0.8 s a shot |
-| Re-cut (once, 5,000) | direct 525, blast 280, magazine 15, reserve 60 (90): a body kill to round 19, a head kill to 22 | magazine 9, reserve 36 (54), **the bloom 2.8 m and its one-bolt band 20 rounds long** (below) |
+| Re-cut (once, 5,000) | direct 525, blast 280, magazine 15, reserve 60 (90): a body kill to round 19, a head kill to 22 | magazine 9, reserve 36 (54), **the bloom 2.8 m** (`UpgradeTuning.bloom_multiplier`) |
 
 **The freeze.** A frozen zombie stands still for **3 seconds**: it neither walks nor strikes, and it keeps what it was
 tearing. **Any hit on a frozen zombie kills it at once and shatters it** (any weapon of any player, a blast, a melee
@@ -519,12 +565,13 @@ it into pieces (a gib, never a rule). Thawed after 3 s, it goes on, with its hea
 - **It does not pass through anything.** The bolt bursts on the first zombie or wall; the 2.2 m bloom is the several
   zombies it freezes (a cluster of three or four in the alley). Passing through a line would make a lane of ice for 3
   s of the whole night.
-- **The freeze takes more bolts as the night climbs**, as the genre's does ("as the rounds climb it takes more shots to
-  freeze", the Winter's Howl page): **one bolt freezes on rounds 1 to 10, two on 11 to 20, three on 21 to 30**; the first
-  bolts slow the zombie to 40% for 3 s (a bolt and a half-frozen walk). The re-cut moves each band 10 rounds on.
-- **The headliner (a boss) never freezes**: it is slowed to 40% for 3 s and takes the direct hit; so a boss night is not
-  trivialised, as the genre's Pentagon Thief is only slowed. A brute (x3 health) freezes and a shatter kills it: that is
-  what the gun is for.
+- **The freeze takes more bolts of a tougher kind, not of a later round** (the maintainer's decision, in place of
+  the research's "one bolt on rounds 1 to 10, two on 11 to 20, three on 21 to 30"): **an ordinary zombie freezes on
+  the first bolt, a brute on the third**; the first two slow it to 40% for 3 s (a bolt and a half-frozen walk). The
+  number is `ZombieType.freeze_bolts`, data.
+- **A boss is not freezable** (`ZombieType.freezable`, data): the headliner is slowed to 40% for 3 s and takes the
+  direct hit, whatever the bolts; so a boss night is not trivialised, as the genre's Pentagon Thief is only slowed. A
+  brute (x3 health) freezes and a shatter kills it: that is what the gun is for.
 - **The ammunition is the limit**: 30 bolts a load and 36 at most, each worth a few zombies, against a night's
   hundreds (round 20 sends 54 alone); a bolt costs 50 points of ammunition against a kill's 60 to 70.
 
@@ -532,8 +579,9 @@ it into pieces (a gib, never a rule). Thawed after 3 s, it goes on, with its hea
 (the gate's average cells, with them in the pool, gain two rounds, not ten). (2) **Ammunition**: both are small
 reserves with dear rounds (45 and 50 points a round against the rifle's 10 and the Tommy gun's 1.5), and the crane's
 prize is only a weapon the player lacks. (3) **They have a ceiling by round, not a wall**: the ray gun's one-hit window
-closes at round 15 body and 18 head (21 and 22 re-cut), then it needs two or three bolts a zombie; the freeze needs more
-bolts as the rounds climb; both ceilings are numbers in the definition. (4) **Two weapon slots**: either one is a slot
+closes at round 15 body and 18 head (21 and 22 re-cut), then it needs two or three bolts a zombie; the freeze
+stays one bolt for an ordinary zombie and its ceiling is the brute's three; both are numbers in the data.
+(4) **Two weapon slots**: either one is a slot
 not holding a re-cut rifle, and the re-cut it takes is 5,000 the player does not spend on a perk. (5) **Bosses
 and special rounds keep their shape**: the freeze does not hold a headliner, and a Stampede or a Crawl Space still
 sends more than 30 bolts. (6) **The ray's blast hurts the shooter**: close shots are a choice.
@@ -646,12 +694,10 @@ can hurt a player; the grenade is its first user and the ray gun's splash on its
 - **Shown:** the thrower's red arc points at the blast; the feed says `YOUR OWN GRENADE HIT YOU  -42` on their own screen
   (a blast that does not down), and on a down `RUBY BLEW THEMSELVES UP` on every screen. The server's `player_hurt` and
   `player_downed` carry `harm` (`grenade`) and `by_id`.
-- **Bots** throw only where the blast takes under a tenth of their own health (`BotGrenadier.harmless_apart`, 5.8 m, so
-  6 m from the bot) and still keep 7.5 m from every teammate, which no longer protects anyone's health. The clearance
-  stays because taking it away doubled the throws per night (18 to 42 over six seeded nights) and the bots then hit
-  themselves with a third of them ([measured on the grenades page](../research/grenades.md#only-the-thrower-856)); a
-  follow-up fixes the short landings first. They do not yet back off from a live grenade of their own beyond the
-  existing dodge.
+- **Bots** throw only where the blast takes under a tenth of their own health (`BotGrenadier.harmless_apart`, 5.8 m,
+  planned 7 m from the bot) and keep no distance from their teammates, who take nothing. A bot keeps out of its own
+  live grenade: it steps out of reach, never retreats toward it, and stands and fights instead of walking on
+  ([measured on the grenades page](../research/grenades.md#the-bots-and-their-own-grenade-872)).
 
 A grenade is a sure kill only early: at 150 it kills a round-1 zombie (50) out to 6.0 m and a round-5 one (82) out to
 4.7 m; from round 12 (139) only near the centre of the blast, and no round-14 one (159) at all (the climb is 7% a round).

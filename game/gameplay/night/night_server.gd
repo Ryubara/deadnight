@@ -15,7 +15,8 @@ extends RefCounted
 ## walking and shooting). The look server answers a join and a look with `look_packet` events
 ## (`LOOK_PACKET`). `step(delta)` runs one fixed tick and returns the events for every client: the
 ## rules events (a zombie's blow is a `blow` action, answered by the rules' `player_hurt`), the
-## weapons events (`CombatServer`), `player_damaged` (the blow as the world saw it: `from`, where it
+## weapons events (`CombatServer`), `zombie_shattered` (a frozen zombie the rules killed: where it
+## stood, for the pieces), `player_damaged` (the blow as the world saw it: `from`, where it
 ## came from, and the zombie's id, type and `knockback`: metres the blow throws the player, recorded
 ## for the player's own motion to apply), and last a `frame`. A frame carries the whole picture a
 ## client or a HUD draws from. Frame fields: tick, phase, round, remaining, fuel, circuits ({id:
@@ -69,6 +70,8 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"projectile_spawned",
 	&"projectile_burst",
 	&"lure_started",
+	&"status_applied",
+	&"status_ended",
 	&"element_burst",
 	&"element_arc",
 	&"fire_patch_started",
@@ -91,6 +94,8 @@ const GRENADE_EVENTS: Array[StringName] = [
 ]
 ## The grenade the night throws.
 const GRENADE_DEF := "res://gameplay/grenades/defs/frag.tres"
+## Metres over a player's feet at which their own burst is measured to (the chest).
+const SELF_SPLASH_LIFT := 1.0
 ## A held trigger meets these every tick; they are not news.
 const QUIET_REJECTIONS: Array[StringName] = [&"cooldown", &"reloading"]
 ## The frame names where a player looks up or down in steps of this many radians (3 degrees): a
@@ -196,6 +201,7 @@ func _init(
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
 	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
+	director.zombie_shattered.connect(_announce)
 	world.bind(rules)
 	rules.event_emitted.connect(_on_rules_event)
 	crowd.bind(rules, sim)
@@ -634,9 +640,33 @@ func _combat(action: Dictionary) -> void:
 			continue
 		if event["type"] == &"lure_started":
 			sim.add_lure(event["lure_id"], event["point"], event["radius"], event["seconds"])
+		if event["type"] == &"projectile_burst":
+			_hurt_the_shooter(event)
+		if event["type"] == &"status_applied" or event["type"] == &"status_ended":
+			sim.set_status(event["target_id"], event["wire"], event["halts"], event["speed_scale"])
 		_outbox.append(event)
 		if event["type"] == &"reload_started":
 			_shock(event["shooter_id"])
+
+
+## A burst of a weapon that hurts its shooter (`WeaponDef.self_splash_share`, the ray gun's 25%):
+## the shooter takes that share of the splash at their own distance from the burst. A teammate
+## takes nothing, as a grenade's rule. The re-cut copy in hand is the one that is measured.
+func _hurt_the_shooter(burst: Dictionary) -> void:
+	var shooter: int = burst["shooter_id"]
+	var state := combat.state_of(shooter, burst["weapon_id"])
+	if state == null or state.def.self_splash_share <= 0.0 or not _bodies.has(shooter):
+		return
+	var at := _bodies[shooter].global_position + Vector3(0.0, SELF_SPLASH_LIFT, 0.0)
+	var damage := DamageModel.splash(state.def, at.distance_to(burst["point"]))
+	if damage > 0.0:
+		_blast_player(
+			shooter,
+			damage * state.def.self_splash_share,
+			burst["point"],
+			burst["weapon_id"],
+			shooter,
+		)
 
 
 ## The shock perk (`ShockPlay`): a reload gives off a shock round the player.

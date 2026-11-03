@@ -16,6 +16,8 @@ const LIGHT_SCRIPTS := {
 	"res://world/grenade_range/blast_effect.gd": "blast",
 	"res://world/grenade_range/grenade_view.gd": "grenade lamp",
 	"res://world/crane/prize_crane.gd": "the crane's lamp: counted at every crane spot",
+	"res://world/drive_in/lamp_post.gd":
+	"a post near a wall swaps its omni for a spot: the same slot, aimed away from the wall",
 	"res://world/machines/recut_machine.gd": "the re-cut bench's lamp: in the booth, counted there",
 	"res://world/machines/soda_fountain.gd":
 	"the soda fountain's lamp: in the stand, counted there",
