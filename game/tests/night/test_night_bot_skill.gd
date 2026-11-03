@@ -38,7 +38,7 @@ func test_the_bots_wear_the_names_of_their_skill_and_the_rules_know_them() -> vo
 		assert_str(night.bots.names()[id]).is_equal(
 			BotRoster.name_for(MatchSettings.SKILL_VETERAN, id)
 		)
-	assert_array(named).contains_exactly_in_any_order(["Rex", "Sarge", "Hawk"])
+	assert_array(named).contains_exactly_in_any_order(["Colt", "Brick", "Walt"])
 	await _free(night)
 
 
