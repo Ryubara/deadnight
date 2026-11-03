@@ -86,7 +86,13 @@ func test_every_shop_item_weapon_and_prompt_has_a_rule_or_a_written_waiver() -> 
 	for id in WeaponCatalog.IDS:
 		weapons.append(String(id))
 	assert_array(BotCoverage.WEAPONS.keys()).contains_exactly_in_any_order(weapons)
-	for table: Dictionary in [BotCoverage.SHOP_KINDS, BotCoverage.WEAPONS, BotCoverage.PROMPTS]:
+	var pings: Array[String] = []
+	for kind in PingBoard.KINDS:
+		pings.append(String(kind))
+	assert_array(BotCoverage.PINGS.keys()).contains_exactly_in_any_order(pings)
+	for table: Dictionary in [
+		BotCoverage.SHOP_KINDS, BotCoverage.WEAPONS, BotCoverage.PROMPTS, BotCoverage.PINGS
+	]:
 		for key: String in table:
 			(
 				assert_bool(BotCoverage.is_written(table[key]))
