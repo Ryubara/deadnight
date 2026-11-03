@@ -27,6 +27,12 @@ static func shop(world: NightWorld, tuning: RulesTuning) -> BotShop:
 	found.fuel = tuning.fuel
 	found.boards = tuning.barricades.boards
 	found.max_grenades = tuning.explosives.max_grenades
+	var overlay := world.layout.map_tuning() if world.layout != null else null
+	if overlay != null:
+		found.clear_from = overlay.bot_clear_from
+		found.calm_share = overlay.bot_calm_share
+		found.hurt_share = overlay.bot_hurt_share
+		found.shopping.assign(overlay.bot_shopping)
 	var night_tuning := NightTuning.shipped()
 	found.use_reach = night_tuning.use_reach
 	found.fuel_reach = night_tuning.fuel_reach

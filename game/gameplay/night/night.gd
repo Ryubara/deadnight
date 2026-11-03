@@ -84,6 +84,9 @@ var bot: BotClient
 ## The match settings, set before `start`: the night's zombie intensity, alive cap and break. After
 ## `start_remote` they are the ones the server's WELCOME carried.
 var match_settings := MatchSettings.new()
+## The map's scene, set before `start`: the drive-in lot when it is not set (`NightWorld.scene`).
+## The map picker (#624) replaces this with the registry's choice.
+var scene: PackedScene
 ## () -> bool, whether the touch layer is up, set by the screen that owns it. The touch player's
 ## aim help (`assist`) works only while it says yes.
 var touch_active := Callable()
@@ -156,10 +159,13 @@ func start(
 		await get_tree().process_frame
 		await get_tree().process_frame
 	world = NightWorld.new()
+	world.scene = scene
 	add_child(world)
 	await world.build()
 	loading.emit(BUILD_SHARE, "Setting up")
-	server = NightServer.new(world, p_seed, night_tuning, p_rules_tuning, match_settings)
+	# A map with its own rules overlay plays by it, over the shared table (or over the table given).
+	var table := p_rules_tuning if p_rules_tuning != null else load(GameRules.DEFAULT_TUNING_PATH)
+	server = NightServer.new(world, p_seed, night_tuning, world.rules_for(table), match_settings)
 	rules_tuning = server.rules.tuning
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
 	state = ClientState.new()

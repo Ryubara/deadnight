@@ -49,14 +49,22 @@ static func start(
 	players: int,
 	rules_tuning: RulesTuning = null,
 	seed_value: int = 7,
-	shopping: bool = false
+	shopping: bool = false,
+	scene: PackedScene = null
 ) -> SeatedNight:
 	var night := SeatedNight.new()
 	night.world = NightWorld.new()
+	night.world.scene = scene
 	parent.add_child(night.world)
 	await night.world.build()
+	# A map with its own rules overlay plays by it, over the table given (or the shipped one).
+	var table := rules_tuning if rules_tuning != null else load(GameRules.DEFAULT_TUNING_PATH)
 	night.server = NightServer.new(
-		night.world, seed_value, NightTuning.shipped(), rules_tuning, MatchSettings.new()
+		night.world,
+		seed_value,
+		NightTuning.shipped(),
+		night.world.rules_for(table),
+		MatchSettings.new()
 	)
 	night.server.drawn_bodies = false
 	for id in range(1, players + 1):

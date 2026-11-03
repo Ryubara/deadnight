@@ -172,6 +172,8 @@ func _init(
 	sim.lit_probe = world.is_lit
 	sim.gates = world.gates()
 	sim.barricades = rules.barricades
+	sim.storey = world.storey()
+	sim.sight = _probe.callable()
 	sim.board_seconds = rules.tuning.barricades.seconds_per_board
 	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
 	_ping_judge = PingJudge.new(tuning, ping_board, rules, world, sim, _bodies, _announce)
@@ -742,6 +744,8 @@ func _spot_offer(player_id: int, here: Vector3) -> Dictionary:
 	for spot in world.shop_spots():
 		var apart := _flat(here, spot["position"])
 		if apart > tuning.use_reach or apart >= best_apart:
+			continue
+		if not world.on_level(here, spot["position"]):
 			continue
 		var offer := _offer_at(player_id, spot)
 		if not offer.is_empty():

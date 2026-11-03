@@ -21,6 +21,18 @@ const COINCIDENT_DISTANCE := 0.001
 ## Multipliers of the golden-ratio family that spread a pair of ids evenly round a circle.
 const _PAIR_ANGLE_A := 0.7548776662
 const _PAIR_ANGLE_B := 0.5698402910
+## How far above the floor the navigation map's path points run (the baker's walkable surface sits
+## a cell and a bit over the geometry's top): taken off a path point to get the ground a zombie
+## stands on. Measured on the second map, whose floors are at 0 and 3.4 m.
+const NAV_LIFT := 0.35
+## Metres over the feet at which a swing is judged to have a clear way to its target: over the
+## second map's counter and racks (1.2 m), under its ceiling.
+const SWING_HEIGHT := 1.3
+## Metres past the longest swing within which the way to a target is looked at.
+const SWING_SLACK := 0.5
+## Metres of walking a step up or down one storey counts for when a zombie picks its target: a
+## player on another floor is as far as this many metres of floor for each metre of height.
+const STOREY_WEIGHT := 3.0
 
 var tuning: ZombieTuning
 ## Used for the speed of a zombie off lit ground; without it light changes nothing.
@@ -35,6 +47,15 @@ var gates: Dictionary[StringName, ZombieGate] = {}
 var barricades: BarricadeState
 ## Seconds of work one board takes a walker (a type's `barrier_speed` makes it quicker).
 var board_seconds: float = 1.2
+## The height of one storey of the map, or 0 for a flat map (the lot). A map with floors above one
+## another (the second map) sets it: the dead then follow the walking mesh up and down its stairs,
+## are as far from a player on another floor as the stair makes them, and neither start nor land a
+## swing across a floor. A flat map is untouched, whatever the heights in it.
+var storey := 0.0
+## `Callable(from: Vector3, to: Vector3) -> float`: metres to the first wall on the way, or -1.0
+## when clear (a `WorldProbe`). On a map with storeys a zombie swings only at a target it has a
+## clear way to, so the dead on a stair do not hit a player beside it through the wall.
+var sight: Callable = Callable()
 var zombies: Dictionary[int, ZombieBody] = {}
 ## The lures burning now (`add_lure`, `ZombieLure`).
 var lures: Array[ZombieLure] = []
@@ -237,7 +258,8 @@ func _think(
 		has_target and not gathered,
 		target_pos,
 		waypoint,
-		_ground_speed(zombie)
+		_ground_speed(zombie),
+		_can_swing(zombie.position, target_pos)
 	)
 	if not strike.is_empty():
 		strike["type"] = &"zombie_struck"
@@ -245,10 +267,13 @@ func _think(
 	zombie.tearing = false
 	if zombie.gate_id != &"":
 		_work_the_boards(zombie, delta, events)
-	# Height stays where it spawned: the lot is flat. A path point sits above the floor by a baker
-	# offset (twice the cell height), so using its height needs that taken off first.
+	# On a flat map the height stays where it spawned; a map with storeys sets it below
+	# (`_ground_height`). A path point sits above the floor by a baker offset, so using its
+	# height needs that taken off first (`NAV_LIFT`).
 	zombie.position += (zombie.velocity + zombie.push) * delta
 	zombie.push = zombie.push.move_toward(Vector3.ZERO, tuning.push_decay * delta)
+	if storey > 0.0:
+		zombie.position.y = _ground_height(zombie)
 
 
 ## The nearest lure that calls this zombie, or null: one within its radius, unless the zombie is
@@ -333,6 +358,41 @@ func _ground_speed(zombie: ZombieBody) -> float:
 	return rounds.speed_on_ground(zombie.speed, zombie.lit) if rounds != null else zombie.speed
 
 
+## The ground a zombie stands on after it moved: along the segment of its path it is on, from the
+## last point it passed to the next, so a stair is a ramp. Where there is no path it stays.
+func _ground_height(zombie: ZombieBody) -> float:
+	var path := zombie.path
+	if path.is_empty():
+		return zombie.position.y
+	var next := mini(zombie.path_index, path.size() - 1)
+	if next == 0:
+		return path[0].y - NAV_LIFT
+	var from := path[next - 1]
+	var span := _flat(from, path[next])
+	var share := 1.0 if span < COINCIDENT_DISTANCE else _flat(from, zombie.position) / span
+	return lerpf(from.y, path[next].y, clampf(share, 0.0, 1.0)) - NAV_LIFT
+
+
+## Whether a zombie at `a` may swing at a target at `b`: always on a flat map; else within half a
+## storey in height and, when the target is near enough to be struck, with no wall between them.
+func _can_swing(a: Vector3, b: Vector3) -> bool:
+	if storey <= 0.0:
+		return true
+	if absf(a.y - b.y) > storey * 0.5:
+		return false
+	if not sight.is_valid() or _flat(a, b) > tuning.reach + tuning.strike_slack + SWING_SLACK:
+		return true
+	var lift := Vector3(0.0, SWING_HEIGHT, 0.0)
+	return float(sight.call(a + lift, b + lift)) < 0.0
+
+
+## The distance a zombie weighs a player by: the flat distance, and on a map with storeys more for
+## every metre of height between them (the stair is a long way round).
+func _target_distance(a: Vector3, b: Vector3) -> float:
+	var flat := _flat(a, b)
+	return flat + STOREY_WEIGHT * absf(a.y - b.y) if storey > 0.0 else flat
+
+
 ## Keeps the nearest target, switching only to one clearly nearer (`retarget_margin`).
 func _retarget(zombie: ZombieBody, delta: float, targets: Dictionary) -> void:
 	zombie.retarget_left -= delta
@@ -342,13 +402,13 @@ func _retarget(zombie: ZombieBody, delta: float, targets: Dictionary) -> void:
 	var best_id := -1
 	var best_dist := INF
 	for player_id: int in targets:
-		var d := _flat(zombie.position, targets[player_id])
+		var d := _target_distance(zombie.position, targets[player_id])
 		if d < best_dist:
 			best_dist = d
 			best_id = player_id
 	var current := INF
 	if targets.has(zombie.target_id):
-		current = _flat(zombie.position, targets[zombie.target_id])
+		current = _target_distance(zombie.position, targets[zombie.target_id])
 	if best_dist + tuning.retarget_margin < current or current == INF:
 		zombie.target_id = best_id
 

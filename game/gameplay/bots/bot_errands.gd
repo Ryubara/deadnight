@@ -29,7 +29,8 @@ const CLAIM_GRACE := 20.0
 const PING_DEFER := 10.0
 ## Metres from a door within which a person holding the price has the first claim.
 const CLAIM_RADIUS := 15.0
-## Health share under which a teammate is in trouble (no door is bought while one is).
+## Health share under which a teammate is in trouble (no door is bought while one is);
+## `BotShop.hurt_share` starts at this.
 const HURT_SHARE := 0.5
 ## Fraction of the tank above the low line at which fuel buying stops.
 const FILL_MARGIN := 0.15
@@ -54,7 +55,8 @@ const ERRAND_LIMIT := 60.0
 const UNREACHABLE_BACK_OFF := 180.0
 ## Seconds without a sight or a sound of the dead that make a lull in a round.
 const LULL_SECONDS := 10.0
-## The share of a round's dead that, once only this many are left, makes a lull to go shopping in.
+## The share of a round's dead that, once only this many are left, makes a lull to go shopping in
+## (`BotShop.calm_share` starts at this).
 const CALM_SHARE := 0.25
 ## Seconds between two looks at what to buy.
 const PLAN_EVERY := 0.5
@@ -156,7 +158,7 @@ func run(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: flo
 		_planned_at = -INF
 	if now - _planned_at >= PLAN_EVERY or beliefs.purchased_at > _planned_at:
 		_plan(beliefs, state, me, frame)
-	if threat < CLEAR_FROM:
+	if threat < _shop.clear_from:
 		_last_item = &""
 		_arrived_at = -1.0
 		return false
@@ -364,7 +366,7 @@ func calm_at(frame: Dictionary) -> int:
 	if round_number != _round or remaining > _peak:
 		_peak = remaining if round_number != _round else maxi(_peak, remaining)
 		_round = round_number
-	return maxi(BotEconomy.CALM_REMAINING, ceili(float(_peak) * CALM_SHARE))
+	return maxi(BotEconomy.CALM_REMAINING, ceili(float(_peak) * _shop.calm_share))
 
 
 ## Whether the frame shows a break or a lull in a round.
@@ -424,7 +426,10 @@ func _etiquette(view: BotEconomy.View, beliefs: BotBeliefs, frame: Dictionary, m
 		var player: Dictionary = players[id]
 		if id == me_id or player.get("dead", false):
 			continue
-		if player.get("downed", false) or float(player.get("health", 100.0)) < 100.0 * HURT_SHARE:
+		if (
+			player.get("downed", false)
+			or float(player.get("health", 100.0)) < 100.0 * _shop.hurt_share
+		):
 			trouble = true
 	for door_id in _shop.unlocked_doors(view.doors_open):
 		var price := _shop.economy.item(door_id).price_at(view.round_number)
