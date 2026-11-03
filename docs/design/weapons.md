@@ -65,10 +65,21 @@ the real command, its own model drawn).
 | `flare_gun` | `flare_gun` | **Crane** only (1); becomes a lure (#439) | 90 + blast 60 / 0.8 s |
 | `baseball_bat` | `baseball_bat` | **Crane** only (0.5) | 60 / 0.4 s, sweeps 4 |
 | `fire_axe` | `fire_axe` | **Crane** only (0.5) | 150 / 0.9 s, head x2.5 |
+| `mp5` ([models](../research/weapon-models.md)) | `mp5`, the Usher SMG | **Crane** only (2) | 15 / 0.10 s |
+| `ppsh` | `ppsh`, the Reel Gun | **Crane** only (2) | 10 / 0.055 s |
+| `m4a1` | `m4a1`, the Matinee Carbine | **Crane** only (1.5) | 20 / 0.11 s |
+| `m249` | `m249`, the Double-Feature Gun | **Crane** only (1.5) | 15 / 0.09 s, pierces 1 |
+| `fifty_cal` | `fifty_cal`, the .50 calibre rifle | **Crane** only (1.5) | 220 / 0.9 s, pierces 4 |
+| `pump_870` | `pump_870`, the Popper | **Crane** only (2) | 22 x 6 / 0.65 s |
 | `service_pistol` twice (#797) | `dual_pistols`, the Dual Pistols | **Crane** only (2.5), on both maps | 17 / 0.15 s, a hand each shot |
 | none: not a weapon | `quick_melee` (`QUICK_MELEE`, not in `IDS`) | Every player, on `V`; never carried, bought or won | 40 / 0.6 s, 1.6 m |
 | `hammer` | none | A tool: the repair clip's prop, not a weapon (see below) | |
 | `grenade` | none (`frag.tres` is its own system) | Thrown, not a crane prize: the start (2) and the shop's grenades | 150 blast |
+
+**The six firearms of [#793](https://github.com/Ryubara/deadnight/issues/793)** (the MP5, PPSh, M4A1, M249, .50 calibre
+rifle and Pump 870) are built: [their numbers](#the-nine-new-weapons-785) and [what is special about three of
+them](#the-six-firearms-793). The dual pistols, ray gun and freeze gun are [#789](https://github.com/Ryubara/deadnight/issues/789)
+and [#788](https://github.com/Ryubara/deadnight/issues/788).
 
 **On the second map the walls sell more** ([the shop of the small map](smallmap.md#the-shop-formula-rows-22-to-25)):
 nine places for eight weapons, so the revolver (90, back in the pool after it is given up), the crowbar (270), the
@@ -248,6 +259,12 @@ distance down to the floor and holds there to the range.
 | Crowbar | melee sweep, 2 targets | 45 | 0.55 s | none | none | none | 1.9 m |
 | Baseball bat | melee sweep, 4 targets | 60 | 0.4 s | none | none | none | 1.8 m |
 | Fire axe | melee sweep, 2 targets | 150 | 0.9 s | none | none | none | 1.8 m |
+| MP5 | hitscan, auto | 15 | 0.10 s | 30 / 120 (max 180) | 1.9 s | 12 to 34 m (55%) | 55 m |
+| PPSh | hitscan, auto | 10 | 0.055 s | 50 / 100 (max 200) | 2.8 s | 8 to 24 m (45%) | 40 m |
+| M4A1 | hitscan, auto | 20 | 0.11 s | 30 / 90 (max 150) | 2.1 s | 22 to 55 m (65%) | 90 m |
+| M249 | hitscan, auto, pierces 1 | 15 | 0.09 s | 100 / 150 (max 250) | 5.0 s | 14 to 40 m (55%) | 70 m |
+| Fifty cal | hitscan, semi, pierces 4 | 220 | 0.9 s | 5 / 20 (max 40) | 3.4 s | none | 150 m |
+| Pump 870 | 6 pellets, 5 degrees, loads by the round | 22 x 6 | 0.65 s | 6 / 42 (max 66) | 2.8 s | 10 to 26 m (45%) | 35 m |
 
 Shots to kill at close range (head / body), against the health in [the rounds table](rounds.md#the-tuning-table):
 
@@ -261,6 +278,12 @@ Shots to kill at close range (head / body), against the health in [the rounds ta
 | Crowbar | 1 / 2 | 1 / 2 | 3 / 4 | 82 | 82 |
 | Baseball bat | 1 / 1 | 1 / 2 | 2 / 3 | 150 | 150 |
 | Fire axe | 1 / 1 | 1 / 1 | 1 / 1 | 167 | 167 |
+| MP5 | 2 / 4 | 3 / 6 | 5 / 10 | 150 | 92 |
+| PPSh | 4 / 5 | 6 / 9 | 10 / 14 | 182 | 90 |
+| M4A1 | 2 / 3 | 3 / 5 | 4 / 7 | 182 | 111 |
+| M249 | 2 / 4 | 4 / 6 | 6 / 10 | 167 | 107 |
+| Fifty cal | 1 / 1 | 1 / 1 | 1 / 1 | 244 | 139 |
+| Pump 870 (all six pellets) | 1 / 1 | 1 / 1 | 1 / 2 | 203 | 118 |
 
 The shots are the health of the zombie (the table in the page above; `rounds.md` is the source) over the weapon's
 damage, rounded up. "With reloads" is the sustained rate over a whole magazine and its reload, the number the
@@ -304,9 +327,9 @@ damage, rounded up. "With reloads" is the sustained rate over a whole magazine a
 
 ## The nine new weapons (#785)
 
-**Planned, not built.** Nine weapons are added to the eight (seventeen in all): six firearms
-([#793](https://github.com/Ryubara/deadnight/issues/793)), the two wonder weapons and the status effects they need
-([#788](https://github.com/Ryubara/deadnight/issues/788)) and the dual pistols
+**Six are built, three are planned.** Nine weapons are added to the eight (seventeen in all): six firearms
+([#793](https://github.com/Ryubara/deadnight/issues/793), **built**), the two wonder weapons and the status effects they
+need ([#788](https://github.com/Ryubara/deadnight/issues/788)) and the dual pistols
 ([#789](https://github.com/Ryubara/deadnight/issues/789)). This section is the one place their numbers are decided; the
 build issues copy them into `defs/<id>.tres`. The evidence is [the roster research](../research/weapon-roster.md), the
 re-cut of each is [on the re-cut page](upgrades.md#the-re-cut-plan-for-seventeen-weapons-785). Falloff and zones read as
@@ -352,6 +375,9 @@ What each one is for (the genre's role, in our numbers):
 - **Ray gun and freeze gun, the pair**: [below](#the-wonder-weapons).
 
 ### Where they are and what they cost
+
+**Walls (decided after this page, #858):** a wall sells only the weaker guns, so the pump, MP5 and M4A1 are the box's alone
+on both maps; the wall prices and places below are #785's plan and are not built.
 
 The lot's prices are in points; the second map's are its own ratios to its link price **P = 450**
 ([the shop formula](smallmap.md#the-shop-formula-rows-22-to-25)) and each stays within 10% of its ratio
@@ -415,6 +441,36 @@ revolver on rate and magazine and lose it the one-shot head (the revolver kills 
 **fifty cal** is the slowest and the leanest of all and the only one that kills a line of zombies and a late
 round's heavy ones in one hit. The only exception to "at its price" is the **wonder pair**, which are one-hit kills
 for most of the night and are held down by rarity and ammunition, not by price ([below](#the-wonder-weapons)).
+
+### The six firearms (#793)
+
+The six are `defs/<id>.tres` (`mp5`, `ppsh`, `m4a1`, `m249`, `fifty_cal`, `pump_870`) with the numbers above, in
+`WeaponCatalog.IDS` and `UpgradeTuning.profiles` (so each is re-cut once, [the plan](upgrades.md#what-each-weapon-becomes)).
+`game/tests/weapons/test_new_firearms.gd` pins every number and the three behaviours below.
+
+- **The .50 calibre goes through four zombies.** `penetration` 4, each one 0.7 of the one before (220, 154, 108, 76,
+  53 on the body): the shot is the rifle's (`AimResolver.trace_one`) with a longer line, so a wall still stops it.
+- **The M249 shoots wider on the move.** `moving_spread_deg` 2.4: its 2.6 degree cone grows by that much at a full run
+  (0 standing, linearly between): 5.0 degrees at a run. The night server gives the fire action a `move` share
+  (`CombatAction.fire`, the body's ground speed over `run_speed`), and the spread is still seeded by the match, the
+  shooter and the shot number, so a client that replays a shot scatters it the same way. No other weapon has one.
+  Its **5 second reload** is the other cost, and it pierces one zombie.
+- **The pump loads a round at a time, and a shot ends the reload.** `reload_by_round`: `reload_time` (2.8 s) is the whole
+  tube from empty, so a round takes 2.8 / 6 = 0.47 s, each is in the magazine the moment it goes in (the HUD's count
+  rises a round at a time: `reload_round`), and a pull of the trigger with at least one round in ends the reload and
+  fires (`reload_interrupted`, the rounds loaded stay). With none in, the shot is refused as before (`reloading`). A
+  reload of two rounds takes 0.93 s. The reload perk quickens each round. The motion is a loop of one cycle a round
+  (`ReloadMotion.loop_rounds`): the shell is fetched from the belt and put in the port, `shell_in` and `pouch` sound for
+  each, and a shorter reload plays the lead-in, that many cycles and the rack of the pump.
+- **The bots** fire a pump that is still loading as soon as it has a round (`BotMotor`); every other weapon waits for its
+  reload to end.
+- **Where they are**: the box of both maps, at #785's weights, and nowhere else: the maintainer decided (#858) that a wall
+  sells only the weaker guns, so the pump, MP5 and M4A1 are not sold (#785's wall prices of 700, 1,300 and 1,600 and the
+  second map's three wall places were taken out before the build merged). Their rounds are sold at the locker or in the
+  shop's ammunition items at #785's prices.
+- **Names are strings.** `display_name` is "Reel Gun", "Usher SMG", "Matinee Carbine", "Double-Feature Gun", "Fifty cal"
+  and "Popper" (the maintainer's choice, #857; the ids stay `ppsh`, `mp5`, `m4a1`, `m249`, `fifty_cal`, `pump_870`); the
+  HUD, the cards, the prompts and the feed read them from the definition.
 
 ### The dual pistols
 
@@ -559,7 +615,7 @@ with his own clips. Wired and proven in #351: [Grenades research](../research/gr
 | Cover | a line from the blast (0.25 m up) to each of the six hit parts; a part with something solid in the way takes nothing |
 | Shares of the blast | legs 25% each, body 25%, arms 10% each, head 5% (a blast goes off low) |
 | Knockback, stun | up to 7 m/s along the ground and 3 m/s up, 1.6 s stun, both falling off like the damage |
-| Players | all of their health in the hand and within 1 m of the blast, then less to nothing at 8 m, the thrower and the team alike, none behind a wall ([blast on players](#blast-on-players)) |
+| Players | the thrower alone: all of their health in the hand and within 1 m of the blast, then less to nothing at 8 m, none behind a wall; a teammate takes nothing ([blast on players](#blast-on-players)) |
 | Authority | hand within 1 m of 1.45 m above the server's feet; client speed at most 7.5 m/s; a dropped grenade starts 0.3 m above the feet |
 | Carry | start with 2, every round start tops up to 3, at most 5; the shop sells 2 for 150 (+5 a round) |
 | Kill points | 40 for a zombie the blast kills (a hit that does not kill pays the usual 4) |
@@ -567,12 +623,13 @@ with his own clips. Wired and proven in #351: [Grenades research](../research/gr
 ### Blast on players
 
 The maintainer, 2026-11-03: grenades hurt the player too; 100% if it blows up in the hand, full damage only super close,
-falling off with distance. One rule (`PlayerBlast`, `game/gameplay/rules/player_blast.gd`) serves every blast that can
-hurt a player; the grenade is its first user and the ray gun's splash on its own shooter (25%) is the second.
+falling off with distance. And, the same day (#856), **only the thrower takes it**: a teammate in a player's blast takes
+nothing and sees no hurt line. One rule (`PlayerBlast`, `game/gameplay/rules/player_blast.gd`) serves every blast that
+can hurt a player; the grenade is its first user and the ray gun's splash on its own shooter (25%) is the second.
 
 - **A share of the player's health bar**, not a damage number: full is always "down", from full health or not, and a
   tonic that raises the bar does not make a grenade at the feet safer.
-- **In the hand: all of it**, wall or no wall (the grenade is in their hand), the thrower alone.
+- **In the hand: all of it**, wall or no wall (the grenade is in their hand).
 - **Full radius 1 m** (`player_full_radius`): a body's width and an arm's reach, so a grenade in the hand, at the feet or
   against the player takes all of it and one a pace away is already less. A grenade dropped at a downed player's feet
   takes a kneeling reviver whole.
@@ -580,19 +637,21 @@ hurt a player; the grenade is its first user and the ray gun's splash on its own
   73% of the health, 3 m 51%, 4 m 33%, 5 m 18%, 6 m 8%, 7 m 2%: a few metres off hurts and rarely downs, and two close
   ones in a row will. The ease is steep first so that "close" stays deadly and the long tail is a graze that mends.
 - **Walls:** the line from the blast to the chest (1 m up) must be clear of walls and props (cover slack 0.12 m); a
-  player is no cover, a teammate does not shield another.
-- **Teammates take the same as the thrower.** The task's brief says so and the maintainer's words name "the player", not
-  the thrower; the genre is not one answer (some co-op zombie games keep only self damage, others hurt everyone), so
-  this is the brief's choice and **open for the maintainer** if a team should be spared. There is no friendly-fire flag
-  any more: one rule is easier to read on the screen and to test.
-- **Shown:** the hurt player's red arc points at the blast; the feed says `YOUR OWN GRENADE HIT YOU  -42` or `MOE'S
-  GRENADE HIT YOU  -42` on the hurt player's own screen (a blast that does not down), and on a down `RUBY BLEW THEMSELVES
-  UP` or `MOE WAS BLOWN UP BY RUBY'S GRENADE` on every screen. The server's `player_hurt` and `player_downed` carry
-  `harm` (`grenade`) and `by_id`.
-- **Bots** throw only where the blast takes under a tenth of anyone's health at the bot's and a teammate's spot, with a
-  margin for the grenade not landing where it was aimed and the teammate walking on (`BotGrenadier.harmless_apart`, 5.8
-  m, so 6 m from itself and 7.5 m from a teammate). They do not yet back off from a live grenade; no dodge of that kind
-  existed and the parity work tunes the bots.
+  player is no cover.
+- **Only the thrower takes damage (the maintainer, #856).** #835 first hurt the team on the same curve and asked; the
+  answer is no friendly fire from a grenade. A teammate at 0.5 m takes 0, gets no red arc, no `player_hurt` and no feed
+  line; the thrower at 0.5 m takes the full share. The server does not even name a teammate (`player_blasted` is sent
+  for the thrower only). A downed thrower is not counted (the rules refuse a blow on them), so the grenade a downed
+  player dropped at their reviver's knees hurts no one. The dead are untouched by this: they take the blast as before.
+- **Shown:** the thrower's red arc points at the blast; the feed says `YOUR OWN GRENADE HIT YOU  -42` on their own screen
+  (a blast that does not down), and on a down `RUBY BLEW THEMSELVES UP` on every screen. The server's `player_hurt` and
+  `player_downed` carry `harm` (`grenade`) and `by_id`.
+- **Bots** throw only where the blast takes under a tenth of their own health (`BotGrenadier.harmless_apart`, 5.8 m, so
+  6 m from the bot) and still keep 7.5 m from every teammate, which no longer protects anyone's health. The clearance
+  stays because taking it away doubled the throws per night (18 to 42 over six seeded nights) and the bots then hit
+  themselves with a third of them ([measured on the grenades page](../research/grenades.md#only-the-thrower-856)); a
+  follow-up fixes the short landings first. They do not yet back off from a live grenade of their own beyond the
+  existing dodge.
 
 A grenade is a sure kill only early: at 150 it kills a round-1 zombie (50) out to 6.0 m and a round-5 one (82) out to
 4.7 m; from round 12 (139) only near the centre of the blast, and no round-14 one (159) at all (the climb is 7% a round).

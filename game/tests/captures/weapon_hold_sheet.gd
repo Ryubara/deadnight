@@ -53,7 +53,10 @@ func _ready() -> void:
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--only="):
 			only = argument.trim_prefix("--only=")
-	for weapon_class in WEAPONS:
+	var weapons: Array[StringName] = WEAPONS.duplicate()
+	if only != "" and not StringName(only) in weapons:
+		weapons.append(StringName(only))  # any catalogue id (#793: the six firearms)
+	for weapon_class in weapons:
 		if only != "" and String(weapon_class) != only:
 			continue
 		for pose in GRENADE_POSES if weapon_class == GRENADE else POSES:

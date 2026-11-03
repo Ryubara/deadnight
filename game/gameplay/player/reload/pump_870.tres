@@ -1,0 +1,261 @@
+[gd_resource type="Resource" script_class="ReloadMotion" format=3]
+
+[ext_resource type="Script" path="res://gameplay/player/reload/reload_key.gd" id="1_key"]
+[ext_resource type="Script" path="res://gameplay/player/reload/reload_motion.gd" id="2_motion"]
+
+[sub_resource type="Resource" id="K0"]
+script = ExtResource("1_key")
+
+[sub_resource type="Resource" id="K1"]
+script = ExtResource("1_key")
+at = 0.1
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_space = 1
+left_point = Vector3(-0.2, 0.05, -0.05)
+ammo = true
+
+[sub_resource type="Resource" id="K2"]
+script = ExtResource("1_key")
+at = 0.173333
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.1, -0.07, 0)
+ammo = true
+
+[sub_resource type="Resource" id="K3"]
+script = ExtResource("1_key")
+at = 0.206667
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.1, -0.07, 0)
+
+[sub_resource type="Resource" id="K4"]
+script = ExtResource("1_key")
+at = 0.233333
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_space = 1
+left_point = Vector3(-0.2, 0.05, -0.05)
+ammo = true
+
+[sub_resource type="Resource" id="K5"]
+script = ExtResource("1_key")
+at = 0.306667
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.1, -0.07, 0)
+ammo = true
+
+[sub_resource type="Resource" id="K6"]
+script = ExtResource("1_key")
+at = 0.34
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.1, -0.07, 0)
+
+[sub_resource type="Resource" id="K7"]
+script = ExtResource("1_key")
+at = 0.366667
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_space = 1
+left_point = Vector3(-0.2, 0.05, -0.05)
+ammo = true
+
+[sub_resource type="Resource" id="K8"]
+script = ExtResource("1_key")
+at = 0.44
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.1, -0.07, 0)
+ammo = true
+
+[sub_resource type="Resource" id="K9"]
+script = ExtResource("1_key")
+at = 0.473333
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.1, -0.07, 0)
+
+[sub_resource type="Resource" id="K10"]
+script = ExtResource("1_key")
+at = 0.5
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_space = 1
+left_point = Vector3(-0.2, 0.05, -0.05)
+ammo = true
+
+[sub_resource type="Resource" id="K11"]
+script = ExtResource("1_key")
+at = 0.573333
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.1, -0.07, 0)
+ammo = true
+
+[sub_resource type="Resource" id="K12"]
+script = ExtResource("1_key")
+at = 0.606667
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.1, -0.07, 0)
+
+[sub_resource type="Resource" id="K13"]
+script = ExtResource("1_key")
+at = 0.633333
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_space = 1
+left_point = Vector3(-0.2, 0.05, -0.05)
+ammo = true
+
+[sub_resource type="Resource" id="K14"]
+script = ExtResource("1_key")
+at = 0.706667
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.1, -0.07, 0)
+ammo = true
+
+[sub_resource type="Resource" id="K15"]
+script = ExtResource("1_key")
+at = 0.74
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.1, -0.07, 0)
+
+[sub_resource type="Resource" id="K16"]
+script = ExtResource("1_key")
+at = 0.766667
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_space = 1
+left_point = Vector3(-0.2, 0.05, -0.05)
+ammo = true
+
+[sub_resource type="Resource" id="K17"]
+script = ExtResource("1_key")
+at = 0.84
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.1, -0.07, 0)
+ammo = true
+
+[sub_resource type="Resource" id="K18"]
+script = ExtResource("1_key")
+at = 0.873333
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.1, -0.07, 0)
+
+[sub_resource type="Resource" id="K19"]
+script = ExtResource("1_key")
+at = 0.9
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.32, -0.02, 0)
+left_on_part = true
+
+[sub_resource type="Resource" id="K20"]
+script = ExtResource("1_key")
+at = 0.93
+weapon_offset = Vector3(0.2, 0.1, 0.1)
+weapon_turn = Vector3(40, -30, 10)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.32, -0.02, 0)
+left_on_part = true
+part = 1
+
+[sub_resource type="Resource" id="K21"]
+script = ExtResource("1_key")
+at = 0.965
+weapon_offset = Vector3(0.1, 0.06, 0.06)
+weapon_turn = Vector3(8, -8, 5)
+chest_lean = 4
+chest_turn = 10
+left = 1
+left_point = Vector3(-0.32, -0.02, 0)
+left_on_part = true
+
+[sub_resource type="Resource" id="K22"]
+script = ExtResource("1_key")
+at = 1
+
+[resource]
+script = ExtResource("2_motion")
+mechanism = &"by_round"
+part_node = &"Pump"
+part_slide = Vector3(0.045, 0, 0)
+ammo_scene = "res://assets/weapons/pump_870/pump_870_ammo.glb"
+ammo_offset = Vector3(0, 0.3, 0)
+ammo_turn = Vector3(0, 0, 90)
+loop_rounds = 6
+loop_from = 0.1
+loop_to = 0.9
+keys = Array[ExtResource("1_key")]([SubResource("K0"), SubResource("K1"), SubResource("K2"), SubResource("K3"), SubResource("K4"), SubResource("K5"), SubResource("K6"), SubResource("K7"), SubResource("K8"), SubResource("K9"), SubResource("K10"), SubResource("K11"), SubResource("K12"), SubResource("K13"), SubResource("K14"), SubResource("K15"), SubResource("K16"), SubResource("K17"), SubResource("K18"), SubResource("K19"), SubResource("K20"), SubResource("K21"), SubResource("K22")])
+events = Dictionary[StringName, PackedFloat32Array]({
+&"pouch": PackedFloat32Array(0.112, 0.245333, 0.378667, 0.512, 0.645333, 0.778667),
+&"pump": PackedFloat32Array(0.94),
+&"shell_in": PackedFloat32Array(0.213333, 0.346667, 0.48, 0.613333, 0.746667, 0.88)
+})
