@@ -5,7 +5,7 @@ extends Control
 ## no gamepad to such a frame, so a controller does nothing until one click gives it the focus
 ## (#479). Reads the page every half second (`GamepadProbe.hint`); off the web it never shows.
 
-## The canvas layer it sits on: above the router, below the "turn your phone" prompt (105).
+## The canvas layer it once sat on (104); it now shares the router's (#883).
 const LAYER := 104
 const EVERY := 0.5
 

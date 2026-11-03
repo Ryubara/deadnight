@@ -103,7 +103,7 @@ func _draw_objective(font: Font, marker: Dictionary, spot: Dictionary) -> void:
 			at + Vector2(-half, 0)
 		]
 	)
-	draw_colored_polygon(
+	_fill(
 		PackedVector2Array(
 			[
 				diamond[0] + Vector2(3, 3),
@@ -114,14 +114,14 @@ func _draw_objective(font: Font, marker: Dictionary, spot: Dictionary) -> void:
 		),
 		tokens.shadow
 	)
-	draw_colored_polygon(diamond, tokens.accent_bright)
+	_fill(diamond, tokens.accent_bright)
 	var inner := half * 0.45
 	draw_rect(Rect2(at - Vector2.ONE * inner * 0.5, Vector2.ONE * inner), tokens.ink_on_accent)
 	if spot["pinned"]:
 		var direction := (at - size * 0.5).normalized()
 		var tip := at + direction * (half + ARROW + 6.0)
 		var side := direction.orthogonal() * ARROW * 0.6
-		draw_colored_polygon(
+		_fill(
 			PackedVector2Array(
 				[tip, at + direction * (half + 6.0) + side, at + direction * (half + 6.0) - side]
 			),
@@ -138,7 +138,7 @@ func _draw_ally(font: Font, marker: Dictionary, at: Vector2) -> void:
 		_draw_downed(font, marker, at)
 		return
 	var tip := at + Vector2(0.0, -10.0)
-	draw_colored_polygon(
+	_fill(
 		PackedVector2Array([tip + Vector2(0, 14), tip + Vector2(-10, 0), tip + Vector2(10, 0)]),
 		tokens.accent
 	)
@@ -181,6 +181,17 @@ func _draw_downed(font: Font, marker: Dictionary, at: Vector2) -> void:
 	else:
 		words += "  %d S" % int(marker.get("bleed", 0))
 	_text(font, words, at + Vector2(0.0, -DOWNED_RADIUS - 10.0), colour)
+
+
+## A flat triangle or quad. Not `draw_colored_polygon`: the markers move with the camera and are
+## drawn again every frame, and a polygon makes the Compatibility renderer build a vertex array and
+## buffers each time, whose WebGL ids the web page keeps for good (#883). A primitive is batched
+## with the rest and makes none.
+func _fill(points: PackedVector2Array, colour: Color) -> void:
+	var colours := PackedColorArray()
+	colours.resize(points.size())
+	colours.fill(colour)
+	draw_primitive(points, colours, PackedVector2Array())
 
 
 ## Centred text with a dark outline, so it holds on a lit or dark ground.

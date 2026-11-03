@@ -12,6 +12,9 @@ extends RefCounted
 ##   `cull=D`   every mesh of the lot stops drawing D metres from the camera
 ##   `cullsmall=D` the same, only for meshes under 2 m across
 ##   `ui=0`     hide the HUD and the touch layer
+##   `canvas=1` prints the canvas passes (layer, z index, items) once the night runs
+##   `views=0`  every SubViewport stops rendering
+##   `off=A,B`  hide every canvas item of these names or classes
 ##   `hints=0`  the touch hints ("DRAG TO MOVE") are marked used, as for a player who has played: an
 ##              autopilot never touches, so they would stay up and animate for the whole run (#834)
 ## It changes nothing the rules or the physics see.
@@ -58,7 +61,95 @@ static func apply(args: NetArgs, night: Night, screen: Control) -> void:
 		for child in screen.get_children():
 			if child is Hud or child is TouchControls:
 				(child as CanvasItem).visible = false
+	if args.get_int("canvas") == 1:
+		print_canvas_passes(screen.get_tree().root)
+	if args.has("views") and args.get_int("views") == 0:
+		for node in screen.get_tree().root.find_children("*", "SubViewport", true, false):
+			(node as SubViewport).render_target_update_mode = SubViewport.UPDATE_DISABLED
+	for hidden in args.get_string("off").split(",", false):
+		hide_named(screen.get_tree().root, hidden)
 	if args.has("hints") and args.get_int("hints") == 0:
 		for node in screen.get_tree().root.find_children("*", "TouchHints", true, false):
 			for id in TouchHints.ORDER:
 				(node as TouchHints).mark_used(id)
+
+
+## Prints, one line each, the canvas passes the drawing makes: the Compatibility renderer ends each
+## (canvas layer, z index) group of visible items with a fence sync, whose WebGL id the page keeps
+## for good (#883). Each line: the layer, the z index, the count of visible canvas items and what
+## kinds, with `S` for a shader material and `C` for children clipped.
+static func print_canvas_passes(root: Node) -> void:
+	var groups := {}
+	for node in root.find_children("*", "CanvasItem", true, false):
+		var item := node as CanvasItem
+		if not item.is_visible_in_tree():
+			continue
+		var layer := item.get_canvas_layer_node()
+		var key := "layer %s z %d" % [layer.layer if layer != null else "root", _effective_z(item)]
+		var flags := (
+			("S" if item.material != null else "")
+			+ ("C" if item.clip_children != CanvasItem.CLIP_CHILDREN_DISABLED else "")
+		)
+		var entry: Dictionary = groups.get(key, {})
+		var script_name: String = (
+			item.get_script().get_global_name() if item.get_script() != null else ""
+		)
+		var kind := (
+			"%s%s"
+			% [
+				script_name if script_name != "" else item.get_class(),
+				"[" + flags + "]" if flags != "" else ""
+			]
+		)
+		entry[kind] = int(entry.get(kind, 0)) + 1
+		if not item.get_parent() is CanvasItem:
+			entry["top:" + item.name] = 1
+		groups[key] = entry
+	for node in root.find_children("*", "CanvasLayer", true, false):
+		var layer_node := node as CanvasLayer
+		print(
+			(
+				"[canvas] CanvasLayer %s %s visible=%s"
+				% [layer_node.get_path(), layer_node.layer, layer_node.visible]
+			)
+		)
+	print("[canvas] frames drawn: %d" % Engine.get_frames_drawn())
+	for node in root.find_children("*", "Viewport", true, false):
+		print("[canvas] Viewport %s %s" % [node.get_path(), node.get_class()])
+	for node in root.find_children("*", "SubViewport", true, false):
+		var view := node as SubViewport
+		print(
+			(
+				"[canvas] SubViewport %s update=%d 3d=%s"
+				% [view.get_path(), view.render_target_update_mode, not view.disable_3d]
+			)
+		)
+	var keys := groups.keys()
+	keys.sort()
+	for key: String in keys:
+		print("[canvas] %s: %s" % [key, JSON.stringify(groups[key])])
+
+
+static func _effective_z(item: CanvasItem) -> int:
+	var z := 0
+	var at: Node = item
+	while at is CanvasItem:
+		z += (at as CanvasItem).z_index
+		if not (at as CanvasItem).z_as_relative:
+			break
+		at = at.get_parent()
+	return z
+
+
+## Hides every canvas item whose name or class is `what`, to count what a pass costs.
+static func hide_named(root: Node, what: String) -> void:
+	for node in root.find_children("*", "CanvasItem", true, false):
+		if (
+			node.name == what
+			or node.get_class() == what
+			or node.get_script() != null and node.get_script().get_global_name() == what
+		):
+			var item := node as CanvasItem
+			item.visible = false
+			# Hidden for good: what shows itself again (a banner for each round) is hidden again.
+			item.visibility_changed.connect(func() -> void: item.visible = false)

@@ -41,6 +41,7 @@ var _caption := HudStyle.clip(
 var _title := HudStyle.label("", TITLE_SIZE, tokens.hot, true)
 var _detail := HudStyle.clip(HudStyle.label("", HudStyle.TEXT, tokens.ink))
 var _clock := 0.0
+var _drawn_phase := -1
 
 
 func _init() -> void:
@@ -76,6 +77,7 @@ func refresh() -> void:
 		"%s  -  ROUND %d  -  IN %d" % [CAPTION, int(coming["round"]), ceili(state.break_left)]
 	)
 	HudStyle.set_text(_detail, HudSpecials.brings(coming))
+	_drawn_phase = -1
 	queue_redraw()
 
 
@@ -88,7 +90,12 @@ func advance(delta: float) -> void:
 	if not UIMotion.reduced:
 		letter_light = FLICKER[int(_clock / FLICKER_STEP) % FLICKER.size()]
 	_title.modulate.a = lerpf(0.35, 1.0, letter_light)
-	queue_redraw()
+	# The bulbs are drawn again when the chase steps on, not every frame: a redraw rebuilds every
+	# bulb's polygon in the renderer, whose WebGL ids the web page keeps (#883, as the banner's #834).
+	var phase := 0 if UIMotion.reduced else int(_clock * CHASE)
+	if phase != _drawn_phase:
+		_drawn_phase = phase
+		queue_redraw()
 
 
 func _draw() -> void:

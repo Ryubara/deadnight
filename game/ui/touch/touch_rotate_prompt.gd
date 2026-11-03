@@ -4,7 +4,8 @@ extends Control
 ## sideways (the stick and the buttons need the width), and a web page cannot lock the orientation
 ## on every phone, so it asks. It shows only when the touch controls are wanted.
 
-## The canvas layer it sits on: above the router, below the film overlay (110).
+## The canvas layer it once sat on: above the router, below the film overlay (110). It now shares
+## the router's layer, before the film (#883); the tours still give it a layer of its own.
 const LAYER := 105
 const TITLE := "TURN YOUR PHONE"
 const NOTE := "Deadnight is played sideways."

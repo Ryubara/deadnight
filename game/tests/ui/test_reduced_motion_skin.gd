@@ -25,7 +25,7 @@ func test_the_overlay_and_the_stage_follow_the_setting_live() -> void:
 	var runner := scene_runner("res://main.tscn")
 	await await_idle_frame()
 	await UIRouter.idle
-	var film := runner.scene().find_child("Film", true, false) as FilmOverlay
+	var film := UIRouter.get_node("Film") as FilmOverlay
 	var menu := UIRouter.top() as MainMenu
 	var stage := menu.shell.view.stage
 	assert_object(film).is_not_null()
