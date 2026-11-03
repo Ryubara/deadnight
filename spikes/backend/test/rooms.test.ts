@@ -339,3 +339,23 @@ test("the bot count rides the settings: 0 to 7 whole bots are kept and signed, o
   assert.deepEqual(verifyToken(config.ticketSecret, "ticket", answer.ticket)?.settings, chosen);
   await app.close();
 });
+
+test("the bot skill rides the settings: 0 to 2 whole numbers are kept and signed, others are refused", async () => {
+  const { app, guest, call, config } = await platform();
+  const host = await guest("host");
+  const lobby = (await call("POST", "/lobbies", host.headers, { maxPlayers: 4 })).json();
+  const good = { count_multiplier: 1, max_alive: 0, break_seconds: 0, bots: 2 };
+  for (const bot_skill of [3, -1, 0.5, "1"]) {
+    const refused = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, { ...good, bot_skill });
+    assert.equal(refused.statusCode, 400, String(bot_skill));
+    assert.equal(refused.json().error, "bad_settings");
+  }
+  const chosen = { ...good, bot_skill: 2 };
+  const set = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, chosen);
+  assert.equal(set.statusCode, 200);
+  assert.deepEqual(set.json().settings, chosen);
+  await call("POST", `/lobbies/${lobby.id}/start`, host.headers);
+  const answer = (await call("POST", `/lobbies/${lobby.id}/ticket`, host.headers)).json();
+  assert.deepEqual(verifyToken(config.ticketSecret, "ticket", answer.ticket)?.settings, chosen);
+  await app.close();
+});

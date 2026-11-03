@@ -17,12 +17,14 @@ extends RefCounted
 ## Seats in a night: the room's capacity (`NightHost.MAX_PLAYERS`, which a test holds equal; the
 ## host's script is not named here so the two do not need each other to load).
 const SEATS := 8
-## The names the bots wear (a seat is called by one of these, then shown with BOT after it).
-const NAMES: Array[String] = ["Ash", "Fern", "Moss", "Reed", "Sage", "Hazel", "Birch"]
 
 var host := BotHost.new()
 var server: NightServer
 var level: BotLevel
+## The most bots this night may seat, whatever the setting asks: a game server's cap per room, its
+## share of the bots all rooms may run, or 0 for the kill-switch (`ServerConfig`). A lowered limit
+## sends bots away on the next `fill`. Solo has no cap beyond the setting.
+var limit := MatchSettings.MAX_BOTS
 
 ## Called with the events the server answered a bot's command with (a ping, a callout), for whoever
 ## carries events to the people.
@@ -47,17 +49,23 @@ func _init(p_server: NightServer, p_world: NightWorld, p_seed: int, p_deliver: C
 
 
 ## How many bots a night with `people` people in it seats for the setting `wanted`: never more than
-## the setting, never more than the seats the people leave free.
-static func target(wanted: int, people: int) -> int:
+## the setting, never more than the seats the people leave free, never more than the server's
+## `cap` (the room's limit; the setting's own maximum when there is none).
+static func target(wanted: int, people: int, cap: int = MatchSettings.MAX_BOTS) -> int:
 	var asked := clampi(wanted, MatchSettings.MIN_BOTS, MatchSettings.MAX_BOTS)
-	return mini(asked, maxi(SEATS - people, 0))
+	return mini(mini(asked, maxi(cap, 0)), maxi(SEATS - people, 0))
 
 
-## The name the bot at seat `player_id` wears (the lobby shows it before the night begins). Bots
-## take the highest seats, so the names go from the top: the bot in the last seat is always `Ash`,
-## the next `Fern`, and so on, whoever else sits in the room (up to seven bots, seven names).
-static func name_for(player_id: int) -> String:
-	return NAMES[posmod(SEATS - player_id, NAMES.size())]
+## The name the bot at seat `player_id` wears in a room of `skill` (the lobby shows it before the
+## night begins): the skill's cast (`BotRoster`).
+static func name_for(player_id: int, skill: int = MatchSettings.DEFAULT_SKILL) -> String:
+	return BotRoster.name_for(skill, player_id)
+
+
+## Whether the night has room for one more bot than it has, for the setting `wanted` and `people`
+## people who hold seats.
+func wants_more(wanted: int, people: int) -> bool:
+	return count() < target(wanted, people, limit)
 
 
 ## The seats the bots hold, lowest first.
@@ -82,12 +90,15 @@ func names() -> Dictionary:
 	return _names.duplicate()
 
 
-## Seats bots until there are `target(wanted, people.size())`, in the highest seat numbers `people`
-## (the seats held by people, away or not) leave free. Returns the events it caused, each seat's
-## name first, so the first notice already reads its name.
+## Seats bots until there are `target(wanted, people.size(), limit)`, in the highest seat numbers
+## `people` (the seats held by people, away or not) leave free; sends the highest seats' bots away
+## when there are more than that (a limit that was lowered). Returns the events it caused, each
+## seat's name first, so the first notice already reads its name.
 func fill(wanted: int, people: Array) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
-	var goal := target(wanted, people.size())
+	var goal := target(wanted, people.size(), limit)
+	while count() > goal:
+		events.append_array(_send_away(seats().back()))
 	while count() < goal:
 		var id := _highest_free(people)
 		if id == 0:
@@ -106,6 +117,21 @@ func hand_over(player_id: int) -> Array[Dictionary]:
 	return server.apply({"type": NightServer.SEAT_PERSON, "player_id": player_id})
 
 
+## The seat of a person who left goes to a bot as it stands (decision 7 of the research: the slot
+## is inherited both ways): the same body, points, weapons and health, a name and a look of the
+## room's cast, and the rules say `bot_seated`. Returns those events. Empty, and nothing changed,
+## when the seat is already a bot's or is no one's.
+func adopt(player_id: int) -> Array[Dictionary]:
+	var seat: PlayerState = server.rules.players.get(player_id)
+	if seat == null or seat.bot or holds(player_id):
+		return []
+	var events: Array[Dictionary] = server.apply(
+		{"type": RulesAction.SEAT_BOT, "player_id": player_id}
+	)
+	events.append_array(_enlist(player_id))
+	return events
+
+
 ## What the server said, to every bot (each hears its own share).
 func hear(events: Array) -> void:
 	host.hear(events)
@@ -116,9 +142,16 @@ func tick(delta: float) -> void:
 	host.tick(delta)
 
 
+## The bot at `player_id` leaves the night: it stops deciding, what it claimed is open, and its seat
+## is gone from the rules.
+func _send_away(player_id: int) -> Array[Dictionary]:
+	host.release(player_id)
+	_names.erase(player_id)
+	return server.apply({"type": NightServer.LEAVE, "player_id": player_id})
+
+
 func _seat(player_id: int) -> Array[Dictionary]:
-	var name_text := name_for(player_id)
-	_names[player_id] = name_text
+	var name_text := name_for(player_id, server.rules.settings.bot_skill)
 	var events: Array[Dictionary] = [
 		{"type": &"player_named", "player_id": player_id, "name": name_text}
 	]
@@ -126,6 +159,25 @@ func _seat(player_id: int) -> Array[Dictionary]:
 		server.apply(
 			{"type": NightServer.JOIN, "player_id": player_id, "local": false, "bot": true}
 		)
+	)
+	events.append_array(_enlist(player_id, false))
+	return events
+
+
+## Gives the seat `player_id` (already a bot's in the rules) its client: the cast's name (told, when
+## `tell_name`), the skill's look, and a place in the host. The name goes before the join for a new
+## bot (so the first notice reads it), after the seat change for an adopted one.
+func _enlist(player_id: int, tell_name := true) -> Array[Dictionary]:
+	var skill := server.rules.settings.bot_skill
+	var events: Array[Dictionary] = []
+	var name_text := name_for(player_id, skill)
+	_names[player_id] = name_text
+	if tell_name:
+		events.append({"type": &"player_named", "player_id": player_id, "name": name_text})
+	# The bot wears its own look the way a person's reaches the server, so every client gets it.
+	var packet := LookWire.look(BotRoster.look_for(skill, player_id))
+	events.append_array(
+		server.apply({"type": NightServer.LOOK, "player_id": player_id, "packet": packet})
 	)
 	var state := ClientState.new()
 	state.player_id = player_id
@@ -136,9 +188,9 @@ func _seat(player_id: int) -> Array[Dictionary]:
 	return events
 
 
-## Every bot plays the shipped regular skill until a room has a difficulty of its own.
+## Every bot of the night plays the room's skill (`MatchSettings.bot_skill`).
 func _profile() -> BotProfile:
-	return BotProfile.regular()
+	return BotProfile.for_skill(server.rules.settings.bot_skill)
 
 
 ## The seat number highest among those neither people nor bots hold, or 0.

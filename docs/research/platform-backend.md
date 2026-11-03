@@ -143,14 +143,17 @@ what happens underneath:
    heartbeats are full. The rooms of a process share one tick, so they are sized together from a measurement on Railway
    ([rooms in one process](crowd-budget.md#rooms-in-one-process-561)): `ROOM_CAPACITY` 3 and `ALIVE_BUDGET` 120 (the most
    alive in all the rooms together, each cut to its share; a room with a browser in it stands 40 whatever it says),
-   and `MAX_ALIVE` for a cap on any one room.
+   and `MAX_ALIVE` for a cap on any one room. Bots are limited the same way, whatever the host's Bots setting asks
+   (`BotLimits`): `MAX_BOTS` (0 to 7, default 7) caps one room, `BOT_BUDGET` (default none) shares a number of bots
+   among the open rooms, and `BOTS_OFF=1` is the kill-switch: no room seats a bot, and a restart is the only thing it
+   needs. The measured cost of three bots is [in the bot research](bots.md#server-cost).
 
 Environment of the services (names only; the secrets are Railway variables, never in the repository):
 
 | Service | Variables |
 | --- | --- |
 | `backend` | `SESSION_SECRET`, `TICKET_SECRET`, `GAME_SERVER_SECRET` (all different, 32+ characters), `DATABASE_URL` (the Postgres reference), `DISCORD_MODE`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `GUEST_SIGN_IN=1`, `CORS_ORIGINS` |
-| `deadnight-server` | `BACKEND_URL`, `GAME_SERVER_SECRET` and `TICKET_SECRET` (references to the backend's), `PUBLIC_URL` (`wss://` its public domain), `ACTIVITY_PATH=/server`, `ROOM_CAPACITY` (3), `ALIVE_BUDGET` (120), optionally `MAX_ALIVE` |
+| `deadnight-server` | `BACKEND_URL`, `GAME_SERVER_SECRET` and `TICKET_SECRET` (references to the backend's), `PUBLIC_URL` (`wss://` its public domain), `ACTIVITY_PATH=/server`, `ROOM_CAPACITY` (3), `ALIVE_BUDGET` (120), optionally `MAX_ALIVE`, `MAX_BOTS`, `BOT_BUDGET`, `BOTS_OFF` |
 
 A path variable set from Git Bash on Windows is rewritten (`/server` became `C:/Program Files/Git/server`): set them with
 `MSYS_NO_PATHCONV=1` or from PowerShell.

@@ -515,6 +515,11 @@ func bots_shown() -> int:
 	return maxi(mini(wanted, int(lobby.get("maxPlayers", NightHost.MAX_PLAYERS)) - people), 0)
 
 
+## How well the bots of this room play, as the host's panel (or the lobby's rules) say.
+func bots_skill() -> int:
+	return rules.settings().bot_skill if _rules_editable else lobby_rules().bot_skill
+
+
 ## The rules on the panel as the web probe reads them: `2x|Auto|20 s`.
 func rules_text() -> String:
 	return rules.text()
@@ -591,7 +596,7 @@ func _show_seats() -> void:
 		(row["box"] as Control).visible = i < max_players
 		(row["number"] as Label).text = str(i + 1)
 		if i >= names.size() and i >= bot_from and i < max_players:
-			(row["name"] as Label).text = NightBots.name_for(i + 1)
+			(row["name"] as Label).text = NightBots.name_for(i + 1, bots_skill())
 			(row["name"] as Label).modulate.a = 1.0
 			(row["tag"] as Label).text = "BOT"
 		elif i < names.size():

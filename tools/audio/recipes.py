@@ -358,13 +358,21 @@ class Entry:
     loop: bool = False  # a loop keeps its length (it is a whole cycle) and is never trimmed
 
 
-# ---- grenades: a spoon's tick, a throw's whoosh, a bounce on asphalt, the blast ---------------------------------
+# ---- grenades: the fuse's beep, a throw's whoosh, a bounce on asphalt, the blast --------------------------------
+
+BEEP_HZ = 1100.0
+BEEP_SECONDS = 0.06
 
 
-def grenade_tick(rng: np.random.Generator) -> np.ndarray:
-    """The fuse's tick: a dry, short metal click with a little ring, the same pitch every time so a cook can be timed."""
-    click = _metal_click(rng, _jv(rng, 2300, 0.02), ring=0.02)
-    return dsp.fade(click * 0.9, 0.0003, 0.02)
+def grenade_beep(rng: np.random.Generator) -> np.ndarray:
+    """The fuse's beep, a time bomb's: a clean electronic tone (1.1 kHz and two harmonics for the edge), held 60 ms
+    with a hard start, the same pitch every time (nothing random, so a run of them is a metronome and the gap is the
+    signal). It sits low on purpose: behind a car the audio service low-passes a sound at 1.1 kHz and takes 9 dB off,
+    which erased a 2.6 kHz beep entirely and leaves this one a dull, still audible knock."""
+    del rng  # a beep is not a natural sound: nothing in it is random
+    n = dsp.samples(BEEP_SECONDS)
+    tone = dsp.sine(BEEP_HZ, n) + 0.45 * dsp.sine(BEEP_HZ * 2.0, n) + 0.2 * dsp.sine(BEEP_HZ * 3.0, n)
+    return dsp.fade(tone, 0.002, 0.012)
 
 
 def grenade_throw(rng: np.random.Generator) -> np.ndarray:
@@ -424,7 +432,7 @@ REGISTRY: list[Entry] = [
     Entry("stings", "round_start", 1, round_start, -2.0),
     Entry("stings", "round_end", 1, round_end, -3.0),
     Entry("stings", "special_round", 1, special_round, -2.0),
-    Entry("grenade", "tick", 1, grenade_tick, -6.0),
+    Entry("grenade", "beep", 1, grenade_beep, -6.0),
     Entry("grenade", "throw", 2, grenade_throw, -5.0),
     Entry("grenade", "bounce", 3, grenade_bounce, -6.0),
     Entry("grenade", "blast", 2, grenade_blast, -1.0),

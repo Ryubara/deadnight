@@ -181,6 +181,9 @@ gets its grip by placing three empties and running the solver, never by tuning n
 
 It writes the model's place under the right hand (`hold`, before the hold's `model_scale`), the size it was solved
 at, every finger rotation of both hands, the left hand bone's pose in the model's space, and which parts touch.
+`--fingers` keeps a model's written `hold` and left hand and solves the right hand's fingers only: the sprint carries
+are built from the `hold`, so a finger fix that keeps it needs no new Sprint file (#716: the lever rifle's middle
+finger).
 
 **In the game** `HeldWeapon` (what `PlayerAnimation` and the menu's stage both call, #621) puts the model under the
 hand by its grip and gives the same hold to the arms' IK, and `HandGripPose` (a `SkeletonModifier3D` after
@@ -195,7 +198,9 @@ the Soldier's 0.66 m arm did not reach a fore-end 0.70-0.81 m from his shoulder,
 stock.
 
 **Proof.** `game/tests/player/test_hand_grips.gd` measures the skin as drawn (`HandContact`: the skinned mesh against
-the weapon's triangles, inside counted per closed piece) in every pose the player uses (equipped, standing, running,
+the weapon's triangles, inside counted per closed piece; the near meshes only, as the solver does: the far level of
+detail is hidden by its visibility range, not by `visible`, and measured with it a fingertip 6.9 mm off the rifle
+passed on the decimated hand's longer tip, #716) in every pose the player uses (equipped, standing, running,
 aiming, firing and two moments of the reload for the guns; standing, running and four moments of the swing for melee;
 the repair and the cooked grenade): no part more than 2 mm into the weapon, every contact within 5 mm.
 `tools/blender/render_grips.py` draws the close contact sheets from the probe's dumps
@@ -511,8 +516,8 @@ Soldier's library when the tree is built.
   aim-move and sprint files alike.
 - **On the hand grips (#527).** The carry keys no finger, so `HandGripPose` closes the fingers over it, and the
   long guns' clips are built through the grip files: when a grip is solved again (`solve_grips.gd`), rebuild the
-  Sprint file and check the hands with `test_hand_grips.gd`, which measures both hands on every weapon's skin in the
-  sprint too.
+  Sprint file (not needed after `--fingers`, which keeps the `hold`) and check the hands with `test_hand_grips.gd`,
+  which measures both hands on every weapon's skin in the sprint too.
 - **Checked:** `game/tests/player/test_sprint_carry.gd` (the clips are on Run's cycle; the carry plays only sprinting
   on the ground, holds in the air and never starts there; its phase matches Run to 0.002 s; it catches up after a
   landing without jumping; aim, a hip shot, a reload and a swing take it out within 0.15 s; the first shot's `muzzle`

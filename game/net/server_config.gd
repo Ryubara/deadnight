@@ -16,6 +16,12 @@ extends RefCounted
 ##                       process's CPU is shared by its rooms, so a small container takes less
 ##   ALIVE_BUDGET        the most zombies alive at once in all the nights of this process together
 ##                       (default 120): each night is cut to its share, 0 turns it off
+##   MAX_BOTS            the most bots one room seats, 0 to 7 (default 7): the host's Bots setting
+##                       can ask for fewer, never more
+##   BOTS_OFF            1, true, yes or on: the kill-switch, no room seats a bot and the bots
+##                       standing leave (default off)
+##   BOT_BUDGET          the most bots in all the rooms of this process together (default 0: none);
+##                       each room is cut to its share of it
 
 var backend_url := ""
 var game_server_secret := ""
@@ -27,6 +33,10 @@ var capacity := GameServer.DEFAULT_CAPACITY
 ## 0 is no cap beyond the rules' own.
 var max_alive := 0
 var alive_budget := GameServer.DEFAULT_ALIVE_BUDGET
+var max_bots := MatchSettings.MAX_BOTS
+var bots_off := false
+## 0 is no budget.
+var bot_budget := 0
 
 
 ## Reads `getenv` (a Callable name -> String; `OS.get_environment` by default).
@@ -48,6 +58,14 @@ static func from_environment(getenv: Callable = Callable()) -> ServerConfig:
 	config.max_alive = maxi(int(str(read.call("MAX_ALIVE"))), 0)
 	var budget := str(read.call("ALIVE_BUDGET")).strip_edges()
 	config.alive_budget = maxi(int(budget), 0) if budget.is_valid_int() else config.alive_budget
+	var cap := str(read.call("MAX_BOTS")).strip_edges()
+	config.max_bots = (
+		clampi(int(cap), 0, MatchSettings.MAX_BOTS) if cap.is_valid_int() else config.max_bots
+	)
+	config.bots_off = (
+		str(read.call("BOTS_OFF")).strip_edges().to_lower() in ["1", "true", "yes", "on"]
+	)
+	config.bot_budget = maxi(int(str(read.call("BOT_BUDGET"))), 0)
 	return config
 
 

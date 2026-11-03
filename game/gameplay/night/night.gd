@@ -190,7 +190,7 @@ func start(
 	state.player_id = PLAYER_ID
 	_track_challenges()
 	if hud != null:
-		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
+		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks, world.layout.words())
 	_equip_sync = WeaponEquipSync.new(state, server.body_of)
 	link.delivered.connect(_on_delivered)
 	looks.changed.connect(_dress_bodies)
@@ -274,7 +274,7 @@ func start_remote(
 		_make_autopilot()
 	var open_doors: Array = welcome["snapshot"].get("doors_open", [])
 	if hud != null:
-		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
+		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks, world.layout.words())
 		hud.state.load_snapshot(welcome["snapshot"])
 	match_settings = MatchSettings.from_snapshot(welcome["snapshot"])
 	# Our own body holds what the server says; the drawn avatars of the others are not `Player`s.
@@ -476,6 +476,7 @@ func _add_sounds() -> void:
 	grenades.name = "GrenadeSounds"
 	add_child(grenades)
 	grenades.setup(state)
+	grenades.where_is = view.grenade_position
 	var lot := WorldSounds.new()
 	lot.name = "WorldSounds"
 	add_child(lot)
@@ -705,6 +706,7 @@ func _add_throw_preview(def: GrenadeDef) -> void:
 	add_child(preview)
 	_throw_cast = WorldCast.new(get_world_3d().direct_space_state)
 	preview.setup(def, _throw_cast.callable())
+	preview.zombies = func() -> Array[Dictionary]: return state.zombies
 	preview.hand_reach = night_tuning.grenade_hand_reach
 	preview.release_over = night_tuning.grenade_release_over
 	preview.release_under = night_tuning.grenade_release_under

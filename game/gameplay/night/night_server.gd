@@ -77,6 +77,7 @@ const GRENADE_EVENTS: Array[StringName] = [
 	&"grenade_thrown",
 	&"grenade_dropped",
 	&"grenade_bounced",
+	&"grenade_struck",
 	&"grenade_exploded",
 	&"blast_hit",
 	&"player_blasted",
@@ -202,8 +203,8 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			_join(action["player_id"], action.get("local", false), action.get("bot", false))
 		LEAVE:
 			_leave(action["player_id"])
-		SEAT_PERSON:
-			rules.apply(RulesAction.seat_person(action["player_id"]))
+		SEAT_PERSON, RulesAction.SEAT_BOT:
+			rules.apply({"type": action["type"], "player_id": action["player_id"]})
 		START_NIGHT:
 			rules.apply(RulesAction.start())
 		LOOK:

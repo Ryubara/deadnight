@@ -39,6 +39,8 @@ const CIRCUIT_NAMES := {
 
 var _hud: Hud
 var _state: ClientState
+## What the map calls its links and breaches; null on the lot, whose words are the defaults above.
+var _words: MapWords
 var _weapon_names: Dictionary[StringName, String] = {}
 var _fuel: FuelTuning
 var _upgrade: UpgradeTuning
@@ -48,10 +50,20 @@ var _can_units: Dictionary[StringName, int] = {}
 
 ## `hud` is in the tree or about to be; `state` is the client's; `tuning` is read once, for the
 ## numbers both sides know from the shared tuning (the fuel tank), and not after.
-## `looks` is the client's table of looks: the HUD shows each player's portrait from it.
-func _init(hud: Hud, state: ClientState, tuning: RulesTuning, looks: LookRegistry = null) -> void:
+## `looks` is the client's table of looks: the HUD shows each player's portrait from it. `words` is
+## the map's own names for its links and breaches (`MapLayout.words`), null for the lot.
+func _init(
+	hud: Hud,
+	state: ClientState,
+	tuning: RulesTuning,
+	looks: LookRegistry = null,
+	words: MapWords = null
+) -> void:
 	_hud = hud
 	_state = state
+	_words = words
+	if words != null:
+		hud.state.link_names = words.link_names
 	var ammo_free: Array[StringName] = []
 	for def in WeaponCatalog.all():
 		_weapon_names[def.id] = def.display_name
@@ -169,12 +181,13 @@ func show_prompt(prompt: Dictionary) -> void:
 	var kind: StringName = prompt.get("kind", &"")
 	match kind:
 		&"door":
-			var label: String = DOOR_NAMES.get(prompt["id"], "A way through")
-			if state.prompt.get("label") != label or state.prompt.get("cost") != prompt["price"]:
-				state.set_prompt(&"buy_door", label, prompt["price"])
+			var id := StringName(prompt["id"])
+			var detail := _words.link_detail(id) if _words != null else ""
+			_offer(&"buy_door", door_name(id, _words), prompt["price"], detail)
 		&"repair":
 			if state.prompt.get("kind") != &"repair":
-				state.set_prompt(&"repair", BREACH_NAME)
+				var breach := _words.breach_name if _words != null else ""
+				state.set_prompt(&"repair", breach if breach != "" else BREACH_NAME)
 		&"revive":
 			_set_revive_prompt(prompt)
 		&"weapon":
@@ -211,6 +224,15 @@ func show_prompt(prompt: Dictionary) -> void:
 		_:
 			if not MachinePrompts.show(state, prompt, _weapon_names, _upgrade):
 				state.clear_prompt()
+
+
+## The name of the door `id` on its card and its marker: the map's own, else the lot's, else a
+## plain one. `words` is the map's (null on the lot).
+static func door_name(id: StringName, words: MapWords = null) -> String:
+	var own := words.link_name(id) if words != null else ""
+	if own != "":
+		return own
+	return DOOR_NAMES.get(id, "A way through")
 
 
 ## A downed teammate in reach: whose, and how long they have (the ring itself is `HudRevive`'s).

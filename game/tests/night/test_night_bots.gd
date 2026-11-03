@@ -80,7 +80,7 @@ func test_the_bots_of_a_solo_night_play_and_the_client_knows_their_names() -> vo
 	# The client heard each seat's name and sees all three in the frame.
 	assert_str(night.state.names.get(8, "")).is_equal(NightBots.name_for(8))
 	assert_str(night.state.names.get(7, "")).is_equal(NightBots.name_for(7))
-	assert_str(NightBots.name_for(8)).is_equal("Ash")
+	assert_str(NightBots.name_for(8)).is_equal("Wren")
 	assert_int((night.state.frame["players"] as Dictionary).size()).is_equal(3)
 	await NightFixture.settle_bake(night)
 	night.queue_free()
