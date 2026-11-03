@@ -415,6 +415,12 @@ func _on_player_packet(peer: HostPeer, data: PackedByteArray) -> void:
 				_fault(peer)
 			else:
 				_collect(server.apply(mark, peer.player_id))
+		NetWire.Type.ORDER:
+			var order := NetWire.read_order(data)
+			if order.is_empty():
+				_fault(peer)
+			else:
+				_collect(server.apply(order, peer.player_id))
 		LookWire.Type.LOOK:
 			var action := {"type": NightServer.LOOK, "player_id": peer.player_id, "packet": data}
 			_collect(server.apply(action, peer.player_id))
