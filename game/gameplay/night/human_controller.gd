@@ -32,6 +32,7 @@ func command(player: Player, player_id: int) -> NightCommand:
 		result.use = _edge(ACTION_USE)
 		result.use_held = Input.is_action_pressed(ACTION_USE)
 		result.swap = _edge(ACTION_SWAP)
+		result.slot = _slot_edge()
 		result.motion.melee = _edge(ACTION_MELEE)
 	# The aim ray is the view without the shot shake: a shake moves the picture, never the shot.
 	result.origin = player.camera_rig.aim_transform().origin
@@ -42,6 +43,16 @@ func command(player: Player, player_id: int) -> NightCommand:
 ## Whether the ping key went down this tick (the controls must be on).
 func ping_pressed(player: Player) -> bool:
 	return player.controls_enabled() and _edge(ACTION_PING)
+
+
+## The slot whose key went down this tick (the highest when two did), or `WeaponSlots.NONE`. Every
+## key's edge is read each tick, so a key held through a swap does not fire when it is let go.
+func _slot_edge() -> int:
+	var picked := WeaponSlots.NONE
+	for action in WeaponSlots.ACTIONS:
+		if _edge(action):
+			picked = WeaponSlots.slot_of(action)
+	return picked
 
 
 func _edge(action: StringName) -> bool:
