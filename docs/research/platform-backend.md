@@ -280,7 +280,7 @@ extension for it). Neither is built; until then game servers are trusted and run
 
 ## Match settings: the host's rules reach the room
 
-The host of a night chooses its rules (`MatchSettings`: zombie intensity, alive cap, break) and they travel with
+The host of a night chooses its rules (`MatchSettings`: zombie intensity, alive cap, break, bots) and they travel with
 the ticket, so the game server needs no second channel:
 
 0. `PUT /lobbies/:id/settings` (the host only, while the lobby waits; the body is the three keys) keeps the rules on
@@ -288,7 +288,8 @@ the ticket, so the game server needs no second channel:
    `403 not_host`, `409 already_started` and `400 bad_settings` otherwise, and nothing changes.
 1. `POST /lobbies/:id/start` takes `{"settings": {"count_multiplier", "max_alive", "break_seconds"}}` from the
    host (without it, the ones set while waiting; without those, today's game). The backend (`src/settings.ts`)
-   accepts exactly those three keys inside the game's bounds (0.25 to 5; a whole 0 to 120; 0 or 1 to 120) and answers
+   accepts exactly those three keys, and a fourth `bots` (a whole 0 to 3; left out it means none and is kept left out,
+   so a client from before it still passes), inside the game's bounds (0.25 to 5; a whole 0 to 120; 0 or 1 to 120) and answers
    `400 bad_settings` otherwise, leaving the lobby open. They are fixed when the match starts; the lobby view shows
    them.
 2. Every ticket of the match (`/lobbies/:id/ticket`) carries the same `settings` claim, signed with the rest.

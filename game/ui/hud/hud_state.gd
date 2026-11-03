@@ -93,11 +93,12 @@ var circuits: Dictionary[StringName, bool] = {}
 ## "look": Dictionary}, the local player included. The seat (0 to 3) picks the player's colour (the
 ## armband's); the server gives the lowest free one, so the state does too until it is told
 ## (a `player_look` event). The look is a `CharacterLook.to_dict` ({} for the seat's own preset).
-## "kills", "downs", "revives" and "ping" (milliseconds, `NO_PING` when the night has no link to
-## measure) are the server's counts, set from its frames and snapshot (`set_player_stats`), never
-## counted here. "dead" (bled out), "bleed" (seconds a downed player has left), "revive" (the hold's
-## progress, 0 to 1) and "reviver" (who holds it, 0 for nobody) are the server's too
-## (`set_player_revive`).
+## "bot" (true when a bot plays the seat: the roster shows BOT after the name, `name_of`) is the
+## server's too. "kills", "downs", "revives" and "ping" (milliseconds, `NO_PING` when the night has
+## no link to measure) are the server's counts, set from its frames and snapshot
+## (`set_player_stats`), never counted here. "dead" (bled out), "bleed" (seconds a downed player has
+## left), "revive" (the hold's progress, 0 to 1) and "reviver" (who holds it, 0 for nobody) are the
+## server's too (`set_player_revive`).
 var team: Dictionary[int, Dictionary] = {}
 ## Whole seconds the night has run, as the server counts them (a break and a round both count).
 var night_clock := 0
@@ -387,6 +388,7 @@ func load_snapshot(data: Dictionary) -> void:
 		member["grenades"] = int(saved.get("grenades", 0))
 		member["kills"] = int(saved.get("kills", 0))
 		member["downs"] = int(saved.get("downs", 0))
+		member["bot"] = bool(saved.get("bot", false))
 	night_clock = floori(float(data.get("night_time", 0.0)))
 	# The server's names (a WELCOME's `names`): every client shows the same ones.
 	var named: Variant = data.get("names", {})
@@ -464,6 +466,8 @@ func _handler(type: StringName) -> Callable:
 			handler = _on_zombie_removed
 		&"player_added":
 			handler = _on_player_added
+		&"bot_replaced":
+			handler = _on_bot_replaced
 		&"grenade_count_changed":
 			handler = _on_grenade_count_changed
 		&"player_removed":
@@ -592,6 +596,7 @@ func _boss_index(zombie_id: int) -> int:
 func _on_player_added(event: Dictionary) -> void:
 	var player_id := int(event["player_id"])
 	var member := _member(player_id)
+	member["bot"] = bool(event.get("bot", false))
 	if player_id == local_player_id:
 		_set_local_health(event)
 	if event.has("grenades"):
@@ -731,9 +736,25 @@ func _member(player_id: int) -> Dictionary:
 			"bleed": 0.0,
 			"revive": 0.0,
 			"reviver": 0,
+			"bot": false,
 		}
 		_mark(TEAM)
 	return team[player_id]
+
+
+## A person took the seat of a bot.
+func _on_bot_replaced(event: Dictionary) -> void:
+	var member := _member(int(event["player_id"]))
+	if member["bot"]:
+		member["bot"] = false
+		_mark(TEAM)
+
+
+## The name a roster shows for a team member (an entry of `team`): the name, then BOT for a bot, so
+## a bot is never taken for a person. Every part of the HUD that writes a name calls this.
+static func name_of(member: Dictionary) -> String:
+	var shown := str(member.get("name", "SOMEONE")).to_upper()
+	return shown + " BOT" if member.get("bot", false) else shown
 
 
 ## The lowest seat no one in the party has, as the server gives it (0 when all four are taken).

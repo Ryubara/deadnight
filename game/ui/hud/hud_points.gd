@@ -80,6 +80,7 @@ func refresh() -> void:
 				{
 					"id": player_id,
 					"name": str(member["name"]),
+					"bot": bool(member["bot"]),
 					"points": int(member["points"]),
 					"seat": int(member["seat"]),
 					"colour": box.colour,

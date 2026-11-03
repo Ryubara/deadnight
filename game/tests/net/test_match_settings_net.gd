@@ -4,7 +4,7 @@
 # WebSocket.
 extends GdUnitTestSuite
 
-const SETTINGS_FIELDS := ["count_multiplier", "max_alive", "break_seconds"]
+const SETTINGS_FIELDS := ["count_multiplier", "max_alive", "break_seconds", "bots"]
 
 var _host: NightHost
 var _nights: Array[Night] = []
@@ -163,3 +163,25 @@ func test_a_host_started_with_settings_builds_its_night_under_them() -> void:
 	_host.server.rules.apply(RulesAction.skip_break())
 	var tuned := _host.server.rules.tuning.rounds.zombies_for_round(1, 1)
 	assert_int(_host.server.rules._round_total).is_equal(maxi(1, roundi(tuned * 3.0)))
+
+
+func test_the_bot_count_rides_the_welcome_and_the_roster_marks_the_bots() -> void:
+	_host = NightHost.new()
+	_host.port = 0
+	_host.log_enabled = false
+	_host.seed_value = 7
+	_host.match_settings = _settings()
+	_host.match_settings.bots = 2
+	_world().add_child(_host)
+	await _until(func() -> bool: return _host.serving, 30.0)
+	var night := await _client()
+	assert_int(night.match_settings.bots).is_equal(2)
+	var late := await _hello()
+	assert_int(MatchSettings.from_snapshot(late["snapshot"]).bots).is_equal(2)
+	# The snapshot a late joiner is welcomed with says which seats are bots, and names them.
+	var players: Dictionary = late["snapshot"]["players"]
+	var bots := 0
+	for id: int in players:
+		bots += 1 if players[id]["bot"] else 0
+	assert_int(bots).is_equal(2)
+	assert_int((late["snapshot"]["names"] as Dictionary).size()).is_equal(2)
