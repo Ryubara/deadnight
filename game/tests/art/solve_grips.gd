@@ -28,6 +28,18 @@ const MODELS := {
 	"fire_axe":
 	{"scene": "res://assets/weapons/fire_axe/fire_axe.glb", "model_scale": 0.95, "kind": "melee"},
 	"grenade": {"hold": "res://gameplay/player/holds/grenade.tres", "kind": "ball"},
+	# #797's models, at the size their holds will give them (docs/research/weapon-models.md): the
+	# holds are #788's and #789's, so the size is written here until they point at these models.
+	"service_pistol":
+	{
+		"scene": "res://assets/weapons/service_pistol/service_pistol.glb",
+		"model_scale": 1.95,
+		"kind": "gun"
+	},
+	"ray_gun":
+	{"scene": "res://assets/weapons/ray_gun/ray_gun.glb", "model_scale": 2.275, "kind": "gun"},
+	"freeze_gun":
+	{"scene": "res://assets/weapons/freeze_gun/freeze_gun.glb", "model_scale": 1.3, "kind": "gun"},
 }
 
 var _args := {}
