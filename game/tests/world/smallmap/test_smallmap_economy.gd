@@ -1,8 +1,9 @@
 # The second map's economy and placement against rows 20 to 26 of
 # docs/research/maps/small-map-formula.md ("Economy and placement targets"): one price for the three
 # links that opens one at round 3, two at round 4 and three at round 5; the box in one place in the
-# side room that never moves; the wall weapons 2 / 2 / 4 and a cabinet at prices that climb; nothing
-# else to buy; at most 24 dead at once. Each test fails outside its tolerance, and the map's tuning
+# side room that never moves; the wall weapons 2 / 2 / 4 and a cabinet at prices that climb;
+# the lot's machines (#792); at most 24 dead at once. Each test fails outside its tolerance,
+# and the map's tuning
 # (`smallmap_tuning.tres`) and the scene's markers must name the same things.
 extends GdUnitTestSuite
 
@@ -267,20 +268,76 @@ func test_row_24_the_prices_climb_room_by_room() -> void:
 	assert_object(cabinet[0]["shop_id"]).is_equal(&"weapon_rifle")
 
 
-# --- Row 25: nothing else to buy (the maintainer's call: the formula's default is in force) ---
+# --- Row 25: the shop. The formula's default was links, weapons, the box and ammunition only;
+# #792 brings the lot's machines (the six tonics and the re-cut) at the shared table's prices. ---
 
 
-func test_row_25_the_shop_sells_links_weapons_the_box_and_ammunition_only() -> void:
+func test_row_25_the_shop_sells_links_weapons_the_box_ammunition_and_the_lots_machines() -> void:
 	var allowed := [
-		ShopItem.Kind.DOOR, ShopItem.Kind.WEAPON, ShopItem.Kind.CRANE, ShopItem.Kind.AMMO
+		ShopItem.Kind.DOOR,
+		ShopItem.Kind.WEAPON,
+		ShopItem.Kind.CRANE,
+		ShopItem.Kind.AMMO,
+		ShopItem.Kind.TONIC,
+		ShopItem.Kind.UPGRADE
 	]
 	for item in _rules.economy.items:
 		assert_array(allowed).override_failure_message(String(item.id)).contains([item.kind])
 	for spot in _spots:
-		assert_array([&"wall", &"crane", &"ammo"]).contains([spot["kind"]])
+		assert_array([&"wall", &"crane", &"ammo", &"perk", &"upgrade"]).contains([spot["kind"]])
 
 
-func test_row_25_the_map_has_no_breaker_post_no_fuel_can_and_no_machine() -> void:
+func test_row_25_every_tonic_and_the_re_cut_the_table_sells_has_its_machine_and_spot() -> void:
+	var tonics: Array[String] = []
+	var upgrades: Array[String] = []
+	for item in _rules.economy.items:
+		if item.kind == ShopItem.Kind.TONIC:
+			tonics.append(String(item.id))
+		elif item.kind == ShopItem.Kind.UPGRADE:
+			upgrades.append(String(item.id))
+	var perk_spots: Array[String] = []
+	var upgrade_spots: Array[String] = []
+	for spot in _spots:
+		if spot["kind"] == &"perk":
+			perk_spots.append(String(spot["shop_id"]))
+		elif spot["kind"] == &"upgrade":
+			upgrade_spots.append(String(spot["shop_id"]))
+	tonics.sort()
+	perk_spots.sort()
+	assert_array(tonics).is_equal(perk_spots)
+	assert_int(tonics.size()).is_equal(6)
+	assert_array(upgrades).is_equal(upgrade_spots)
+	# One machine drawn for each: five perk coolers, the fountain, the re-cut bench.
+	assert_int(_lot.find_children("*", "PerkMachine", true, false).size()).is_equal(5)
+	assert_int(_lot.find_children("*", "SodaFountain", true, false).size()).is_equal(1)
+	assert_int(_lot.find_children("*", "RecutMachine", true, false).size()).is_equal(1)
+	# Each machine's spot is in front of it, close (the marker a player buys from).
+	for machine in _lot.find_children("*", "Node3D", true, false):
+		if not (machine is PerkMachine or machine is SodaFountain or machine is RecutMachine):
+			continue
+		var nearest := INF
+		for marker in _lot.get_node("ShopSpots").get_children():
+			if marker.get_meta(&"kind") in [&"perk", &"upgrade"]:
+				nearest = minf(
+					nearest,
+					(
+						Vector2(
+							(
+								(machine as Node3D).global_position.x
+								- (marker as Node3D).global_position.x
+							),
+							(
+								(machine as Node3D).global_position.z
+								- (marker as Node3D).global_position.z
+							)
+						)
+						. length()
+					)
+				)
+		assert_float(nearest).override_failure_message(str(machine.name)).is_between(0.9, 2.6)
+
+
+func test_row_25_the_map_has_no_breaker_post_and_no_fuel_can() -> void:
 	assert_int(_lot.find_children("*", "CircuitSwitch", true, false).size()).is_equal(0)
 	assert_bool(_lot.has_node("FuelSpots")).is_false()
 	assert_int(_rules.fuel.circuit_drain.size()).is_equal(0)

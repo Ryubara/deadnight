@@ -1,37 +1,56 @@
 class_name UpgradeTuning
 extends Resource
-## What a re-cut does to a weapon. The shop sells it as the item `upgrade_weapon` (the price is
-## the item's, like every price); the machine in the lot (`docs/design/upgrades.md`) is where a
-## player buys it for the weapon in hand. The numbers here are what `WeaponDef.upgraded` applies,
-## in the combat server and in the balance simulator alike.
+## What the re-cut costs and what it does to each weapon. The shop sells it as the item
+## `upgrade_weapon` (the price is the item's, like every price); the machine in the lot
+## (`docs/design/upgrades.md`) is where a player buys it for the weapon in hand. What a re-cut does
+## is one `RecutProfile` per weapon (`profiles`): its numbers, its name and, for the weakest guns,
+## its element. `WeaponDef.upgraded` applies it in the combat server and in the balance simulator
+## alike.
 
-## The weapons that can be re-cut, by catalogue id. A melee weapon has no magazine to grow.
-@export var weapons: Array[StringName] = [
-	&"pistol",
-	&"smg",
-	&"shotgun",
-	&"rifle",
-	&"flare_gun",
-	&"mp5",
-	&"ppsh",
-	&"m4a1",
-	&"m249",
-	&"fifty_cal",
-	&"pump_870",
-]
+const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
+
+## One profile for every weapon that can be re-cut, found by `RecutProfile.weapon`. A weapon with no
+## profile cannot be re-cut: the melee weapons have no magazine to grow, and a new firearm is not
+## re-cut until it has a row here.
+@export var profiles: Array[RecutProfile] = []
 ## Added to the item's price for each weapon the buyer has already re-cut, so the first is
 ## the bargain and a bench full of re-cut weapons is a rich player's.
 @export_range(0, 10000, 50, "or_greater", "suffix:pts") var price_step: int = 1500
-## Damage of a hit (every pellet, the flare gun's blast too) is multiplied by this.
-@export_range(0.1, 10.0, 0.05, "or_greater", "suffix:x") var damage_multiplier: float = 1.75
-## The magazine and the most rounds a reserve holds are multiplied by these (rounded up), and the
-## re-cut fills both.
-@export_range(0.1, 10.0, 0.05, "or_greater", "suffix:x") var magazine_multiplier: float = 1.5
-@export_range(0.1, 10.0, 0.05, "or_greater", "suffix:x") var reserve_multiplier: float = 1.5
-## Put before the weapon's name once it is re-cut ("Re-Cut Revolver").
+## Put before the name of a re-cut weapon whose profile gives none ("Re-Cut Revolver").
 @export var name_prefix: String = "Re-Cut "
+
+
+## The shipped table (`default_tuning.tres`), for code that has no rules to ask.
+static func shipped() -> UpgradeTuning:
+	return (load(DEFAULT_TUNING_PATH) as RulesTuning).upgrade
 
 
 ## Whether a weapon (a catalogue id, not a shop id) can be re-cut.
 func allows(weapon_id: StringName) -> bool:
-	return weapons.has(weapon_id)
+	return profile_of(weapon_id) != null
+
+
+## The profile of a weapon, or null when it cannot be re-cut.
+func profile_of(weapon_id: StringName) -> RecutProfile:
+	for profile in profiles:
+		if profile.weapon == weapon_id:
+			return profile
+	return null
+
+
+## The weapons of the catalogue that can be re-cut (a profile for a weapon not yet in the
+## catalogue is not listed: nothing can hold it).
+func catalogue_weapon_ids() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for def in WeaponCatalog.all():
+		if allows(def.id):
+			ids.append(def.id)
+	return ids
+
+
+## The catalogue ids of every weapon that can be re-cut.
+func weapon_ids() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for profile in profiles:
+		ids.append(profile.weapon)
+	return ids

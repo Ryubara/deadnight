@@ -462,7 +462,7 @@ func test_the_rules_are_fixed_once_the_night_has_started_and_not_shown_in_a_prev
 
 
 func test_the_host_picks_the_map_and_it_goes_to_the_backend_with_the_other_rules() -> void:
-	StubMaps.install()
+	StubMaps.install_picker_set()
 	var api := LobbyFixture.FakeApi.new(self)
 	api.lobby = LobbyFixture.lobby([LobbyFixture.member("a", "Ann", 1, true)])
 	var screen := await _screen(api, {"lobby": api.lobby})
@@ -474,11 +474,26 @@ func test_the_host_picks_the_map_and_it_goes_to_the_backend_with_the_other_rules
 	assert_str(api.rules_sent[0].map).is_equal(StubMaps.ID)
 	assert_str(api.lobby["settings"]["map"]).is_equal(StubMaps.ID)
 	# The card of a map that is not built chooses nothing, so nothing is sent.
-	screen.rules.map_picker.card_for("small_indoor").pressed.emit()
+	screen.rules.map_picker.card_for(StubMaps.LOCKED_ID).pressed.emit()
 	await screen.send_rules()
 	assert_int(api.rules_sent.size()).is_equal(1)
 	screen.free()
 	StubMaps.remove()
+
+
+func test_the_host_picks_the_second_map_from_the_lobby() -> void:
+	StubMaps.remove()
+	var api := LobbyFixture.FakeApi.new(self)
+	api.lobby = LobbyFixture.lobby([LobbyFixture.member("a", "Ann", 1, true)])
+	var screen := await _screen(api, {"lobby": api.lobby})
+	var card := screen.rules.map_picker.card_for("small_indoor")
+	assert_bool(card.is_locked()).is_false()
+	card.pressed.emit()
+	await screen.send_rules()
+	assert_int(api.rules_sent.size()).is_equal(1)
+	assert_str(api.rules_sent[0].map).is_equal("small_indoor")
+	assert_str(api.lobby["settings"]["map"]).is_equal("small_indoor")
+	screen.free()
 
 
 func test_a_guest_sees_the_hosts_map_and_cannot_change_it() -> void:

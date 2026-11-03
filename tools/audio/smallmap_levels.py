@@ -31,6 +31,7 @@ from analyze import db, read_wav
 
 BANKS = Path("game/core/audio/banks")
 TUNING = Path("game/gameplay/night/smallmap_sound_tuning_default.tres")
+TUNING_SCRIPT = Path("game/gameplay/night/smallmap_sound_tuning.gd")
 AUDIO = Path("game/assets/audio")
 # The audible floor in dBFS RMS: the room tone (-36) less 12 dB.
 FLOOR_DBFS = -48.0
@@ -75,8 +76,14 @@ def parse_defs() -> dict[str, dict[str, str]]:
 
 def parse_tuning() -> dict[str, float]:
     return {
-        k: float(v) for k, v in re.findall(r"^(\w+) = (-?[\d.]+)$", TUNING.read_text(encoding="utf-8"), re.MULTILINE)
+        k: float(v) for k, v in re.findall(r"^(\w+) = (-?[d.]+)$", TUNING.read_text(encoding="utf-8"), re.MULTILINE)
     }
+
+
+def roof_headroom() -> float:
+    """How far under its trim the roof wind rests (#809: a gust can raise it that much; its trim is that much higher)."""
+    found = re.search(r"const ROOF_HEADROOM_DB := (-?[\d.]+)", TUNING_SCRIPT.read_text(encoding="utf-8"))
+    return float(found.group(1)) if found else 0.0
 
 
 def file_rms(ffmpeg: str, path: Path) -> tuple[float, float]:
@@ -119,6 +126,9 @@ def table(ffmpeg: str) -> None:
         d = defs[name]
         rms, peak = file_rms(ffmpeg, first_file(d))
         trim = float(d["volume_db"])
+        if name == "bed_roof_wind":
+            # The level it rests at: the trim less the headroom a gust raises it into (the same as before #809).
+            trim -= roof_headroom()
         unit, reach = float(d["unit_size"]), float(d["max_distance"])
         level = rms + trim
         row = f"{name:16} {rms:8.1f} {trim:6.1f} {level:7.1f} {unit:5.1f} {reach:6.0f} {carry(level, unit, reach):6.0f}"

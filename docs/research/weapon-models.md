@@ -371,6 +371,11 @@ id is the revolver's.
 - **Ammo glb:** the magazine.
 - **Budget:** two are drawn at once, so 700 / 250 each keeps the pair inside one weapon's 1.5k / 500.
 - **Re-cut lights:** the slide's sides (its biggest flat faces); the grips stay dark.
+- **Built (#797):** 692 / 256 tris (ammo 76), 35 parts; 0.25 x 0.20 x 0.05 m drawn (the chunky grip runs 3 cm
+  behind the slide); DarkGrey 52 %, Black 36, Wood 10 (the DarkGrey is mostly the magazine hidden in the grip).
+  The `Trigger` is (-0.03, 0, -0.012). Its grip measured 1.36 of the three fingers and a guard of 1.12 fingers at the
+  plan's factor 1.75, longer than the revolver's 1.22, so it is held at **size factor 1.5** (`model_scale` 1.95):
+  grip 1.17, guard 0.96, 0.39 m in the game, as the plan's 0.38.
 
 ### Ray gun (`ray_gun`, #797)
 
@@ -392,6 +397,12 @@ round the barrel, no dish, no green; its read is the wide round lens barrel and 
 - **Ammo glb:** a cell.
 - **Cells:** Blue about 55 %, Grey 20, Black 15, Glow 10 or less.
 - **Re-cut lights:** the Blue plates and the lens barrel; the Glow cell stays its own glow.
+- **Built (#797):** 956 / 360 tris (ammo 144), 28 parts; 0.28 x 0.22 x 0.09 m drawn, 0.51 m in the game at
+  `model_scale` 2.275 (grip 1.22 of the fingers, guard 1.06: the revolver's numbers). Blue 51 %, Grey 27, Black 14,
+  Glow 8.5. The side plates are notched over the cell (x -0.07 to +0.02 down to z 0.07), so its Glow core shows from
+  the side; the cell is 0.12 long, a 0.08 Glow core of radius 0.018 between Grey caps, to fit between the plates.
+  The bezel is a ring (`_revolve.revolve_x`, closed), the lens 3 mm inside its front. The `Trigger` is the flare
+  gun's (-0.023, 0, -0.012).
 
 ### Freeze gun (`freeze_gun`, #797)
 
@@ -411,6 +422,29 @@ guns: no glass bulb, no copper coils.
 - **Ammo glb:** a full tank.
 - **Cells:** Frost about 35 %, Grey 30, DarkGrey 20, Black 10, Glow 5-8.
 - **Re-cut lights:** the receiver, the tank and the fins; the Glow parts stay their own glow.
+- **Built (#797):** 1,304 / 460 tris (ammo 288), 37 parts; 0.91 x 0.34 x 0.10 m drawn, 0.94 m in the game at 1.3 (grip
+  0.78, guard 0.95: the Tommy gun's). Frost 30 %, DarkGrey 29, Grey 24, Black 13, Glow 4.4: the first build had 2.4 %
+  Glow, so the tank carries a sight strip on each side (not the right only), which a teammate sees from either side.
+  Frost stays under the plan's 35 % because the stock and barrel are DarkGrey. Moved to fit: the fins every 0.036 from
+  -0.51 (not 0.045 from -0.50) and the Tommy gun's foregrip 7.5 cm back, so they clear each other: `Support` (-0.295,
+  0, -0.045). The clamps' straps, saddles, the valve stem and the feed pipe are detail; the tank's far level has a
+  profile of its own (keeping every other point of a rounded end made the two ends unlike).
+
+### The holds for #797's three
+
+The hold files are the build issues' (`holds/dual_pistols.tres` is #789's, `holds/ray_gun.tres` and
+`holds/freeze_gun.tres` #788's, each on a stand-in model until these land). The grips are solved at these sizes
+(`gameplay/player/grips/<model>.tres`; `test_hand_grips.gd` fails when a hold's `model_scale` differs from its grip's),
+and `tests/captures/model_hold_sheet.tscn` holds each model with these numbers (its `MODELS`) on its class's file:
+
+| Hold | `scene` | Class | `model_scale` | `size_factor` | `real_length` | `model_length` | `muzzle` | `butt` | `support` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `dual_pistols` | `service_pistol.glb` | Pistol (Dual) | 1.95 | 1.5 | 0.216 | 0.25 | (-0.17, 0.045, 0) | (0.074, 0, 0) | none |
+| `ray_gun` | `ray_gun.glb` | Pistol | 2.275 | 1.75 | 0.28 | 0.278 | (-0.2, 0.05, 0) | (0.078, 0, 0) | none |
+| `freeze_gun` | `freeze_gun.glb` | Rifle | 1.3 | 1 | 0.90 | 0.908 | (-0.6, 0.05, 0) | (0.3, 0, 0) | (-0.295, -0.045, 0) |
+
+Points are Godot's (the model's units, up +Y, the gun's left +Z); `grip_offset` and `stance_turn_deg` stay the class's
+(the revolver's for the pistols, the Tommy gun's for the freeze gun).
 
 ## What a batch hands back
 

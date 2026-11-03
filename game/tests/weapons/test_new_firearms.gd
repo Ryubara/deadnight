@@ -89,7 +89,7 @@ func test_only_the_pump_loads_by_the_round_and_only_the_saw_widens_on_the_move()
 
 
 func test_each_can_be_re_cut_once_by_the_shop_rule() -> void:
-	var spec := UpgradeTuning.new()
+	var spec := UpgradeTuning.shipped()
 	for id in IDS:
 		assert_bool(spec.allows(id)).override_failure_message(String(id)).is_true()
 		var def := WeaponCatalog.get_def(id)

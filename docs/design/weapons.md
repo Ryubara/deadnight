@@ -270,7 +270,8 @@ damage, rounded up. "With reloads" is the sustained rate over a whole magazine a
   points ([the re-cut](upgrades.md)). The table above is the weapon as shipped; a re-cut one has its damage in the
   column multiplied and its magazine and reserve limit grown, and kills in fewer shots (a re-cut revolver, 42 a hit,
   kills a round-10 zombie in 3 body shots). This is what lets the health curve climb faster than the shipped weapons
-  could follow.
+  could follow. Since #794 the re-cut is each weapon's own (`RecutProfile`): the revolver fires slower and bursts, the
+  flare gun leaves fire, and the flare gun carries 3 shots in all (1 and 2 in reserve), 6 re-cut.
 - **Each weapon has one job.** The SMG is volume at short range (the most damage a second, a short magazine of
   patience before the reload); the double-barrel is a close wall that holds two shells and is slow to reload; the
   rifle is the precision and the line (it passes through two zombies, each blow 40% weaker, which rewards lining the
@@ -408,7 +409,7 @@ for most of the night and are held down by rarity and ammunition, not by price (
 ### The six firearms (#793)
 
 The six are `defs/<id>.tres` (`mp5`, `ppsh`, `m4a1`, `m249`, `fifty_cal`, `pump_870`) with the numbers above, in
-`WeaponCatalog.IDS` and `UpgradeTuning.weapons` (so each is re-cut once, [the plan](upgrades.md#what-each-weapon-becomes)).
+`WeaponCatalog.IDS` and `UpgradeTuning.profiles` (so each is re-cut once, [the plan](upgrades.md#what-each-weapon-becomes)).
 `game/tests/weapons/test_new_firearms.gd` pins every number and the three behaviours below.
 
 - **The .50 calibre goes through four zombies.** `penetration` 4, each one 0.7 of the one before (220, 154, 108, 76,

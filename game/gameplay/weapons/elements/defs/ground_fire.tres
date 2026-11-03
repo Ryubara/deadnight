@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ElementDef" format=3]
+
+[ext_resource type="Script" path="res://gameplay/weapons/elements/element_def.gd" id="1_elem"]
+
+[resource]
+script = ExtResource("1_elem")
+id = &"ground_fire"
+display_name = "Burning ground"
+tint = Color(1, 0.4, 0.1, 1)
+ground_radius = 3.0
+ground_dps = 25.0
+tick_seconds = 0.5
+bleeds = false

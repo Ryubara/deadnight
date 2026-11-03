@@ -653,7 +653,7 @@ cells (seed 4000, the same on every machine) and fails, naming the number, if a 
 | --- | --- |
 | Median round, average solo (the design target) | 8 to 14 (was 10 to 14; the floor moved with the bosses at 1.25x health, #688) |
 | Median round, average 2 / 4 / 8 players | 11 to 16 / 12 to 17 / 14 to 20 |
-| Median round, weak solo / strong solo | 4 to 9 / 12 to 19 (19 since the six firearms, #793: the maintainer's decision) |
+| Median round, weak solo / strong solo | 4 to 9 / 12 to 19 (the strong ceiling was 18; the maintainer allowed 19 on #794) |
 | Average solo nights that clear round 4 | at least 85% |
 | A special round up to round 10 kills (average players) | at most 40% of the nights that reach it |
 | The first boss night against its neighbours (average solo) | at least x1.5 |

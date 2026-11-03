@@ -92,6 +92,7 @@ var _shots_seen := 0
 var _last_position := Vector3.INF
 var _last_bearing := 0.0
 var _weapon_id: StringName = &""
+var _weapon_tier := 0
 var _weapon_def: WeaponDef
 ## The quick melee's reach less the margin, read from the catalogue once (-1 until then).
 var _quick_reach := -1.0
@@ -407,9 +408,12 @@ func _weapon_of(me: Dictionary) -> WeaponDef:
 	var id: StringName = me.get("weapon", &"")
 	if id == &"":
 		return null
-	if id != _weapon_id:
+	var counts: Array = (me.get("arms", {}) as Dictionary).get(id, [])
+	var tier := int(counts[2]) if counts.size() > 2 else 0
+	if id != _weapon_id or tier != _weapon_tier:
 		_weapon_id = id
-		_weapon_def = WeaponCatalog.get_def(id)
+		_weapon_tier = tier
+		_weapon_def = WeaponCatalog.get_def_at(id, tier)
 	return _weapon_def
 
 

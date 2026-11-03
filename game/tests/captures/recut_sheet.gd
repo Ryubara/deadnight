@@ -99,7 +99,7 @@ func _play(step: Array, within: int, index: int) -> void:
 			_night.server.combat.apply(CombatAction.give_weapon(1, weapon_id))
 			_night.server.combat.apply(CombatAction.equip(1, weapon_id))
 		if _recut_before(index):
-			if weapon_id in UpgradeTuning.new().weapons:
+			if UpgradeTuning.shipped().allows(weapon_id):
 				_night.server.combat.apply(CombatAction.upgrade_weapon(1, weapon_id))
 			else:
 				# The melee weapons cannot be re-cut by the rules; the skin is put on by hand to show the
