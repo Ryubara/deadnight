@@ -23,7 +23,8 @@ extends Node
 ## Per bot the report also has `idle_longest` (the longest seconds standing with nothing to do),
 ## `cells` (10 m squares walked through), `kills`, `buys`, and `mean_distance`; for the run
 ## `spread` (the mean distance between two bots) and, for a hold, `within_hold_3m` (the share of the
-## ticks a bot that is up stood within 3 m of the spot).
+## ticks a bot that is up stood within 3 m of the spot) and `within_hold_3m_on_the_spot` (the same
+## of the ticks it was not on a trip for a revive, a ping or a dodge).
 ## Prints `SOAK {json}` at the end: one object per bot and one for the whole run.
 
 ## The distance from the nearest person that counts as staying with them (metres).
@@ -69,6 +70,10 @@ var _distance_sum: Dictionary = {}
 var _distance_n: Dictionary = {}
 var _up_ticks := 0
 var _held_ticks := 0
+## Of the ticks up, the ones the bot was under the stance itself (not on a trip for a revive, a
+## ping, a dodge or an errand), and of those the ones within the hold's radius.
+var _stance_ticks := 0
+var _stance_held := 0
 var _spread_sum := 0.0
 var _spread_n := 0
 
@@ -299,6 +304,10 @@ func _sample_orders() -> void:
 			)
 			if off.length() <= HOLD_RADIUS:
 				_held_ticks += 1
+			if note == "hold_order" or note == "fight" or note == "throw":
+				_stance_ticks += 1
+				if off.length() <= HOLD_RADIUS:
+					_stance_held += 1
 	for i in places.size():
 		for j in range(i + 1, places.size()):
 			_spread_sum += Vector2(places[i].x - places[j].x, places[i].z - places[j].z).length()
@@ -413,6 +422,8 @@ func _finish(why: String) -> void:
 		"order": String(_order),
 		"spread": snappedf(_spread_sum / maxf(float(_spread_n), 1.0), 0.1),
 		"within_hold_3m": snappedf(float(_held_ticks) / maxf(float(_up_ticks), 1.0), 0.0001),
+		"within_hold_3m_on_the_spot":
+		snappedf(float(_stance_held) / maxf(float(_stance_ticks), 1.0), 0.0001),
 		"stuck_causes": _causes,
 		"far_ticks_by_note": _far_notes,
 		"bots": bots,

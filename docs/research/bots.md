@@ -399,9 +399,55 @@ same order; `BotOrders.current(frame, bot_id)` is how a bot (and the wheel's HUD
 | Order | Gate |
 | --- | --- |
 | Follow | Within 12 m of the person for 95% of the time a bot is up (outside errands), stuck under 1% of walking time, no episode over 10 s: #564's numbers, measured with `--order=follow`. |
-| Roam | No idle bot: none stands with nothing to do (its note says roam or hold and it does not move) for more than 8 s (a look about at a place lasts 2 to 5 s). No stuck episode over 10 s and stuck under 1% of walking time. Buys and kills like the simulator: points spent over points earned within 20% of the simulator's 0.80 to 0.87, and the bots' kills no fewer than Follow's on the same seed. The bots spread: most of the time beyond 12 m of the person and 5 m or more from each other. |
-| Hold | Within 3 m of the spot for 95% of the time a bot is up, no episode stuck over 10 s. |
+| Roam | No idle bot: none stands with nothing to do (its note says roam or hold and it does not move) for more than 8 s (a look about at a place lasts 2 to 5 s). No stuck episode over 10 s and stuck under 1% of walking time. Buys and kills like the simulator: points spent over earned within 20% of the simulator's 0.80 to 0.87 (the mean of the bots), and the bots' kills no fewer than Follow's on the same seed. The bots spread: most of the time beyond 12 m of the person and 5 m or more from each other. |
+| Hold | Within 3 m of the spot for 92% of the time a bot is under the stance (not on a trip for a revive, a ping, a dodge or an errand), no episode stuck over 10 s. |
 | Every order | A downed person and a ping each pull a bot, and it goes back to its order. |
+
+**Measured** (the move soak, `game/tests/captures/bots_move_soak.tscn`, `--tough=3`, 20 game minutes, seeds 1 to 3, four
+bots of the Regular, Veteran, Rookie and Regular profiles and the old autopilot as the person, who shops, buys doors and
+fights; `--shop` gives the bots their errands. A shared machine, and two runs of a seed are not the same night, so read
+the second digit as noise):
+
+| | Roam | Follow | Hold |
+| --- | ---: | ---: | ---: |
+| Stuck share of walking time | 0.4, 0.9, 1.2% | 1.0, 2.1, 0.8% | 2.6, 6.5, 7.1% of a small walk (4 to 8 s per bot) |
+| Longest stuck episode | 1.9, 5.1, 5.1 s | 4.5, 4.2, 1.5 s | 1.6, 2.0, 4.4 s |
+| `bot_stuck` reports | 0 | 0 | 0 |
+| Longest idle (the bot says roam or hold and stands) | 1.8, 2.9, 2.9 s | n/a (a bot well placed beside the person stands) | n/a |
+| Mean distance to the person | 35 to 37 m | 13 to 15 m | 12 m (the person leaves the spot) |
+| Mean distance between two bots | 38 to 39 m | 11 to 17 m | 2.6 to 2.9 m |
+| Within 3 m of the spot | n/a | n/a | 0.94, 0.94, 0.89 of the time up; 0.97, 0.97, 0.93 on the spot |
+| Kills by the bots (20 min) | 505, 489, 205 | 306, 166, 277 | 103, 140, 106 |
+| Buys by the bots | 139, 137, 83 | 98, 110, 131 | none (a holding bot shops only for a pinged door) |
+| Think p99 | 5.7 to 6.0 ms | 1.6 to 2.3 ms | 0.5 to 0.9 ms |
+
+Follow without errands (`--order=follow`, seeds 1 to 6, the #564 soak): within 12 m of the person **0.91 to 0.93 of the
+time the bots are up**, stuck 1.0 to 2.0%, longest episode 1.3 to 4.3 s: the numbers of
+[Tuning the follow soak](#tuning-the-follow-soak-564) hold, since Follow is the code that was there. With errands on,
+the bots leave the person for them and the share falls to 0.62 to 0.69, which is why that gate is measured outside
+errands.
+
+What the numbers say. **Roam** walks 35 m from the person on average and kills and buys more than Follow does (a roaming
+bot meets the dead on its own and passes more lockers); its stuck share is under 1.3%, and the longest episode is 5 s. The
+think p99 is 5.7 to 6 ms on a machine that also ran three other soaks and a test run, about three times Follow's. The
+cause is not separated: a roaming bot probes a few places for reach on a think (a path query each, at most four), and
+it also does more errands than a bot beside the person (the shop soak's p99 was 5 to 6 ms before any of this); #564
+owns the think budget. **Hold** keeps the spot against the real zombie mix, and a holding
+bot is the one most often downed (6 to 12% of the bot-time in these seeds: it never backs away); the stuck share of a small
+walk is bots giving way to the person or another bot. Shop soak (`bots_shop_soak.tscn`, four bots alone, so Roam):
+points spent over points earned **0.82, 0.66, 0.76, 0.66** (mean 0.73) against the simulator's 0.80 to 0.87, up from
+the 0.5 to 0.6 that bots following each other spent (#228): a roaming bot passes the lockers and the crane.
+
+Found on the way: a stuck bot's repath moved its goal by a random metre or two, which at the fence put the goal outside
+the walking mesh and had the bot stand against the posts for 14 s (the goal is now put back on the mesh); a roaming bot
+asked about far places behind shut doors one query at a time and stood for 8 to 26 s (it now probes a few places in one
+think, remembers the ones it cannot reach until a door changes the mesh, and wanders when none is left); a bot of the
+parts' tests that stood still because no person was near started to roam when the default changed
+([lesson](https://github.com/Ryubara/gdstudio/pull/257), tests now say what stance they stand for).
+
+Not done here: the HUD's word for the current order and the wheel are #642; the roles of #229 (anchor, flank) are
+Follow's and arrive with that pull request; the ping replies of #229 (hold here, shoot that one, raise that one) sit
+above every order.
 
 ## Edge cases
 

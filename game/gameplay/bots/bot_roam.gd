@@ -46,8 +46,8 @@ const LOOK_TURN := 1.9
 const LOOK_SECONDS := 1.3
 ## Metres from a place at which the bot counts itself there.
 const ARRIVE := 1.5
-## With no places in the level the bot wanders: candidates at these radii (metres), this many
-## directions at each.
+## A bot with no place of the level to go to wanders: candidates at these radii (metres), this
+## many directions at each.
 const WANDER_RINGS: Array[float] = [9.0, 15.0]
 const WANDER_DIRECTIONS := 8
 
@@ -164,9 +164,27 @@ func _choose(
 	threats: Array[Vector3],
 	reach: Callable
 ) -> Vector3:
+	var found := _pick(_level.roam_spots, here, now, people, others, threats, reach)
+	# With none of the level's places worth the walk (the rest are behind shut doors, or under six
+	# metres away), the bot wanders: a ring of places about it on the walking mesh.
+	if found == Vector3.INF:
+		found = _pick(_ring(here), here, now, people, others, threats, reach)
+	return found
+
+
+## The best of `places` by the rating, the first of the best few the walking mesh gets to.
+func _pick(
+	places: Array[Vector3],
+	here: Vector3,
+	now: float,
+	people: Array[Vector3],
+	others: Array[Vector3],
+	threats: Array[Vector3],
+	reach: Callable
+) -> Vector3:
 	var rated: Array[Vector3] = []
 	var scores: Dictionary = {}
-	for candidate in _candidates(here):
+	for candidate in places:
 		if _is_banned(candidate, now):
 			continue
 		var leg := _flat(here, candidate)
@@ -196,10 +214,8 @@ func _choose(
 	return Vector3.INF
 
 
-## The places to rate: the level's, or (with none) a ring of them round the bot on the walking mesh.
-func _candidates(here: Vector3) -> Array[Vector3]:
-	if not _level.roam_spots.is_empty():
-		return _level.roam_spots
+## A ring of places round the bot on the walking mesh.
+func _ring(here: Vector3) -> Array[Vector3]:
 	var found: Array[Vector3] = []
 	for ring in WANDER_RINGS:
 		for i in WANDER_DIRECTIONS:
