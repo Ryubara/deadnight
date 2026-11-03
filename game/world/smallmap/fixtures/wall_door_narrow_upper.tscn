@@ -1,0 +1,25 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/smallmap/wall_door_narrow_upper.gltf" id="model"]
+
+[node name="WallDoorNarrowUpper" type="Node3D"]
+
+[node name="Model" parent="." instance=ExtResource("model")]
+
+[node name="Blocker1" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.85, 1.4, 0)
+visible = false
+use_collision = true
+size = Vector3(0.3, 2.8, 0.2)
+
+[node name="Blocker2" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.85, 1.4, 0)
+visible = false
+use_collision = true
+size = Vector3(0.3, 2.8, 0.2)
+
+[node name="Blocker3" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 0)
+visible = false
+use_collision = true
+size = Vector3(1.4, 0.4, 0.2)

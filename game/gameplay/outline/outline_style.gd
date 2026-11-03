@@ -3,23 +3,18 @@ extends Resource
 ## How an outline looks, and the materials that draw it. One style is shared by every mesh that
 ## wears it, so a change to a property here (in the inspector, or in the remote scene tree of a
 ## running game) reaches every outlined body in the same frame. `chain()` is the material a mesh
-## takes as its `material_overlay`: a mask pass, a ring of copies for the line and a wider, fainter
-## ring for the glow, each pass a `ShaderMaterial` chained by `next_pass`. A mesh nothing outlines
-## has none of it: no draw call, no stencil write.
+## takes as its `material_overlay`: a mask pass and a ring of copies for the line, each pass a
+## `ShaderMaterial` chained by `next_pass`. The line is drawn only where the body is hidden. A mesh
+## nothing outlines has none of it: no draw call, no stencil write.
 
 const MASK_SHADER := preload("res://gameplay/outline/outline_mask.gdshader")
 const LINE_SHADER := preload("res://gameplay/outline/outline.gdshader")
 ## Copies in a ring. The line is a band at least `cos(PI / DIRECTIONS)` of the asked width wide
 ## between two copies' directions, and the asked width along them.
 const DIRECTIONS := 8
-## Where the glow's band ends, in line widths beyond the line, and how opaque it is at glow 1.
-const GLOW_REACH := 2.5
-const GLOW_ALPHA := 0.35
-## Draw order among the transparent things (a lower number first): the mask, then the line, then
-## the glow, which a stencil keeps off the line.
+## Draw order among the transparent things (a lower number first): the mask, then the line.
 const PRIORITY_MASK := -100
 const PRIORITY_LINE := -99
-const PRIORITY_GLOW := -98
 
 ## The line's colour (its alpha is the line's opacity).
 @export var color := Color(1.0, 0.35, 0.12, 1.0):
@@ -32,15 +27,8 @@ const PRIORITY_GLOW := -98
 	set(value):
 		thickness = value
 		_sync()
-## The soft halo outside the line: its opacity (0 draws no halo and costs no more passes).
-@export_range(0.0, 2.0, 0.05) var glow := 0.6:
-	set(value):
-		glow = value
-		_sync()
-
 var _mask: ShaderMaterial
 var _lines: Array[ShaderMaterial] = []
-var _glows: Array[ShaderMaterial] = []
 
 
 ## The material to give a mesh as its `material_overlay` (made on first use, then kept: the shader
@@ -51,10 +39,9 @@ func chain() -> Material:
 	return _mask
 
 
-## How many passes a mesh draws with this style: the mask, the line's copies and, when there is a
-## glow, its copies.
+## How many passes a mesh draws with this style: the mask and the line's copies.
 func pass_count() -> int:
-	return 1 + DIRECTIONS + (DIRECTIONS if glow > 0.0 else 0)
+	return 1 + DIRECTIONS
 
 
 ## The materials of the chain in the order they are drawn (for tests and the warm-up).
@@ -62,7 +49,6 @@ func materials() -> Array[ShaderMaterial]:
 	chain()
 	var all: Array[ShaderMaterial] = [_mask]
 	all.append_array(_lines)
-	all.append_array(_glows)
 	return all
 
 
@@ -71,7 +57,6 @@ func _build() -> void:
 	_mask.shader = MASK_SHADER
 	_mask.render_priority = PRIORITY_MASK
 	_ring(_lines, PRIORITY_LINE)
-	_ring(_glows, PRIORITY_GLOW)
 	_mask.next_pass = _lines[0]
 	_sync()
 
@@ -97,9 +82,3 @@ func _sync() -> void:
 	for material in _lines:
 		material.set_shader_parameter(&"color", color)
 		material.set_shader_parameter(&"reach", radius)
-	var halo := Color(color.r, color.g, color.b, clampf(glow * GLOW_ALPHA, 0.0, 1.0))
-	for material in _glows:
-		material.set_shader_parameter(&"color", halo)
-		material.set_shader_parameter(&"reach", radius * (1.0 + GLOW_REACH))
-	# The glow's passes are in the chain only while there is a glow.
-	_lines[-1].next_pass = _glows[0] if glow > 0.0 else null

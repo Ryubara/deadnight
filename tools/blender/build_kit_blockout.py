@@ -8,7 +8,8 @@ Run with the pinned Blender, headless, from the repository root:
 It writes, into `--out`: `kit_sheet.png` (the pieces in a row beside the Soldier and a zombie on a 0.5 m grid,
 Workbench, atlas colours), `kit_vignette.png` (the pieces put together as a room corner at night, Eevee, lit the way
 the page says: cool moon through the window, a warm pool under the lamp) from the shoulder camera's height, and
-`kit_blockout.json` (triangles and sizes). Nothing is written into the game: these are throwaway blockouts, and the
+`kit_blockout.json` (triangles and sizes); with `--gltf`, also each piece as `gltf/<name>.gltf` (the light cards' capture
+room is built from them: `tools/web_smoke/smallmap_lights.py`). Nothing is written into the game: these are throwaway blockouts, and the
 real pieces are the follow-up issues' work. The builder is the drive-in props' manner (`build_drivein_props.py`):
 chamfered boxes and low-sided cylinders, one atlas, each face on one swatch.
 """
@@ -382,10 +383,27 @@ def render_vignette(out, soldier, zombie):
     bpy.ops.render.render(write_still=True)
 
 
+def export_gltf(o, path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    bpy.ops.object.select_all(action="DESELECT")
+    o.select_set(True)
+    bpy.context.view_layer.objects.active = o
+    bpy.ops.export_scene.gltf(
+        filepath=str(path),
+        export_format="GLTF_SEPARATE",
+        use_selection=True,
+        export_yup=True,
+        export_apply=True,
+        export_materials="EXPORT",
+        export_normals=True,
+    )
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
+    ap.add_argument("--gltf", action="store_true", help="also export each piece to <out>/gltf/<name>.gltf")
     ap.add_argument("--soldier", default="game/assets/characters/soldier/soldier.glb")
     ap.add_argument("--zombie", default="game/assets/characters/zombies/zombie_farmhand.glb")
     ap.add_argument(
@@ -408,10 +426,13 @@ def main():
         report[name] = {"tris": tris(o), "budget": budget, "size_xyz": size}
         print("PIECE", name, json.dumps(report[name]))
         built.append(o)
+        if a.gltf:
+            export_gltf(o, out / "gltf" / f"{name}.gltf")
     (out / "kit_blockout.json").write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
     render_sheet(out, built, mat, a.soldier, a.zombie, [c for c in a.compare.split(",") if c])
     render_vignette(out, a.soldier, a.zombie)
     print("BLOCKOUT", out)
 
 
-main()
+if __name__ == "__main__":  # the kit's build scripts import its staging helpers
+    main()

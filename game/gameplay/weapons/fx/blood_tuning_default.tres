@@ -1,0 +1,84 @@
+[gd_resource type="Resource" script_class="BloodTuning" format=3]
+
+[ext_resource type="Script" path="res://gameplay/weapons/fx/blood_tuning.gd" id="1_tuning"]
+[ext_resource type="Script" path="res://gameplay/weapons/fx/blood_class.gd" id="2_class"]
+
+[sub_resource type="Resource" id="Resource_bullet"]
+script = ExtResource("2_class")
+drops = 10
+reach = 0.95
+cone_deg = 40.0
+drop_size = 0.085
+streak = 0.5
+splat_size = 0.24
+back = 0.12
+seconds = 0.5
+ground_marks = 1
+wall_marks = 1
+mark_size = 0.5
+
+[sub_resource type="Resource" id="Resource_pellets"]
+script = ExtResource("2_class")
+drops = 5
+drops_per_pellet = 1.4
+reach = 0.85
+cone_deg = 62.0
+drop_size = 0.055
+streak = 0.3
+splat_size = 0.18
+back = 0.15
+seconds = 0.45
+ground_marks = 1
+wall_marks = 2
+mark_size = 0.38
+
+[sub_resource type="Resource" id="Resource_rifle"]
+script = ExtResource("2_class")
+drops = 12
+reach = 1.2
+cone_deg = 20.0
+drop_size = 0.1
+streak = 0.9
+splat_size = 0.3
+back = 0.2
+seconds = 0.55
+ground_marks = 2
+wall_marks = 1
+mark_size = 0.65
+
+[sub_resource type="Resource" id="Resource_melee"]
+script = ExtResource("2_class")
+drops = 8
+reach = 1.3
+cone_deg = 55.0
+drop_size = 0.1
+streak = 0.35
+splat_size = 0.36
+smear = 0.85
+back = 0.05
+seconds = 0.6
+ground_marks = 1
+wall_marks = 1
+mark_size = 0.6
+
+[sub_resource type="Resource" id="Resource_blast"]
+script = ExtResource("2_class")
+drops = 16
+reach = 1.8
+cone_deg = 180.0
+drop_size = 0.13
+streak = 0.4
+splat_size = 0.6
+back = 0.0
+seconds = 0.65
+ground_marks = 2
+wall_marks = 0
+mark_size = 0.8
+
+[resource]
+script = ExtResource("1_tuning")
+bullet = SubResource("Resource_bullet")
+pellets = SubResource("Resource_pellets")
+rifle = SubResource("Resource_rifle")
+melee = SubResource("Resource_melee")
+blast = SubResource("Resource_blast")

@@ -32,6 +32,7 @@ TILES = {
     "blocks": 3.2,
     "checker": 2.0,
     "shutter": 2.0,
+    "plaster": 3.0,
 }
 
 # Material -> (texture or None for flat paint, sRGB tint, emission or None). The tints are the style bible's palette
@@ -72,6 +73,13 @@ MATERIALS = {
     "plaque": (None, "#e8c37a", "#8a6414"),
     "ammo_crate": ("planks", "#4a6a34", None),
     "ammo_band": (None, "#f0e26a", "#7a6a10"),
+    # The small map's shell (docs/research/maps/small-map-art.md, Palette translation): block walls downstairs, plaster
+    # and planks upstairs, the booth floor's concrete, a plaster ceiling. The tints are smallmap_kit.py's swatches.
+    "smallmap_wall_ground": ("blocks", "#9a968c", None),
+    "smallmap_wall_upper": ("plaster", "#b3a588", None),
+    "smallmap_floor_ground": ("concrete", "#8f8c84", None),
+    "smallmap_floor_upper": ("planks", "#7d6446", None),
+    "smallmap_ceiling": ("plaster", "#8c877b", None),
 }
 
 
@@ -216,6 +224,48 @@ def blocks(rng: random.Random) -> Image.Image:
     return img
 
 
+def plaster(rng: random.Random) -> Image.Image:
+    """Old plaster in three flat tones, hairline cracks, and a few patches fallen off to show the block courses."""
+    img = tones(value_noise(rng, 5), [0.4, 0.66], [232, 242, 252])
+    draw = ImageDraw.Draw(img)
+    # The bare block under the fallen patches: 0.4 x 0.2 m courses in running bond (3 m a tile), darker.
+    bare = Image.new("L", (SIZE, SIZE), 168)
+    bd = ImageDraw.Draw(bare)
+    bw, bh = SIZE * 0.4 / 3.0, SIZE * 0.2 / 3.0
+    for row in range(int(SIZE / bh) + 1):
+        shift = (bw / 2) * (row % 2)
+        for col in range(-1, int(SIZE / bw) + 2):
+            x0 = col * bw + shift
+            bd.rectangle((x0 + 1, row * bh + 1, x0 + bw - 1, row * bh + bh - 1), fill=rng.choice((196, 204, 212)))
+    mask = Image.new("L", (SIZE, SIZE), 0)
+    md = ImageDraw.Draw(mask)
+    rims = []
+    for _ in range(3):  # patches fallen off, with a pale broken rim
+        cx, cy = rng.uniform(0, SIZE), rng.uniform(0, SIZE)
+        rx, ry = rng.uniform(22, 40), rng.uniform(14, 24)
+        pts = [
+            (cx + rx * rng.uniform(0.7, 1.15) * math.cos(a), cy + ry * rng.uniform(0.7, 1.15) * math.sin(a))
+            for a in (k * math.tau / 7 for k in range(7))
+        ]
+        for ox in (-SIZE, 0, SIZE):
+            for oy in (-SIZE, 0, SIZE):
+                md.polygon([(x + ox, y + oy) for x, y in pts], fill=255)
+        rims.append(pts + pts[:1])
+    img.paste(bare, (0, 0), mask)
+    for pts in rims:
+        wrap_line(draw, pts, 255, 2)
+    for _ in range(4):  # cracks
+        x, y = rng.uniform(0, SIZE), rng.uniform(0, SIZE)
+        a = rng.uniform(0, math.tau)
+        pts = [(x, y)]
+        for _ in range(rng.randint(3, 6)):
+            a += rng.uniform(-0.8, 0.8)
+            x, y = x + 8 * math.cos(a), y + 8 * math.sin(a)
+            pts.append((x, y))
+        wrap_line(draw, pts, 176, 1)
+    return img
+
+
 def checker(rng: random.Random) -> Image.Image:
     img = Image.new("L", (SIZE, SIZE))
     draw = ImageDraw.Draw(img)
@@ -313,7 +363,7 @@ def main() -> None:
     (OUT / "materials").mkdir(parents=True, exist_ok=True)
     makers = {
         "asphalt": asphalt, "gravel": gravel, "concrete": concrete, "planks": planks,
-        "corrugated": corrugated, "blocks": blocks, "checker": checker, "shutter": shutter,
+        "corrugated": corrugated, "blocks": blocks, "checker": checker, "shutter": shutter, "plaster": plaster,
     }  # fmt: skip
     for i, (name, make) in enumerate(makers.items()):
         make(random.Random(1958 + i)).save(OUT / "textures" / f"{name}.png", optimize=True)

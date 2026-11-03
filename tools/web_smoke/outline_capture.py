@@ -1,4 +1,4 @@
-"""Photographs the outline through walls in the web build (issue #523): the same three spots as the desktop tour
+"""Photographs the outline through walls in the web build (issue #523): the same spots as the desktop tour
 (`game/tests/captures/outline_tour.tscn`), with the outline on and off.
 
 Exports a copy of the project that starts on the tour (the real project's export leaves `tests/` out), loads it once
@@ -24,9 +24,9 @@ import door_swap
 import smoke
 
 SCENE = "res://tests/captures/outline_tour.tscn"
-SPOTS = ("near", "far", "open")
+SPOTS = ("near", "far", "open", "half")
 TIMEOUT_S = 300
-HOLD_FRAMES = 60
+HOLD_FRAMES = 120
 
 
 def shoot(playwright, gl: str, url: str, out: Path) -> str:
