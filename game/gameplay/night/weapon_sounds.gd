@@ -204,7 +204,9 @@ func _on_event(event: Dictionary) -> void:
 		&"weapon_equipped":
 			_on_equipped(event)
 		&"projectile_burst":
-			_play(&"burst_flare", event["point"])
+			# The energy weapons' bursts are `EnergySounds`'.
+			if not EnergySounds.handles(event.get("weapon_id", &"")):
+				_play(&"burst_flare", event["point"])
 		&"game_over":
 			schedule.clear()
 
