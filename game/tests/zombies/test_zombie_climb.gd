@@ -13,6 +13,8 @@ const SPEED := 2.4
 const PACK := 6
 ## The small map's upstairs floors are 3.4 m up.
 const UPSTAIRS_TOP := 3.0
+## The most physics frames a bought door's mesh is waited for.
+const MAP_FRAMES := 1800
 
 var _catcher := ErrorCatcher.new()
 
@@ -37,11 +39,27 @@ func _night() -> SeatedNight:
 	night.human(1)
 	night.open_door(&"door_concession")
 	night.open_door(&"door_booth")
-	await night.settle(12)
+	await _map_reaches(night, night.world.player_spawn(0), ROOST)
 	night.start_round()
 	night.server.body_of(1).teleport(ROOST)
 	night.run(5)
 	return night
+
+
+## Waits for the answer, not a frame count (the mesh a bought door swaps in reaches the map over
+## 8 to 12 physics frames, more under load): until a path from `from` ends within a metre of `to`.
+func _map_reaches(night: SeatedNight, from: Vector3, to: Vector3) -> void:
+	for _i in MAP_FRAMES:
+		if night.world.navigation.is_busy():
+			await night.settle(1)
+			continue
+		var way := NavigationServer3D.map_get_path(night.world.map(), from, to, true)
+		if not way.is_empty() and way[way.size() - 1].distance_to(to) < 1.0:
+			# Two answers in a row, with the mesh in: a path over the old map is not the new one.
+			await night.settle(3)
+			return
+		await night.settle(1)
+	assert_bool(false).override_failure_message("the map never reached %s" % to).is_true()
 
 
 ## A pack of `count` sent from `from` at the person on the roost; `flat` walks them the old way.
@@ -137,5 +155,42 @@ func test_a_pack_climbs_the_first_stair() -> void:
 func test_a_pack_climbs_the_second_stair() -> void:
 	var pack := await _small_pack("Spawn_side_1", Vector3(5.0, 3.4, -4.0), false)
 	print(pack.summary("small map stair B (after)"))
+	assert_int(pack.reached()).is_equal(PACK)
+	assert_float(pack.longest_stuck).is_less(2.0)
+
+
+# --- The small map's stairs, in the real night (its storeys set, its links bought) ---
+
+
+## A pack sent from a ground-floor spawn at a person upstairs, in the second map's own night.
+func _small_night_pack(spawn: String, upstairs: Vector3) -> ClimbPack:
+	var night := await SmallMapNight.seat(self, 1, SeatedNight.one_a_round(), SEED)
+	night.human(1)
+	for link: StringName in [&"door_side", &"door_stairs_start", &"door_stairs_side"]:
+		night.open_door(link)
+	await _map_reaches(night, night.world.player_spawn(0), upstairs)
+	night.start_round()
+	night.server.body_of(1).teleport(upstairs + Vector3(0.0, 0.1, 0.0))
+	night.run(5)
+	night.server.sim.zombies.clear()
+	var from := (night.world.greybox.get_node("ZombieSpawns/" + spawn) as Node3D).global_position
+	var pack := ClimbPack.new(night.server.sim, night.tick, UPSTAIRS_TOP)
+	pack.deadline = 60.0
+	pack.spawn(PACK, from, SPEED, Vector3(0.0, 0.0, 1.0))
+	pack.run()
+	night.dispose()
+	return pack
+
+
+func test_a_pack_climbs_the_first_stair_in_the_second_maps_night() -> void:
+	var pack := await _small_night_pack("Spawn_start_1", Vector3(11.0, 3.4, 2.3))
+	print(pack.summary("small map night, stair A (after)"))
+	assert_int(pack.reached()).is_equal(PACK)
+	assert_float(pack.longest_stuck).is_less(2.0)
+
+
+func test_a_pack_climbs_the_second_stair_in_the_second_maps_night() -> void:
+	var pack := await _small_night_pack("Spawn_side_1", Vector3(5.0, 3.4, -4.0))
+	print(pack.summary("small map night, stair B (after)"))
 	assert_int(pack.reached()).is_equal(PACK)
 	assert_float(pack.longest_stuck).is_less(2.0)
