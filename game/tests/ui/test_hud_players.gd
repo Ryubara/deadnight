@@ -101,6 +101,7 @@ func test_a_party_of_eight_takes_compact_teammate_boxes_and_a_column_no_taller_t
 	await await_idle_frame()
 	assert_float(small.hud.points.box_of(2).size.y).is_equal(HudPlayerBox.OTHER_HEIGHT)
 	small.hud.get_parent().remove_child(small.hud)
+	small.hud.free()
 	var fixture := _party(NightHost.MAX_PLAYERS)
 	await await_idle_frame()
 	await await_idle_frame()
@@ -117,6 +118,7 @@ func test_a_party_of_eight_takes_compact_teammate_boxes_and_a_column_no_taller_t
 	var four := HudPlayerBox.LOCAL_HEIGHT + 3.0 * (HudPlayerBox.OTHER_HEIGHT + float(HudStyle.GAP))
 	assert_float(points.size.y).is_less(four * 1.6)
 	fixture.hud.get_parent().remove_child(fixture.hud)
+	fixture.hud.free()
 
 
 func test_the_number_is_readable_on_every_seats_colour() -> void:
