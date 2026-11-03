@@ -164,11 +164,13 @@ through, to the room it opens into and the height it is at.
 | Side room, north wall: the box (our crane) | a random gun you lack | 425 | 0.94 |
 | An ammunition locker in each room and one more upstairs | rounds for the weapon in hand | the shared table's | |
 
-Prices climb room by room as the formula asks, each within 10% of its ratio (`test_smallmap_economy.gd`). Eight
-weapons make nine places, so the shotgun hangs on two walls (same price, different rooms): the wall of a weapon already
-carried sells its rounds. The box has **one place and never moves**: its `leave_chances` are empty, so no play breaks
-it down; it needs no link (the walls around it are the side room's). The prizes are the lot's (the shotgun heaviest).
-At most **24 dead stand at once**, whatever the round and the party (`alive_cap`, on a desktop and in the browser).
+The six new firearms (#793) are the box's alone on this map: a wall sells only the weaker guns (the maintainer's rule,
+issue 858). Prices climb room by room as the formula asks, each within 10% of its ratio (`test_smallmap_economy.gd`).
+Eight weapons make nine places, so the shotgun hangs on two walls (same price, different rooms): the wall of a weapon
+already carried sells its rounds. The box has **one place and never moves**: its `leave_chances` are empty, so no play
+breaks it down; it needs no link (the walls around it are the side room's). The prizes are the lot's (the shotgun
+heaviest). At most **24 dead stand at once**, whatever the round and the party (`alive_cap`, on a desktop and in the
+browser).
 
 **The nine places are all there are** (#858): a wall sells only the weaker guns ([the wall
 tier](weapons.md#the-wall-tier)), so the pump 870, the MP5 and the M4A1 get no place on this map; they come only from

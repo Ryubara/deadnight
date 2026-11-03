@@ -82,6 +82,8 @@ func test_a_zombie_in_the_radius_walks_to_the_flare_and_not_to_the_player() -> v
 	var body: ZombieBody = _night.server.sim.zombies[zombie_id]
 	body.enter(ZombieBody.Mode.CHASE)
 	body.position = at + Vector3(STANDOFF, 0.0, 0.0)
+	# Put down on open ground by hand, so it has no breach it still has to get through.
+	body.gate_id = &""
 	var player_at := _night.state.position()
 	var from_lure := _flat(body.position, at)
 	NightFixture.run(_night, WATCH_TICKS)

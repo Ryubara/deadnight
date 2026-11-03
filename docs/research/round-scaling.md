@@ -135,7 +135,7 @@ health barely moves: that is the other half of the finding in section 7.
   round 15 at 1.05 a round; at 1.1 they would be three-shot and two-blast kills by round 14, as it is in the original,
   where the player has
   Pack-a-Punch. A faster curve waits for a weapon upgrade (see "Follow-ups"): it came with #281, and the curve was
-  1.07 (1.15 since the headshot retune, #745).
+  1.07 (1.15 since the headshot retune, #745, 1.16 since the six firearms, #793).
 - **Economy:** no change. The spend share (62%), ammunition share (18%) and dry share (0%) sit inside the gate.
 
 ### Result: median round of 200 nights a cell (same seed)

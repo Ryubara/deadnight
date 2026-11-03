@@ -1591,6 +1591,77 @@ round of eight minutes: round 15 under Follow, two headliners alive, the person 
 with rifle and shotgun dry (`rifle [0, 0, 1]`, buying rounds for 30 s at a time under `ammo_urgent`), a lost night
 rather than a lost zombie. Kills, hits and round reached are not compared: 23 nights do not rank a tuning.
 
+#### Rookie parity (#767)
+
+The Rookie in a team lived two to five rounds past the simulator's weak players (median 7, 9 and 10 for one, two and
+four bots against 5). The weak level loses the first boss night (round 5) in 81, 73 and 64% of nights and is hardly
+touched in the rounds before it; the Rookies passed it in most of theirs. Every measure below is the soak with the round
+cap 6 (`--max-round=6`, the first boss night in a minute or two a night) or 16, on one checkout, with a lever set by
+`--tune field:value` (the soak; the boss-night harness has `--set=field=value`) so two arms never differ in code.
+
+**What was not the cause.** The model's players fill up for a special round (`NightSim._shop`: six magazines a gun and a
+top-up to the limit before it) and leave a shotgun on the crane's glass in the early rounds (a free hand is weighed
+against the quick melee at the round's zombie health, `WeaponWorth.beats`: 59 shotgun prizes shown in 40 nights of the
+model, none taken), where the bots took anything offered. 78% of the weak level's players enter round 5 with the pistol
+only, 30 to 40% of the bots did not. Both are now the Rookie's (`prepared_mags`, `weighs_by_round`, below), the kit
+matched (pistol only for 62 to 77%), and the boss night was passed in 23 of 24 nights at two bots and 20 of 24 at four,
+as before. Earned points were the same (1,790 a bot to round 5 against the model's 1,903). Not the grenades either
+(`throws_grenades`: 23 of 24 with none), nor a Rookie that never revives (14 of 16), nor a longer gap between shots (16
+of 16).
+
+**What it was.** In the model nearly all the damage a weak team takes is the headliner's (222 of 226 points a night at two
+players, 1,243 of 1,252 at four) and a loss needs about six blows; the bots took two to three, because they killed the
+boss on its way in. The soak now counts the headliner (hits by zone, seconds in each mode, the range at the first hit,
+the time to kill, the swings it began) and the blows by round and zombie type: the boss's lens took **6 hits of 10**
+where the model's weak player puts 2 of 10 on it (`SimSkill.weak_spot_rate`), whatever the aim (`weak_spot_rate` 0 still
+gave 59%): the lens is on the chest, and `Hitbox.WEAK_SLACK` counts a ray that passes it. A hit on the lens does 2.2
+times the damage and staggers the boss, so the Rookie's boss died a third sooner than the model's.
+
+**The lever.** `aims_off_weak_spot`: a bot that is not going for the lens aims the boss at the hips (`BotMotor._aim_point`,
+`BOSS_BODY_AIM`), so the hits it lands on the lens are the ones it aimed at. The share of hits on the lens went from
+0.6 to 0.25 to 0.30. In the boss-night harness (`bots_boss_night.tscn`, four Rookies, 20 nights, main after #801): 13 of
+20 nights passed (65%) before, 8 of 20 (40%) with it, inside the 25 to 55% the fit of #568 asks for (the harness had gone
+to 65% after the changes to the hit zones and the play states).
+
+**The Rookie's levers now.**
+
+| Field | Rookie | What it follows in the model |
+| --- | --- | --- |
+| `prepared_mags` | 6 (the others 0) | `NightSim.PREPARED_MAGS`: a magazine floor and a full top-up in the break before a special round |
+| `weighs_by_round` | true | `NightSim._worth_taking`: a weapon by the health of the round's dead, a free hand against the quick melee (`BotShop.rounds`, `BotEconomy.View.zombie_health`) |
+| `aims_off_weak_spot` | true | `SimSkill.weak_spot_rate`: the share of boss hits on the lens |
+| `throws_grenades` | true (not used) | the model's players never throw one; a switch for the next fit |
+
+Shared code touched: `bot_economy.gd` (`View.prepared`, `View.zombie_health`, `_floor_mags`, `_topoff`, `worth_taking`,
+`weakest_of`), `bot_errands.gd` (`_view`, `_zombie_health`, the crane take, `_hands_wrong`), `bot_client.gd` and
+`bot_beliefs.gd` (the marquee of a break), `bot_shop.gd` and `lot_bot_data.gd` (the round table), `bot_motor.gd`
+(`_aim_point`), `bot_fight_brain.gd` (the grenade switch); every one is off for a profile that does not set its field, so
+the Regular and the Veteran play as they did. The model does both shopping things for every skill, so #768 should set
+`prepared_mags` and `weighs_by_round` for them.
+
+**Parity** (24 nights a cell, round cap 16, one checkout, the three fields on and off by `--tune`, the model's 300
+nights; `rookie_parity.png`):
+
+| Cell | Median round before | after | Sim | Kolmogorov before | after | Boss night passed (cap 6) |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| rookie x1 | 7 | 6 | 5 | 0.48 | 0.31 | the model 19% |
+| rookie x2 | 10 | 10 | 5 | 0.66 | 0.71 | the model 27%; the bots 23 of 24 before and after |
+| rookie x4 | 9 | 5 | 5 | 0.47 | 0.24 | the model 36%; the bots 21 of 24 before, 11 of 20 after |
+
+The boss-night harness (four Rookies, 30 nights, seed 1, `--topoff=0.5`, the final code): **10 of 30 (33%)**, inside the
+25 to 55% of #767. The hit rate and head share of the bands test did not move (Rookie 0.39, 0.61, dodge 0.00, #801).
+Gates: no night of the 48 broke one, no engine error.
+
+**What is left of #767.** The median is inside 1.5 rounds for one and four bots and the curve is under 0.2 for none (four
+bots: 0.24). Two bots still pass the first boss night in 23 of 24 nights where the model passes 27%, and nothing tried
+moved it; they take two to three blows of the six it needs, and the model's weak team is lost by the variance of a
+boss that outlasts it. Tried on top, at the first boss night (16 nights a cell unless said): a revive eagerness of 0
+(14 of 16 passed), a fire jitter of 0.5 (16 of 16), a track error of 24 degrees (one bot: 12 of 16, as without), a narrower
+view and shorter memory (one bot: 10 of 16), a reaction of 1.0 s or a think rate of 3 Hz alone (one bot: 9 of 12 and 10
+of 16). Both together moved one bot to 5 of 16 and left two bots at 15 of 16 and four at 6 of 8, and put the Rookie's hit
+rate in the bands test at 0.46 (the model's 0.45), so they are the next thing to try with more nights than a sample of
+16. The gate on parity stays off (`--gate-parity`).
+
 #### A Follow bot far from the person (#784)
 
 The one Follow gate #770 left, "a bot beyond 25 m of the person for over 20 s outside an errand", broke in about one night
@@ -1607,7 +1678,7 @@ thirty, so the pull decided nothing and the flight ran straight away from the pa
 whenever the pack stood between. A probe of the steering (a hall, a pack of 2, 4 and 8 on the person's side, 3 to 4 m off):
 a flat pull of 8 turns the flight for 2 dead and not for 4 or 8; the pull must grow with the number of dead.
 
-**Fix.** `BotFightBrain.far_bend(distance, felt)`: under the order Follow the retreat's pull is `HOME_BEND` up to 16 m
+**Fix.** `BotRetreat.far_bend(distance, felt)`: under the order Follow the retreat's pull is `HOME_BEND` up to 16 m
 from the person and grows to `FAR_BEND` (4) for each dead felt (the steering looks at eight at most, so 32) at 36 m. The
 steering's own rule stays the guard: a heading that closes on the dead is never taken, so the pull only turns the flight
 round the pack (a pack straight between the bot and the person is circled, not run into), and the pack is led to the
@@ -1637,7 +1708,8 @@ the lost night that #770 describes and is untouched.
   person until #769 and #770 are fixed, which is the soak doing its job.
 - **A bot-filled night against a human one.** Not measurable until there is telemetry of people; until then "neither
   easier nor harder than a human one" is the simulator's own levels, read as above: the Veteran is the strong level, the
-  Regular is the average level made easier, the Rookie is the weak level made two to five rounds easier in a team. The
+  Regular is the average level made easier, the Rookie is the weak level at four bots and one to five rounds easier at
+  one and two ([#767](https://github.com/Ryubara/deadnight/issues/767), above). The
   rules' player scaling is **not retuned**: nothing measured says a bot weighted below one would bring a team nearer the
   model, and no night of people exists to say it from ([#772](https://github.com/Ryubara/deadnight/issues/772)).
 - **The cap.** The report above is at round 16 because the nights past it cost 5 to 8 s of wall time a game minute; 7 or

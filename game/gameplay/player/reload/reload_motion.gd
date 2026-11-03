@@ -32,6 +32,13 @@ static var _cache: Dictionary = {}
 @export_range(0.5, 3.0, 0.05) var ammo_size := 1.5
 ## The ammunition is the part itself (the drum): the hand takes the part where it is.
 @export var ammo_is_part := false
+## A reload that loads one round at a time (`WeaponDef.reload_by_round`, #793): the timeline below
+## is a full reload of `loop_rounds` rounds, and from `loop_from` to `loop_to` it is that many
+## identical cycles, one per round. A reload of fewer rounds plays the lead-in, that many cycles
+## and the lead-out (`playhead`); `loop_rounds` 0 is an ordinary reload.
+@export_range(0, 12) var loop_rounds := 0
+@export_range(0.0, 1.0, 0.005) var loop_from := 0.0
+@export_range(0.0, 1.0, 0.005) var loop_to := 0.0
 ## The poses, in order of `at`; the first should be at 0 and the last at 1, both the hold's own.
 @export var keys: Array[ReloadKey] = []
 ## The steps that sound: event name to the shares of the reload it happens at
@@ -52,6 +59,42 @@ static func for_weapon(weapon_id: StringName) -> ReloadMotion:
 ## The shares of the reload at which `event` happens (empty for none).
 func event_shares(event: StringName) -> PackedFloat32Array:
 	return events.get(event, PackedFloat32Array())
+
+
+## Whether the reload is a loop of one cycle a round (`loop_rounds`).
+func is_by_round() -> bool:
+	return loop_rounds > 0 and loop_to > loop_from
+
+
+## The share of the full timeline that a reload of `rounds` rounds is at `share` of its own time:
+## the lead-in, the first `rounds` cycles, then the lead-out after the cycles that were cut.
+func playhead(share: float, rounds: int) -> float:
+	if not is_by_round() or rounds <= 0 or rounds >= loop_rounds:
+		return share
+	var cut := _cycle() * float(loop_rounds - rounds)
+	var total := 1.0 - cut
+	var at := share * total
+	return at if at <= loop_to - cut else at + cut
+
+
+## The shares of a reload of `rounds` rounds at which `event` happens: the full timeline's, with
+## the events of the cut cycles gone and the rest squeezed into the shorter reload.
+func event_shares_for(event: StringName, rounds: int) -> PackedFloat32Array:
+	var shares := event_shares(event)
+	if not is_by_round() or rounds <= 0 or rounds >= loop_rounds:
+		return shares
+	var cut := _cycle() * float(loop_rounds - rounds)
+	var kept := PackedFloat32Array()
+	for share in shares:
+		if share <= loop_to - cut:
+			kept.append(share / (1.0 - cut))
+		elif share >= loop_to:
+			kept.append((share - cut) / (1.0 - cut))
+	return kept
+
+
+func _cycle() -> float:
+	return (loop_to - loop_from) / float(loop_rounds)
 
 
 ## The pose at `share` of the reload (0 to 1), written into `out`.

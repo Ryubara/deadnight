@@ -43,6 +43,8 @@ const MELEE_RANGE := 1.9
 ## feet, and the least a boss must face the bot (dot product) for the lens to be seen.
 const WEAK_SPOT := Vector3(0.0, 1.16, 0.29)
 const WEAK_FACING := 0.35
+## Metres over the boss's feet (at scale 1) a bot that keeps off the lens aims at: the hips.
+const BOSS_BODY_AIM := 0.6
 ## A grenade throw: degrees the view may be off the throw's, ticks the pin is held, seconds the view
 ## is held after the button comes up (the arm's swing), and the longest the turn may take.
 const THROW_AIM_DEGREES := 3.0
@@ -235,7 +237,12 @@ func _aim_point(contact: Dictionary, eye: Vector3) -> Vector3:
 	var head := _head and speed < HEAD_SPEED and apart < HEAD_RANGE
 	var zone := Hitbox.HEAD if head else Hitbox.BODY
 	var mode: int = contact.get("mode", ZombieBody.Mode.CHASE)
-	return at + ZombiePose.aim_offset(look, mode, float(contact.get("yaw", 0.0)), zone)
+	var point := at + ZombiePose.aim_offset(look, mode, float(contact.get("yaw", 0.0)), zone)
+	if _profile.aims_off_weak_spot and ZombieModels.is_boss(look) and not head:
+		# The chest is where the boss's lens is: a bot that does not go for the lens aims at the
+		# hips, so its hits on the lens are the ones it aimed at (the simulator's `weak_spot_rate`).
+		point.y = at.y + BOSS_BODY_AIM * ZombieModels.aim_scale(look)
+	return point
 
 
 ## Where the boss's lens is, or `Vector3.INF` when the boss does not face `eye` enough for the bot
@@ -307,10 +314,12 @@ func _walk(out: NightCommand, intent: BotIntent) -> void:
 ## Whether to hold the trigger: on a target, view inside the hit cone, nothing in the way of the
 ## gun, and the pauses of the last shot and the last switch over.
 func _trigger(me: Dictionary, eye: Vector3, contact: Dictionary, melee_ok: bool = true) -> bool:
-	if contact.is_empty() or me.get("reloading", false):
-		return false
 	var weapon := _weapon_of(me)
-	if weapon == null or weapon.is_lure():
+	if contact.is_empty() or weapon == null or weapon.is_lure():
+		return false
+	# A reload that loads a round at a time (the pump) gives way to a shot once one is in.
+	var gives_way := weapon.reload_by_round and int(me.get("ammo", 0)) > 0
+	if me.get("reloading", false) and not gives_way:
 		return false
 	var distance := Vector2(contact["position"].x - eye.x, contact["position"].z - eye.z).length()
 	if weapon.is_melee():

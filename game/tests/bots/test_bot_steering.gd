@@ -206,8 +206,8 @@ func test_a_far_pull_turns_the_flight_round_a_pack_toward_the_person() -> void:
 	var person := here + Vector3(0.0, 0.0, -30.0)
 	var pack := _pack_between(here, person)
 	var toward := (person - here).normalized()
-	var near := steering.pick(here, pack, toward * BotFightBrain.far_bend(10.0, 8), Vector3.ZERO)
-	var far := steering.pick(here, pack, toward * BotFightBrain.far_bend(40.0, 8), Vector3.ZERO)
+	var near := steering.pick(here, pack, toward * BotRetreat.far_bend(10.0, 8), Vector3.ZERO)
+	var far := steering.pick(here, pack, toward * BotRetreat.far_bend(40.0, 8), Vector3.ZERO)
 	assert_bool(near != Vector3.ZERO and far != Vector3.ZERO).is_true()
 	# The weak pull of a bot beside the person runs straight away; the far one bends it round
 	# (more of the way to the person) and still never closes on the pack.
@@ -220,15 +220,13 @@ func test_a_far_pull_turns_the_flight_round_a_pack_toward_the_person() -> void:
 
 
 func test_the_retreat_bend_grows_with_the_distance_from_the_person() -> void:
-	assert_float(BotFightBrain.far_bend(5.0, 8)).is_equal(BotFightBrain.HOME_BEND)
-	assert_float(BotFightBrain.far_bend(BotFightBrain.FAR_BEND_FROM, 8)).is_equal(
-		BotFightBrain.HOME_BEND
-	)
-	assert_float(BotFightBrain.far_bend(BotFightBrain.FAR_BEND_FULL + 30.0, 8)).is_equal(
-		BotFightBrain.FAR_BEND * 8.0
+	assert_float(BotRetreat.far_bend(5.0, 8)).is_equal(BotRetreat.HOME_BEND)
+	assert_float(BotRetreat.far_bend(BotRetreat.FAR_BEND_FROM, 8)).is_equal(BotRetreat.HOME_BEND)
+	assert_float(BotRetreat.far_bend(BotRetreat.FAR_BEND_FULL + 30.0, 8)).is_equal(
+		BotRetreat.FAR_BEND * 8.0
 	)
 	# One dead (or none) pulls by `FAR_BEND`, and between the two distances the pull is between.
-	assert_float(BotFightBrain.far_bend(100.0, 0)).is_equal(BotFightBrain.FAR_BEND)
-	assert_float(BotFightBrain.far_bend(26.0, 4)).is_between(
-		BotFightBrain.HOME_BEND, BotFightBrain.FAR_BEND * 4.0
+	assert_float(BotRetreat.far_bend(100.0, 0)).is_equal(BotRetreat.FAR_BEND)
+	assert_float(BotRetreat.far_bend(26.0, 4)).is_between(
+		BotRetreat.HOME_BEND, BotRetreat.FAR_BEND * 4.0
 	)

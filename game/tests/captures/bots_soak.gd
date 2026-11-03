@@ -18,9 +18,10 @@ extends Node
 ## this is stopped and reported as a stalled round, default 8), `--budget=S` (wall seconds after
 ## which no new night starts, default 0: none), `--watch=SEAT` (a line a second of what that seat
 ## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke;
-## `--watch=far` is a line for each bot beyond 20 m of a person up), `--tune=NAME:NUMBER,...`
-## (profile fields moved for a sweep), `--map=ID` (a map of `MapRegistry`, played by its scene and
-## its rules overlay; default the lot) and `--quiet` (no trace line a minute).
+## `--watch=far` is a line for each bot beyond 20 m of a person up), `--tune=NAME:VALUE,...`
+## (profile fields moved for a sweep: a number, true or false, or a list `a|b|c`), `--map=ID` (a map
+## of `MapRegistry`, played by its scene and its rules overlay; default the lot) and `--quiet` (no
+## trace line a minute).
 ## Prints `SOAKNIGHT {json}` for each night and `SOAKCELL {json}` at the end.
 
 const STEP := Night.STEP
@@ -313,16 +314,32 @@ func _profile() -> BotProfile:
 			profile = BotProfile.rookie()
 		"veteran":
 			profile = BotProfile.veteran()
-	# `--tune=track_error:6,head_rate:0.5`: numbers of the profile moved for a sweep, so a tuning is
-	# tried without editing the profile between runs.
+	# `--tune=track_error:6,head_rate:0.5`: fields of the profile moved for a sweep, so a tuning is
+	# tried without editing the profile between runs (a number, `true` or `false`, a list `a|b|c`).
 	for pair in String(_args.get("tune", "")).split(",", false):
 		var parts := pair.split(":")
 		assert(
 			parts.size() == 2 and parts[0] in profile,
-			"--tune wants name:number pairs of a profile field"
+			"--tune wants name:value pairs of a profile field"
 		)
-		profile.set(parts[0], float(parts[1]))
+		_tune(profile, parts[0], parts[1])
 	return profile
+
+
+## Sets one profile field from its text, by the type the field already has.
+func _tune(profile: BotProfile, field: String, text: String) -> void:
+	match typeof(profile.get(field)):
+		TYPE_INT:
+			profile.set(field, int(text))
+		TYPE_BOOL:
+			profile.set(field, text == "true")
+		TYPE_ARRAY:
+			var names: Array[StringName] = []
+			for part in text.split("|", false):
+				names.append(StringName(part))
+			profile.set(field, names)
+		_:
+			profile.set(field, float(text))
 
 
 func _parse_args() -> Dictionary:
