@@ -108,15 +108,17 @@ func test_switching_weapons_changes_the_card_and_puts_the_old_one_in_the_equipme
 	assert_str(state.weapon_name).is_equal(shotgun.display_name)
 	assert_int(state.ammo_magazine).is_equal(shotgun.magazine_size)
 	var pistol_rounds := pistol.magazine_size - 1 + pistol.reserve_start
-	# The slot names the weapon put away; its rounds stay in the state, off the card (the ammo card
+	# The strip numbers the weapon put away; its rounds stay in the state, off the card (the ammo card
 	# says the rounds of the weapon in hand).
-	assert_str(_fixture.hud.health.equipment_text).is_equal(pistol.display_name.to_upper())
+	assert_array(state.slot_ids).contains_exactly([&"pistol", &"shotgun"])
+	assert_int(state.slot_held).is_equal(2)
 	assert_int(state.equipment_count).is_equal(pistol_rounds)
 	# Back to the first: the slot now holds the shotgun, and the pistol's rounds are as left.
 	_do(CombatAction.equip(1, &"pistol"))
 	assert_str(state.weapon_name).is_equal(pistol.display_name)
 	assert_int(state.ammo_magazine).is_equal(pistol.magazine_size - 1)
 	assert_str(state.equipment_name).is_equal(shotgun.display_name)
+	assert_int(state.slot_held).is_equal(1)
 	assert_int(state.equipment_count).is_equal(shotgun.magazine_size + shotgun.reserve_start)
 
 
@@ -138,10 +140,11 @@ func test_a_weapon_that_uses_no_ammunition_shows_no_numbers_and_no_count() -> vo
 	assert_str(_ammo().magazine_text).is_equal(HudAmmo.NO_AMMO_MARK)
 	assert_str(_ammo().hint_text).is_equal("")
 	assert_bool(_ammo().is_low).is_false()
-	# Put the other way: the crowbar in the slot is named with no count.
+	# Put the other way: the crowbar in the strip's second place shows no count.
 	_do(CombatAction.equip(1, &"pistol"))
 	assert_bool(state.ammo_used).is_true()
-	assert_str(_fixture.hud.health.equipment_text).is_equal("CROWBAR")
+	assert_str(String(_fixture.hud.slots.cells()[1].weapon_id)).is_equal("crowbar")
+	assert_int(state.equipment_count).is_equal(HudLoadout.NO_COUNT)
 
 
 func test_another_players_weapons_leave_my_card_alone() -> void:
@@ -179,15 +182,23 @@ func test_the_card_reads_whatever_rounds_the_events_carry() -> void:
 	assert_str(_ammo().hint_text).is_equal("NO AMMO")
 
 
-func test_the_equipment_slot_names_the_weapon_and_shows_no_rounds() -> void:
+func test_the_slot_strip_numbers_the_weapons_and_shows_no_rounds() -> void:
 	# The rounds of the weapon put away are the ammo card's business (the maintainer's call,
-	# #218); the slot is the weapon's name, cut with an ellipsis only when it is too long.
+	# #218); the strip is the places, the number of each and which one is lit.
 	_give(&"pistol")
 	_give(&"rifle")
 	await get_tree().process_frame
-	await get_tree().process_frame
-	var label: Label = _fixture.hud.health._equipment
-	assert_str(label.text).is_equal("REVOLVER")
-	assert_str(label.text).not_contains(" x")
-	var font := label.get_theme_font(&"font")
-	assert_float(HudStyle.text_width(font, label.text, HudStyle.SMALL)).is_less_equal(label.size.x)
+	var cells := _fixture.hud.slots.cells()
+	assert_int(cells.size()).is_equal(WeaponSlots.count())
+	(
+		assert_array(cells.map(func(cell: HudSlotCell) -> int: return cell.number))
+		. contains_exactly([1, 2])
+	)
+	(
+		assert_array(cells.map(func(cell: HudSlotCell) -> StringName: return cell.weapon_id))
+		. contains_exactly([&"pistol", &"rifle"])
+	)
+	(
+		assert_array(cells.map(func(cell: HudSlotCell) -> bool: return cell.held))
+		. contains_exactly([false, true])
+	)

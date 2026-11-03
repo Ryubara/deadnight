@@ -40,6 +40,18 @@ func test_the_leak_check_catches_a_slab_removed_without_a_purchase() -> void:
 	assert_str(_leak(nav, lot, "Road")).is_empty()
 
 
+func test_nothing_walkable_lies_past_the_plazas_wall() -> void:
+	# The road past the ticket plaza is gone (#686): with every door open the mesh ends at its wall.
+	var lot := await _lot(LotFixture.door_table().keys())
+	var nav := LotNavigation.new(lot, CameraProbe.body_radius())
+	await nav.settle(get_tree())
+	var farthest := -INF
+	for vertex in nav.navmesh.get_vertices():
+		farthest = maxf(farthest, vertex.z)
+	assert_float(farthest).is_less(58.0)
+	assert_float(farthest).is_greater(55.0)
+
+
 func test_the_camera_gets_everywhere_the_player_does() -> void:
 	# An agent as wide as the shoulder camera's reach on either side of the player (0.75 m + 0.1 m
 	# of air, rounded up): if a passage were narrower than 1.8 m, this agent could not cross it and
