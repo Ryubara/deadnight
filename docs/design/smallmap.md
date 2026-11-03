@@ -169,11 +169,13 @@ At most **24 dead stand at once**, whatever the round and the party (`alive_cap`
 
 ### What the map leaves out
 
-Nacht has no perks, no upgrade and no power. The map has no power either: no generator, breaker post or fuel can (the
-tank never drains, there are no circuits, and the lamps hang on the `battery` circuit that is always lit so the dead
-keep their lit pace under them). The formula's default for the machines (row 25) was "none", asked of the maintainer;
-issue 792 brings the lot's own (the six tonics and the re-cut bench) at the shared table's prices, so the overlay no
-longer drops the tonic and upgrade kinds ([Machines](#machines)).
+Nacht has no power, and neither has this map: no generator, breaker post or fuel can (the tank never drains, there are
+no circuits, and the lamps hang on the `battery` circuit that is always lit so the dead keep their lit pace under
+them). It does not leave out the machines: Nacht has no perks and no upgrade, but **every map has the soda fountain,
+the perks, the re-cut bench and the prize crane** (the maintainer, 2026-11-03, #859; row 25 of the formula). Issue 792
+brought the lot's own (the six tonics and the re-cut bench) at the shared table's prices, so the overlay does not drop
+the tonic and upgrade kinds ([Machines](#machines)), and `test_map_machines.gd` fails a map of the picker's list that
+lacks one.
 
 ### Floors for the dead
 
@@ -200,7 +202,8 @@ The bots were written for 100 m of open ground: no errand while a dead one is wi
 a quarter of the round is left, and every profile's list names the lot's doors. On a 600 m² map the dead are always
 near, so the overlay gives them their own numbers (`bot_clear_from` 5 m, `bot_calm_share` 0.6, `bot_hurt_share` 0 and
 its own `bot_shopping` list: the first link, the shotgun, the Tommy gun, the first stair, the rifle, the second stair, the
-box). The numbers are in the overlay, not in the bots, and the lot's are unchanged.
+box, then the machines: the hearty tonic, the re-cut, the swift rescue and
+quick load tonics). The numbers are in the overlay, not in the bots, and the lot's are unchanged.
 
 The overlay also turns on **`bot_team_links`**: a link a bot can pay for, in a calm with no dead within `bot_clear_from`,
 is bought by the nearest bot that is free (a claim by distance, like a body's), outside the one-errand turn and the
@@ -244,8 +247,9 @@ picture; a hole in a ceiling with moon through it is an art issue of its own.
 
 ### Machines
 
-The lot's machines, one to a place that has the room for it (each is its `ShopProps` instance, a hidden block that holds
-its place in the walking mesh and a `ShopSpots` marker 0.7 to 1.1 m in front of it):
+The lot's machines (every map has them all, with the box as the crane), one to a place that has the room for it
+(each is its `ShopProps` instance, a hidden block that holds its place in the walking mesh and a `ShopSpots`
+marker 0.7 to 1.1 m in front of it):
 
 | Where | Machine | Item and price |
 | --- | --- | --- |
@@ -255,8 +259,9 @@ its place in the walking mesh and a `ShopSpots` marker 0.7 to 1.1 m in front of 
 | Upstairs, north wall | Double Shot and Reload Shock coolers | 3000 and 2000 |
 
 The dearest are on the farthest walls, as the weapons' prices climb. The perk coolers are drawn at 0.85 so their emblem
-(3.55 m at full size) clears the 3.2 m ceiling. The prices are the shared table's (one source); the bots do not shop
-at the machines yet (the map's `bot_shopping` list is the links, guns and the box), so the machines are a person's.
+(3.55 m at full size) clears the 3.2 m ceiling. The prices are the shared table's (one source); the bots shop
+at the soda fountain, the re-cut bench and the first two coolers (the map's `bot_shopping` list names them after
+the last link, #811); the Third Holster, Double Shot and Reload Shock coolers are a person's.
 
 ## Sockets for the kit and for the night
 

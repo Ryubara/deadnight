@@ -7,7 +7,8 @@ extends RefCounted
 ## so a replay of the same actions gives the same events. Single-player runs this same object.
 ##
 ## Time is `GrenadeAction.tick`. The world is two Callables: `world_cast` for the flight (see
-## `GrenadeState`) and `world_ray` for the cover line checks (the weapons' `WorldProbe`).
+## `GrenadeState`) and `world_ray` for the cover line checks (the weapons' `WorldProbe`, walls and
+## props only: a person is no cover).
 ##
 ## The server believes itself, not the client. Where a player stands comes from the host
 ## (`GrenadeAction.players`); the grenade leaves from that player's hand height, and a hand the
@@ -37,13 +38,18 @@ extends RefCounted
 ##     which a zombie stopped it: a client flies its copy without the dead, and takes this as truth)
 ##   grenade_exploded: grenade_id, thrower_id, point, core_radius, radius, in_hand
 ##   blast_hit: grenade_id, target_id, damage, leg_damage, exposure, distance, impulse, stun
-##   player_blasted: grenade_id, player_id, damage, distance, impulse, stun, own (the thrower's)
+##   player_blasted: grenade_id, thrower_id, player_id, damage (a share of the player's
+##     `max_health`, `PlayerBlast`: all of it in the hand and within `player_full_radius`, less to
+##     nothing at the blast radius, none behind a wall), share (0 to 1), distance, impulse, stun,
+##     own (the thrower's), in_hand (the thrower's, and it went off in the hand)
 
 signal event_emitted(event: Dictionary)
 
 ## What `_init` reports when there is no way to cast the flight: said once, not on every tick.
 const NO_WORLD_CAST_ERROR := "GrenadeServer: no valid world_cast, grenades fly over open ground"
 const SNAPSHOT_VERSION := 1
+## The health bar a blast takes a share of when the rules do not say (a server with no rules).
+const DEFAULT_MAX_HEALTH := 100.0
 ## The keys of `to_dict`, each with the type it must have.
 const SNAPSHOT_KEYS := {
 	"version": TYPE_INT,
@@ -69,9 +75,6 @@ var def: GrenadeDef
 var rules: GameRules
 var world_cast: Callable
 var world_ray: Callable
-## Whether a blast hurts the other players too (off in co-op: only the thrower takes it).
-var friendly_fire: bool = false
-
 var _cooks: Dictionary[int, Dictionary] = {}
 var _grenades: Array[GrenadeState] = []
 var _next_id: int = 1
@@ -515,20 +518,24 @@ func _explode(grenade_id: int, thrower_id: int, where: Vector3, in_hand: bool) -
 				}
 			)
 		)
-	_blast_players(grenade_id, thrower_id, point)
+	_blast_players(grenade_id, thrower_id, point, in_hand)
 	if rules != null and not victims.is_empty():
 		_events.append_array(rules.apply(RulesAction.explosion(thrower_id, victims)))
 
 
-func _blast_players(grenade_id: int, thrower_id: int, point: Vector3) -> void:
+## Every player the blast reaches takes it, the thrower and the team alike (`PlayerBlast`): the same
+## rule for all, all of the health in the hand that holds the grenade.
+func _blast_players(grenade_id: int, thrower_id: int, point: Vector3, in_hand: bool) -> void:
 	var ids := _players.keys()
 	ids.sort()
 	for player_id: int in ids:
-		var own: bool = player_id == thrower_id
-		if not own and not friendly_fire:
+		if _is_downed(player_id):
 			continue
+		var own: bool = player_id == thrower_id
 		var chest: Vector3 = _players[player_id] + Vector3.UP * def.player_chest
-		var hurt := BlastModel.against_point(def, point, chest, world_ray)
+		var hurt := BlastModel.against_player(
+			def, point, chest, _max_health_of(player_id), own and in_hand, world_ray
+		)
 		if hurt["damage"] <= 0.0:
 			continue
 		var reach := def.falloff(hurt["distance"])
@@ -536,14 +543,29 @@ func _blast_players(grenade_id: int, thrower_id: int, point: Vector3) -> void:
 			&"player_blasted",
 			{
 				"grenade_id": grenade_id,
+				"thrower_id": thrower_id,
 				"player_id": player_id,
-				"damage": hurt["damage"] * (def.self_damage_fraction if own else 1.0),
+				"damage": hurt["damage"],
+				"share": hurt["share"],
 				"distance": hurt["distance"],
 				"impulse": BlastModel.impulse(def, point, chest, reach),
 				"stun": def.stun_seconds * reach,
 				"own": own,
+				"in_hand": own and in_hand,
 			}
 		)
+
+
+## A player on the ground takes no blow (the rules refuse it): the blast does not count them.
+func _is_downed(player_id: int) -> bool:
+	var player := rules.players.get(player_id) as PlayerState if rules != null else null
+	return player != null and player.downed
+
+
+## The most health this player can have (the bar a blast takes a share of).
+func _max_health_of(player_id: int) -> float:
+	var player := rules.players.get(player_id) as PlayerState if rules != null else null
+	return player.max_health if player != null else DEFAULT_MAX_HEALTH
 
 
 func _emit(type: StringName, fields: Dictionary = {}) -> void:
