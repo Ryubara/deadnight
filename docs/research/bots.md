@@ -153,7 +153,7 @@ is given exactly that, and the filter is a class of its own so a test can prove 
 | **Memory** | A seen zombie is remembered with its last position and velocity for up to 3 s (proposal), then forgotten; a remembered zombie is *never shot at*, only avoided and looked toward. This is the fix for Unreal's "never forgets" trap, where `Max Age` of 0 means a stimulus never expires ([AISenseConfig_Sight](https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/AISenseConfig_Sight)). |
 | **Teammates** | Always known (position, health, downed, weapon): the HUD shows them and world markers are planned (#134). |
 | **Level** | Doors, prices, breach positions, shop spots and the navigation mesh are static data every client has. |
-| **Events** | An allow-list: what the feed and HUD already show (purchases, rounds, downs, own damage, boards torn or repaired, special round announced). `zombie_spawn_requested` and anything with server-side detail are dropped before the brain. The allow-list is a constant and a test asserts the dropped types. |
+| **Events** | An allow-list: what the feed and HUD already show (purchases, rounds, downs, own damage, boards torn or repaired, special round announced) and, about itself, the burst of its own flare (`lure_started`, #646). `zombie_spawn_requested` and anything with server-side detail are dropped before the brain. The allow-list is a constant and a test asserts the dropped types. |
 | **Never** | `GameRules`, `ZombieSim`, `CombatServer`, a zombie's health or exact spawn timing, other players' points beyond what the HUD prints. |
 
 **Reaction queue.** A zombie that becomes visible enters the beliefs only after its reaction delay
@@ -322,9 +322,11 @@ kill the ones that can in the time it takes them (their health from the round's 
 sustained damage, the numbers the simulator uses). Unsafe: go to *clear*.
 
 **Clear.** Fight from a place with a line to the victim's surroundings, with a target bonus for zombies nearest the
-victim; throw a grenade or fire the flare only when the victim is at least 4 m from the blast (the blast is 3 m, and a
-grenade hurts a downed player 40%). This is what Toxic Commando's players ask for, and what Back 4 Blood's "always runs
-to the downed player" bots skip.
+victim; throw a grenade only when the victim is at least 4 m from the blast (the blast is 3 m, and a grenade hurts a
+downed player 40%). This is what Toxic Commando's players ask for, and what Back 4 Blood's "always runs to the downed
+player" bots skip. **The flare** (#646) is the other way to clear: the claimant that carries the flare gun fires it at
+a spot far from the body, so the dead walk off to it ([the flare lure](flare-lure.md#bots-fire-it-646)); it hurts no
+one, so the 4 m is about where the dead will stand (never within 4 m of a teammate), not a blast.
 
 **Commit and abort.** Abort when more than one attacker is on the bot and it has lost 20 health in a second, or its
 health is under 30%; but once progress passes 60% abort only under 30% health. A bot that aborts goes to clear
@@ -930,7 +932,21 @@ the claim table have pure unit tests; a mutant that makes the risk check always 
   8 m (`BotLink`), goes there and jumps (`BotIntent.trapped`, in the legs). There is no teleport.
 - `BotPings`: a person's `here` sends the nearest bot to hold the place while the mark stands, `enemy` names the first
   target while the bot sees the zombie, `downed` names the body to raise first, `door` is the errands' (it was
-  already). `ammo` is left to #647.
+  already). `ammo` is the next item (#647, below).
+- **The ammunition ping (#647).** `BotPings.ammo` reads the locker a person marked. A bot that is short of rounds for a
+  gun it carries (under `BotProfile.ammo_floor_mags` magazines of reserve), in a lull, with the gun (or a blade, which
+  is put away at the locker) in hand, walks to *that* locker and buys there, before every other errand (`BotErrands`
+  runs a `marked` job ahead of the generator, the breakers, the shop list and the boards; a mark lasts 20 s and a bot
+  that set out keeps going for at most `ERRAND_LIMIT` if it runs out on the way). It buys only within the use reach of
+  the marked locker: every locker sells the same rounds, but a mark is an order for one, so a bot standing at another
+  locker walks on. A bot that is not short, whose hand cannot be fed there (the locker sells for the weapon in hand), in
+  a wave with the dead about it (the urgent rounds below a magazine are still bought at once, wherever) or with no way to
+  the locker (the shop's own `avoided` rule) ignores the mark. Pure table:
+  `tests/bots/test_bot_economy_rounds.gd`; scenario in the real lot with a person and a bot, and the same bot with no
+  mark going to the near locker: `tests/night/test_bot_errand_buys.gd`; film through the person's camera:
+  `tests/captures/bots_ammo_ping.tscn`. The ping crosses the wire as before (`NetWire.Type.MARK`, no new message), so
+  no network test was added. Two bots that are both short both go (rounds are personal); the errand turn of the brain
+  still lets one bot at a time leave.
 
 *Measured* (same soak, 12 game minutes, seeds 1 to 3, a shared machine on which every think p99 was 5 to 40 ms, so no
 cost figure is taken from it): **at most one bot on an errand at any tick in all four runs (the same soak with the
@@ -946,8 +962,55 @@ no-person soaks; their scenarios (`tests/night/test_bot_team.gd`, `tests/bots/te
 (every low ray is a wall, the eyes see over it): a lot corner with no way out was not found on the real mesh, so the
 real-lot check is that no bot moved more than a metre in a tick over the soaks (the most was 0.64 m).
 
-**Left for later.** The flare to draw the dead off a body (#646), the ammunition ping (#647), the voice of the lines,
-and the bot's own "downed bot waits for a human" being only one call.
+**What shipped in part 3 (the flare, #646).**
+
+- **The rule** goes through the claim table like the revive, not a second path: only the bot that holds the claim on a
+  body can order a flare (`BotRevive`, mode `LURE`), under every order a bot has. It is considered when the verdict is
+  `CLEAR` or `UNSAFE`, the bot carries a flare with a round (in the magazine or in reserve), no flare is burning or was
+  just fired (4 s apart), no dead is within 3 m of the bot, at least two of the dead that threaten the window are ones a
+  flare draws (not a boss, not a zombie in the middle of a swing), and drawing them off would make the revive better:
+  judged again with those dead standing 12 m from the body and starting for it only when the lure is out, it must be
+  `SAFE`, or `CLEAR` where it was `UNSAFE`. A bot that would have been left out of the claim for an `UNSAFE` body bids for
+  it when it has a flare shot; one that is not the claimant never plans one.
+- **`BotFlare`** finds the shot (pure: positions in, a `Shot` out, or null). The flare is direct fire at what the view
+  meets, so the lines worth trying come from a table of flights made once with the real projectile and aim correction
+  on flat ground (24 headings, 10 to 22 m out, the nearest the bot may fire and the farthest it may hit), kept to the
+  spots at least 12 m from the body and 6 m from any player, off the reviver's side of the body (60 degrees at the body),
+  within the lure's reach of every zombie to be drawn, and not drawing them past the bot. The best are then **flown for
+  real** (the server's `ProjectileState` and `AimResolver` in the bot's own world: the walls the level can see and the
+  dead it believes in) and the rules are asked of where the flare lands, not of where it was aimed: at least 8 m from
+  the bot, 10 from the body, 5 from every player, the dead within 24 m of it; and again with the view turned a little to
+  each side. A heading where the flare came up short (a car) shuts its neighbours for this plan; a plan that finds
+  nothing waits a second.
+- **The hands.** `BotIntent.flare_yaw`/`flare_pitch` order a flare: the motor turns to that view (a ground point, not a
+  zombie), pulls the trigger once when the view is within a degree, and never fires the flare gun at a zombie.
+  `BotRevive` swaps to the flare gun (reloading it first when its round is spent) and stands still; the brain gives the
+  weapon handling to it for the order. `BotArsenal` puts the flare gun away for a loaded gun as soon as no flare is
+  ordered, and the flare gun is no firearm for the fight (a bot with only it is `dry` and uses the quick melee). An
+  order is given up when its round has flown, after 5 s, or when a dead gets within 3 m or a player near the landing.
+- **The risk check knows the lure.** A bot hears the burst of its own flare (`lure_started` is in the `OWN` allow-list)
+  and the team keeps it (`BotTeam.lures`: point, radius, until). The dead within its radius count as standing at the lure
+  with its remaining seconds as a `delay` (`BotReviveRisk.Threat`), so the revive judged after the flare is `SAFE`
+  while it burns and a bot walks in and holds. `BotCoverage` lists the rule; telemetry counts `flares_wanted`,
+  `flares_no_spot` and `flares_fired`.
+
+*Measured.* The scenario (`tests/night/test_bot_flare.gd`): a person down, eight of the dead about the body, the bot with
+three rounds, no grenade and the flare gun. It fires, the flare bursts well away from the body and the dead walk to
+it, the hold begins after it with no blow on the bot and the person is raised; the same night without the flare gun
+has the pack uncleared and the person still down 40 s on (the bleed-out clock is 45 s); a mutant that never fires
+fails the first. The soak (`tests/captures/bots_revive_soak.tscn`, four mixed bots, forced falls every 10 s, 12 game minutes,
+both runs carrying the flare gun and only the rule switched, `--no-flare-rule`, seeds 1 to 6, a shared machine):
+**with the rule 256 of 280 holds raised (91%), 3 let go of by the rule, 3 bots down while holding; without it 263 of
+298 (88%), 9 let go of, 4 down while holding**. The rule fired 18 flares in the six nights: it was wanted 47 times and
+found no shot 26 of them (the cars; [the lure notes](flare-lure.md#bots-fire-it-646)), so it touches a few revives a
+night and a difference of three points in a night's worth of chaos (the nights end at different times, 460 to 720
+seconds) is not one to take to the bank: what the soak says is that the rule changes nothing for the worse in the
+revive numbers. Bleed-outs were 17 with it and 10 without out of about 280 forced falls each. The one night read through
+(`--log`, seed 1 with the rule: five of them) has none near a flare: they are bodies that two bots left alone for 45 s
+while the dead stood about them (a verdict of `UNSAFE` sends nobody unless the bot is the last up), which the bots did
+before this rule too; it is #673.
+
+**Left for later.** The voice of the lines, and the bot's own "downed bot waits for a human" being only one call.
 
 ### Phase 6: filling slots, difficulty and the server
 

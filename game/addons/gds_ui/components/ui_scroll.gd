@@ -89,6 +89,14 @@ func scroll_end() -> float:
 	return maxf(get_v_scroll_bar().max_value - get_v_scroll_bar().page, 0.0)
 
 
+## What any ScrollContainer keeps free around its content (the theme's room for a hovered button
+## and the focus ring, `UITokens.hover_room` and `scroll_room`), as the width and height it adds to
+## the content: a screen that sizes a scroll area from its content adds this to the content's
+## height, or its last row scrolls by that much.
+static func margins(scroll: ScrollContainer) -> Vector2:
+	return scroll.get_theme_stylebox(&"panel").get_minimum_size()
+
+
 ## Whether there is more content above the visible part.
 func has_more_above() -> bool:
 	return scroll_vertical > 0
