@@ -20,6 +20,18 @@ const VIEWS := [
 	["upstairs_a", Vector3(3.0, 3.4, 3.4), Vector2(1.0, -0.1)],
 	["upstairs_b", Vector3(14.5, 3.4, -4.0), Vector2(-1.0, 0.0)],
 	["opening", Vector3(12.0, 3.4, 2.6), Vector2(0.0, -1.0)],
+	# The dressed map (#792): each machine, the box, the breach, the cabinet, a window.
+	["hall_south", Vector3(8.0, 0.0, 9.8), Vector2(0.0, 1.0)],
+	["soda", Vector3(4.0, 0.0, 8.5), Vector2(-1.0, 0.0)],
+	["side_machines", Vector3(7.0, 0.0, -4.9), Vector2(-0.45, -0.9)],
+	["side_box", Vector3(10.5, 0.0, -3.4), Vector2(0.0, -1.0)],
+	["side_breach", Vector3(-3.0, 0.0, -2.5), Vector2(-1.0, 0.0)],
+	["recut", Vector3(-0.3, 3.4, -5.0), Vector2(0.0, 1.0)],
+	["perk_holster", Vector3(8.6, 3.4, -4.0), Vector2(0.0, 1.0)],
+	["perks_upper", Vector3(13.8, 3.4, -4.0), Vector2(0.0, -1.0)],
+	["cabinet", Vector3(-3.0, 3.4, -4.0), Vector2(-1.0, 0.0)],
+	["window_north", Vector3(9.0, 3.4, -5.0), Vector2(0.0, -1.0)],
+	["window_east", Vector3(12.0, 0.0, 8.0), Vector2(1.0, 0.0)],
 ]
 
 var _out := "user://smallmap"
@@ -74,12 +86,12 @@ func _plans() -> void:
 	await _shot("plan_ground")
 	for node in hidden:
 		node.visible = true
-	_hide_above(6.55)
+	var hidden_upper := _hide_above(6.55)
 	lap.visible = true
 	await _shot("plan_upper_ring")
-	for node in _lot.find_children("*", "Node3D", true, false):
-		if node is VisualInstance3D or node is CSGShape3D:
-			node.visible = true
+	# Only what this hid comes back: the dressing switches parts off on purpose (hidden collision).
+	for node in hidden_upper:
+		node.visible = true
 	lap.queue_free()
 	sun.queue_free()
 	environment.ambient_light_energy = ambient

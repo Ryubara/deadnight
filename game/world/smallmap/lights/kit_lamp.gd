@@ -38,6 +38,10 @@ const SHADE := Color("#e6d8b0")
 @export_range(0.0, 10.0, 0.05) var pool_energy := 0.45
 @export_range(0.0, 2.0, 0.01) var haze_energy := 0.3
 @export_range(0.0, 10.0, 0.05) var wash_energy := 0.3
+## A lamp that hangs higher than the kit's 2.8 m rose (a ceiling of 3.2 m): the lamp, its halo, the
+## cone of haze and the light move up by this much; the pool stays on the floor and the cone reaches
+## `hang` further down to it.
+@export_range(0.0, 2.0, 0.01, "suffix:m") var hang := 0.0
 ## The cone of haze: its radius at the shade's rim, on the floor, and how far down it reaches.
 @export_range(0.05, 3.0, 0.01, "suffix:m") var haze_top_radius := 0.27
 @export_range(0.1, 5.0, 0.01, "suffix:m") var haze_bottom_radius := 1.3
@@ -52,6 +56,7 @@ var _steady := false
 
 
 func _ready() -> void:
+	_hang_higher()
 	var light := get_node_or_null(^"Light") as Light3D
 	if own_light and light != null and light_path.is_empty():
 		light_path = get_path_to(light)
@@ -65,6 +70,15 @@ func _ready() -> void:
 	if _steady:
 		level = 1.0
 		_apply()
+
+
+func _hang_higher() -> void:
+	if hang <= 0.0:
+		return
+	for part in [&"Lamp", &"Halo", &"Haze", &"Light"]:
+		var node := get_node_or_null(NodePath(part)) as Node3D
+		if node != null:
+			node.position.y += hang
 
 
 func _light_up_the_bulb() -> void:
@@ -116,7 +130,9 @@ func _make_cards() -> void:
 		var material := LightCards.haze(colour)
 		material.set_shader_parameter(&"near_fade", haze_near_fade)
 		_cards[&"haze"] = material
-		var cone := LightCards.cone(haze_top_radius, haze_bottom_radius, haze_length, 1.0, 0.15)
+		var cone := LightCards.cone(
+			haze_top_radius, haze_bottom_radius, haze_length + hang, 1.0, 0.15
+		)
 		haze_at.add_child(LightCards.node("Cone", cone, material))
 
 
