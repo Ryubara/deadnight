@@ -317,7 +317,7 @@ func _tonic(view: View, item: ShopItem) -> Buy:
 	var bit := _shop.tonic_order().find(item.id)
 	if bit >= 0 and (view.perks & (1 << bit)) != 0:
 		return null
-	if PerkEffects.mask_count(view.perks) >= _shop.economy.max_tonics:
+	if PerkEffects.mask_count(view.perks) >= _shop.tonic_limit():
 		return null
 	var stand := nearest_by_walk(view, _shop.spots_of(item.id))
 	if stand == Vector3.INF:

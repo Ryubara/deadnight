@@ -69,7 +69,10 @@ mean the same thing by each.
   `shock_push` m/s. `shock_cooldown` apart, so a reload cancelled and started again is not a free shock.
   `shock_burst` carries where, how far and who was hit.
 
-**The limit and the loss.** A player carries at most `economy.max_tonics`; a tonic is bought once. A player who
+**The limit and the loss.** A player carries at most `economy.max_tonics`; a tonic is bought once. The host can lift the
+limit for a night with the **perk limit** match setting ([`perk_limit`](rounds.md#match-settings), Default or
+Unlimited, beside the zombie intensity in the lobby and on the Play screen): every perk machine, the rules' buy
+(`MatchSettings.tonic_limit`), the bots and the balance simulator (`--perks=unlimited`) read the same limit. A player who
 **goes down loses** what `perks.lost_on_down` says (`PerkPlay`): the health the hearty tonic gave goes with it and
 the weapon in the third slot is given up (`perks_lost`, the weapon leaves as a `weapon_replaced` with no new
 weapon). A self-revive loses nothing. The loss is the genre's; whether it is all, the last or none is [a number of

@@ -205,6 +205,7 @@ started. The defaults are today's game exactly, and every shipped test runs on t
 | `map` | the id of a playable map of `MapRegistry` | `drive_in` | the map the night is built on; optional when read (a ticket or lobby from before the choice means the lot); [maps](maps.md) |
 | `bots` | 0 to 7 | 0 | bots that fill the night's seats ([below](#bots)); the key may be left out of a ticket or a snapshot from before it and then means 0 |
 | `bot_skill` | 0 rookie, 1 regular, 2 veteran | 1 | how well every bot of the night plays ([below](#bots)); the key may be left out and then means regular |
+| `perk_limit` | 0 default, 1 unlimited | 0 | how many perks a player may carry: the shop's `economy.max_tonics` (4), or every perk the shop sells (6); a perk is still bought once ([perks](perks.md)); the key may be left out and then means default |
 
 - **Where the multiplier applies.** To the tuned count of a normal round, which is also what a special round starts
   from (a stampede is 110% of the scaled count, an escort party its share of it). A new type's first round still
@@ -239,7 +240,7 @@ started. The defaults are today's game exactly, and every shipped test runs on t
   reads it, `set_settings()` shows a value without a signal, `set_editable(false)` is the guest's read-only view of
   what the WELCOME carried (`MatchSettings.from_snapshot(welcome["snapshot"])`; `Night.match_settings` after
   `start_remote`), and `changed` fires when a control moves. A dedicated server takes `--count`, `--max-alive`
-  `--break` and `--bots`.
+  `--break`, `--bots` and `--perk-limit`.
 - **Bots.** <a id="bots"></a>`bots` (`MatchSettings.MAX_BOTS` = 7, one less than the seats: a person always holds
   one) is how many `BotClient`s the night seats beside the people. `NightBots` (`game/gameplay/night/night_bots.gd`) is
   the one place that decides, for Solo (`Night`) and a room (`NightHost`) alike. Solo seats the setting beside the

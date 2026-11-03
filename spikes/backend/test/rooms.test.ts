@@ -362,3 +362,26 @@ test("the bot skill rides the settings: 0 to 2 whole numbers are kept and signed
   assert.deepEqual(verifyToken(config.ticketSecret, "ticket", answer.ticket)?.settings, chosen);
   await app.close();
 });
+
+test("the perk limit rides the settings: 0 and 1 are kept and signed, others are refused, absent means 0", async () => {
+  const { app, guest, call, config } = await platform();
+  const host = await guest("host");
+  const lobby = (await call("POST", "/lobbies", host.headers, { maxPlayers: 4 })).json();
+  const good = { count_multiplier: 1, max_alive: 0, break_seconds: 0 };
+  for (const perk_limit of [2, -1, 0.5, "1", true]) {
+    const refused = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, { ...good, perk_limit });
+    assert.equal(refused.statusCode, 400, String(perk_limit));
+    assert.equal(refused.json().error, "bad_settings");
+  }
+  // A game from before the setting sends none: kept as sent, and the game server reads it as Default.
+  const bare = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, good);
+  assert.deepEqual(bare.json().settings, good);
+  const chosen = { ...good, perk_limit: 1 };
+  const set = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, chosen);
+  assert.equal(set.statusCode, 200);
+  assert.deepEqual(set.json().settings, chosen);
+  await call("POST", `/lobbies/${lobby.id}/start`, host.headers);
+  const answer = (await call("POST", `/lobbies/${lobby.id}/ticket`, host.headers)).json();
+  assert.deepEqual(verifyToken(config.ticketSecret, "ticket", answer.ticket)?.settings, chosen);
+  await app.close();
+});

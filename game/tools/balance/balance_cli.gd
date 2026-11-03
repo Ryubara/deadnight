@@ -7,6 +7,7 @@ extends SceneTree
 ##     [--skill-set=head_rate=0.7 ...]  (a number of the skill level replaced, for a try)
 ##     [--assist=0.5]  (a touch player with the aim assist at that strength)
 ##     [--map=small_indoor]  (the second map's rules over the table, and its bots' shopping list)
+##     [--perks=unlimited]  (the match setting that lifts the limit on the perks a player may carry)
 ##
 ## `tools/balance/run_report.py` runs all nine cells in parallel and draws the charts.
 
@@ -39,7 +40,8 @@ func _init() -> void:
 		int(args.get("rounds", str(BalanceBatch.DEFAULT_MAX_ROUNDS))),
 		_shopping(args.get("shopping", shopping_default)),
 		float(args.get("assist", "0")),
-		_skill_numbers(OS.get_cmdline_user_args())
+		_skill_numbers(OS.get_cmdline_user_args()),
+		_settings(args)
 	)
 	cell["seconds"] = float(Time.get_ticks_msec() - started) / 1000.0
 	var out: String = args.get("out", "")
@@ -79,6 +81,15 @@ func _absolute(path: String) -> String:
 		return path
 	var base := OS.get_environment("PWD")
 	return path if base.is_empty() else base.path_join(path)
+
+
+## The match settings of the run: `--perks=unlimited` lifts the perk limit, anything else is the
+## usual rules.
+func _settings(args: Dictionary) -> MatchSettings:
+	var settings := MatchSettings.new()
+	if String(args.get("perks", "default")) == "unlimited":
+		settings.perk_limit = MatchSettings.PERKS_UNLIMITED
+	return settings
 
 
 ## The items a run buys instead of the skill's list: names separated by commas, or `none`.

@@ -289,3 +289,16 @@ func test_a_tonic_is_bought_while_the_bot_lacks_it_and_a_lost_one_again() -> voi
 	var full := hearty | encore | rewind | arc
 	var more := _choose(_view(5000, {"perks": full}), _profile([&"tonic_double_shot"]))
 	assert_bool(more.is_none()).is_true()
+	# On a night with the perk limit lifted (#913) the same bot buys the fifth and the sixth.
+	_shop.perk_limit = MatchSettings.UNLIMITED_PERKS
+	var fifth := _choose(_view(5000, {"perks": full}), _profile([&"tonic_double_shot"]))
+	assert_str(String(fifth.item)).is_equal("tonic_double_shot")
+	var five := full | (1 << order.find(&"tonic_double_shot"))
+	var sixth := _choose(_view(5000, {"perks": five}), _profile([&"tonic_third_holster"]))
+	assert_str(String(sixth.item)).is_equal("tonic_third_holster")
+	# The shop built for a night reads the limit off the match settings.
+	var unlimited := MatchSettings.new()
+	unlimited.perk_limit = MatchSettings.PERKS_UNLIMITED
+	assert_int(unlimited.tonic_limit(_shop.economy)).is_equal(MatchSettings.UNLIMITED_PERKS)
+	_shop.perk_limit = 0
+	assert_int(_shop.tonic_limit()).is_equal(_shop.economy.max_tonics)

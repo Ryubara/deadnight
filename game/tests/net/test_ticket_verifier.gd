@@ -39,6 +39,7 @@ func test_the_rules_the_backend_signed_into_a_ticket_are_read_back() -> void:
 		"map": "drive_in",
 		"bots": 0,
 		"bot_skill": MatchSettings.DEFAULT_SKILL,
+		"perk_limit": MatchSettings.PERKS_DEFAULT,
 	}
 	assert_dict((result["settings"] as MatchSettings).to_dict()).is_equal(expected)
 
@@ -96,9 +97,34 @@ func test_a_ticket_without_rules_admits_with_none_and_one_with_rules_hands_them_
 	var with_rules := TicketMaker.make(SECRET, "gs-test", "m", "bo", "Bo", 60, chosen)
 	var admitted := _verifier().admit(with_rules, int(Time.get_unix_time_from_system()))
 	assert_bool(admitted["ok"]).is_true()
-	assert_dict((admitted["settings"] as MatchSettings).to_dict()).is_equal(
-		chosen.merged({"map": "drive_in", "bots": 0, "bot_skill": MatchSettings.DEFAULT_SKILL})
+	(
+		assert_dict((admitted["settings"] as MatchSettings).to_dict())
+		. is_equal(
+			(
+				chosen
+				. merged(
+					{
+						"map": "drive_in",
+						"bots": 0,
+						"bot_skill": MatchSettings.DEFAULT_SKILL,
+						"perk_limit": MatchSettings.PERKS_DEFAULT,
+					}
+				)
+			)
+		)
 	)
+	# A lifted perk limit comes through as the float JSON gives (#913); a value nobody offers refuses.
+	var lifted := TicketMaker.make(
+		SECRET, "gs-test", "m", "fy", "Fy", 60, chosen.merged({"perk_limit": 1.0})
+	)
+	var lifted_in := _verifier().admit(lifted, int(Time.get_unix_time_from_system()))
+	assert_int((lifted_in["settings"] as MatchSettings).perk_limit).is_equal(
+		MatchSettings.PERKS_UNLIMITED
+	)
+	var odd := TicketMaker.make(
+		SECRET, "gs-test", "m", "gi", "Gi", 60, chosen.merged({"perk_limit": 2})
+	)
+	assert_bool(_verifier().admit(odd, int(Time.get_unix_time_from_system()))["ok"]).is_false()
 	# With a map, the ticket hands it over (the second map too); a map nobody can play refuses the
 	# ticket.
 	var on_map := TicketMaker.make(

@@ -20,6 +20,8 @@ export interface MatchSettings {
   bots?: number;
   /** How well the bots play: 0 rookie, 1 regular, 2 veteran. Absent: 1. */
   bot_skill?: number;
+  /** How many perks a player may carry: 0 the shop's own limit, 1 unlimited. Absent: 0. */
+  perk_limit?: number;
 }
 
 export const MIN_COUNT_MULTIPLIER = 0.25;
@@ -29,6 +31,7 @@ export const MIN_BREAK = 1;
 export const MAX_BREAK = 120;
 export const MAX_BOTS = 7;
 export const MAX_BOT_SKILL = 2;
+export const MAX_PERK_LIMIT = 1;
 
 /** The map every night had before there was a choice. */
 export const DEFAULT_MAP = "drive_in";
@@ -37,12 +40,12 @@ export const PLAYABLE_MAPS = ["drive_in", "small_indoor"];
 
 /** The keys every settings object has; `map` and `bots` may be left out by a client from before them (default map, 0 bots). */
 const KEYS = ["count_multiplier", "max_alive", "break_seconds"];
-const OPTIONAL_KEYS = ["map", "bots", "bot_skill"];
+const OPTIONAL_KEYS = ["map", "bots", "bot_skill", "perk_limit"];
 
 const inRange = (value: unknown, low: number, high: number): value is number =>
   typeof value === "number" && Number.isFinite(value) && value >= low && value <= high;
 
-/** The settings `value` holds, or null when it is not the three keys (and optionally a map, bots and their skill), each in its bounds. */
+/** The settings `value` holds, or null when it is not the three keys (and optionally a map, bots, their skill and the perk limit), each in its bounds. */
 export function parseSettings(value: unknown): MatchSettings | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
   const given = value as Record<string, unknown>;
@@ -51,17 +54,20 @@ export function parseSettings(value: unknown): MatchSettings | null {
   const { count_multiplier, max_alive, break_seconds, map } = given;
   const bots = "bots" in given ? given.bots : undefined;
   const botSkill = "bot_skill" in given ? given.bot_skill : undefined;
+  const perkLimit = "perk_limit" in given ? given.perk_limit : undefined;
   if (!inRange(count_multiplier, MIN_COUNT_MULTIPLIER, MAX_COUNT_MULTIPLIER)) return null;
   if (!inRange(max_alive, 0, MAX_ALIVE) || !Number.isInteger(max_alive)) return null;
   if (break_seconds !== 0 && !inRange(break_seconds, MIN_BREAK, MAX_BREAK)) return null;
   if (map !== undefined && !(typeof map === "string" && PLAYABLE_MAPS.includes(map))) return null;
   if (bots !== undefined && (!inRange(bots, 0, MAX_BOTS) || !Number.isInteger(bots))) return null;
   if (botSkill !== undefined && (!inRange(botSkill, 0, MAX_BOT_SKILL) || !Number.isInteger(botSkill))) return null;
+  if (perkLimit !== undefined && (!inRange(perkLimit, 0, MAX_PERK_LIMIT) || !Number.isInteger(perkLimit))) return null;
   const out: MatchSettings = { count_multiplier, max_alive, break_seconds: break_seconds as number };
   return {
     ...out,
     ...(map === undefined ? {} : { map: map as string }),
     ...(bots === undefined ? {} : { bots }),
     ...(botSkill === undefined ? {} : { bot_skill: botSkill }),
+    ...(perkLimit === undefined ? {} : { perk_limit: perkLimit }),
   };
 }

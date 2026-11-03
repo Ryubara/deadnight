@@ -97,12 +97,13 @@ static func _tonic(server: NightServer, player_id: int, item_id: StringName) -> 
 	var tonics := rules.players[player_id].tonics
 	if tonics.has(item_id):
 		return {"kind": &"tonic_owned", "id": item_id, "name": item.display_name}
-	if tonics.size() >= rules.tuning.economy.max_tonics:
+	var limit := rules.settings.tonic_limit(rules.tuning.economy)
+	if tonics.size() >= limit:
 		return {
 			"kind": &"tonic_full",
 			"id": item_id,
 			"name": item.display_name,
-			"limit": rules.tuning.economy.max_tonics,
+			"limit": limit,
 		}
 	return {
 		"kind": &"tonic",
