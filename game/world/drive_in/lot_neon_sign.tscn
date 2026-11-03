@@ -1,11 +1,14 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dvlxakbhtlp8j"]
 
-[ext_resource type="Script" path="res://world/drive_in/lot_neon_sign.gd" id="1_sign"]
-[ext_resource type="Shader" path="res://world/drive_in/glow.gdshader" id="2_glow"]
+[ext_resource type="Script" uid="uid://ibudwf7sbja" path="res://world/drive_in/lot_neon_sign.gd" id="1_sign"]
+[ext_resource type="Shader" uid="uid://cd7ylt00jr4on" path="res://world/drive_in/glow.gdshader" id="2_glow"]
 
 [sub_resource type="StandardMaterial3D" id="Board"]
 albedo_color = Color(0.07, 0.07, 0.09, 1)
-roughness = 1.0
+
+[sub_resource type="BoxMesh" id="BoardMesh"]
+material = SubResource("Board")
+size = Vector3(5.6, 1, 0.12)
 
 [sub_resource type="StandardMaterial3D" id="Tube"]
 albedo_color = Color(1, 0.25, 0.5, 1)
@@ -13,74 +16,76 @@ emission_enabled = true
 emission = Color(1, 0.25, 0.5, 1)
 emission_energy_multiplier = 3.0
 
-[sub_resource type="ShaderMaterial" id="HaloMaterial"]
-render_priority = 1
-shader = ExtResource("2_glow")
-shader_parameter/tint = Color(1, 0.25, 0.5, 1)
-shader_parameter/energy = 0.9
-shader_parameter/falloff = 1.8
-shader_parameter/billboard = true
-
-[sub_resource type="BoxMesh" id="BoardMesh"]
-material = SubResource("Board")
-size = Vector3(5.6, 1.0, 0.12)
-
 [sub_resource type="BoxMesh" id="TubeH"]
 size = Vector3(5.3, 0.06, 0.06)
 
 [sub_resource type="BoxMesh" id="TubeV"]
 size = Vector3(0.06, 0.84, 0.06)
 
+[sub_resource type="ShaderMaterial" id="HaloMaterial"]
+render_priority = 1
+shader = ExtResource("2_glow")
+shader_parameter/tint = Color(1, 0.25, 0.5, 1)
+shader_parameter/energy = 0.325
+shader_parameter/falloff = 2.76
+shader_parameter/billboard = false
+shader_parameter/card = false
+shader_parameter/edge = Vector2(0.2, 0.15)
+shader_parameter/fade = 0.0
+shader_parameter/bars = 0.0
+shader_parameter/rails = 0.0
+shader_parameter/shadow = 0.3
+shader_parameter/mask_rect = Vector4(0, 0, 1, 1)
+
 [sub_resource type="QuadMesh" id="HaloMesh"]
 size = Vector2(9, 4)
 
-[node name="NeonSign" type="Node3D"]
+[node name="NeonSign" type="Node3D" unique_id=169893183]
 script = ExtResource("1_sign")
 
-[node name="Board" type="MeshInstance3D" parent="."]
+[node name="Board" type="MeshInstance3D" parent="." unique_id=927523254]
 mesh = SubResource("BoardMesh")
 
-[node name="Frame" type="Node3D" parent="."]
+[node name="Frame" type="Node3D" parent="." unique_id=1035163571]
 
-[node name="Top" type="MeshInstance3D" parent="Frame"]
+[node name="Top" type="MeshInstance3D" parent="Frame" unique_id=1392292369]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.42, 0.08)
-mesh = SubResource("TubeH")
 material_override = SubResource("Tube")
+mesh = SubResource("TubeH")
 
-[node name="Bottom" type="MeshInstance3D" parent="Frame"]
+[node name="Bottom" type="MeshInstance3D" parent="Frame" unique_id=1841067508]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.42, 0.08)
+material_override = SubResource("Tube")
 mesh = SubResource("TubeH")
-material_override = SubResource("Tube")
 
-[node name="Left" type="MeshInstance3D" parent="Frame"]
+[node name="Left" type="MeshInstance3D" parent="Frame" unique_id=1443469014]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.65, 0, 0.08)
-mesh = SubResource("TubeV")
 material_override = SubResource("Tube")
+mesh = SubResource("TubeV")
 
-[node name="Right" type="MeshInstance3D" parent="Frame"]
+[node name="Right" type="MeshInstance3D" parent="Frame" unique_id=1521795841]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.65, 0, 0.08)
-mesh = SubResource("TubeV")
 material_override = SubResource("Tube")
+mesh = SubResource("TubeV")
 
-[node name="Text" type="Label3D" parent="."]
+[node name="Text" type="Label3D" parent="." unique_id=541341876]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.08)
 pixel_size = 0.012
-shaded = false
 double_sided = false
 text = "OPEN"
 font_size = 64
 outline_size = 0
 
-[node name="Halo" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.3)
-mesh = SubResource("HaloMesh")
+[node name="Halo" type="MeshInstance3D" parent="." unique_id=1191087406]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.060299218, -0.060964823, 0.09526062)
 material_override = SubResource("HaloMaterial")
 cast_shadow = 0
+mesh = SubResource("HaloMesh")
 
-[node name="Light" type="OmniLight3D" parent="." groups=["powered_light"]]
-metadata/decor = true
+[node name="Light" type="OmniLight3D" parent="." unique_id=875916273 groups=["powered_light"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.3, 1.2)
 light_color = Color(1, 0.25, 0.5, 1)
-light_energy = 2.2
+light_energy = 9.647
 omni_range = 10.0
 omni_attenuation = 1.4
+metadata/decor = true

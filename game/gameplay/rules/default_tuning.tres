@@ -1,20 +1,27 @@
-[gd_resource type="Resource" script_class="RulesTuning" format=3]
+[gd_resource type="Resource" script_class="RulesTuning" format=3 uid="uid://caqbt0pbc4xek"]
 
-[ext_resource type="Script" path="res://gameplay/rules/shop_item.gd" id="1_skww1"]
-[ext_resource type="Script" path="res://gameplay/rules/economy_tuning.gd" id="2_tud1d"]
-[ext_resource type="Script" path="res://gameplay/rules/fuel_tuning.gd" id="3_bgcg8"]
-[ext_resource type="Script" path="res://gameplay/rules/round_tuning.gd" id="4_468ln"]
-[ext_resource type="Script" path="res://gameplay/rules/rules_tuning.gd" id="5_3ukcj"]
-[ext_resource type="Script" path="res://gameplay/rules/zombie_type.gd" id="6_ztype"]
-[ext_resource type="Script" path="res://gameplay/rules/zombie_roster.gd" id="7_roster"]
-[ext_resource type="Script" path="res://gameplay/rules/special_round.gd" id="8_sround"]
-[ext_resource type="Script" path="res://gameplay/rules/special_tuning.gd" id="9_stune"]
-[ext_resource type="Script" path="res://gameplay/rules/explosive_tuning.gd" id="6_expl1"]
-[ext_resource type="Script" path="res://gameplay/rules/barricade_tuning.gd" id="10_barr1"]
-[ext_resource type="Script" path="res://gameplay/rules/health_tuning.gd" id="10_ptune"]
-[ext_resource type="Script" path="res://gameplay/rules/revive_tuning.gd" id="13_revive"]
-[ext_resource type="Script" path="res://gameplay/rules/crane_tuning.gd" id="11_crane1"]
-[ext_resource type="Script" path="res://gameplay/rules/upgrade_tuning.gd" id="12_upgr1"]
+[ext_resource type="Script" uid="uid://bjvud6eltffy" path="res://gameplay/rules/shop_item.gd" id="1_skww1"]
+[ext_resource type="Script" uid="uid://d1eny3h4nqnbg" path="res://gameplay/rules/economy_tuning.gd" id="2_tud1d"]
+[ext_resource type="Script" uid="uid://bgahjd05ugvlh" path="res://gameplay/rules/fuel_tuning.gd" id="3_bgcg8"]
+[ext_resource type="Script" uid="uid://u7ng0ts6hs0v" path="res://gameplay/rules/round_tuning.gd" id="4_468ln"]
+[ext_resource type="Script" uid="uid://dr4l5rmgmk072" path="res://gameplay/rules/rules_tuning.gd" id="5_3ukcj"]
+[ext_resource type="Script" uid="uid://wpao5ih2bo5u" path="res://gameplay/rules/explosive_tuning.gd" id="6_expl1"]
+[ext_resource type="Script" uid="uid://b26d8hhqbokb7" path="res://gameplay/rules/zombie_type.gd" id="6_ztype"]
+[ext_resource type="Script" uid="uid://7dhiesp1sgxr" path="res://gameplay/rules/zombie_roster.gd" id="7_roster"]
+[ext_resource type="Script" uid="uid://cnlnrx0y1agll" path="res://gameplay/rules/special_round.gd" id="8_sround"]
+[ext_resource type="Script" uid="uid://dmog2pix1val8" path="res://gameplay/rules/special_tuning.gd" id="9_stune"]
+[ext_resource type="Script" uid="uid://bhhe118vb68vg" path="res://gameplay/rules/barricade_tuning.gd" id="10_barr1"]
+[ext_resource type="Script" uid="uid://bcch838joo1jn" path="res://gameplay/rules/health_tuning.gd" id="10_ptune"]
+[ext_resource type="Script" uid="uid://j8gk83sifmcp" path="res://gameplay/rules/crane_tuning.gd" id="11_crane1"]
+[ext_resource type="Script" uid="uid://cnjicu0qxyml2" path="res://gameplay/rules/upgrade_tuning.gd" id="12_upgr1"]
+[ext_resource type="Script" uid="uid://dcvi8uy5msf44" path="res://gameplay/rules/revive_tuning.gd" id="13_revive"]
+
+[sub_resource type="Resource" id="Resource_barr1"]
+script = ExtResource("10_barr1")
+
+[sub_resource type="Resource" id="Resource_crane1"]
+script = ExtResource("11_crane1")
+leave_chances = PackedFloat32Array(0.15, 0.15, 0.15, 0.15, 0.3, 0.3, 0.3, 0.3, 0.5)
 
 [sub_resource type="Resource" id="Resource_jrviv"]
 script = ExtResource("1_skww1")
@@ -172,69 +179,19 @@ pool_weights = PackedFloat32Array()
 
 [sub_resource type="Resource" id="Resource_6sif2"]
 script = ExtResource("2_tud1d")
-start_points = 200
-hit = 4
-headshot_hit = 8
-max_paid_hits = 4
-kill = 60
-headshot_kill = 100
-melee_kill = 130
-repair = 12
-repair_cap_per_round = 120
-round_bonus_base = 20
-round_bonus_per_round = 10
-down_penalty_fraction = 0.1
-max_tonics = 4
 items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_upgr1"), SubResource("Resource_utxut"), SubResource("Resource_gren1"), SubResource("Resource_ammo_pistol"), SubResource("Resource_ammo_smg"), SubResource("Resource_ammo_shotgun"), SubResource("Resource_ammo_rifle"), SubResource("Resource_ammo_flare_gun")])
+
+[sub_resource type="Resource" id="Resource_expl1"]
+script = ExtResource("6_expl1")
 
 [sub_resource type="Resource" id="Resource_df3qj"]
 script = ExtResource("3_bgcg8")
-capacity = 100.0
-start_fuel = 100.0
-idle_drain = 0.03
-circuit_drain = Dictionary[StringName, float]({
-&"back_lot": 0.07,
-&"booth": 0.08,
-&"concession": 0.05,
-&"screen_lot": 0.06
-})
-start_circuits = Array[StringName]([&"screen_lot"])
-round_strain = 0.03
-break_factor = 0.5
-low_fraction = 0.25
-brownout_fraction = 0.1
 
-[sub_resource type="Resource" id="Resource_1fk4k"]
-script = ExtResource("4_468ln")
-count_base = 4.0
-count_linear = 1.3
-count_quadratic = 0.07
-count_per_extra_player = 0.6
-health_base = 50.0
-health_step = 8.0
-health_knee_round = 8
-health_growth = 1.07
-speed_base = 1.2
-speed_step = 0.16
-speed_cap = 5.0
-speed_jitter = 0.12
-dark_speed_multiplier = 1.25
-spawn_interval_start = 3.2
-spawn_interval_decay = 0.96
-spawn_interval_min = 0.5
-spawn_rate_per_extra_player = 0.5
-alive_cap_start = 6.0
-alive_cap_step = 0.8
-alive_cap_max = 28.0
-alive_cap_per_extra_player = 6.0
-alive_cap_ceiling = 120
-web_alive_cap_ceiling = 40
-first_spawn_delay = 1.5
-intro_seconds = 12.0
-break_seconds = 5.0
-ambient_start = 0.6
-ambient_step = 0.035
-ambient_min = 0.15
+[sub_resource type="Resource" id="Resource_ptune1"]
+script = ExtResource("10_ptune")
+
+[sub_resource type="Resource" id="Resource_revive1"]
+script = ExtResource("13_revive")
 
 [sub_resource type="Resource" id="Type_walker"]
 script = ExtResource("6_ztype")
@@ -252,7 +209,6 @@ speed_multiplier = 1.4
 damage = 12.0
 points_multiplier = 1.2
 first_round = 4
-intro_count = 1
 share_start = 0.06
 share_step = 0.04
 share_max = 0.3
@@ -284,7 +240,6 @@ barrier_speed = 2.5
 points_multiplier = 2.5
 max_paid_hits = 8
 first_round = 8
-intro_count = 1
 share_start = 0.03
 share_step = 0.01
 share_max = 0.06
@@ -308,6 +263,18 @@ max_paid_hits = 20
 [sub_resource type="Resource" id="Roster_1"]
 script = ExtResource("7_roster")
 types = Array[ExtResource("6_ztype")]([SubResource("Type_walker"), SubResource("Type_runner"), SubResource("Type_crawler"), SubResource("Type_brute"), SubResource("Type_headliner")])
+
+[sub_resource type="Resource" id="Resource_1fk4k"]
+script = ExtResource("4_468ln")
+count_base = 4.0
+count_linear = 1.3
+count_quadratic = 0.07
+health_base = 50.0
+health_step = 8.0
+spawn_interval_start = 3.2
+spawn_interval_decay = 0.96
+alive_cap_start = 6.0
+alive_cap_step = 0.8
 
 [sub_resource type="Resource" id="Special_double_feature"]
 script = ExtResource("8_sround")
@@ -339,57 +306,9 @@ reward_base = 150
 [sub_resource type="Resource" id="Specials_1"]
 script = ExtResource("9_stune")
 rounds = Array[ExtResource("8_sround")]([SubResource("Special_double_feature"), SubResource("Special_stampede"), SubResource("Special_double_feature"), SubResource("Special_crawl_space")])
-[sub_resource type="Resource" id="Resource_expl1"]
-script = ExtResource("6_expl1")
-start_grenades = 2
-refill_to = 3
-max_grenades = 5
-explosion_kill = 40
-leg_fraction = 0.25
-band_low = 0.05
-band_high = 0.4
-band_chance = 0.6
-crawler_speed_fraction = 0.35
-
-[sub_resource type="Resource" id="Resource_barr1"]
-script = ExtResource("10_barr1")
-ids = Array[StringName]([&"nw", &"ne", &"w", &"e", &"n", &"n2"])
-boards = 5
-seconds_per_board = 1.2
-
-[sub_resource type="Resource" id="Resource_ptune1"]
-script = ExtResource("10_ptune")
-max_health = 100.0
-regen_delay = 5.0
-regen_per_second = 25.0
-revive_seconds = 3.5
-revive_fraction = 0.5
-
-[sub_resource type="Resource" id="Resource_revive1"]
-script = ExtResource("13_revive")
-bleed_out_seconds = 45.0
-reviver_points = 0
-bleed_stops_while_held = true
-
-[sub_resource type="Resource" id="Resource_crane1"]
-script = ExtResource("11_crane1")
-spot_doors = Array[StringName]([&"door_concession", &"door_concession", &"", &"door_yard"])
-start_spot = 0
-spin_seconds = 4.5
-grab_seconds = 12.0
-safe_plays = 3
-leave_chances = PackedFloat32Array(0.15, 0.15, 0.15, 0.15, 0.3, 0.3, 0.3, 0.3, 0.5)
-breakdown_seconds = 4.0
-refund_fraction = 1.0
 
 [sub_resource type="Resource" id="Resource_upgt1"]
 script = ExtResource("12_upgr1")
-weapons = Array[StringName]([&"pistol", &"smg", &"shotgun", &"rifle", &"flare_gun"])
-damage_multiplier = 1.75
-magazine_multiplier = 1.5
-reserve_multiplier = 1.5
-price_step = 1500
-name_prefix = "Re-Cut "
 
 [resource]
 script = ExtResource("5_3ukcj")

@@ -1,9 +1,8 @@
-[gd_resource type="StandardMaterial3D" format=3]
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://cu1o81rqkb3jb"]
 
 [resource]
 resource_name = "ammo_band"
 albedo_color = Color(0.941, 0.886, 0.416, 1)
-roughness = 1.0
 metallic_specular = 0.0
 emission_enabled = true
 emission = Color(0.478, 0.416, 0.063, 1)
