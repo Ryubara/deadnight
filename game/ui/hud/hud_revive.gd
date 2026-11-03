@@ -7,11 +7,13 @@ extends HudPart
 ##  - a downed player: the bleed-out clock as a ring that drains in danger red with the seconds left
 ##    inside, and `BLEEDING OUT` under it; when a teammate is pulling them up, that teammate's ring
 ##    fills over the clock (`<NAME> IS PULLING YOU UP`);
+##  - a downed player the revive perk is getting up alone: the perk's own count as a ring that
+##    fills, the seconds left inside and `GETTING YOURSELF UP` under it (the clock stands still);
 ##  - a player who bled out: `YOU BLED OUT` and `BACK NEXT ROUND`.
 ## Nothing is drawn for a player who is up and not reviving. All of it is the server's numbers
 ## (`HudState.team`'s "bleed", "revive", "reviver", "dead"), so both screens show the same ring.
 
-enum Mode { NONE, REVIVING, DOWNED, BEING_REVIVED, DEAD }
+enum Mode { NONE, REVIVING, DOWNED, BEING_REVIVED, DEAD, SELF_REVIVING }
 
 ## Where the ring is centred, as a share of the screen, and how big it is, canvas units.
 const CENTRE := Vector2(0.5, 0.66)
@@ -63,7 +65,12 @@ func _read() -> void:
 	if bool(me["downed"]):
 		clock_fraction = state.bleed_share(me)
 		number_text = str(ceili(float(me["bleed"])))
-		if int(me["reviver"]) != 0:
+		if float(me["self_revive"]) > 0.0:
+			mode = Mode.SELF_REVIVING
+			number_text = str(ceili(float(me["self_revive"])))
+			fraction = 1.0 - clampf(float(me["self_revive"]) / state.self_revive_total, 0.0, 1.0)
+			line_text = "GETTING YOURSELF UP"
+		elif int(me["reviver"]) != 0:
 			mode = Mode.BEING_REVIVED
 			fraction = float(me["revive"])
 			line_text = "%s IS PULLING YOU UP" % _name(int(me["reviver"]))
@@ -101,7 +108,7 @@ func _draw() -> void:
 	else:
 		# The clock: the whole ring dim, the part still left bright and draining.
 		draw_arc(centre, RADIUS, 0.0, TAU, SEGMENTS, Color(tokens.outline, 0.8), CLOCK_RING, true)
-		if mode != Mode.REVIVING:
+		if mode != Mode.REVIVING and mode != Mode.SELF_REVIVING:
 			_arc(centre, RADIUS, clock_fraction, tokens.danger, CLOCK_RING)
 		# The hold, thicker and inside the clock, filling clockwise from the top.
 		var inner := RADIUS - RING * 0.5 - CLOCK_RING
@@ -113,7 +120,9 @@ func _draw() -> void:
 	var text_font := tokens.text_font(tokens.embolden_display * 0.3, 1.0)
 	var under := centre + Vector2(0.0, RADIUS + RING + LINE_SIZE + 6.0)
 	var colour := (
-		tokens.accent_bright if mode in [Mode.REVIVING, Mode.BEING_REVIVED] else tokens.danger
+		tokens.accent_bright
+		if mode in [Mode.REVIVING, Mode.BEING_REVIVED, Mode.SELF_REVIVING]
+		else tokens.danger
 	)
 	_text(text_font, line_text, under, LINE_SIZE, colour)
 	if sub_text != "":

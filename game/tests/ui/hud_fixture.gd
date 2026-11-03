@@ -61,6 +61,12 @@ func spawn(count: int) -> Array[int]:
 	return ids
 
 
+## The local player has the first `count` perks of the shop (the badges beside the health card).
+func give_perks(count: int) -> void:
+	var ids := PerkEffects.tonic_ids(rules.tuning.economy)
+	hud.state.set_perks(ids.slice(0, count))
+
+
 ## Moves every time-driven part on by `seconds` (a fixed step, no real clock).
 func advance(seconds: float) -> void:
 	var left := seconds

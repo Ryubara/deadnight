@@ -39,6 +39,8 @@ const STATS := &"stats"
 ## Each player's bleed-out clock and the progress of the hold on them, which change every tick while
 ## someone is down: apart from `TEAM` so a part that only draws the ring is not rebuilt for a name.
 const REVIVE := &"revive"
+## The perks the local player has (`HudPerks`).
+const PERKS := &"perks"
 
 ## A ping the server has not reported: a night alone, or before the first answer.
 const NO_PING := -1
@@ -55,6 +57,9 @@ var local_player_id := 1
 ## tuning (the binding sets them): the rings are drawn against them.
 var revive_seconds := 3.5
 var bleed_total := 45.0
+## The seconds the revive perk takes to get its holder up alone (the shared tuning's, set by the
+## binding): the DOWN card and the ring count them down from it.
+var self_revive_total := 4.0
 ## Which way the local player faces, radians (their yaw): the frame sets it, a blow's bearing is
 ## turned by it. Not a topic: nothing redraws for it.
 var facing := 0.0
@@ -82,6 +87,10 @@ var ammo_free: Array[StringName] = []
 var slot_ids: Array[StringName] = []
 var slot_held := 0
 var slot_count := WeaponSlots.count()
+## The perks the local player has: the ids of the shop's tonics, in the shop's order. The frame says
+## them as bits (`PerkEffects.mask_of`); the binding turns the bits into these. A down that takes
+## the perks empties it.
+var perks: Array[StringName] = []
 var points := 0
 ## The local player's grenades.
 var grenades := 0
@@ -107,8 +116,9 @@ var circuits: Dictionary[StringName, bool] = {}
 ## server's too. "kills", "downs", "revives" and "ping" (milliseconds, `NO_PING` when the night has
 ## no link to measure) are the server's counts, set from its frames and snapshot
 ## (`set_player_stats`), never counted here. "dead" (bled out), "bleed" (seconds a downed player has
-## left), "revive" (the hold's progress, 0 to 1) and "reviver" (who holds it, 0 for nobody) are the
-## server's too (`set_player_revive`).
+## left), "revive" (the hold's progress, 0 to 1), "reviver" (who holds it, 0 for nobody) and
+## "self_revive" (seconds left of the revive perk's own, 0 for none) are the server's too
+## (`set_player_revive`).
 var team: Dictionary[int, Dictionary] = {}
 ## Whole seconds the night has run, as the server counts them (a break and a round both count).
 var night_clock := 0
@@ -286,26 +296,48 @@ func set_player_stats(
 
 
 ## The server's word on one player's revive: whether they bled out, the seconds a downed player has
-## left, how far the hold on them has got (0 to 1) and who holds it (0 for nobody). Whole values,
-## not changes, so a frame said twice changes nothing.
+## left, how far the hold on them has got (0 to 1), who holds it (0 for nobody) and the seconds left
+## of the revive perk getting them up alone (0 for none; the bleed-out clock stands still).
+## Whole values, not changes, so a frame said twice changes nothing.
 func set_player_revive(
-	player_id: int, dead: bool, bleed: float, progress: float, reviver: int
+	player_id: int, dead: bool, bleed: float, progress: float, reviver: int, self_revive := 0.0
 ) -> void:
 	var member := _member(player_id)
-	if member["dead"] != dead or member["reviver"] != reviver:
+	if (
+		member["dead"] != dead
+		or member["reviver"] != reviver
+		or (float(member["self_revive"]) > 0.0) != (self_revive > 0.0)
+	):
 		_mark(TEAM)
 	if (
 		member["dead"] != dead
 		or not is_equal_approx(member["bleed"], bleed)
 		or not is_equal_approx(member["revive"], progress)
 		or member["reviver"] != reviver
+		or not is_equal_approx(member["self_revive"], self_revive)
 	):
 		member["dead"] = dead
 		member["bleed"] = bleed
 		member["revive"] = progress
 		member["reviver"] = reviver
+		member["self_revive"] = self_revive
 		_mark(REVIVE)
 	_flush()
+
+
+## The perks the local player has now (shop tonic ids in the shop's order); the parts hear of a
+## change only.
+func set_perks(ids: Array[StringName]) -> void:
+	if perks != ids:
+		perks = ids.duplicate()
+		_mark(PERKS)
+	_flush()
+
+
+## Whether the revive perk is getting the local player up alone now.
+func is_local_self_reviving() -> bool:
+	var me: Dictionary = team.get(local_player_id, {})
+	return bool(me.get("downed", false)) and float(me.get("self_revive", 0.0)) > 0.0
 
 
 ## The night's clock in whole seconds, from the server.
@@ -407,6 +439,7 @@ func load_snapshot(data: Dictionary) -> void:
 		member["downed"] = bool(saved.get("downed", false))
 		member["dead"] = bool(saved.get("dead", false))
 		member["bleed"] = float(saved.get("bleed_left", 0.0))
+		member["self_revive"] = float(saved.get("self_revive_left", 0.0))
 		member["revives"] = int(saved.get("revives", 0))
 		member["points"] = int(saved.get("points", 0))
 		member["grenades"] = int(saved.get("grenades", 0))
@@ -506,6 +539,8 @@ func _handler(type: StringName) -> Callable:
 			handler = _on_player_revived
 		&"player_died":
 			handler = _on_player_died
+		&"self_revive_started":
+			handler = _on_self_revive_started
 		&"points_changed":
 			handler = _on_points_changed
 		&"fuel_changed":
@@ -681,6 +716,7 @@ func _on_player_downed(event: Dictionary) -> void:
 	member["bleed"] = float(event.get("bleed_seconds", bleed_total))
 	member["revive"] = 0.0
 	member["reviver"] = 0
+	member["self_revive"] = 0.0
 	_mark(REVIVE)
 	if player_id == local_player_id:
 		_assign(&"health", 0.0, HEALTH)
@@ -694,6 +730,15 @@ func _on_player_revived(event: Dictionary) -> void:
 	member["bleed"] = 0.0
 	member["revive"] = 0.0
 	member["reviver"] = 0
+	member["self_revive"] = 0.0
+	_mark(REVIVE)
+
+
+## The revive perk began to count: the DOWN card says so at once, the frame keeps the count.
+func _on_self_revive_started(event: Dictionary) -> void:
+	var member := _member(int(event["player_id"]))
+	member["self_revive"] = float(event.get("seconds", self_revive_total))
+	_mark(TEAM)
 	_mark(REVIVE)
 
 
@@ -703,6 +748,7 @@ func _on_player_died(event: Dictionary) -> void:
 	member["bleed"] = 0.0
 	member["revive"] = 0.0
 	member["reviver"] = 0
+	member["self_revive"] = 0.0
 	_mark(TEAM)
 	_mark(REVIVE)
 
@@ -762,6 +808,7 @@ func _member(player_id: int) -> Dictionary:
 			"bleed": 0.0,
 			"revive": 0.0,
 			"reviver": 0,
+			"self_revive": 0.0,
 			"bot": false,
 		}
 		_mark(TEAM)
