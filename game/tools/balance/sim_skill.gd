@@ -4,6 +4,8 @@ extends RefCounted
 ## asks "how many of its shots land, where, how often does it avoid a blow, how well does it
 ## spend", never "what would a person do". The numbers are assumptions, written down here so a
 ## change is a reviewed change; docs/design/rounds.md says what they stand for.
+## The head rate and the dodge are what `test_bot_bands.gd` reads of the bots on the hit zones
+## that follow the bodies (#745): the bands test holds each profile to them, so they move together.
 
 const WEAK := &"weak"
 const AVERAGE := &"average"
