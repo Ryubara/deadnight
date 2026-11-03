@@ -99,6 +99,9 @@ plaque only names the weapon).
 | Third Holster machine (the plaza's) | the middle of the plaza's south wall, at `(0, 57.2)`, facing the gate, spot at `(0, 56.0)` | `tonic_third_holster`: a third weapon ([the perks](perks.md)) | the last door's own machine (2,000), at the far end of the court from its gate: the dearest perk behind the dearest door |
 | Ammunition lockers (5) | the avenue (field), the stand (its north-east corner), the midway, the yard, the back lot | rounds for the weapon in hand, as many as fit | one in the open from the start, one more in each area that opens, so a fight is never a long walk from rounds |
 
+The wall spots sell only the weaker guns ([the wall tier](weapons.md#the-wall-tier), #858): the lot's two are the
+double-barrel and the rifle, the best a wall sells, and the guns above the tier come only from the prize crane.
+
 ### The crane's places
 
 The crane stands on one place at a time (`crane.spot` in the rules, a marker with the metadata `crane_spot` here) and
