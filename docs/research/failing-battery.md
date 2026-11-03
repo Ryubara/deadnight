@@ -36,9 +36,16 @@ The fastest fall is 0.16 of the full light in one 60 Hz tick. From the player's 
 luminance moves by under 3% between the brightest and the deepest frame of an 11 s clip (the lamps are small in it),
 far under the general flash threshold.
 
-The tank's own brownout (`LotLamps.brightness`, the last tenth of the tank) changes each lamp 12 times a second, out of
-step with the next lamp. It is not used on the back lot: a failing lamp under a low tank is `failing_brightness`, the
-battery's flicker times the tank's sag, never both flickers.
+## The tank's brownout uses it too (issue #874)
+
+The tank's brownout (`LotLamps.brightness`, the last tenth of the tank) used to roll each lamp every 5 ticks between
+the sag and 12% of it: at power 0.5 a lamp jumped 19 to 20 times in 4 s and the six lamps together 43 times, a strobe.
+It is now `FailingBattery.brownout(seconds, lamp, power)`: the tank's sag (35% to 100% of the light, as before) with
+the same cycle's events on top, as deep as `sqrt(1 - power)` of the failing battery's dip (so the warning shows from the
+first drop and is full at the end), nothing at a healthy tank and out at a dry one. The count test runs over seven
+levels of the tank, six lamps and their mean: no second holds more than three flashes. The picture only: the rules'
+lit ground is untouched. A failing lamp of the back lot under a low tank is `failing_brightness`, the battery's flicker
+times the tank's sag, never both sets of events.
 
 ## For a sign to follow
 
