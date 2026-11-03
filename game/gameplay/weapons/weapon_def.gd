@@ -80,6 +80,11 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 @export var status: StringName = &""
 @export_range(0.0, 60.0, 0.1, "or_greater", "suffix:s") var status_seconds: float = 0.0
 
+@export_group("Element")
+## What a hit does besides its damage (`ElementDef`): none as shipped; a re-cut weapon may carry one
+## (`RecutProfile.element`).
+@export var element: ElementDef
+
 @export_group("Lure")
 ## Metres round a burst within which zombies leave what they chase for the burst point, and the
 ## seconds they stay (`ZombieLure`); 0 makes no lure. A lure does no damage.
@@ -97,21 +102,29 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 var tier: int = 0
 
 
-## This weapon re-cut: a copy with more damage (the pellets, the blast), a bigger magazine and
-## reserve, and the spec's prefix on its name. The id stays, so the model, the sounds and the shop
-## still know it. The server's `WeaponState` and the balance simulator both make it here.
+## This weapon re-cut: a copy with the numbers of its `RecutProfile` (more damage in the pellets and
+## the blast, a bigger magazine and reserve, a changed rate or reload), its re-cut name and its
+## element. The id stays, so the model, the sounds and the shop still know it. The server's
+## `WeaponState` and the balance simulator both make it here. A weapon the spec has no profile for
+## comes back as a plain copy one tier up.
 func upgraded(spec: UpgradeTuning) -> WeaponDef:
 	var copy := duplicate() as WeaponDef
 	copy.tier = tier + 1
-	copy.display_name = spec.name_prefix + display_name
-	copy.damage = damage * spec.damage_multiplier
-	copy.splash_damage = splash_damage * spec.damage_multiplier
-	copy.magazine_size = ceili(float(magazine_size) * spec.magazine_multiplier)
-	copy.reserve_start = ceili(float(reserve_start) * spec.reserve_multiplier)
-	copy.reserve_max = ceili(float(reserve_max) * spec.reserve_multiplier)
-	if has_status():
-		# A weapon that puts a status on: its burst grows.
-		copy.splash_radius = splash_radius * spec.bloom_multiplier
+	var cut := spec.profile_of(id)
+	if cut == null:
+		return copy
+	copy.display_name = cut.name_of(display_name, spec.name_prefix)
+	copy.damage = damage * cut.damage_multiplier
+	copy.splash_damage = splash_damage * cut.damage_multiplier
+	copy.magazine_size = ceili(float(magazine_size) * cut.magazine_multiplier)
+	copy.reserve_start = ceili(float(reserve_start) * cut.reserve_multiplier)
+	copy.reserve_max = ceili(float(reserve_max) * cut.reserve_multiplier)
+	if cut.fire_interval > 0.0:
+		copy.fire_interval = cut.fire_interval
+	if cut.reload_time > 0.0:
+		copy.reload_time = cut.reload_time
+	copy.splash_radius = splash_radius * cut.burst_radius_multiplier
+	copy.element = cut.element
 	return copy
 
 
@@ -126,6 +139,10 @@ func has_status() -> bool:
 
 func has_bolt_colours() -> bool:
 	return bolt_core_colour.a > 0.0 and bolt_halo_colour.a > 0.0
+
+
+func has_element() -> bool:
+	return element != null
 
 
 func is_lure() -> bool:

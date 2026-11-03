@@ -70,6 +70,9 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"lure_started",
 	&"status_applied",
 	&"status_ended",
+	&"element_burst",
+	&"element_arc",
+	&"fire_patch_started",
 	&"fire_rejected",
 ]
 ## What the grenade server answers that is worth sending on (its answer also repeats the rules'

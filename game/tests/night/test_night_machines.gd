@@ -52,7 +52,7 @@ func test_a_press_re_cuts_the_weapon_charges_and_fills_it() -> void:
 	var state := night.server.combat.state_of(1, &"pistol")
 	assert_int(state.tier()).is_equal(1)
 	assert_float(state.def.damage).is_equal(
-		plain.damage * night.server.rules.tuning.upgrade.damage_multiplier
+		plain.damage * night.server.rules.tuning.upgrade.profile_of(&"pistol").damage_multiplier
 	)
 	assert_int(state.ammo).is_equal(state.def.magazine_size)
 	assert_int(state.reserve).is_equal(state.def.reserve_max)
@@ -70,7 +70,7 @@ func test_a_re_cut_weapon_hurts_by_the_multiplier_in_the_real_combat() -> void:
 	assert_float(DamageModel.damage(def, 0.0, &"body")).is_equal(
 		(
 			WeaponCatalog.get_def(&"pistol").damage
-			* night.server.rules.tuning.upgrade.damage_multiplier
+			* night.server.rules.tuning.upgrade.profile_of(&"pistol").damage_multiplier
 		)
 	)
 	night.queue_free()

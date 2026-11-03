@@ -106,11 +106,12 @@ func test_the_shooter_is_not_hurt_by_the_splash() -> void:
 
 
 func test_a_re_cut_ray_gun_hits_and_splashes_harder() -> void:
-	var spec := UpgradeTuning.new()
+	var spec := UpgradeTuning.shipped()
+	var cut := spec.profile_of(&"ray_gun")
 	var re_cut := _def.upgraded(spec)
-	assert_float(re_cut.damage).is_equal_approx(_def.damage * spec.damage_multiplier, 0.001)
+	assert_float(re_cut.damage).is_equal_approx(_def.damage * cut.damage_multiplier, 0.001)
 	assert_float(re_cut.splash_damage).is_equal_approx(
-		_def.splash_damage * spec.damage_multiplier, 0.001
+		_def.splash_damage * cut.damage_multiplier, 0.001
 	)
 	assert_bool(re_cut.has_bolt_colours()).is_true()
 	assert_bool(spec.allows(&"ray_gun")).is_true()

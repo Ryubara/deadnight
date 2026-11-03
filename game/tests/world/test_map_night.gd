@@ -66,3 +66,27 @@ func test_a_solo_night_with_the_usual_settings_is_on_the_lot() -> void:
 	assert_bool(StubMaps.built_from_stub(night.world)).is_false()
 	assert_str(night.world.map_info.id).is_equal(MapRegistry.DEFAULT)
 	night.queue_free()
+
+
+func test_the_second_map_is_built_from_its_scene_and_runs_a_night() -> void:
+	var info := MapRegistry.of("small_indoor")
+	assert_str(info.id).is_equal("small_indoor")
+	var world := await _world(info)
+	assert_str(world.map_info.id).is_equal("small_indoor")
+	assert_str(world.greybox.scene_file_path).is_equal(info.scene_path)
+	assert_object(world.doors).is_not_null()
+	assert_int(world.door_ids().size()).is_equal(3)
+	world.queue_free()
+	var night := Night.new()
+	night.match_settings = MatchSettings.new()
+	night.match_settings.map = "small_indoor"
+	add_child(night)
+	await night.start(Night.Mode.MANUAL, 7)
+	assert_str(night.world.map_info.id).is_equal("small_indoor")
+	assert_str(night.server.rules.settings.map).is_equal("small_indoor")
+	assert_str(MatchSettings.from_snapshot(night.server.rules.to_dict()).map).is_equal(
+		"small_indoor"
+	)
+	NightFixture.run(night, 5)
+	assert_int(night.state.phase()).is_equal(GameRules.Phase.BREAK)
+	night.queue_free()

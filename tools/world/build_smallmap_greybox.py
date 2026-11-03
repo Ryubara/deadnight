@@ -21,6 +21,7 @@ import re
 from pathlib import Path
 
 import build_greybox as bg
+import build_smallmap_dress as dress
 
 OUT = Path("game/world/smallmap/smallmap_greybox.tscn")
 TUNING = Path("game/world/smallmap/smallmap_tuning.tres")  # the map's prices (MapTuning): the one source of the links'
@@ -48,6 +49,10 @@ WINDOW_GAP = 2.0
 WINDOW_WIDTH = 1.2
 WINDOW_SILL = 0.9
 WINDOW_TOP = 2.2
+OPENING_MODULE = 3.0  # the kit's wide opening: a 3 m module with a 2.0 x 2.4 m clear opening (its own jambs and lintel)
+MODULE_HEIGHT = (
+    2.8  # the kit's wall modules: a window or a doorway's gap in the shell runs to here, the lintel fills it
+)
 PARAPET = 1.2  # round a stairwell upstairs: higher than a jump (1.1 m)
 BLOCKER_LAYER = 2  # the boards' layer: players collide with it, shots do not (Barricade.BOARD_LAYER)
 
@@ -111,6 +116,8 @@ WINDOWS = [
     ("upper_b2", "upstairs", "x", -7.95, 9.0, (0, 1), STOREY, UPPER_WALL),
 ]
 # The side room's third entry: a broken wall onto a dead-end pocket the dead come out of (row 15).
+# The windows with a moon shaft (an additive card and its patch on the floor each; the others are plain).
+SHAFTS = {"start_1", "start_3", "start_5", "side_1", "upper_a1", "upper_b1"}
 BREACH = ("side_breach", "side", "z", -6.15, -2.5, (1, 0), 0.0, GROUND_WALL)
 BREACH_HEIGHT = 2.4
 SPAWN_OUT = 7.0  # metres outside a window (row 18: 5 to 15)
@@ -159,7 +166,7 @@ LOCKERS = [
 # room to another outside: the front yard (the hall's windows), the west yard (the rewind room's), the pocket behind
 # the breach, the bank (the upper floor's north windows, at the upper floor's height) and the hall's roof (the upper
 # floor's south windows). #638 builds the backdrop beyond them.
-YARD = (-20.0, 30.0, -26.0, 30.0)
+YARD = (-31.0, 31.0, -27.0, 27.0)  # the backdrop's yard (its wire fence is drawn on these lines)
 BANK_TOP = STOREY
 FENCE_H = 3.0
 POCKET = (-13.8, -6.3, -5.0, 0.0)
@@ -174,6 +181,8 @@ MIDDLES = {
 # The moon indoors: low, against the lot's 0.36. Nothing casts a shadow in the Compatibility renderer, so the moon
 # lifts every floor under the roof evenly (kit docs/godot/compat-lighting.md, Light cards indoors).
 INDOOR_MOON_ENERGY = 0.1
+# The haze indoors: the lot's 0.013 barely shows in a 6 m room; this reads about 19 % at 6 m (the art page, Lighting).
+FOG_DENSITY = 0.035
 
 # Lamps: plain warm lights, one or two a room, on the battery circuit (always lit: whether the generator comes to this
 # map is the maintainer's call, formula row 30, and until it is answered the map has none), so the ground in reach of
@@ -188,7 +197,6 @@ LAMPS = [
     ("UpperB", (-2.0, STOREY + 2.9, -4.0)),
     ("UpperB", (10.0, STOREY + 2.9, -4.0)),
 ]
-BULB = "#ffd9a0"
 
 # The kit's shell materials (#633) on the walls, floors and ceilings; the lot's for the rest until the kit's pieces
 # replace the boxes.
@@ -202,15 +210,14 @@ MATS = {
     "prop": "concession_prop",
     "rack": "yard_prop",
     "door": "door",
-    "yard": "field_ground",
-    "bank": "backlot_ground",
+    "yard": "frost_ground",
+    "bank": "frost_ground",
     "fence": "field_fence",
     "pocket": "breach_ground",
     "frame": "booth_wall",
     "plaque": "plaque",
     "crate": "ammo_crate",
     "band": "ammo_band",
-    "cabinet": "concession_prop",
 }
 
 _shapes: dict[tuple[float, float, float], str] = {}
@@ -247,9 +254,11 @@ def body(parent: str, name: str, size, pos, layer: int, mat: str | None) -> None
         bg.node("Mesh", "MeshInstance3D", key, {"mesh": f'SubResource("{mesh}")'})
 
 
-def rect_box(parent: str, name: str, rect, y0: float, y1: float, mat: str, layers: int = bg.GROUND_LAYER) -> None:
+def rect_box(
+    parent: str, name: str, rect, y0: float, y1: float, mat: str, layers: int = bg.GROUND_LAYER, visible: bool = True
+) -> None:
     x0, x1, z0, z1 = rect
-    bg.block(parent, name, x0, x1, z0, z1, y1 - y0, mat, y0, layers)
+    bg.block(parent, name, x0, x1, z0, z1, y1 - y0, mat, y0, layers, visible)
 
 
 def wood_box(parent: str, name: str, rect, y0: float, y1: float, mat: str) -> None:
@@ -296,13 +305,8 @@ def stair(parent: str, name: str, foot_x: float, north_z: float, floor: float) -
         {"transform": ramp, "use_collision": "true", "size": bg.vec((length, thick, STAIR_WIDTH)),
          "material": f'ExtResource("{MATS["stair"]}")', "metadata/surface": '"wood"'},
     )  # fmt: skip
-    # The treads, drawn only (the ramp is what is walked on).
-    steps = round(STOREY / RISER)
-    for i in range(steps):
-        bx = foot_x + (i + 0.5) * TREAD
-        top = floor + (i + 1) * RISER
-        bg.box(parent, f"{name}Tread{i + 1}", (TREAD, 0.06, STAIR_WIDTH), (bx, top - 0.03, (z0 + z1) / 2),
-               MATS["stair"], collide=False)  # fmt: skip
+    # The kit's flight, drawn over the ramp (the ramp is what is walked on).
+    dress.stair_model(parent, name, foot_x, (z0 + z1) / 2, floor, STAIR_RUN, STAIR_WIDTH, STOREY)
     rect_box(
         parent, f"{name}Side", (foot_x, x1 + 0.2, z1, z1 + 0.2), floor, floor + CEILING, MATS["wall"], bg.WALL_LAYERS
     )
@@ -335,14 +339,15 @@ def link(name: str, slab_size, slab_at, stands: list[tuple[str, tuple[float, flo
         "metadata/opens": "[" + ", ".join(f'"{room}"' for room in LINK_OPENS[name]) + "]",
     }
     key = bg.node(name, "Node3D", "Doors", props)
-    bg.box(key, "Slab", slab_size, slab_at, MATS["door"])
+    bg.box(key, "Slab", slab_size, slab_at, MATS["door"], visible=False)
     for tag, at in stands:
         bg.marker(key, f"Stand{tag}", at)
 
 
 def window(spec, breach: bool = False) -> tuple[float, float, float]:
     """A window socket in `Windows`: a Node3D on the wall's centre line at floor height, +Z into the room, with the
-    frame, the sill and the players-only blocker as its children. Returns where it is."""
+    kit's window module drawn in the gap (the breach: its jamb posts and a beam), the sill, jambs, lintel and the
+    players-only blocker as collision children, and the boards. Returns where it is."""
     wid, room, axis, fixed, along, inward, floor, thick = spec
     pos = (along, floor, fixed) if axis == "x" else (fixed, floor, along)
     rot = math.degrees(math.atan2(inward[0], inward[1]))
@@ -357,27 +362,43 @@ def window(spec, breach: bool = False) -> tuple[float, float, float]:
     key = bg.node(f"Window_{wid}", "Node3D", "Windows", props)
     jamb = (WINDOW_GAP - WINDOW_WIDTH) / 2
     top = BREACH_HEIGHT if breach else WINDOW_TOP
+    upper = thick == UPPER_WALL
+    # The lintel over the gap (the wall's gap runs to the module's top): collision only, off the walking mesh.
+    body(
+        key, "Lintel", (WINDOW_GAP, MODULE_HEIGHT - top, thick), (0, (top + MODULE_HEIGHT) / 2, 0), bg.WALL_LAYERS, None
+    )
     if breach:
-        opening = WINDOW_GAP - 0.4
         for side in (-1, 1):  # broken edges of the hole, 0.2 m a side
             body(key, f"Edge{'L' if side < 0 else 'R'}", (0.2, top, thick), (side * (WINDOW_GAP / 2 - 0.1), top / 2, 0),
                  bg.WALL_LAYERS, MATS["wall"])  # fmt: skip
-        body(key, "Blocker", (opening, top, thick), (0, top / 2, 0), BLOCKER_LAYER, None)
+        body(key, "Blocker", (WINDOW_GAP - 0.4, top, thick), (0, top / 2, 0), BLOCKER_LAYER, None)
+        dress.breach_dressing(key, thick)
+        slots = None
     else:
         for side in (-1, 1):
             body(key, f"Jamb{'L' if side < 0 else 'R'}", (jamb, top, thick + 0.04),
-                 (side * (WINDOW_WIDTH / 2 + jamb / 2), top / 2, 0), bg.WALL_LAYERS, MATS["frame"])  # fmt: skip
-        body(key, "Sill", (WINDOW_WIDTH, WINDOW_SILL, thick + 0.04), (0, WINDOW_SILL / 2, 0), bg.WALL_LAYERS,
-             MATS["frame"])  # fmt: skip
+                 (side * (WINDOW_WIDTH / 2 + jamb / 2), top / 2, 0), bg.WALL_LAYERS, None)  # fmt: skip
+        body(key, "Sill", (WINDOW_WIDTH, WINDOW_SILL, thick + 0.04), (0, WINDOW_SILL / 2, 0), bg.WALL_LAYERS, None)
         body(key, "Blocker", (WINDOW_WIDTH, top - WINDOW_SILL, thick), (0, (WINDOW_SILL + top) / 2, 0),
              BLOCKER_LAYER, None)  # fmt: skip
-    # The boards: a `Barricade` (the rules' windows, BarricadeTuning.ids) with one board a slot, lowest first.
+        fixture_name = "wall_window_zombie_upper" if upper else "wall_window_zombie"
+        dress.place(key, "Model", dress.model(fixture_name), (0, 0, 0))
+        if wid in SHAFTS:
+            dress.moon_shaft(key, inward, upper)
+        slots = dress.slots_of(fixture_name)
+    # The boards: a `Barricade` (the rules' windows, BarricadeTuning.ids) with one board a slot, lowest first. A window's
+    # sit where its module has them (room side, each a little askew); the breach's are spread over its 2.4 m.
     boards = bg.node("Boards", "Node3D", key,
                      {"script": 'ExtResource("barricade")', "metadata/barricade_id": f'"{wid}"',
                       "metadata/board_half": f"{BOARD_LENGTH / 2:g}"})  # fmt: skip
-    first, pitch = (0.3, BREACH_BOARD_PITCH) if breach else (WINDOW_SILL + BOARD_PITCH / 2, BOARD_PITCH)
     for i in range(BOARDS):
-        bg.instance(boards, f"Board{i + 1}", "board", (0.0, first + i * pitch, -BOARD_OUT))
+        if slots is not None:
+            bg.lines.append(f'[node name="Board{i + 1}" parent="{boards}" instance=ExtResource("board")]')
+            bg.lines.append(f"transform = {slots[i]}")
+            bg.lines.append("")
+            bg.node_names.add(f"{boards}/Board{i + 1}")
+        else:
+            bg.instance(boards, f"Board{i + 1}", "board", (0.0, 0.3 + i * BREACH_BOARD_PITCH, -BOARD_OUT))
     return pos
 
 
@@ -399,15 +420,11 @@ def wall_spot(name, shop_id, text, room, face, into, floor, cabinet: bool = Fals
     yaw = _yaw_of(into)
     spot = (x + dx * SPOT_IN, floor, z + dz * SPOT_IN)
     if cabinet:
-        depth = 0.4
-        body("ShopProps", f"{name}Case", (1.3, 2.0, depth), (x + dx * depth / 2, floor + 1.0, z + dz * depth / 2),
-             bg.GROUND_LAYER, MATS["cabinet"])  # fmt: skip
-        sign_at = (x + dx * (depth + 0.02), floor + 1.5, z + dz * (depth + 0.02))
+        dress.cabinet(name, text, face, into, floor, yaw, MATS["plaque"])
     else:
         bg.box("ShopProps", f"{name}Plaque", (1.7, 0.9, 0.12), (x + dx * 0.06, floor + 1.6, z + dz * 0.06), MATS["plaque"],
                yaw, collide=False)  # fmt: skip
-        sign_at = (x + dx * 0.14, floor + 1.6, z + dz * 0.14)
-    bg.sign("ShopProps", f"{name}Sign", text, sign_at, yaw, sign_size(text))
+        bg.sign("ShopProps", f"{name}Sign", text, (x + dx * 0.14, floor + 1.6, z + dz * 0.14), yaw, sign_size(text))
     props = {"transform": bg.xform(spot, yaw), "metadata/kind": '"wall"', "metadata/shop_id": f'"{shop_id}"',
              "metadata/room": f'"{room}"'}  # fmt: skip
     if cabinet:
@@ -442,9 +459,13 @@ def build() -> None:
     lines.append('[ext_resource type="PackedScene" path="res://world/smallmap/fixtures/window_board.tscn" id="board"]')
     lines.append('[ext_resource type="Shader" path="res://world/drive_in/night_sky.gdshader" id="night_sky"]')
     for mid in sorted(set(MATS.values())):
-        lines.append(f'[ext_resource type="Material" path="res://assets/lot/materials/{mid}.tres" id="{mid}"]')
+        folder = "smallmap" if mid == "frost_ground" else "lot"
+        lines.append(f'[ext_resource type="Material" path="res://assets/{folder}/materials/{mid}.tres" id="{mid}"]')
     lines.append("")
-    lines.extend(bg.night_environment_resources())
+    lines.extend(
+        line.replace(f"fog_density = {bg.FOG_DENSITY:g}", f"fog_density = {FOG_DENSITY:g}")
+        for line in bg.night_environment_resources()
+    )
     bg.node(ROOT, "Node3D", None, {
         "metadata/map_id": '"smallmap"', "metadata/storey": f"{STOREY:g}", "metadata/ceiling": f"{CEILING:g}",
         # What a night reads (MapLayout, MapTuning): the rooms open for the dead at the start, the saved meshes, the
@@ -484,7 +505,7 @@ def build() -> None:
     win = {w[0]: w for w in WINDOWS}
 
     def gaps_of(*ids: str) -> list[tuple[float, float, float, float]]:
-        return [(win[i][4], WINDOW_GAP, 0.0, WINDOW_TOP) for i in ids]
+        return [(win[i][4], WINDOW_GAP, 0.0, MODULE_HEIGHT) for i in ids]
 
     gw = GROUND_WALL
     bg.wall("Start", "WallW", "z", -0.15, 0.0, 14.8, CEILING, MATS["wall"], thick=gw)
@@ -492,12 +513,12 @@ def build() -> None:
     bg.wall(
         "Start", "WallE", "z", 16.15, 0.0, 14.8, CEILING, MATS["wall"], gaps_of("start_3", "start_4", "start_5"), gw
     )
-    side_gaps = gaps_of("side_1", "side_2") + [(DOOR_X, DOOR_WIDTH, 0.0, DOOR_HEIGHT)]
+    side_gaps = gaps_of("side_1", "side_2") + [(DOOR_X, OPENING_MODULE, 0.0, MODULE_HEIGHT)]
     bg.wall("Side", "WallS", "x", -0.15, -6.3, 16.3, CEILING, MATS["wall"], side_gaps, gw)
     bg.wall("Side", "WallN", "x", -7.95, -6.3, 16.3, CEILING, MATS["wall"], thick=gw)
     bg.wall("Side", "WallE", "z", 16.15, -7.8, -0.3, CEILING, MATS["wall"], thick=gw)
     bg.wall("Side", "WallW", "z", -6.15, -8.1, -0.3, CEILING, MATS["wall"],
-            [(BREACH[4], WINDOW_GAP, 0.0, BREACH_HEIGHT)], gw)  # fmt: skip
+            [(BREACH[4], WINDOW_GAP, 0.0, MODULE_HEIGHT)], gw)  # fmt: skip
 
     # The start room's counter and its pillars (to the ceiling), and the side room's racks.
     cx0, cx1, cz0, cz1 = COUNTER
@@ -505,17 +526,15 @@ def build() -> None:
     rect_box("Start", "DispatchCounterW", (cx0, cx0 + PILLAR, cz0 + PILLAR, cz1 - PILLAR), 0.0, COUNTER_H, MATS["prop"])
     rect_box("Start", "DispatchCounterE", (cx1 - PILLAR, cx1, cz0 + PILLAR, cz1 - PILLAR), 0.0, COUNTER_H, MATS["prop"])
     for i, (px, pz) in enumerate(((cx0, cz0), (cx1 - PILLAR, cz0), (cx0, cz1 - PILLAR), (cx1 - PILLAR, cz1 - PILLAR))):
-        rect_box(
-            "Start", f"Pillar{i + 1}", (px, px + PILLAR, pz, pz + PILLAR), 0.0, CEILING, MATS["wall"], bg.WALL_LAYERS
-        )
+        dress.pillar("Start", f"Pillar{i + 1}", (px, px + PILLAR, pz, pz + PILLAR), CEILING, MATS["wall"])
     rx0, rx1, rz0, rz1 = RACK_ROW
     pillars = 4
     bay = (rx1 - rx0 - PILLAR) / (pillars - 1)
     for i in range(pillars):
         px = rx0 + i * bay
-        rect_box("Side", f"Pillar{i + 1}", (px, px + PILLAR, rz0, rz1), 0.0, CEILING, MATS["wall"], bg.WALL_LAYERS)
+        dress.pillar("Side", f"Pillar{i + 1}", (px, px + PILLAR, rz0, rz1), CEILING, MATS["wall"])
         if i < pillars - 1:
-            rect_box("Side", f"Rack{i + 1}", (px + PILLAR, px + bay, rz0 + 0.05, rz1 - 0.05), 0.0, RACK_H, MATS["rack"])
+            dress.rack("Side", f"Rack{i + 1}", (px + PILLAR, px + bay, rz0 + 0.05, rz1 - 0.05), RACK_H, MATS["rack"])
 
     # --- Upstairs: two halves joined by an opening with no door (row 3) -------------------------------------------
     up = STOREY
@@ -525,7 +544,7 @@ def build() -> None:
     bg.wall("UpperA", "WallW", "z", -0.15, -0.05, 4.5, CEILING, MATS["upper_wall"], thick=uw, y0=up)
     bg.wall("UpperA", "WallE", "z", 16.15, -0.05, 4.5, CEILING, MATS["upper_wall"], thick=uw, y0=up)
     bg.wall("UpperB", "WallS", "x", -0.15, -6.25, 16.25, CEILING, MATS["upper_wall"],
-            [(OPENING_X, DOOR_WIDTH, 0.0, DOOR_HEIGHT)], uw, up)  # fmt: skip
+            [(OPENING_X, OPENING_MODULE, 0.0, MODULE_HEIGHT)], uw, up)  # fmt: skip
     bg.wall("UpperB", "WallN", "x", -7.95, -6.25, 16.25, CEILING, MATS["upper_wall"],
             gaps_of("upper_b1", "upper_b2"), uw, up)  # fmt: skip
     bg.wall("UpperB", "WallW", "z", -6.15, -7.85, -0.25, CEILING, MATS["upper_wall"], thick=uw, y0=up)
@@ -562,6 +581,28 @@ def build() -> None:
         rise = STAND * STOREY / STAIR_RUN
         link(name, (0.3, DOOR_HEIGHT, STAIR_WIDTH), (x0, DOOR_HEIGHT / 2, mid_z),
              [("Foot", (x0 - STAND, 0.0, mid_z)), ("Stair", (x0 + STAND, rise, mid_z))])  # fmt: skip
+    dress.link_doors(stair_a, stair_b, DOOR_X, DOOR_WIDTH, DOOR_HEIGHT, STAIR_WIDTH)
+    dress.opening("Side", "DoorFrame", (DOOR_X, 0.0, -0.15))
+    dress.opening("UpperB", "OpeningFrame", (OPENING_X, up, -0.15))
+    # The far room's light behind each paid link, on the link's own group (it goes when the link is bought).
+    dress.door_glow("Door_Side", (DOOR_X, 0.0, -0.15), 0.0, "../../../Side/Lamp5/Light")
+    for name, (x0, x1, z0, z1), lamp in (
+        ("Stairs_Start", stair_a, "UpperA/Lamp6"),
+        ("Stairs_Side", stair_b, "UpperB/Lamp8"),
+    ):
+        dress.door_glow(name, (x0, 0.0, (z0 + z1) / 2), -90.0, f"../../../{lamp}/Light", (STAIR_WIDTH, DOOR_HEIGHT))
+    # A lantern at each link's near side, the box's pendant lamp, and chalk where the lamps and the moon fall.
+    dress.lantern("Start", "LanternDoor", (DOOR_X - 2.4, 0.0, 0.0), 0.0, "Lamp3")
+    dress.lantern("Start", "LanternStairA", (stair_a[0] + 0.5, 0.0, stair_a[3] + 0.2), 0.0, "Lamp3")
+    dress.lantern("Side", "LanternStairB", (stair_b[0] + 0.5, 0.0, stair_b[3] + 0.2), 0.0, "Lamp4")
+    dress.decor_pendant("Side", "BoxLamp", (BOX_MARKER[0], 0.0, -7.0), "Lamp5")
+    dress.decor_pendant("Side", "ShopLamp", (5.3, 0.0, -6.7), "Lamp5")
+    dress.decor_pendant("Start", "SodaLamp", (1.7, 0.0, 8.5), "Lamp1")
+    dress.decor_pendant("UpperB", "ShopLampUp", (13.6, up, -6.4), "Lamp8")
+    dress.chalk("Start", "ChalkWindows", "HOLD THE WINDOWS", (5.6, 1.75, stair_a[3] + 0.21), 0.0, 2.2, "Lamp3")
+    dress.chalk("Side", "ChalkLight", "STAY IN THE LIGHT", (13.4, 1.75, -7.79), 0.0, 2.0, "Lamp5")
+    dress.chalk("Side", "ChalkBreach", "NOT THIS WAY", (-5.99, 1.75, -5.3), 90.0, 1.6, "Lamp4")
+    dress.chalk("UpperB", "ChalkDark", "THEY COME AT DARK", (2.2, up + 1.75, -7.84), 0.0, 2.0, "Lamp7")
 
     # --- Players' start (row 17: 4 to 7 m from the nearest window) -------------------------------------------------
     bg.node("PlayerSpawns", "Node3D", ".")
@@ -572,8 +613,7 @@ def build() -> None:
         bg.marker("PlayerSpawns", f"Player{i}", (sx, 0, sz), 180.0)
 
     # --- Lamps -----------------------------------------------------------------------------------------------------
-    for i, (room, at) in enumerate(LAMPS, start=1):
-        bg.omni(room, f"Lamp{i}", at, 1.4, 8.0, BULB)
+    dress.pendants(LAMPS, STOREY)
 
     # --- Outside -----------------------------------------------------------------------------------------------------
     bg.node("Outside", "Node3D", ".")
@@ -602,8 +642,12 @@ def build() -> None:
     ]
     for name, (x0, x1, z0, z1) in fences:
         base = BANK_TOP if name == "BankRim" else 0.0
-        rect_box("Outside", name, (x0, x1, z0, z1), base, base + FENCE_H, MATS["fence"], bg.WALL_LAYERS)
+        # The yard's boundary is the backdrop's wire fence, seen through; these boxes are only the dead's wall. The inner
+        # walls (the split between the yards, the breach's pocket) are drawn as the building's own block.
+        boundary = name in ("FenceS", "FenceW", "FenceE", "BankRim")
+        rect_box("Outside", name, (x0, x1, z0, z1), base, base + FENCE_H, MATS["wall"], bg.WALL_LAYERS, not boundary)
     rect_box("Outside", "PocketRoof", (px0 - 0.3, px1, pz0 - 0.3, pz1 + 0.3), CEILING, CEILING + SLAB, MATS["ceiling"])
+    dress.outside()
 
     # --- The shop (rows 22 to 24) ----------------------------------------------------------------------------------
     bg.node("ShopSpots", "Node3D", ".")
@@ -616,6 +660,8 @@ def build() -> None:
              "metadata/crane_spot": "0", "metadata/room": '"side"'})  # fmt: skip
     for name, room, face, into, floor in LOCKERS:
         locker(name, room, face, into, floor)
+    dress.machines()
+    dress.clutter()
 
     # --- Camera probes (row 28): every door, stair, opening and corner. Each faces the way a player walks through ----
     bg.node("CameraProbes", "Node3D", ".")
@@ -669,6 +715,8 @@ def build() -> None:
     for i, (x, z) in enumerate(((west, north), (east, north), (east, south), (west, south)), start=1):
         bg.marker("Measure/LoopSide", f"Corner{i}", (x, 0.0, z))
 
+    last_ext = max(i for i, line in enumerate(lines) if line.startswith("[ext_resource"))
+    lines[last_ext + 1 : last_ext + 1] = dress.ext_lines()
     root = lines.index(f'[node name="{ROOT}" type="Node3D"]')
     lines[root:root] = bg.resources
     OUT.parent.mkdir(parents=True, exist_ok=True)

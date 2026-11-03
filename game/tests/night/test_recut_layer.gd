@@ -108,8 +108,15 @@ func test_every_catalogue_weapon_gets_it_once_it_is_re_cut() -> void:
 		_frame({weapon: 1})
 		_shot(weapon)
 		assert_array(_ids()).override_failure_message("%s: %s" % [weapon, _ids()]).contains(
-			[&"recut_layer"]
+			[_layer_of(weapon)]
 		)
+
+
+## The layer a weapon gets: the energy weapons' deeper one, or the shared one.
+func _layer_of(weapon: StringName) -> StringName:
+	return (
+		RecutLayer.WONDER_LAYER if weapon in RecutLayer.WONDER_WEAPONS else RecutLayer.DEFAULT_LAYER
+	)
 
 
 func test_the_own_layer_is_flat_and_a_strangers_comes_from_the_muzzle() -> void:

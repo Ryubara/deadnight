@@ -284,7 +284,7 @@ func test_the_bolts_of_a_zombie_are_counted_only_while_the_chill_lasts() -> void
 
 
 func test_a_re_cut_freeze_gun_blooms_wider() -> void:
-	var spec := UpgradeTuning.new()
+	var spec := UpgradeTuning.shipped()
 	var freeze := WeaponCatalog.get_def(&"freeze_gun")
 	var re_cut := freeze.upgraded(spec)
 	assert_float(re_cut.splash_radius).is_equal_approx(2.8, 0.05)
