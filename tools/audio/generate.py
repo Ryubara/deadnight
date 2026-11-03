@@ -10,6 +10,7 @@ Seeds come from the sound's name and variant number, so the same command always 
 from __future__ import annotations
 
 import argparse
+import inspect
 import subprocess
 import sys
 import tempfile
@@ -28,6 +29,7 @@ import night_recipes
 import recipes
 import step_recipes
 import weapon_recipes
+import wind_recipes
 import zombie_recipes
 from recipes import Entry
 
@@ -38,6 +40,7 @@ REGISTRY: list[Entry] = [
     *zombie_recipes.REGISTRY,
     *step_recipes.REGISTRY,
     *map_recipes.REGISTRY,
+    *wind_recipes.REGISTRY,
     *challenge_recipes.REGISTRY,
 ]
 
@@ -48,7 +51,9 @@ def seed_of(name: str, variant: int) -> int:
 
 def render(entry: Entry, variant: int) -> np.ndarray:
     rng = np.random.default_rng(seed_of(entry.name, variant))
-    samples = np.nan_to_num(entry.recipe(rng))
+    # A recipe with a `variant` parameter is one table of shapes, one per file (the wind's gusts).
+    takes_variant = "variant" in inspect.signature(entry.recipe).parameters
+    samples = np.nan_to_num(entry.recipe(rng, variant) if takes_variant else entry.recipe(rng))
     if not entry.loop:
         if samples.ndim == 2:
             length = max(len(dsp.trim_tail(ch)) for ch in samples)
