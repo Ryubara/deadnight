@@ -30,6 +30,7 @@ func remove_view(view: ZombieView) -> void:
 
 
 func _process(delta: float) -> void:
+	var began := PerfProbe.begin()
 	_frame += 1
 	advanced_last_frame = 0
 	for i in _views.size():
@@ -40,6 +41,7 @@ func _process(delta: float) -> void:
 		if (_frame + i) % view.period == 0:
 			view.advance_animation()
 			advanced_last_frame += 1
+	PerfProbe.end(&"view.animation", began)
 
 
 func _period_for(view: ZombieView) -> int:

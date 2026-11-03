@@ -19,6 +19,9 @@ const LIGHTS := "Light3D"
 var rows: Array[Dictionary] = []
 ## Reads the zombies on the lot and the round: `() -> Dictionary` with `alive`, `round`.
 var night_state := Callable()
+## The milliseconds a fixed piece of GDScript takes on this machine now (`calibrate`): a budget in
+## ratios of it holds on a slow runner and a busy machine, which a budget in milliseconds cannot.
+var calibration_ms := 0.0
 
 var _window_frames: Array[float] = []
 var _window_process := 0.0
@@ -29,6 +32,7 @@ var _usec: Dictionary = {}
 var _counts: Dictionary = {}
 var _clock := 0.0
 var _started_msec := 0
+var _last_usec := 0
 
 
 func _init() -> void:
@@ -43,11 +47,37 @@ func _exit_tree() -> void:
 	PerfProbe.enabled = false
 
 
+func _ready() -> void:
+	calibration_ms = calibrate()
+
+
+## The least of five runs of a fixed loop of arithmetic, array and dictionary work (what the night's
+## scripts do), in milliseconds.
+static func calibrate() -> float:
+	var best := INF
+	for _run in 5:
+		var began := Time.get_ticks_usec()
+		var table := {}
+		var total := 0.0
+		for i in 40000:
+			table[i % 512] = float(i) * 0.5
+			total += sqrt(float(table[(i * 7) % 512] if table.has((i * 7) % 512) else 1.0))
+		best = minf(best, float(Time.get_ticks_usec() - began) / 1000.0)
+		if total < 0.0:
+			break
+	return snappedf(best, 0.01)
+
+
 func _process(delta: float) -> void:
+	var now := Time.get_ticks_usec()
 	if _started_msec == 0:
 		_started_msec = Time.get_ticks_msec()
-	_window_frames.append(delta * 1000.0)
-	_window_time += delta
+		_last_usec = now
+	# Wall time of the frame, so a run at a fixed frame step (`--fixed-fps`) still reads real cost;
+	# the row's length is game time.
+	_window_frames.append(float(now - _last_usec) / 1000.0)
+	_last_usec = now
+	_window_time += _window_frames[-1] / 1000.0
 	_window_process += Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
 	_window_physics += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0
 	_window_nav += Performance.get_monitor(Performance.TIME_NAVIGATION_PROCESS) * 1000.0
@@ -89,6 +119,7 @@ func _row() -> Dictionary:
 		"players": int(state.get("players", 0)),
 		"count_multiplier": float(state.get("count_multiplier", 0.0)),
 		"frames": _window_frames.size(),
+		"calibration_ms": calibration_ms,
 		"frame_ms": snappedf(_window_time * 1000.0 / frames, 0.01),
 		"frame_p95_ms": snappedf(sorted[mini(int(sorted.size() * 0.95), sorted.size() - 1)], 0.01),
 		"frame_max_ms": snappedf(sorted[sorted.size() - 1], 0.01),
