@@ -20,6 +20,19 @@ const CREAM := Color("#e6d8b0")
 @export var amber_energy := 2.5
 ## How much of the cream swatch glows, a lit board (0 for none). Every cream face of the model does.
 @export_range(0.0, 1.0) var cream_glow := 0.0
+## A single lamp (the generator's running light), not a bulb string: no shimmer of its own, so it
+## changes only when the lamp it follows does (steady, the brown-out's flicker, dark).
+@export var steady := false
+## A halo round one lamp of the model (`glow.gdshader`, billboarded): its size in metres (0 for
+## none), where it sits in the model's frame and how bright it burns at level 1. Keep it clear of
+## every wall by its half-size (#703, #832): the generator's sits over the cage's walls.
+@export var halo_size := 0.0
+@export var halo_at := Vector3.ZERO
+@export var halo_energy := 0.8
+@export var halo_tint := Color(1, 0.62, 0.22, 1)
+
+var _halo: MeshInstance3D
+var _halo_material: ShaderMaterial
 
 var _material: StandardMaterial3D
 
@@ -33,7 +46,28 @@ func _ready() -> void:
 		_material.emission_texture = _texture(cream_glow)
 		_material.emission_energy_multiplier = 0.0
 		mesh.set_surface_override_material(0, _material)
+	if model != null and halo_size > 0.0:
+		_halo = _make_halo(model as Node3D)
 	super._ready()
+
+
+func _make_halo(model: Node3D) -> MeshInstance3D:
+	_halo_material = ShaderMaterial.new()
+	_halo_material.shader = load("res://world/drive_in/glow.gdshader")
+	_halo_material.render_priority = 1
+	_halo_material.set_shader_parameter(&"tint", halo_tint)
+	_halo_material.set_shader_parameter(&"falloff", 2.5)
+	_halo_material.set_shader_parameter(&"billboard", true)
+	var quad := QuadMesh.new()
+	quad.size = Vector2(halo_size, halo_size)
+	var halo := MeshInstance3D.new()
+	halo.name = &"Halo"
+	halo.mesh = quad
+	halo.material_override = _halo_material
+	halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	halo.position = halo_at
+	model.add_child.call_deferred(halo)
+	return halo
 
 
 ## A sparse bulb string: every so often one drops out for an instant, a function of the phase.
@@ -75,4 +109,9 @@ static func _first_mesh(node: Node) -> MeshInstance3D:
 
 func _apply() -> void:
 	if _material != null:
-		_material.emission_energy_multiplier = level * amber_energy * shimmer(phase)
+		_material.emission_energy_multiplier = (
+			level * amber_energy * (1.0 if steady else shimmer(phase))
+		)
+	if _halo != null:
+		_halo_material.set_shader_parameter(&"energy", level * halo_energy)
+		_halo.visible = level > 0.0

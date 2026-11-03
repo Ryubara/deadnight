@@ -90,6 +90,50 @@ func test_the_marquee_and_its_bulbs_burn_with_the_back_lots_circuit() -> void:
 	assert_object(booth_mesh.get_surface_override_material(0)).is_not_same(material)
 
 
+func test_the_generators_running_light_follows_the_tank() -> void:
+	await get_tree().process_frame  # the halo joins the model deferred
+	var glow := _lot.get_node("GeneratorYard/Lamps/GeneratorSetGlow") as ModelGlow
+	var mesh := ModelGlow._first_mesh(_lot.get_node("GeneratorYard/GeneratorSet"))
+	var material := mesh.get_surface_override_material(0) as StandardMaterial3D
+	var halo := _lot.get_node("GeneratorYard/GeneratorSet/Halo") as MeshInstance3D
+	# A healthy tank: steady, frame after frame (no shimmer of its own).
+	var healthy := {}
+	for tick in 40:
+		_frame(_fuel.capacity, tick)
+		healthy[snappedf(material.emission_energy_multiplier, 0.001)] = true
+	assert_int(healthy.size()).is_equal(1)
+	assert_float(material.emission_energy_multiplier).is_greater(1.0)
+	assert_bool(halo.visible).is_true()
+	# The brown-out: the light sags and drops out with the yard's lamps.
+	var failing := {}
+	for tick in 200:
+		_frame(_fuel.capacity * _fuel.brownout_fraction * 0.5, tick)
+		failing[snappedf(material.emission_energy_multiplier, 0.001)] = true
+	assert_int(failing.size()).is_greater(1)
+	for value: float in failing:
+		assert_float(value).is_less(healthy.keys()[0])
+	# Dry: dark, and the halo is not drawn.
+	_frame(0.0, 200)
+	assert_float(material.emission_energy_multiplier).is_equal(0.0)
+	assert_bool(halo.visible).is_false()
+
+
+func test_the_generators_halo_stays_over_the_cage_walls() -> void:
+	await get_tree().process_frame
+	var halo := _lot.get_node("GeneratorYard/GeneratorSet/Halo") as MeshInstance3D
+	var half := (halo.mesh as QuadMesh).size.x * 0.5
+	var wall := _lot.get_node("GeneratorYard/CageN0") as CSGBox3D
+	var wall_top := wall.global_position.y + wall.size.y * 0.5
+	# A billboard turns about its middle: the half-size below it must clear the wall (#703, #832).
+	assert_float(halo.global_position.y - half).is_greater(wall_top + 0.5)
+
+
+func _frame(fuel: float, tick: int) -> void:
+	_lamps.apply_event({"type": &"frame", "fuel": fuel, "tick": tick})
+	for follower: LightFollower in _lot.find_children("*", "LightFollower", true, false):
+		follower.advance(0.0)
+
+
 func test_the_beam_starts_at_the_projector_lens_and_ends_on_the_screen() -> void:
 	var beam := _lot.get_node("ProjectionBooth/BeamFx") as ProjectorBeam
 	var lens := beam.global_position

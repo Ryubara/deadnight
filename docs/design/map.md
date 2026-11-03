@@ -99,6 +99,9 @@ plaque only names the weapon).
 | Third Holster machine (the plaza's) | the middle of the plaza's south wall, at `(0, 57.2)`, facing the gate, spot at `(0, 56.0)` | `tonic_third_holster`: a third weapon ([the perks](perks.md)) | the last door's own machine (2,000), at the far end of the court from its gate: the dearest perk behind the dearest door |
 | Ammunition lockers (5) | the avenue (field), the stand (its north-east corner), the midway, the yard, the back lot | rounds for the weapon in hand, as many as fit | one in the open from the start, one more in each area that opens, so a fight is never a long walk from rounds |
 
+The wall spots sell only the weaker guns ([the wall tier](weapons.md#the-wall-tier), #858): the lot's two are the
+double-barrel and the rifle, the best a wall sells, and the guns above the tier come only from the prize crane.
+
 ### The crane's places
 
 The crane stands on one place at a time (`crane.spot` in the rules, a marker with the metadata `crane_spot` here) and
@@ -252,7 +255,7 @@ the lamps are the warm pools in it ([night environment](../research/night-enviro
 | Concession | 240 m² | 217 m² (90%) | three warm lights; window spill on the field |
 | Midway | 1,104 m² | 373 m² (34%) | two dim lamps and the booth's front light; the alleys dark |
 | Booth | 120 m² | 110 m² (92%) | two lights, and the projector beam (the brightest thing on the map) |
-| Generator yard | 1,932 m² | 451 m² (23%) | four work lamps and the generator's glow, a block in the middle of the ground: lit while the tank has fuel, and the most to lose |
+| Generator yard | 1,932 m² | 451 m² (23%) | four work lamps and the generator's glow, the generator set in its cage (its day tank, stack and running light show over the walls): lit while the tank has fuel, and the most to lose |
 | Back lot | 1,932 m² | 104 m² (5%) | one flickering neon sign |
 | Ticket plaza | 640 m² | 271 m² (42%) | the ticket kiosk, and a wreck's headlights (127 m², the only ground lit with the tank dry) |
 
