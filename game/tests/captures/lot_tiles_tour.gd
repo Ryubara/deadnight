@@ -16,6 +16,7 @@ const SHOTS := {
 	"g_yard_low": [Vector3(20.0, 1.8, 30.0), Vector3(40.0, 1.0, 10.0)],
 	"h_stand_inside_west": [Vector3(6.0, 2.0, 6.0), Vector3(-8.0, 3.5, 2.0)],
 	"i_stand_roof_over": [Vector3(0.0, 14.0, 12.0), Vector3(0.0, 4.0, 2.0)],
+	"j_concession_papers": [Vector3(2.5, 1.2, 8.0), Vector3(0.0, 0.0, 6.0)],
 }
 
 var _night: Night
