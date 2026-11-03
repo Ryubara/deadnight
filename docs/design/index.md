@@ -27,7 +27,7 @@ A downed player can be revived until the round ends.
 | Back lot | mid to late | dark, wrecks and long lanes |
 | The road | late | the way into town |
 
-The order, prices and layout are in [the lot](map.md).
+The order, prices and layout are in [the lot](map.md); which map a night is played on, and the picker, in [maps](maps.md).
 
 ## Between nights
 

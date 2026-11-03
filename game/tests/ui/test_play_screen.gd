@@ -5,6 +5,11 @@ extends GdUnitTestSuite
 const MENU := "res://ui/screens/main_menu.tscn"
 const PLAY := "res://ui/screens/play_screen.tscn"
 const WINDOW := Vector2(1280.0, 720.0)
+## What headless text measures short of the real fonts, in canvas units: the title is 23 units high
+## here and about 50 in a window, the rows' text and the panel's edge are shorter too. The capture
+## tours (`solo_settings_tour`, `map_picker_tour`) print the real fit; this keeps a row added to the
+## panel from going unnoticed until someone runs one.
+const HEADLESS_TEXT_ALLOWANCE := 100.0
 
 
 func after_test() -> void:
@@ -135,3 +140,51 @@ func test_start_opens_a_night_under_the_chosen_settings() -> void:
 	rules.apply(RulesAction.skip_break())
 	var tuned := rules.tuning.rounds.zombies_for_round(1, 1)
 	assert_int(rules._round_total).is_equal(roundi(tuned * 3.0))
+
+
+## The phone's canvas (a phone held sideways: 1168 x 540 units) holds every settings row and the
+## buttons under them, with the bottom row's focus ring inside the window (#671). Rows are as high
+## as a tap target, so a row added to the panel that does not fit fails here.
+func test_every_row_and_the_bottom_buttons_ring_fit_a_phone_held_sideways() -> void:
+	var canvas := Rect2(Vector2.ZERO, Vector2(1168.0, 540.0))
+	var holder := Control.new()
+	holder.size = canvas.size
+	add_child(holder)
+	var screen := (load(PLAY) as PackedScene).instantiate() as PlayScreen
+	holder.add_child(screen)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var tokens := UITokens.active()
+	# Every row and every button, ring included, lies inside the canvas.
+	var ring := float(tokens.focus_gap + tokens.focus_border)
+	for key in screen.panel.setting_keys():
+		var row_rect := screen.panel.row_for(key).get_global_rect()
+		(
+			assert_bool(canvas.encloses(row_rect))
+			. override_failure_message(
+				"the %s row %s is outside the phone canvas" % [key, row_rect]
+			)
+			. is_true()
+		)
+	for button in [screen.start_button, screen.reset_button, screen.back_button]:
+		var ringed := (button as Control).get_global_rect().grow(ring)
+		(
+			assert_bool(canvas.encloses(ringed))
+			. override_failure_message(
+				"%s's focus ring %s leaves the phone canvas" % [button.text, ringed]
+			)
+			. is_true()
+		)
+	# The card with its margins is shorter than the canvas by what headless text is short of the
+	# real fonts, and the title is left out on a phone.
+	var card := screen.panel.get_parent().get_parent() as Control
+	var needed := card.get_combined_minimum_size().y + 2.0 * float(tokens.space_sm)
+	(
+		assert_float(needed + HEADLESS_TEXT_ALLOWANCE)
+		. override_failure_message(
+			"the Play screen needs %s units and the phone's canvas has %s" % [needed, canvas.size.y]
+		)
+		. is_less_equal(canvas.size.y)
+	)
+	assert_bool(screen._title.visible).is_false()
+	holder.free()

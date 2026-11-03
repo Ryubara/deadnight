@@ -199,6 +199,18 @@ def rect_box(parent: str, name: str, rect, y0: float, y1: float, mat: str, layer
     bg.block(parent, name, x0, x1, z0, z1, y1 - y0, mat, y0, layers)
 
 
+def wood_box(parent: str, name: str, rect, y0: float, y1: float, mat: str) -> None:
+    """A floor box that steps like wood (metadata `surface`, `FootSurface`): the upper floor's planks."""
+    x0, x1, z0, z1 = rect
+    size = (x1 - x0, y1 - y0, z1 - z0)
+    pos = ((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+    bg.node(
+        name, "CSGBox3D", parent,
+        {"transform": bg.xform(pos), "use_collision": "true", "size": bg.vec(size),
+         "material": f'ExtResource("{mat}")', "metadata/surface": '"wood"'},
+    )  # fmt: skip
+
+
 def slab_with_hole(parent: str, name: str, rect, hole, y0: float, mat: str) -> None:
     """A floor slab over `rect` with a rectangular stairwell `hole` cut out (four boxes round it)."""
     x0, x1, z0, z1 = rect
@@ -211,7 +223,7 @@ def slab_with_hole(parent: str, name: str, rect, hole, y0: float, mat: str) -> N
     ]
     for tag, (a0, a1, b0, b1) in pieces:
         if a1 - a0 > 0.01 and b1 - b0 > 0.01:
-            rect_box(parent, f"{name}{tag}", (a0, a1, b0, b1), y0, y0 + SLAB, mat)
+            wood_box(parent, f"{name}{tag}", (a0, a1, b0, b1), y0, y0 + SLAB, mat)
 
 
 def stair(parent: str, name: str, foot_x: float, north_z: float, floor: float) -> tuple[float, float, float]:
@@ -229,7 +241,7 @@ def stair(parent: str, name: str, foot_x: float, north_z: float, floor: float) -
     bg.node(
         f"{name}Ramp", "CSGBox3D", parent,
         {"transform": ramp, "use_collision": "true", "size": bg.vec((length, thick, STAIR_WIDTH)),
-         "material": f'ExtResource("{MATS["stair"]}")'},
+         "material": f'ExtResource("{MATS["stair"]}")', "metadata/surface": '"wood"'},
     )  # fmt: skip
     # The treads, drawn only (the ramp is what is walked on).
     steps = round(STOREY / RISER)

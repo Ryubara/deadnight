@@ -33,6 +33,9 @@ magnitude).
   telemetry, and a parity batch of bot nights against the balance simulator's human skill levels.
 - **Cost**: the current bot's decision step measured 0.06 to 0.17 ms at 60 Hz with up to 40 zombies in view; the plan
   thinks at 10 Hz, so three bots should cost about 1% of a 30 Hz server tick ([Server cost](#server-cost)).
+- **Orders**: a bot roams by default and does its own thing; it comes to a person only for a revive or a ping. A
+  person gives the team's bots one of three orders, **Follow**, **Roam** or **Hold**, with the command wheel; the order
+  travels as a player command and every bot reads it from the frame ([Orders](#orders-follow-roam-and-hold-641)).
 - **Eight phases (0 to 7)**, each with its own definition of done ([Phases](#phases)); the first is not bot work at all,
   it is the human actions a bot needs and the game does not have yet (revive, circuit switches, pings).
 
@@ -138,7 +141,9 @@ Top of the tree, in priority order (an interrupt may come from any higher rung):
 **3. Fight**: pick a target (utility), choose and manage the weapon, reload at a safe moment, throw a grenade.
 **4. Maintain**: ammunition, a swap to melee when dry, a safe place to reload.
 **5. Errands** (utility chooser): door, wall weapon, crane, ammunition, fuel, circuit, repair a breach.
-**6. Follow**: take a rated follow position near the humans.
+**6. Stand by the order** (`BotOrders`, [Orders](#orders-follow-roam-and-hold-641)): **Follow** takes a rated follow
+position near the person who gave the order; **Hold** stands at the spot the order was given; **Roam** (the default)
+walks to places across the lot and looks about from each.
 **7. Idle**: hold, look around now and then, glance at the nearest breach.
 
 ## Perception: what a bot is allowed to know
@@ -236,7 +241,7 @@ the same seed gives the same shots.
 | **Door rebakes** | A bought door rebakes the mesh. On `door_opened` the bot drops cached paths and waits while the lot's bake is running. A path query before the map has synchronised returns nothing and prints an error (the [lesson of 2026-11-01](../lessons/2026-11-01-a-navigation-region-or-link-reaches-path-queries-after-a-few.md)), and a query to an unreachable point can print "not expect to not find the most reachable polygons"; so the bot asks `map_get_closest_point` for the goal first and marks a goal *unreachable* for 5 s when a query returns empty. |
 | **Reflex movement stays on the mesh** | A dodge or a retreat picks among 12 headings, scores each (progress, clearance from zombies by type, light, loop room) and projects the end point onto the mesh. Vermintide's "panicky" emergency steering slipped bots off cliffs; ours cannot leave the mesh. |
 | **Kiting** | Away from the nearest threats with a pull toward a loop (the lot's loops are in [the map](../design/map.md#loops-for-kiting)). Runners are 1.7 times faster; against them the bot holds a choke or a wall and fights instead of running (see [Edge cases](#edge-cases)). |
-| **Staying near humans** | After Ellie: a *follow region* around the group (centroid of the humans, weighted toward the one who needs help), candidate positions by nav rays, rated each think by distance (3 to 7 m in a fight, 4 to 10 m outside), the same side as the leader, not in front, at least 2.5 m from other bots, in light, not at a breach, and outside the leader's firing cone. Allowed to arrive "close enough"; no pass through the leader. Vermintide assigns follow points so each bot takes the cheapest one. |
+| **Staying near the person (the Follow order)** | After Ellie: a *follow region* around the group (centroid of the humans, weighted toward the one who needs help), candidate positions by nav rays, rated each think by distance (3 to 7 m in a fight, 4 to 10 m outside), the same side as the leader, not in front, at least 2.5 m from other bots, in light, not at a breach, and outside the leader's firing cone. Allowed to arrive "close enough"; no pass through the leader. Vermintide assigns follow points so each bot takes the cheapest one. |
 | **Not blocking** | Never stop inside a door gap or the 2 m passages (the map names them); if a human moves toward the bot and closes inside 1.2 m, step sideways at the last moment (Ellie's dodge). Keep out of a human's line to the nearest zombie. |
 | **Ledges and jumps** | The mesh stops at a 0.25 m climb, so the bot never paths off an edge. It jumps only on curated `BotLink` markers (a car roof, the booth edge) and as the third rung of the stuck ladder. Until #78 lands it does not mantle. The booth's east drop (3.6 m) is a way down that costs health once fall damage exists; the bot treats it as a hazard unless it is escaping. |
 | **Crouch** | Not used until #73 gives it an effect; then only for stationary aimed fire if the sim shows a benefit. |
@@ -361,6 +366,93 @@ bot calls out only what it *perceived*; a test checks that no line names an unse
 asked Back 4 Blood for ping-as-command; Vermintide's tagging was ruled out for tomes because "one tag could mean many
 things", so the set is small and each ping has one meaning.
 
+## Orders: Follow, Roam and Hold (#641)
+
+The maintainer, 2026-11-02, answering the within-12 m gate of #564: "Bots should be able to free roam and do their own
+thing. The only time they really go to the player is when the player needs a revive or if the player ping somewhere with
+middle click on mouse (needs a control for mobile/gamepad). Perhaps we can build a behavior system that listens to
+commands from the player, like a command wheel for the bots to either stick with the player, or "fan out", or "hold".
+Those three things "Follow", "Roam", "Hold" ...". So the bots no longer follow by default, and decision 5 (orders by
+pings only) is superseded: pings stay, and three standing orders are added. The command wheel that gives them is #642.
+
+| Order | What the bot does | Where it is in the tree |
+| --- | --- | --- |
+| **Roam** (the default) | Does its own thing: fights what it meets, shops, mends boards, looks after the generator, and walks from place to place across the lot (`BotRoam`), away from the person and from the other bots. | Rung 6. A fight, an errand, a revive and a ping come first, as for every order. |
+| **Follow** | Sticks with the person who gave the order: `BotFollow`, with the band #564 tuned (4 to 10 m calm, 3 to 7 m in a fight). The person leaves, or is dead: the bot roams. | Rung 6. Roles (anchor, flank) are Follow's. |
+| **Hold** | Stands at the spot the order was given, a place of a ring of 1.4 m about it by seat order, and fights from there; it does not back away, chase or shop, and leaves for a revive, a ping or a dodge, then comes back. | Rung 6. |
+
+A downed person still pulls the nearest free bot through the claim table (`BotClaims`) and a ping pulls a bot, in
+every order; the bot goes back to its order afterwards.
+
+**The API.** `BotOrders` (`game/gameplay/bots/bot_orders.gd`): the orders `&"follow"`, `&"roam"`, `&"hold"` and
+`issue(order, issuer_id, at: Vector3, bot_id := 0)`, which the wheel calls (`Night.bot_orders`, or `Night.give_bot_order`
+with the issuer and the place filled in). One object serves both ends: with a `sender` (the link's `send`) it puts the
+command on the wire; on the server it keeps the order and answers with a `bot_order_set` event. There is one order for
+the team's bots; an order to one bot (`bot_id`) beats the team's for that bot until the next team order.
+
+**The wire.** The order is a player command: `NetWire.Type.ORDER` (13), nine bytes (the order's index, the spot in
+centimetres, the bot it is for), rate limited at 2 a second, and the protocol version is **13**. The server
+(`NightServer.give_order`) takes the issuer from the connection, refuses a person who is down, an order it does not
+know and a second order inside half a second, takes the spot from the message only when it is within ping reach of the
+person (else it is where they stand) and puts it on the walking mesh. The order is a field of every frame
+(`bot_orders`: `{team, bots}`), so a bot seated late, a bot a person takes over and a client that reconnects all read the
+same order; `BotOrders.current(frame, bot_id)` is how a bot (and the wheel's HUD) reads it.
+
+**Gates.**
+
+| Order | Gate |
+| --- | --- |
+| Follow | Within 12 m of the person for 95% of the time a bot is up (outside errands), stuck under 1% of walking time, no episode over 10 s: #564's numbers, measured with `--order=follow`. |
+| Roam | No idle bot: none stands with nothing to do (its note says roam or hold and it does not move) for more than 8 s (a look about at a place lasts 2 to 5 s). No stuck episode over 10 s and stuck under 1% of walking time. Buys and kills like the simulator: points spent over earned within 20% of the simulator's 0.80 to 0.87 (the mean of the bots), and the bots' kills no fewer than Follow's on the same seed. The bots spread: most of the time beyond 12 m of the person and 5 m or more from each other. |
+| Hold | Within 3 m of the spot for 92% of the time a bot is under the stance (not on a trip for a revive, a ping, a dodge or an errand), no episode stuck over 10 s. |
+| Every order | A downed person and a ping each pull a bot, and it goes back to its order. |
+
+**Measured** (the move soak, `game/tests/captures/bots_move_soak.tscn`, `--tough=3`, 20 game minutes, seeds 1 to 3, four
+bots of the Regular, Veteran, Rookie and Regular profiles and the old autopilot as the person, who shops, buys doors and
+fights; `--shop` gives the bots their errands. A shared machine, and two runs of a seed are not the same night, so read
+the second digit as noise):
+
+| | Roam | Follow | Hold |
+| --- | ---: | ---: | ---: |
+| Stuck share of walking time | 0.4, 0.9, 1.2% | 1.0, 2.1, 0.8% | 2.6, 6.5, 7.1% of a small walk (4 to 8 s per bot) |
+| Longest stuck episode | 1.9, 5.1, 5.1 s | 4.5, 4.2, 1.5 s | 1.6, 2.0, 4.4 s |
+| `bot_stuck` reports | 0 | 0 | 0 |
+| Longest idle (the bot says roam or hold and stands) | 1.8, 2.9, 2.9 s | n/a (a bot well placed beside the person stands) | n/a |
+| Mean distance to the person | 35 to 37 m | 13 to 15 m | 12 m (the person leaves the spot) |
+| Mean distance between two bots | 38 to 39 m | 11 to 17 m | 2.6 to 2.9 m |
+| Within 3 m of the spot | n/a | n/a | 0.94, 0.94, 0.89 of the time up; 0.97, 0.97, 0.93 on the spot |
+| Kills by the bots (20 min) | 505, 489, 205 | 306, 166, 277 | 103, 140, 106 |
+| Buys by the bots | 139, 137, 83 | 98, 110, 131 | none (a holding bot shops only for a pinged door) |
+| Think p99 | 5.7 to 6.0 ms | 1.6 to 2.3 ms | 0.5 to 0.9 ms |
+
+Follow without errands (`--order=follow`, seeds 1 to 6, the #564 soak): within 12 m of the person **0.91 to 0.93 of the
+time the bots are up**, stuck 1.0 to 2.0%, longest episode 1.3 to 4.3 s: the numbers of
+[Tuning the follow soak](#tuning-the-follow-soak-564) hold, since Follow is the code that was there. With errands on,
+the bots leave the person for them and the share falls to 0.62 to 0.69, which is why that gate is measured outside
+errands.
+
+What the numbers say. **Roam** walks 35 m from the person on average and kills and buys more than Follow does (a roaming
+bot meets the dead on its own and passes more lockers); its stuck share is under 1.3%, and the longest episode is 5 s. The
+think p99 is 5.7 to 6 ms on a machine that also ran three other soaks and a test run, about three times Follow's. The
+cause is not separated: a roaming bot probes a few places for reach on a think (a path query each, at most four), and
+it also does more errands than a bot beside the person (the shop soak's p99 was 5 to 6 ms before any of this); #564
+owns the think budget. **Hold** keeps the spot against the real zombie mix, and a holding
+bot is the one most often downed (6 to 12% of the bot-time in these seeds: it never backs away); the stuck share of a small
+walk is bots giving way to the person or another bot. Shop soak (`bots_shop_soak.tscn`, four bots alone, so Roam):
+points spent over points earned **0.82, 0.66, 0.76, 0.66** (mean 0.73) against the simulator's 0.80 to 0.87, up from
+the 0.5 to 0.6 that bots following each other spent (#228): a roaming bot passes the lockers and the crane.
+
+Found on the way: a stuck bot's repath moved its goal by a random metre or two, which at the fence put the goal outside
+the walking mesh and had the bot stand against the posts for 14 s (the goal is now put back on the mesh); a roaming bot
+asked about far places behind shut doors one query at a time and stood for 8 to 26 s (it now probes a few places in one
+think, remembers the ones it cannot reach until a door changes the mesh, and wanders when none is left); a bot of the
+parts' tests that stood still because no person was near started to roam when the default changed
+([lesson](https://github.com/Ryubara/gdstudio/pull/257), tests now say what stance they stand for).
+
+Not done here: the wheel and the HUD's word for the current order are #642 (on `main`, through `BotOrderLink`). The
+roles of #229 (anchor, flank) are Follow's: a roaming or holding bot has none. The ping replies of #229 (hold here, shoot
+that one, raise that one) and the claim table sit above every order.
+
 ## Edge cases
 
 | Case | Behaviour |
@@ -372,7 +464,7 @@ things", so the set is small and each ping has one meaning.
 | **Trapped** (no path with 1 m of clearance for 2 s) | Fight with the best sustained weapon; use a grenade at 4 m or more from itself; jump onto a car roof or other curated link; call for cover; no teleport. |
 | **Last one alive** | See *Revives*. |
 | **Generator dry** | The view range collapses (8 m); the bot closes in on humans, shoots only seen targets, and a maintainer buys fuel. |
-| **A human goes idle or leaves** | The bot does not wait for them in a fight; it keeps following the largest group and, in a break, goes on errands. A human who leaves frees the slot for a bot (decision 7: a human who joins inherits it). |
+| **A human goes idle or leaves** | The bot does not wait for them in a fight; a Follow whose person has left is a Roam, and in a break it goes on errands. A human who leaves frees the slot for a bot (decision 7: a human who joins inherits it). |
 | **Door rebake in progress** | Paths are dropped; the bot holds position and shoots until the mesh answers. |
 | **Telegraph and special round announcements** | `special_round_announced` is shown to people, so the bot may read it: it buys ammunition and repairs in the longer break, and sets its stance (choke for the stampede). |
 
@@ -656,7 +748,8 @@ Issue: #226.
 Path following with a cache and a budget, door-rebake handling, unreachable memory, steering among 12 headings with mesh
 projection, follow positions, yielding and gap rules, the stuck ladder with `bot_stuck`, curated `BotLink` markers.
 **Done when**: scenarios 17 to 20 pass; a 20-minute soak of four bots shows stuck seconds under 1% of walking time and
-no episode over 10 s on any seed; bots stay within 12 m of the nearest human for 95% of a round (outside errands);
+no episode over 10 s on any seed; bots under the Follow order stay within 12 m of the person for 95% of a round (outside
+errands; Roam and Hold have gates of their own, [Orders](#orders-follow-roam-and-hold-641));
 no path error is printed across a soak with door purchases. **Tests**: the stuck detector on synthetic traces, the
 follow scorer, a nav test on every area of the opening-order test, a negative control (a blocked gap) that the ladder
 must solve or report.
@@ -1051,7 +1144,7 @@ They are decisions now, not options; the phases build to them.
 | 2 | Label bots? | **Yes, bots are labelled as bots.** | A mark in the lobby, the roster, the HUD's player box and the feed (`BOT` after the name); never in the command, which stays identical to a person's. The name comes from the profile (Phase 6). |
 | 3 | Do bots earn account progression? | **Bots earn points in the night, not XP.** | In-night points work as for a person (a bot buys doors with what it kills for). Account XP, rescue pay and mastery are never paid to a bot, and a night with bots is marked in the stats. The progression code reads `player_revived.reviver_id` and `player_added.bot` to skip bots; a bot that revives a human farms nothing. |
 | 4 | Player scaling | **Bots count for zombie scaling.** | The boss health, the alive cap and the spawn rate scale with the number of seated players, bots included (a bot is a player to the rules: `add_player`). Phase 7 may weight a bot below one; the default is one. |
-| 5 | Can people give bots orders? | **Orders by pings only.** | The five pings of Phase 0 (`PingBoard.KINDS`: here, door, ammo, enemy, downed) are the whole vocabulary; there is no command menu and no text. |
+| 5 | Can people give bots orders? | **Orders by pings only.** *Superseded 2026-11-02 (#641): pings stay, and a command wheel adds three standing orders.* | The five pings of Phase 0 (`PingBoard.KINDS`: here, door, ammo, enemy, downed) pull a bot whatever its order. The standing orders are **Follow**, **Roam** and **Hold** ([Orders](#orders-follow-roam-and-hold-641)); there is still no text. |
 | 6 | Voice | **No bot voice for now.** | Callouts are `bot_say` lines in the feed only; no audio assets are made for them until the maintainer asks. |
 | 7 | A human takes a bot's slot | **A joining human inherits the bot's slot.** | The human gets the bot's seat, body, points, weapons, ammunition, grenades and health as they stand, and the bot is removed in the same tick. No reason to leave and rejoin. A human who leaves leaves the slot to a bot again (Phase 6). |
 
@@ -1080,6 +1173,9 @@ Deep Rock Galactic's Bosco, of Killing Floor 2's own (absent) bots, and any Valh
 other than the free ones are behind a login and were not read.
 
 ## Tuning the follow soak (#564)
+
+*These numbers are the Follow order's: the soak gives it explicitly (`--order=follow`) since the default became Roam
+([Orders](#orders-follow-roam-and-hold-641)). The within-12 m gate belongs to Follow alone.*
 
 Measured with the move soak (`game/tests/captures/bots_move_soak.tscn`, `--tough=3`, 20 minutes, seeds 1 to 6,
 four bots):

@@ -1,9 +1,10 @@
 class_name MatchSettingsPanel
 extends VBoxContainer
-## The match settings as form rows: how intense the night is (zombies per round and how fast they
-## come), how many at once, how long the breaks are and how many bots join the night. Built from
-## gds_ui controls (`UIRow`, `UIOptionSelector`, `UISlider`) and bound to nothing: it holds a
-## `MatchSettings`, says `changed` when a control moves and hands the result out with `settings()`.
+## The match settings as form rows: which map the night is on (`MapPicker`), how intense the night
+## is (zombies per round and how fast they come), how many at once, how long the breaks are and how
+## many bots join the night. Built from gds_ui controls (`UIRow`, `UIOptionSelector`, `UISlider`)
+## and bound to nothing: it holds a `MatchSettings`, says `changed` when a control moves and hands
+## the result out with `settings()`.
 ##
 ## The Play screen (Solo) and the room host's lobby (#391) use this one panel, so solo and rooms
 ## offer the same settings from one definition. Each setting of `MatchSettings.KEYS` has a row in
@@ -18,6 +19,7 @@ signal changed(settings: MatchSettings)
 const ALIVE_STEP := 1
 ## The line under each row's title (a phone leaves them out).
 const HINTS := {
+	"map": "Where the night is held.",
 	"count_multiplier": "More of the dead, and faster.",
 	"max_alive": "Auto follows the round.",
 	"break_seconds": "Time to spend points and get ready.",
@@ -27,9 +29,11 @@ const BREAK_MAX := 30
 
 ## The row of each setting, by its key in `MatchSettings.KEYS`, in the order they are shown.
 var rows := {}
+var map_row: UIRow
 var count_row: UIRow
 var alive_row: UIRow
 var break_row: UIRow
+var map_picker: MapPicker
 var bots_row: UIRow
 var count_selector: UIOptionSelector
 var bots_selector: UIOptionSelector
@@ -65,6 +69,10 @@ func _init() -> void:
 	_alive_ceiling = tuning.ceiling_for(OS.has_feature("web"))
 	var tokens := UITokens.active()
 	add_theme_constant_override(&"separation", tokens.space_md)
+	map_row = _row("map", "Map")
+	map_picker = MapPicker.new()
+	map_picker.chosen.connect(_on_changed.unbind(1))
+	map_row.set_control(map_picker)
 	count_row = _row("count_multiplier", "Zombie intensity")
 	count_selector = UIOptionSelector.new()
 	var labels := PackedStringArray()
@@ -98,6 +106,7 @@ func text() -> String:
 ## The settings the controls show.
 func settings() -> MatchSettings:
 	var out := MatchSettings.new()
+	out.map = map_picker.selected_id
 	out.count_multiplier = MatchSettings.COUNT_CHOICES[count_selector.selected]
 	out.max_alive = roundi(alive_slider.value)
 	out.break_seconds = break_slider.value if _break_set else 0.0
@@ -108,6 +117,7 @@ func settings() -> MatchSettings:
 ## Shows `value` without saying `changed`. A count that is not one of the choices shows the nearest.
 func set_settings(value: MatchSettings) -> void:
 	var held := value.clamped()
+	map_picker.set_selected(held.map)
 	count_selector.select(_nearest_choice(held.count_multiplier), false)
 	bots_selector.select(held.bots, false)
 	alive_slider.set_value_no_signal(held.max_alive)
@@ -118,6 +128,7 @@ func set_settings(value: MatchSettings) -> void:
 
 ## A guest sees the host's settings and cannot move them.
 func set_editable(on: bool) -> void:
+	map_picker.set_editable(on)
 	alive_slider.editable = on
 	break_slider.editable = on
 	count_selector.focus_mode = Control.FOCUS_ALL if on else Control.FOCUS_NONE
@@ -149,11 +160,16 @@ func set_compact(on: bool) -> void:
 		var row := rows[key] as UIRow
 		row.custom_minimum_size.y = MenuLook.TAP_TARGET if on else 0.0
 		row.hint = "" if on else HINTS[key]
+	map_picker.set_compact(on)
+	# A phone's canvas is 540 units high: the rows sit close together (a row is a tap target high
+	# either way).
+	var tokens := UITokens.active()
+	add_theme_constant_override(&"separation", tokens.space_xs if on else tokens.space_md)
 
 
-## The first control, for the screen's initial focus.
-func first_control() -> Control:
-	return count_selector
+## The controls Up leaves the panel from: the first row of map cards.
+func first_controls() -> Array[Control]:
+	return map_picker.top_row()
 
 
 ## The last control, to link the focus to what follows the panel.
