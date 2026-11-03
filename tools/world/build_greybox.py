@@ -163,6 +163,35 @@ FIELD_LAMPS = [
     (-56.5698, -0.03959632, -6.20401),
     (22.056038, 0, -8.007768),
 ]
+# The field's wrecks (x, z, yaw): the kit's Broken Car, whose block is one box 2.05 by 4.3 m and 1.3 m tall, over the
+# real body's reach (1.25 m), so it is run round and seen over, never stood on. Each flank has a straight row of four
+# end to end, a lap of 40 m and more round it (#855; `test_lot_loops.gd`), from the playground's swing frame or the
+# shelter's corner to 4 m short of the south fence. Straight, square to each other: a car turned across the row's end
+# made an inside corner, and the body got onto 1.3 m from the floor there. Nothing a body can stand on (a crate, a
+# drum, a sofa, a car) is within a sprint-jump (6 m) of a row: a wreck's top is 1.0 m from its long edges, and a dead's
+# swing reaches 1.4 m from 0.5 m off it, so a wreck that could be climbed would be a roost. One more wreck stands in the
+# north-east among the cars.
+FIELD_WRECKS = [
+    (-52.0, -14.6, 0),
+    (53.5, -9.45, 0),
+    (40.0, -44.0, 20),
+    (-52.0, -18.9, 180),
+    (-52.0, -23.2, 0),
+    (-52.0, -10.3, 180),
+    (53.5, -13.75, 180),
+    (53.5, -18.05, 0),
+    (53.5, -22.35, 180),
+]
+# The south strip's kerb walls (#855): 1.0 m high and 0.4 m thick, in front of the 2.4 m fence between the field and
+# the yard and back lot, in pairs with a 3 m gap, so a player fights over them or runs the lane behind and out through
+# the gap or round an end: a pair spans 18.7 m or more, a lap of 40 m and more round it on the dead's walking mesh
+# (`test_lot_loops.gd`). 1.0 m plus the body's reach (1.25 m) stays under the fence's top (2.4 m), and no wreck or
+# anything taller stands within a sprint-jump of one. They keep clear of the gates (x +-40) and their buy stands, the
+# back lot's breaker post, the cars' ends and the lamps (the east pair stands a metre further out, past the lamp at
+# x 22 that sits in its lane). (x0, x1, z) of each.
+KERB_THICK = 0.4
+KERB_H = 1.0
+KERB_WALLS = [(-37.5, -29.5, -9.0), (-26.5, -18.5, -9.0), (18.8, 27.0, -10.0), (30.0, 37.5, -10.0)]
 # The six lamps over the breach aprons (`Lamp18` to `Lamp23`, 0.5 m from each zombie spawn, #703) burn dim: the
 # breach reads, so the dead are seen coming, without the dead arriving in a spotlight (the maintainer's, #850).
 # This is the share of a post's light (its omni light, lens, halo and pool) they give; `tests/world/test_apron_lamps.gd`
@@ -326,6 +355,66 @@ GROUND_LAYER = 1
 OCCLUDER_LAYER = 2
 WALL_LAYERS = GROUND_LAYER | OCCLUDER_LAYER
 
+# Render layers (`GeometryInstance3D.layers`, `Light3D.light_cull_mask`; not the physics layers above). The renderer
+# casts no shadow, so a room's lamp lights the next room through the wall by its range; a lamp that names its own
+# layers lights only the default layer (the dead, the props) and those, and a floor, wall or ceiling that must not
+# take a room's light is moved to a layer the lamp lacks (docs/research/room-lights.md). Each map fills these in its
+# own build: `RENDER_RULES` is (regex over "Group/Name", layers) for a box, first match wins; `LIGHT_MASKS` is the
+# light's own path to its cull mask. Layer n is the bit 1 << (n - 1); the default layer (bit 1) is every box's today.
+DEFAULT_RENDER = 1
+RENDER_RULES: list[tuple[str, int]] = []
+LIGHT_MASKS: dict[str, int] = {}
+
+
+# The lot's render layers: the stand's own (its floors and its end walls, which no lamp outside may light) and the lot's
+# outdoors (what the lamp posts light and the stand's and the booth's lamps do not: the ground and the alleys beside the
+# stand, and the booth's walls and roof above its ceiling, which only the lamp up there and the posts outside reach).
+STAND_LAYER = 2
+OUTDOORS_LAYER = 4
+LOT_RENDER_RULES: list[tuple[str, int]] = [
+    (r"Concession/Floor\d_\d", STAND_LAYER),
+    (r"Concession/Wall[WE]\d", STAND_LAYER),
+    (r"Midway/(Ground1_[01]|Alley[WE]0_0)", OUTDOORS_LAYER),
+    (r"Field/GroundC1_3", OUTDOORS_LAYER),
+    (r"ProjectionBooth/(WallNUpper\d|Roof)", OUTDOORS_LAYER),
+]
+# Each lamp that reached through a wall names the layers it lights: the default layer and its own room's. The booth's
+# lower lamp and the re-cut bench's glow name only the default one (nothing is on a layer of the booth's lower storey).
+LOT_LIGHT_MASKS: dict[str, int] = {
+    "Field/Lamps/Lamp5/Light": DEFAULT_RENDER | OUTDOORS_LAYER,
+    "Field/Lamps/Lamp6/Light": DEFAULT_RENDER | OUTDOORS_LAYER,
+    "Field/Lamps/Lamp12/Light": DEFAULT_RENDER | OUTDOORS_LAYER,
+    "Concession/Lamps/InteriorW": DEFAULT_RENDER | STAND_LAYER,
+    "Concession/Lamps/InteriorE": DEFAULT_RENDER | STAND_LAYER,
+    "Concession/Lamps/InteriorN": DEFAULT_RENDER | STAND_LAYER,
+    "ShopProps/Soda/Glow": DEFAULT_RENDER | STAND_LAYER,
+    "ProjectionBooth/Lamps/Lower": DEFAULT_RENDER,
+    "ShopProps/ReCut/Glow": DEFAULT_RENDER,
+}
+
+
+def render_layers(path: str) -> int:
+    """The render layers of the box at `path` ("Group/Name"): the first rule that matches, else the default layer."""
+    for pattern, layers in RENDER_RULES:
+        if re.fullmatch(pattern, path):
+            return layers
+    return DEFAULT_RENDER
+
+
+def light_layers(machine: str) -> dict[str, str]:
+    """The `light_layers` a machine's glow takes (`machine` is its path), as the props of its instance."""
+    mask = LIGHT_MASKS.get(f"{machine}/Glow")
+    return {} if mask is None else {"light_layers": str(mask)}
+
+
+def override_light(path: str) -> None:
+    """The cull mask of a light inside an instanced scene (a lamp post's `Light`), when the map gives it one."""
+    if path in LIGHT_MASKS:
+        parent, _, name = path.rpartition("/")
+        lines.append(f'[node name="{name}" parent="{parent}"]')
+        lines.append(f"light_cull_mask = {LIGHT_MASKS[path]}")
+        lines.append("")
+
 
 def box(
     parent: str,
@@ -341,6 +430,9 @@ def box(
     if name in drivein_props.REPLACED:  # a drive-in prop stands here, with this block's collision
         return
     props = {"transform": xform(pos, rot_y)}
+    render = render_layers(f"{parent}/{name}")
+    if render != DEFAULT_RENDER:
+        props["layers"] = str(render)
     if not visible:  # the collision and the walking mesh keep it; a machine is drawn over it
         props["visible"] = "false"
     if collide:
@@ -444,6 +536,8 @@ def omni(
     }
     if afterglow:
         props["metadata/afterglow"] = f"{afterglow:g}"
+    if f"{parent}/{name}" in LIGHT_MASKS:
+        props["light_cull_mask"] = str(LIGHT_MASKS[f"{parent}/{name}"])
     node(name, "OmniLight3D", parent, props, ' groups=["powered_light"]' if powered else "")
 
 
@@ -698,6 +792,9 @@ def slab(door_name: str, tag: str, centre, width: float, height: float, axis: st
 
 # ---------------------------------------------------------------------------------------------------------------
 def build() -> None:
+    RENDER_RULES[:] = LOT_RENDER_RULES
+    LIGHT_MASKS.clear()
+    LIGHT_MASKS.update(LOT_LIGHT_MASKS)
     lines.append("[gd_scene format=3]")
     lines.append("")
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/car.tscn" id="car"]')
@@ -819,13 +916,17 @@ def build() -> None:
     for i, (px, pz) in enumerate([(44, -34), (52, -34), (44, -28), (52, -28)], start=1):
         block(props, f"ShelterPost{i}", px - 0.2, px + 0.2, pz - 0.2, pz + 0.2, 3.2, "field_struct")
     block(props, "PicnicTable", 46, 50, -32, -30, 0.9, "field_struct")
-    for i, (px, pz, ry) in enumerate([(-52, -14, 70), (54, -14, 100), (40, -44, 20), (-38, -12, 95)], start=1):
+    for i, (px, pz, ry) in enumerate(FIELD_WRECKS, start=1):
         instance(props, f"Wreck{i}", "wreck", (px, 0, pz), ry)
+    # The south strip's kerb walls (#855): low cover a player shoots over, with a lane behind them along the fence.
+    for i, (wx0, wx1, wz) in enumerate(KERB_WALLS, start=1):
+        block(props, f"KerbWall{i}", wx0, wx1, wz - KERB_THICK / 2, wz + KERB_THICK / 2, KERB_H, "road_wall")
     lamps_f = lamps(field, "screen_lot")
     field_lamps_xz = [(x, z) for x, _, z in FIELD_LAMPS]
     for i, at in enumerate(FIELD_LAMPS, start=1):
         props = {"dim": str(APRON_LAMP_DIM)} if i in APRON_LAMPS else None
         instance(lamps_f, f"Lamp{i}", "lamp", at, props=props)
+        override_light(f"{lamps_f}/Lamp{i}/Light")
     omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
     # The projected picture (the face, the spill below it) follows the screen's lamp (LotScreen).
     instance(
@@ -1104,9 +1205,9 @@ def build() -> None:
     shop_spot("SpotCraneYard", "crane", "crane_play", (40.0, 0, 10.0), 270, crane_spot=3)
     # The re-cut bench in the booth, over the block that holds its place (the weapon in hand is re-cut here), and the
     # soda fountain in the stand (the hearty tonic). Both face the room: the door side. The spots are 1.2 m in front.
-    instance("ShopProps", "ReCut", "recut_machine", (3.5, 0, 28.2), 180)
+    instance("ShopProps", "ReCut", "recut_machine", (3.5, 0, 28.2), 180, light_layers("ShopProps/ReCut"))
     shop_spot("SpotReCut", "upgrade", "upgrade_weapon", (3.5, 0, 25.9), 180)
-    instance("ShopProps", "Soda", "soda_fountain", (8.2, 0, 4.9), 180)
+    instance("ShopProps", "Soda", "soda_fountain", (8.2, 0, 4.9), 180, light_layers("ShopProps/Soda"))
     shop_spot("SpotSoda", "perk", "tonic_hearty", (8.2, 0, 3.7), 180)
     # The five other perk machines (`PerkMachine`, docs/design/perks.md), one to an area so the perks arrive with the
     # doors: faster revives in the midway (the stand's door), the quick reload in the booth, the double shot in the

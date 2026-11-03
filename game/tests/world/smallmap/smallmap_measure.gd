@@ -888,9 +888,7 @@ static func _stands(space: PhysicsDirectSpaceState3D, feet: Vector3) -> bool:
 func _measure_setting(lot: Node3D) -> void:
 	var found: Array[String] = []
 	for node in lot.find_children("*", "", true, false):
-		var words := String(node.name).to_lower()
-		if node is Label3D:
-			words += " " + (node as Label3D).text.to_lower()
+		var words := setting_words(node)
 		for word: String in NOT_OURS:
 			if words.contains(word):
 				found.append("%s (%s)" % [node.name, word])
@@ -904,3 +902,13 @@ func _measure_setting(lot: Node3D) -> void:
 		found.is_empty(),
 		", ".join(found)
 	)
+
+
+## The words row 29 reads on a node: its name, unless the engine made it up (`@MeshInstance3D@31945`
+## is a counter, and once it reads "1945"), and a label's text.
+static func setting_words(node: Node) -> String:
+	var named := String(node.name)
+	var words := "" if named.begins_with("@") else named.to_lower()
+	if node is Label3D:
+		words += " " + (node as Label3D).text.to_lower()
+	return words
