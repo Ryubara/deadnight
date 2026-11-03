@@ -41,11 +41,15 @@ const LIE_HEIGHT := 0.07
 const MEND_IN := 0.5
 const MEND_SWING := 55.0
 const MEND_SECONDS := 0.28
-## Half a board's length: the ends it swings about.
+## Half a board's length: the ends it swings about. The fence breaches' boards are 4.1 m long; a
+## barricade of shorter boards (the second map's windows, 1.5 m) names its own in
+## `metadata/board_half`.
 const BOARD_HALF := 2.05
 
 ## The breach's id, the one the rules' tuning lists (`metadata/barricade_id`).
 var barricade_id: StringName = &""
+## Half the length of this barricade's boards (`BOARD_HALF` unless the scene says otherwise).
+var board_half := BOARD_HALF
 
 var _boards: Array[StaticBody3D] = []
 var _up: int = 0
@@ -66,6 +70,7 @@ func _ready() -> void:
 	# (docs/research/physics-interpolation.md).
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	barricade_id = StringName(get_meta(&"barricade_id", ""))
+	board_half = float(get_meta(&"board_half", BOARD_HALF))
 	for child in get_children():
 		if child is StaticBody3D:
 			_boards.append(child)
@@ -231,7 +236,7 @@ func _mend(index: int) -> void:
 	if _meshes[index] == null:
 		return
 	_rest_mesh(index)
-	var held := BOARD_HALF if index % 2 == 0 else -BOARD_HALF  # alternate ends, as nailed by hand
+	var held := board_half if index % 2 == 0 else -board_half  # alternate ends, as nailed by hand
 	_swing(0.0, index, held)
 	var tween := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_method(_swing.bind(index, held), 0.0, 1.0, MEND_SECONDS)

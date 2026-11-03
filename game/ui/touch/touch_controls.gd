@@ -32,6 +32,8 @@ signal looked(mouse_relative: Vector2)
 signal safe_insets_changed(insets: Vector4)
 ## The touch layout is flipped for a left hand, or stopped being (the HUD swaps its columns).
 signal mirrored_changed(mirrored: bool)
+## The controls came up or went away (a phone shows them, a keyboard hides them).
+signal active_changed(active: bool)
 
 const MOVE_LEFT := &"move_left"
 const MOVE_RIGHT := &"move_right"
@@ -511,6 +513,7 @@ func _refresh_active() -> void:
 	var now := _enabled and live and not is_portrait() and is_inside_tree()
 	if now != _active:
 		_active = now
+		active_changed.emit(now)
 		if now:
 			# Controls up and no other device used yet: the HUD shows a finger, not a keycap.
 			UIInputMode.touch = true
