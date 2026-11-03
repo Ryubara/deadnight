@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://b5os04trls6ec"
+path="res://.godot/imported/utility_pole.obj-d712988b7b018120f5508f7c25eea52e.mesh"
+
+[deps]
+
+files=["res://.godot/imported/utility_pole.obj-d712988b7b018120f5508f7c25eea52e.mesh"]
+
+source_file="res://assets/smallmap/utility_pole.obj"
+dest_files=["res://.godot/imported/utility_pole.obj-d712988b7b018120f5508f7c25eea52e.mesh", "res://.godot/imported/utility_pole.obj-d712988b7b018120f5508f7c25eea52e.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

@@ -202,6 +202,7 @@ started. The defaults are today's game exactly, and every shipped test runs on t
 | `count_multiplier` (the night's intensity) | 1x, 2x, 3x offered on the Play screen; any 0.25 to 5 | 1x | round N brings `RoundTuning`'s count for N and the players times this, rounded, at least one, and the dead come this many times as fast (below) |
 | `max_alive` | 0 (auto) or 1 to 40 | auto | a number replaces the round's alive cap and never goes above `alive_cap_ceiling` (40, the crowd the lot stands); auto is the tuned cap times the multiplier |
 | `break_seconds` | 0 (the tuned 5 s) or 1 to 120 | 0 | the break after each round; the wait before round 1 (12 s) and the 10 s extra before a special round are unchanged |
+| `bots` | 0 to 3 | 0 | bots that fill the night's seats ([below](#bots)); the key may be left out of a ticket or a snapshot from before it and then means 0 |
 
 - **Where the multiplier applies.** To the tuned count of a normal round, which is also what a special round starts
   from (a stampede is 110% of the scaled count, an escort party its share of it). A new type's first round still
@@ -235,7 +236,22 @@ started. The defaults are today's game exactly, and every shipped test runs on t
   reads it, `set_settings()` shows a value without a signal, `set_editable(false)` is the guest's read-only view of
   what the WELCOME carried (`MatchSettings.from_snapshot(welcome["snapshot"])`; `Night.match_settings` after
   `start_remote`), and `changed` fires when a control moves. A dedicated server takes `--count`, `--max-alive`
-  and `--break`.
+  `--break` and `--bots`.
+- **Bots.** <a id="bots"></a>`bots` (`MatchSettings.MAX_BOTS` = 3) is how many `BotClient`s the night seats beside the
+  people. `NightBots` (`game/gameplay/night/night_bots.gd`) is the one place that decides, for Solo (`Night`) and a room
+  (`NightHost`) alike. Solo seats the setting beside the person (seats 2 to 4). A room is four seats: the bots are
+  `NightBots.target(setting, people)`, never more than the setting and never more than the seats the people leave free
+  (3 asked, 2 people: 2 bots, in seats 3 and 4). Bots take the highest free seat numbers, people the lowest, so the
+  people's numbers do not move. A person who joins when no seat is free takes the **lowest bot's seat as it stands**
+  (`NightBots.hand_over`: the same body, points, weapons and health; the rules' `seat_person` action answers
+  `bot_replaced`; the round, the night and the other bots go on, and the person is welcomed as any other with the
+  seat's looks re-sent), the bot leaves the `BotHost`, and a person who leaves hands the seat to a new bot while others
+  remain. A seat is a bot's when `player_added` says `bot: true` (`PlayerState.bot`, in the snapshot too): the HUD writes
+  `BOT` after the name everywhere (`HudState.name_of`), a bot seated at the start is no "joined" notice, and the lobby
+  shows the bots the host's setting will seat in the open seats (`LobbyScreen.bots_shown`). Every bot plays the
+  shipped regular profile for now and counts as a player for the rules (`add_player`). With bots in the night the
+  server builds the frame on every step (the bots decide on every step; clients still get it every `SEND_EVERY`).
+  Over a socket: `test_room_bots.gd`; solo: `test_night_bots.gd`.
 - **Adding a setting.** One definition serves rooms and solo: the Play screen (Solo) and the lobby both hold a
   `MatchSettingsPanel`. A new setting is a key of `MatchSettings.KEYS` and a row in the panel (`_row(key, title)`, its
   entry in `HINTS`); `test_solo_match_settings.gd` fails on a key without a row, and on a screen of the two that shows a

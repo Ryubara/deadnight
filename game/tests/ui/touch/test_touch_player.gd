@@ -7,6 +7,10 @@ const TEST_ROOM := "res://world/test_room.tscn"
 const DRAG_SECONDS := 1.6
 const DRAG_UNITS_PER_SECOND := 40.0
 const DRAG_TRIM_SECONDS := 0.4
+## How often the finger reports itself, a second (a phone screen: 60 or 120), and the seed of the
+## uneven frame lengths.
+const FINGER_HZ := 60.0
+const DRAG_SEED := 664
 
 var _fixture: TouchFixture
 
@@ -197,44 +201,43 @@ func test_a_drag_from_the_aim_button_turns_the_view_and_keeps_aiming() -> void:
 	assert_float(turned).is_between(steady_turn * 0.98, hip_turn * 1.02)
 
 
-## A steady slow drag through the real input path, sampled every third frame as a 60 Hz finger is
-## on a page drawn at 180 Hz (#598): the yaw of every frame in the middle of the drag, without the
-## first and last 0.4 s, and the clock of each. The finger's speed is steady in time whatever the
-## frames take.
-func _steady_drag(rig: ThirdPersonCamera, frames_per_sample: int) -> Dictionary:
-	var yaws: Array[float] = []
-	var clocks: Array[float] = []
-	var began := Time.get_ticks_usec() / 1000000.0
-	var last_sample := began
-	var at := Vector2(1700.0, 300.0)
-	await _fixture.touch(0, at)
-	var frame := 0
-	while Time.get_ticks_usec() / 1000000.0 - began < DRAG_SECONDS:
-		var now := Time.get_ticks_usec() / 1000000.0
-		if frame % frames_per_sample == 0:
-			var step := Vector2(DRAG_UNITS_PER_SECOND * (now - last_sample), 0.0)
-			at += step
-			last_sample = now
-			await _fixture.drag(0, at, step)
-		else:
-			await get_tree().process_frame
-		frame += 1
-		var elapsed := now - began
-		if elapsed > DRAG_TRIM_SECONDS and elapsed < DRAG_SECONDS - DRAG_TRIM_SECONDS:
-			yaws.append(rig.yaw)
-			clocks.append(now)
-	await _fixture.lift(0)
-	return {"yaws": yaws, "clocks": clocks}
-
-
-## The turn of each frame of a drag, and the turn per second.
-func _frame_turns(drag: Dictionary) -> Dictionary:
+## A steady slow drag through the real input path, on a clock the test keeps: a page that draws
+## `page_hz` frames a second (the frame lengths vary by `jitter`, seeded) and a finger that reports
+## itself `FINGER_HZ` times a second. The touch layer's own `_process` is stepped by hand with each
+## frame's length, so the drag does not depend on how fast this machine draws frames (#664: on a
+## busy machine the real frames hitched and the measured rate with them). Returns the turn of every
+## frame in the middle of the drag, without the first and last `DRAG_TRIM_SECONDS`, and the turn
+## per second of each. The finger's speed is steady in time whatever the frames take.
+func _steady_drag(rig: ThirdPersonCamera, page_hz: float, jitter := 0.0) -> Dictionary:
 	var steps: Array[float] = []
 	var rates: Array[float] = []
-	for i in range(1, drag["yaws"].size()):
-		var step := angle_difference(drag["yaws"][i - 1], drag["yaws"][i])
-		steps.append(step)
-		rates.append(step / maxf(drag["clocks"][i] - drag["clocks"][i - 1], 0.000001))
+	var random := RandomNumberGenerator.new()
+	random.seed = DRAG_SEED
+	var at := Vector2(1700.0, 300.0)
+	await _fixture.touch(0, at)
+	# The test steps the touch layer itself: a real frame in between would add its own length.
+	_fixture.controls.set_process(false)
+	var now := 0.0
+	var last_sample := 0.0
+	var next_sample := 1.0 / FINGER_HZ
+	while now < DRAG_SECONDS:
+		var length := random.randfn(1.0, jitter) / page_hz if jitter > 0.0 else 1.0 / page_hz
+		length = clampf(length, 0.4 / page_hz, 2.5 / page_hz)
+		now += length
+		if now >= next_sample:
+			var moved := Vector2(DRAG_UNITS_PER_SECOND * (now - last_sample), 0.0)
+			at += moved
+			last_sample = now
+			next_sample += 1.0 / FINGER_HZ
+			_fixture.send_drag(0, at, moved)
+		var before := rig.yaw
+		_fixture.controls._process(length)
+		if now > DRAG_TRIM_SECONDS and now < DRAG_SECONDS - DRAG_TRIM_SECONDS:
+			var step := angle_difference(before, rig.yaw)
+			steps.append(step)
+			rates.append(step / length)
+	_fixture.controls.set_process(true)
+	await _fixture.lift(0)
 	return {"steps": steps, "rates": rates}
 
 
@@ -253,13 +256,32 @@ func test_a_steady_slow_drag_turns_the_view_every_frame_without_a_step_back() ->
 	var runner := scene_runner(TEST_ROOM)
 	var player := runner.find_child("Player") as Player
 	player.capture_mouse = false
-	var drag := await _steady_drag(player.camera_rig, 3)
-	var turns := _frame_turns(drag)
+	# A page at 180 Hz and a finger at 60: two frames in three get no sample (#598).
+	var turns := await _steady_drag(player.camera_rig, 180.0)
 	var steps: Array[float] = turns["steps"]
 	assert_int(steps.size()).is_greater(30)
 	# Dragging right turns the yaw down: every frame moves that way, none stands still or goes back.
 	assert_int(steps.filter(func(step: float) -> bool: return step >= 0.0).size()).is_equal(0)
 	assert_float(_variation(turns["rates"])).is_less(0.35)
+
+
+func test_a_steady_slow_drag_turns_evenly_at_any_page_rate_and_with_uneven_frames() -> void:
+	var runner := scene_runner(TEST_ROOM)
+	var player := runner.find_child("Player") as Player
+	player.capture_mouse = false
+	# Pages that draw slower, faster and not in step with the finger (144 over 60 is 2.4 frames a
+	# sample), and one whose frames vary by a fifth.
+	for page in [[240.0, 0.0], [144.0, 0.0], [90.0, 0.0], [60.0, 0.0], [180.0, 0.2]]:
+		player.camera_rig.yaw = 0.0
+		var turns := await _steady_drag(player.camera_rig, page[0], page[1])
+		var steps: Array[float] = turns["steps"]
+		var message := "page %s Hz, frames varying by %s" % page
+		(
+			assert_int(steps.filter(func(step: float) -> bool: return step >= 0.0).size())
+			. override_failure_message(message)
+			. is_equal(0)
+		)
+		assert_float(_variation(turns["rates"])).override_failure_message(message).is_less(0.35)
 
 
 func test_the_same_drag_stood_still_in_most_frames_without_the_smoothing() -> void:
@@ -269,8 +291,7 @@ func test_the_same_drag_stood_still_in_most_frames_without_the_smoothing() -> vo
 	player.capture_mouse = false
 	_fixture.controls.tuning = TouchTuning.shipped()
 	_fixture.controls.tuning.look_smoothing = 0.0
-	var drag := await _steady_drag(player.camera_rig, 3)
-	var turns := _frame_turns(drag)
+	var turns := await _steady_drag(player.camera_rig, 180.0)
 	var steps: Array[float] = turns["steps"]
 	(
 		assert_int(steps.filter(func(step: float) -> bool: return step == 0.0).size())

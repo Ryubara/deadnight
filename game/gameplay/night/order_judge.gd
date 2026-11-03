@@ -7,9 +7,7 @@ extends RefCounted
 ## (`bot_order_set`, or `bot_order_refused` with the reason). The answer here is `&""` when the
 ## order was taken, else why not.
 
-## Set by the server, and again when a test swaps its tuning.
-var tuning: NightTuning
-
+var _pings: PingJudge
 var _orders: BotOrders
 var _rules: GameRules
 var _world: NightWorld
@@ -19,14 +17,14 @@ var _announce: Callable
 
 
 func _init(
-	p_tuning: NightTuning,
+	p_pings: PingJudge,
 	p_orders: BotOrders,
 	p_rules: GameRules,
 	p_world: NightWorld,
 	p_bodies: Dictionary,
 	p_announce: Callable
 ) -> void:
-	tuning = p_tuning
+	_pings = p_pings
 	_orders = p_orders
 	_rules = p_rules
 	_world = p_world
@@ -64,7 +62,7 @@ func _place(here: Vector3, named: Variant) -> Vector3:
 	if typeof(named) == TYPE_VECTOR3:
 		var point: Vector3 = named
 		var apart := Vector2(point.x - here.x, point.z - here.z).length()
-		if point.is_finite() and apart <= tuning.ping_range:
+		if point.is_finite() and apart <= _pings.tuning.ping_range:
 			at = point
 	var map := _world.map()
 	if map.is_valid() and NavigationServer3D.map_get_iteration_id(map) > 0:

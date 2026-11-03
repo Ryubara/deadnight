@@ -17,25 +17,25 @@ extends RefCounted
 ## weapons events (`CombatServer`), `player_damaged` (the blow as the world saw it: `from`, where it
 ## came from, and the zombie's id, type and `knockback`: metres the blow throws the player, recorded
 ## for the player's own motion to apply), and last a `frame`. A frame carries the whole picture a
-## client or a HUD draws from.
-##
-## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
-## barricades ({id: boards up}), pings ({player_id: {kind, pos, subject, left}}), zombies
-## (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, aim (the aim pose is
-## held), pitch (the look up or down, `pitch_step`), stance (`PlayerStance` bits), ammo, reserve,
-## reloading, arms (every weapon carried: id to [ammo, reserve, tier]), points, prompt, reviving
-## (the teammate this one is raising, 0 for none), revive (0 to 1: how far the hold on this one,
-## when downed, has got), ack (the `seq` of the command this step used: a predicting client replays
-## from it), kills, downs, revives, dead (bled out), bleed (seconds a downed player has left) and
-## reviver (who is raising this one, 0 for nobody)}}.
-##
-## Single-player runs this beside the client, joined by a `LoopbackLink`.
+## client or a HUD draws from. Frame fields: tick, phase, round, remaining, fuel, circuits ({id:
+## on}), doors (open ids), barricades ({id: boards up}), pings ({player_id: {kind, pos, subject,
+## left}}), zombies (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, aim
+## (the aim pose is held), pitch (the look up or down, `pitch_step`), stance (`PlayerStance` bits),
+## ammo, reserve, reloading, arms (every weapon carried: id to [ammo, reserve, tier]), points,
+## prompt, reviving (the teammate this one is raising, 0 for none), revive (0 to 1: how far the hold
+## on this one, when downed, has got), ack (the `seq` of the command this step used: a predicting
+## client replays from it), kills, downs, revives, dead (bled out), bleed (seconds a downed player
+## has left) and reviver (who is raising this one, 0 for nobody)}}. Single-player runs this beside
+## the client, joined by a `LoopbackLink`.
 
 ## Ticks between the asks which areas the map has taken in (a quarter second).
 const SPAWN_RETRY_TICKS := 15
 const COMMAND := &"command"
 const JOIN := &"join"
 const LEAVE := &"leave"
+## A person takes the seat of a bot: `seat_person` {player_id}. The seat, its body, points and
+## weapons stay as they are; the rules say `bot_replaced`.
+const SEAT_PERSON := &"seat_person"
 const START_NIGHT := &"start_night"
 ## A player marks something for the others: `ping` {kind, pos, subject}, see `PingBoard`.
 const PING := &"ping"
@@ -104,7 +104,6 @@ var tuning: NightTuning:
 		if _revive != null:
 			_revive.tuning = value
 			_ping_judge.tuning = value
-			_order_judge.tuning = value
 var tick_count := 0
 ## The marks the players have put up.
 var ping_board := PingBoard.new()
@@ -176,7 +175,7 @@ func _init(
 	sim.board_seconds = rules.tuning.barricades.seconds_per_board
 	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
 	_ping_judge = PingJudge.new(tuning, ping_board, rules, world, sim, _bodies, _announce)
-	_order_judge = OrderJudge.new(tuning, bot_orders, rules, world, _bodies, _announce)
+	_order_judge = OrderJudge.new(_ping_judge, bot_orders, rules, world, _bodies, _announce)
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
 	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
@@ -201,9 +200,11 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 	_outbox = []
 	match action.get("type"):
 		JOIN:
-			_join(action["player_id"], action.get("local", false))
+			_join(action["player_id"], action.get("local", false), action.get("bot", false))
 		LEAVE:
 			_leave(action["player_id"])
+		SEAT_PERSON:
+			rules.apply(RulesAction.seat_person(action["player_id"]))
 		START_NIGHT:
 			rules.apply(RulesAction.start())
 		LOOK:
@@ -317,7 +318,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 # --- Players ---
 
 
-func _join(player_id: int, local: bool) -> void:
+func _join(player_id: int, local: bool, bot := false) -> void:
 	if _bodies.has(player_id):
 		return
 	_bodies[player_id] = world.add_body(world.player_spawn(_bodies.size()), local, drawn_bodies)
@@ -330,7 +331,7 @@ func _join(player_id: int, local: bool) -> void:
 	thrower.release_over = tuning.grenade_release_over
 	thrower.release_under = tuning.grenade_release_under
 	_throwers[player_id] = thrower
-	rules.apply(RulesAction.add_player(player_id))
+	rules.apply(RulesAction.add_player(player_id, bot))
 	# What the rules say the player starts with, the firearm last so it is the one in hand.
 	for shop_id in rules.players[player_id].weapons:
 		_combat(CombatAction.give_weapon(player_id, WeaponCatalog.catalog_id(shop_id)))
@@ -709,13 +710,12 @@ func aims_with_view(command: NightCommand) -> bool:
 
 
 ## What `use` would do for a player right now: `{}`, a door to buy, a weapon on a wall, the crane
-## or rounds to buy (the nearest shop spot in reach), `{"kind": &"repair", "id",
-## "boards"}` for a breach with a board down that the player stands inside, in reach of, or
-## `{"kind": &"circuit", "id", "on"}` for a breaker post in reach (`on`: how the circuit is now), or
-## `{"kind": &"fuel", "id", "item", "price", "units"}` at a fuel can spot (what the rules would sell
-## now: `units` is 0 and `price` 0 when the tank is full), or `{"kind": &"revive", "id",
-## "progress", "bleed"}` beside a downed teammate (`progress`: 0 to 1 of the hold, `bleed`: the
-## seconds they have left; first of all, a life comes before a door).
+## or rounds to buy (the nearest shop spot in reach), `{"kind": &"repair", "id", "boards"}` for a
+## breach with a board down that the player stands inside, in reach of, or `{"kind": &"circuit",
+## "id", "on"}` for a breaker post in reach (`on`: how the circuit is now), or `{"kind": &"fuel",
+## "id", "item", "price", "units"}` at a fuel can spot (what the rules would sell now: `units` and
+## `price` are 0 when the tank is full), or `{"kind": &"revive", "id", "progress", "bleed"}` beside
+## a downed teammate (`progress`: 0 to 1 of the hold, `bleed`: seconds left; it comes first).
 func use_target(player_id: int) -> Dictionary:
 	var body := _bodies.get(player_id) as Player
 	if body == null:

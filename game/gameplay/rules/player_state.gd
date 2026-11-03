@@ -59,6 +59,9 @@ var dead: bool = false
 var bleed_left: float = 0.0
 var points_earned: int = 0
 var points_spent: int = 0
+## Whether a bot plays this seat. A person who joins takes a bot's seat as it stands (points,
+## weapons, health) and the flag goes (`RulesAction.seat_person`).
+var bot: bool = false
 
 
 ## What a repair pays now, under the cap on repair pay from one round's end to the next; counts it.
@@ -97,6 +100,7 @@ func to_dict() -> Dictionary:
 		"bleed_left": bleed_left,
 		"points_earned": points_earned,
 		"points_spent": points_spent,
+		"bot": bot,
 	}
 
 
@@ -120,4 +124,5 @@ static func from_dict(data: Dictionary) -> PlayerState:
 	player.bleed_left = data["bleed_left"]
 	player.points_earned = data["points_earned"]
 	player.points_spent = data["points_spent"]
+	player.bot = bool(data.get("bot", false))
 	return player

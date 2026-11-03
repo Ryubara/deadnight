@@ -38,7 +38,9 @@ extends RefCounted
 ##   zombie_crippled: zombie_id, zombie_type (the crawler it became), player_id, cause (legs or
 ##     wounded), health, speed_scale
 ##   grenade_count_changed: player_id, count, reason (thrown, refill, purchase)
-##   player_added: player_id, grenades (the count they start with), health, max_health
+##   player_added: player_id, grenades (the count they start with), health, max_health, bot (true
+##     when a bot plays the seat)
+##   bot_replaced: player_id: a person took the seat of a bot, which is no bot's from now on
 ##   player_hurt: player_id, damage, health (left), max_health, bearing (radians clockwise from -z,
 ##     seen from above, where the blow came from), source_id (the zombie, -1 for none)
 ##   player_healed: player_id, health, max_health, reason (regen, revive or tonic: a health tonic
@@ -398,7 +400,9 @@ func _dispatch(action: Dictionary) -> void:
 			if phase == Phase.BREAK:
 				_begin_round()
 		RulesAction.ADD_PLAYER:
-			_add_player(action["player_id"])
+			_add_player(action["player_id"], action.get("bot", false))
+		RulesAction.SEAT_PERSON:
+			_seat_person(action["player_id"])
 		RulesAction.REMOVE_PLAYER:
 			if players.erase(action["player_id"]):
 				CranePlay.buyer_left(self, action["player_id"])
@@ -684,10 +688,11 @@ func _set_phase(new_phase: Phase) -> void:
 # --- Players and points ---
 
 
-func _add_player(player_id: int) -> void:
+func _add_player(player_id: int, bot := false) -> void:
 	if players.has(player_id):
 		return
 	var added := PlayerState.new(player_id, tuning.economy.start_points)
+	added.bot = bot
 	added.grenades = tuning.explosives.start_grenades
 	PlayerHealth.start(added, tuning.health)
 	added.weapons.assign(tuning.economy.start_weapons)
@@ -699,6 +704,7 @@ func _add_player(player_id: int) -> void:
 			"grenades": added.grenades,
 			"health": added.health,
 			"max_health": added.max_health,
+			"bot": bot,
 		}
 	)
 	_emit(
@@ -710,6 +716,16 @@ func _add_player(player_id: int) -> void:
 			"reason": &"start",
 		}
 	)
+
+
+## A person sits where a bot sat: the seat keeps everything it had.
+func _seat_person(player_id: int) -> void:
+	var seat := players.get(player_id) as PlayerState
+	if seat == null or not seat.bot:
+		_reject(&"unknown_player", RulesAction.SEAT_PERSON)
+		return
+	seat.bot = false
+	_emit(&"bot_replaced", {"player_id": player_id})
 
 
 func _set_downed(player_id: int, downed: bool) -> void:

@@ -255,6 +255,17 @@ player's points reach 170, 382, 680, 1062 and 1487 by the end of rounds 1 to 5, 
 | 29 | The setting is Deadnight's 1958 world, not a 1945 bunker: no German writing, no war wreck, no names from Nacht | original work |
 | 30 | Light is ours: the maintainer decides whether the generator and circuits come along | light is Deadnight's first pillar; Nacht has no power |
 
+### Measured in the greybox (M)
+
+The greybox (#631, [the second map](../../design/smallmap.md)) holds every row from 1 to 19 and 27 to 29; the table
+of measured values is on its page, and `test_smallmap_formula.gd` fails a row that drifts out. The numbers it
+measured: 585 m² inside (start 205, side 151, upstairs 228), the ring's lap 68 m, the loops 29 and 31 m, the longest
+sight line 23 m, 3.2 m ceilings, a 3.4 m rise, the players' start 5.2 m from a window, spawns 6 to 7 m outside.
+
+Two of this page's rows overrule the kit's sizes on [the art page](small-map-art.md), and the greybox follows the
+rows: the ceiling (row 9) and the rise (row 19) make the storey 3.4 m, not the kit's 3.0 m; and row 27 makes the
+paid door, the upstairs opening and the stairs 2.0 m wide, not the kit's 1.4 m.
+
 ## Nacht against the drive-in lot
 
 | | Nacht (E unless W) | Drive-in lot (M unless noted) | Ratio |

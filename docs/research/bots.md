@@ -1052,6 +1052,14 @@ and a per-room bot cap, to the [decisions](#decisions-of-the-maintainer). **Done
 the real transport with two humans and two bots runs 10 minutes in CI without a divergence or an `ERROR` (with #56);
 the server's measured bot cost is inside the budget; a human takes over a slot mid-round without losing the round.
 
+**Slot filling shipped early (#643).** The room setting and the seating part of this phase landed with the match
+settings: a **Bots** setting of 0 to 3 (`MatchSettings.bots`, one panel for Solo and a host's room), seated by
+`NightBots` in the seats people leave free, a person who joins taking a bot's seat as it stands, bots labelled `BOT`
+in the HUD and the lobby, all in [Rounds, points and fuel](../design/rounds.md#bots). It is not the "off, fill to two,
+fill to four" of the first draft: the count is the host's. What stays with #230: the per-room cap and kill-switch,
+the cost budget, a human who leaves handing the body (not a new body) to a bot, names and looks per profile, and the
+maintainer's open questions. All seated bots play the shipped regular profile; a room has no difficulty setting yet.
+
 ### Phase 7: validation at scale and tuning
 
 Issue: #231.

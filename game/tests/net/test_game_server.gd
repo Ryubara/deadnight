@@ -260,12 +260,14 @@ func test_the_rules_the_host_chose_ride_the_ticket_into_the_room_and_every_welco
 	# gives numbers as floats, and a whole one still fits `max_alive`.
 	var ann := await _client("rules-a", "ann", "Tester", chosen)
 	var room := _server.room_of_match("rules-a")
-	assert_dict(room.server.rules.settings.to_dict()).is_equal(chosen)
-	assert_dict(ann.match_settings.to_dict()).is_equal(chosen)
+	# A ticket from before the bot count (no `bots`) asks for none.
+	var held := chosen.merged({"bots": 0})
+	assert_dict(room.server.rules.settings.to_dict()).is_equal(held)
+	assert_dict(ann.match_settings.to_dict()).is_equal(held)
 	# A friend's ticket carries the same rules (and even one without them changes nothing): the
 	# WELCOME reads what the room has.
 	var bo := await _client("rules-a", "bo")
-	assert_dict(bo.match_settings.to_dict()).is_equal(chosen)
+	assert_dict(bo.match_settings.to_dict()).is_equal(held)
 	# Another match on the same server has its own rules: none chosen is today's game.
 	var cy := await _client("rules-b", "cy")
 	assert_bool(cy.match_settings.is_default()).is_true()
