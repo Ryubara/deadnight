@@ -9,6 +9,7 @@ group_limits = Dictionary[StringName, int]({
 &"board": 4,
 &"breaker": 2,
 &"challenge": 1,
+&"debris": 2,
 &"door": 2,
 &"generator": 2,
 &"grenade": 8,
@@ -27,6 +28,7 @@ group_limits = Dictionary[StringName, int]({
 &"till": 2,
 &"ui": 4,
 &"ui_hint": 1,
+&"yard": 2,
 &"zombie_boss": 2,
 &"zombie_step": 5,
 &"zombie_voice": 6

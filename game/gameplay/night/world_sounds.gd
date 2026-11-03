@@ -29,6 +29,10 @@ const BUYS := {
 ## `Callable(id: StringName, at: Variant, extra_db: float)`; the audio service unless a test
 ## listens instead.
 var play := Callable()
+## What a purchase of one item plays besides the till, where the item's kind would play `BUYS`
+## otherwise (item id to an array of sounds, which may be empty): a map that has a door which is
+## not a padlocked slab says so here (`SmallMapSounds.ITEM_SOUNDS`).
+var item_sounds := {}
 var schedule := SoundSchedule.new()
 var generator := GeneratorLoad.new()
 
@@ -221,7 +225,7 @@ func _on_purchase(event: Dictionary) -> void:
 	var item := _economy.item(event["item_id"])
 	if item == null:
 		return
-	var sounds: Array = BUYS.get(item.kind, [])
+	var sounds: Array = item_sounds.get(item.id, BUYS.get(item.kind, []))
 	var buyer: int = event["player_id"]
 	for i in sounds.size():
 		var sound: StringName = sounds[i]
