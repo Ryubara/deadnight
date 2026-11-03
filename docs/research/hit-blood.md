@@ -31,7 +31,7 @@ notes](https://github.com/kduong-dev/brute-force-2003-reloaded/issues/150).
 
 | Choice | Why |
 | --- | --- |
-| A billboard quad and a shader for the splash, no `GPUParticles3D` | a particle system costs two programs of its own on the web ([first-use hitches](first-use-hitches.md#particle-systems-two-programs-of-their-own-and-a-sample-that-expires)); one unshaded quad shader is one program, drawn in the warm-up |
+| A billboard quad and a shader for the splash, no `GPUParticles3D` | a particle system costs two programs of its own on the web ([first-use hitches](first-use-hitches.md)); one unshaded quad shader is one program, drawn in the warm-up |
 | The drops are drawn in the fragment shader from `progress` and a seed | the same splash in a test, a capture and every client; no per-frame allocation, nothing to pool but the quad |
 | The shot's direction is turned into the camera's plane in `vertex()` and the cone opens to all round when the shot is straight away from the camera | from the shoulder camera most shots go straight away from it; a splash that only fans sideways would be a flat disc |
 | `damage_dealt` carries `weapon_id` and `dir` | the view needs the weapon class and the way; no `NetWire` version change, events are dictionaries and clients ignore keys they do not know (the policy is in `net_wire.gd`). `NetWire.VERSION` stays 12 |
