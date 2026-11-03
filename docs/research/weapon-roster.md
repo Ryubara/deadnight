@@ -142,6 +142,9 @@ What it says:
   playtest.
 - **The pump's simulated value is zero or less**, like the double-barrel's; it is priced as the cheapest wall (700) for
   its early value, a close one-shell kill to round 9.
+  Superseded by the maintainer on [#858](https://github.com/Ryubara/deadnight/issues/858): no wall sells the pump,
+  the MP5 or the M4A1 ([the wall tier](../design/weapons.md#the-wall-tier)); they are box only, so the run above,
+  which put them on walls, is to be read again with them in the box.
 
 ### The shipped gate with the new crane pool
 
