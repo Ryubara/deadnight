@@ -2,7 +2,8 @@
 # server and each client live in their own SubViewport world, the clients are `Night`s that joined
 # with `start_remote`. Player A equips, swaps, aims, fires, reloads, swings and throws; B (and a
 # client that joins late) must show each of them on A's drawn body: the weapon model in the hand,
-# the aim pose, the flash on the muzzle, the reload tilt, the swing and the grenade clips (#518).
+# the aim pose, the flash on the muzzle, the reload's motion (#683), the swing and the grenade
+# clips (#518).
 extends GdUnitTestSuite
 
 const A := 1
@@ -133,9 +134,19 @@ func _barrel_pitch(night: Night, id: int) -> float:
 	return pose.hands().aim_pitch if pose != null else -99.0
 
 
-func _reload_dip(night: Night, id: int) -> float:
+func _reload_weight(night: Night, id: int) -> float:
 	var pose := _pose(night, id)
-	return pose.reload_dip() if pose != null else -1.0
+	return pose.reload_weight() if pose != null else -1.0
+
+
+## How far the moving part of `id`'s weapon is open on `night`'s screen, 0 to 1 (the revolver's
+## cylinder swung out), or -1 when the model in the hand has no such part.
+func _part_moved(night: Night, id: int) -> float:
+	var pose := _pose(night, id)
+	var part := pose.reload_part() if pose != null else null
+	if part == null:
+		return -1.0
+	return pose.reload_pose().part
 
 
 func _held_by_server(id: int) -> StringName:
@@ -314,12 +325,11 @@ func test_b_shows_a_reloading() -> void:
 	(_commands[a] as NightCommand).fire = false
 	await _ticks(20)
 	await _tap(a, _reload)
-	var tilted := await _until(func() -> bool: return _reload_dip(b, A) > 0.3)
-	(
-		assert_bool(tilted)
-		. override_failure_message("B never saw A's gun tilt down for the reload")
-		. is_true()
-	)
+	var reloading := await _until(func() -> bool: return _reload_weight(b, A) > 0.3)
+	assert_bool(reloading).override_failure_message("B never saw A's reload play").is_true()
+	# The revolver's cylinder swings out on B's screen too.
+	var opened := await _until(func() -> bool: return _part_moved(b, A) > 0.9)
+	assert_bool(opened).override_failure_message("B never saw A's cylinder open").is_true()
 
 
 func test_b_shows_a_swinging_the_crowbar() -> void:

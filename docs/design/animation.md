@@ -368,17 +368,72 @@ crawl is gone: the controller adds it only when its file is there.
 
 ## Reloading
 
-A reload is a tilt, not a clip (maintainer, 2026-11-01, #383: "it can just be a slight tilt weapon downward and pull it
-back up after it's done"). The `Reload_<Class>` clips above are not played in the night: the arms stay on the weapon
-(`WeaponHandsIK`) and the server's `reload_started` (`seconds` is the weapon's `reload_time`) calls
-`PlayerAnimation.reload(seconds)` on the shooter's Soldier, on every client, through `NightView`. Over those seconds the
-weapon's pitch is lowered about the grip by `PlayerTuning.reload_tilt_degrees` (35): down over the first
-`reload_dip_in` (0.2) of the time, held, and back up over the last `reload_dip_out` (0.25), each a smoothstep, so the
-weapon is level again when the reload is done. A swap (`equip`) cancels it. The tilt is added to the pitch of the pose
-the aim weight gives ([hip fire](../research/hip-fire.md)), so a reload while aiming dips from the aim and returns to
-it, and it never touches the weight: `test_reload_tilt.gd` samples the barrel's pitch every tick for every gun (hip and
-aim) and checks the dip, the return within the reload time, a bounded turn per tick and an unchanged aim weight;
-`test_night_reload.gd` does it through the real night with the sounds counted ([audio](audio.md)).
+A reload is a motion per mechanism, played on the solved grips (#683, after #383's tilt). Players missed reloads
+(maintainer, 2026-11-03: "Reload Animations that is more noticeable and Reload Sounds if not exists yet."), and the
+reason was on the screen: from the shoulder camera (0.6 m right, 2.3 m behind) a weapon held at the hip is behind the
+Soldier's head, and #383's 35 degree tilt took it further down behind him. Measured by drawing the frame again without
+the weapon and counting the pixels that change (`tests/captures/reload_sheet.tscn --measure`, 1920 by 1080):
+
+| Weapon | Before (#383 tilt), mid-reload | After, mid-reload | After, most |
+| --- | --- | --- | --- |
+| Tommy gun | 0 | 6,684 | 6,808 |
+| Lever rifle | 284 | 8,676 | 9,352 |
+| Double-barrel | 336 | 7,332 | 9,076 |
+| Revolver | 740 | 3,688 | 4,280 |
+| Flare gun | 888 | 2,680 | 5,124 |
+
+(the median of the frames from 20 to 70 % of the reload, in pixels of the 2.07 million on screen.) So every reload
+carries the weapon **out to the right of the head and up**, turns its working side to the camera, and turns the chest
+the left shoulder forward so the short left arm still reaches it.
+
+### How it is made
+
+- **Data, one file per weapon:** `gameplay/player/reload/<weapon id>.tres` (`ReloadMotion`), a row of `ReloadKey`s at
+  shares of the reload's time, so it stretches over the weapon's own `reload_time`. A key gives the weapon's move and
+  turn from the hold (metres and degrees in the aim's frame, about the grip), the chest's lean and turn, the left hand's
+  point (on the weapon in the model's units, optionally on its moving part, or at the belt pouch in the body's frame),
+  how far the part is open, whether the part is on the weapon and whether the ammunition is in the left hand. Numbers
+  ease between keys (smoothstep); the switches hold from their key. The first and last keys are the hold's own, so a
+  reload starts and ends on the pose the aim weight gives (hip or aim) and never touches the weight.
+- **The arms** (`WeaponHandsIK`): the move and turn are added to the hold's target, the right hand follows the weapon
+  through its solved grip, and the left hand reaches the key's point, blended bone by bone from where the hold left it
+  (the fore-end, or the clip's arm for a one-handed gun), so it leaves and comes back without a jump. Its fingers half
+  open off the fore-end grip.
+- **The part and the ammunition** (`ReloadView`, owned by `PlayerAnimation`): the weapon's moving part is a node of its
+  model, made in Blender at its pivot (`tools/blender/build_weapons.py`, `NODES`), turned and slid by the key's
+  `part`; the ammunition is its own small model beside the gun's (`<gun>_ammo.glb`), on a `BoneAttachment3D` on the left
+  hand bone, standing out of the fingertips at 1.5 times the gun's size (the kit's hands are two to three times a
+  person's, and a shell at the gun's size vanished in the fist). The tommy gun's drum is taken off the gun by the hand
+  where it is and a full one put back.
+- **Every client** draws every player's reload from the server's `reload_started` (`NightView.show_reload` calls
+  `PlayerAnimation.reload(seconds)`), so a teammate's is the same motion; a swap, going down or kneeling at a revive
+  cancels it (it eases out in a few frames), and the sprint carry waits while the arms are busy.
+- The authored `Reload_<Class>` clips in `clips.json` are not played: their poses were keyed on the kit's hold, before
+  the grips were solved.
+
+### Every weapon
+
+| Weapon | Mechanism | The motion | Part | Ammunition | Steps and their sounds |
+| --- | --- | --- | --- | --- | --- |
+| Revolver (`pistol`, 1.3 s) | revolver | up beside the shoulder; cylinder out; muzzle up to throw the empties; down to load | `Cylinder`, 85 degrees out to the left on its crane | speedloader | `cylinder_out` `reload_revolver_open`, `eject` `reload_revolver_eject`, `pouch` `reload_pouch`, `rounds_in` `reload_revolver_rounds`, `cylinder_in` `reload_revolver_close` |
+| Tommy gun (`smg`, 1.9 s) | magazine | raised muzzle up, the drum toward the camera; drum off and stowed, a full one on; bolt pulled | `Drum`, slid down and out to the right | the drum | `mag_out` `reload_smg_mag_out`, `pouch` `reload_pouch`, `mag_in` `reload_smg_mag_in`, `bolt` `reload_smg_bolt` |
+| Lever rifle (`rifle`, 2.2 s) | lever | rolled 60 degrees so the loading gate faces up; three rounds pushed in; lever thrown | `Lever`, 50 degrees down on its pin | one round | `pouch` `reload_pouch`, `round_in` (3) `reload_rifle_round`, `lever` `reload_rifle_lever` |
+| Double-barrel (`shotgun`, 2.4 s) | break-open | out right, muzzle down; barrels broken open; two shells in; flicked shut | `Barrels` with the forend, 45 degrees on the hinge pin | two shells | `break_open` `reload_shotgun_open`, `eject` `reload_shotgun_eject`, `pouch` `reload_pouch`, `shells_in` `reload_shotgun_shells`, `snap_shut` `reload_shotgun_shut` |
+| Flare gun (`flare_gun`, 2.0 s) | break-open | up beside the shoulder; barrel broken open, the case shaken out; a flare in; snapped shut | `Barrel`, 50 degrees on its hinge | one flare cartridge | `break_open` `reload_flare_open`, `eject` `reload_flare_eject`, `pouch` `reload_pouch`, `shells_in` `reload_flare_in`, `snap_shut` `reload_flare_shut` |
+
+The melee weapons do not reload. The sounds and their levels under fire are on the [audio page](audio.md#reloads).
+
+### Proof
+
+`tests/player/test_reload_motion.gd` steps every gun's reload tick by tick, hip and aimed: the weapon turns at least
+30 degrees and moves at least 0.1 m, never more than 20 degrees a tick (the revolver's flick is 17.4), the left hand goes
+more than 0.35 m from the grip (the belt) and within 0.3 m of the weapon, the part opens fully and is back on, the
+ammunition shows and is gone, and the weapon is back on its hold by the end of the reload time with the aim weight
+unchanged; a swap ends it, the sprint carry waits for it, and every motion's file starts and ends on the hold and names
+a part its model has. `test_hand_grips.gd` measures the right hand on its grip twice through each reload,
+`test_night_reload.gd` plays each one through the real night, and `test_remote_weapons.gd` checks that a second client
+sees the reload and the revolver's cylinder open. Captures: `tests/captures/reload_sheet.tscn` (each gun's reload
+from the shoulder camera and a teammate's from the player's screen, `--measure` for the numbers above).
 
 ## Moving while aiming
 
