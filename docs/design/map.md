@@ -318,9 +318,9 @@ breaches are in its side walls, not the end wall, so nothing walkable lies past 
 The phone's draw-call budget ([#728](https://github.com/Ryubara/deadnight/issues/728)): the later aprons are behind the
 perimeter and are drawn only within 35 m of the camera, their boards within 45 m (`range_end` in the generator,
 `metadata/board_view_end` on the `Barricade`); the field's are drawn as before. Across 49 camera spots that is 13.8 more
-draw calls on average (+4 %), against 31 with everything drawn
-([measured](../research/later-breaches.md#numbers)). Every `Barricade` makes its five drawn copies of torn boards when it
-is built, so a tear mid-fight adds no node.
+draw calls on average (+4 %) in the scene alone, against 31 with everything drawn, and 4 more (227.4 to 231.4, +1.8 %)
+in a night with the batching of the lot's still meshes ([measured](../research/later-breaches.md#numbers)). Every
+`Barricade` makes its five drawn copies of torn boards when it is built, so a tear mid-fight adds no node.
 
 Across each gap are five boards (a `Barricade` node, `world/drive_in/barricade.gd`, with a `Board` per child). The
 boards follow the rules' `board_torn` and `board_repaired`, one at a time from the top down and back up from the

@@ -27,8 +27,10 @@ breaches in walls, and where an area has only a fence it gets a wall section wit
   `PLAZA_BREACHES`, `MIDWAY_POCKETS`) at the top of `tools/world/build_greybox.py`.
 - Ten more ids in `BarricadeTuning` and the shared table: 16 breaches in all, the same five boards, tearing and mending.
   Every spawn point carries the `barricade_id` it lies behind (`NightWorld.spawn_gates`), so the dead rise there and
-  stop short of the boards; `NightWorld._walkable` walks from the spawn to the inside of the boards before an area's
-  points join the pool.
+  stop short of the boards; `NightWorld._walkable` walks from the spawn to the inside of the boards, and from the
+  field to that inside, before an area's points join the pool (the second part is new: with a door just bought the
+  area is an island in the old mesh and the bay or apron is on it, so the first part alone said yes at once,
+  `test_spawns_wait_for_the_map.gd`).
 - Where a gap was placed it was checked against the props: six dressing props moved (`lot_props.py`): the midway's tires,
   pipes and pallets stood on the bays' walls or across their gaps, and the pipes' new place is away from the container
   beside the booth so the move made no new step up.
@@ -64,6 +66,12 @@ breaches in walls, and where an area has only a fence it gets a wall section wit
   `visibility_range_end` hides them past 35 m (the generator's `range_end`), and the boards past 45 m
   (`metadata/board_view_end`, read by `Barricade`). The field's aprons and boards are as they were: +13.8 draws on
   average (+4 %), +8 at the worst spot.
+
+  After merging main, which batches the lot's still meshes into per-cell meshes when a night builds the map (#836), the
+  same 49 spots in a real night (the player's own camera, 38 physics frames after each move, one read each): main
+  227.4 draws on average (median 155, worst 751), this branch 231.4 (median 169, worst 722). The difference is inside
+  the noise of one read at a spot (-51 to +35 at single spots): the mean is +2 % and the median +9 %, with the worst spot
+  29 calls lower, so the cost on top of the batching is a few percent at most.
 - **Pooled torn boards.** A `Barricade` made its drawn copies of torn boards the first time a board came off, a node
   entering the tree in the middle of a fight; with dead tearing in the midway `test_kill_allocations.gd` saw six such
   nodes in 14 kills. The pool of five copies is now made when the breach is built (80 hidden empty meshes for 16
