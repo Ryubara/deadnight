@@ -68,7 +68,7 @@ func test_down_replaces_the_health_bar() -> void:
 	_start()
 	_hud.state.set_equipment("Flare", 2)
 	assert_bool(_hud.health.shown_downed).is_false()
-	assert_str(_hud.health.equipment_text).is_equal("FLARE")
+	assert_str(_hud.state.equipment_name).is_equal("Flare")
 	_fixture.act(RulesAction.set_downed(1, true))
 	assert_bool(_hud.health.shown_downed).is_true()
 	assert_str(_hud.health.down_text).is_equal("DOWN")

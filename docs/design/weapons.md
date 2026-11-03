@@ -143,7 +143,10 @@ weapon: it is not in the catalogue's `IDS`, nobody buys, carries or wins it, and
 A player carries **two weapons** (`WeaponCatalog.CARRY_LIMIT`), melee ones included: there is no melee slot, and the
 bat and the axe take a slot like a gun. A player starts with the revolver alone and a free second hand: the crowbar that
 used to fill it is replaced by the [quick melee](#quick-melee), which takes no slot. The swap button (F, d-pad up)
-cycles the two weapons once there are two.
+cycles the two weapons once there are two. The keys **1** and **2** take the first and the second weapon in hand (3 is
+the third slot's, for the perk that carries three, #687); the slot already in hand, and an empty slot, change nothing. A
+slot keeps its place: a weapon bought with full hands takes the slot of the weapon it replaces. The
+[HUD](hud.md#the-weapon-slots) shows both slots, the one in hand lit.
 
 Buying a weapon at the wall or taking a prize from the crane with both hands full **replaces the weapon in hand**,
 with its magazine and reserve (and its re-cut). The replaced weapon is not dropped on the ground: it is gone, and it
