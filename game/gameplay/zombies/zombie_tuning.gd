@@ -44,6 +44,11 @@ const SHIPPED_PATH := "res://gameplay/zombies/zombie_tuning_default.tres"
 @export_range(0.0, 10.0, 0.1, "suffix:m/s") var separation_speed: float = 2.0
 ## Metres per second the pushes on one zombie may add up to: a pile cannot throw a zombie.
 @export_range(0.0, 20.0, 0.1, "suffix:m/s") var separation_max_speed: float = 4.0
+## Zombies this far apart in height (metres) do not push each other: one on a ramp is not in the
+## way of one on the floor under it.
+@export_range(0.1, 5.0, 0.05, "suffix:m") var separation_height: float = 1.0
+## Metres per second a zombie rises or falls to the floor its path runs on (a stair, a ramp).
+@export_range(0.5, 30.0, 0.5, "suffix:m/s") var climb_speed: float = 6.0
 ## Radians per second a zombie turns toward where it is going.
 @export_range(0.5, 40.0, 0.5, "suffix:rad/s") var turn_rate: float = 9.0
 
@@ -56,6 +61,9 @@ const SHIPPED_PATH := "res://gameplay/zombies/zombie_tuning_default.tres"
 @export_group("Attack")
 ## Metres from the zombie's feet to the player's at which it starts a swing.
 @export_range(0.2, 5.0, 0.05, "suffix:m") var reach: float = 1.4
+## A zombie this far above or below its target (metres) cannot reach it: the one under the roost
+## does not swing at the person standing over its head.
+@export_range(0.5, 10.0, 0.1, "suffix:m") var reach_height: float = 2.0
 ## The blow lands this many seconds into a swing.
 @export_range(0.05, 3.0, 0.01, "suffix:s") var windup_seconds: float = 0.45
 ## A whole swing, windup and recovery, in seconds. A type with a longer windup (its telegraph)
