@@ -4,6 +4,9 @@ extends RefCounted
 ## order that stands. A seam so the wheel can be proved with a stub: tests set `issuer` and
 ## `reader`, and the night's wiring (`for_night`) points them at `night.bot_orders`.
 
+static var _orders: Script
+static var _looked := false
+
 ## (order: StringName, issuer_id: int, at: Vector3) -> Dictionary: the command sent, `{}` when the
 ## order was refused before it left (an unknown order, a position that is not finite).
 var issuer := Callable()
@@ -45,6 +48,11 @@ func current(frame: Dictionary) -> StringName:
 	return reader.call(frame)
 
 
+## `BotOrders`, found once: a build without it (before #641) has none, and the wheel then reads
+## nothing from the frame.
 static func _orders_script() -> Script:
-	var path := "res://gameplay/bots/bot_orders.gd"
-	return load(path) as Script if ResourceLoader.exists(path) else null
+	if not _looked:
+		_looked = true
+		var path := "res://gameplay/bots/bot_orders.gd"
+		_orders = load(path) as Script if ResourceLoader.exists(path) else null
+	return _orders

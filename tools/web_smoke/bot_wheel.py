@@ -120,17 +120,17 @@ def keyboard_run(url: str, out: Path | None) -> dict:
         page.mouse.click(5, 5)
         page.wait_for_timeout(300)
         centre_x, centre_y = DESKTOP["width"] / 2, DESKTOP["height"] / 2
-        yaw_before = state(page)["yaw"]
         for name, (dx, dy) in ENTRIES.items():
             before = len(heard(page))
             page.mouse.move(centre_x, centre_y)
             page.keyboard.down("q")
-            wait_for(page, "the wheel to open", lambda s: bool(s.get("open")))
+            # The view is measured from the wheel opening: the mouse moves before it turn the view as ever.
+            yaw_before = wait_for(page, "the wheel to open", lambda s: bool(s.get("open")))["yaw"]
             page.mouse.move(centre_x + dx * MOUSE_PX, centre_y + dy * MOUSE_PX, steps=8)
             seen = wait_for(page, f"the wheel over {name}", lambda s, n=name: s.get("hovered") == n)
             if name == "hold":
                 shot(page, out, "desktop_open.png")
-            result.setdefault("turned_while_held", abs(seen["yaw"] - yaw_before))
+            result["turned_while_held"] = max(result.get("turned_while_held", 0.0), abs(seen["yaw"] - yaw_before))
             page.keyboard.up("q")
             page.wait_for_timeout(300)
             got = heard(page)[before:]
@@ -167,16 +167,15 @@ def pad_run(url: str, out: Path | None) -> dict:
         page.wait_for_timeout(600)
         page.evaluate("() => window.__padButton(0, false)")
         page.wait_for_timeout(300)
-        yaw_before = state(page)["yaw"]
         for name, (dx, dy) in ENTRIES.items():
             before = len(heard(page))
             page.evaluate("([i]) => window.__padButton(i, true)", [DPAD_LEFT])
-            wait_for(page, "the wheel to open", lambda s: bool(s.get("open")))
+            yaw_before = wait_for(page, "the wheel to open", lambda s: bool(s.get("open")))["yaw"]
             page.evaluate("([x, y]) => { window.__padAxis(2, x); window.__padAxis(3, y); }", [dx, dy])
             seen = wait_for(page, f"the wheel over {name}", lambda s, n=name: s.get("hovered") == n)
             if name == "roam":
                 shot(page, out, "pad_open.png")
-            result.setdefault("turned_while_held", abs(seen["yaw"] - yaw_before))
+            result["turned_while_held"] = max(result.get("turned_while_held", 0.0), abs(seen["yaw"] - yaw_before))
             page.evaluate("([i]) => window.__padButton(i, false)", [DPAD_LEFT])
             page.wait_for_timeout(400)
             page.evaluate("() => { window.__padAxis(2, 0); window.__padAxis(3, 0); }")
@@ -211,25 +210,26 @@ def touch_run(url: str, query: str, out: Path | None, label: str) -> dict:
                 )
         bx, by, _ = buttons["bot_wheel"]
         stick = (150.0, 260.0)
-        yaw_before = state(page)["yaw"]
         for name, (dx, dy) in ENTRIES.items():
             before = len(heard(page))
             touch_assist.touch(client, "touchStart", [(2, *stick), (1, bx, by)])
-            wait_for(page, "the wheel to open", lambda s: bool(s.get("open")))
+            yaw_before = wait_for(page, "the wheel to open", lambda s: bool(s.get("open")))["yaw"]
+            finger = (bx, by)
             for step in range(1, 7):
                 k = step / 6.0
-                touch_assist.touch(
-                    client, "touchMove", [(2, *stick), (1, bx + dx * TOUCH_PX * k, by + dy * TOUCH_PX * k)]
-                )
+                finger = (bx + dx * TOUCH_PX * k, by + dy * TOUCH_PX * k)
+                touch_assist.touch(client, "touchMove", [(2, *stick), (1, *finger)])
                 time.sleep(0.03)
             seen = wait_for(page, f"the wheel over {name}", lambda s, n=name: s.get("hovered") == n)
             if name == "hold":
                 shot(page, out, f"touch_open_{label}.png")
-            result.setdefault("turned_while_held", abs(seen["yaw"] - yaw_before))
-            touch_assist.touch(client, "touchEnd", [(2, *stick)])
+            result["turned_while_held"] = max(result.get("turned_while_held", 0.0), abs(seen["yaw"] - yaw_before))
+            # A touchEnd lists the points that were lifted: the wheel's finger first, the stick's after.
+            touch_assist.touch(client, "touchEnd", [(1, *finger)])
             page.wait_for_timeout(400)
-            touch_assist.touch(client, "touchEnd", [])
             got = heard(page)[before:]
+            touch_assist.touch(client, "touchEnd", [(2, *stick)])
+            page.wait_for_timeout(100)
             result["orders"][name] = got
             if got != [name]:
                 result["wrong"].append(f"a finger dragged to {name} gave {got}")
@@ -267,9 +267,14 @@ def main() -> int:
     parser.add_argument("godot")
     parser.add_argument("work", type=Path)
     parser.add_argument("--out", type=Path, default=None, help="where the screenshots go")
+    parser.add_argument("--reuse", action="store_true", help="use the export already in <work folder>, if any")
     args = parser.parse_args()
     touch_assist.BENCH_SCENE = BENCH_SCENE
-    web = touch_assist.export_bench(args.godot, args.work)
+    built = args.work / "build" / "web"
+    if args.reuse and (built / "index.html").exists():
+        web = built
+    else:
+        web = touch_assist.export_bench(args.godot, args.work)
     server, port = smoke.serve(web)
     url = f"http://127.0.0.1:{port}/index.html"
     failed: list[str] = []

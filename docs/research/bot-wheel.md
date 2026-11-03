@@ -73,3 +73,20 @@ circles against the 1168 by 540 canvas, both hands, clear of every other button.
 - `tests/night/test_input_matrix.gd`: rows for `bot_wheel` and `ping` (their touch controls too).
 - Mutations checked: the tap opening the wheel (fails the tap test and the model's), the pause not cancelling (fails the
   pause test), the view lock off (fails the mouse and the stick tests).
+
+## Proof in a browser and in a window
+
+`tools/web_smoke/bot_wheel.py` exports the bench scene (`tests/captures/bot_wheel_bench.tscn`: the game's own night screen,
+the orders going to a recorder) and drives it in headless Chrome: a held Q and the mouse, a virtual standard-mapping pad
+(button 14, the right stick), and `Input.dispatchTouchEvent` with a second finger on the stick, right hand and left hand.
+All three orders come out of each device, a tap gives none, the view turns 0.000 rad under the wheel and the PING button
+marks a place; every button lies inside an 844 by 390 page. Windowed captures of the same bench (`--mode=desktop|pad|touch`)
+are on the pull request.
+
+- **A touch lift names the finger that lifted.** `Input.dispatchTouchEvent` with `touchEnd` takes the points that were
+  *lifted*, not the ones still down: the probe's first version lifted the stick and left the wheel's finger down, and the
+  order came out one drag late. The wheel itself was right.
+- **A bench published nothing in a release export** because it asked a node it had not set yet (the touch layer) and a
+  release template prints no script error. The bench guards it and prints its first publication.
+- **Measure the view from the moment the wheel opens.** The probe moved the mouse to the middle before each hold, and
+  that move turned the view as it always does: 2.1 rad "under the wheel".

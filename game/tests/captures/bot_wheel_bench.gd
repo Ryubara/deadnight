@@ -25,6 +25,7 @@ var _screen: NightScreen
 var _controls: TouchControls
 var _since := 0.0
 var _ready_to_drive := false
+var _published := false
 
 
 func _ready() -> void:
@@ -174,7 +175,7 @@ func _button_at_window() -> Vector2:
 ## What a browser run reads: where the buttons are in page pixels, whether the wheel is open and
 ## over what, and the orders the recorder heard.
 func _publish() -> void:
-	if not OS.has_feature("web"):
+	if not OS.has_feature("web") or _controls == null:
 		return
 	var ratio := maxf(float(JavaScriptBridge.eval("window.devicePixelRatio", true)), 1.0)
 	var window := get_viewport().get_final_transform()
@@ -200,6 +201,9 @@ func _publish() -> void:
 		"canvas": [_controls.size.x, _controls.size.y],
 	}
 	JavaScriptBridge.eval("window.__wheel = %s;" % JSON.stringify(data))
+	if not _published:
+		_published = true
+		print("WHEEL first ", JSON.stringify(data))
 
 
 func _query() -> Dictionary:
