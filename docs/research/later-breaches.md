@@ -45,13 +45,15 @@ breaches in walls, and where an area has only a fence it gets a wall section wit
   of the start, 3.5 to 4.3 m behind their boards; nearest lamp (`lot_report.gd`) 1.6 and 6.1 m (midway), 18 to
   22 (yard), 14 to 19 (back lot), 10 to 16 (plaza). The counts per area (6, 2, 3, 3, 3) and so the pool shares are unchanged
   (`test_later_breaches.gd`).
-- **Escape sweep** (`tools/world/map_escape_probe.gd`, the real body, 1.5 m launch cells, depth 3, all doors sold): 84,280
-  hops and 4,306 standing places on this branch against 83,295 and 4,283 on the map-review branch it started from. The
-  one `beyond_the_map` standing place is the same on both, the plaza's south-west corner at (-19.5, 61.5), the
-  known way out of #845; no new one. With only the concession sold (the midway's bays reachable): 66,735 hops against
-  65,965, no `beyond_the_map` or `high`. The probe's `inside_a_closed_area` kind flags the top of any prop the body can
-  stand on (about 2,700 on both sides) and is not a clean signal on its own: compare per region, and the new regions were
-  props that had moved.
+- **Escape sweep** (`tools/world/map_escape_probe.gd`, the real body, 1.5 m launch cells, depth 3). Before main's
+  plaza and midway fixes, against the map-review branch the work started from, all doors sold: 84,280 hops and 4,306
+  standing places on this branch against 83,295 and 4,283, the same single `beyond_the_map` place (the plaza's south-west
+  corner, (-19.5, 61.5), the way out of #845), nothing new; only the concession sold (the midway's bays reachable):
+  66,735 hops against 65,965, none beyond the map or high. After merging main (#845's 4.2 m plaza walls, #846's 3.0 m
+  midway fences): all doors sold 85,020 hops and 4,738 standing places, only the concession sold 67,605 and 4,477, and
+  **no** `beyond_the_map` or `high` place in either. The probe's `inside_a_closed_area` kind flags the top of any prop
+  the body can stand on (2,700 to 3,100 in every run, on main too) and is not a clean signal on its own: compare per
+  region, and the regions that grew were props that had moved.
 - **Draw calls** (a camera at each of 49 spots of the map-review tour, 12 frames of waiting, the median of five reads;
   [lesson](https://github.com/Ryubara/gdstudio/pull/419)):
 
