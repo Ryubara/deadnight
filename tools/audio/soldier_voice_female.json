@@ -1,0 +1,168 @@
+{
+  "voice": "Sarah",
+  "voice_id": "EXAVITQu4vr4xnSDxMaL",
+  "model_id": "eleven_v4",
+  "voice_settings": {"stability": 0.0, "similarity_boost": 0.8, "style": 0.6},
+  "output_format": "mp3_44100_128",
+  "target_lufs": -20.0,
+  "samples": {},
+  "events": {
+    "round_start": [
+      "[exhales] Okay... here we go again. Stay sharp, everybody!",
+      "[determined] Lights are up, gates are shut. Let's see what crawls out tonight.",
+      "[tense] Here they come. Here they come! Hold the line!",
+      "Alright, round's on. Don't get cocky, and don't get dead.",
+      "[muttering] Oh, great. More of 'em. Of course there's more of 'em."
+    ],
+    "round_clear": [
+      "[sighs] Alright... that's the last of 'em. For now. Everybody still breathing? Tell me everybody's still breathing.",
+      "[relieved laugh] Heh, still standing. Barely, but still standing. Let's patch that fence while we can.",
+      "[exhales slowly] Quiet. Too quiet. I don't trust it, but I'll take it. Load up, people.",
+      "[tired] Oh man, my hands are shaking. Okay. Okay, breathe. Next one's gonna be worse, isn't it?",
+      "[breathing hard] Phew... okay, okay. [tired laugh] Gotta catch my breath real quick. These things just don't quit!"
+    ],
+    "reload": [
+      "Reloading!",
+      "Reloading, cover me!",
+      "[grunts] Changing mags, changing mags!",
+      "Gotta reload, gotta reload, hold 'em off!",
+      "[breathing hard] Reloading... come on, come on.",
+      "Reloading! Somebody keep 'em off me!",
+      "[urgent] I'm reloading, I'm reloading!",
+      "Hang on, just a sec, reloading!",
+      "[muttering] Come on, come on, load, you stupid thing."
+    ],
+    "low_ammo": [
+      "[worried] I'm running low here, almost out!",
+      "Ammo's getting thin, guys. Don't waste any.",
+      "[muttering] Last few rounds. Make 'em count.",
+      "Ah, jeez, I'm nearly dry over here!",
+      "[tense] Low on ammo! Anybody got a spare mag?"
+    ],
+    "dry": [
+      "[frustrated] No, no, no, I'm out!",
+      "Dry! I'm dry, I'm dry!",
+      "[panicked] Come on, come on... nothing! I'm outta ammo!",
+      "Ah, damn it, empty! Switching, switching!",
+      "[groans] Of course. Of course it's empty."
+    ],
+    "kill": [
+      "[grunts] Got one!",
+      "Yes! Stay down!",
+      "[breathing hard] That's one less.",
+      "Ha! Right between the eyes!",
+      "Down you go!",
+      "[through gritted teeth] And stay dead this time.",
+      "Eat that, ugly!",
+      "[laughs] Got him!",
+      "Another one down!",
+      "Nice, nice. Next!"
+    ],
+    "streak": [
+      "[shouting] Yes! Yes! That's what I'm talking about! Who else wants some?!",
+      "[laughs] Look at 'em drop! Come on, don't be shy, line up!",
+      "[excited] Whoo! I'm on fire here! Nobody touch my spot!",
+      "[panting, grinning] Ha ha! Keep 'em coming! I'm just getting warmed up!",
+      "[shouting] Boom! Boom! Boom! Is that all you've got?!",
+      "[breathless laugh] Oh, that felt good. Do that again, do that again!",
+      "[excited, shouting] HA! Get some! [laughs] Come on, who's next?! I got plenty more where that came from!"
+    ],
+    "close_call": [
+      "[gasps] Whoa! Too close, way too close!",
+      "[breathing hard] Jeez, that one nearly had me. Back off, back off!",
+      "Okay, I'm hurt, I'm hurt, I need a second here!",
+      "[strained] I can't take much more of this. Watch my back, somebody!",
+      "[shaky] Oh, that's not good, that's not good at all."
+    ],
+    "hurt": [
+      "[pained grunt] Ugh!",
+      "[sharp inhale] Agh!",
+      "[grunts] Hhh... ah!",
+      "[hissing in pain] Ah, damn!",
+      "[gasps] Gah!",
+      "[grunting] Ngh! Get off me!",
+      "[groans in pain] Ah, son of a... ugh!",
+      "[pained] Ow! Ow, that hurts!"
+    ],
+    "downed": [
+      "[weak, gasping] No... no, no... I'm down... somebody... help...",
+      "[groaning, wheezing] Aah... I can't get up. Help me. Please!",
+      "[faint] Not like this... not like this...",
+      "[pained, fading] I'm hit bad... somebody get me up..."
+    ],
+    "revived": [
+      "[gasping, coughing] Thanks. Thank you. I owe you one.",
+      "[breathing hard] Whoa... okay, I'm up. I'm up. Good looking out!",
+      "[coughs] Jeez, I thought that was it for me. Thanks for the pull!",
+      "[wheezing] Oh, wow. Thank you. Seriously. Let's go, let's go!",
+      "[groans, then laughs weakly] You came back for me. Heh. I won't forget that."
+    ],
+    "teammate_down": [
+      "[shouting] Man down! We got somebody down!",
+      "Oh no, no, they're down! Somebody get over there!",
+      "[urgent] Hang on, I'm coming! Hold on!",
+      "[alarmed] They got one of us! I'm going in, cover me!",
+      "Stay with me, stay with me! I'll get you up!"
+    ],
+    "buy_weapon": [
+      "[pleased] Oh, now we're talking. Come to mama.",
+      "Ha, that's more like it. Let's see what this baby can do.",
+      "[impressed] Nice. Real nice. Feels good in my hands.",
+      "Alright, that's a proper piece. Let's put it to work.",
+      "[chuckles] Now I'm dangerous."
+    ],
+    "buy_big": [
+      "[excited] Oh, that cost a fortune, but boy, it's worth every penny!",
+      "[laughs] Spent it all! Hope this thing's as good as it looks!",
+      "[grinning] Now THAT is a gun. Everybody back up, big girl coming through!",
+      "[laughs] Wallet's empty, but I've never felt so safe."
+    ],
+    "door": [
+      "[grunts] Door's open! Watch the new angle!",
+      "Alright, that opens things up. Eyes front, people.",
+      "[wary] Okay... let's see what's behind door number one.",
+      "Door's open! More room to run, more room to get flanked.",
+      "[low] Easy now. Easy. Don't know what's in there."
+    ],
+    "power_on": [
+      "[relieved] Yes! Lights are on! Power's back, baby!",
+      "[exhales] There she goes. Generator's humming again.",
+      "[laughs] Come on, come on, stay lit. I hate the dark.",
+      "Power's up! Keep her fed, or we're toast.",
+      "[chuckles] Nothing like a little light to cheer a girl up."
+    ],
+    "power_low": [
+      "[worried] Generator's coughing! Somebody get it some fuel!",
+      "Uh-oh, the lights are flickering. Fuel, we need fuel!",
+      "[tense] If that thing dies, we're in the dark. Feed it, feed it!",
+      "[groans] Aw, no. Power's gone. Everybody stay close!"
+    ],
+    "grenade": [
+      "[shouting] Grenade out! Get down!",
+      "Frag out! Heads down!",
+      "[grunts] Catch! Think fast!",
+      "Throwing! Throwing! Cover your ears!",
+      "[shouting] Here's a present for you!"
+    ],
+    "boss_arrive": [
+      "[stunned, whispering] Oh no. Oh, that's big. That is really, really big.",
+      "[shouting] Look at the size of that thing! Everybody focus fire, focus fire!",
+      "[breathless] Okay, new plan. Run. Maybe run. No, shoot first, then run.",
+      "[nervous laugh] You've gotta be kidding me. What do they feed that thing?",
+      "[low, grim] Here's the big one. Stay together, and don't stop shooting."
+    ],
+    "boss_dead": [
+      "[shouting, triumphant] Yes! Go down! Go down, you big ugly... yes!",
+      "[panting, laughing] Is it dead? Tell me it's dead. Oh, thank God it's dead.",
+      "[breathless laugh] We did it! We actually did it! I can't believe that worked!",
+      "[exhaling] Whew. Okay. That one I'm gonna feel in the morning."
+    ],
+    "idle": [
+      "[quiet, thoughtful] You ever think about how this place used to be a drive-in? People came to watch movies and eat popcorn. Now look at us.",
+      "[sighs] Anyone else hear that? ...No? Just me. Great. I'm losing it.",
+      "[tired] Sorry, I was humming. Habit. My mother used to hum when things got bad.",
+      "[low] Man, what I wouldn't give for a hot coffee and a bed that doesn't smell like gasoline.",
+      "[tired chuckle] Funny thing is, I used to hate quiet. Now it scares me more than the noise."
+    ]
+  }
+}

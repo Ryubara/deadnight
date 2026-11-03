@@ -6,7 +6,7 @@ const CONCESSION_FLOOR := Vector3(0.0, 0.0, 3.0)
 const BOOTH_FLOOR := Vector3(0.0, 0.0, 27.0)
 const FIELD_LAMP := Vector3(-4.6, 0.0, -34.0)
 const YARD_LAMP := Vector3(35.0, 0.0, 12.0)
-const HEADLIGHTS := Vector3(-31.0, 0.0, 55.8)
+const HEADLIGHTS := Vector3(-9.0, 0.0, 53.4)
 ## Under the screen glow, clear of every lamp post.
 const SCREEN_GLOW := Vector3(0.0, 0.0, -44.0)
 

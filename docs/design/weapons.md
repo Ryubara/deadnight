@@ -59,7 +59,7 @@ the real command, its own model drawn).
 | --- | --- | --- | --- |
 | `revolver` | `pistol`, the Revolver | **Start** (in hand) | 24 / 0.28 s |
 | `crowbar` | `crowbar` | The **crane** only (1); no longer a start weapon, the quick melee replaced it | 45 / 0.55 s |
-| `double_shotgun` | `shotgun`, the Pump shotgun | **Wall** 900, and the **crane** (weight 4) | 19 x 8 / 0.8 s |
+| `double_shotgun` | `shotgun`, the Double-barrel | **Wall** 900, and the **crane** (weight 4) | 21 x 8 / 0.3 s |
 | `lever_rifle` | `rifle`, the Hunting rifle | **Wall** 1,200, and the **crane** (3) | 95 / 0.5 s |
 | `tommy_gun` | `smg`, the Tommy gun | **Crane** only (2) | 14 / 0.075 s |
 | `flare_gun` | `flare_gun` | **Crane** only (1); becomes a lure (#439) | 90 + blast 60 / 0.8 s |
@@ -68,6 +68,12 @@ the real command, its own model drawn).
 | none: not a weapon | `quick_melee` (`QUICK_MELEE`, not in `IDS`) | Every player, on `V`; never carried, bought or won | 40 / 0.6 s, 1.6 m |
 | `hammer` | none | A tool: the repair clip's prop, not a weapon (see below) | |
 | `grenade` | none (`frag.tres` is its own system) | Thrown, not a crane prize: the start (2) and the shop's grenades | 150 blast |
+
+**On the second map the walls sell more** ([the shop of the small map](smallmap.md#the-shop-formula-rows-22-to-25)):
+nine places for eight weapons, so the revolver (90, back in the pool after it is given up), the crowbar (270), the
+shotgun (540, on two walls), the Tommy gun (540), the bat (540), the flare gun (630), the axe (720) and, in the cabinet
+upstairs, the rifle (675) are all bought by the wall there, at prices that climb from room to room, and its box
+(425, one place) gives any weapon the buyer lacks. The tuning is the map's own overlay; the lot's walls are unchanged.
 
 **The crane gives every weapon the start and the wall do not**, the revolver too once the buyer has given it up (they
 carry it from the first second, and the crane never gives a weapon the buyer carries). A player carries two weapons, so
@@ -137,7 +143,10 @@ weapon: it is not in the catalogue's `IDS`, nobody buys, carries or wins it, and
 A player carries **two weapons** (`WeaponCatalog.CARRY_LIMIT`), melee ones included: there is no melee slot, and the
 bat and the axe take a slot like a gun. A player starts with the revolver alone and a free second hand: the crowbar that
 used to fill it is replaced by the [quick melee](#quick-melee), which takes no slot. The swap button (F, d-pad up)
-cycles the two weapons once there are two.
+cycles the two weapons once there are two. The keys **1** and **2** take the first and the second weapon in hand (3 is
+the third slot's, for the perk that carries three, #687); the slot already in hand, and an empty slot, change nothing. A
+slot keeps its place: a weapon bought with full hands takes the slot of the weapon it replaces. The
+[HUD](hud.md#the-weapon-slots) shows both slots, the one in hand lit.
 
 Buying a weapon at the wall or taking a prize from the crane with both hands full **replaces the weapon in hand**,
 with its magazine and reserve (and its re-cut). The replaced weapon is not dropped on the ground: it is gone, and it
@@ -195,7 +204,7 @@ distance down to the floor and holds there to the range.
 | --- | --- | ---: | ---: | --- | ---: | --- | ---: |
 | Revolver | hitscan, semi | 24 | 0.28 s | 10 / 40 (max 80) | 1.3 s | 12 to 35 m (55%) | 60 m |
 | Tommy gun | hitscan, auto | 14 | 0.075 s | 30 / 120 (max 180) | 1.9 s | 10 to 30 m (50%) | 50 m |
-| Pump shotgun | 8 pellets, 5 degrees | 19 x 8 | 0.8 s | 6 / 30 (max 60) | 2.4 s | 8 to 22 m (35%) | 30 m |
+| Double-barrel | 8 pellets, 6 degrees | 22 x 8 | 0.3 s | 2 / 16 (max 32) | 1.8 s | 8 to 22 m (35%) | 30 m |
 | Hunting rifle | hitscan, pierces 2 | 95 | 0.5 s | 8 / 40 (max 80) | 2.2 s | 40 to 90 m (80%) | 120 m |
 | Flare gun | projectile, lobbed | none: calls the dead (25 m, 8 s) | 0.8 s | 1 / 6 (max 12) | 2.0 s | none | 40 m |
 | Crowbar | melee sweep, 2 targets | 45 | 0.55 s | none | none | none | 1.9 m |
@@ -208,7 +217,7 @@ Shots to kill at close range (head / body), against the health in [the rounds ta
 | --- | --- | --- | --- | ---: | ---: |
 | Revolver | 1 / 3 | 2 / 4 | 3 / 6 | 86 | 59 |
 | Tommy gun | 2 / 4 | 3 / 6 | 5 / 9 | 187 | 101 |
-| Pump shotgun | 1 / 1 | 1 / 1 | 1 / 1 | 190 | 127 |
+| Double-barrel | 1 / 1 | 1 / 1 | 1 / 1 | 587 | 147 |
 | Hunting rifle | 1 / 1 | 1 / 1 | 1 / 2 | 190 | 123 |
 | Flare gun | none | none | none | 0 | 0 |
 | Crowbar | 1 / 2 | 1 / 2 | 2 / 3 | 82 | 82 |
@@ -225,17 +234,25 @@ damage, rounded up. "With reloads" is the sustained rate over a whole magazine a
   falls to one headshot or three body shots, so aiming pays from the first minute; by round 5 (82) it takes two
   headshots or four body shots and by round 10 (121) six body shots. The health curve was lowered to the weapons
   that exist (rounds.md, the balance simulator): the shop weapons were stepped up in #265 (rifle 95,
-  shotgun 19 a pellet) so that buying one is worth rounds.
+  shotgun 19 a pellet, now the double-barrel's 21) so that buying one is worth rounds.
 - **A weapon can be re-cut once** at the projector: x1.75 damage, x1.5 magazine and reserve limit, filled, for 1,500
   points ([the re-cut](upgrades.md)). The table above is the weapon as shipped; a re-cut one has its damage in the
   column multiplied and its magazine and reserve limit grown, and kills in fewer shots (a re-cut revolver, 42 a hit,
   kills a round-10 zombie in 3 body shots). This is what lets the health curve climb faster than the shipped weapons
   could follow.
 - **Each weapon has one job.** The SMG is volume at short range (the most damage a second, a short magazine of
-  patience before the reload); the shotgun is a close wall; the rifle is the precision and the line (it passes through
-  two zombies, each blow 40% weaker, which rewards lining the dead up); the flare gun is crowd control: it draws the dead
-  away from the team for a few seconds and hurts no one; the
-  crowbar never runs dry and pays the melee kill bonus (130 points) for the risk of being in reach.
+  patience before the reload); the double-barrel is a close wall that holds two shells and is slow to reload; the
+  rifle is the precision and the line (it passes through two zombies, each blow 40% weaker, which rewards lining the
+  dead up); the flare gun is crowd control: it draws the dead away from the team for a few seconds and hurts no one;
+  the crowbar never runs dry and pays the melee kill bonus (130 points) for the risk of being in reach.
+- **The double-barrel is two shells and a break-open reload (#684).** It replaced the pump (6 shells, 19 a pellet, 0.8
+  s): a magazine of 2, a 0.3 s gap between the barrels, a 1.8 s reload that breaks it open, loads both shells and
+  snaps it shut (a single shell left in it is topped up the same way), 22 a pellet in a 6 degree cone. Against a
+  round-10 zombie it kills as many a second as the pump did (one pull a kill, the number the weapon pick compares), so
+  the price of 900 still buys what it did, and the balance simulator's medians stayed or rose a round ([the
+  numbers](../research/balance-simulator.md#the-double-barrel-684)). Each pull is a 176-point wall, so a round-10
+  zombie (121) still falls to one; what changed is that two kills are all it holds before a two-second wait. Its
+  reserve is 16 shells, 32 at most.
 - **The shotgun cannot farm points.** Pellets add up to one hit for the rules, and its damage falls to 35% by 22
   m, so it is a close weapon by its own numbers, not by a rule.
 - **Ammo is the other economy.** Reserves are small on purpose (a round-10 zombie is 5 revolver body shots), so
@@ -302,18 +319,19 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
 
 ## Open questions
 
-- **Shop weapons: stepped up (#254, #265).** The rifle (95, 0.5 s) and the shotgun (19 a pellet, 0.8 s) are applied;
-  the reasoning and the reference are in [round scaling](../research/round-scaling.md). What is still missing is a
-  way for a weapon to keep pace with health that compounds (the original's Pack-a-Punch): an issue.
+- **Shop weapons: stepped up (#254, #265).** The rifle (95, 0.5 s) and the shotgun (19 a pellet, 0.8 s; the
+  double-barrel since #684) are applied; the reasoning and the reference are in [round
+  scaling](../research/round-scaling.md). What is still missing is a way for a weapon to keep pace with health that
+  compounds (the original's Pack-a-Punch): an issue.
 - **The carry limit: built (#410), as the maintainer decided it.** Two weapons, no melee slot, a third replaces the
   one in hand and goes back into the pool ([Carrying weapons](#carrying-weapons)). Three balance choices were made to
   keep the balance gate and are **open for the maintainer**, not decided: the revolver and the crowbar are in the
   crane pool at weight 1 each (the only way back for them; the crowbar is no longer a start weapon), the stampede is
   cut from 140% to 110% of the count so the gate holds with two weapons, the simulator's players replace a weapon only
-  for one worth 1.5 times more. The
-  fourth, the starting crowbar, was replaced by the quick melee
+  for one worth 1.5 times more. The fourth, the starting crowbar, was replaced by the quick melee
   ([#411](https://github.com/Ryubara/deadnight/issues/411)): a player starts with one weapon and a free slot, and the
-  gate holds (see the [balance simulator](../research/balance-simulator.md#the-quick-melee-replaces-the-starting-crowbar-411)).
+  gate holds (see the [balance
+  simulator](../research/balance-simulator.md#the-quick-melee-replaces-the-starting-crowbar-411)).
 - **The flare: no damage, a lure (#439).** The maintainer: it acts like a monkey bomb or a pipe bomb, no damage for
   now. Where it bursts it burns for `lure_seconds` (8) and every zombie within `lure_radius` (25 m) walks to it
   instead of to a player ([how the dead behave](zombies.md#the-flare-lure)). Its damage and splash are 0 in the

@@ -104,6 +104,65 @@ func test_a_take_is_a_sound_of_the_catalog_and_names_its_moment() -> void:
 	assert_object(SoundCatalog.get_def(_heard[0]["id"])).is_not_null()
 
 
+## A frame in which `OWN` speaks with `own_voice` and `MATE` with `mate_voice`.
+func _voices(own_voice: StringName, mate_voice: StringName) -> void:
+	(
+		_state
+		. apply_events(
+			[
+				{
+					"type": &"frame",
+					"phase": GameRules.Phase.ACTIVE,
+					"players":
+					{
+						OWN:
+						{"pos": Vector3.ZERO, "downed": false, "health": 100.0, "voice": own_voice},
+						MATE:
+						{"pos": AT_MATE, "downed": false, "health": 100.0, "voice": mate_voice},
+					},
+					"zombies": [],
+				}
+			]
+		)
+	)
+	_state.zombies.assign([{"position": Vector3(4.0, 0.0, 0.0)}])
+
+
+func test_a_player_speaks_with_the_voice_their_frame_names() -> void:
+	_voices(&"female", &"male")
+	assert_bool(_say_until(&"reload", OWN)).is_true()
+	assert_str(_heard[0]["id"]).starts_with("voxf_reload_")
+	_settle()
+	assert_bool(_say_until(&"reload", MATE)).is_true()
+	assert_str(_heard[1]["id"]).starts_with("vox_reload_")
+	_settle()
+	_voices(&"male", &"female")
+	assert_bool(_say_until(&"dry", MATE)).is_true()
+	assert_str(_heard[2]["id"]).starts_with("voxf_dry_")
+
+
+func test_every_moment_is_voiced_for_both_characters_with_a_file_for_each() -> void:
+	for voice: StringName in SoldierVoiceCatalog.voices():
+		_voices(voice, voice)
+		for event: StringName in SoldierVoiceCatalog.events():
+			_settle(30.0)
+			var before := _heard.size()
+			(
+				assert_bool(_say_until(event, OWN))
+				. override_failure_message("%s %s" % [voice, event])
+				. is_true()
+			)
+			var id: StringName = _heard[before]["id"]
+			assert_str(id).starts_with(SoldierVoiceCatalog.VOICES[voice]["prefix"] + String(event))
+			var def := SoundCatalog.get_def(id)
+			assert_object(def).override_failure_message(String(id)).is_not_null()
+			(
+				assert_bool(ResourceLoader.exists(def.path_for(1)))
+				. override_failure_message(String(id))
+				. is_true()
+			)
+
+
 func test_the_local_player_is_flat_and_a_little_lower() -> void:
 	assert_bool(_say_until(&"reload", OWN)).is_true()
 	assert_object(_heard[0]["at"]).is_null()
