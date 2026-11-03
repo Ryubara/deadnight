@@ -271,9 +271,13 @@ def open_settings(page: Page) -> None:
 
 
 def start_solo(page: Page) -> None:
-    """Presses Solo on the Play tab: the one way to start a night alone. Every probe that needs a night starts it
-    here, so a change to the menu is one edit and `startup_check.py` (the web job) fails on it."""
+    """Presses Solo on the Play tab, then Start the night on the Play screen it opens (the match settings, left on
+    the usual rules; its Start button has the focus): the one way to start a night alone. Every probe that needs a
+    night starts it here, so a change to the menu is one edit and `startup_check.py` (the web job) fails on it."""
     menu_item(page, "Play", 2)
+    press(page, "Enter")
+    wait_for(page, "the Play screen", lambda s: s.get("screen") == "play_screen", SCREEN_TIMEOUT_S)
+    page.wait_for_timeout(1500)
     press(page, "Enter")
 
 
@@ -376,6 +380,11 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     # Solo is the third item of the Play tab.
     menu_item(page, "Play", 2)
     page.screenshot(path=out / "menu_focus.png")
+    press(page, "Enter")
+    # Solo opens the Play screen (the match settings, as a room's host has them); Start the night has the focus.
+    wait_for(page, "the Play screen", lambda s: s.get("screen") == "play_screen", SCREEN_TIMEOUT_S)
+    page.wait_for_timeout(1500)
+    page.screenshot(path=out / "play_screen.png")
     pressed = page.evaluate("performance.now()")
     press(page, "Enter")
     wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), NIGHT_LOAD_TIMEOUT_S)
@@ -483,6 +492,10 @@ def loading_report(frames: list[list[float]], pressed: float, running: float) ->
         "most_programs_in_a_frame": int(burst[1]),
         "longest_frame_ms": round(longest[2], 1),
         "frames_over_1s": sum(1 for f in during if f[2] > 1000),
+        # The three busiest frames as [seconds after Play, programs, frame ms], to find what they drew.
+        "busiest_frames": [
+            [round((f[0] - pressed) / 1000, 2), int(f[1]), f[2]] for f in sorted(during, key=lambda f: -f[1])[:3]
+        ],
     }
 
 

@@ -142,6 +142,7 @@ static func _add_controls(theme: Theme, t: UITokens) -> void:
 	_add_check_box(theme, t)
 	_add_line_edit(theme, t)
 	_add_scroll_bars(theme, t)
+	_add_scroll_room(theme, t)
 
 
 ## The check box draws its box; the theme gives its label the body face and leaves room for the box.
@@ -208,6 +209,16 @@ static func _add_scroll_bars(theme: Theme, t: UITokens) -> void:
 		theme.set_stylebox(&"scroll_focus", kind, track)
 		for part in thumbs:
 			theme.set_stylebox(part, kind, _pill(thumbs[part], thickness))
+
+
+## Every ScrollContainer keeps `hover_room` free at its left and right: a scroll area cuts off what
+## sticks out of it, and a hovered button grows past its slot (#628). The sides only: the height of
+## a scroll area is a number the screens compute from its content.
+static func _add_scroll_room(theme: Theme, t: UITokens) -> void:
+	var room := StyleBoxEmpty.new()
+	room.content_margin_left = t.hover_room
+	room.content_margin_right = t.hover_room
+	theme.set_stylebox(&"panel", &"ScrollContainer", room)
 
 
 static func _pill(fill: Color, thickness: int) -> StyleBoxFlat:

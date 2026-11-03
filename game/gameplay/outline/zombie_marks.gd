@@ -8,7 +8,7 @@ extends Node
 ## zombie or per frame while nobody is marked and the rule says nobody should be.
 ##
 ## Tune it live: select this node in the remote scene tree of a running game and change `mark_last`,
-## `enabled` or the `style` (colour, thickness, glow).
+## `enabled` or the `style` (colour, thickness).
 
 ## The shipped look, one for every marked zombie.
 @export var style: OutlineStyle

@@ -144,6 +144,11 @@ static var _bus := Bus.new()
 @export var spring_damping := 24.0
 @export var hover_scale := 0.035
 @export var press_squash := 0.05
+## What a scrolling area keeps free at each side so that a hovered button can grow without being
+## cut off (the theme gives every ScrollContainer this margin): the growth of a button this wide
+## (`hover_scale` of its width, half at each side) and the focus ring. A button wider than
+## `(hover_room - ring) * 2 / hover_scale` units grows by what is left (`UIButton`).
+@export var hover_room := 24
 ## Each half of a shader transition (burn, iris) lasts this many `dur_screen`.
 @export var shader_half_scale := 1.2
 ## How far the screen below moves, as a share of the width, while another slides over it.

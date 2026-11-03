@@ -127,6 +127,10 @@ when no zombie is within 7 m of the body or of itself (it shoots them first, as 
 and holds Use; it gives up if the clock is shorter than its walk and goes on. It does not revive a body with a reviver
 on it. This makes the online and the autopilot tests able to play a revive end to end.
 
+The hosted bots (`BotRevive`, [bots plan, revives](../research/bots.md#revives)) go further: a claim table names the
+one bot that raises and the rest cover, a risk check says when the dead can reach the body inside the hold, and a hold
+in progress is let go of only by a rule.
+
 ## Decided (2026-11-02, #505)
 
 The maintainer approved all eight as built ("Go for it"). Each is a field of the tuning resource or a small change, so it

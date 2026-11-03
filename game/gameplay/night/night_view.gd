@@ -54,6 +54,8 @@ var _grenade_views: Dictionary[int, GrenadeView] = {}
 var _grenade_def: GrenadeDef
 ## Held here: a Callable does not keep its RefCounted alive.
 var _cast: WorldCast
+## The first surface on a segment with its normal, for the blood's marks (made on the first hit).
+var _surface: WorldCast
 
 
 ## `telegraphs` maps a look to the seconds its blow takes to land, `board_seconds` to the seconds
@@ -223,6 +225,9 @@ func _on_event(event: Dictionary) -> void:
 				event["point"] + NUMBER_LIFT, str(roundi(event["damage"])), event["headshot"]
 			)
 			PerfProbe.end(&"fx.number", began)
+			began = PerfProbe.begin()
+			effects.blood_hit(event, _surfaces().callable())
+			PerfProbe.end(&"fx.blood", began)
 		&"round_started":
 			Audio.play(&"round_start")
 		&"round_ended":
@@ -327,6 +332,14 @@ func _show_blast_hit(event: Dictionary) -> void:
 	var at := _zombie_position(event["target_id"])
 	if at != Vector3.ZERO:
 		effects.number(at + BLAST_NUMBER_LIFT, str(roundi(event["damage"])), false)
+		effects.blood_burst(at + GIB_LIFT, event["damage"], _surfaces().callable())
+
+
+## Where blood marks may land: the world as the shots see it.
+func _surfaces() -> WorldCast:
+	if _surface == null:
+		_surface = WorldCast.new(get_world_3d().direct_space_state)
+	return _surface
 
 
 ## A zombie a blast killed bursts into gibs where it stood.

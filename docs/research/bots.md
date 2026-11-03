@@ -308,7 +308,9 @@ tank is over 40%, and off again when everyone leaves; it burns 0.05 to 0.08 a se
 
 ## Revives
 
-No revive exists yet (Phase 0). When it does, these are the rules.
+The revive is the game's own (#224: the held `use` beside the body for `revive_seconds`, within `revive_reach`); the
+bot only decides when to go, what to clear first and when to let go. These are the rules; phase 5 built them
+(`BotRevive`, `BotReviveRisk`, `BotClaims`).
 
 **Priority.** A downed human before a downed bot; among equals the one with the least time left; the nearest bot
 claims (a shared claim table with a 3 s lease, ties by slot id), the others become *cover*.
@@ -870,6 +872,41 @@ the real zombie mix, revive success is at least 70% of attempts and `deaths_revi
 than one bot at a time on an errand; the callout rate is under one line per bot per 10 s and none names an unseen
 zombie.
 
+**What shipped in part 1 (the revive; callouts, roles, the errand turn, trapped logic and pings are part 2).**
+
+- `BotReviveRisk` is the risk check as a pure function. The window is the walk there (the straight line stretched by
+  1.2 at 4.2 m/s), the 3.5 s hold and a margin (2.0 s cautious to 0.6 s bold by `revive_eagerness`). A zombie threatens
+  when it can reach the body or the reviver inside the window (speed from the round's public formula, the dark's
+  1.25 in full, the type's share from a table a test holds to the roster). Verdicts: `SAFE`; `CLEAR` (the dead that can
+  arrive can be killed in 7 to 16 s of the held weapon's sustained damage, `WeaponWorth`, times a 0.55 hit share, and
+  there are at most 5 to 12 of them); `UNSAFE` (more or tougher: a pack, the boss); `LATE` (the bleed-out clock is
+  shorter than the walk).
+- `BotClaims` is the claim table: bids of distance each think (1 s), the nearest takes the claim, ties to the lowest
+  seat, a 3 s lease renewed every think, a challenger must be 2 m nearer to take one and never takes one whose holder
+  is in its hold, and a seat that is released frees its claims at once (`BotHost.release`, scenario 23). The host
+  hands one `BotTeam` to every bot it seats, as it does the roster.
+- `BotRevive` is the behaviour. The reviver is `GO` (walk, run), `HOLD` (hold `use` within 1.6 m of the body; no shot,
+  swap or reload), or `CLEAR` (fight from within 7 m of the body, the zombies nearest the body first). The others are
+  `COVER` (stand within 4 m of the body and shoot the zombies nearest it first). The last one up with someone down
+  and the risk not clear is `SURVIVE`: no approach, a 5 m retreat margin (a downed player gets up at the round's end,
+  and the night is over when all are down). The walk is judged with the eagerness raised by 0.35, so a zombie that
+  shows up on the way does not turn it round at once; the hold ends only by the abort rule (more than one zombie on the
+  bot and 20 health lost in a second, or under 30% health; past 60% of the hold only the health), then the bot clears
+  and retries after 1.5 s.
+- A bot at the revive faces the body, so what hits it from behind is only *heard*: the count of zombies on the bot is
+  the larger of the believed ones within 2.5 m and the ones heard very near.
+- Telemetry: `revive_attempts` (a hold begun, from `revive_started`), `revive_successes` (`player_revived` with the
+  bot as reviver), `revive_aborts` (the rule), `deaths_reviving` (`revive_stopped` for the reason `down`).
+
+*Measured* (`tests/captures/bots_revive_soak.tscn`, four mixed bots, no person, the shipped zombie mix and health, a
+seeded player put on the ground every 20 s while two others stand so that the revive is tried in the middle of the
+fight, 12 game minutes, seeds 1 to 3, a shared machine): **99 holds begun, 92 raised (93%), 4 let go of by the rule,
+no bot went down while holding**; 94 of the falls were made by hand; two falls bled out with nobody raising them (seed
+3, a bot that was in a pack of the dead). Without forced falls the shipped mix rarely downs a bot before round 10
+(eight game minutes, none; at 35% health the four bots go down within 90 s and the night is over, so that is no
+measure of the revive). The scenarios (`tests/night/test_bot_revive.gd`) hold 4 to 7, 16 and 23; the risk function and
+the claim table have pure unit tests; a mutant that makes the risk check always say `SAFE` fails scenario 5.
+
 ### Phase 6: filling slots, difficulty and the server
 
 Issue: #230.
@@ -946,10 +983,54 @@ inside the bodies' margin: bots walked into locker and prop corners. The last tw
 run's rounds differ by seed once the bots behave differently, so a few tenths of a percent between runs is noise;
 compare over all six seeds. Remaining stuck episodes are bot against bot (44 of 98) and no contact (42).
 
-Open: the Concession's east wall (x 9.8 to 10.2) and the soda fountain collider (x 7 to 9.4) leave a 0.4 m slot a
-bot can wedge in (#615).
-
 The bands test reads the Veteran's dodge from a few dozen blows: on `main` four seeds read 0.50 (34 blows due) and ten
 seeds read 0.67 (63), and with the tighter contour four seeds read 0.68 (19) and ten read 0.60 (45). The same fight is
 bit-identical from run to run, so the four-seed number is a draw, not noise to average. The test runs eight seeds
 (dodge 0.61 with the tighter contour, band 0.35 to 0.65). The Veteran's true dodge sits near the top of the band.
+
+### Within 12 m counts only the bots that are up
+
+A bot that is downed or dead cannot follow, and the soak counted its time as far: on seed 3 of `main`, 35 000 of about
+290 000 samples. The soak now also prints `down_ticks` and `within_12m_up` (the share of the samples of bots that were
+up). Six seeds, `--tough=3`, 20 minutes:
+
+| | within 12 m, all samples | within 12 m, bots up |
+| --- | --- | --- |
+| `main` before the new contour | 0.83 to 0.93 | 0.90 to 0.93 (mean 0.92) |
+| the new contour | 0.86 to 0.93 | 0.915 to 0.93 (mean 0.92) |
+
+Of the time a bot that is up is far, 83 to 87% is the follow state, running (a bot that is far runs unless a dead one is
+within 4 m) at about the speed of the person's own run: the person's sprint, a shop trip or a door outpaces the bots,
+and they catch up when it stops. Bots standing still while far (waiting for a path query, or a door) are about 5% of
+that time. Stuck seconds differ by half a point between two runs of one seed on a busy machine (the cause is not
+found; the runs are not bit-identical under load), so compare a change over all six seeds and several runs, not one.
+
+### The goals of #564 after the roam design
+
+Bots roam by default and come to a person for a revive or a ping; Follow, Roam and Hold become player orders (issues
+641 and 642). The goals of #564 are now:
+
+- Stuck seconds under 1% of walking time on seeds 1 to 6 (`--tough=3`).
+- Think p99 under 0.5 ms in the soak on an idle machine, or the budget in [Server cost](#server-cost) changed with the
+  measurement.
+- Within 12 m of the nearest person at 95%: moves to #641, where it belongs to the Follow order (0.92 now, counted over
+  the bots that are up).
+
+### A bot walks round a bot that stands still: not shipped
+
+The idea: of two bots the higher seat gives way, so a bot that meets a lower-seat bot standing still walks into it and
+waits. The rule made a bot give way to any bot slower than 0.6 m/s. Six seeds, `--tough=3`, 20 minutes, on `main`
+with the slot fix (#625):
+
+| | stuck (share of walking time) | worst bot, by seed |
+| --- | --- | --- |
+| without the rule | 1.46% (1.09 to 1.74 by seed) | 1.5 to 3.0% |
+| with the rule | 1.28% (0.89 to 1.61 by seed) | 1.2 to 3.6% |
+
+The 0.18 point gap is inside the half point two runs of one seed differ by, so the rule is not shipped. (An earlier
+trial wedged a bot in the fountain slot; the slot is closed now and the wedge did not come back.) The patch is kept in
+the scratch folder of the task, not in the repository.
+
+The two gates still open on #564 need a quiet machine to settle: stuck under 1% per seed needs several batches of each
+setup to see a change smaller than the noise, and the think p99 read 1 to 14 ms in these runs because other agents
+were running. Measure both with nothing else running.
