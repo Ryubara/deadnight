@@ -24,8 +24,8 @@ zone_multipliers = Dictionary[StringName, float]({
 })
 fire_interval = 0.8
 magazine_size = 1
-reserve_start = 6
-reserve_max = 12
+reserve_start = 2
+reserve_max = 2
 reload_time = 2
 shake_trauma = 0.4
 flash_size = 0.34

@@ -171,10 +171,17 @@ func test_the_room_tone_follows_the_room_the_listener_is_in() -> void:
 	_run(4.0)
 	assert_str(_sounds.room).is_equal("UpperB")
 	assert_float(Audio.bed_fade_db(&"bed_room_tone")).is_equal_approx(t.tone_db[&"UpperB"], 0.01)
-	assert_float(Audio.bed_fade_db(&"bed_roof_wind")).is_equal_approx(t.roof_db[&"UpperB"], 0.01)
+	# Heard at the loop's level before the gusts drove it (-19 dB) less the room's: the loop's trim is
+	# `ROOF_HEADROOM_DB` higher and the bed rests that much lower (`test_smallmap_gusts.gd`).
+	var trim := SoundCatalog.get_def(&"bed_roof_wind").volume_db
+	assert_float(trim + Audio.bed_fade_db(&"bed_roof_wind")).is_equal_approx(
+		-19.0 + t.roof_db[&"UpperB"], 0.01
+	)
 	_stand(Vector3(8.0, 5.0, 2.0))
 	_run(4.0)
-	assert_float(Audio.bed_fade_db(&"bed_roof_wind")).is_equal_approx(t.roof_db[&"UpperA"], 0.01)
+	assert_float(trim + Audio.bed_fade_db(&"bed_roof_wind")).is_equal_approx(
+		-19.0 + t.roof_db[&"UpperA"], 0.01
+	)
 
 
 func test_the_room_tone_fades_away_outside_the_walls_and_back() -> void:

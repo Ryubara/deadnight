@@ -13,20 +13,28 @@ game.
 
 ## The re-cut
 
-Pay points to re-cut the weapon in your hand: it hits harder, holds more, and is filled.
+Pay points to re-cut the weapon in your hand: it hits harder, holds more, and is filled. **What it does is the
+weapon's own**: each weapon has a re-cut profile (`RecutProfile`, one row of `UpgradeTuning.profiles` in
+`default_tuning.tres`) with its numbers, its name and, for the weakest guns, an [element](#the-four-elements). The
+numbers below are what the profiles give most weapons; [the table](#what-each-weapon-becomes) has every row.
 
 | | |
 | --- | --- |
 | Item | `upgrade_weapon` (`ShopItem.Kind.UPGRADE`) |
 | Price | **1,500**, and 1,500 more for each weapon you have already re-cut (1,500, then 3,000, then 4,500) |
-| Damage | x1.75 on every hit: each pellet (a flare does no damage, so it gains nothing) |
-| Magazine and reserve limit | x1.5, rounded up (the revolver holds 15 and carries 120, the Tommy gun 45 and 270) |
+| Damage | x1.75 on every hit: each pellet and each blast (a flare does no damage, so it gains nothing) |
+| Magazine and reserve limit | x1.5, rounded up (the revolver holds 15 and carries 120, the Tommy gun 45 and 270); the flare gun's are its own ([below](#the-four-elements)) |
 | Filled | the magazine and the reserve come back full at the new size, a reload in progress is dropped |
-| Name | "Re-Cut " before the weapon's name ("Re-Cut Revolver") |
-| Which weapons | the revolver, Tommy gun, shotgun, rifle and flare gun; once each. The crowbar has no magazine and is never re-cut |
+| Name | the profile's `recut_name` ("Re-Cut Revolver"), or "Re-Cut " before the weapon's name when it has none (the nine new weapons, whose display names are the maintainer's choice) |
+| Which weapons | every weapon with a profile: the five on `main` and the nine new ones, once each. The crowbar, bat and axe have no magazine and no profile |
+| Card | "Re-cut: Revolver, DAMAGE x1.75, ROUNDS x1.5, FIRES SLOWER, EXPLOSIVE ROUNDS": the profile says what it does, from its numbers |
 
-What does not change: the fire interval, reload time, spread, falloff, zone multipliers and range. A re-cut weapon
-is the same weapon, hitting harder, so the model, the sounds and the shop still know it by its id.
+What does not change, unless a profile says so: the fire interval (the revolver's grows), reload time, spread,
+falloff, zone multipliers and range. A re-cut weapon is the same weapon, hitting harder, so the model, the sounds and
+the shop still know it by its id. A weapon that has no profile cannot be re-cut (the bench says "nothing to re-cut in
+your hand"): **a new firearm gets its row in `default_tuning.tres` with its definition**, and
+`test_recut_profiles.gd` fails when a firearm of the catalogue has none. The bots read a re-cut weapon by its new
+numbers (`WeaponCatalog.get_def_at`), the balance simulator makes the same copy (`WeaponDef.upgraded`).
 
 ## The re-cut skin
 
@@ -98,17 +106,19 @@ tier]`, the second wire change of #281).
 
 ## The re-cut plan for seventeen weapons (#785)
 
-**Planned, not built** (the build is [#794](https://github.com/Ryubara/deadnight/issues/794)). The research
+**Built in [#794](https://github.com/Ryubara/deadnight/issues/794)**, except what the notes under the table say waits
+for the status system of [#788](https://github.com/Ryubara/deadnight/issues/788). The research
 ([the roster](../research/weapon-roster.md#the-upgrade-station-what-the-genre-does-and-what-ours-does)) found no reason
 to change the re-cut: it stays **1,500 points (+1,500 per weapon already re-cut), x1.75 damage, x1.5 magazine and
 reserve limit, filled, once a weapon**. What the plan adds is which weapons it goes on, what each one becomes, and the
 **elements**.
 
-- **Fourteen of the seventeen are re-cut**: the five that are now plus the nine new ones. `UpgradeTuning.weapons` (the list
-  `UpgradeTuning.allows` reads) gains `mp5`, `ppsh`, `m4a1`, `m249`, `fifty_cal`, `pump_870`, `dual_pistols`, `ray_gun`
-  and `freeze_gun`; without them the bench refuses them and the simulator never re-cuts them (the first run of the
-  research found it). The crowbar, the baseball bat and the fire axe have no magazine and are **not** re-cut, as
-  today; the quick melee is no weapon.
+- **Fourteen of the seventeen are re-cut**: the five that are now plus the nine new ones. `UpgradeTuning.profiles` (what
+  `UpgradeTuning.allows` reads, in place of the old list of ids) has a row for each, `mp5`, `ppsh`, `m4a1`, `m249`,
+  `fifty_cal`, `pump_870`, `dual_pistols`, `ray_gun` and `freeze_gun` among them, so the pull requests that add those
+  weapons do not touch the re-cut; a weapon with no row is refused by the bench and never re-cut by the simulator (the
+  first run of the research found it). The crowbar, the baseball bat and the fire axe have no magazine and are **not**
+  re-cut, as today; the quick melee is no weapon.
 - **The special effects go only to the weakest guns**, the maintainer's rule, and the genre's own (its start pistol, the
   weakest weapon, is the one that gets explosive rounds, and nothing stronger does). "The weakest" is read off the kill
   rate on round 15 with reloads and the head-shot rate there, after the re-cut ([the table](weapons.md#where-each-stands-against-the-others)):
@@ -126,11 +136,22 @@ reserve limit, filled, once a weapon**. What the plan adds is which weapons it g
 | **Fire** | Pump 870 | a hit sets the zombie **burning: 30 damage a second for 3 s** (90 in all), not stacking (a new hit restarts the 3 s); a zombie that burns dies on its own clock and pays its killer | the cheapest wall and the weakest late (84 a second on round 15): the 90 of burn finishes what a 231 shell leaves standing |
 | **Burning ground** | Flare gun | the burst leaves a **fire patch of 3 m radius** for the lure's whole time (`lure_seconds`, 8 s), **25 damage a second** to every zombie in it; the lure keeps the dead inside the fire | the flare does no damage at all (#439) and is the weakest weapon; the re-cut is its first reason to carry it into a late round |
 
-Elements are statuses the status system of [#788](https://github.com/Ryubara/deadnight/issues/788) already needs for the
-freeze: **burning** (a damage over time with a duration) is the one more it adds; the **blast** and the **arc** are
-instant extra hits made by the combat server on the hit's own event; the burning ground is a lure-like area
-(`lure_started` already carries the point, radius and seconds). None needs a new rules action: every damage is one more
-`hit` for the zombie it hits, so the pay and the rounds' health stay the rules'.
+An element is one `ElementDef` (`gameplay/weapons/elements/defs/<id>.tres`, listed in `ElementCatalog`) that a
+profile names (`RecutProfile.element`); `WeaponDef.upgraded` puts it on the re-cut copy, and the combat server reads it
+from the weapon in the shooter's hand (`ElementPlay`). **Burning** (a damage over time with a duration) is the one more
+status the status system of [#788](https://github.com/Ryubara/deadnight/issues/788) adds; the **blast** and the **arc**
+are instant extra hits made by the combat server on the hit's own event; the burning ground is a patch the server
+keeps for the lure's seconds. None needs a new rules action: every damage is one more `hit` for the zombie it hits, so
+the pay (`max_paid_hits` too) and the rounds' health stay the rules'.
+
+**On the wire.** Three events, all plain data in the combat answer (no wire version: new keys and new event types
+need none): `element_burst` (`point`, `radius`, `element`), `element_arc` (`from`, `to`: one point for each zombie
+reached, `element`) and `fire_patch_started` (`point`, `radius`, `seconds`, `element`). The hits they make are
+`damage_dealt` with `element` set (the number floats, the blood does not spray for a fire: `ElementDef.bleeds`), and
+`weapon_upgraded` carries `fire_interval` and `element`. Every client draws them (`ElementFx`: a shell of the
+element's colour for a blast, a crackling line for an arc, a disc of fire with embers for a patch; unshaded, no light,
+drawn once by the warm-up), from the events alone. **Not decided here**: a downed shooter's fire patch stops hurting
+(the rules take no hit from a downed player); the sound layers of the elements are #791's.
 
 ### What each weapon becomes
 
@@ -144,7 +165,7 @@ simulator's worth of each is in [the research](../research/weapon-roster.md#what
 | Tommy gun | 24.5 | 45 | 180 (270) | 12 / 6 | numbers only |
 | Double-barrel | 38.5 x 8 | 3 | 24 (48) | 1 / 1 | numbers only: it is a close one-pull kill already |
 | Hunting rifle | 166 | 12 | 60 (120) | 2 / 1 | numbers only |
-| Flare gun | 0 | 2 | 9 (18) | none | **burning ground**; its damage multiplier stays nothing |
+| Flare gun | 0 | 2 | 4 (4) | none | **burning ground**; its damage multiplier stays nothing. **The maintainer capped its ammunition (#794): 3 shots in all as shipped (1 in the magazine, 2 in reserve), 6 re-cut (2 and 4)**, so the profile's multipliers are x2 and the table's 9 (18) is superseded |
 | Crowbar, baseball bat, fire axe | 45, 60, 150 | none | none | | **not re-cut**: no magazine to grow (today's rule) |
 | MP5 | 26.25 | 45 | 180 (270) | 11 / 6 | numbers only |
 | PPSh | 17.5 | 75 | 150 (300) | 17 / 11 | numbers only: the drum is the re-cut |

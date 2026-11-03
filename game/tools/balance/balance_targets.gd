@@ -8,13 +8,15 @@ extends RefCounted
 ## people: when the model or the weapons change, the report is read again and the ranges with it.
 
 ## Median round (the round half the nights reach), by skill and players: [low, high].
+## The strong solo ceiling is 19 (it was 18): the maintainer allowed it on #794 (2026-11-03) for the
+## roster of seventeen weapons and the re-cut of each (docs/research/weapon-roster.md).
 const MEDIAN_ROUND := {
 	"weak:1": [4, 9],
 	"average:1": [8, 14],
 	"average:2": [11, 16],
 	"average:4": [12, 17],
 	"average:8": [14, 20],
-	"strong:1": [12, 18],
+	"strong:1": [12, 19],
 }
 ## The first rounds are a lesson, not a test: this share of average solo nights clears round 4.
 const MIN_SURVIVE_ROUND_4 := 0.85
@@ -27,12 +29,13 @@ const LEARNING_ROUNDS := 10
 const MAX_WEAK_FIRST_BOSS_DEATH := 0.85
 ## A boss night is at least this much harder than its neighbours (BalanceBatch.spike).
 const MIN_BOSS_SPIKE := 1.5
-## Time under fire to kill one, seconds, solo average: [low, high].
+## Time under fire to kill one, seconds, solo average: [low, high]. The headliner's high is 31 s for
+## the dual pistols (#789): accepted as is, 2026-11-03, the maintainer will tune after play.
 const TIME_TO_KILL := {
 	"walker": [0.5, 3.0],
 	"runner": [0.2, 2.0],
 	"brute": [3.0, 12.0],
-	"headliner": [8.0, 30.0],
+	"headliner": [8.0, 31.0],
 }
 ## Points spent over points earned, solo average: players spend a good part, never all. The floor is
 ## low because there is little to buy (doors, two wall weapons, the crane, fuel and ammunition;

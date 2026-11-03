@@ -654,12 +654,12 @@ cells (seed 4000, the same on every machine) and fails, naming the number, if a 
 | --- | --- |
 | Median round, average solo (the design target) | 8 to 14 (was 10 to 14; the floor moved with the bosses at 1.25x health, #688) |
 | Median round, average 2 / 4 / 8 players | 11 to 16 / 12 to 17 / 14 to 20 |
-| Median round, weak solo / strong solo | 4 to 9 / 12 to 18 |
+| Median round, weak solo / strong solo | 4 to 9 / 12 to 19 (the strong ceiling was 18; the maintainer allowed 19 on #794) |
 | Average solo nights that clear round 4 | at least 85% |
 | A special round up to round 10 kills (average players) | at most 40% of the nights that reach it |
 | The first boss night against its neighbours (average solo) | at least x1.5 |
 | The first boss night kills weak solo players | at most 85% |
-| Time to kill, average solo, seconds: walker / runner / brute / headliner | 0.5 to 3 / 0.2 to 2 / 3 to 12 / 8 to 30 |
+| Time to kill, average solo, seconds: walker / runner / brute / headliner | 0.5 to 3 / 0.2 to 2 / 3 to 12 / 8 to 31 (accepted as is, 2026-11-03, maintainer will tune after play) |
 | Points spent over points earned, average solo | 20% to 90% |
 | Points spent on ammunition over points earned, average solo | 8% to 35% |
 | Rounds in which an average solo player runs out of every firearm | at most 10% |

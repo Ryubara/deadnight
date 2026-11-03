@@ -50,6 +50,7 @@ var _state: ClientState
 var _projectile_views: Dictionary[int, ProjectileView] = {}
 ## Shocks drawn so far: each one's bolts start from a different seed.
 var _shocks := 0
+var _elements_shown := 0
 ## The world's first surface on a segment, as the server's shots see it (made on the first shot).
 var _probe: WorldProbe
 ## The grenades in the air, by the server's id: each a copy of the server's grenade, stepped with
@@ -97,12 +98,12 @@ func show_repair(player_id: int) -> void:
 
 ## The shooter's Soldier plays the attack of the weapon he fired: a swing for a melee weapon, the
 ## fire clip (and its recoil) for a gun. Every client draws every player's attack from the same
-## `shot_fired` event.
-func show_attack(player_id: int, weapon: WeaponDef) -> void:
+## `shot_fired` event. A dual weapon's shot is for `hand` (0 the right, 1 the left): that gun kicks.
+func show_attack(player_id: int, weapon: WeaponDef, hand := 0) -> void:
 	var body: Node3D = bodies.call(player_id)
 	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
 	if animation != null:
-		animation.play_action(&"Swing" if weapon.is_melee() else &"Fire")
+		animation.play_action(&"Swing" if weapon.is_melee() else &"Fire", hand)
 
 
 ## The quick melee: the Soldier strikes with what he holds (`Strike_<Class>`). Every client draws
@@ -181,10 +182,11 @@ func _show_shot(event: Dictionary) -> void:
 	var shooter: int = event.get("shooter_id", -1)  # the warm-up's sample shot has none
 	var body := bodies.call(shooter) as Player
 	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
-	var muzzle: Node3D = animation.muzzle_point() if animation != null else null
+	var hand: int = event.get("hand", 0)
+	var muzzle: Node3D = animation.muzzle_point(hand) if animation != null else null
 	effects.shot(def, event["muzzle"], event["ends"], event.get("flesh", []), muzzle)
 	if shooter > 0:
-		show_attack(shooter, def)
+		show_attack(shooter, def, hand)
 	if body != null and shooter == _state.player_id:
 		body.camera_rig.add_shake(def.shake_trauma)
 
@@ -240,9 +242,11 @@ func _on_event(event: Dictionary) -> void:
 				event["point"] + NUMBER_LIFT, str(roundi(event["damage"])), event["headshot"]
 			)
 			PerfProbe.end(&"fx.number", began)
-			began = PerfProbe.begin()
-			effects.blood_hit(event, _surfaces().callable())
-			PerfProbe.end(&"fx.blood", began)
+			var element := ElementCatalog.get_def(event.get("element", &""))
+			if element == null or element.bleeds:
+				began = PerfProbe.begin()
+				effects.blood_hit(event, _surfaces().callable())
+				PerfProbe.end(&"fx.blood", began)
 		&"round_started":
 			Audio.play(&"round_start")
 		&"round_ended":
@@ -255,6 +259,8 @@ func _on_event(event: Dictionary) -> void:
 			_burst_projectile(event)
 		&"lure_started":
 			_burn_lure(event)
+		&"element_burst", &"element_arc", &"fire_patch_started":
+			_show_element(event)
 		&"board_torn", &"board_repaired":
 			if event["type"] == &"board_torn":
 				horde.tore(event.get("zombie_id", -1))
@@ -311,6 +317,27 @@ func _burst_projectile(event: Dictionary) -> void:
 		_projectile_views.erase(id)
 	effects.spark(event["point"])
 	effects.muzzle_flash(event["point"])
+
+
+## A re-cut weapon's element, in its colour: the shell of a blast (and the spark and flash of a
+## burst), the crackle of an arc, the fire on the ground. Their sound layers are #791's.
+func _show_element(event: Dictionary) -> void:
+	var element := ElementCatalog.get_def(event["element"])
+	if element == null:
+		return
+	var fx: ElementFx
+	match event["type"]:
+		&"element_burst":
+			fx = ElementFx.blast(event["point"], event["radius"], element.tint)
+			effects.muzzle_flash(event["point"])
+		&"element_arc":
+			var ends: Array[Vector3] = []
+			ends.assign(event["to"])
+			fx = ElementFx.arc(event["from"], ends, element.tint, _elements_shown)
+		_:
+			fx = ElementFx.fire(event["point"], event["radius"], event["seconds"], element.tint)
+	_elements_shown += 1
+	add_child(fx)
 
 
 ## The flare lies where it landed and burns for as long as the server's lure lasts.

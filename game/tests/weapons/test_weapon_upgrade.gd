@@ -2,22 +2,27 @@ extends GdUnitTestSuite
 ## A re-cut weapon: the numbers `UpgradeTuning` gives, filled to the new size, and what the combat
 ## server does with the action.
 
-var _spec := UpgradeTuning.new()
+var _spec := UpgradeTuning.shipped()
 
 
 func test_the_copy_has_the_numbers_of_the_tuning() -> void:
-	for id in _spec.weapons:
+	for id in _spec.weapon_ids():
+		if not WeaponCatalog.IDS.has(id):
+			continue
 		var base := WeaponCatalog.get_def(id)
+		var cut := _spec.profile_of(id)
 		var tuned := base.upgraded(_spec)
 		assert_str(tuned.id).is_equal(String(id))
 		assert_int(tuned.tier).is_equal(1)
 		assert_int(base.tier).is_equal(0)
-		assert_float(tuned.damage).is_equal(base.damage * _spec.damage_multiplier)
-		assert_float(tuned.splash_damage).is_equal(base.splash_damage * _spec.damage_multiplier)
-		assert_int(tuned.magazine_size).is_equal(ceili(base.magazine_size * 1.5))
-		assert_int(tuned.reserve_max).is_equal(ceili(base.reserve_max * 1.5))
-		assert_str(tuned.display_name).is_equal("Re-Cut " + base.display_name)
-		assert_float(tuned.fire_interval).is_equal(base.fire_interval)
+		assert_float(tuned.damage).is_equal(base.damage * cut.damage_multiplier)
+		assert_float(tuned.splash_damage).is_equal(base.splash_damage * cut.damage_multiplier)
+		assert_int(tuned.magazine_size).is_equal(
+			ceili(base.magazine_size * cut.magazine_multiplier)
+		)
+		assert_int(tuned.reserve_max).is_equal(ceili(base.reserve_max * cut.reserve_multiplier))
+		assert_str(tuned.display_name).is_equal(cut.name_of(base.display_name, _spec.name_prefix))
+		assert_bool(tuned.element == cut.element).is_true()
 
 
 func test_the_shipped_file_is_not_changed_by_a_re_cut() -> void:
@@ -47,7 +52,7 @@ func test_the_server_re_cuts_a_carried_weapon_once() -> void:
 	assert_int(done["tier"]).is_equal(1)
 	assert_str(done["display_name"]).is_equal("Re-Cut Revolver")
 	assert_float(done["damage"]).is_equal(
-		WeaponCatalog.get_def(&"pistol").damage * _spec.damage_multiplier
+		WeaponCatalog.get_def(&"pistol").damage * _spec.profile_of(&"pistol").damage_multiplier
 	)
 	assert_int(done["ammo"]).is_equal(done["magazine"])
 	var again := server.apply(CombatAction.upgrade_weapon(1, &"pistol"))
@@ -71,7 +76,7 @@ func test_a_re_cut_shot_hurts_by_the_multiplier() -> void:
 	var plain := server.state_of(1, &"rifle").def
 	server.apply(CombatAction.upgrade_weapon(1, &"rifle"))
 	var tuned := server.state_of(1, &"rifle").def
-	var spec := rules.tuning.upgrade
+	var spec := rules.tuning.upgrade.profile_of(&"rifle")
 	assert_float(DamageModel.damage(tuned, 0.0, &"body")).is_equal(
 		DamageModel.damage(plain, 0.0, &"body") * spec.damage_multiplier
 	)

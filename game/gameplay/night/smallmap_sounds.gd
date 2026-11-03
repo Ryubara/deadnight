@@ -6,12 +6,17 @@ extends Node3D
 ## upstairs, each following the room the listener is in; outside, the cold yard heard through the
 ## windows (`SmallMapYard`, `SmallMapWays`) and a fence rattling now and then; and the map's pieces:
 ## the dead tearing the boards off a window and the player putting them back, a plank door opening
-## and a debris blocker coming off its stair. It holds no game state and asks the server nothing.
+## and a debris blocker coming off its stair. The wind under the roof and the yard's four wind
+## loops swell with the gust that is blowing (`wind`, the night's `WindSounds`: its `swell()`, read
+## ten times a second), so the located wind follows the same gusts as the open-air layer. It holds
+## no game state and asks the server nothing.
 ## The design is `docs/research/maps/small-map-audio.md`.
 
 const ROOM_TONE := &"bed_room_tone"
 const ROOF_WIND := &"bed_roof_wind"
 const RATTLE := &"yard_rattle"
+## The roof wind is told a new level only when it moves this far (dB).
+const ROOF_STEP_DB := 0.05
 ## The backdrop's fences (multimeshes): the runs of wire and the posts that hold them.
 const FENCE_NODES: Array[String] = ["Yard/WireFence", "Yard/FencePosts"]
 ## The doors that are a pile of rubble and furniture on a stair, not a plank door.
@@ -27,6 +32,9 @@ var schedule := SoundSchedule.new()
 var rooms: SmallMapRooms
 var ways: SmallMapWays
 var yard: SmallMapYard
+## The night's wind, whose blowing gust the roof and yard wind swell with (`NightSounds.wind`; set
+## by whoever adds this beside `NightSounds`). None: they stay as they rest.
+var wind: WindSounds
 ## The node name of the room the listener is in now (`Start`, `Side`, `UpperA`, `UpperB`), `&""`
 ## outside.
 var room := &""
@@ -39,6 +47,7 @@ var _rng := RandomNumberGenerator.new()
 var _since_update := 0.0
 var _over := false
 var _started := false
+var _roof_level := SmallMapSoundTuning.SILENT_DB
 
 
 ## `greybox` is the map (`smallmap_greybox.tscn`), `backdrop` its outside (null for none).
@@ -95,8 +104,30 @@ func _follow(delta: float) -> void:
 		room = now
 		if not _over:
 			Audio.set_bed_level(ROOM_TONE, _t.tone_db.get(room, SmallMapSoundTuning.SILENT_DB))
-			Audio.set_bed_level(ROOF_WIND, _t.roof_db.get(room, SmallMapSoundTuning.SILENT_DB))
-	yard.update(ear, delta)
+	var swell := gust_swell()
+	if not _over:
+		_set_roof_wind(swell)
+	yard.update(ear, delta, _t.yard_gust_db * swell)
+
+
+## How far into its swell the blowing gust is, 0 (none, no wind, or at its ends) to 1 (its peak).
+func gust_swell() -> float:
+	if wind == null or not wind.is_running():
+		return 0.0
+	return wind.swell()
+
+
+## The wind under the roof, in the listener's room: where it rests (the room's level, this far
+## under the loop's raised trim) and up to `roof_gust_db` over that at the gust's peak. A room
+## with none is silent. The bed is only told when its level moves.
+func _set_roof_wind(swell: float) -> void:
+	var rests: float = _t.roof_db.get(room, SmallMapSoundTuning.SILENT_DB)
+	var level := SmallMapSoundTuning.SILENT_DB
+	if rests > SmallMapSoundTuning.SILENT_DB + 0.5:
+		level = rests - SmallMapSoundTuning.ROOF_HEADROOM_DB + _t.roof_gust_db * swell
+	if not _started or absf(level - _roof_level) >= ROOF_STEP_DB:
+		_roof_level = level
+		Audio.set_bed_level(ROOF_WIND, level)
 
 
 func _on_event(event: Dictionary) -> void:
