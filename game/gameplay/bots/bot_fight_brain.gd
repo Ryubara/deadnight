@@ -949,7 +949,10 @@ static func _health(me: Dictionary) -> float:
 
 static func _held(me: Dictionary) -> WeaponDef:
 	var id: StringName = me.get("weapon", &"")
-	return WeaponCatalog.get_def(id) if id != &"" else null
+	if id == &"":
+		return null
+	var counts: Array = (me.get("arms", {}) as Dictionary).get(id, [])
+	return WeaponCatalog.get_def_at(id, int(counts[2]) if counts.size() > 2 else 0)
 
 
 static func _flat(a: Vector3, b: Vector3) -> float:

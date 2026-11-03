@@ -8,13 +8,15 @@ extends RefCounted
 ## people: when the model or the weapons change, the report is read again and the ranges with it.
 
 ## Median round (the round half the nights reach), by skill and players: [low, high].
+## The strong solo ceiling is 19 (it was 18): the maintainer allowed it on #794 (2026-11-03) for the
+## roster of seventeen weapons and the re-cut of each (docs/research/weapon-roster.md).
 const MEDIAN_ROUND := {
 	"weak:1": [4, 9],
 	"average:1": [8, 14],
 	"average:2": [11, 16],
 	"average:4": [12, 17],
 	"average:8": [14, 20],
-	"strong:1": [12, 18],
+	"strong:1": [12, 19],
 }
 ## The first rounds are a lesson, not a test: this share of average solo nights clears round 4.
 const MIN_SURVIVE_ROUND_4 := 0.85
