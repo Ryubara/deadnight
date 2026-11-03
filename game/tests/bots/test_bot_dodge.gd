@@ -107,3 +107,17 @@ func test_a_telegraphed_blow_is_made_out_at_the_profiles_read_and_a_plain_one_al
 	var first := dodge.swings(again, HERE).size()
 	for _i in 5:
 		assert_int(dodge.swings(again, HERE).size()).is_equal(first)
+
+
+func test_the_rookie_never_makes_out_the_boss_and_the_others_always_do() -> void:
+	# The fit to the weak boss night (#568): a Rookie that steps out of the headliner's blow wins the
+	# night every time, which the simulator's weak players do not.
+	for profile: BotProfile in [BotProfile.rookie(), BotProfile.regular(), BotProfile.veteran()]:
+		var dodge := BotDodge.new(profile, 5)
+		var noticed := 0
+		for episode in 60:
+			var boss := _swinger(&"headliner", Vector3(0, 0, -1.2), 10.0)
+			boss.contacts[1]["episode"] = episode
+			boss.now = 10.7
+			noticed += dodge.swings(boss, HERE).size()
+		assert_int(noticed).is_equal(0 if profile.title == "Rookie" else 60)

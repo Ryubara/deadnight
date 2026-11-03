@@ -201,8 +201,10 @@ hardest shipped profile reacts in 0.22 s. Our floor is 0.20 s and no profile goe
 | Maximum aim speed (degrees a second) | 240 | 360 | 540 |
 | Track error at 15 m (degrees, 1 sigma) | 14 | 4 | 2 |
 | Fire slop (times the hit cone the trigger waits for) | 6 | 3 | 1.8 |
-| Head-aim rate | 0.07 | 0.30 | 0.75 |
+| Head-aim rate | 0 (0.07 until #568) | 0.30 | 0.75 |
 | Weak-spot rate (the boss's lens, when it faces the bot) | 0.25 | 0.50 | 0.80 |
+| Telegraph read (a boss's blow made out, then stepped out of) | 0 | 1.0 | 1.0 |
+| View cone (degrees) | 80 | 110 | 110 |
 | Fire jitter (s) | 0.15 | 0.08 | 0.04 |
 | Think rate (Hz) | 5 | 8 | 10 |
 | Retreat early (metres of margin) | 0 | 1.25 | 1.5 |
@@ -746,8 +748,10 @@ decides, the others hold a rule each, so a test pins them one by one):
 - **`BotDodge`**: a swing that began on the frame (`attack_at` on the contact) and that would still reach the bot
   (within 1.4 + 0.4 m, plus 0.3 of drift) is stepped out of after the profile's reaction time, if there is time before
   the blow (0.45 s a plain zombie, **1.2 s the headliner**): a retreat heading on the mesh at a sprint. A telegraphed
-  (boss) swing is made out with the profile's `telegraph_read` (the simulator's `read`: 0.3 for the Rookie, 1.0 for
-  the others), rolled once a swing. The headliner is also kept `boss_keep` (6 m) away. The weak spot: the lit lens at
+  (boss) swing is made out with the profile's `telegraph_read` (0 for the Rookie, which never makes one out, 1.0 for
+  the others; the simulator's `read` is a factor on the blow's chance to land, not a chance to see it, so the two are
+  not the same number: [fitted in #568](#rookie-and-the-weak-boss-night)), rolled once a swing. The headliner is
+  also kept `boss_keep` (6 m) away. The weak spot: the lit lens at
   (0, 1.16, 0.29) in the boss's frame, aimed at with the profile's `weak_spot_rate` when the boss faces the bot
   (`BotMotor.weak_spot`).
 - **`BotStance`**: Midnight Stampede is `HOLD` (no retreat, no sprint; walk to a choke and stay), Crawl Space `LOW`
@@ -784,11 +788,12 @@ every bot is down or 420 s of play pass. The simulator's prediction is the share
 
 | Skill | Simulator: passes round 5 | Bots, four of a profile | Inside 15 points |
 | --- | ---: | ---: | --- |
-| weak / Rookie | 0.40 (118 of 297 nights) | 16 of 16 (1.00), and 16 of 16 with half the reserve | **no** |
+| weak / Rookie | 0.40 (118 of 297 nights) | phase 3: 16 of 16 (1.00), and 16 of 16 with half the reserve; [fitted in #568](#rookie-and-the-weak-boss-night): 36 of 90 (0.40) | phase 3 **no**; #568 yes |
 | average / Regular | 0.997 (299 of 300) | 16 of 16 (1.00) | yes |
 | strong / Veteran | 1.00 (300 of 300) | 16 of 16 (1.00) | yes |
 
-A night took 133 s (Rookie), 119 s (Regular) and 114 s (Veteran) of play. **The Rookie is not within the band:** the
+A night took 133 s (Rookie), 119 s (Regular) and 114 s (Veteran) of play. **In phase 3 the Rookie was not within
+the band** (fitted since, below): the
 simulator's weak players die in 60% of the boss nights they reach; four Rookie bots lost none in the 32 nights of the
 final code and 5 of 64 earlier ones. Tried along the way, none moving the share under 87% in eight nights: a telegraph
 read of 0.3 (the simulator's `read`, kept: `BotProfile.telegraph_read`), no keep-off from the boss, a narrower view
@@ -796,6 +801,46 @@ and shorter memory, a reaction of 0.9 s, half the ammunition. The bots are downe
 never all four, and they do not revive yet; the cause is more likely the lot (a long approach lane and a boss at 0.45
 of the walking speed, which a bot walks away from) or the weak level's damage model than the bot's skill. Follow-up:
 issue #568 (phase 7 fits `SimSkill` to the measured bots).
+
+#### Rookie and the weak boss night
+
+Fitted in #568 (`BotProfile.rookie()`), measured with `bots_boss_night.tscn --profile=rookie --topoff=0.5` on `main`
+after #616. The aim was 25 to 55 percent of 30 nights; the simulator's number is 0.40. Four Rookies pass **13 of 30**
+nights (seeds 1 to 30), **9 of 30** (seeds 101 to 130) and **14 of 30** (seeds 201 to 230): 36 of 90, 40%, and each
+set of 30 inside the band. The Regular still passes 8 of 8.
+The Rookie's bands test (`tests/night/test_bot_bands.gd`) still passes (3 of 3: Rookie hit rate 0.42, head share 0.08,
+dodge 0.11). The view cone costs the head share (0.09 on `main` with 110 degrees, 0.13 with 80 or 90, the test's
+edge), so the head-aim rate went from 0.07 to 0: the Rookie never aims at the head, and the level's 0.06 is what
+the spread of its aim gives.
+
+What moved the share, in nights passed (seeds 1 to 30 unless a smaller count is given; each a run of the capture with
+`--set=`; the rows before the last three were made before #616 landed):
+
+| Rookie | Nights passed |
+| --- | ---: |
+| as in phase 3 (`telegraph_read` 0.3, view 110) | 4 of 4, and 16 of 16 in phase 3 |
+| never steps out of the boss's blow (`telegraph_read` 0) | 16 of 30 (53%) |
+| `telegraph_read` 0.1 | 20 of 30 (67%) |
+| `telegraph_read` 0 and `follows` off | 3 of 8 (`follows` off alone: 6 of 8) |
+| `telegraph_read` 0 and `weak_spot_rate` 0.2 (the level's) | 19 of 30 |
+| `telegraph_read` 0 and `weak_spot_rate` 0.1 | 10 of 18 |
+| `telegraph_read` 0 and `think_hz` 3 | 9 of 17; 14 of 30 together with the view below |
+| `telegraph_read` 0 and `view_degrees` 80 | 12 of 30 (40%); after #616, 9 of 30 and 10 of 30 on seeds 1 and 101 |
+| `telegraph_read` 0, `view_degrees` 90 | 8 of 30 |
+| `telegraph_read` 0, `weak_spot_rate` 0 | 29 of 52 (56%) |
+| **`telegraph_read` 0, `view_degrees` 80, `head_rate` 0 (shipped)** | **36 of 90 (40%), after #616** |
+
+The lever was the dodge. A Rookie that made out a telegraph (30%) stepped out of it and lost nothing, because the
+boss walks at 0.45 of a walker's speed and the step was a sprint; a boss that never lands a swing cannot down four bots
+in the 100 or so seconds it takes them to kill it. The simulator's `read` of 0.25 only multiplies the
+chance of a blow landing by exp(-1.2 x 0.25) = 0.74 (a quarter of the blows miss, the rest land) and its players stand
+still, so a bot that makes out one blow in three and dodges it whole is far stronger than the level's player. With the
+Rookie never reading the telegraph the bots are downed in the nights they lose, all four, mostly with a boss still
+standing (every lost night of the 16-of-30 run above had all four down; `NIGHT` lines now report `blows` by zombie
+type and `boss_hits` by zone).
+
+The simulator was **not** changed: its weak boss night is what the design wants (a spike, the weak players walled
+until they learn the weak spot: [the balance page](balance-simulator.md#the-weak-boss-night-against-the-bots-568)).
 
 *Cost* (a think, in the soak, four bots, shared machine): **p50 about 160 microseconds, p99 about 800** (seeds 1 and
 2, eight game minutes, tough players, the autopilot as the person and four bots, a shared machine), against about 110
