@@ -118,6 +118,32 @@ func test_every_spawn_stands_5_to_15_metres_outside_its_own_window() -> void:
 				assert_bool(rect.has_point(Vector2(point.x, point.z))).is_false()
 
 
+func test_with_every_link_sold_the_map_leads_from_each_window_to_the_hall() -> void:
+	# The dead path over the navigation map the tick it is asked, on every machine: the map takes
+	# meshes in on the physics step (not a worker thread, which dropped the last of several swaps
+	# made in one go and left the upper floor and the side room cut off: #733, #736).
+	_seated = await SmallMapNight.seat(self, 1, null, 5)
+	for item in _seated.server.rules.tuning.economy.items:
+		if item.kind == ShopItem.Kind.DOOR:
+			_seated.open_door(item.id)
+	await _seated.settle(10)
+	var map := _seated.world.map()
+	assert_bool(NavigationServer3D.map_get_use_async_iterations(map)).is_false()
+	var hall := _seated.world.player_spawn(0)
+	var gates := _seated.world.spawn_gates()
+	assert_int(gates.size()).is_equal(12)
+	for point: Vector3 in gates:
+		var way := NavigationServer3D.map_get_path(map, point, hall, true)
+		var end := way[way.size() - 1] if not way.is_empty() else point
+		(
+			assert_float(Vector2(end.x - hall.x, end.z - hall.z).length())
+			. override_failure_message(
+				"%s: the way ends %.1f m from the hall" % [gates[point], end.distance_to(hall)]
+			)
+			. is_less(1.0)
+		)
+
+
 func test_the_dead_come_in_through_every_window_to_the_room_it_opens_into() -> void:
 	# A night of 24 dead at once on the whole map, a player who cannot fall standing in the hall: each
 	# window's dead tear its five boards and walk through into the right room, up stairs and all.

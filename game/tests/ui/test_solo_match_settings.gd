@@ -194,3 +194,28 @@ func test_the_bot_skill_shares_the_bots_row_and_the_arrows_reach_it() -> void:
 		panel.skill_selector
 	)
 	(made[0] as Control).free()
+
+
+## The keys a player (and the browser smoke) press from Start to ask for bots: Up twice reaches the
+## count (the skill is the row's second selector, #715), Right three times makes 3 bots.
+func test_two_ups_from_start_reach_the_bot_count_and_right_asks_for_three_bots() -> void:
+	var made := await _boxed(DESKTOP_CANVAS)
+	var screen := made[1] as PlayScreen
+	var panel := screen.panel
+	var focus: Control = screen.start_button
+	for _i in 2:
+		focus = focus.get_node(focus.focus_neighbor_top) as Control
+	assert_object(focus).is_same(panel.bots_selector)
+	for _i in 3:
+		var event := InputEventAction.new()
+		event.action = &"ui_right"
+		event.pressed = true
+		panel.bots_selector._gui_input(event)
+	assert_int(panel.settings().bots).is_equal(3)
+	assert_int(panel.settings().bot_skill).is_equal(MatchSettings.DEFAULT_SKILL)
+	# Down twice (the skill, then Start) is the way back the smoke takes.
+	focus = panel.bots_selector
+	for _i in 2:
+		focus = focus.get_node(focus.focus_neighbor_bottom) as Control
+	assert_object(focus).is_same(screen.start_button)
+	(made[0] as Control).free()
