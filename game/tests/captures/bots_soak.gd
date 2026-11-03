@@ -17,7 +17,8 @@ extends Node
 ## minutes after which a night is stopped, default 45), `--stall-minutes=M` (a round longer than
 ## this is stopped and reported as a stalled round, default 8), `--budget=S` (wall seconds after
 ## which no new night starts, default 0: none), `--watch=SEAT` (a line a second of what that seat
-## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke) and
+## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke;
+## `--watch=far` is a line for each bot beyond 20 m of a person) and
 ## `--quiet` (no trace line a minute).
 ## Prints `SOAKNIGHT {json}` for each night and `SOAKCELL {json}` at the end.
 
@@ -182,7 +183,7 @@ func _print_seat(night: SeatedNight, id: int, ticks: int) -> void:
 		var me := bot.state.me()
 		var body := night.server.body_of(id)
 		var line := (
-			"WATCH t=%d seat %d note=%s at=(%.1f,%.1f) v=%.1f weapon=%s ammo=%s/%s target=%d"
+			"WATCH t=%d seat %d note=%s at=(%.1f,%.1f) v=%.1f weapon=%s ammo=%s/%s target=%d goal=%s"
 			% [
 				ticks,
 				id,
@@ -193,7 +194,8 @@ func _print_seat(night: SeatedNight, id: int, ticks: int) -> void:
 				me.get("weapon", ""),
 				me.get("ammo", -1),
 				me.get("reserve", -1),
-				bot.intent.target_id
+				bot.intent.target_id,
+				bot.intent.goal.snappedf(0.1)
 			]
 		)
 		var arms: Dictionary = night.frame["players"][id].get("arms", {})
@@ -207,8 +209,8 @@ func _print_seat(night: SeatedNight, id: int, ticks: int) -> void:
 		print(line)
 
 
-## A line for each bot beyond 20 m of a person (`--watch=far`): what it does, where the person
-## is, the way it has to walk to them, and the dead near it, for finding why a Follow bot is far.
+## A line for each bot up and beyond 20 m of a person up (`--watch=far`): what it does, where the
+## person is, and the dead near it, for finding why a Follow bot is far.
 func _print_far(night: SeatedNight, people: Array[int], ticks: int) -> void:
 	for bot in night.host.bots:
 		var body := night.server.body_of(bot.state.player_id)

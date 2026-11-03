@@ -190,6 +190,17 @@ func test_courtesy_counts_each_zombie_on_its_own_and_starts_over_for_a_new_one()
 	assert_int(_choose(combat, second, mates, null, now + 0.1)).is_equal(-1)
 
 
+func test_a_boss_is_never_left_to_a_person() -> void:
+	# The soak's idle holders (#769): the person aimed at the headliner 8 m off and three bots with
+	# rounds stood still for seconds.
+	var combat := BotCombat.new(BotProfile.regular())
+	var mates: Array[Dictionary] = [_mate(Vector3(3, 0, 0), 0.0)]
+	var boss := _zombie(1, Vector3(3, 0, -8), ZombieBody.Mode.CHASE, &"headliner")
+	assert_bool(BotCombat.courtesy_holds(boss, HERE, mates)).is_false()
+	var only: Array[Dictionary] = [boss]
+	assert_int(_choose(combat, only, mates)).is_equal(1)
+
+
 # --- Melee ---
 
 
