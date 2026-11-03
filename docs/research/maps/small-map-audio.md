@@ -55,7 +55,7 @@ called with both in the tree). The guns, the dead, the till and the feet stay th
 | Part | What it does |
 | --- | --- |
 | `SmallMapRooms` | reads each room's rectangle and floor height off the greybox (`Start`, `Side`, `UpperA`, `UpperB`) and says which room a point is in (a stair belongs to the room below until its top; outside the walls is no room) |
-| room tone, roof wind | `bed_room_tone` and `bed_roof_wind` are flat beds whose level follows the listener's room (`SmallMapSoundTuning.tone_db`, `roof_db`) through `Audio.set_bed_level`, at the beds' fade rates; outside the walls the tone fades away |
+| room tone, roof wind | `bed_room_tone` and `bed_roof_wind` are flat beds whose level follows the listener's room (`SmallMapSoundTuning.tone_db`, `roof_db`) through `Audio.set_bed_level`, at the beds' fade rates; outside the walls the tone fades away. The roof wind (and the yard's wind loops, below) also swells with the gust that is blowing, up to 3 dB (6 dB for the yard) at its peak: `SmallMapSounds.wind` is the night's `WindSounds`, read ten times a second (#809, [the wind](../wind.md#the-gust-drives-the-loops-809)); the roof wind's trim is 3 dB higher than the table below says (the report takes it off) and every room rests 3 dB lower, so what is heard at rest is unchanged |
 | `SmallMapWays` | how a sound outside reaches a listener inside: from the window of the listener's room that gives the shortest way round, at the level of the whole way and the window's state (boards left: boarded -8 dB, none or a breach: open -1.5 dB), or through the wall (-15 dB, dull); fences and the ground are not walls |
 | `SmallMapYard` | nine 3D loops at the backdrop's places: wind in the four corners of the yard (each starting at its own offset and pitch), the two fires, the hum on the two poles nearest the building (20 m apart), the drive-in's road; each is played from the window it comes in at and stops out of reach |
 | rattles | every 12 to 25 s a fence rattles at a wire-fence run or post within 60 m, through the same ways, from a seeded generator |
@@ -63,6 +63,9 @@ called with both in the tree). The guns, the dead, the till and the feet stay th
 | feet | `FootSurface` knows `wood`: the stairs and the upper floor carry `surface = "wood"` (the greybox generator writes it), so `FootstepSounds` plays `step_wood` and `step_own_wood` there and the asphalt files on the ground floor |
 
 Wiring left to the map picker (#624), which adds `SmallMapSounds` where it adds `NightSounds`:
+
+- Give it the night's wind: `small_map_sounds.wind = night_sounds.wind` (`NightSounds` makes the `WindSounds`, with or without
+  the lot's crickets and highway); without it the roof and yard wind rest where they did before #809.
 
 - Start the map's sounds **in place of** the lot's crickets and highway (`NightSounds.NIGHT_BEDS`): the yard is frosted
   and still, nothing sings. The bed pool holds six: the room tone, the roof wind, the score and the tension are four.
@@ -99,8 +102,9 @@ step_asphalt        -19.8   -2.0   -21.8   4.0     30     30   (existing)
 ```
 
 - **The room tone sits with the other beds** (-35.9, the highway's -35.6; the crickets are -44), under a footstep
-  (-34.7 for the player's own on wood, a step's peak much higher). The roof wind is 2 dB under it and swells with its
-  gusts.
+  (-34.7 for the player's own on wood, a step's peak much higher). The roof wind is 2 dB under it and, since #809,
+  swells with the gust that is blowing (the table reads its rest level: its trim is 3 dB higher in the bank, and
+  `smallmap_levels.py` takes that off).
 - **Through a boarded window the yard is at the audible floor** (-49 to -52): heard, not noticed. With the boards torn
   off it is 6.5 dB up (-42 to -45), so a breach is audible in the room before it is seen; through a wall it is 7 dB
   under the floor. The rattle is a short peak, not a level: its peak at a boarded window is about -34 dBFS.

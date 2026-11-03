@@ -13,7 +13,7 @@ const MOVIE_FPS := 10.0
 const SHOT_FRAMES := 8
 ## Every catalogue weapon, each with its own model and hold (`PlayerAnimation.equip`).
 const WEAPONS: Array[StringName] = [
-	&"rifle", &"shotgun", &"pistol", &"smg", &"flare_gun", &"crowbar", &"grenade"
+	&"rifle", &"shotgun", &"pistol", &"smg", &"flare_gun", &"crowbar", &"dual_pistols", &"grenade"
 ]
 const POSES := ["idle", "run", "aim", "fire"]
 ## The grenade is thrown, never aimed or fired: its cooked hold, standing and running.
