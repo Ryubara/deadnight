@@ -95,8 +95,9 @@ func test_every_weapon_that_can_be_re_cut_gets_the_layer_in_its_shot() -> void:
 		_heard.clear()
 		_frame({weapon: 1})
 		_shot(weapon)
+		# The wonder weapons play their own, deeper layer instead of the shared one.
 		assert_array(_ids()).override_failure_message("%s: %s" % [weapon, _ids()]).contains(
-			[&"recut_layer"]
+			[RecutLayer.layers_for(weapon)[0]]
 		)
 
 
