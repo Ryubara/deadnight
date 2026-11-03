@@ -11,6 +11,7 @@ extends RefCounted
 ##   another gun loaded, the swap is quicker than the reload, so the bot swaps.
 ## - A tactical reload when the magazine is low and nothing is near (`LOW_MAGAZINE`, `RELOAD_SAFE`),
 ##   and a top-up in a lull when it is not full (`TOP_UP_BELOW`, `LULL`).
+## - The flare gun is put away for a loaded gun as soon as it is in hand (it is held for one shot).
 ## - A swap to the better loaded weapon when it is `SWITCH_GAIN` times better at this range, and to
 ##   whatever has rounds when the weapon in hand has none; the crowbar when every gun is dry.
 
@@ -52,6 +53,12 @@ static func plan(me: Dictionary, held: WeaponDef, distance: float, threat: float
 	var here_range := distance if distance < INF else 0.0
 	out.dry = not has_rounds(arms)
 	var best := best_loaded(arms, held, here_range)
+	if held.is_lure():
+		# The flare gun is a tool for one shot (`BotFlare`), not a gun for the fight: put it away
+		# for a loaded gun (or the blade) as soon as it is in hand and no flare is ordered.
+		out.swap = best != &"" or melee_in(arms, held) != &""
+		out.reload = not out.swap and ammo <= 0 and reserve > 0 and not reloading
+		return out
 	if held.is_melee():
 		# Take a gun that can fire, whenever one can (it hits from afar); a gun with no magazine
 		# but rounds in reserve is taken too when nothing is near enough to need the blow.
@@ -79,10 +86,12 @@ static func plan(me: Dictionary, held: WeaponDef, distance: float, threat: float
 	return out
 
 
-## Whether any firearm carried has a round, in the magazine or in reserve.
+## Whether any firearm carried has a round, in the magazine or in reserve (the flare gun is no
+## firearm for the fight).
 static func has_rounds(arms: Dictionary) -> bool:
 	for id: StringName in arms:
-		if WeaponCatalog.get_def(id).is_melee():
+		var def := WeaponCatalog.get_def(id)
+		if def.is_melee() or def.is_lure():
 			continue
 		var counts: Array = arms[id]
 		if int(counts[0]) + int(counts[1]) > 0:
@@ -100,7 +109,7 @@ static func best_loaded(arms: Dictionary, held: WeaponDef, distance: float) -> S
 			continue
 		var def := WeaponCatalog.get_def(id)
 		var counts: Array = arms[id]
-		if def.is_melee() or int(counts[0]) <= 0:
+		if def.is_melee() or def.is_lure() or int(counts[0]) <= 0:
 			continue
 		var worth := worth_at(def, distance)
 		if worth > best_worth:
@@ -112,7 +121,8 @@ static func best_loaded(arms: Dictionary, held: WeaponDef, distance: float) -> S
 ## A carried firearm (not `held`) with rounds in reserve only (an empty magazine).
 static func reserve_gun(arms: Dictionary, held: WeaponDef) -> StringName:
 	for id: StringName in arms:
-		if id == held.id or WeaponCatalog.get_def(id).is_melee():
+		var def := WeaponCatalog.get_def(id)
+		if id == held.id or def.is_melee() or def.is_lure():
 			continue
 		var counts: Array = arms[id]
 		if int(counts[0]) <= 0 and int(counts[1]) > 0:

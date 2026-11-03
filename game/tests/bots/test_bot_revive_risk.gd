@@ -131,3 +131,24 @@ func test_the_kill_rate_is_the_held_weapons_share() -> void:
 	var rate := BotReviveRisk.kill_rate_of(rifle, 80.0)
 	assert_float(rate).is_equal_approx(WeaponWorth.of(rifle, 80.0) * BotReviveRisk.HIT_SHARE, 0.001)
 	assert_float(BotReviveRisk.kill_rate_of(null, 80.0)).is_equal(0.0)
+
+
+func test_a_zombie_a_flare_has_drawn_off_counts_from_where_the_lure_is_and_after_it_goes_out(
+) -> void:
+	var near: Array[BotReviveRisk.Threat] = []
+	var drawn: Array[BotReviveRisk.Threat] = []
+	for i in 6:
+		var at := VICTIM + Vector3(2.0 + float(i), 0.0, 1.0)
+		near.append(_threat(at))
+		# The same dead, 14 m off at the flare, which burns for 9 s more.
+		drawn.append(
+			BotReviveRisk.Threat.make(VICTIM + Vector3(0, 0, -14), SLOW, HEALTH, 9.0, true)
+		)
+	assert_int(_judge(near).kind).is_not_equal(BotReviveRisk.Kind.SAFE)
+	var verdict := _judge(drawn)
+	assert_int(verdict.kind).is_equal(BotReviveRisk.Kind.SAFE)
+	# They start for the body only when the lure is out: no earlier than its seconds.
+	var late: Array[BotReviveRisk.Threat] = [
+		BotReviveRisk.Threat.make(VICTIM + Vector3(0, 0, -1), SLOW, HEALTH, 30.0, true)
+	]
+	assert_int(_judge(late).kind).is_equal(BotReviveRisk.Kind.SAFE)

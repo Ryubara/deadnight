@@ -39,6 +39,7 @@ const BUILD_SHARE := 0.15
 ## The fixed step of the night, the physics step.
 const STEP := 1.0 / 60.0
 const PLAYER_ID := 1
+## The fixed seed of tests, benches and tours: a night that must play the same each time.
 const SEED := 1958
 ## How far past the low-tank line (a fraction of a full tank) the bot waits before it lights an
 ## area again.
@@ -57,6 +58,9 @@ var mode := Mode.HUMAN
 var world: NightWorld
 var server: NightServer
 var link: GameLink
+## The person's word to the bots (`BotOrders`): its `issue` puts one order on the link, local or
+## online, and the server's bots read it from every frame. Made with the link.
+var bot_orders := BotOrders.new()
 ## The rules' numbers the client needs (the server's own, or the shipped table online).
 var rules_tuning: RulesTuning
 ## True when the night runs on a game server (`start_remote`).
@@ -87,6 +91,13 @@ var bots: NightBots
 ## The match settings, set before `start`: the night's zombie intensity, alive cap and break. After
 ## `start_remote` they are the ones the server's WELCOME carried.
 var match_settings := MatchSettings.new()
+## The map's scene, set before `start`, for a night that is not on the registry's choice (a test, a
+## capture); empty builds the map the match settings name (`NightWorld.scene`).
+var scene: PackedScene
+## `start_remote` only: the map to build before the server's WELCOME says which it is on (the lobby
+## the player joined knows it); empty is the default map. A WELCOME that names another one has the
+## world built again on that map.
+var map_id := ""
 ## () -> bool, whether the touch layer is up, set by the screen that owns it. The touch player's
 ## aim help (`assist`) works only while it says yes.
 var touch_active := Callable()
@@ -140,6 +151,12 @@ var _warming := false
 var _leaving := false
 
 
+## A seed for a night nobody asked to repeat: the dice of every stream (spawns, shop, crane) come
+## from it. The game server draws its nights' seeds the same way (`NightHost`).
+static func fresh_seed() -> int:
+	return randi()
+
+
 func _init() -> void:
 	# The night hangs under a screen, and a Control is not physics-interpolated: left to inherit,
 	# the whole lot and everyone on it would be drawn at the last tick (issues #344 and #353).
@@ -159,12 +176,16 @@ func start(
 		await get_tree().process_frame
 		await get_tree().process_frame
 	world = NightWorld.new()
+	world.scene = scene
 	add_child(world)
-	await world.build()
+	await world.build(MapRegistry.of(match_settings.map))
 	loading.emit(BUILD_SHARE, "Setting up")
-	server = NightServer.new(world, p_seed, night_tuning, p_rules_tuning, match_settings)
+	# A map with its own rules overlay plays by it, over the shared table (or over the table given).
+	var table := p_rules_tuning if p_rules_tuning != null else load(GameRules.DEFAULT_TUNING_PATH)
+	server = NightServer.new(world, p_seed, night_tuning, world.rules_for(table), match_settings)
 	rules_tuning = server.rules.tuning
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
+	bot_orders.sender = link.send
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
 	_track_challenges()
@@ -207,10 +228,11 @@ func start_remote(
 		night_tuning = NightTuning.shipped()
 	world = NightWorld.new()
 	add_child(world)
-	await world.build()
+	await world.build(MapRegistry.of(map_id))
 	rules_tuning = load(GameRules.DEFAULT_TUNING_PATH)
 	var online := p_link if p_link != null else WebSocketLink.new()
 	link = online
+	bot_orders.sender = link.send
 	state = ClientState.new()
 	_track_challenges()
 	var failure := {"reason": ""}
@@ -235,6 +257,7 @@ func start_remote(
 	if failure["reason"] != "":
 		online.close()
 		return _fail(failure["reason"])
+	await _use_map_of_server(MatchSettings.from_snapshot(welcome["snapshot"]).map)
 	state.player_id = online.player_id
 	state.load_names(welcome["snapshot"])
 	var camera: Camera3D
@@ -275,6 +298,19 @@ func start_remote(
 	_on_delivered(early)
 	await _go()
 	return true
+
+
+## The night the server welcomed us to is on the map `id`: when the world built before the WELCOME
+## is another one (the player joined by an address, or a lobby that did not say), it is built again
+## on the right one.
+func _use_map_of_server(id: String) -> void:
+	var wanted := MapRegistry.of(id)
+	if world.map_info == wanted:
+		return
+	world.queue_free()
+	world = NightWorld.new()
+	add_child(world)
+	await world.build(wanted)
 
 
 func _fail(reason: String) -> bool:
@@ -672,6 +708,14 @@ func _add_throw_preview(def: GrenadeDef) -> void:
 	preview.hand_reach = night_tuning.grenade_hand_reach
 	preview.release_over = night_tuning.grenade_release_over
 	preview.release_under = night_tuning.grenade_release_under
+
+
+## Orders the bots as this player, standing where they are now: `bot_id` 0 for the team's bots.
+## Returns what was sent (`{}` for an order that cannot be given).
+func give_bot_order(order: StringName, bot_id := 0) -> Dictionary:
+	var body := _body_of(state.player_id)
+	var at := body.global_position if body != null else Vector3.INF
+	return bot_orders.issue(order, state.player_id, at, bot_id)
 
 
 func _human_command() -> NightCommand:

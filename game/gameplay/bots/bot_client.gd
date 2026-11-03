@@ -123,6 +123,15 @@ func hear(events: Array) -> void:
 			&"board_torn":
 				if int(event.get("boards", 1)) == 0:
 					perception.beliefs.moments.append({"kind": &"breach_open"})
+			&"lure_started":
+				# Its own flare burst: the dead within its radius walk to it for its seconds.
+				team.add_lure(
+					event["point"],
+					float(event["radius"]),
+					now + float(event["seconds"]),
+					state.player_id
+				)
+				telemetry.count(&"flares_fired")
 			&"grenade_count_changed":
 				perception.beliefs.grenades = int(event.get("count", 0))
 			&"round_started":
@@ -261,6 +270,7 @@ func _fallback() -> BotIntent:
 func _track_crew(delta: float) -> void:
 	var beliefs := perception.beliefs
 	beliefs.me = state.player_id
+	beliefs.order = BotOrders.current(state.frame, state.player_id)
 	var players: Dictionary = state.frame.get("players", {})
 	for id: int in players:
 		var player: Dictionary = players[id]
