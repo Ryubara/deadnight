@@ -1638,7 +1638,25 @@ the Regular and the Veteran play as they did. The model does both shopping thing
 **Parity** (24 nights a cell, round cap 16, one checkout, the three fields on and off by `--tune`, the model's 300
 nights; `rookie_parity.png`):
 
-@@TABLE@@
+| Cell | Median round before | after | Sim | Kolmogorov before | after | Boss night passed (cap 6) |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| rookie x1 | 7 | 6 | 5 | 0.48 | 0.31 | the model 19% |
+| rookie x2 | 10 | 10 | 5 | 0.66 | 0.71 | the model 27%; the bots 23 of 24 before and after |
+| rookie x4 | 9 | 5 | 5 | 0.47 | 0.24 | the model 36%; the bots 21 of 24 before, 11 of 20 after |
+
+The boss-night harness (four Rookies, 30 nights, seed 1, `--topoff=0.5`, the final code): **10 of 30 (33%)**, inside the
+25 to 55% of #767. The hit rate and head share of the bands test did not move (Rookie 0.39, 0.61, dodge 0.00, #801).
+Gates: no night of the 48 broke one, no engine error.
+
+**What is left of #767.** The median is inside 1.5 rounds for one and four bots and the curve is under 0.2 for none (four
+bots: 0.24). Two bots still pass the first boss night in 23 of 24 nights where the model passes 27%, and nothing tried
+moved it; they take two to three blows of the six it needs, and the model's weak team is lost by the variance of a
+boss that outlasts it. Tried on top, at the first boss night (16 nights a cell unless said): a revive eagerness of 0
+(14 of 16 passed), a fire jitter of 0.5 (16 of 16), a track error of 24 degrees (one bot: 12 of 16, as without), a narrower
+view and shorter memory (one bot: 10 of 16), a reaction of 1.0 s or a think rate of 3 Hz alone (one bot: 9 of 12 and 10
+of 16). Both together moved one bot to 5 of 16 and left two bots at 15 of 16 and four at 6 of 8, and put the Rookie's hit
+rate in the bands test at 0.46 (the model's 0.45), so they are the next thing to try with more nights than a sample of
+16. The gate on parity stays off (`--gate-parity`).
 
 #### A Follow bot far from the person (#784)
 
@@ -1686,7 +1704,8 @@ the lost night that #770 describes and is untouched.
   person until #769 and #770 are fixed, which is the soak doing its job.
 - **A bot-filled night against a human one.** Not measurable until there is telemetry of people; until then "neither
   easier nor harder than a human one" is the simulator's own levels, read as above: the Veteran is the strong level, the
-  Regular is the average level made easier, the Rookie is the weak level made two to five rounds easier in a team. The
+  Regular is the average level made easier, the Rookie is the weak level at four bots and one to five rounds easier at
+  one and two ([#767](https://github.com/Ryubara/deadnight/issues/767), above). The
   rules' player scaling is **not retuned**: nothing measured says a bot weighted below one would bring a team nearer the
   model, and no night of people exists to say it from ([#772](https://github.com/Ryubara/deadnight/issues/772)).
 - **The cap.** The report above is at round 16 because the nights past it cost 5 to 8 s of wall time a game minute; 7 or
