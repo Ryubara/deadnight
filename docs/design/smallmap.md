@@ -169,11 +169,13 @@ At most **24 dead stand at once**, whatever the round and the party (`alive_cap`
 
 ### What the map leaves out
 
-Nacht has no perks, no upgrade and no power. The map has no power either: no generator, breaker post or fuel can (the
-tank never drains, there are no circuits, and the lamps hang on the `battery` circuit that is always lit so the dead
-keep their lit pace under them). The formula's default for the machines (row 25) was "none", asked of the maintainer;
-issue 792 brings the lot's own (the six tonics and the re-cut bench) at the shared table's prices, so the overlay no
-longer drops the tonic and upgrade kinds ([Machines](#machines)).
+Nacht has no power, and neither has this map: no generator, breaker post or fuel can (the tank never drains, there are
+no circuits, and the lamps hang on the `battery` circuit that is always lit so the dead keep their lit pace under
+them). It does not leave out the machines: Nacht has no perks and no upgrade, but **every map has the soda fountain,
+the perks, the re-cut bench and the prize crane** (the maintainer, 2026-11-03, #859; row 25 of the formula). Issue 792
+brought the lot's own (the six tonics and the re-cut bench) at the shared table's prices, so the overlay does not drop
+the tonic and upgrade kinds ([Machines](#machines)), and `test_map_machines.gd` fails a map of the picker's list that
+lacks one.
 
 ### Floors for the dead
 
@@ -245,8 +247,9 @@ picture; a hole in a ceiling with moon through it is an art issue of its own.
 
 ### Machines
 
-The lot's machines, one to a place that has the room for it (each is its `ShopProps` instance, a hidden block that holds
-its place in the walking mesh and a `ShopSpots` marker 0.7 to 1.1 m in front of it):
+The lot's machines (every map has them all, with the box as the crane), one to a place that has the room for it
+(each is its `ShopProps` instance, a hidden block that holds its place in the walking mesh and a `ShopSpots`
+marker 0.7 to 1.1 m in front of it):
 
 | Where | Machine | Item and price |
 | --- | --- | --- |
