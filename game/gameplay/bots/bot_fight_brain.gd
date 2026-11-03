@@ -1,7 +1,8 @@
 class_name BotFightBrain
 extends BotBrain
-## The brain of phases 1 to 3: the fight and staying with the people (the errands, the revive and
-## the rest come with the later phases). It picks the zombie to shoot by a utility (`BotCombat`),
+## The brain of phases 1 to 5: the fight, staying with the people, the errands and the revive
+## (`BotRevive`: a downed teammate comes before an errand and, once the hold has begun, before the
+## fight too). It picks the zombie to shoot by a utility (`BotCombat`),
 ## backs away from anything that gets inside the profile's margin (a heading chosen on the walking
 ## mesh, `BotSteering`) and steps out of a blow it saw start (`BotDodge`), keeps the headliner at
 ## arm's length, looks toward a blow it felt or a sound it heard, handles its weapons (`BotArsenal`:
@@ -45,6 +46,19 @@ const PREDICT_SECONDS := 1.0
 
 ## The legs the bot walks on, set by the client: the brain asks them which places are blocked.
 var legs: BotLegs
+## What the bots of the night share (the claims on downed players), and where this bot reports.
+var team: BotTeam:
+	set(value):
+		team = value
+		revive.team = value
+var telemetry: BotTelemetry:
+	set(value):
+		telemetry = value
+		revive.telemetry = value
+## What the bot does about a downed teammate (`BotRevive`).
+var revive: BotRevive
+## Whether the last think was an errand (shopping, boards, the generator), for the metrics.
+var on_errand := false
 
 var _profile: BotProfile
 var _level: BotLevel
@@ -74,14 +88,18 @@ func _init(profile: BotProfile, level: BotLevel, dodge_seed: int = 1) -> void:
 	_dodge = BotDodge.new(profile, dodge_seed)
 	_grenadier = BotGrenadier.new(level)
 	_stance = BotStance.new(level)
+	revive = BotRevive.new(profile)
+	revive.rounds = level.rounds
 	if level.shop != null and profile.errands:
 		_errands = BotErrands.new(level.shop, profile)
 
 
 func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	var intent := BotIntent.new()
+	on_errand = false
 	var me := state.me()
 	if me.is_empty() or me.get("downed", true):
+		revive.reset()
 		return intent
 	var here: Vector3 = me["pos"]
 	var held := _held(me)
@@ -91,6 +109,17 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	intent.target_id = _combat.choose(
 		targets, here, held, mates, beliefs.now, _blow_age(beliefs), _health(me)
 	)
+	var rescue := revive.run(
+		intent, beliefs, me, held, state.round_number(), 1.0 / float(_profile.think_hz)
+	)
+	if rescue == BotRevive.Mode.HOLD:
+		# Both hands on the revive: no shot, no step, no swap until it is done or let go of.
+		intent.throw_abort = _order != null
+		_order = null
+		return intent
+	var preferred := revive.prefer(targets, beliefs, here, intent.target_id)
+	if preferred >= 0:
+		intent.target_id = preferred
 	var threat := beliefs.nearest_threat(here, _profile.memory_seconds)
 	var people := _people(beliefs, state.player_id)
 	var anchor := BotFollow.anchor_of(people)
@@ -103,9 +132,12 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 		_last_reflex = Vector3.ZERO
 		if ordered:
 			intent.note = "throw"
+		elif rescue != BotRevive.Mode.NONE:
+			pass  # `BotRevive` set the goal and the note.
 		elif _chase(intent, beliefs, here, held, mates, pack, plan.dry):
 			intent.note = "chase"
 		elif _errand(intent, beliefs, state, threat):
+			on_errand = true
 			intent.note = intent.note if intent.note != "" else "errand"
 		elif kind == BotStance.Kind.HOLD:
 			_hold(intent, beliefs, here, anchor)
@@ -141,7 +173,7 @@ func _step_away(
 		boss_blow = boss_blow or beliefs.contact(swing["id"]).get("look", &"") == &"headliner"
 	var dodge := not swings.is_empty() and (kind != BotStance.Kind.HOLD or boss_blow)
 	var keeps_off := _boss_distance(beliefs, here) < _profile.boss_keep and not throwing
-	var margin := _profile.retreat_margin
+	var margin := maxf(_profile.retreat_margin, revive.kite_margin())
 	# A bot with no round left stands to fight with the quick melee as one with a bat does.
 	var melee := (held != null and held.is_melee()) or dry
 	var backs := threat < margin and kind != BotStance.Kind.HOLD
