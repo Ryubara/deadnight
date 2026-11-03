@@ -22,6 +22,8 @@ const SURFACE_STEP := 0.05
 const TOP := 9.0
 const JUMP_TICKS := [0, 9, 20]
 const NAV_CELL := 0.2
+## A start this high (the walkable ground is 0.2 up) is on a prop.
+const PERCH_FROM := 0.3
 
 var _cell := 1.5
 var _scene_path := ""
@@ -354,7 +356,13 @@ func _run_hop(
 ) -> Vector3:
 	_hops += 1
 	var state := PlayerMotionState.new()
-	state.position = Vector3(from.x, _floor_under(from) + 0.02, from.z)
+	# A standing place on a prop is where the body stood: start there exactly. The floor under a
+	# capsule that rests on a rim is the ground, inside the prop, and a hop from there is not one a
+	# player can make (it tunnelled through a 0.4 m fence, #846).
+	if from.y > PERCH_FROM:
+		state.position = from
+	else:
+		state.position = Vector3(from.x, _floor_under(from) + 0.02, from.z)
 	state.on_floor = true
 	var command := PlayerCommand.new()
 	command.move = Vector2(0, -1)
