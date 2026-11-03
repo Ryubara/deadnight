@@ -140,6 +140,32 @@ func test_a_bot_with_a_dry_gun_walks_to_a_locker_and_buys_rounds() -> void:
 	night.dispose()
 
 
+func _dry_bot_with_a_dead_one_at(metres: float) -> SeatedNight:
+	var night := await _night(1)
+	_give(night, 1, 200)
+	var pistol = night.server.combat.state_of(1, &"pistol")
+	pistol.ammo = 0
+	pistol.reserve = 0
+	var here := night.server.body_of(1).global_position
+	# One of the dead that stands where it is: the lot is never quiet in a late round.
+	var zombie := night.server.sim.spawn(2001, 0.0, here + Vector3(0.0, 0.0, -metres))
+	zombie.speed = 0.0
+	zombie.enter(ZombieBody.Mode.CHASE)
+	night.hold_fire = true
+	return night
+
+
+func test_a_dry_bot_runs_for_rounds_with_a_dead_one_in_sight_but_not_in_reach() -> void:
+	# The soak found bots dying with thousands of points and empty guns: they shopped only in a lull.
+	var night := await _dry_bot_with_a_dead_one_at(8.0)
+	var pistol = night.server.combat.state_of(1, &"pistol")
+	var bought := _purchases(night, &"ammo_pistol")
+	_seconds(night, 90.0)
+	assert_int(bought.size()).is_greater_equal(1)
+	assert_int(pistol.reserve + pistol.ammo).is_greater(0)
+	night.dispose()
+
+
 # --- A person's ammunition ping ---
 
 

@@ -21,6 +21,10 @@ const BREAK_PHASE := 1
 const ACTIVE_PHASE := 2
 ## Metres to the nearest dead inside which no errand is begun or kept.
 const CLEAR_FROM := 12.0
+## A bot with no rounds left goes for ammunition (and nothing else) with the dead this many metres
+## away or more, running: the lot never goes quiet in a late round, and a bot that waits for a lull
+## with an empty gun dies holding its points (the nightly soak, #231).
+const DASH_FROM := 4.0
 ## Seconds a refused item is left alone.
 const BACK_OFF := 30.0
 ## Seconds a bot that holds a door's price waits for a person at the door who holds it too.
@@ -197,6 +201,23 @@ func run(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: flo
 	return false
 
 
+## A bot with no rounds left goes for rounds, and nothing else, with the dead `DASH_FROM` metres
+## away or more, running: sets the intent and returns true, or returns false.
+func dash(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: float) -> bool:
+	var me := state.me()
+	if me.is_empty() or me.get("downed", false) or not state.has_frame() or threat < DASH_FROM:
+		return false
+	_clock = beliefs.now
+	_here = me["pos"]
+	if beliefs.now - _planned_at >= PLAN_EVERY or beliefs.purchased_at > _planned_at:
+		_plan(beliefs, state, me, state.frame)
+	if not _shopping(intent, beliefs, state, me, state.frame, false, true):
+		return false
+	intent.run = true
+	counts["dash"] = int(counts.get("dash", 0)) + 1
+	return true
+
+
 # --- The crane ---
 
 
@@ -230,12 +251,15 @@ func _shopping(
 	state: ClientState,
 	me: Dictionary,
 	frame: Dictionary,
-	marked_only := false
+	marked_only := false,
+	urgent_only := false
 ) -> bool:
 	var now := beliefs.now
 	var pick: BotEconomy.Buy = null
 	for buy in _found:
 		if marked_only and buy.why != BotEconomy.AMMO_PING:
+			continue
+		if urgent_only and buy.why != BotEconomy.URGENT:
 			continue
 		if _team_turn(buy, beliefs, frame, state.player_id):
 			if buy.item == _last_item:

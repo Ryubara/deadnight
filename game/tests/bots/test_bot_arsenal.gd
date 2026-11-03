@@ -42,6 +42,21 @@ func test_a_gun_with_no_rounds_at_all_falls_back_to_the_crowbar() -> void:
 	assert_bool(plan.dry).is_true()
 
 
+func test_an_empty_gun_is_swapped_for_one_with_rounds_in_reserve_only() -> void:
+	# The soak found a bot in a boss fight with an empty shotgun and 24 rifle rounds in reserve.
+	var arms := {&"shotgun": [0, 0], &"rifle": [0, 24]}
+	var plan := _plan(_me(&"shotgun", arms), 20.0, 20.0)
+	assert_bool(plan.swap).is_true()
+	assert_bool(plan.reload).is_false()
+	# In hand, the rifle is reloaded; nothing left to swap to.
+	plan = _plan(_me(&"rifle", {&"shotgun": [0, 0], &"rifle": [0, 24]}), 20.0, 20.0)
+	assert_bool(plan.reload).is_true()
+	assert_bool(plan.swap).is_false()
+	# Both empty to the last round: nothing to swap to.
+	var dry := {&"shotgun": [0, 0], &"rifle": [0, 0]}
+	assert_bool(_plan(_me(&"shotgun", dry), 20.0, 20.0).swap).is_false()
+
+
 func test_the_crowbar_in_hand_is_put_down_when_a_gun_can_fire_and_not_when_none_can() -> void:
 	var loaded := {&"pistol": [6, 20], &"crowbar": [0, 0]}
 	assert_bool(_plan(_me(&"crowbar", loaded)).swap).is_true()

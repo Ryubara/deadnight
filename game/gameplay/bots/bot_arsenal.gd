@@ -13,7 +13,8 @@ extends RefCounted
 ##   and a top-up in a lull when it is not full (`TOP_UP_BELOW`, `LULL`).
 ## - The flare gun is put away for a loaded gun as soon as it is in hand (it is held for one shot).
 ## - A swap to the better loaded weapon when it is `SWITCH_GAIN` times better at this range, and to
-##   whatever has rounds when the weapon in hand has none; the crowbar when every gun is dry.
+##   whatever has rounds when the weapon in hand has none (a gun with rounds in reserve only counts:
+##   it is reloaded once in hand); the crowbar when every gun is dry.
 
 ## Metres from a zombie inside which a tactical reload waits.
 const RELOAD_SAFE := 8.0
@@ -72,7 +73,9 @@ static func plan(me: Dictionary, held: WeaponDef, distance: float, threat: float
 		if reserve > 0 and not (other and threat <= SWAP_INSTEAD):
 			out.reload = true
 		else:
-			out.swap = other
+			# Nothing loaded to swap to: a gun with rounds only in reserve is taken to be reloaded,
+			# rather than standing with an empty one in hand (the nightly soak found bots doing so).
+			out.swap = other or (reserve <= 0 and reserve_gun(arms, held) != &"")
 		return out
 	if best != &"" and best != held.id and _better(best, held, here_range):
 		out.swap = true

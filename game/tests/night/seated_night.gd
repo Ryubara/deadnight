@@ -22,6 +22,8 @@ var frame: Dictionary = {}
 var last_events: Array[Dictionary] = []
 ## Called with every event of every step.
 var on_event := Callable()
+## Called with every action a bot sent (the plain data, and the seat), before the server hears it.
+var on_action := Callable()
 ## When on, every zombie is put once, as soon as it is up, on the walkable open ground 10 to 16 m in
 ## front of one of the players (in id order), and walks from there in a straight line: a short run
 ## has a fight in it without waiting for the dead to walk the lot, and no route round an obstacle
@@ -286,6 +288,7 @@ static func _snap(point: Vector3) -> Vector3i:
 func dispose() -> void:
 	# A handler that names the night would keep it alive in a cycle.
 	on_event = Callable()
+	on_action = Callable()
 	server.close()
 	world.queue_free()
 
@@ -316,6 +319,8 @@ func _stage() -> void:
 ## the bots, which hold the lambda.)
 func _send(action: Dictionary, id: int) -> void:
 	var plain: Dictionary = bytes_to_var(var_to_bytes(action))
+	if on_action.is_valid():
+		on_action.call(plain, id)
 	if hold_fire:
 		plain["fire"] = false
 	if recording and plain.get("type") != NightServer.SAY:

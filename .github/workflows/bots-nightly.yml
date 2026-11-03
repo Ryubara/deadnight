@@ -1,0 +1,142 @@
+# The nightly bot soak and parity batch (bots plan, phase 7, #231): whole nights of hosted bots in the real server, 100
+# nights a cell, set beside the balance simulator's matching cells. Every night is one Godot process of a few nights (a
+# matrix job per cell and shard, `tools/bots/soak_report.py run`); the last job reads every chunk into the report
+# (`merge --gate`), writes it to the run's summary and fails when a gate is broken: no engine error, no stuck episode over
+# 10 s, stuck under 1% of walking time, no bot idle for over 5 s with a zombie in view, none beyond 25 m of the person for
+# over 20 s outside an errand under Follow, Roam's 8 s idle, Hold's spot, no rejected-buy loop, and for each profile and
+# team size a median round within 1.5 of the simulator's and a Kolmogorov distance under 0.2. The plan asks for three
+# consecutive green nights; the run history is where that is read. docs/research/bots.md#phase-7-validation-at-scale-and-tuning
+name: bots-nightly
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      nights:
+        description: "Nights per cell (a multiple of 10)"
+        default: "100"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bots-nightly
+  cancel-in-progress: false
+
+env:
+  NIGHTS: ${{ inputs.nights || '100' }}
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - id: matrix
+        # One job for every cell and every ten nights of it: the cell names are the ones `soak_report.py` uses.
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          cells = [f"{p}_{b}" for p in ("rookie", "regular", "veteran") for b in (1, 2, 4)]
+          cells += ["regular_3_roam_person", "regular_3_follow_person", "regular_3_hold_person"]
+          shards = max(int(os.environ["NIGHTS"]) // 10, 1)
+          include = [{"cell": c, "seed": 1 + 10 * i} for c in cells for i in range(shards)]
+          print("matrix=" + json.dumps({"include": include}))
+          PY
+
+  soak:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: repos/deadnight
+          persist-credentials: false
+          lfs: true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Ryubara/gdstudio
+          path: repos/gdstudio
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: cache/downloads
+          key: tools-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
+      - name: Make the workspace and fetch the pinned Godot
+        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot
+      - name: Import the project
+        run: |
+          set -o pipefail
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          "$godot" --headless --path repos/deadnight/game --import 2>&1 | tee import.log
+          ! grep -E "^(SCRIPT )?ERROR" import.log
+      - name: Play ten nights of the cell
+        run: |
+          uv run python repos/deadnight/tools/bots/soak_report.py run --out out --set all --cells "${{ matrix.cell }}" \
+            --nights 10 --seed ${{ matrix.seed }} --chunk 10 --jobs 1 --timeout 6000 --sim-nights 0
+      - name: Upload the chunk
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: chunk-${{ matrix.cell }}-${{ matrix.seed }}
+          path: out/chunks
+          if-no-files-found: warn
+
+  report:
+    needs: soak
+    if: always() && needs.soak.result != 'skipped'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: repos/deadnight
+          persist-credentials: false
+          lfs: true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Ryubara/gdstudio
+          path: repos/gdstudio
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: cache/downloads
+          key: tools-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
+      - name: Make the workspace and fetch the pinned Godot
+        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot
+      - name: Import the project
+        run: |
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          "$godot" --headless --path repos/deadnight/game --import > import.log 2>&1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: chunk-*
+          path: downloaded
+      - name: Merge the chunks into the report
+        run: |
+          mkdir -p out/chunks
+          cp downloaded/*/*.jsonl out/chunks/
+          set +e
+          uv run python repos/deadnight/tools/bots/soak_report.py merge --out out --gate --sim-nights 300 | tee report.txt
+          status=${PIPESTATUS[0]}
+          cp out/report.md "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bot-soak-report
+          path: |
+            out/report.json
+            out/report.md
+            out/sim
+          if-no-files-found: warn

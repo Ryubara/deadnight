@@ -189,6 +189,9 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 			pass
 		elif not _holding and _chase(intent, beliefs, here, held, mates, pack, plan.dry, order):
 			intent.note = "chase"
+		elif plan.dry and not _holding and _errand(intent, beliefs, state, threat, true):
+			# Out of rounds with points to spend: the supply dash (`BotErrands.DASH_FROM`).
+			on_errand = true
 		elif (not _holding or _pinged_door(state)) and _errand(intent, beliefs, state, threat):
 			on_errand = true
 			intent.note = intent.note if intent.note != "" else "errand"
@@ -678,20 +681,31 @@ func _throw(
 
 ## The errands of a lull (fuel, breakers, shopping, boards), when the level gave the bot a shop and
 ## nothing is near. A refusal the server told the bot about leaves the item alone for a while.
-func _errand(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: float) -> bool:
+func _errand(
+	intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: float, dash := false
+) -> bool:
 	if _errands == null:
 		return false
 	_errands.legs = legs
 	for denial in beliefs.denials:
 		_errands.back_off(denial["item"], beliefs.now)
 	beliefs.denials.clear()
-	if intent.target_id >= 0:
+	if intent.target_id >= 0 and not dash:
 		return false
-	# One bot at a time goes (the maintainer): the others wait for their turn.
-	if team != null and team.one_errand_at_a_time and not team.turn.may_go(beliefs.me, beliefs.now):
+	# One bot at a time goes (the maintainer): the others wait for their turn. A dry bot does not.
+	if (
+		not dash
+		and team != null
+		and team.one_errand_at_a_time
+		and not team.turn.may_go(beliefs.me, beliefs.now)
+	):
 		return false
-	var went := _errands.run(intent, beliefs, state, threat)
-	if went and team != null:
+	var went := (
+		_errands.dash(intent, beliefs, state, threat)
+		if dash
+		else _errands.run(intent, beliefs, state, threat)
+	)
+	if went and team != null and not dash:
 		team.turn.took(beliefs.me, beliefs.now)
 	return went
 
