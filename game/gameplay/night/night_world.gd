@@ -38,6 +38,9 @@ var crane_block: CraneBlock
 
 ## Where the dead rise and the players start (`MapLayout`), read from the scene.
 var layout: MapLayout
+## The ground the map is played on: a player over none of it is out of the playable space
+## (`PlayBounds`, read from the scene once the map is solid).
+var bounds: PlayBounds
 
 var _door_nodes: Dictionary[StringName, Node3D] = {}
 ## The open areas the map walks to (`_walkable`).
@@ -66,6 +69,7 @@ func build(info: MapInfo = null) -> void:
 	for _i in SETTLE_FRAMES:
 		await get_tree().physics_frame
 	WebProbe.mark("lot: settled")
+	bounds = PlayBounds.of(greybox)
 	if LotBatcher.wanted(map_info):
 		var batched := LotBatcher.batch(greybox, MeshBatch.DEFAULT_CELL, LotBatcher.small_range)
 		WebProbe.mark(
