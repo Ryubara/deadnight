@@ -59,9 +59,15 @@ func test_the_skin_sweeps_on_in_the_hand_when_the_re_cut_is_bought() -> void:
 	var skin := RecutSkin.worn_by(animation.weapon())
 	# It started at nothing and is going over the weapon: not shown finished in the frame of the buy.
 	assert_float(skin.reveal).is_less(1.0)
-	for _i in 90:
-		await get_tree().process_frame
+	# The sweep runs on the frame time it is given, so the test gives it time by hand: counting real
+	# frames would depend on how fast the machine draws them (a slow runner and a fast one differ).
+	var seconds := RecutStyle.shipped().ignite_seconds
+	var begun := skin.reveal
+	animation._process(seconds * 0.5)
+	assert_float(skin.reveal).is_greater(begun)
+	animation._process(seconds)
 	assert_float(skin.reveal).is_equal(1.0)
+	assert_float(skin.boost).is_equal(0.0)
 	night.queue_free()
 
 
