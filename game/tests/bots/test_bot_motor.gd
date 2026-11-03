@@ -189,3 +189,88 @@ func test_the_head_is_aimed_at_with_the_profiles_rate_only_when_slow_and_near() 
 	# The veteran aims at the head of three in four (the rate that makes three in ten of its hits
 	# land there; see `test_bot_bands.gd`).
 	assert_float(float(heads) / count).is_between(0.6, 0.9)
+
+
+# --- The flare ---
+
+
+## The frame's entry for a bot holding `weapon` with `ammo` rounds.
+func _holding(weapon: StringName, ammo: int) -> Dictionary:
+	return {
+		"pos": Vector3.ZERO,
+		"facing": 0.0,
+		"weapon": weapon,
+		"ammo": ammo,
+		"reserve": 6,
+		"reloading": false,
+		"arms": {weapon: [ammo, 6, 0]},
+	}
+
+
+## A zombie 8 m ahead, believed and in sight, as the beliefs keep it.
+func _beliefs_with_a_zombie() -> BotBeliefs:
+	var beliefs := BotBeliefs.new()
+	beliefs.contacts[1] = {
+		"id": 1,
+		"position": Vector3(0, 0, -8),
+		"velocity": Vector3.ZERO,
+		"look": ZombieModels.DEFAULT,
+		"mode": ZombieBody.Mode.CHASE,
+		"believed_at": 0.0,
+		"first_seen": 0.0,
+		"last_seen": 0.0,
+		"visible": true,
+		"yaw": 0.0,
+	}
+	return beliefs
+
+
+func test_an_ordered_flare_is_fired_once_with_the_view_on_the_order() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var motor := BotMotor.new(BotProfile.regular(), rng)
+	var intent := BotIntent.new()
+	intent.flare_yaw = 1.0
+	intent.flare_pitch = -0.05
+	var fired := 0
+	var error_at_fire := INF
+	for _i in 240:
+		var command := motor.command(
+			STEP, _holding(&"flare_gun", 1), intent, _beliefs_with_a_zombie(), 0
+		)
+		if command.fire:
+			fired += 1
+			var view := BotRig.view_of(command)
+			var goal := Basis.from_euler(Vector3(-0.05, 1.0, 0.0)) * Vector3.FORWARD
+			error_at_fire = rad_to_deg(view.angle_to(goal))
+	assert_int(fired).is_equal(1)
+	assert_float(error_at_fire).is_less_equal(BotMotor.FLARE_AIM_DEGREES + 0.01)
+
+
+func test_the_flare_gun_is_never_fired_at_a_zombie_and_an_empty_one_is_not_fired_at_all() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var motor := BotMotor.new(BotProfile.regular(), rng)
+	var intent := BotIntent.new()
+	intent.target_id = 1
+	var fired_with_the_gun := 0
+	var fired_with_a_pistol := 0
+	for _i in 180:
+		var beliefs := _beliefs_with_a_zombie()
+		if motor.command(STEP, _holding(&"flare_gun", 1), intent, beliefs, 0).fire:
+			fired_with_the_gun += 1
+	var pistol_motor := BotMotor.new(BotProfile.regular(), rng)
+	for _i in 180:
+		var beliefs := _beliefs_with_a_zombie()
+		if pistol_motor.command(STEP, _holding(&"pistol", 10), intent, beliefs, 0).fire:
+			fired_with_a_pistol += 1
+	assert_int(fired_with_the_gun).is_equal(0)
+	assert_int(fired_with_a_pistol).is_greater(0)
+	var empty := BotMotor.new(BotProfile.regular(), rng)
+	var order := BotIntent.new()
+	order.flare_yaw = 0.3
+	var fired_empty := 0
+	for _i in 180:
+		if empty.command(STEP, _holding(&"flare_gun", 0), order, BotBeliefs.new(), 0).fire:
+			fired_empty += 1
+	assert_int(fired_empty).is_equal(0)
