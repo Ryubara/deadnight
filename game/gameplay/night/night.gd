@@ -190,7 +190,7 @@ func start(
 	state.player_id = PLAYER_ID
 	_track_challenges()
 	if hud != null:
-		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
+		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks, world.layout.words())
 	_equip_sync = WeaponEquipSync.new(state, server.body_of)
 	link.delivered.connect(_on_delivered)
 	looks.changed.connect(_dress_bodies)
@@ -274,7 +274,7 @@ func start_remote(
 		_make_autopilot()
 	var open_doors: Array = welcome["snapshot"].get("doors_open", [])
 	if hud != null:
-		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
+		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks, world.layout.words())
 		hud.state.load_snapshot(welcome["snapshot"])
 	match_settings = MatchSettings.from_snapshot(welcome["snapshot"])
 	# Our own body holds what the server says; the drawn avatars of the others are not `Player`s.

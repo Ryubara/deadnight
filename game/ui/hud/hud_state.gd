@@ -73,6 +73,8 @@ var weapon_id: StringName = &""
 var holstered_id: StringName = &""
 var rounds: Dictionary[StringName, Dictionary] = {}
 var weapon_names: Dictionary[StringName, String] = {}
+## The map's own names for its paid links (link id -> name), for the feed's line; empty on the lot.
+var link_names: Dictionary[StringName, String] = {}
 var ammo_free: Array[StringName] = []
 ## The weapons carried by slot, slot 1 first, `&""` for an empty place (`WeaponSlots`), and the
 ## slot (1-based) the weapon in hand is in, 0 for none. How many places the player has: the carry
