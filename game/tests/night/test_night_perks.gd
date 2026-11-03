@@ -121,11 +121,16 @@ func test_faster_fire_shoots_more_often_through_the_real_trigger() -> void:
 			_buy(night, &"tonic_double_shot")
 		var weapon := night.server.combat.weapon_of(1)
 		weapon.ammo = 999
+		# Both rounds start from a ready weapon: the last shot of round 0 would otherwise still be
+		# cooling and eat a shot of round 1's window.
+		weapon.cooldown = 0.0
+		weapon.carry = 0.0
 		_events.clear()
-		NightFixture.run(night, 2 * TICKS_PER_SECOND, NightFixture.shoot_at(night, target))
+		NightFixture.run(night, 5 * TICKS_PER_SECOND, NightFixture.shoot_at(night, target))
 		shots[round] = _count(&"shot_fired")
 	assert_int(shots[0]).is_greater(2)
-	# The server shoots on whole ticks, so the 1.33 of the tuning shows as a little under it.
+	# The wait carries the part of a tick it did not need, so the count follows the tuning's 1.33
+	# to within a shot of the window.
 	assert_float(float(shots[1]) / float(shots[0])).is_greater(1.2)
 	night.queue_free()
 

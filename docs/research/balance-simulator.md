@@ -183,6 +183,17 @@ floor moved to 8, flagged for the maintainer). All the numbers are in
 [the rounds page](../design/rounds.md#the-bosses-25-tougher-688). A boss's health is the one number this page's
 simulator and the real server read from the same file, so the rise needs no separate model change.
 
+## The weapons now reach their nominal rate (#708)
+
+The simulator always shot a weapon at its nominal interval (`SimWeapons.interval`, with the leftover of a step
+carried in `NightSim`), but the real `WeaponState` clamped its cooldown at zero and so rounded every interval up to
+whole 60 Hz ticks: the SMG (0.075 s, 4.5 ticks) fired every fifth, 360 shots in 30 s against 400 nominal, the revolver
+106 against 107. `WeaponState` now carries the leftover of the tick in which the wait ran out into the next shot (never
+more than one shot a tick, nothing banked while idle). Because the model already assumed the nominal rate, the
+simulator's table is **unchanged** (60 nights a cell, seed 4000, six cells, identical to the last digit before and
+after); the change moves the real game, and the SMG most (up to 11%). The bot-band tests (`test_bot_bands.gd`) read the
+real server and are the check on it. Test: `tests/weapons/test_weapon_fire_rate.gd`.
+
 ## Using it
 
 ```text
