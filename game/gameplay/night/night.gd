@@ -732,7 +732,9 @@ func _human_command() -> NightCommand:
 func _ping_request(aim: NightCommand) -> Dictionary:
 	var landed := Vector3.INF
 	var cast := PhysicsRayQueryParameters3D.create(
-		aim.origin, aim.origin + aim.dir * PingAim.REACH, CameraProbe.PLAYER_MASK
+		aim.origin,
+		aim.origin + aim.dir * PingAim.REACH,
+		CameraProbe.PLAYER_MASK | PhysicsLayers.BODY
 	)
 	var hit := get_world_3d().direct_space_state.intersect_ray(cast)
 	if not hit.is_empty():

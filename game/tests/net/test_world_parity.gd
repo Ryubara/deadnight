@@ -83,6 +83,21 @@ func test_a_player_walks_through_another_player_as_on_the_clients_screen() -> vo
 
 func test_the_layer_of_a_body_is_not_one_a_body_collides_with() -> void:
 	var body: Player = load("res://gameplay/player/player.tscn").instantiate()
-	assert_int(body.collision_layer).is_equal(Player.BODY_LAYER)
+	assert_int(body.collision_layer).is_equal(PhysicsLayers.BODY)
 	assert_int(body.collision_layer & body.collision_mask).is_equal(0)
 	body.free()
+
+
+func test_a_ray_still_meets_a_body_though_no_body_collides_with_one() -> void:
+	var world := NightWorld.new()
+	add_child(world)
+	await world.build()
+	var spawn := world.player_spawn(0)
+	var body := world.add_body(spawn, false, false)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var lift := Vector3(0.0, 1.0, 0.0)
+	var shot := WorldProbe.new(world.get_world_3d().direct_space_state)
+	assert_float(shot.distance(spawn + lift + Vector3(1.5, 0.0, 0.0), spawn + lift)).is_greater(0.0)
+	body.free()
+	world.queue_free()
