@@ -41,6 +41,7 @@ extends RefCounted
 ##   player_added: player_id, grenades (the count they start with), health, max_health, bot (true
 ##     when a bot plays the seat)
 ##   bot_replaced: player_id: a person took the seat of a bot, which is no bot's from now on
+##   bot_seated: player_id: a bot took the seat of a person who left, as it stood
 ##   player_hurt: player_id, damage, health (left), max_health, bearing (radians clockwise from -z,
 ##     seen from above, where the blow came from), source_id (the zombie, -1 for none)
 ##   player_healed: player_id, health, max_health, reason (regen, revive or tonic: a health tonic
@@ -402,7 +403,9 @@ func _dispatch(action: Dictionary) -> void:
 		RulesAction.ADD_PLAYER:
 			_add_player(action["player_id"], action.get("bot", false))
 		RulesAction.SEAT_PERSON:
-			_seat_person(action["player_id"])
+			_seat(action["player_id"], false, RulesAction.SEAT_PERSON, &"bot_replaced")
+		RulesAction.SEAT_BOT:
+			_seat(action["player_id"], true, RulesAction.SEAT_BOT, &"bot_seated")
 		RulesAction.REMOVE_PLAYER:
 			if players.erase(action["player_id"]):
 				CranePlay.buyer_left(self, action["player_id"])
@@ -718,14 +721,14 @@ func _add_player(player_id: int, bot := false) -> void:
 	)
 
 
-## A person sits where a bot sat: the seat keeps everything it had.
-func _seat_person(player_id: int) -> void:
+## A person takes a bot's seat (`bot_replaced`) or a bot a person's (`bot_seated`), as it stands.
+func _seat(player_id: int, bot: bool, action: StringName, told: StringName) -> void:
 	var seat := players.get(player_id) as PlayerState
-	if seat == null or not seat.bot:
-		_reject(&"unknown_player", RulesAction.SEAT_PERSON)
+	if seat == null or seat.bot == bot:
+		_reject(&"unknown_player", action)
 		return
-	seat.bot = false
-	_emit(&"bot_replaced", {"player_id": player_id})
+	seat.bot = bot
+	_emit(told, {"player_id": player_id})
 
 
 func _set_downed(player_id: int, downed: bool) -> void:

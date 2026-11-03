@@ -24,6 +24,13 @@ const MAX_BREAK := 120.0
 ## people leave free (`NightBots.target`).
 const MIN_BOTS := 0
 const MAX_BOTS := 3
+## How well the bots play: an index into `BotProfile`'s three skills (`BotProfile.for_skill`).
+## Difficulty is the bots' player model and nothing else: zombies, damage and points never change
+## with it (`docs/research/bots.md#aim-and-difficulty`).
+const SKILL_ROOKIE := 0
+const SKILL_REGULAR := 1
+const SKILL_VETERAN := 2
+const DEFAULT_SKILL := SKILL_REGULAR
 ## The keys of `to_dict`, each with the type it must have (a whole number also fits a float).
 const KEYS := {
 	"count_multiplier": TYPE_FLOAT,
@@ -31,12 +38,13 @@ const KEYS := {
 	"break_seconds": TYPE_FLOAT,
 	"map": TYPE_STRING,
 	"bots": TYPE_INT,
+	"bot_skill": TYPE_INT,
 }
 ## Keys a snapshot, a ticket, a lobby or an action may leave out (a build from before the key): they
 ## mean their default, so an older backend's ticket or server's WELCOME still carries the other
 ## settings, and a server and a client of two builds still read each other (`to_dict` always
 ## writes them).
-const OPTIONAL_KEYS: Array[String] = ["map", "bots"]
+const OPTIONAL_KEYS: Array[String] = ["map", "bots", "bot_skill"]
 
 ## The night's intensity. Round N brings the tuned count times this (rounded, at least one) and the
 ## dead come this many times as fast (the spawn interval divides by it, down to
@@ -56,6 +64,8 @@ const OPTIONAL_KEYS: Array[String] = ["map", "bots"]
 ## Bots at the start of the night, 0 to `MAX_BOTS`. Solo seats this many beside the person; a room
 ## seats as many as the people leave seats free, and a person who joins takes a bot's seat.
 @export_range(0, 3, 1) var bots: int = MIN_BOTS
+## How well every bot of the night plays: `SKILL_ROOKIE`, `SKILL_REGULAR` or `SKILL_VETERAN`.
+@export_range(0, 2, 1) var bot_skill: int = DEFAULT_SKILL
 
 
 ## The defaults: today's game.
@@ -66,6 +76,7 @@ func is_default() -> bool:
 		and is_zero_approx(break_seconds)
 		and map == MapRegistry.DEFAULT
 		and bots == MIN_BOTS
+		and bot_skill == DEFAULT_SKILL
 	)
 
 
@@ -117,6 +128,7 @@ func to_dict() -> Dictionary:
 		"break_seconds": break_seconds,
 		"map": map,
 		"bots": bots,
+		"bot_skill": bot_skill,
 	}
 
 
@@ -138,6 +150,8 @@ static func problem(data: Dictionary) -> StringName:
 		return &"map"
 	if data.has("bots") and (data["bots"] < MIN_BOTS or data["bots"] > MAX_BOTS):
 		return &"bots"
+	if data.has("bot_skill") and not _in_range(data["bot_skill"], SKILL_ROOKIE, SKILL_VETERAN):
+		return &"bot_skill"
 	return &""
 
 
@@ -152,6 +166,7 @@ static func from_dict(data: Dictionary) -> MatchSettings:
 	out.break_seconds = float(data["break_seconds"])
 	out.map = str(data.get("map", MapRegistry.DEFAULT))
 	out.bots = int(data.get("bots", MIN_BOTS))
+	out.bot_skill = int(data.get("bot_skill", DEFAULT_SKILL))
 	return out
 
 
@@ -186,6 +201,7 @@ func clamped() -> MatchSettings:
 	out.break_seconds = _clamp_optional(break_seconds, MIN_BREAK, MAX_BREAK)
 	out.map = map if MapRegistry.is_playable(map) else MapRegistry.DEFAULT
 	out.bots = clampi(bots, MIN_BOTS, MAX_BOTS)
+	out.bot_skill = clampi(bot_skill, SKILL_ROOKIE, SKILL_VETERAN)
 	return out
 
 
