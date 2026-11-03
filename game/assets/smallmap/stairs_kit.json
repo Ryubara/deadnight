@@ -1,0 +1,96 @@
+{
+ "debris_blocker": {
+  "budget": 1500,
+  "nodes": {
+   "Part1_Planks": 132,
+   "Part2_Chair": 160,
+   "Part3_Table": 136,
+   "Part4_Beam": 88,
+   "Part5_Dresser": 80,
+   "Part6_Rubble": 704
+  },
+  "size_xyz_blender": [
+   1.74,
+   1.27,
+   2.53
+  ],
+  "tris": 1300
+ },
+ "landing_edge": {
+  "budget": 1500,
+  "nodes": {
+   "Edge": 80,
+   "Rail": 128
+  },
+  "size_xyz_blender": [
+   2.0,
+   0.33,
+   1.29
+  ],
+  "tris": 208
+ },
+ "rail_flat": {
+  "budget": 1500,
+  "nodes": {
+   "Rail": 128
+  },
+  "size_xyz_blender": [
+   2.0,
+   0.08,
+   1.03
+  ],
+  "tris": 128
+ },
+ "rail_sloped": {
+  "budget": 1500,
+  "nodes": {
+   "Rail": 128
+  },
+  "size_xyz_blender": [
+   2.03,
+   0.08,
+   2.02
+  ],
+  "tris": 128
+ },
+ "stair_l_left": {
+  "budget": 5000,
+  "nodes": {
+   "Flight": 1356,
+   "Rail": 256
+  },
+  "size_xyz_blender": [
+   3.5,
+   3.54,
+   3.99
+  ],
+  "tris": 1612
+ },
+ "stair_l_right": {
+  "budget": 5000,
+  "nodes": {
+   "Flight": 1356,
+   "Rail": 256
+  },
+  "size_xyz_blender": [
+   3.5,
+   3.54,
+   3.99
+  ],
+  "tris": 1612
+ },
+ "stair_straight": {
+  "budget": 5000,
+  "nodes": {
+   "Flight": 964,
+   "RailLeft": 172,
+   "RailRight": 172
+  },
+  "size_xyz_blender": [
+   1.4,
+   4.54,
+   3.99
+  ],
+  "tris": 1308
+ }
+}

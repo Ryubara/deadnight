@@ -94,6 +94,16 @@ is held by the `scoreboard` input action, which the key, the pad and the touch b
 action instead of listening for one kind of event. A pause menu or the result switches it off
 (`Hud.scoreboard_enabled`).
 
+## The bot command wheel
+
+Holding Q (the pad's d-pad left, the touch BOTS button) opens `HudBotWheel` over the middle of the screen: three
+tickets, **Follow** on top, **Roam** lower right and **Hold** lower left, a dial in the middle, a flat dim behind. The
+pointer (the mouse's motion, the right stick, a finger's drag) lights one ticket; letting go over it gives the team's bots
+that order, letting go over the dial or tapping the key gives none. The ticket of the order that stands is marked NOW,
+and the HUD's notice list says the new order for a moment after a change (`BOTS: HOLD HERE`). It is a screen-sized
+overlay (`Hud.screen_overlays`), so it stays on the middle of the screen whatever the safe area is, takes no room while
+closed and is not in a column. The model, the driver and what was learned are in [Bot wheel](../research/bot-wheel.md).
+
 ## Revives
 
 What a player reads when someone is down (the rules are in [Revive](revive.md)). Every number is the server's: the frame

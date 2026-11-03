@@ -37,7 +37,15 @@ static func play(
 			night.server.buy(id, item)
 		_fill_reserves(night, id, reserve_share)
 	night.gather()
-	var outcome := {"passed": false, "seconds": 0.0, "kills": 0, "boss_down": false, "downs": 0}
+	var outcome := {
+		"passed": false,
+		"seconds": 0.0,
+		"kills": 0,
+		"boss_down": false,
+		"downs": 0,
+		"blows": {},
+		"boss_hits": {},
+	}
 	var events: Array[Dictionary] = []
 	night.on_event = func(event: Dictionary) -> void: events.append(event)
 	night.start_round()
@@ -67,6 +75,16 @@ static func play(
 					over = true
 				&"player_downed":
 					outcome["downs"] += 1
+				&"player_damaged":
+					var taken: Array = outcome["blows"].get(event["zombie_type"], [0, 0.0])
+					taken[0] += 1
+					taken[1] += event["damage"]
+					outcome["blows"][event["zombie_type"]] = taken
+				&"zombie_damaged":
+					if event["zombie_type"] == &"headliner":
+						outcome["boss_hits"][event["zone"]] = (
+							outcome["boss_hits"].get(event["zone"], 0) + 1
+						)
 				&"zombie_removed":
 					if event["cause"] == &"killed":
 						outcome["kills"] += 1

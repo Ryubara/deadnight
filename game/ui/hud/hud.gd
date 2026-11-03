@@ -52,6 +52,7 @@ const PART_NAMES := {
 	&"revive": "Revive",
 	&"markers": "Markers",
 	&"scoreboard": "Scoreboard",
+	&"bot_wheel": "BotWheel",
 }
 
 ## The look of the centre reticle (`reticle_style.tres`); editable on the Hud node in the editor.
@@ -90,6 +91,8 @@ var damage := HudDamage.new()
 var revive := HudRevive.new()
 var markers := HudMarkers.new()
 var scoreboard := HudScoreboard.new()
+## The bot command wheel, over the middle of the screen while it is held open (`BotWheelDriver`).
+var bot_wheel := HudBotWheel.new()
 ## False while a menu or the result is over the night: holding the key then shows nothing.
 var scoreboard_enabled := true:
 	set(value):
@@ -156,7 +159,7 @@ func set_safe_insets(insets: Vector4) -> void:
 
 ## The overlays that fill the whole screen, whatever the cards keep clear of.
 func screen_overlays() -> Array[Control]:
-	return [damage, revive, markers, reticle, crosshair]
+	return [damage, revive, markers, reticle, crosshair, bot_wheel]
 
 
 func _process(delta: float) -> void:

@@ -3,7 +3,7 @@ extends Control
 ## The touch controls of a night: a floating move stick on the left, a look area on the right,
 ## and buttons under the right thumb. They press the game's own input actions (`move_*`, `fire`,
 ## `aim`, `jump`, `reload`, `swap_weapon`, `throw_grenade`, `quick_melee`, `interact`, `sprint`,
-## `pause`, `scoreboard`), so
+## `pause`, `scoreboard`, `ping`, `bot_wheel`), so
 ## the player and the night read them like a key or a pad and nothing else forks.
 ##
 ## Aim is held while the thumb is on it when auto-fire is on (`controls/touch_auto_fire`, the
@@ -48,6 +48,8 @@ const LABELS := {
 	TouchLayout.GRENADE: "GRENADE",
 	TouchLayout.SHOULDER: "SIDE",
 	TouchLayout.MELEE: "MELEE",
+	TouchLayout.BOT_WHEEL: "BOTS",
+	TouchLayout.PING: "PING",
 }
 const VERBS := {
 	&"buy_door": "OPEN",
@@ -169,6 +171,22 @@ func interact_verb() -> String:
 	return _interact_verb
 
 
+## Where the finger on the bot wheel's button is from where it landed (canvas units), and whether
+## there is one: the drag that picks the order (`BotWheelDriver`).
+func wheel_offset() -> Vector2:
+	for touch: Dictionary in _touches.values():
+		if touch.get(&"button", &"") == TouchLayout.BOT_WHEEL:
+			return touch[&"last"] - touch[&"start"]
+	return Vector2.ZERO
+
+
+func has_wheel_finger() -> bool:
+	for touch: Dictionary in _touches.values():
+		if touch.get(&"button", &"") == TouchLayout.BOT_WHEEL:
+			return true
+	return false
+
+
 func is_stick_down() -> bool:
 	return _stick_index >= 0
 
@@ -254,7 +272,7 @@ func _touch_down(index: int, point: Vector2) -> void:
 	var hidden: Array = [] if _interact_verb != "" else [TouchLayout.INTERACT]
 	var button := TouchLayout.button_at(point, _circles, hidden)
 	if button != &"":
-		_touches[index] = _own(&"button", point, {&"button": button})
+		_touches[index] = _own(&"button", point, {&"button": button, &"start": point})
 		_press_button(button)
 		if button == TouchLayout.INTERACT:
 			hints.mark_used(TouchHints.INTERACT)
