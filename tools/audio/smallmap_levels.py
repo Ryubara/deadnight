@@ -5,11 +5,11 @@
 
 `table` reads each sound's trim, reach and fall-off from the banks under `game/core/audio/banks/`, the file's own loudness
 from the Ogg itself (decoded with the pinned ffmpeg), and the wall, window and slew numbers from
-`smallmap_sound_tuning_default.tres`, and prints for each sound: its level at 1 m (file RMS plus trim, dBFS), how far it
+`smallmap_sound_tuning_default.tres`, and prints for each sound: its level at `unit_size` (file RMS plus trim, dBFS), how far it
 carries in open air before it falls to the audible floor (`FLOOR_DBFS`: 12 dB under the room tone, which is itself at the
 level of the game's other beds) and what it is behind a boarded window, an open one and a wall at the geometry of the first
-window. The fall-off is the engine's inverse distance, `unit_size / (unit_size + distance)`, the same rule
-`AudioStreamPlayer3D` and `SmallMapWays` use. `capture` reads a Movie Maker mix (`audio_smallmap_tour.tscn`) and the
+window. The fall-off is the engine's inverse distance, `unit_size / distance` (no gain at `unit_size`, a boost inside it,
+18 dB at a tenth of it), the rule `AudioStreamPlayer3D` and `SmallMapWays` both use. `capture` reads a Movie Maker mix (`audio_smallmap_tour.tscn`) and the
 `STAGE` and `SOUND` lines it printed, and prints the mix's level in each stage and where every sound started.
 """
 
@@ -34,9 +34,11 @@ TUNING = Path("game/gameplay/night/smallmap_sound_tuning_default.tres")
 AUDIO = Path("game/assets/audio")
 # The audible floor in dBFS RMS: the room tone (-36) less 12 dB.
 FLOOR_DBFS = -48.0
-# The geometry of the first window from a listener in line with it: the listener is 4.65 m from the window and the
-# source 25.35 m beyond it (`test_smallmap_sounds.gd`).
-NEAR, BEYOND = 4.65, 25.35
+# The geometry of the first window from a listener in line with it: the listener is 4.65 m from the window, and each
+# yard sound is as far beyond it as it is in the backdrop (a wind corner about 30 m, the fires about 55, a pole 40,
+# the road 100, a fence post 25).
+NEAR = 4.65
+BEYOND = {"yard_wind": 30.0, "yard_fire": 55.0, "yard_wire": 40.0, "yard_road": 100.0, "yard_rattle": 25.0}
 SOUNDS = [
     "bed_room_tone",
     "bed_roof_wind",
@@ -93,24 +95,24 @@ def first_file(defs: dict[str, str]) -> Path:
 
 
 def fall(unit: float, distance: float) -> float:
-    return 20 * math.log10(unit / (unit + distance))
+    """The engine's gain at `distance` for a sound with `unit_size`: 0 dB at `unit`, +20 at a tenth of it."""
+    return 20 * math.log10(unit / max(distance, 0.05))
 
 
-def carry(level_1m: float, unit: float, maximum: float) -> float:
-    """Metres at which `level_1m` (RMS dBFS at 1 m, taken as at the source) falls to the audible floor."""
-    need = FLOOR_DBFS - level_1m
-    if need >= 0:
-        return 0.0
-    ratio = 10 ** (need / 20)
-    return min(unit / ratio - unit, maximum)
+def carry(level_at_unit: float, unit: float, maximum: float) -> float:
+    """Metres at which the sound (RMS dBFS `level_at_unit` at a distance of `unit`) falls to the audible floor."""
+    need = FLOOR_DBFS - level_at_unit
+    return min(unit * 10 ** (-need / 20), maximum)
 
 
 def table(ffmpeg: str) -> None:
     defs = parse_defs()
     tuning = parse_tuning()
-    print(f"audible floor {FLOOR_DBFS:.0f} dBFS RMS; geometry of window 1: {NEAR} m in, {BEYOND} m out")
     print(
-        f"{'sound':16} {'file rms':>8} {'trim':>6} {'at 1 m':>7} {'unit':>5} {'reach':>6} {'carry':>6}"
+        f"audible floor {FLOOR_DBFS:.0f} dBFS RMS; window 1: the listener {NEAR} m in, each source as far beyond as in the backdrop"
+    )
+    print(
+        f"{'sound':16} {'file rms':>8} {'trim':>6} {'at unit':>7} {'unit':>5} {'reach':>6} {'carry':>6}"
         f" {'boarded':>8} {'open':>6} {'wall':>6}"
     )
     for name in SOUNDS + COMPARE:
@@ -121,11 +123,11 @@ def table(ffmpeg: str) -> None:
         level = rms + trim
         row = f"{name:16} {rms:8.1f} {trim:6.1f} {level:7.1f} {unit:5.1f} {reach:6.0f} {carry(level, unit, reach):6.0f}"
         if name.startswith("yard"):
-            total = NEAR + BEYOND
+            total = NEAR + BEYOND[name]
             way = fall(unit, total)
             boarded = level + way + tuning["boarded_db"]
             opened = level + way + tuning["open_db"]
-            wall = level + fall(unit, total) + tuning["wall_db"]
+            wall = level + way + tuning["wall_db"]
             row += f" {boarded:8.1f} {opened:6.1f} {wall:6.1f}"
         print(row + ("   (existing)" if name in COMPARE else ""))
         _ = peak

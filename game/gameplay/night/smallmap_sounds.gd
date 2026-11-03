@@ -12,6 +12,8 @@ extends Node3D
 const ROOM_TONE := &"bed_room_tone"
 const ROOF_WIND := &"bed_roof_wind"
 const RATTLE := &"yard_rattle"
+## The backdrop's fences (multimeshes): the runs of wire and the posts that hold them.
+const FENCE_NODES: Array[String] = ["Yard/WireFence", "Yard/FencePosts"]
 ## The doors that are a pile of rubble and furniture on a stair, not a plank door.
 const DEBRIS_DOORS: Array[StringName] = [&"door_stairs_start", &"door_stairs_side"]
 ## What a purchase of each of those plays besides the till: nothing (no padlock on a pile; the
@@ -79,6 +81,11 @@ func advance(delta: float) -> void:
 		_follow(_since_update)
 		_since_update = 0.0
 		_started = true
+
+
+## The fence posts a fence can rattle at, in the world.
+func fence_posts() -> Array[Vector3]:
+	return _posts
 
 
 func _follow(delta: float) -> void:
@@ -166,13 +173,13 @@ func _read_doors(greybox: Node3D) -> void:
 				break
 
 
-## The fence posts of the backdrop, in the world.
+## What a fence can rattle at in the backdrop, in the world: each run of wire fence and each post.
 func _read_posts(backdrop: Node3D) -> void:
 	if backdrop == null:
 		return
-	var posts := backdrop.get_node_or_null("Yard/FencePosts") as MultiMeshInstance3D
-	if posts == null:
-		return
-	for i in posts.multimesh.instance_count:
-		var at := posts.global_transform * posts.multimesh.get_instance_transform(i)
-		_posts.append(at.origin + Vector3.UP)
+	for path in FENCE_NODES:
+		var fence := backdrop.get_node_or_null(path) as MultiMeshInstance3D
+		if fence == null:
+			continue
+		for at in SmallMapYard.copies_of(fence):
+			_posts.append(at + Vector3.UP)

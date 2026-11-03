@@ -115,6 +115,40 @@ func test_the_yard_is_loops_at_the_backdrops_places() -> void:
 		assert_array(fires).contains([flat])
 	for source in yard.sources:
 		assert_bool((source.player.stream as AudioStreamOggVorbis).loop).is_true()
+	# The poles hum where the poles stand: outside the building and not side by side.
+	var wires := yard.source_of(&"yard_wire")
+	for wire in wires:
+		assert_float(wire.anchor.global_position.length()).is_greater(20.0)
+	(
+		assert_float(wires[0].anchor.global_position.distance_to(wires[1].anchor.global_position))
+		. is_greater_equal(SmallMapYard.WIRE_APART)
+	)
+
+
+func test_the_fence_posts_are_read_from_the_backdrops_buffer_not_its_transforms() -> void:
+	await _start()
+	var posts := _sounds.fence_posts()
+	assert_int(posts.size()).is_greater(50)
+	var origin := 0
+	for post in posts:
+		if post.length() < 1.0:
+			origin += 1
+	assert_int(origin).is_less(2)
+
+
+func test_a_window_nearer_the_listener_is_not_louder_for_it() -> void:
+	await _start(false)
+	var unit := 10.0
+	var heard: Array[float] = []
+	for z in [6.0, 10.0, 13.5]:
+		var ear := Vector3(4.0, 1.6, z)
+		var way := _sounds.ways.route(ear, OUT_SOUTH, unit)
+		assert_str(way.window).is_equal("start_1")
+		var gain := 20.0 * log(unit / ear.distance_to(way.at)) / log(10.0) + way.extra_db
+		heard.append(gain)
+	# Walking 7 m toward the window shortens the way round by 7 m of 33: a little louder, no jump.
+	assert_float(heard[2] - heard[0]).is_between(0.0, 3.5)
+	assert_float(heard[1] - heard[0]).is_between(0.0, 2.0)
 
 
 func test_the_yard_is_heard_through_a_boarded_window_from_the_window() -> void:
@@ -124,12 +158,18 @@ func test_the_yard_is_heard_through_a_boarded_window_from_the_window() -> void:
 	assert_str(way.kind).is_equal("boarded")
 	assert_float(way.at.distance_to(WINDOW_1)).is_less(1.0)
 	var point: Vector3 = _sounds.ways.window_point(&"start_1")
-	var near := START_EAR.distance_to(point)
-	var total := near + point.distance_to(OUT_SOUTH)
-	var way_round := 20.0 * log((10.0 + near) / (10.0 + total)) / log(10.0)
+	var total := START_EAR.distance_to(point) + point.distance_to(OUT_SOUTH)
+	# The player's own fall-off at the window is unit / distance: the extra level is the ratio.
+	var way_round := 20.0 * log(START_EAR.distance_to(way.at) / total) / log(10.0)
 	var t := SmallMapSoundTuning.current()
 	assert_float(way.extra_db).is_equal_approx(way_round + t.boarded_db, 0.01)
 	assert_float(way.cutoff_hz).is_equal(t.boarded_cutoff_hz)
+	# Heard from the window at the engine's `unit / distance`, plus the extra, the yard is as loud as
+	# the whole way round (unit / total) less the boards: not 18 dB louder for the window being near.
+	var unit := 10.0
+	var at_the_window := 20.0 * log(unit / START_EAR.distance_to(way.at)) / log(10.0)
+	var whole_way := 20.0 * log(unit / total) / log(10.0)
+	assert_float(at_the_window + way.extra_db).is_equal_approx(whole_way + t.boarded_db, 0.01)
 
 
 func test_a_window_with_no_boards_lets_more_of_the_yard_in() -> void:

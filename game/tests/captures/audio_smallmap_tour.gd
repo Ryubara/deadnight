@@ -34,6 +34,7 @@ var _marks: Array[Dictionary] = []
 var _total := 0.0
 var _last_pos := Vector3.ZERO
 var _heard := ""
+var _stage_name := ""
 
 
 func _ready() -> void:
@@ -68,6 +69,10 @@ func _process(delta: float) -> void:
 	# The sounds step on the movie's own clock (`delta` is 0.1 s under `--fixed-fps 10`).
 	_clock += delta
 	_place(_clock)
+	var stage := _stage_at(_clock)
+	if stage != _stage_name:
+		_stage_name = stage
+		print("STAGE ", "%.1f" % _clock, " ", stage)
 	_fire_events()
 	_walk_teammate()
 	_label.text = (
@@ -97,60 +102,58 @@ func _finish() -> void:
 
 ## The camera's keyframes (where it stands and looks and when), the stages and the events.
 func _script() -> void:
-	var s := 0.0
 	# The hall: standing in the middle, looking south at the boarded windows.
-	s = _stage("hall: room tone and the yard through boarded windows", s, 7.0)
+	_stage("hall: room tone and the yard through boarded windows", 0.0)
 	_key(0.0, Vector3(8.0, EYE, 6.0), Vector3(8.0, 0.9, 14.0))
 	_key(7.0, Vector3(8.0, EYE, 6.0), Vector3(8.0, 0.9, 14.0))
 	# The first window: in line with it, the yard comes in at the window.
-	s = _stage("at a window", s, 5.0)
+	_stage("at a boarded window", 9.0)
 	_key(9.0, Vector3(4.0, EYE, 9.5), Vector3(4.0, 1.4, 16.0))
-	_key(12.0, Vector3(4.0, EYE, 9.5), Vector3(4.0, 1.4, 16.0))
-	# The dead tear the boards off, one at a time, the last one with its own sound, then the window
-	# is open.
-	s = _stage("the boards come off", s, 5.0)
-	_event(13.0, {"type": &"board_torn", "barricade_id": &"start_1", "boards": 3, "zombie_id": 1})
-	_event(14.2, {"type": &"board_torn", "barricade_id": &"start_1", "boards": 1, "zombie_id": 1})
-	_event(15.4, {"type": &"board_torn", "barricade_id": &"start_1", "boards": 0, "zombie_id": 1})
-	_key(17.0, Vector3(4.0, EYE, 9.5), Vector3(4.0, 1.4, 16.0))
-	s = _stage("the window is open", s, 4.0)
+	_key(13.0, Vector3(4.0, EYE, 9.5), Vector3(4.0, 1.4, 16.0))
+	# The dead tear the boards off, one at a time, the last one with its own sound.
+	_stage("the boards come off", 13.0)
+	_event(14.0, {"type": &"board_torn", "barricade_id": &"start_1", "boards": 3, "zombie_id": 1})
+	_event(15.2, {"type": &"board_torn", "barricade_id": &"start_1", "boards": 1, "zombie_id": 1})
+	_event(16.4, {"type": &"board_torn", "barricade_id": &"start_1", "boards": 0, "zombie_id": 1})
+	_stage("the window is open", 18.0)
 	_event(
-		19.0, {"type": &"board_repaired", "barricade_id": &"start_1", "boards": 1, "player_id": 1}
+		21.0, {"type": &"board_repaired", "barricade_id": &"start_1", "boards": 1, "player_id": 1}
 	)
 	_event(
-		20.0, {"type": &"board_repaired", "barricade_id": &"start_1", "boards": 2, "player_id": 1}
+		22.0, {"type": &"board_repaired", "barricade_id": &"start_1", "boards": 2, "player_id": 1}
 	)
-	_key(21.5, Vector3(4.0, EYE, 9.5), Vector3(4.0, 1.4, 16.0))
+	_key(23.5, Vector3(4.0, EYE, 9.5), Vector3(4.0, 1.4, 16.0))
 	# To the plank door at the hall's north-east corner, and through it into the rewind room.
-	s = _stage("the plank door", s, 7.0)
-	_key(24.5, Vector3(13.0, EYE, 3.0), Vector3(14.0, 1.4, -0.15))
-	_event(26.0, {"type": &"door_opened", "door_id": &"door_side"})
-	_key(28.5, Vector3(14.0, EYE, 3.0), Vector3(14.0, 1.4, -4.0))
-	s = _stage("the rewind room", s, 6.0)
-	_key(31.0, Vector3(14.0, EYE, -3.0), Vector3(2.0, 1.4, -4.0))
-	_key(36.0, Vector3(0.0, EYE, -4.0), Vector3(-6.0, 1.4, -6.8))
-	# The debris comes off the stair, and a teammate and the camera go up it.
-	s = _stage("the debris blocker comes off its stair", s, 5.0)
-	_event(37.0, {"type": &"door_opened", "door_id": &"door_stairs_side"})
-	_key(41.0, Vector3(-4.5, EYE, -6.8), Vector3(0.0, 3.0, -6.8))
-	s = _stage("up the stair on wood", s, 5.0)
-	_key(44.0, Vector3(0.6, 5.0, -6.8), Vector3(6.0, 5.0, -6.8))
-	_key(46.0, Vector3(0.6, 5.0, -6.8), Vector3(6.0, 5.0, -6.8))
-	s = _stage("upstairs under the roof", s, 7.0)
-	_key(49.0, Vector3(2.0, 5.0, -6.0), Vector3(-6.0, 5.0, -4.0))
-	_key(53.0, Vector3(-3.0, 5.0, -4.0), Vector3(-3.0, 5.0, -8.0))
-	s = _stage("a window onto the yard", s, 5.0)
-	_key(56.0, Vector3(-1.0, 5.0, -6.2), Vector3(-1.0, 5.0, -10.0))
-	_key(61.0, Vector3(-1.0, 5.0, -6.2), Vector3(-1.0, 5.0, -10.0))
-	_event(62.0, {"type": &"game_over", "round_reached": 3})
-	s = _stage("the night is over", s, 3.0)
+	_stage("the plank door", 24.0)
+	_key(27.0, Vector3(13.0, EYE, 3.0), Vector3(14.0, 1.4, -0.15))
+	_event(28.0, {"type": &"door_opened", "door_id": &"door_side"})
+	_key(31.0, Vector3(14.0, EYE, 3.0), Vector3(14.0, 1.4, -4.0))
+	_stage("the rewind room", 32.0)
+	_key(33.5, Vector3(14.0, EYE, -3.0), Vector3(2.0, 1.4, -4.0))
+	_key(38.0, Vector3(0.0, EYE, -4.0), Vector3(-6.0, 1.4, -6.8))
+	# The debris comes off the stair, and the camera and a teammate go up it.
+	_stage("the debris blocker comes off its stair", 39.0)
+	_event(39.5, {"type": &"door_opened", "door_id": &"door_stairs_side"})
+	_key(43.0, Vector3(-4.5, EYE, -6.8), Vector3(2.0, 3.0, -6.8))
+	_stage("up the stair on wood", 43.5)
+	_key(44.0, Vector3(-3.0, EYE, -6.8), Vector3(2.0, 3.5, -6.8))
+	# The flight rises 3.4 m over 5.1 m from x = -3: the camera's height follows it.
+	_key(47.0, Vector3(2.1, 5.0, -6.8), Vector3(8.0, 5.0, -6.8))
+	_stage("upstairs under the roof", 48.0)
+	_key(48.0, Vector3(2.1, 5.0, -6.8), Vector3(8.0, 5.0, -6.8))
+	_key(51.0, Vector3(2.0, 5.0, -6.0), Vector3(-6.0, 5.0, -4.0))
+	_key(55.0, Vector3(-3.0, 5.0, -4.0), Vector3(-3.0, 5.0, -8.0))
+	_stage("a north window onto the yard", 57.0)
+	_key(58.5, Vector3(-1.0, 5.0, -6.2), Vector3(-1.0, 5.0, -10.0))
 	_key(64.0, Vector3(-1.0, 5.0, -6.2), Vector3(-1.0, 5.0, -10.0))
-	_total = s
+	_event(65.0, {"type": &"game_over", "round_reached": 3})
+	_stage("the night is over", 65.0)
+	_key(68.0, Vector3(-1.0, 5.0, -6.2), Vector3(-1.0, 5.0, -10.0))
+	_total = 68.0
 
 
-func _stage(name: String, from: float, seconds: float) -> float:
+func _stage(name: String, from: float) -> void:
 	_stages.append({"name": name, "t": from})
-	return from + seconds
 
 
 func _stage_at(t: float) -> String:

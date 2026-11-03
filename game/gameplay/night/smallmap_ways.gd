@@ -3,7 +3,8 @@ extends RefCounted
 ## How a sound outside the second map's walls reaches a listener inside them. The walls are thick
 ## and the windows are the only gaps: a listener in a room hears the yard from the room's windows,
 ## from the direction of the window, as loud as the sound would be after the way round (the
-## distance listener to window and window to source) and the window's own cost (boarded or open).
+## distance listener to window and window to source, in the engine's own `unit_size / distance`
+## fall-off) and the window's own cost (boarded or open).
 ## With no window of the room in line of sight of both, it comes through the wall: from where it is,
 ## much quieter and duller. Outside the building nothing stands in the way.
 ##
@@ -13,6 +14,8 @@ extends RefCounted
 ## The physics layers the walls, jambs and floors are on (the window blockers are on layer 2 alone
 ## and are let through: a window is a gap for sound).
 const WALL_MASK := 3
+## The nearest the listener is taken to a window (metres), so the ratio of the distances is finite.
+const MIN_DISTANCE := 0.05
 ## The most things outside the walls (fences, the ground) a ray goes through before it is a wall.
 const MAX_SKIPS := 12
 
@@ -108,8 +111,9 @@ func state_of(window_id: StringName) -> StringName:
 	return &"wall"
 
 
-## The way a sound at `source` (with the fall-off distance `unit_size`) reaches `from`.
-func route(from: Vector3, source: Vector3, unit_size: float) -> Way:
+## The way a sound at `source` reaches `from`. The extra level does not depend on the sound's
+## `unit_size` (it cancels in the ratio of distances), so the argument is kept only for callers.
+func route(from: Vector3, source: Vector3, _unit_size := 0.0) -> Way:
 	var way := Way.new()
 	way.at = source
 	way.cutoff_hz = _t.open_cutoff_hz
@@ -128,12 +132,13 @@ func route(from: Vector3, source: Vector3, unit_size: float) -> Way:
 		if _blocked(from, inner) or not _outside_clear(window, source):
 			continue
 		var total := near + point.distance_to(source)
-		# What the player's own fall-off at the window (`near` away) does not already give.
-		var level := 20.0 * log((unit_size + near) / (unit_size + total)) / log(10.0)
-		level += _window_db(window["id"])
-		# The window that lets the most through is the one with the shortest way round and the
-		# kindest state: the loudness of the whole way (not only what is left to add).
-		var heard := level - 20.0 * log((unit_size + near) / unit_size) / log(10.0)
+		# The player's own fall-off at the window is `unit_size / distance` (the engine's inverse
+		# distance: a boost inside `unit_size`), so what is left to add to be as loud as the whole
+		# way round is the ratio of the two distances, and the window's own cost.
+		var close := maxf(from.distance_to(inner), MIN_DISTANCE)
+		var level := 20.0 * log(close / total) / log(10.0) + _window_db(window["id"])
+		# The window that lets the most through has the shortest way round and the kindest state.
+		var heard := -20.0 * log(total) / log(10.0) + _window_db(window["id"])
 		if heard > best:
 			best = heard
 			way.at = inner

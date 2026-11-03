@@ -22,6 +22,8 @@ const WIND_OFFSETS: Array[float] = [0.0, 6.5, 13.0, 18.5]
 const WIND_PITCHES: Array[float] = [1.0, 0.94, 1.06, 0.97]
 ## At most this many poles are given a hum (the nearest to the building on each line).
 const WIRE_POLES := 2
+## ... and this far (metres) from each other.
+const WIRE_APART := 20.0
 
 ## The loops, in the order they were made (tests and the report read them).
 var sources: Array[Source] = []
@@ -142,9 +144,7 @@ func _poles(backdrop: Node3D) -> Array[Vector3]:
 	var poles := backdrop.get_node_or_null("Lines/Poles") as MultiMeshInstance3D
 	if poles == null:
 		return found
-	var all: Array[Vector3] = []
-	for i in poles.multimesh.instance_count:
-		all.append((poles.global_transform * poles.multimesh.get_instance_transform(i)).origin)
+	var all := copies_of(poles)
 	all.sort_custom(
 		func(a: Vector3, b: Vector3) -> bool:
 			return a.distance_to(backdrop.global_position) < b.distance_to(backdrop.global_position)
@@ -152,5 +152,24 @@ func _poles(backdrop: Node3D) -> Array[Vector3]:
 	for pole in all:
 		if found.size() >= WIRE_POLES:
 			break
-		found.append(Vector3(pole.x, 0.0, pole.z))
+		# The next pole is on another stretch of the lines, not its neighbour.
+		var flat := Vector3(pole.x, 0.0, pole.z)
+		if found.all(func(other: Vector3) -> bool: return other.distance_to(flat) >= WIRE_APART):
+			found.append(flat)
+	return found
+
+
+## Where every copy of a multimesh stands in the world. Read from the `buffer` (12 floats a copy:
+## each basis row followed by its origin's coordinate, then the colour and custom data if it has
+## them): a headless run draws with the dummy renderer, which keeps no instance data, so
+## `get_instance_transform` reads zero there (`docs/godot/headless-renderer.md` in the kit).
+static func copies_of(multi: MultiMeshInstance3D) -> Array[Vector3]:
+	var found: Array[Vector3] = []
+	var mesh := multi.multimesh
+	var stride := 12 + (4 if mesh.use_colors else 0) + (4 if mesh.use_custom_data else 0)
+	var buffer := mesh.buffer
+	for i in mini(mesh.instance_count, buffer.size() / stride):
+		var at := i * stride
+		var local := Vector3(buffer[at + 3], buffer[at + 7], buffer[at + 11])
+		found.append(multi.global_transform * local)
 	return found
