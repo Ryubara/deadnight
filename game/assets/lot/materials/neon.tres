@@ -1,8 +1,9 @@
-[gd_resource type="StandardMaterial3D" format=3 uid="uid://cgyncgvp1qegf"]
+[gd_resource type="StandardMaterial3D" format=3]
 
 [resource]
 resource_name = "neon"
-albedo_color = Color(1, 0.478, 0.227, 1)
+albedo_color = Color(1.000, 0.478, 0.227, 1)
+roughness = 1.0
 metallic_specular = 0.0
 emission_enabled = true
-emission = Color(1, 0.353, 0.125, 1)
+emission = Color(1.000, 0.353, 0.125, 1)
