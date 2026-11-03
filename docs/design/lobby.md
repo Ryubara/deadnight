@@ -47,10 +47,12 @@ Together has the three ways in it already: *Quick join*, *Create a night*, *Join
 longer starts the night. It opens the **lobby** with the player as host:
 
 - The code in large type and the invite link (the web), with *Copy the link* and *Copy the code*.
-- **Seats**: four rows, `1 Ann  HOST`, `2 (open)`, `3 (open)`, `4 (open)`. A name is as long as the backend has it
+- **Seats**: four rows, `1 Ann  HOST`, `2 (open)`, `3 (open)`, `4 (open)`. The host's Bots setting shows as bots
+  in the highest open seats, `3 Moss  BOT`, never more than the seats people leave free; a person who joins takes
+  one of them ([the rules](rounds.md#bots)). A name is as long as the backend has it
   (guest names, Discord names; #485 will make them the player's own).
 - **The night's rules** (`MatchSettingsPanel`, shared with the Play screen): zombie intensity, most alive at once,
-  break between rounds. Only the host's panel moves; guests see the same values, read only, as the host sets them.
+  break between rounds, bots. Only the host's panel moves; guests see the same values, read only, as the host sets them.
   A change goes to the backend a third of a second after the host stops (`PUT /lobbies/:id/settings`, one request
   at a time, the last change wins) and reaches the others on their next poll (within two seconds). Start sends the
   panel's values with it, so a change still waiting is never lost. A host who leaves hands the panel on with the

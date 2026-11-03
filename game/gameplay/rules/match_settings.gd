@@ -20,17 +20,23 @@ const AUTO := 0
 ## The explicit break: at least a second.
 const MIN_BREAK := 1.0
 const MAX_BREAK := 120.0
+## Bots the night seats beside the people: none to `MAX_BOTS`. In a room they take only the seats
+## people leave free (`NightBots.target`).
+const MIN_BOTS := 0
+const MAX_BOTS := 3
 ## The keys of `to_dict`, each with the type it must have (a whole number also fits a float).
 const KEYS := {
 	"count_multiplier": TYPE_FLOAT,
 	"max_alive": TYPE_INT,
 	"break_seconds": TYPE_FLOAT,
 	"map": TYPE_STRING,
+	"bots": TYPE_INT,
 }
-## The keys a dictionary may leave out, each meaning its default: a ticket, a lobby or a WELCOME
-## from before the setting existed has none, and a server and a client of two builds still read each
-## other (`to_dict` always writes them).
-const OPTIONAL_KEYS: Array[String] = ["map"]
+## Keys a snapshot, a ticket, a lobby or an action may leave out (a build from before the key): they
+## mean their default, so an older backend's ticket or server's WELCOME still carries the other
+## settings, and a server and a client of two builds still read each other (`to_dict` always
+## writes them).
+const OPTIONAL_KEYS: Array[String] = ["map", "bots"]
 
 ## The night's intensity. Round N brings the tuned count times this (rounded, at least one) and the
 ## dead come this many times as fast (the spawn interval divides by it, down to
@@ -47,6 +53,9 @@ const OPTIONAL_KEYS: Array[String] = ["map"]
 @export_range(0.0, 120.0, 1.0) var break_seconds: float = 0.0
 ## The id of the map the night is played on (`MapRegistry`); only a map that can be played is taken.
 @export var map: String = MapRegistry.DEFAULT
+## Bots at the start of the night, 0 to `MAX_BOTS`. Solo seats this many beside the person; a room
+## seats as many as the people leave seats free, and a person who joins takes a bot's seat.
+@export_range(0, 3, 1) var bots: int = MIN_BOTS
 
 
 ## The defaults: today's game.
@@ -56,6 +65,7 @@ func is_default() -> bool:
 		and max_alive == AUTO
 		and is_zero_approx(break_seconds)
 		and map == MapRegistry.DEFAULT
+		and bots == MIN_BOTS
 	)
 
 
@@ -106,6 +116,7 @@ func to_dict() -> Dictionary:
 		"max_alive": max_alive,
 		"break_seconds": break_seconds,
 		"map": map,
+		"bots": bots,
 	}
 
 
@@ -113,7 +124,7 @@ func to_dict() -> Dictionary:
 ## `&""` when it is fine. Strict: a value outside the bounds is refused, not clamped.
 static func problem(data: Dictionary) -> StringName:
 	for key: String in KEYS:
-		if not data.has(key) and key in OPTIONAL_KEYS:
+		if not data.has(key) and OPTIONAL_KEYS.has(key):
 			continue
 		if not data.has(key) or not SnapshotCheck.fits_type(data[key], KEYS[key]):
 			return StringName(key)
@@ -125,6 +136,8 @@ static func problem(data: Dictionary) -> StringName:
 		return &"break_seconds"
 	if not MapRegistry.is_playable(str(data.get("map", MapRegistry.DEFAULT))):
 		return &"map"
+	if data.has("bots") and (data["bots"] < MIN_BOTS or data["bots"] > MAX_BOTS):
+		return &"bots"
 	return &""
 
 
@@ -138,6 +151,7 @@ static func from_dict(data: Dictionary) -> MatchSettings:
 	out.max_alive = data["max_alive"]
 	out.break_seconds = float(data["break_seconds"])
 	out.map = str(data.get("map", MapRegistry.DEFAULT))
+	out.bots = int(data.get("bots", MIN_BOTS))
 	return out
 
 
@@ -171,6 +185,7 @@ func clamped() -> MatchSettings:
 	out.max_alive = clampi(max_alive, AUTO, _alive_ceiling())
 	out.break_seconds = _clamp_optional(break_seconds, MIN_BREAK, MAX_BREAK)
 	out.map = map if MapRegistry.is_playable(map) else MapRegistry.DEFAULT
+	out.bots = clampi(bots, MIN_BOTS, MAX_BOTS)
 	return out
 
 

@@ -81,6 +81,9 @@ var autopilot: Autopilot
 ## The bot host the autopilot runs on (`BotClient`, profile `BotProfile.autopilot()`): it decides
 ## with the autopilot every tick, as it always did, and counts what it sends.
 var bot: BotClient
+## The teammates the match settings asked for (`MatchSettings.bots`), seated beside the player at
+## the start of a local night; null online, where the server seats them.
+var bots: NightBots
 ## The match settings, set before `start`: the night's zombie intensity, alive cap and break. After
 ## `start_remote` they are the ones the server's WELCOME carried.
 var match_settings := MatchSettings.new()
@@ -180,6 +183,7 @@ func start(
 	)
 	link.send({"type": NightServer.START_NIGHT})
 	link.pump()
+	_seat_bots(p_seed)
 	var player := server.body_of(PLAYER_ID)
 	var camera := player.camera_rig.camera()
 	if mode == Mode.AUTOPILOT and shoulder_camera:
@@ -566,6 +570,10 @@ func tick() -> void:
 	began = PerfProbe.begin()
 	link.broadcast(events)
 	PerfProbe.end(&"tick.client", began)
+	if bots != null:
+		began = PerfProbe.begin()
+		bots.tick(STEP)
+		PerfProbe.end(&"tick.bots", began)
 	match mode:
 		Mode.AUTOPILOT:
 			began = PerfProbe.begin()
@@ -829,6 +837,19 @@ func _send_command(command: NightCommand) -> void:
 	if bot != null:
 		bot.telemetry.note_command(action)
 	link.send(action)
+
+
+## Seats the bots the match settings ask for beside the player (a local night only). They hear what
+## the player's client hears, so a ping the player places reaches them as it would reach a person.
+func _seat_bots(p_seed: int) -> void:
+	bots = NightBots.new(server, world, p_seed, Callable(self, &"_bots_answered"))
+	link.broadcast(bots.fill(server.rules.settings.bots, [PLAYER_ID]))
+	link.delivered.connect(bots.hear)
+
+
+## What the server answered a bot's command with goes to the player's client like any event.
+func _bots_answered(events: Array) -> void:
+	link.broadcast(events)
 
 
 func _make_autopilot() -> void:

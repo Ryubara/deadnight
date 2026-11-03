@@ -314,3 +314,27 @@ test("the host's map is checked, kept on the lobby, shown in its view and previe
   assert.equal(quick.map, "drive_in");
   await app.close();
 });
+
+test("the bot count rides the settings: 0 to 3 whole bots are kept and signed, others are refused, a client without it is still taken", async () => {
+  const { app, guest, call, config } = await platform();
+  const host = await guest("host");
+  const lobby = (await call("POST", "/lobbies", host.headers, { maxPlayers: 4 })).json();
+  const good = { count_multiplier: 1, max_alive: 0, break_seconds: 0 };
+  for (const bots of [4, -1, 1.5, "2"]) {
+    const refused = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, { ...good, bots });
+    assert.equal(refused.statusCode, 400, String(bots));
+    assert.equal(refused.json().error, "bad_settings");
+  }
+  const chosen = { ...good, bots: 3 };
+  const set = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, chosen);
+  assert.equal(set.statusCode, 200);
+  assert.deepEqual(set.json().settings, chosen);
+  // Without `bots` the settings are kept as sent: the game server reads a missing count as none.
+  const bare = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, good);
+  assert.deepEqual(bare.json().settings, good);
+  await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, chosen);
+  await call("POST", `/lobbies/${lobby.id}/start`, host.headers);
+  const answer = (await call("POST", `/lobbies/${lobby.id}/ticket`, host.headers)).json();
+  assert.deepEqual(verifyToken(config.ticketSecret, "ticket", answer.ticket)?.settings, chosen);
+  await app.close();
+});

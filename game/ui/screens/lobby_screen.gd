@@ -503,6 +503,15 @@ func lobby_rules() -> MatchSettings:
 	return out if out != null else MatchSettings.new()
 
 
+## How many bots the lobby shows: the setting, and never more than the seats people leave free.
+func bots_shown() -> int:
+	if mode != Mode.LIVE:
+		return 0
+	var wanted := rules.settings().bots if _rules_editable else lobby_rules().bots
+	var people: int = (lobby.get("members", []) as Array).size()
+	return maxi(mini(wanted, int(lobby.get("maxPlayers", 4)) - people), 0)
+
+
 ## The rules on the panel as the web probe reads them: `2x|Auto|20 s`.
 func rules_text() -> String:
 	return rules.text()
@@ -512,6 +521,7 @@ func rules_text() -> String:
 func _on_rules_changed(value: MatchSettings) -> void:
 	if not _rules_editable:
 		return
+	_show_seats()
 	_rules_waiting = value
 	_rules_timer.start()
 
@@ -571,11 +581,17 @@ func _show_seats() -> void:
 			away.append(false)
 	while _seat_rows.size() < max_players:
 		_seat_rows.append(_make_seat_row())
+	# The bots take the highest seats, as the server seats them (`NightBots`).
+	var bot_from := max_players - bots_shown()
 	for i in _seat_rows.size():
 		var row := _seat_rows[i]
 		(row["box"] as Control).visible = i < max_players
 		(row["number"] as Label).text = str(i + 1)
-		if i < names.size():
+		if i >= names.size() and i >= bot_from and i < max_players:
+			(row["name"] as Label).text = NightBots.name_for(i + 1)
+			(row["name"] as Label).modulate.a = 1.0
+			(row["tag"] as Label).text = "BOT"
+		elif i < names.size():
 			(row["name"] as Label).text = names[i]
 			(row["name"] as Label).modulate.a = 1.0
 			var tag := "HOST" if hosts[i] else ""
