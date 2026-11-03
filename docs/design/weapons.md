@@ -180,10 +180,14 @@ beside the corner makes the same shot land (both are tested and in the capture).
 
 ## Hit zones
 
-Zombies are shot at through their zones, not their meshes: a head sphere, a body capsule and four limb capsules
-(`Hitbox`); the headliner has a fifth, `weak`, a ball on its lit lamp that no other zombie has (the weapons list no
-multiplier for it: the rules' x2.2 is the one). The test range draws them as they are. The whole set is sized to the
-zombie: a brute's zones are 1.18 times a walker's, a crawler's 0.6 (its look's height times its type's `hit_chance`).
+Zombies are shot at through their zones, not their meshes (`Hitbox`), but the zones are fitted to the meshes: each
+look has a set of spheres and capsules (head, body, limbs) for each pose its mode puts it in (moving, striking,
+staggering, tearing boards, a boss roaring), the envelope of its bones through that pose's clips, so a shot that touches
+the body the player sees counts, on the right zone ([hit zones research](../research/hit-zones.md)). A crawler's zones
+are its body on the ground (low, the head half a metre across ahead of its feet), the brute's are 1.18 times a walker's.
+The headliner has one more zone, `weak`, a ball on its lit lamp that no other zombie has (the weapons list no
+multiplier for it: the rules' x2.2 is the one). The test range draws them as they are. A limb the ray meets first gives
+way to the body or head right behind it.
 
 | Zone | Pistol | SMG | Shotgun (per pellet) | Rifle | Flare gun | Crowbar | Bat | Axe |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
