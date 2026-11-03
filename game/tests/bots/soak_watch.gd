@@ -81,6 +81,9 @@ var _round_damage: Dictionary = {}
 var _round_downs: Dictionary = {}
 ## By round, then zombie type: [blows that landed, their damage].
 var _round_blows: Dictionary = {}
+## Where the headliners were hit (zone to hits) and the damage those hits did, over the night.
+var _boss_zones: Dictionary = {}
+var _boss_damage := 0.0
 var _round_kit: Dictionary = {}
 
 
@@ -138,6 +141,9 @@ func hear(event: Dictionary) -> void:
 		&"zombie_damaged":
 			var id: int = event["player_id"]
 			var zone: StringName = event["zone"]
+			if id > 0 and event.get("zombie_type", &"") == &"headliner":
+				_boss_zones[String(zone)] = int(_boss_zones.get(String(zone), 0)) + 1
+				_boss_damage += float(event.get("damage", 0.0))
 			if id > 0 and zone != RulesAction.ZONE_BLAST:
 				var tally := _tally(id)
 				tally["pellet_hits"] += 1
@@ -537,6 +543,8 @@ func report() -> Dictionary:
 		"round_damage": _round_damage,
 		"round_downs": _round_downs,
 		"round_blows": _round_blows,
+		"boss_zones": _boss_zones,
+		"boss_damage": snappedf(_boss_damage, 1.0),
 		"round_kit": _round_kit,
 		"end": _end_state(),
 		"bots": bots,
