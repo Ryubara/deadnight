@@ -108,6 +108,8 @@ var _errands: BotErrands
 var _swapped_at := -SWAP_EVERY
 var _order: BotGrenadier.Throw
 var _ordered_at := -INF
+## The look for the last zombies of the round (`BotHunt`).
+var _hunter := BotHunt.new()
 
 
 func _init(profile: BotProfile, level: BotLevel, dodge_seed: int = 1) -> void:
@@ -169,6 +171,7 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 		intent.target_id = marked
 	var order := _standing_order(beliefs)
 	_holding = order == BotOrders.HOLD
+	_hunter.watch(beliefs)
 	var people := _people(beliefs, order)
 	var anchor := BotFollow.anchor_of(people)
 	if _holding:
@@ -216,6 +219,8 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 		elif plan.dry and _dash(intent, beliefs, state, threat):
 			# Out of rounds with points to spend: run for them (`BotErrands.DASH_FROM`).
 			on_errand = true
+		elif _hunt(intent, beliefs, here, order, anchor, plan.dry):
+			pass  # The last of the dead are out there: go and look (`BotHunt`).
 		elif _errand(
 			intent, beliefs, state, threat, order, anchor, _holding and not _pinged_door(state)
 		):
@@ -555,10 +560,12 @@ func _roam_about(intent: BotIntent, beliefs: BotBeliefs, here: Vector3) -> void:
 	var avoid := Callable()
 	var reach := Callable()
 	var mesh := 0
+	var short_of := Vector3.INF
 	if legs != null:
 		avoid = Callable(legs.path, &"is_blocked").bind(beliefs.now)
 		reach = Callable(legs.path, &"probe").bind(beliefs.now)
 		mesh = legs.path.iteration()
+		short_of = legs.stopped_short_of
 	var goal := _roam.plan(
 		here,
 		beliefs.now,
@@ -568,7 +575,8 @@ func _roam_about(intent: BotIntent, beliefs: BotBeliefs, here: Vector3) -> void:
 		_threat_places(beliefs),
 		avoid,
 		reach,
-		mesh
+		mesh,
+		short_of
 	)
 	if goal == Vector3.INF:
 		_forget_roam(beliefs)
@@ -828,6 +836,43 @@ func _errand(
 	if went and may_go and team != null and not _errands.linking:
 		team.turn.took(beliefs.me, beliefs.now)
 	return went
+
+
+## The last zombies of a round are marked on every screen and a person walks to them; this bot goes
+## to look for the nearest one it holds the claim on when it is free to (`BotHunt`). True when it
+## set the goal.
+func _hunt(
+	intent: BotIntent,
+	beliefs: BotBeliefs,
+	here: Vector3,
+	order: StringName,
+	anchor: Vector3,
+	dry: bool
+) -> bool:
+	var free := (
+		_profile.follows
+		and order != BotOrders.HOLD
+		and not dry
+		and intent.target_id < 0
+		and play.may_wander()
+	)
+	var going := _hunter.run(
+		intent,
+		beliefs,
+		here,
+		free,
+		order == BotOrders.FOLLOW,
+		anchor,
+		legs,
+		team,
+		_level,
+		_profile.memory_seconds
+	)
+	if going:
+		_roam.drop()
+		_forget_roam(beliefs)
+		_spot = Vector3.INF
+	return going
 
 
 ## The supply dash of a bot with no round left (see `BotErrands.dash`).

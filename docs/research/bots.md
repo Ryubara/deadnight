@@ -1499,6 +1499,54 @@ sixteen, a round that did not end (a boss alive in round 14 or 15) and once a bo
 the soak's think p50 is 260 microseconds a bot and its p99 1.7 to 2.1 ms (worst 2.8 ms) on a busy machine:
 [#771](https://github.com/Ryubara/deadnight/issues/771).
 
+#### Idle bots and stalled rounds with a person (#770)
+
+The first nightly soak left the Follow and Roam cells with a person (a stand-in, three Regular bots) breaking gates in
+3 nights of 16: a round that went on for eight minutes, and bots idle with a zombie in view. **A night is not repeatable
+by its seed**: the navigation bake finishes on a physics frame, so the same seed ran to the cap, or stalled, on
+different runs. The causes were read from the nights that broke, with three additions to the soak:
+`--tail=SECONDS` prints, every `--every` ticks of a round that has gone on that long, where every zombie is, its mode,
+target and path length, and what each player holds and does; `--watch=2,3,4` takes several seats; and the report carries
+samples of a bot far from the person (`far_samples`), the idle samples say whether the zombie was left to a person
+(`left_to_a_person`), the roam samples where the path ended (`path_end`, `stopped_short`), and `relocated` counts the dead
+put back on a spawn point. The evidence of the 24 baseline nights is in the scratch folder of the task.
+
+| Failure | Cause | Fix | Test |
+| --- | --- | --- | --- |
+| Idle 6 to 12 s, a loaded gun, a zombie in sight at 6 to 12 m, `note hold`, `target_id -1` (every sample of Follow) | Kill courtesy: a zombie a person aims at is theirs, and the stand-in (a dry pistol) kept its aim on a zombie it did not kill | A zombie is the bot's too after `BotCombat.COURTESY_SECONDS` (3 s) of being left to a person, counted for each zombie; looking away for a moment does not give it back | `test_bot_combat.gd`: `test_a_zombie_left_to_a_person_is_the_bots_after_a_few_seconds`, `test_courtesy_counts_each_zombie_on_its_own...` |
+| Idle beside a crawler that swings from 1.4 m with a dry gun, `note fight` | The quick melee struck inside 1.4 m (`QUICK_REACH_MARGIN` 0.2 inside a reach of 1.6); the dead swing from 1.4 m: a zombie at its own reach was never hit back | The margin is 0 (the blow reaches 1.6 and the sweep has a radius of 0.4) | `test_bot_motor.gd`: `test_the_quick_melee_reaches_a_zombie_standing_where_it_swings_from` |
+| Roam: a bot standing 92 s (and 13 s) with `note roam`, path OK, the goal 2 m away | The walking mesh ends up to 2.5 m short of a place (`BotPath.REACHED_SHORT`); the legs stood at the end of the path, within the goal's radius of it, and sent no motion; the stuck ladder only judges a bot commanded to walk, and `BotRoam` kept the place until the bot was within 1.5 m | `BotLegs.stopped_short_of` says it; `BotRoam.plan` takes the place as reached | `test_bot_legs.gd`, `test_bot_roam.gd` |
+| A round of eight minutes with one walker alive (Follow; three of three) | The walker stood in a pocket of the walking mesh: `map_get_path` from there is two points, ending at the pocket's edge; nothing a bot does reaches it ([Dead stranded in a pocket](zombies.md#dead-stranded-in-a-pocket-of-the-mesh-770)) | `ZombieSim` says a zombie 12 m or more from its target with a path that stops 3 m or more short of it is stranded after 12 s; `ZombieDirector` puts it back on a spawn point | `test_zombie_strand.gd`, and in the real lot `test_zombie_stranded.gd` |
+| A round of eight minutes with two headliners kiting the person stand-in (Roam) | A person sees the last three zombies outlined through the walls (`ZombieMarks`) and goes to them; the bots roamed 40 to 100 m away and never saw the boss | `BotHunt` (below) | `test_bot_hunt.gd` |
+
+**`BotHunt`.** `BotClient` tells the brain the marked zombies the way the screen does (`BotBeliefs.last_dead`: the
+phase is a round, `remaining` is one to `ZombieTuning.mark_last`, the zombies that are not dying; the one place the
+filter of `BotPerception` lets positions of unseen dead through, because the outline does for a person). Once the
+round has been down to them for 15 s, a bot that is free (nothing believed within 12 m, no target, rounds in a gun,
+not Safe, not under Hold) and that holds the claim by distance (`BotClaims`, `BotTeam.hunts`: the nearest free bot)
+walks to within 6 m of the nearest of them (`note hunt`, counted as an errand by the far-from-the-person gate); under
+Follow only to one 30 m or more from the person. It gives a zombie up for 30 s when the mesh has no way to it or when
+it stands within 7 m of it for 6 s and does not see it.
+
+**Measured** (`--profile=regular --bots=3 --person`, Follow and Roam, round cap 16, machine shared with other work; the
+before is 32 nights on the code of `main` at 1a4e3016 with only the tracing added, the after 23 nights on this change; a
+night is not repeatable by seed, so the two sets are different nights):
+
+| | Before (32 nights) | After (23 nights) |
+| --- | ---: | ---: |
+| Nights that broke a gate | 11 | **3** |
+| A round that would not end | 3 | 1 |
+| A bot idle with a zombie in view over 5 s | 2 | **0** |
+| A bot idle under Roam over 8 s | 3 (92 s, 15.5 s, 13.4 s) | **0** |
+| A bot beyond 25 m of the person for over 20 s (Follow) | 4 | 2 |
+
+**Not fixed, left as an issue.** The Follow gate "beyond 25 m of the person for over 20 s" still breaks in 2 nights of
+12: one bot at 32 to 60 m, running at 7 m/s with the note `follow` or `retreat`, not stuck, the person a stand-in that
+walks about. The samples are in the report (`far_samples`); the cause is not found. One night in 23 still ended with a
+round of eight minutes: round 15 under Follow, two headliners alive, the person and two bots down and the last bot
+with rifle and shotgun dry (`rifle [0, 0, 1]`, buying rounds for 30 s at a time under `ammo_urgent`), a lost night
+rather than a lost zombie. Kills, hits and round reached are not compared: 23 nights do not rank a tuning.
+
 #### What is left, and how the three nights are read
 
 - **Three consecutive nightly runs.** The workflow is new; its hard gates (every row of the gates table except parity)
