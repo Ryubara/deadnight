@@ -483,6 +483,10 @@ def loading_report(frames: list[list[float]], pressed: float, running: float) ->
         "most_programs_in_a_frame": int(burst[1]),
         "longest_frame_ms": round(longest[2], 1),
         "frames_over_1s": sum(1 for f in during if f[2] > 1000),
+        # The three busiest frames as [seconds after Play, programs, frame ms], to find what they drew.
+        "busiest_frames": [
+            [round((f[0] - pressed) / 1000, 2), int(f[1]), f[2]] for f in sorted(during, key=lambda f: -f[1])[:3]
+        ],
     }
 
 

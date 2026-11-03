@@ -487,6 +487,13 @@ func _replay_effects() -> void:
 			)
 		)
 		await _chunk()
+	# The splash's shader alone first, in its own frames (the numbers below bring one of their own).
+	view.effects.blood.splash(
+		at + Vector3(0.0, 0.5, -2.0), Vector3.FORWARD, BloodTuning.Kind.BULLET, false, 30.0
+	)
+	view.effects.blood.set_process(false)
+	await _chunk(SHOT_FRAMES + 1)
+	view.effects.blood.stop_all()
 	(
 		view
 		. draw_event(
@@ -517,12 +524,21 @@ func _replay_effects() -> void:
 			}
 		)
 	)
+	# The blood stands still while it is held, or a slow frame ends it before it is drawn. Each of its
+	# two shaders gets frames of its own: a shader's first draw builds four programs and a few more
+	# (docs/research/first-use-hitches.md), and the splash with the numbers and a mark in one frame
+	# stopped the page on 15 at once.
+	view.effects.blood.set_process(false)
+	await _chunk()
+	view.effects.blood.stop_all()
 	# A mark needs a wall or a floor to land on, which the stage does not have: put one by hand.
 	view.effects.blood.mark(at + Vector3(0.5, -1.0, -2.0), Vector3.UP, Vector3.FORWARD, 0.4)
-	view.effects.blood_burst(at + Vector3(2.0, 0.5, -2.0), float(DIGITS_NUMBER))
-	# The blood stands still while it is held, or a slow frame ends it before it is drawn.
 	view.effects.blood.set_process(false)
 	await _chunk(SHOT_FRAMES + 1)
+	view.effects.blood.stop_all()
+	view.effects.blood_burst(at + Vector3(2.0, 0.5, -2.0), float(DIGITS_NUMBER))
+	view.effects.blood.set_process(false)
+	await _chunk()
 	view.effects.blood.stop_all()
 	var flare_at := at + Vector3(2.0, 0.0, -2.0)
 	var flare := WeaponCatalog.get_def(&"flare_gun")
