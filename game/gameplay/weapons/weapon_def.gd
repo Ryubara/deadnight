@@ -11,6 +11,10 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 @export var kind: Kind = Kind.HITSCAN
 ## Holding the trigger keeps firing (the client repeats; the server's fire interval is the limit).
 @export var automatic: bool = false
+## Two weapons, one in each hand (the dual pistols): the shots alternate hands, right first, and
+## the magazine is one count for both. The Soldier holds a second copy of the model in his left
+## hand (`WeaponHold.dual`); the server numbers the hand of each shot (`WeaponState.hand`).
+@export var dual: bool = false
 ## Draws a streak from the muzzle to where the shot ended. Off by default: a hitscan shot is
 ## instant and shows a flash and an impact, never a visible bullet. A launcher or a ray gun is a
 ## `PROJECTILE` weapon instead; this flag is for the rare hitscan weapon whose beam should show.

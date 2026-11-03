@@ -16,6 +16,8 @@ const FIRE := {
 	&"rifle": {"shot": &"shot_rifle", "tail": &"tail_rifle"},
 	&"shotgun": {"shot": &"shot_shotgun", "tail": &"tail_shotgun"},
 	&"flare_gun": {"shot": &"shot_flare"},
+	# The revolver's report until the pair has its own (#790).
+	&"dual_pistols": {"shot": &"shot_pistol", "tail": &"tail_pistol"},
 }
 ## What each of a reload's steps sounds like, per firearm (#683): the step names are the events of
 ## the weapon's `ReloadMotion` (`reload/<id>.tres`), which also says when each happens, so a step
@@ -51,6 +53,15 @@ const RELOAD := {
 		&"pouch": &"reload_pouch",
 		&"shells_in": &"reload_shotgun_shells",
 		&"snap_shut": &"reload_shotgun_shut",
+	},
+	# The revolver's steps until the pair has its own (#790).
+	&"dual_pistols":
+	{
+		&"cylinder_out": &"reload_revolver_open",
+		&"eject": &"reload_revolver_eject",
+		&"pouch": &"reload_pouch",
+		&"rounds_in": &"reload_revolver_rounds",
+		&"cylinder_in": &"reload_revolver_close",
 	},
 	&"flare_gun":
 	{

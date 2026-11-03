@@ -24,6 +24,8 @@ const SPEC := "res://assets/characters/soldier/clips.json"
 ## Kit clips the spec does not list but the jump uses as a loop.
 const KIT_LOOPS := ["Jump_Idle"]
 const HAND_BONE := "Index1.R"
+## The left hand's bone: the second gun of a dual weapon rides it as the first rides `HAND_BONE`.
+const OFFHAND_BONE := "Index1.L"
 ## The weapon scene's transform under a BoneAttachment3D on HAND_BONE, measured on the built
 ## Soldier (docs/design/animation.md, "Weapons in the hand").
 const HOLD_GUN := Transform3D(
@@ -68,7 +70,7 @@ const HOLD_HAMMER := Transform3D(
 ## The node the hammer model carries at the centre of its striking face, -Z out of the face
 ## (docs/design/style.md, "Attachment points").
 const HAMMER_FACE := "Face"
-const CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Pistol", &"Melee"]
+const CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Pistol", &"Melee", &"Dual"]
 const DEFAULT_CLASS := &"Rifle"
 ## Where Walk sits on the move blend (0 = Idle, 1 = Run).
 const WALK_POINT := 0.45
@@ -163,6 +165,7 @@ var _action_node: AnimationNodeAnimation
 var _full_node: AnimationNodeAnimation
 var _mount: BoneAttachment3D
 var _weapon: Node3D
+var _offhand: Node3D
 var _hammer: Node3D
 var _grenade: Node3D
 var _hold: WeaponHold
@@ -178,6 +181,9 @@ var _grenade_grip: HandGrip
 var _grip_blend := 0.0
 var _shoulder_blend := 0.0
 var _recoil := 0.0
+## The left gun's recoil of a dual weapon, and the hand the next shot's clip is for (0 the right).
+var _recoil_left := 0.0
+var _fire_hand := 0
 ## The reload as this body draws it: the motion, the part, the ammunition (`ReloadView`).
 var _reload: ReloadView
 var _action_time := 0.0
@@ -225,6 +231,7 @@ func _ready() -> void:
 	_aim_move_speed = aim_moves["clips"]["Walk_Shoot"]["ground_speed"]
 	SoldierClipFile.add(library, _spec, SPRINT_GLB, SPRINT_SPEC, SprintCarry.CLIPS)
 	SoldierClipFile.add(library, _spec, QuickStrike.GLB, QuickStrike.SPEC, QuickStrike.CLIPS)
+	SoldierClipFile.add(library, _spec, DualClips.GLB, DualClips.SPEC, DualClips.CLIPS)
 	var revive_specs := DownedPose.add_clips(anim_player)
 	_spec["clips"].merge(revive_specs)
 	if revive_specs.has(String(DownedPose.CRAWL_CLIP)):
@@ -359,6 +366,11 @@ func weapon() -> Node3D:
 	return _weapon
 
 
+## The second gun of a dual weapon, in the left hand, or null.
+func offhand_weapon() -> Node3D:
+	return _offhand
+
+
 ## The repair hammer on the hand mount, shown only while the repair holds the arms.
 func hammer() -> Node3D:
 	return _hammer
@@ -368,10 +380,11 @@ func hammer() -> Node3D:
 ## class shows no weapon. The muzzle flash hangs on it. It is the `Muzzle` node the weapon's own
 ## model carries (the convention: docs/design/weapon-hold.md), or, for a model that has none yet,
 ## one placed at the hold's `muzzle` point.
-func muzzle_point() -> Node3D:
-	if _weapon == null:
+func muzzle_point(hand := 0) -> Node3D:
+	var gun := _offhand if hand == 1 and _offhand != null else _weapon
+	if gun == null:
 		return null
-	return _weapon.find_child(MUZZLE_NODE, true, false) as Node3D
+	return gun.find_child(MUZZLE_NODE, true, false) as Node3D
 
 
 ## Switches to a weapon: a class (`&"Rifle"`) or a weapon of the catalogue (`&"pistol"`).
@@ -388,7 +401,7 @@ func equip(weapon: StringName) -> void:
 		return
 	cancel_reload()
 	var id := weapon if weapon in WeaponCatalog.IDS else &""
-	_reload.setup(id, _weapon, _hold.model_scale if _hold != null else 1.0)
+	_reload.setup(id, _weapon, _hold.model_scale if _hold != null else 1.0, _offhand)
 	_weapon_visible(false)
 	play_action(&"Equip")
 
@@ -429,7 +442,8 @@ func reload_ammo() -> Node3D:
 
 ## Plays `<action>_<Class>` (Fire, Reload, Swing, Equip, Unequip) on the upper body. Returns
 ## false when the class has no such clip.
-func play_action(action: StringName) -> bool:
+func play_action(action: StringName, hand := 0) -> bool:
+	_fire_hand = hand
 	var played := _play_clip(StringName("%s_%s" % [action, weapon_class]))
 	# An attack or a reload that cuts the Equip clip short must not leave the weapon hidden: its
 	# `weapon_visible` frame would never come.
@@ -640,9 +654,12 @@ func _set_class(new_class: StringName, hold: WeaponHold) -> void:
 	_carry_node.animation = SprintCarry.clip_for(new_class, hold)
 	_hold = hold
 	_weapon = _held.hold_weapon(new_class, hold)
+	_offhand = _held.offhand
 	_weapon_grip = _held.grip
 	if _weapon != null:
 		_weapon.visible = not is_repairing()
+	if _offhand != null:
+		_offhand.visible = _weapon.visible
 
 
 ## The grip of the weapon in the hand, or null.
@@ -673,7 +690,8 @@ func _advance_grip(delta: float) -> void:
 	if absf(_grip_blend - target) < 0.001:
 		_grip_blend = target
 	_fingers.right_weight = _grip_blend
-	var left := grip == _weapon_grip and grip != null and grip.has_left
+	var dual := _hold != null and _hold.dual
+	var left := grip == _weapon_grip and grip != null and (grip.has_left or dual)
 	# The left hand is on the weapon by the arms' IK (the shouldered pose) or by the sprint carry,
 	# whose two-handed clips put it on the grip's `left_hand` (#527).
 	var on := _shoulder_blend if _hands.active else 0.0
@@ -703,9 +721,14 @@ func _advance_shoulder(delta: float) -> void:
 	var view := rig.aim_transform()
 	_hands.converge_on = view.origin - view.basis.z * WeaponHandsIK.CONVERGE_DISTANCE
 	if String(action_clip).begins_with("Fire_") and _action_time < delta * 1.5:
-		_recoil = 1.0
+		if _fire_hand == 1:
+			_recoil_left = 1.0
+		else:
+			_recoil = 1.0
 	_recoil *= exp(-RECOIL_RATE * delta)
+	_recoil_left *= exp(-RECOIL_RATE * delta)
 	_hands.recoil = _recoil
+	_hands.recoil_left = _recoil_left
 	var target := 1.0 if up and hands_free else 0.0
 	_shoulder_blend = lerpf(_shoulder_blend, target, 1.0 - exp(-SHOULDER_RATE * delta))
 	if absf(_shoulder_blend - target) < 0.001:
@@ -725,6 +748,8 @@ func _advance_shoulder(delta: float) -> void:
 func _weapon_visible(shown: bool) -> void:
 	if _weapon != null:
 		_weapon.visible = shown and not is_repairing() and not _down.downed and not _down.reviving
+		if _offhand != null:
+			_offhand.visible = _weapon.visible
 
 
 func _hands_on_repair(repairing: bool) -> void:

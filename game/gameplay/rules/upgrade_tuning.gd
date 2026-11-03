@@ -6,7 +6,9 @@ extends Resource
 ## in the combat server and in the balance simulator alike.
 
 ## The weapons that can be re-cut, by catalogue id. A melee weapon has no magazine to grow.
-@export var weapons: Array[StringName] = [&"pistol", &"smg", &"shotgun", &"rifle", &"flare_gun"]
+@export var weapons: Array[StringName] = [
+	&"pistol", &"smg", &"shotgun", &"rifle", &"flare_gun", &"dual_pistols"
+]
 ## Added to the item's price for each weapon the buyer has already re-cut, so the first is
 ## the bargain and a bench full of re-cut weapons is a rich player's.
 @export_range(0, 10000, 50, "or_greater", "suffix:pts") var price_step: int = 1500

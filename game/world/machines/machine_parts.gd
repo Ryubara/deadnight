@@ -13,6 +13,8 @@ const WEAPON_MODELS := {
 	&"shotgun": "res://assets/weapons/double_shotgun/double_shotgun.glb",
 	&"rifle": "res://assets/weapons/lever_rifle/lever_rifle.glb",
 	&"flare_gun": "res://assets/weapons/flare_gun/flare_gun.glb",
+	# The revolver again until the pistol model of #797 lands.
+	&"dual_pistols": "res://assets/weapons/revolver/revolver.glb",
 }
 
 

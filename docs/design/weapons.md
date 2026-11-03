@@ -65,6 +65,7 @@ the real command, its own model drawn).
 | `flare_gun` | `flare_gun` | **Crane** only (1); becomes a lure (#439) | 90 + blast 60 / 0.8 s |
 | `baseball_bat` | `baseball_bat` | **Crane** only (0.5) | 60 / 0.4 s, sweeps 4 |
 | `fire_axe` | `fire_axe` | **Crane** only (0.5) | 150 / 0.9 s, head x2.5 |
+| `revolver` twice (the pistol model of #797 replaces it) | `dual_pistols`, the Dual Pistols | **Crane** only (2.5), on both maps | 17 / 0.15 s, a hand each shot |
 | none: not a weapon | `quick_melee` (`QUICK_MELEE`, not in `IDS`) | Every player, on `V`; never carried, bought or won | 40 / 0.6 s, 1.6 m |
 | `hammer` | none | A tool: the repair clip's prop, not a weapon (see below) | |
 | `grenade` | none (`frag.tres` is its own system) | Thrown, not a crane prize: the start (2) and the shop's grenades | 150 blast |
@@ -83,6 +84,16 @@ of the catalogue is not in the pool (unless it is listed there as no prize, with
 first rolls, each from the seed a solo night takes, are not spread by the weights. A solo night draws a new seed each
 time (`NightScreen.start_seed`, [#685](https://github.com/Ryubara/deadnight/issues/685)): with the old fixed one
 every night rolled the shotgun first.
+
+**The dual pistols** (#789) are two semi-automatic pistols, one in each hand, with the numbers of the roster plan
+(#785, the nine new weapons). One fire button, held to keep firing: the shots **alternate**,
+right hand first (`WeaponDef.dual`; the server numbers the shot's `hand`, 0 right and 1 left, and each client flashes and
+kicks that gun). The two guns share **one counter and one reserve**: 24 rounds, 72 to start, 120 at most, a round a
+shot whichever hand fires it, and one reload (1.6 s, both cylinders open) fills the counter for both; ammunition is the
+shop's `ammo_dual_pistols` (24 for 70). Per hit 17 (head x2.25, limb x0.6) every 0.15 s, spread 2.4 degrees, falloff 10
+to 28 m to half, range 45 m. A crane prize (weight 2.5) on both maps, no wall sells it; it is re-cut like the others
+(it is in `UpgradeTuning.weapons`: 29.75 a hit, 36 rounds, 108 reserve; its shock arc is #794's). How it is held:
+[Weapons in the hands](weapon-hold.md#the-dual-pistols).
 
 **The bat and the axe** were models with no definition. They are melee weapons held as `Melee` (the Swing clip, no
 flash, a spark on a hit) with their own hold files, so each shows its own model. They are **found only in the prize

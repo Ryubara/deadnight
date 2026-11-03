@@ -1,0 +1,64 @@
+[gd_resource type="Resource" script_class="ReloadMotion" format=3]
+
+[ext_resource type="Script" path="res://gameplay/player/reload/reload_key.gd" id="1_key"]
+[ext_resource type="Script" path="res://gameplay/player/reload/reload_motion.gd" id="2_motion"]
+
+[sub_resource type="Resource" id="Key_0"]
+script = ExtResource("1_key")
+at = 0.0
+
+[sub_resource type="Resource" id="Key_1"]
+script = ExtResource("1_key")
+at = 0.15
+weapon_offset = Vector3(-0.14, 0.10, 0.10)
+weapon_turn = Vector3(35, 25, -15)
+chest_lean = 3.0
+
+[sub_resource type="Resource" id="Key_2"]
+script = ExtResource("1_key")
+at = 0.3
+weapon_offset = Vector3(-0.16, 0.14, 0.12)
+weapon_turn = Vector3(70, 20, -30)
+chest_lean = 3.0
+part = 1.0
+
+[sub_resource type="Resource" id="Key_3"]
+script = ExtResource("1_key")
+at = 0.55
+weapon_offset = Vector3(-0.16, 0.14, 0.12)
+weapon_turn = Vector3(70, 20, -30)
+chest_lean = 3.0
+part = 1.0
+
+[sub_resource type="Resource" id="Key_4"]
+script = ExtResource("1_key")
+at = 0.72
+weapon_offset = Vector3(-0.14, 0.10, 0.10)
+weapon_turn = Vector3(35, 25, -15)
+chest_lean = 2.0
+
+[sub_resource type="Resource" id="Key_5"]
+script = ExtResource("1_key")
+at = 0.88
+weapon_offset = Vector3(0, 0.03, 0.03)
+weapon_turn = Vector3(3, 3, 4)
+chest_lean = 1.0
+
+[sub_resource type="Resource" id="Key_6"]
+script = ExtResource("1_key")
+at = 1.0
+
+[resource]
+script = ExtResource("2_motion")
+mechanism = &"revolver_pair"
+part_node = &"Cylinder"
+part_axis = Vector3(1, 0, 0)
+part_turn = 85.0
+keys = Array[ExtResource("1_key")]([SubResource("Key_0"), SubResource("Key_1"), SubResource("Key_2"), SubResource("Key_3"), SubResource("Key_4"), SubResource("Key_5"), SubResource("Key_6")])
+events = Dictionary[StringName, PackedFloat32Array]({
+&"cylinder_in": PackedFloat32Array(0.77),
+&"cylinder_out": PackedFloat32Array(0.16),
+&"eject": PackedFloat32Array(0.3),
+&"pouch": PackedFloat32Array(0.4),
+&"rounds_in": PackedFloat32Array(0.5)
+})

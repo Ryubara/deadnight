@@ -12,8 +12,9 @@ extends RefCounted
 ## combat events that caused them.
 ##
 ## Events (fields besides `type`):
-##   shot_fired: shooter_id, weapon_id, seq, muzzle, ends (one point per pellet), flesh (the point
-##     of every zombie the shot hit, for the view's impacts), ammo, reserve, rewound_by
+##   shot_fired: shooter_id, weapon_id, seq, hand (0 the right, 1 the left: a dual weapon's shots
+##     alternate), muzzle, ends (one point per pellet), flesh (the point of every zombie the shot
+##     hit, for the view's impacts), ammo, reserve, rewound_by
 ##   quick_melee: shooter_id, seq, muzzle, ends (one point: the blow's reach), flesh (the point of
 ##     every zombie it hit); the damage follows as `damage_dealt` and `target_killed` with `melee`
 ##   fire_rejected: shooter_id, seq, reason (`reloading`, `cooldown`, `empty`, `no_weapon`,
@@ -416,6 +417,7 @@ func _fire(action: Dictionary) -> void:
 			"shooter_id": shooter_id,
 			"weapon_id": def.id,
 			"seq": seq,
+			"hand": state.hand,
 			"muzzle": muzzle,
 			"ends": ends,
 			"flesh": flesh,

@@ -11,12 +11,17 @@ extends RefCounted
 ## (aim, converge, weight) and `fingers` (weights) as it needs.
 
 ## The mount on the right hand bone, the arms' pose and the fingers' pose, children of the skeleton
-## in that order (the fingers run after the arms).
+## in that order (the fingers run after the arms). `offmount` is the left hand's, for the second
+## gun of a dual weapon.
 var mount: BoneAttachment3D
+var offmount: BoneAttachment3D
 var hands: WeaponHandsIK
 var fingers: HandGripPose
 ## The weapon in the hand now (null: nothing held), its hold data and its grip.
 var weapon: Node3D
+## The second gun of a dual weapon (`WeaponHold.dual`) in the left hand: the same model, mirrored,
+## or null.
+var offhand: Node3D
 var hold: WeaponHold
 var grip: HandGrip
 
@@ -26,6 +31,10 @@ func _init(skeleton: Skeleton3D) -> void:
 	mount.name = "WeaponMount"
 	mount.bone_name = PlayerAnimation.HAND_BONE
 	skeleton.add_child(mount)
+	offmount = BoneAttachment3D.new()
+	offmount.name = "OffhandMount"
+	offmount.bone_name = PlayerAnimation.OFFHAND_BONE
+	skeleton.add_child(offmount)
 	hands = WeaponHandsIK.new()
 	hands.name = "WeaponHandsIK"
 	hands.hand_hold = PlayerAnimation.HOLD_GUN
@@ -58,10 +67,14 @@ func hold_weapon(weapon_class: StringName, new_hold: WeaponHold) -> Node3D:
 	if weapon != null:
 		weapon.free()
 		weapon = null
+	if offhand != null:
+		offhand.free()
+		offhand = null
 	hold = new_hold
 	hands.hold = hold
 	grip = null
 	hands.grip = null
+	fingers.left_mirrors = hold != null and hold.dual
 	if hold == null:
 		return null
 	weapon = (load(hold.scene) as PackedScene).instantiate() as Node3D
@@ -78,7 +91,25 @@ func hold_weapon(weapon_class: StringName, new_hold: WeaponHold) -> Node3D:
 	if weapon.find_child(PlayerAnimation.MUZZLE_NODE, true, false) == null:
 		weapon.add_child(make_muzzle(hold))
 	mount.add_child(weapon)
+	if hold.dual:
+		offhand = _mirrored_copy(in_hand)
+		offmount.add_child(offhand)
 	return weapon
+
+
+## The second gun of a dual weapon: the model again, in the left hand where the right one's place
+## reflects to (the rig is an exact mirror, so the bone-space place is the right one's with x turned
+## about), the model flipped across its side so the left gun is the right one seen in a mirror.
+func _mirrored_copy(in_hand: Transform3D) -> Node3D:
+	var copy := (load(hold.scene) as PackedScene).instantiate() as Node3D
+	copy.name = "Offhand"
+	var mirrored := Transform3D(
+		WeaponHandsIK.MIRROR * in_hand.basis, WeaponHandsIK.MIRROR * in_hand.origin
+	)
+	copy.transform = mirrored.scaled_local(Vector3.ONE * hold.model_scale)
+	if copy.find_child(PlayerAnimation.MUZZLE_NODE, true, false) == null:
+		copy.add_child(make_muzzle(hold))
+	return copy
 
 
 ## Whether the arms are posed to hold the weapon at the shoulder (a gun), not left to a clip
@@ -92,18 +123,21 @@ func shoulders() -> bool:
 func close_hands() -> void:
 	fingers.grip = grip
 	fingers.right_weight = 1.0 if grip != null else 0.0
-	fingers.left_weight = 1.0 if grip != null and grip.has_left and shoulders() else 0.0
+	var left_holds := grip != null and (hold.dual or (grip.has_left and shoulders()))
+	fingers.left_weight = 1.0 if left_holds else 0.0
 
 
 ## Takes the mount, the arms' pose and the fingers off the skeleton.
 func release() -> void:
-	for node: Node in [mount, hands, fingers]:
+	for node: Node in [mount, offmount, hands, fingers]:
 		if node != null and is_instance_valid(node):
 			# Out of the skeleton now, so the next holder's nodes take the same names.
 			if node.get_parent() != null:
 				node.get_parent().remove_child(node)
 			node.queue_free()
 	mount = null
+	offmount = null
 	hands = null
 	fingers = null
 	weapon = null
+	offhand = null
