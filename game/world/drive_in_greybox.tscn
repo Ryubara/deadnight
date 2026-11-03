@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://world/drive_in/lot_neon_sign.tscn" id="neon_sign"]
 [ext_resource type="PackedScene" path="res://world/machines/recut_machine.tscn" id="recut_machine"]
 [ext_resource type="PackedScene" path="res://world/machines/soda_fountain.tscn" id="soda_fountain"]
+[ext_resource type="PackedScene" path="res://world/machines/perk_machine.tscn" id="perk_machine"]
 [ext_resource type="PackedScene" path="res://world/drive_in/screen_fx.tscn" id="screen_fx"]
 [ext_resource type="PackedScene" path="res://world/drive_in/projector_beam.tscn" id="beam"]
 [ext_resource type="PackedScene" path="res://world/drive_in/glow_pane.tscn" id="pane"]
@@ -2489,13 +2490,78 @@ transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 8.200,
 metadata/kind = "perk"
 metadata/shop_id = "tonic_hearty"
 
-[node name="PlazaPerk" parent="ShopProps" instance=ExtResource("soda_fountain")]
+[node name="PerkRescue" parent="ShopProps" instance=ExtResource("perk_machine")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -15.200, 0.000, 11.000)
+perk = &"swift_rescue"
+
+[node name="PerkRescueBlock" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.125, 1.050, 11.000)
+visible = false
+use_collision = true
+size = Vector3(1.15, 2.1, 1.6)
+material = ExtResource("ammo_crate")
+
+[node name="SpotPerkRescue" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -14.000, 0.000, 11.000)
+metadata/kind = "perk"
+metadata/shop_id = "tonic_swift_rescue"
+
+[node name="PerkLoad" parent="ShopProps" instance=ExtResource("perk_machine")]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 5.350, 0.000, 30.500)
+perk = &"quick_load"
+
+[node name="PerkLoadBlock" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.350, 1.050, 30.500)
+visible = false
+use_collision = true
+size = Vector3(1, 2.1, 1.6)
+material = ExtResource("ammo_crate")
+
+[node name="SpotPerkLoad" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 4.150, 0.000, 30.500)
+metadata/kind = "perk"
+metadata/shop_id = "tonic_quick_load"
+
+[node name="PerkShot" parent="ShopProps" instance=ExtResource("perk_machine")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 24.000, 0.000, 37.200)
+perk = &"double_shot"
+
+[node name="PerkShotBlock" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 24.000, 1.050, 37.200)
+visible = false
+use_collision = true
+size = Vector3(1.6, 2.1, 1)
+material = ExtResource("ammo_crate")
+
+[node name="SpotPerkShot" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 24.000, 0.000, 36.000)
+metadata/kind = "perk"
+metadata/shop_id = "tonic_double_shot"
+
+[node name="PerkShock" parent="ShopProps" instance=ExtResource("perk_machine")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -20.000, 0.000, 37.200)
+perk = &"reload_shock"
+
+[node name="PerkShockBlock" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -20.000, 1.050, 37.200)
+visible = false
+use_collision = true
+size = Vector3(1.6, 2.1, 1)
+material = ExtResource("ammo_crate")
+
+[node name="SpotPerkShock" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -20.000, 0.000, 36.000)
+metadata/kind = "perk"
+metadata/shop_id = "tonic_reload_shock"
+
+[node name="PlazaPerk" parent="ShopProps" instance=ExtResource("perk_machine")]
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 0.000, 0.000, 57.200)
+perk = &"third_holster"
 
 [node name="SpotPlazaPerk" type="Marker3D" parent="ShopSpots"]
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 0.000, 0.000, 56.000)
 metadata/kind = "perk"
-metadata/shop_id = "tonic_hearty"
+metadata/shop_id = "tonic_third_holster"
 
 [node name="LockerField" type="CSGBox3D" parent="ShopProps"]
 transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 3.100, 0.500, -31.000)

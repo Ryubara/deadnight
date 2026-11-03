@@ -198,6 +198,12 @@ near, so the overlay gives them their own numbers (`bot_clear_from` 5 m, `bot_ca
 its own `bot_shopping` list: the first link, the shotgun, the Tommy gun, the first stair, the rifle, the second stair, the
 box). The numbers are in the overlay, not in the bots, and the lot's are unchanged.
 
+The overlay also turns on **`bot_team_links`**: a link a bot can pay for, in a calm with no dead within `bot_clear_from`,
+is bought by the nearest bot that is free (a claim by distance, like a body's), outside the one-errand turn and the
+door's 40 s rotation, so the busy and the far cover instead of waiting. A link set in a stair has a stand at its foot and
+one a flight up; a door's stand is chosen by walking cost (8 m a metre of height), so a bot on the ground floor takes the
+foot, not the flat-nearer stand it would reach only by going round the whole map. The lot leaves the flag off.
+
 ### Proof
 
 `tests/captures/smallmap_bot_night.tscn` plays a night of hosted bots to a round and prints the numbers (`--bots`,

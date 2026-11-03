@@ -13,6 +13,8 @@ const NUMBER_LIFT := Vector3(0.0, 0.3, 0.0)
 const GRENADE_SCALE := 2.0
 ## Lifts a blast's damage number over the zombie's head.
 const BLAST_NUMBER_LIFT := Vector3(0.0, 2.0, 0.0)
+## How hard the shock perk shakes the local player's view (trauma, 0 to 1).
+const SHOCK_SHAKE := 0.25
 ## Where the gibs of a zombie a blast killed start, and how hard they are thrown up.
 const GIB_LIFT := Vector3(0.0, 1.0, 0.0)
 const GIB_THROW := 2.0
@@ -46,6 +48,8 @@ var _state: ClientState
 ## The projectiles in the air, by the server's id: each a copy of the server's shot, stepped with
 ## the same code on every frame, and ended by the server's burst.
 var _projectile_views: Dictionary[int, ProjectileView] = {}
+## Shocks drawn so far: each one's bolts start from a different seed.
+var _shocks := 0
 ## The world's first surface on a segment, as the server's shots see it (made on the first shot).
 var _probe: WorldProbe
 ## The grenades in the air, by the server's id: each a copy of the server's grenade, stepped with
@@ -226,6 +230,8 @@ func _on_event(event: Dictionary) -> void:
 			show_strike(event["shooter_id"])
 		&"reload_started":
 			show_reload(event["shooter_id"], event["seconds"])
+		&"shock_burst":
+			_show_shock(event)
 		&"damage_dealt":
 			began = PerfProbe.begin()
 			if event["melee"]:
@@ -257,6 +263,19 @@ func _on_event(event: Dictionary) -> void:
 			var at: Variant = barricade_points.get(StringName(event["barricade_id"]))
 			if at is Vector3:
 				effects.spark(at + BOARD_LIFT)
+
+
+## The shock perk's burst: the shock shader's ring and bolts on the ground round the player, the
+## zap, and a shake of the view when it is the local player's own.
+func _show_shock(event: Dictionary) -> void:
+	var shock := ShockEffect.new()
+	add_child(shock)
+	shock.play(event["point"], event["radius"], int(event["player_id"]) * 7 + _shocks)
+	_shocks += 1
+	Audio.play(&"shock_zap", event["point"])
+	var body := bodies.call(int(event["player_id"])) as Player
+	if body != null and int(event["player_id"]) == _state.player_id:
+		body.camera_rig.add_shake(SHOCK_SHAKE)
 
 
 func _launch_projectile(event: Dictionary) -> void:

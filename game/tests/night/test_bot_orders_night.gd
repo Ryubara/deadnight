@@ -452,6 +452,10 @@ func _fight_night(order: StringName) -> Dictionary:
 	_place(night, PERSON, spot + Vector3(0.0, 0.0, 6.0))
 	_place(night, 2, spot)
 	_give(night, order, spot)
+	# The places a roaming bot may pick are two near ones: the fight is about what it does with a
+	# zombie in view, not about which of the lot's shop spots it walks to (a new machine moved the pick
+	# to a spot 60 m off, from which the bot outran the zombie for the whole forty seconds).
+	night.level.roam_spots = [spot + Vector3(12.0, 0.0, 0.0), spot + Vector3(-12.0, 0.0, 0.0)]
 	night.run(60 * 8)
 	night.start_round()
 	var zombie := night.drop_zombie(spot + Vector3(0.0, 0.0, -14.0), 1.0)

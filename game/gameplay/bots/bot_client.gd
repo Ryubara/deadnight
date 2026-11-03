@@ -76,6 +76,12 @@ func _init(
 	slot = state.player_id
 
 
+## The bot's own full health from an event about it.
+func _note_max_health(event: Dictionary) -> void:
+	if int(event.get("player_id", -1)) == state.player_id and event.has("max_health"):
+		perception.beliefs.max_health = maxf(float(event["max_health"]), 1.0)
+
+
 ## What the server said this tick. Only what the allow-list lets through reaches the state.
 func hear(events: Array) -> void:
 	var heard := BotEvents.filter(events, state.player_id)
@@ -88,7 +94,11 @@ func hear(events: Array) -> void:
 			&"player_hurt":
 				perception.hear_blow(-float(event.get("bearing", 0.0)))
 				_damage_taken += float(event.get("damage", 0.0))
+				_note_max_health(event)
+			&"player_healed":
+				_note_max_health(event)
 			&"player_added":
+				_note_max_health(event)
 				# The roster labels a bot (`bot`), whoever seated it.
 				if event.get("bot", false):
 					bot_ids[int(event["player_id"])] = true

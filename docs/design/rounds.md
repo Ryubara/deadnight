@@ -224,12 +224,13 @@ started. The defaults are today's game exactly, and every shipped test runs on t
   Every round from 2 is within 10% of 1x (round 2 at 3x is the edge, 10%; the rest are 1 to 8%) and
   round 1, with 4 zombies at 1x, within 15% (12%): the wait before the first zombie and the last one's
   life are fixed, and N zombies have N-1 gaps.
-- **Setting them.** `RulesAction.configure(settings)` (the one action, refused as `wrong_phase` once the night began,
-  as `out_of_range` with field `settings` for a value out of bounds; it answers `settings_changed`), or the
+- **Setting them.** `RulesAction.configure(settings)` (the one action, refused as `wrong_phase` once the night
+  began, as `out_of_range` with field `settings` for a value out of bounds; it answers `settings_changed`), or the
   constructor `GameRules.new(tuning, seed, settings)`, which pulls values into bounds with `clamped()`.
-  `NightServer.new(..., settings)` and `Night.match_settings` (before `start`) carry them for a night on this machine,
-  and `NightScreen.match_settings` is the Play screen's hand-over, taken once. The menu's Solo opens the Play screen (#620),
-  so a night on this machine and a room's host set the same settings on the same `MatchSettingsPanel`.
+  `NightServer.new(..., settings)` and `Night.match_settings` (before `start`) carry them for a night on this
+  machine, and `NightScreen.match_settings` is the Play screen's hand-over, taken once. The menu's Solo opens the
+  Play screen (#620), so a night on this machine and a room's host set the same settings on the same
+  `MatchSettingsPanel`.
 - **For a room host.** `NightHost.configure_match(settings)` is the hook: it applies at once to a night nobody has
   started (returning true), otherwise keeps them for the next night the host builds (false). A `GameServer` room is
   a `NightHost`, so it is `room.configure_match(settings)` after `room.built`, or `room.match_settings = settings`
@@ -328,7 +329,7 @@ Shop (prices at round 1):
 | Wall weapons: shotgun / rifle | 900 / 1200 | per player |
 | Crane play | 550 | a spin, then a random weapon the player lacks to take (shotgun 4, rifle 3, SMG 2, flare gun 1); may break down and refund ([the crane](#the-prize-crane)) |
 | Re-cut of the weapon in hand | 1500, +1500 for each weapon already re-cut | x1.75 damage, x1.5 magazine and reserve limit, filled; once a weapon ([the re-cut](upgrades.md)) |
-| Tonics: second wind / hearty / quick hands / fleet | 750 / 1000 / 1500 / 1500 | one of each, four at most; only hearty does anything yet: +50 most health ([the hearty tonic](upgrades.md#the-hearty-tonic)) |
+| Perks (tonics): hearty / double shot / quick load / third holster / swift rescue / reload shock | 1000 / 3000 / 2500 / 3000 / 1500 / 2000 | one of each, four at most, all lost on a down ([perks](perks.md), the prices [from the simulator](../research/perks.md#numbers)) |
 | Fuel can (+25 units) | 100 + 20 per round | a partial fill pays only for the room |
 | Grenades (+2) | 150 + 5 per round | up to 5 carried; a part purchase pays a part price |
 | Ammunition: revolver / tommy gun / shotgun / rifle / flare gun | 50 / 90 / 80 / 80 / 90 | rounds added: 20 / 60 / 8 / 8 / 2 (see [ammunition](#ammunition)) |
@@ -535,20 +536,20 @@ from the game:
 | Lit ground | `GeneratorState`: a circuit keeps the dead at their round's pace (off it they are faster) only while it is on and the tank has fuel, and every circuit burns fuel |
 | Everything else (where zombies are, whether a shot lands, who buys what) | the model: `SimSkill` and `NightSim` |
 
-**The players.** Three levels of `SimSkill`: how many shots land and where (head, limb, a boss's weak spot),
-how much of the time they shoot (reloads are in the weapon, so this is the time not spent moving or looking),
-how often a blow misses them, how well they read a telegraphed blow, how much of the walk to them is on lit
-ground and which circuits they keep on for it (weak: the screen lot; average: plus the concession; strong: plus
-the booth), and what they buy, in order. Each night draws its own skill within 20% of the level's, so a level is
-a spread of nights. A touch player with the aim assist (`--assist=`, `SimSkill.with_touch_assist`) has the misses
-the assist wins back added to the accuracy, by what a thumb bot measured
-([Touch aim assist](../research/aim-assist.md#how-much-it-is-worth)); the gate's cells never use it. They shoot
-only what they can see (view range falls with the light), face one of four sides
-at a time, revive each other in `ReviveTuning.revive_seconds` (a player nobody reaches within
-`bleed_out_seconds` is dead until the round ends) and mend between rounds, and pick the weapon with the best sustained
-damage a second. **Not modelled:** the other three tonics (they do nothing yet). Grenades, repair, the fence's boards (the
-simulator keeps its own six-second barrier) and the doors' and spots' geometry (they only cost points) are not
-modelled either.
+**The players.** Three levels of `SimSkill`: how many shots land and where (head, limb, a boss's weak spot), how
+much of the time they shoot (reloads are in the weapon, so this is the time not spent moving or looking), how often
+a blow misses them, how well they read a telegraphed blow, how much of the walk to them is on lit ground and which
+circuits they keep on for it (weak: the screen lot; average: plus the concession; strong: plus the booth), and what
+they buy, in order. Each night draws its own skill within 20% of the level's, so a level is a spread of nights. A
+touch player with the aim assist (`--assist=`, `SimSkill.with_touch_assist`) has the misses the assist wins back
+added to the accuracy, by what a thumb bot measured ([Touch aim
+assist](../research/aim-assist.md#how-much-it-is-worth)); the gate's cells never use it. They shoot only what they
+can see (view range falls with the light), face one of four sides at a time, revive each other in
+`ReviveTuning.revive_seconds` (a player nobody reaches within `bleed_out_seconds` is dead until the round ends) and
+mend between rounds, and pick the weapon with the best sustained damage a second. **Not modelled:** the double shot,
+the third holster and the reload shock are in the simulator but on no modelled player's list ([perks
+research](../research/perks.md#what-the-gate-sees)). Grenades, repair, the fence's boards (the simulator keeps its
+own six-second barrier) and the doors' and spots' geometry (they only cost points) are not modelled either.
 
 **Ammunition and the shop** (#152). The players carry the revolver from the start and every weapon
 they buy or win with the reserve the weapon gives; rounds only come from the shop, at the shop's price for the

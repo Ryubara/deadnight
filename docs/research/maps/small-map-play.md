@@ -72,8 +72,12 @@ ceiling (Nacht: "hard to push 20"), where the wall weapons stop improving and he
   reserve, its Tommy gun empty, 4,300 points unspent. It runs from the train and never stops long enough to reload,
   and the dead are slower than it, so nothing ends: the formula's train, held by a bot that does not reload on the
   move. A follow-up issue.
-- **Four bots buy two links.** The turn rule and the calm rule of the bots suit an open lot; a map of three rooms wants
-  the team to go together.
+- **Four bots bought two links (fixed, #696).** The door's turn (the nearest able bot, rotating every 40 s) sat inside
+  the team's one-errand turn (30 s slices, spent on ammo and weapons first), and the holder was rarely free with the dead
+  within 5 m. The map's overlay now sets `bot_team_links`: the nearest free bot buys an affordable link, the others cover.
+  The second stair also needed its stand chosen by height: the flat-nearest stand was the one up the flight, a walk round
+  the map for a bot below. Four bots, rounds to 8, seeds 1 to 5: all three links bought by round 2 (round 3 in one), no
+  bot over twice a link's price for more than 30 s (before, seeds 1 to 3: the second stair never, one bot 400 s over).
 - **The offer card says "the next part of the lot".** The prompt's copy is the lot's; the map's own words are the HUD's.
 - **The kit's solid sills.** The greybox's sills are bodies the walking mesh never reads, so the dead pass them; when the
   kit's window fixtures (CSG sills) replace the boxes, the dead need a way over, as the art page asks.

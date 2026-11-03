@@ -1,18 +1,25 @@
 class_name ShopItem
 extends Resource
-## One thing the shop sells: a door, a weapon, a crane play, a tonic, fuel, grenades, ammunition or
-## a weapon re-cut.
+## One thing the shop sells: a door, a weapon, a crane play, a tonic (a perk, `perks.md`),
+## fuel, grenades, ammunition or a weapon re-cut.
 ##
 ## Data only. The price is a base plus a rise per round, so fuel can get dearer as the night goes
 ## on.
 
 enum Kind { DOOR, WEAPON, CRANE, TONIC, FUEL, GRENADES, AMMO, UPGRADE }
 
+## What a tonic does for the player who has had it (`PerkEffects` reads it, `PerkTuning` has the
+## numbers). The effects follow the genre's perks; the names and the machines are ours.
+enum Effect { NONE, HEALTH, FIRE_RATE, RELOAD_SPEED, EXTRA_WEAPON, REVIVE, SHOCK }
+
 ## A fuel purchase needs at least this much room in the tank.
 const MIN_FUEL_SPACE := 1.0
 
 @export var id: StringName = &""
 @export var kind: Kind = Kind.DOOR
+## The name the prompt card and the machine's board show (a tonic's; the rest are named by the
+## places that sell them).
+@export var display_name: String = ""
 ## Points at round 1.
 @export_range(0, 10000, 5, "or_greater", "suffix:pts") var price: int = 100
 ## Points added to the price for each round after the first.
@@ -22,6 +29,8 @@ const MIN_FUEL_SPACE := 1.0
 @export_range(0.0, 1000.0, 1.0, "or_greater") var amount: float = 0.0
 ## AMMO: the weapon (a `WeaponCatalog` id, `rifle`) whose reserve the purchase fills.
 @export var weapon: StringName = &""
+## TONIC: what having it does. `HEALTH` uses `health_bonus`, the others `PerkTuning`.
+@export var effect: Effect = Effect.NONE
 ## TONIC: health added to the buyer's most (and to their health now), so a perk can make a player
 ## harder to kill. 0 is a tonic with no effect on health.
 @export_range(0.0, 1000.0, 1.0, "or_greater", "suffix:hp") var health_bonus: float = 0.0

@@ -78,11 +78,18 @@ const NEED_HELD_BACK := &"need_held_back"
 
 ## The legs the bot walks on (set by the brain): their word that a stand cannot be reached.
 var legs: BotLegs
+## The team's claims on the links to buy (set by the brain), and whether the errand just run was a
+## link bought for the team (it does not take the one-errand turn).
+var links: BotClaims
+var linking := false
 ## The standing order of the bot (`BotOrders`) and the place its people are at (the person it
 ## follows, or the spot it holds; `Vector3.INF` for none): set by the brain each think, read by the
 ## table of needs.
 var order: StringName = BotOrders.ROAM
 var anchor := Vector3.INF
+## Set by the brain when the bot is Safe (`BotPlayState`): it keeps its distance, so it looks at a
+## person's ping and its own need for rounds only, and goes for rounds only with an empty gun.
+var keeps_distance := false
 ## What the bot decided last, for the ring buffer, and how many of each kind it began.
 var note := ""
 var counts: Dictionary = {}
@@ -176,10 +183,17 @@ func back_off(item_id: StringName, now: float) -> void:
 ## Sets the intent for an errand and returns true, or returns false when the bot has none (or is
 ## in a fight). `threat` is the metres to the nearest dead it knows of. With `needs_only` (a bot
 ## that holds a spot) only what a person's ping names and the bot's own need for rounds are looked
-## at: the rest of the errands wait for an order that lets the bot go.
+## at: the rest of the errands wait for an order that lets the bot go. Without `may_go` (the
+## one-errand turn) the link job is all the bot may do.
 func run(
-	intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: float, needs_only := false
+	intent: BotIntent,
+	beliefs: BotBeliefs,
+	state: ClientState,
+	threat: float,
+	needs_only := false,
+	may_go := true
 ) -> bool:
+	linking = false
 	var me := state.me()
 	if me.is_empty() or me.get("downed", false) or not state.has_frame():
 		return false
@@ -203,10 +217,15 @@ func run(
 	var crane := _crane_wait(intent, me, frame, state.player_id)
 	if crane:
 		return true
+	# A bot that holds a spot leaves it for no link.
+	if not needs_only and _link(intent, beliefs, state, me):
+		linking = true
+		counts["links"] = int(counts.get("links", 0)) + 1
+		return true
 	var jobs: Array[StringName] = [&"marked", &"fuel", &"circuits", &"shopping", &"repairs"]
-	if needs_only:
+	if needs_only or keeps_distance:
 		jobs = [&"marked", &"needs"]
-	for job in jobs:
+	for job in jobs if may_go else []:
 		var took := false
 		match job:
 			&"marked":
@@ -306,6 +325,29 @@ func _shopping(
 	return _carry_out(intent, pick, me, now)
 
 
+## The team's link rule (a map whose overlay sets `BotShop.team_links`): a link the bot can pay for
+## in a calm with no dead near is bought by the nearest bot that is free, whatever the one-errand
+## turn says; the bots busy or far away cover. Claims go by distance (`BotClaims`), and a bot that
+## stops being free lets go of its claim within the lease.
+func _link(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, me: Dictionary) -> bool:
+	if links == null or not _shop.team_links:
+		return false
+	var now := beliefs.now
+	for buy in _found:
+		if buy.prompt != &"door" or (buy.why != BotEconomy.PLAN and buy.why != BotEconomy.PING):
+			continue
+		var apart := _flat(me["pos"], buy.stand)
+		if not links.request(String(buy.item).hash(), state.player_id, apart, now):
+			continue
+		if buy.item != _last_item:
+			_last_item = buy.item
+			_begun = now
+			_arrived_at = -1.0
+		note = "link %s" % buy.item
+		return _carry_out(intent, buy, me, now)
+	return false
+
+
 ## Whether `buy` is rounds the bot wants for itself: not a person's ping (which sits above the
 ## orders) but a need or a top-off. A top-off of a gun the bot is short of is that gun's need.
 func _is_ammo_need(buy: BotEconomy.Buy) -> bool:
@@ -316,6 +358,8 @@ func _is_ammo_need(buy: BotEconomy.Buy) -> bool:
 ## begun is given a little more leash.
 func _verdict(buy: BotEconomy.Buy, me: Dictionary) -> BotNeeds.Verdict:
 	var level := BotNeeds.ammo_level(me.get("arms", {}), _profile.ammo_floor_mags)
+	if keeps_distance and level < BotNeeds.Level.EMPTY:
+		return BotNeeds.Verdict.STAY
 	var slack := BotNeeds.UNDERWAY_SLACK if _flat(_heading, buy.stand) < 1.0 else 0.0
 	var near := BotNeeds.is_near(buy.stand, _here, anchor, slack)
 	return BotNeeds.verdict(BotNeeds.Need.AMMO, order, level, near)
@@ -517,6 +561,7 @@ func _view(
 	view.grenades = beliefs.grenades
 	view.doors_open = frame.get("doors", [])
 	view.bought = state.bought
+	view.perks = int(me.get("perks", 0))
 	var crane: Dictionary = frame.get("crane", {})
 	view.crane_spot = int(crane.get("spot", 0))
 	view.crane_ready = int(crane.get("stage", CraneState.Stage.READY)) == CraneState.Stage.READY
