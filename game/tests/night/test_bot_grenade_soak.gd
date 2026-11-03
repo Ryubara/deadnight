@@ -1,9 +1,10 @@
-# Bots do not hurt themselves or the team with grenades (#805). A grenade blast hurts a player all
-# the way out to its radius (`PlayerBlast`), so a bot that chose a throw as before would hurt
-# someone in a crowd. Three bots follow a person round the lot and fight the dead for a few minutes
-# of game time on several seeds; every blast they make is measured against where every player stood
-# when it went off, from the bodies, not from the server's own events. No one is touched by more
-# than `BotGrenadier.HARMLESS_SHARE` of their health. The numbers are printed for the pull request.
+# Bots do not hurt themselves with grenades (#805), and the team takes nothing from them (#856). A
+# grenade blast hurts its thrower all the way out to its radius (`PlayerBlast`), so a bot that chose
+# a throw as before would hurt itself in a crowd. Three bots follow a person round the lot and
+# fight the dead for a few minutes of game time on several seeds; every blast they make is measured
+# against where the throwing bot stood when it went off, from the body, not from the server's own
+# events. The thrower is touched by no more than `BotGrenadier.HARMLESS_SHARE` of its health, and a
+# teammate by none (no `player_blasted` for them). The numbers are printed for the pull request.
 # How often the bots throw in a free soak depends on the night (and on the runner), so the proof
 # that they do throw is a scripted night: a bot, a pack that stands ten metres off and a person
 # well clear of it, as `test_bot_grenades.gd` does.
@@ -29,32 +30,34 @@ const TOUR := [
 ]
 
 
-## Counts every blast the bots make into `result` and measures it against where every player stands
-## (the bodies, not the server's own events). `person` is the player who is not a bot.
+## Counts every blast the bots make into `result` and measures it against where the bot that threw
+## it stands (the body, not the server's own events). `person` is the player who is not a bot.
+## A `player_blasted` for anyone but the thrower is counted in `mates_blasted`: there must be none.
 func _measure(night: SeatedNight, result: Dictionary, person: int = 1) -> void:
 	var def := night.server.grenades.def
 	night.on_event = func(event: Dictionary) -> void:
-		if event["type"] == &"player_blasted" and event["player_id"] != person:
-			result["bots_hurt_events"] += 1
+		if event["type"] == &"player_blasted" and event["player_id"] != event["thrower_id"]:
+			result["mates_blasted"] += 1
 		if event["type"] != &"grenade_exploded" or event["thrower_id"] == person:
 			return
 		result["blasts"] += 1
-		for id: int in night.server.rules.players:
-			var chest := night.server.body_of(id).global_position + Vector3.UP * def.player_chest
-			var share := PlayerBlast.share(
-				(event["point"] as Vector3).distance_to(chest),
-				def.player_full_radius,
-				def.blast_radius
-			)
-			result["worst"] = maxf(result["worst"], share)
-			result["hurt_events"] += 1 if share > 0.0 else 0
+		var chest := (
+			night.server.body_of(event["thrower_id"]).global_position
+			+ Vector3.UP * def.player_chest
+		)
+		var share := PlayerBlast.share(
+			(event["point"] as Vector3).distance_to(chest), def.player_full_radius, def.blast_radius
+		)
+		result["worst"] = maxf(result["worst"], share)
+		result["hurt_events"] += 1 if share > 0.0 else 0
 
 
 func _empty_result() -> Dictionary:
-	return {"blasts": 0, "worst": 0.0, "hurt_events": 0, "bots_hurt_events": 0}
+	return {"blasts": 0, "worst": 0.0, "hurt_events": 0, "mates_blasted": 0}
 
 
-## One night: the grenades the bots threw, and the worst share of anyone's health any blast took.
+## One night: the grenades the bots threw, and the worst share of its own health any blast took off
+## the bot that threw it.
 func _night(seed_value: int) -> Dictionary:
 	var tuning := SeatedNight.brisk()
 	# Big rounds, so there are packs to throw at, and the dead put in front of the players as the
@@ -117,11 +120,12 @@ func test_a_bot_throws_into_a_pack_and_hurts_no_one() -> void:
 		)
 		. is_greater(0)
 	)
-	assert_int(result["bots_hurt_events"]).is_equal(0)
+	assert_int(result["mates_blasted"]).is_equal(0)
 	assert_float(result["worst"]).is_less_equal(BotGrenadier.HARMLESS_SHARE + 0.001)
 
 
-## The free soak: however often the bots throw on this night, no one is hurt past the limit. (That
+## The free soak: however often the bots throw on this night, no bot is hurt past the limit and no
+## teammate at all. (That
 ## they throw at all is the scripted night's to prove.)
 func test_the_bots_do_not_hurt_themselves_or_the_team_in_a_night() -> void:
 	for seed_value: int in SEEDS:
@@ -129,15 +133,15 @@ func test_the_bots_do_not_hurt_themselves_or_the_team_in_a_night() -> void:
 		print(
 			(
 				(
-					"grenade soak seed %d: %d bot blasts, worst share of anyone's health %.3f, "
-					+ "%d reached a player at all, %d player_blasted events on the bots"
+					"grenade soak seed %d: %d bot blasts, worst share of the thrower's health %.3f, "
+					+ "%d reached the thrower at all, %d player_blasted events on a teammate"
 				)
 				% [
 					seed_value,
 					result["blasts"],
 					result["worst"],
 					result["hurt_events"],
-					result["bots_hurt_events"]
+					result["mates_blasted"]
 				]
 			)
 		)

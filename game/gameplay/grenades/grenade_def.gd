@@ -80,7 +80,7 @@ extends Resource
 @export_range(0.0, 10.0, 0.1, "or_greater", "suffix:s") var stun_seconds: float = 1.6
 
 @export_group("Players")
-## What a blast does to a player, the thrower and the team alike (`PlayerBlast`): all of their
+## What a blast does to its thrower alone, a teammate takes none (`PlayerBlast`): all of their
 ## health inside this radius (a body's width and the hand's reach: a grenade in the hand, at the
 ## feet or against the player), then less with the distance, to nothing at `blast_radius`.
 @export_range(0.0, 10.0, 0.05, "or_greater", "suffix:m") var player_full_radius: float = 1.0
