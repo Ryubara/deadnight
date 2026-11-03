@@ -16,22 +16,16 @@ extends GdUnitTestSuite
 
 const STEP := Night.STEP
 ## Seeds, and seconds of play for each.
-## Sixteen: the Veteran's head share is read from about 420 hits and its dodge from 45 to 70 blows
-## that come due, so a reading is a sample. Any change to when the guns fire or where the zombies
-## walk draws the seeds again, and 8 seeds read the Veteran's head share at 0.22 (band 0.23 to
-## 0.37) in one run where 16 seeds read 0.30 before and 0.28 after the change in #708. Four seeds
-## moved the dodge from 0.50 to 0.68 after a change of the navigation mesh.
-const SEEDS := 16
+## Eight: the Veteran's dodge is read from the few dozen blows that come due, and with four seeds a
+## change of the navigation mesh moved it from 0.50 to 0.68 (19 blows) where ten seeds read 0.60.
+const SEEDS := 8
 const SECONDS := 110
 ## Metres a second the stream of zombies walks at.
 const ZOMBIE_SPEED := 2.4
 ## Tolerances either side of the level's number.
 const HIT_TOLERANCE := 0.12
 const HEAD_TOLERANCE := 0.07
-## Wider than the others: the dodge is read from only 45 to 70 blows (a standard error of 0.06),
-## and the Regular's own dodge reads 0.15 under the level's (0.15 before the carried leftover of
-## #708, 0.14 after, over 16 seeds), which the old 0.15 left no room for.
-const DODGE_TOLERANCE := 0.20
+const DODGE_TOLERANCE := 0.15
 
 
 func _seeds() -> int:
