@@ -271,3 +271,21 @@ func test_the_shots_follow_the_firearms_pitch_and_group_rules() -> void:
 		assert_float(def.pitch_semitones).is_less_equal(ArmsCatalog.FIREARM_PITCH_SEMITONES)
 		assert_str(def.group).is_equal("gun")
 		assert_float(def.near_cap_db).is_equal(0.0)
+
+
+func test_the_combat_servers_status_events_sound_the_freeze() -> void:
+	var at := Vector3(3, 0, 3)
+	var body := ZombieBody.new()
+	body.id = 4
+	body.position = at
+	_tell({"type": &"frame", "players": {}, "zombies": ZombieCodec.encode({4: body})})
+	_tell({"type": &"status_applied", "target_id": 4, "status": &"frozen", "seconds": 3.0})
+	assert_array(_ids()).is_equal([&"freeze_hit"])
+	_sounds.advance(1.0)
+	_tell({"type": &"status_ended", "target_id": 4, "status": &"frozen"})
+	assert_array(_ids()).contains([&"freeze_thaw"])
+	# A shatter carries its place as `position`, and the chilled gets the cold touch only.
+	_tell({"type": &"status_applied", "target_id": 4, "status": &"chilled", "seconds": 3.0})
+	assert_str(_ids()[-1]).is_equal("freeze_hit")
+	_tell({"type": &"zombie_shattered", "zombie_id": 4, "position": at})
+	assert_str(_ids()[-1]).is_equal("freeze_shatter")

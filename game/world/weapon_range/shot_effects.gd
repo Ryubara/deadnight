@@ -40,6 +40,9 @@ var tracers_drawn := 0
 var impacts := ImpactFx.new()
 ## The blood of zombie hits: splashes and the marks they leave, pooled and capped.
 var blood := BloodFx.new()
+## A frozen zombie breaking apart (`zombie_shattered`), and the ray gun's bolt bursting: pooled.
+var shards := IceShatter.new()
+var bolt_bursts := BoltBurst.new()
 
 var _flash: MuzzleFlash
 var _idle: Array[Array] = [[], []]
@@ -52,6 +55,8 @@ var _glow: StandardMaterial3D
 func _ready() -> void:
 	add_child(impacts)
 	add_child(blood)
+	add_child(shards)
+	add_child(bolt_bursts)
 	set_process(false)
 
 
@@ -138,6 +143,16 @@ func tracer(from: Vector3, to: Vector3, radius: float = TRACER_RADIUS) -> void:
 	instance.scale = Vector3(radius, length, radius)
 
 
+## A frozen zombie of `scale` (1 is a walker's height) breaks apart where it stood, at `at`.
+func shatter(at: Vector3, scale: float, seed_value: int) -> void:
+	shards.burst(at, scale, seed_value)
+
+
+## The burst of a projectile weapon with colours of its own, at `at`: swells to its splash radius.
+func bolt_burst(at: Vector3, def: WeaponDef) -> void:
+	bolt_bursts.burst(at, def.splash_radius, def.bolt_core_colour, def.bolt_halo_colour)
+
+
 ## A flash `size` metres across at `at` (or on `anchor`, the weapon's muzzle point, which sets the
 ## place), the barrel pointing along `aim` (the muzzle point's own way when it has one).
 func muzzle_flash(
@@ -175,6 +190,8 @@ func number(at: Vector3, text: String, headshot: bool) -> void:
 func prewarm() -> void:
 	impacts.prewarm()
 	blood.prewarm()
+	shards.prewarm()
+	bolt_bursts.prewarm()
 	for kind in [Kind.TRACER, Kind.NUMBER]:
 		while _made[kind] < (TRACER_POOL if kind == Kind.TRACER else NUMBER_POOL):
 			var live := Live.new()
@@ -192,13 +209,17 @@ func stop_all() -> void:
 	set_process(false)
 	impacts.stop_all()
 	blood.stop_all()
+	shards.stop_all()
+	bolt_bursts.stop_all()
 	if _flash != null:
 		_flash.visible = false
 
 
 ## Whether `node` is part of the effects' own gear, which the warm-up must not free.
 func owns(node: Node) -> bool:
-	if node == impacts or node == blood or node == _flash:
+	if node == impacts or node == blood or node == shards or node == bolt_bursts:
+		return true
+	if node == _flash:
 		return true
 	for live in _live:
 		if live.node == node:
