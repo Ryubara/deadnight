@@ -110,7 +110,7 @@ func test_the_wall_card_says_what_it_will_replace_before_the_points_are_paid() -
 	var night := await _start(hud)
 	var prompt := _stand_at(night, &"weapon_shotgun")
 	assert_str(String(prompt["replaces"])).is_equal("pistol")
-	assert_str(hud.prompt.title_text).is_equal("PUMP SHOTGUN")
+	assert_str(hud.prompt.title_text).is_equal("DOUBLE-BARREL")
 	assert_str(hud.prompt.detail_text).contains("REPLACES")
 	assert_str(hud.prompt.detail_text).contains(
 		String(hud.state.weapon_names[&"pistol"]).to_upper()

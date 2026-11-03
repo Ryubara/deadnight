@@ -175,3 +175,22 @@ func test_solo_with_three_bots_runs_a_night_with_three_bots() -> void:
 	assert_int(night.server.rules.settings.bots).is_equal(3)
 	assert_int(night.bots.count()).is_equal(3)
 	assert_int(night.server.rules.players.size()).is_equal(4)
+
+
+func test_the_bot_skill_shares_the_bots_row_and_the_arrows_reach_it() -> void:
+	# A sixth row would not fit a phone held sideways or a 720p window (test_play_screen.gd).
+	var made := await _boxed(DESKTOP_CANVAS)
+	var screen := made[1] as PlayScreen
+	var panel := screen.panel
+	assert_object(panel.row_for("bot_skill")).is_same(panel.row_for("bots"))
+	assert_bool(panel.skill_selector.is_visible_in_tree()).is_true()
+	assert_object(panel.bots_selector.get_node(panel.bots_selector.focus_neighbor_bottom)).is_same(
+		panel.skill_selector
+	)
+	assert_object(panel.skill_selector.get_node(panel.skill_selector.focus_neighbor_top)).is_same(
+		panel.bots_selector
+	)
+	assert_object(screen.start_button.get_node(screen.start_button.focus_neighbor_top)).is_same(
+		panel.skill_selector
+	)
+	(made[0] as Control).free()
