@@ -1,8 +1,9 @@
 # Formatting and hygiene on every commit, before CI sees it. Install once with `uvx pre-commit install`; run on
 # everything with `uvx pre-commit run --all-files`. Add the language's hooks from the commented blocks below.
 
-# Never rewritten by a hook: licence texts stay verbatim.
-exclude: ^(LICENSE|CODE_OF_CONDUCT\.md)$
+# Never rewritten by a hook: licence texts stay verbatim, and glTF buffers (`.bin`), which `identify` can take for
+# text when their first kilobyte has no zero byte (the end-of-file fixer then appended a newline to two of them).
+exclude: ^(LICENSE|CODE_OF_CONDUCT\.md)$|\.bin$
 
 # gds-sync:begin install-hooks (kit-owned: edit it in the kit, then run `gds sync`)
 # `pre-commit install` sets up all three: the file checks on commit, the message checks at the commit-msg stage, and

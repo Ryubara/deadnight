@@ -1,0 +1,519 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/smallmap/backdrop.gd" id="script"]
+[ext_resource type="Shader" path="res://world/smallmap/backdrop_haze.gdshader" id="haze"]
+[ext_resource type="Shader" path="res://world/drive_in/glow.gdshader" id="glow"]
+[ext_resource type="Shader" path="res://world/drive_in/screen.gdshader" id="screen"]
+[ext_resource type="Texture2D" path="res://assets/smallmap/smallmap_palette.png" id="kit_palette"]
+[ext_resource type="Texture2D" path="res://assets/props/props_palette.png" id="props_palette"]
+[ext_resource type="Texture2D" path="res://assets/drivein/drivein_palette.png" id="drivein_palette"]
+[ext_resource type="Material" path="res://assets/smallmap/materials/frost_ground.tres" id="frost"]
+[ext_resource type="Material" path="res://assets/lot/materials/field_ground.tres" id="asphalt"]
+[ext_resource type="Mesh" path="res://assets/smallmap/bare_tree_a.obj" id="bare_tree_a"]
+[ext_resource type="Mesh" path="res://assets/smallmap/bare_tree_b.obj" id="bare_tree_b"]
+[ext_resource type="Mesh" path="res://assets/smallmap/bare_tree_c.obj" id="bare_tree_c"]
+[ext_resource type="Mesh" path="res://assets/smallmap/bare_tree_a_far.obj" id="bare_tree_a_far"]
+[ext_resource type="Mesh" path="res://assets/smallmap/bare_tree_b_far.obj" id="bare_tree_b_far"]
+[ext_resource type="Mesh" path="res://assets/smallmap/bare_tree_c_far.obj" id="bare_tree_c_far"]
+[ext_resource type="Mesh" path="res://assets/smallmap/utility_pole.obj" id="utility_pole"]
+[ext_resource type="Mesh" path="res://assets/smallmap/utility_pole_far.obj" id="utility_pole_far"]
+[ext_resource type="Mesh" path="res://assets/smallmap/utility_wire.obj" id="utility_wire"]
+[ext_resource type="Mesh" path="res://assets/smallmap/utility_wire_far.obj" id="utility_wire_far"]
+[ext_resource type="Mesh" path="res://assets/smallmap/wire_fence_far.obj" id="wire_fence_far"]
+[ext_resource type="Mesh" path="res://assets/smallmap/fence_post.obj" id="fence_post"]
+[ext_resource type="Mesh" path="res://assets/smallmap/barbed_coil.obj" id="barbed_coil"]
+[ext_resource type="Mesh" path="res://assets/smallmap/neon_sign.obj" id="neon_sign"]
+
+[sub_resource type="ShaderMaterial" id="haze_kit"]
+shader = ExtResource("haze")
+shader_parameter/atlas = ExtResource("kit_palette")
+shader_parameter/glow_cell_a = 6
+shader_parameter/glow_cell_b = 19
+
+[sub_resource type="ShaderMaterial" id="haze_props"]
+shader = ExtResource("haze")
+shader_parameter/atlas = ExtResource("props_palette")
+shader_parameter/glow_cell_a = -1
+shader_parameter/glow_cell_b = -1
+
+[sub_resource type="ShaderMaterial" id="haze_drivein"]
+shader = ExtResource("haze")
+shader_parameter/atlas = ExtResource("drivein_palette")
+shader_parameter/glow_cell_a = 6
+shader_parameter/glow_cell_b = 19
+
+[sub_resource type="ShaderMaterial" id="screen_face"]
+shader = ExtResource("screen")
+shader_parameter/energy = 0.75
+shader_parameter/panel_size = Vector2(32, 12)
+shader_parameter/panel_centre_y = 10
+
+[sub_resource type="ShaderMaterial" id="screen_halo"]
+render_priority = 1
+shader = ExtResource("glow")
+shader_parameter/tint = Color(0.5, 0.62, 0.82, 1)
+shader_parameter/energy = 0.16
+shader_parameter/falloff = 1.4
+shader_parameter/billboard = true
+
+[sub_resource type="ShaderMaterial" id="amber_halo"]
+render_priority = 1
+shader = ExtResource("glow")
+shader_parameter/tint = Color(1, 0.66, 0.3, 1)
+shader_parameter/energy = 0.3
+shader_parameter/falloff = 2.2
+shader_parameter/billboard = true
+
+[sub_resource type="ShaderMaterial" id="neon_halo"]
+render_priority = 1
+shader = ExtResource("glow")
+shader_parameter/tint = Color(1, 0.25, 0.5, 1)
+shader_parameter/energy = 0.42
+shader_parameter/falloff = 2
+shader_parameter/billboard = true
+
+[sub_resource type="ShaderMaterial" id="lamp_halo"]
+render_priority = 1
+shader = ExtResource("glow")
+shader_parameter/tint = Color(1, 0.72, 0.4, 1)
+shader_parameter/energy = 0.5
+shader_parameter/falloff = 2.6
+shader_parameter/billboard = true
+
+[sub_resource type="MultiMesh" id="mm_Yard_WireFence"]
+transform_format = 1
+instance_count = 113
+mesh = ExtResource("wire_fence_far")
+buffer = PackedFloat32Array(1, 0, 0, -31, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, -29, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, -27, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, -25, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, -23, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, -21, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, -19, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, -17, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, -15, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, -13, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, -11, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, -9, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, -7, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, -5, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 3, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 5, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 7, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 9, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 11, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 13, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 15, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 17, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 19, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 21, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 23, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 25, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 27, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 29, 0, 1, 0, 0, 0, 0, 1, -27, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, -27, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, -25, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, -23, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, -21, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, -19, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, -17, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, -15, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, -13, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, -11, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, -9, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, -7, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, -5, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, -3, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, 3, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, 5, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, 7, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, 9, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, 11, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, 13, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, 15, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, 17, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, 19, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, 21, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, 23, 0, 0, -1, 31, 0, 1, 0, 0, 1, 0, 0, 25, -1, 0, 0, 31, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 29, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 27, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 25, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 23, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 21, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 19, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 17, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 15, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 13, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 11, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 9, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 7, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 5, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 3, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, 1, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -1, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -3, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -5, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -7, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -9, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -11, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -13, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -15, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -17, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -19, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -21, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -23, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -25, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -27, 0, 1, 0, 0, 0, 0, -1, 27, -1, 0, 0, -29, 0, 1, 0, 0, 0, 0, -1, 27, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, 27, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, 25, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, 23, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, 21, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, 19, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, 17, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, 15, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, 13, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, 11, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, 9, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, 7, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, 5, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, 3, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, 1, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, -3, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, -5, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, -7, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, -9, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, -11, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, -13, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, -15, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, -17, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, -19, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, -21, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, -23, 0, 0, 1, -31, 0, 1, 0, 0, -1, 0, 0, -25)
+
+[sub_resource type="MultiMesh" id="mm_Yard_FencePosts"]
+transform_format = 1
+instance_count = 6
+mesh = ExtResource("fence_post")
+buffer = PackedFloat32Array(1, 0, 0, 31, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 31, 0, 1, 0, 0, 0, 0, 1, 27, 1, 0, 0, -31, 0, 1, 0, 0, 0, 0, 1, 27, 1, 0, 0, -31, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, -4, 0, 1, 0, 0, 0, 0, 1, -27, 1, 0, 0, 2, 0, 1, 0, 0, 0, 0, 1, -27)
+
+[sub_resource type="MultiMesh" id="mm_Yard_Coils"]
+transform_format = 1
+instance_count = 12
+mesh = ExtResource("barbed_coil")
+buffer = PackedFloat32Array(1, 0, 0, -1, 0, 1, 0, 0, 0, 0, 1, -27.6, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, -27.6, 1, 0, 0, -27, 0, 1, 0, 0, 0, 0, 1, -27.7, 1, 0, 0, -25, 0, 1, 0, 0, 0, 0, 1, -27.7, 1, 0, 0, 25, 0, 1, 0, 0, 0, 0, 1, -27.7, 1, 0, 0, 27, 0, 1, 0, 0, 0, 0, 1, -27.7, 0, 0, 1, 31.7, 0, 1, 0, 0, -1, 0, 0, 6, 0, 0, 1, 31.7, 0, 1, 0, 0, -1, 0, 0, 8, 0, 0, 1, -31.7, 0, 1, 0, 0, -1, 0, 0, -8, 0, 0, 1, -31.7, 0, 1, 0, 0, -1, 0, 0, -6, 1, 0, 0, 8, 0, 1, 0, 0, 0, 0, 1, 27.7, 1, 0, 0, 10, 0, 1, 0, 0, 0, 0, 1, 27.7)
+
+[sub_resource type="MultiMesh" id="mm_Yard_BareTreeA"]
+transform_format = 1
+instance_count = 7
+mesh = ExtResource("bare_tree_a")
+buffer = PackedFloat32Array(-0.1713, 0, -0.8715, 40.274, 0, 0.8882, 0, 0, 0.8715, 0, -0.1713, 18.5291, 1.0014, 0, 0.1238, -38.1354, 0, 1.009, 0, 0, -0.1238, 0, 1.0014, 33.0123, 0.0654, 0, 0.956, -10.3486, 0, 0.9582, 0, 0, -0.956, 0, 0.0654, 38.536, -1.1201, 0, -0.0764, -32.4201, 0, 1.1227, 0, 0, 0.0764, 0, -1.1201, -30.5931, 0.2439, 0, -1.0418, 29.2362, 0, 1.07, 0, 0, 1.0418, 0, 0.2439, 30.4946, -0.2083, 0, 0.8396, -44.2597, 0, 0.865, 0, 0, -0.8396, 0, -0.2083, -36.4498, 0.8831, 0, 0.2887, 30.5487, 0, 0.9291, 0, 0, -0.2887, 0, 0.8831, -38.5035)
+
+[sub_resource type="MultiMesh" id="mm_Yard_BareTreeB"]
+transform_format = 1
+instance_count = 1
+mesh = ExtResource("bare_tree_b")
+buffer = PackedFloat32Array(1.0019, 0, 0.3543, -41.4127, 0, 1.0627, 0, 0, -0.3543, 0, 1.0019, -35.4021)
+
+[sub_resource type="MultiMesh" id="mm_Yard_BareTreeC"]
+transform_format = 1
+instance_count = 8
+mesh = ExtResource("bare_tree_c")
+buffer = PackedFloat32Array(-0.4451, 0, -0.8007, 40.2418, 0, 0.9162, 0, 0, 0.8007, 0, -0.4451, -27.0028, -0.9115, 0, -0.6227, 39.3003, 0, 1.1039, 0, 0, 0.6227, 0, -0.9115, -26.7819, 0.6958, 0, 0.8213, -37.8393, 0, 1.0764, 0, 0, -0.8213, 0, 0.6958, 26.2305, -0.8225, 0, -0.5254, 28.0805, 0, 0.976, 0, 0, 0.5254, 0, -0.8225, 36.7869, 0.814, 0, -0.7873, 5.0713, 0, 1.1324, 0, 0, 0.7873, 0, 0.814, 30.1023, 0.801, 0, -0.4734, 46.3171, 0, 0.9305, 0, 0, 0.4734, 0, 0.801, -11.9372, -0.0886, 0, 1.0169, -21.0068, 0, 1.0207, 0, 0, -1.0169, 0, -0.0886, 35.8522, 0.2368, 0, -1.1099, -36.7553, 0, 1.1348, 0, 0, 1.1099, 0, 0.2368, 8.8564)
+
+[sub_resource type="MultiMesh" id="mm_Woods_BareTreeAFar"]
+transform_format = 1
+instance_count = 17
+mesh = ExtResource("bare_tree_a_far")
+buffer = PackedFloat32Array(0.1053, 0, 0.9599, 81.651, 0, 0.9657, 0, 0, -0.9599, 0, 0.1053, 0.2494, -0.749, 0, -0.8375, 95.0539, 0, 1.1236, 0, 0, 0.8375, 0, -0.749, 10.9428, 0.3216, 0, 1.1637, -47.6832, 0, 1.2073, 0, 0, -1.1637, 0, 0.3216, 56.1244, 0.9181, 0, 0.768, -71.3082, 0, 1.197, 0, 0, -0.768, 0, 0.9181, -10.6337, -0.9298, 0, 0.011, 106.4389, 0, 0.9299, 0, 0, -0.011, 0, -0.9298, 4.6074, 1.0083, 0, -0.09, -44.0627, 0, 1.0123, 0, 0, 0.09, 0, 1.0083, 61.434, 0.6394, 0, 0.6521, 119.2076, 0, 0.9133, 0, 0, -0.6521, 0, 0.6394, -82.3444, 0.9329, 0, -0.1, -107.7802, 0, 0.9382, 0, 0, 0.1, 0, 0.9329, 84.682, 0.5084, 0, 1.0822, 66.9399, 0, 1.1957, 0, 0, -1.0822, 0, 0.5084, 63.5822, 0.8214, 0, -0.4931, -74.5971, 0, 0.958, 0, 0, 0.4931, 0, 0.8214, -120.2141, 0.0198, 0, 0.9967, 68.8178, 0, 0.9969, 0, 0, -0.9967, 0, 0.0198, 65.3038, -1.1972, 0, 0.0129, 116.0264, 0, 1.1973, 0, 0, -0.0129, 0, -1.1972, -57.2034, 0.6056, 0, -1.0809, -77.0789, 0, 1.239, 0, 0, 1.0809, 0, 0.6056, 95.2801, 1.1059, 0, 0.1181, -62.7063, 0, 1.1122, 0, 0, -0.1181, 0, 1.1059, -71.5677, -1.2162, 0, -0.2889, 141.9548, 0, 1.25, 0, 0, 0.2889, 0, -1.2162, 11.4229, 1.0474, 0, 0.7179, -72.0813, 0, 1.2698, 0, 0, -0.7179, 0, 1.0474, 70.1671, 0.4679, 0, -1.0992, -77.6466, 0, 1.1946, 0, 0, 1.0992, 0, 0.4679, -52.865)
+
+[sub_resource type="MultiMesh" id="mm_Woods_BareTreeBFar"]
+transform_format = 1
+instance_count = 28
+mesh = ExtResource("bare_tree_b_far")
+buffer = PackedFloat32Array(-0.6247, 0, 0.8266, 66.3709, 0, 1.0362, 0, 0, -0.8266, 0, -0.6247, -66.856, -1.0418, 0, 0.76, -145.3432, 0, 1.2896, 0, 0, -0.76, 0, -1.0418, 11.4869, 0.5585, 0, -0.8231, -73.0182, 0, 0.9947, 0, 0, 0.8231, 0, 0.5585, 5.9455, -0.3264, 0, 0.9028, -100.6762, 0, 0.96, 0, 0, -0.9028, 0, -0.3264, 68.8985, 1.0993, 0, -0.5927, -16.616, 0, 1.2489, 0, 0, 0.5927, 0, 1.0993, 116.1953, -0.22, 0, 0.9219, 35.7783, 0, 0.9478, 0, 0, -0.9219, 0, -0.22, 76.7444, -0.8837, 0, 0.703, -86.6909, 0, 1.1292, 0, 0, -0.703, 0, -0.8837, -41.8872, -0.3414, 0, -0.8895, 133.4583, 0, 0.9528, 0, 0, 0.8895, 0, -0.3414, -62.4222, -0.8315, 0, -0.8862, 73.0473, 0, 1.2152, 0, 0, 0.8862, 0, -0.8315, -38.2936, 1.1039, 0, 0.3933, -122.1704, 0, 1.1718, 0, 0, -0.3933, 0, 1.1039, -53.6621, 0.0293, 0, -1.0425, -114.7984, 0, 1.043, 0, 0, 1.0425, 0, 0.0293, -92.9798, -1.0513, 0, -0.3202, 115.5355, 0, 1.099, 0, 0, 0.3202, 0, -1.0513, 48.9299, -0.1711, 0, 0.8983, 84.1127, 0, 0.9145, 0, 0, -0.8983, 0, -0.1711, 21.5329, 0.0739, 0, 1.2866, -83.5073, 0, 1.2887, 0, 0, -1.2866, 0, 0.0739, 98.616, -0.9196, 0, -0.6821, -55.0501, 0, 1.145, 0, 0, 0.6821, 0, -0.9196, -68.5912, 0.998, 0, 0.0723, 9.6777, 0, 1.0006, 0, 0, -0.0723, 0, 0.998, 123.4284, 1.2634, 0, -0.261, 6.6771, 0, 1.29, 0, 0, 0.261, 0, 1.2634, 125.9396, 0.8307, 0, -0.627, 53.1785, 0, 1.0407, 0, 0, 0.627, 0, 0.8307, 63.9142, 0.5006, 0, -0.9739, 26.313, 0, 1.095, 0, 0, 0.9739, 0, 0.5006, 62.6272, -0.8481, 0, 0.4371, -41.028, 0, 0.9541, 0, 0, -0.4371, 0, -0.8481, 105.8906, 0.9665, 0, -0.4844, -61.6191, 0, 1.0811, 0, 0, 0.4844, 0, 0.9665, -32.2353, -0.7457, 0, 0.6657, -64.5254, 0, 0.9996, 0, 0, -0.6657, 0, -0.7457, 27.4188, -0.1815, 0, -1.2573, 9.2813, 0, 1.2703, 0, 0, 1.2573, 0, -0.1815, 75.6619, -0.2485, 0, 1.109, 57.1008, 0, 1.1365, 0, 0, -1.109, 0, -0.2485, 90.1782, -1.2163, 0, 0.2898, -64.3735, 0, 1.2503, 0, 0, -0.2898, 0, -1.2163, 3.5346, 0.6846, 0, 1.0459, -34.1888, 0, 1.2501, 0, 0, -1.0459, 0, 0.6846, 83.0772, 0.82, 0, -0.6541, 113.0548, 0, 1.0489, 0, 0, 0.6541, 0, 0.82, -31.0846, -1.0428, 0, -0.4405, -76.7988, 0, 1.1321, 0, 0, 0.4405, 0, -1.0428, -36.2159)
+
+[sub_resource type="MultiMesh" id="mm_Woods_BareTreeCFar"]
+transform_format = 1
+instance_count = 25
+mesh = ExtResource("bare_tree_c_far")
+buffer = PackedFloat32Array(-0.7637, 0, -0.8686, 96.6757, 0, 1.1566, 0, 0, 0.8686, 0, -0.7637, 73.8238, 0.6469, 0, 0.9477, 89.6514, 0, 1.1474, 0, 0, -0.9477, 0, 0.6469, 115.3108, -0.9017, 0, -0.0021, 115.7332, 0, 0.9017, 0, 0, 0.0021, 0, -0.9017, -43.6816, 0.255, 0, 0.9354, -105.9249, 0, 0.9695, 0, 0, -0.9354, 0, 0.255, -69.517, 0.9009, 0, 0.0166, 113.128, 0, 0.901, 0, 0, -0.0166, 0, 0.9009, 61.1016, -0.8027, 0, 0.9059, -114.1215, 0, 1.2104, 0, 0, -0.9059, 0, -0.8027, 19.7835, -0.8901, 0, -0.6711, -98.1849, 0, 1.1147, 0, 0, 0.6711, 0, -0.8901, -54.8192, 0.4811, 0, -0.8671, 142.0567, 0, 0.9916, 0, 0, 0.8671, 0, 0.4811, -37.1721, 1.0223, 0, 0.5323, 116.1076, 0, 1.1526, 0, 0, -0.5323, 0, 1.0223, 5.8534, 0.2311, 0, -1.2272, -60.1729, 0, 1.2487, 0, 0, 1.2272, 0, 0.2311, 95.1567, 0.2529, 0, -1.1923, -105.2993, 0, 1.2189, 0, 0, 1.1923, 0, 0.2529, 4.7416, 0.0246, 0, 1.2769, -61.8666, 0, 1.2771, 0, 0, -1.2769, 0, 0.0246, -25.5123, 0.3562, 0, 0.972, -41.8777, 0, 1.0352, 0, 0, -0.972, 0, 0.3562, 86.3434, -0.7352, 0, 0.9804, 81.191, 0, 1.2254, 0, 0, -0.9804, 0, -0.7352, -1.4816, 0.7377, 0, 0.6161, -15.9822, 0, 0.9611, 0, 0, -0.6161, 0, 0.7377, 83.5699, 1.0886, 0, 0.4904, -79.7528, 0, 1.194, 0, 0, -0.4904, 0, 1.0886, -43.733, 0.6249, 0, 0.9756, -98.525, 0, 1.1585, 0, 0, -0.9756, 0, 0.6249, -36.5531, -0.5063, 0, 0.8548, 96.1172, 0, 0.9935, 0, 0, -0.8548, 0, -0.5063, -48.1105, 1.2652, 0, 0.045, -65.8529, 0, 1.266, 0, 0, -0.045, 0, 1.2652, -29.1877, 0.9797, 0, -0.2529, 35.0768, 0, 1.0119, 0, 0, 0.2529, 0, 0.9797, 91.6621, 0.1659, 0, -0.9377, 18.6801, 0, 0.9523, 0, 0, 0.9377, 0, 0.1659, 138.2972, -0.4737, 0, -0.9437, -110.1686, 0, 1.0559, 0, 0, 0.9437, 0, -0.4737, 30.5302, 0.0247, 0, -0.9078, -18.7696, 0, 0.9082, 0, 0, 0.9078, 0, 0.0247, 144.134, 0.0759, 0, 0.9537, 149.3523, 0, 0.9567, 0, 0, -0.9537, 0, 0.0759, -10.9218, 0.6199, 0, -0.8081, -66.0308, 0, 1.0185, 0, 0, 0.8081, 0, 0.6199, 68.3819)
+
+[sub_resource type="MultiMesh" id="mm_Lines_Poles"]
+transform_format = 1
+instance_count = 16
+mesh = ExtResource("utility_pole")
+buffer = PackedFloat32Array(1, 0, 0, -48, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, -36, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, -24, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, -12, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 12, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 24, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 36, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 48, 0, 1, 0, 0, 0, 0, 1, 41, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, 29, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, 17, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, 5, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -7, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -19, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -31, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -43)
+
+[sub_resource type="MultiMesh" id="mm_Lines_PolesFar"]
+transform_format = 1
+instance_count = 12
+mesh = ExtResource("utility_pole_far")
+buffer = PackedFloat32Array(1, 0, 0, -84, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, -72, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, -60, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 60, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 72, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 84, 0, 1, 0, 0, 0, 0, 1, 41, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -55, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -67, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -79, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -91, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -103, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -115)
+
+[sub_resource type="MultiMesh" id="mm_Lines_Wires"]
+transform_format = 1
+instance_count = 17
+mesh = ExtResource("utility_wire")
+buffer = PackedFloat32Array(1, 0, 0, -48, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, -36, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, -24, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, -12, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 12, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 24, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 36, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 48, 0, 1, 0, 0, 0, 0, 1, 41, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, 41, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, 29, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, 17, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, 5, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -7, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -19, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -31, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -43)
+
+[sub_resource type="MultiMesh" id="mm_Lines_WiresFar"]
+transform_format = 1
+instance_count = 10
+mesh = ExtResource("utility_wire_far")
+buffer = PackedFloat32Array(1, 0, 0, -84, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, -72, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, -60, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 60, 0, 1, 0, 0, 0, 0, 1, 41, 1, 0, 0, 72, 0, 1, 0, 0, 0, 0, 1, 41, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -55, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -67, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -79, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -91, 0, 0, 1, 48, 0, 1, 0, 0, -1, 0, 0, -103)
+
+[sub_resource type="MultiMesh" id="mm_Lot_ScreenFrame"]
+transform_format = 1
+instance_count = 1
+buffer = PackedFloat32Array(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, -120)
+
+[sub_resource type="QuadMesh" id="screen_quad"]
+size = Vector2(32, 12)
+
+[sub_resource type="QuadMesh" id="screen_halo_quad"]
+size = Vector2(64, 34)
+
+[sub_resource type="MultiMesh" id="mm_Lot_CarsRed"]
+transform_format = 1
+instance_count = 5
+buffer = PackedFloat32Array(0.9997, 0, 0.0256, 0, 0, 1, 0, 0, -0.0256, 0, 0.9997, -101, 0.9037, 0, 0.4282, 13.2, 0, 1, 0, 0, -0.4282, 0, 0.9037, -89.9091, 0.9979, 0, -0.0647, -4.4, 0, 1, 0, 0, 0.0647, 0, 0.9979, -82.7677, 0.9998, 0, 0.0195, 0, 0, 1, 0, 0, -0.0195, 0, 0.9998, -83, 0.9916, 0, 0.1296, 4.4, 0, 1, 0, 0, -0.1296, 0, 0.9916, -82.7677)
+
+[sub_resource type="MultiMesh" id="mm_Lot_CarsBlue"]
+transform_format = 1
+instance_count = 2
+buffer = PackedFloat32Array(0.9119, 0, 0.4105, 8.8, 0, 1, 0, 0, -0.4105, 0, 0.9119, -100.0707, 0.8455, 0, 0.534, 22, 0, 1, 0, 0, -0.534, 0, 0.8455, -86.192)
+
+[sub_resource type="MultiMesh" id="mm_Lot_CarsCream"]
+transform_format = 1
+instance_count = 6
+buffer = PackedFloat32Array(0.7221, 0, -0.6918, -22, 0, 1, 0, 0, 0.6918, 0, 0.7221, -95.192, 0.8406, 0, -0.5417, -22, 0, 1, 0, 0, 0.5417, 0, 0.8406, -86.192, 0.9, 0, -0.4358, -13.2, 0, 1, 0, 0, 0.4358, 0, 0.9, -89.9091, 0.9977, 0, 0.0676, 0, 0, 1, 0, 0, -0.0676, 0, 0.9977, -92, 0.9501, 0, -0.312, -13.2, 0, 1, 0, 0, 0.312, 0, 0.9501, -80.9091, 0.9709, 0, 0.2396, 8.8, 0, 1, 0, 0, -0.2396, 0, 0.9709, -82.0707)
+
+[sub_resource type="MultiMesh" id="mm_Lot_CarsGreen"]
+transform_format = 1
+instance_count = 7
+buffer = PackedFloat32Array(0.771, 0, -0.6369, -17.6, 0, 1, 0, 0, 0.6369, 0, 0.771, -97.2829, 0.8223, 0, -0.5691, -13.2, 0, 1, 0, 0, 0.5691, 0, 0.8223, -98.9091, 0.8926, 0, -0.4508, -8.8, 0, 1, 0, 0, 0.4508, 0, 0.8926, -100.0707, 0.9646, 0, 0.2638, 4.4, 0, 1, 0, 0, -0.2638, 0, 0.9646, -100.7677, 0.7128, 0, 0.7013, 22, 0, 1, 0, 0, -0.7013, 0, 0.7128, -95.192, 0.8841, 0, 0.4672, 17.6, 0, 1, 0, 0, -0.4672, 0, 0.8841, -88.2829, 0.9585, 0, -0.2851, -8.8, 0, 1, 0, 0, 0.2851, 0, 0.9585, -82.0707)
+
+[sub_resource type="MultiMesh" id="mm_Lot_CarsYellow"]
+transform_format = 1
+instance_count = 3
+buffer = PackedFloat32Array(0.89, 0, -0.4559, -17.6, 0, 1, 0, 0, 0.4559, 0, 0.89, -88.2829, 0.8936, 0, -0.4489, -22, 0, 1, 0, 0, 0.4489, 0, 0.8936, -77.192, 0.9196, 0, -0.3929, -17.6, 0, 1, 0, 0, 0.3929, 0, 0.9196, -79.2829)
+
+[sub_resource type="MultiMesh" id="mm_Lot_Lamps"]
+transform_format = 1
+instance_count = 6
+buffer = PackedFloat32Array(0.9465, 0, 0.3227, -30, 0, 1, 0, 0, -0.3227, 0, 0.9465, -88, 0.9465, 0, -0.3227, 30, 0, 1, 0, 0, 0.3227, 0, 0.9465, -88, 0.9839, 0, 0.1789, -12, 0, 1, 0, 0, -0.1789, 0, 0.9839, -66, 0.9839, 0, -0.1789, 12, 0, 1, 0, 0, 0.1789, 0, 0.9839, -66, 0.9622, 0, 0.2723, -30, 0, 1, 0, 0, -0.2723, 0, 0.9622, -106, 0.9622, 0, -0.2723, 30, 0, 1, 0, 0, 0.2723, 0, 0.9622, -106)
+
+[sub_resource type="QuadMesh" id="lamp_halo_quad"]
+size = Vector2(3.2, 3.2)
+
+[sub_resource type="MultiMesh" id="mm_Lot_LampHalos"]
+transform_format = 1
+instance_count = 6
+mesh = SubResource("lamp_halo_quad")
+buffer = PackedFloat32Array(1, 0, 0, -30, 0, 1, 0, 4.4, 0, 0, 1, -88, 1, 0, 0, 30, 0, 1, 0, 4.4, 0, 0, 1, -88, 1, 0, 0, -12, 0, 1, 0, 4.4, 0, 0, 1, -66, 1, 0, 0, 12, 0, 1, 0, 4.4, 0, 0, 1, -66, 1, 0, 0, -30, 0, 1, 0, 4.4, 0, 0, 1, -106, 1, 0, 0, 30, 0, 1, 0, 4.4, 0, 0, 1, -106)
+
+[sub_resource type="MultiMesh" id="mm_Lot_Marquee"]
+transform_format = 1
+instance_count = 1
+buffer = PackedFloat32Array(0.8995, 0, -0.4369, 34, 0, 1, 0, 0, 0.4369, 0, 0.8995, -70)
+
+[sub_resource type="QuadMesh" id="marquee_halo_quad"]
+size = Vector2(11, 6)
+
+[sub_resource type="MultiMesh" id="mm_Lot_Booth"]
+transform_format = 1
+instance_count = 1
+buffer = PackedFloat32Array(0.8279, 0, -0.5608, 42, 0, 1, 0, 0, 0.5608, 0, 0.8279, -62)
+
+[sub_resource type="MultiMesh" id="mm_Lot_NeonSign"]
+transform_format = 1
+instance_count = 1
+mesh = ExtResource("neon_sign")
+buffer = PackedFloat32Array(0.9267, 0, 0.3757, -30, 0, 1, 0, 0, -0.3757, 0, 0.9267, -74)
+
+[sub_resource type="QuadMesh" id="neon_halo_quad"]
+size = Vector2(13, 6)
+
+[sub_resource type="MultiMesh" id="mm_Lot_Fence"]
+transform_format = 1
+instance_count = 17
+buffer = PackedFloat32Array(1, 0, 0, -34, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, -31.87, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, -29.74, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, -27.61, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, -25.48, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, -23.35, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, -21.22, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, -19.09, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, -16.96, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, -14.83, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, 13, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, 15.13, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, 17.26, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, 19.39, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, 21.52, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, 23.65, 0, 1, 0, 0, 0, 0, 1, -60, 1, 0, 0, 25.78, 0, 1, 0, 0, 0, 0, 1, -60)
+
+[sub_resource type="MultiMesh" id="mm_Fires_Wreck_Model"]
+transform_format = 1
+instance_count = 1
+buffer = PackedFloat32Array(0.866, 0, 0.5, 0, 0, 1, 0, 0, -0.5, 0, 0.866, 0)
+
+[sub_resource type="ShaderMaterial" id="flame_Wreck"]
+render_priority = 1
+shader = ExtResource("glow")
+shader_parameter/tint = Color(1, 0.5, 0.16, 1)
+shader_parameter/energy = 1.5
+shader_parameter/falloff = 1.3
+shader_parameter/billboard = true
+
+[sub_resource type="ShaderMaterial" id="fire_halo_Wreck"]
+render_priority = 1
+shader = ExtResource("glow")
+shader_parameter/tint = Color(1, 0.45, 0.15, 1)
+shader_parameter/energy = 0.35
+shader_parameter/falloff = 2.4
+shader_parameter/billboard = true
+
+[sub_resource type="QuadMesh" id="flame_quad_Wreck"]
+size = Vector2(1.76, 2.56)
+
+[sub_resource type="QuadMesh" id="fire_halo_quad_Wreck"]
+size = Vector2(11.2, 8)
+
+[sub_resource type="MultiMesh" id="mm_Fires_Barrel_Model"]
+transform_format = 1
+instance_count = 1
+buffer = PackedFloat32Array(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0)
+
+[sub_resource type="ShaderMaterial" id="flame_Barrel"]
+render_priority = 1
+shader = ExtResource("glow")
+shader_parameter/tint = Color(1, 0.5, 0.16, 1)
+shader_parameter/energy = 1.5
+shader_parameter/falloff = 1.3
+shader_parameter/billboard = true
+
+[sub_resource type="ShaderMaterial" id="fire_halo_Barrel"]
+render_priority = 1
+shader = ExtResource("glow")
+shader_parameter/tint = Color(1, 0.45, 0.15, 1)
+shader_parameter/energy = 0.35
+shader_parameter/falloff = 2.4
+shader_parameter/billboard = true
+
+[sub_resource type="QuadMesh" id="flame_quad_Barrel"]
+size = Vector2(1.1, 1.6)
+
+[sub_resource type="QuadMesh" id="fire_halo_quad_Barrel"]
+size = Vector2(7, 5)
+
+[node name="Backdrop" type="Node3D" node_paths=PackedStringArray("screen_face", "fires")]
+script = ExtResource("script")
+screen_face = NodePath("Lot/ScreenFace")
+fires = [NodePath("Fires/Wreck/Flame"), NodePath("Fires/Barrel/Flame")]
+metadata/yard_half = Vector2(31, 27)
+
+[node name="Ground" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.22, 0)
+cast_shadow = 0
+size = Vector3(360, 0.4, 360)
+material = ExtResource("frost")
+
+[node name="Yard" type="Node3D" parent="."]
+
+[node name="WireFence" type="MultiMeshInstance3D" parent="Yard"]
+material_override = SubResource("haze_kit")
+cast_shadow = 0
+multimesh = SubResource("mm_Yard_WireFence")
+
+[node name="FencePosts" type="MultiMeshInstance3D" parent="Yard"]
+material_override = SubResource("haze_kit")
+cast_shadow = 0
+multimesh = SubResource("mm_Yard_FencePosts")
+
+[node name="Coils" type="MultiMeshInstance3D" parent="Yard"]
+material_override = SubResource("haze_kit")
+cast_shadow = 0
+multimesh = SubResource("mm_Yard_Coils")
+
+[node name="BareTreeA" type="MultiMeshInstance3D" parent="Yard"]
+material_override = SubResource("haze_kit")
+cast_shadow = 0
+multimesh = SubResource("mm_Yard_BareTreeA")
+
+[node name="BareTreeB" type="MultiMeshInstance3D" parent="Yard"]
+material_override = SubResource("haze_kit")
+cast_shadow = 0
+multimesh = SubResource("mm_Yard_BareTreeB")
+
+[node name="BareTreeC" type="MultiMeshInstance3D" parent="Yard"]
+material_override = SubResource("haze_kit")
+cast_shadow = 0
+multimesh = SubResource("mm_Yard_BareTreeC")
+
+[node name="Woods" type="Node3D" parent="."]
+
+[node name="BareTreeAFar" type="MultiMeshInstance3D" parent="Woods"]
+material_override = SubResource("haze_kit")
+cast_shadow = 0
+multimesh = SubResource("mm_Woods_BareTreeAFar")
+
+[node name="BareTreeBFar" type="MultiMeshInstance3D" parent="Woods"]
+material_override = SubResource("haze_kit")
+cast_shadow = 0
+multimesh = SubResource("mm_Woods_BareTreeBFar")
+
+[node name="BareTreeCFar" type="MultiMeshInstance3D" parent="Woods"]
+material_override = SubResource("haze_kit")
+cast_shadow = 0
+multimesh = SubResource("mm_Woods_BareTreeCFar")
+
+[node name="Lines" type="Node3D" parent="."]
+
+[node name="Poles" type="MultiMeshInstance3D" parent="Lines"]
+material_override = SubResource("haze_kit")
+cast_shadow = 0
+multimesh = SubResource("mm_Lines_Poles")
+
+[node name="PolesFar" type="MultiMeshInstance3D" parent="Lines"]
+material_override = SubResource("haze_kit")
+cast_shadow = 0
+multimesh = SubResource("mm_Lines_PolesFar")
+
+[node name="Wires" type="MultiMeshInstance3D" parent="Lines"]
+material_override = SubResource("haze_kit")
+cast_shadow = 0
+multimesh = SubResource("mm_Lines_Wires")
+
+[node name="WiresFar" type="MultiMeshInstance3D" parent="Lines"]
+material_override = SubResource("haze_kit")
+cast_shadow = 0
+multimesh = SubResource("mm_Lines_WiresFar")
+
+[node name="Lot" type="Node3D" parent="."]
+
+[node name="Asphalt" type="CSGBox3D" parent="Lot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, -92)
+cast_shadow = 0
+size = Vector3(76, 0.1, 64)
+material = ExtResource("asphalt")
+
+[node name="ScreenFrame" type="MultiMeshInstance3D" parent="Lot"]
+material_override = SubResource("haze_drivein")
+cast_shadow = 0
+multimesh = SubResource("mm_Lot_ScreenFrame")
+metadata/source = "res://assets/drivein/screen_frame.gltf"
+
+[node name="ScreenFace" type="MeshInstance3D" parent="Lot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, -119.2)
+cast_shadow = 0
+mesh = SubResource("screen_quad")
+material_override = SubResource("screen_face")
+
+[node name="ScreenHalo" type="MeshInstance3D" parent="Lot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, -117)
+cast_shadow = 0
+mesh = SubResource("screen_halo_quad")
+material_override = SubResource("screen_halo")
+
+[node name="CarsRed" type="MultiMeshInstance3D" parent="Lot"]
+material_override = SubResource("haze_props")
+cast_shadow = 0
+multimesh = SubResource("mm_Lot_CarsRed")
+metadata/source = "res://assets/props/car_red.gltf"
+
+[node name="CarsBlue" type="MultiMeshInstance3D" parent="Lot"]
+material_override = SubResource("haze_props")
+cast_shadow = 0
+multimesh = SubResource("mm_Lot_CarsBlue")
+metadata/source = "res://assets/props/car_blue.gltf"
+
+[node name="CarsCream" type="MultiMeshInstance3D" parent="Lot"]
+material_override = SubResource("haze_props")
+cast_shadow = 0
+multimesh = SubResource("mm_Lot_CarsCream")
+metadata/source = "res://assets/props/car_cream.gltf"
+
+[node name="CarsGreen" type="MultiMeshInstance3D" parent="Lot"]
+material_override = SubResource("haze_props")
+cast_shadow = 0
+multimesh = SubResource("mm_Lot_CarsGreen")
+metadata/source = "res://assets/props/car_green.gltf"
+
+[node name="CarsYellow" type="MultiMeshInstance3D" parent="Lot"]
+material_override = SubResource("haze_props")
+cast_shadow = 0
+multimesh = SubResource("mm_Lot_CarsYellow")
+metadata/source = "res://assets/props/car_yellow.gltf"
+
+[node name="Lamps" type="MultiMeshInstance3D" parent="Lot"]
+material_override = SubResource("haze_props")
+cast_shadow = 0
+multimesh = SubResource("mm_Lot_Lamps")
+metadata/source = "res://assets/props/street_light.gltf"
+
+[node name="LampHalos" type="MultiMeshInstance3D" parent="Lot"]
+material_override = SubResource("lamp_halo")
+cast_shadow = 0
+multimesh = SubResource("mm_Lot_LampHalos")
+
+[node name="Marquee" type="MultiMeshInstance3D" parent="Lot"]
+material_override = SubResource("haze_drivein")
+cast_shadow = 0
+multimesh = SubResource("mm_Lot_Marquee")
+metadata/source = "res://assets/drivein/marquee.gltf"
+
+[node name="MarqueeHalo" type="MeshInstance3D" parent="Lot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34, 4.4, -69)
+cast_shadow = 0
+mesh = SubResource("marquee_halo_quad")
+material_override = SubResource("amber_halo")
+
+[node name="Booth" type="MultiMeshInstance3D" parent="Lot"]
+material_override = SubResource("haze_drivein")
+cast_shadow = 0
+multimesh = SubResource("mm_Lot_Booth")
+metadata/source = "res://assets/drivein/ticket_booth.gltf"
+
+[node name="NeonSign" type="MultiMeshInstance3D" parent="Lot"]
+material_override = SubResource("haze_kit")
+cast_shadow = 0
+multimesh = SubResource("mm_Lot_NeonSign")
+
+[node name="NeonHalo" type="MeshInstance3D" parent="Lot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 6.9, -73)
+cast_shadow = 0
+mesh = SubResource("neon_halo_quad")
+material_override = SubResource("neon_halo")
+
+[node name="Fence" type="MultiMeshInstance3D" parent="Lot"]
+material_override = SubResource("haze_props")
+cast_shadow = 0
+multimesh = SubResource("mm_Lot_Fence")
+metadata/source = "res://assets/props/fence_long.gltf"
+
+[node name="Fires" type="Node3D" parent="."]
+
+[node name="Wreck" type="Node3D" parent="Fires"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 0, -40)
+
+[node name="Model" type="MultiMeshInstance3D" parent="Fires/Wreck"]
+material_override = SubResource("haze_props")
+cast_shadow = 0
+multimesh = SubResource("mm_Fires_Wreck_Model")
+metadata/source = "res://assets/props/broken_car.gltf"
+
+[node name="Flame" type="MeshInstance3D" parent="Fires/Wreck"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+cast_shadow = 0
+mesh = SubResource("flame_quad_Wreck")
+material_override = SubResource("flame_Wreck")
+
+[node name="Halo" type="MeshInstance3D" parent="Fires/Wreck"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, 0)
+cast_shadow = 0
+mesh = SubResource("fire_halo_quad_Wreck")
+material_override = SubResource("fire_halo_Wreck")
+
+[node name="Barrel" type="Node3D" parent="Fires"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, 36)
+
+[node name="Model" type="MultiMeshInstance3D" parent="Fires/Barrel"]
+material_override = SubResource("haze_props")
+cast_shadow = 0
+multimesh = SubResource("mm_Fires_Barrel_Model")
+metadata/source = "res://assets/props/barrel.gltf"
+
+[node name="Flame" type="MeshInstance3D" parent="Fires/Barrel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+cast_shadow = 0
+mesh = SubResource("flame_quad_Barrel")
+material_override = SubResource("flame_Barrel")
+
+[node name="Halo" type="MeshInstance3D" parent="Fires/Barrel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+cast_shadow = 0
+mesh = SubResource("fire_halo_quad_Barrel")
+material_override = SubResource("fire_halo_Barrel")

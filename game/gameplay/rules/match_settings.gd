@@ -20,12 +20,20 @@ const AUTO := 0
 ## The explicit break: at least a second.
 const MIN_BREAK := 1.0
 const MAX_BREAK := 120.0
+## Bots the night seats beside the people: none to `MAX_BOTS`. In a room they take only the seats
+## people leave free (`NightBots.target`).
+const MIN_BOTS := 0
+const MAX_BOTS := 3
 ## The keys of `to_dict`, each with the type it must have (a whole number also fits a float).
 const KEYS := {
 	"count_multiplier": TYPE_FLOAT,
 	"max_alive": TYPE_INT,
 	"break_seconds": TYPE_FLOAT,
+	"bots": TYPE_INT,
 }
+## Keys a snapshot, a ticket or an action may leave out (a build from before the key): they mean
+## their default, so an older backend's ticket or server's WELCOME still carries the other settings.
+const OPTIONAL_KEYS: Array[String] = ["bots"]
 
 ## The night's intensity. Round N brings the tuned count times this (rounded, at least one) and the
 ## dead come this many times as fast (the spawn interval divides by it, down to
@@ -40,6 +48,9 @@ const KEYS := {
 ## Seconds of break between rounds; 0 is the tuned break (`RoundTuning.break_seconds`). The wait
 ## before round 1 and the longer break before a special round are unchanged.
 @export_range(0.0, 120.0, 1.0) var break_seconds: float = 0.0
+## Bots at the start of the night, 0 to `MAX_BOTS`. Solo seats this many beside the person; a room
+## seats as many as the people leave seats free, and a person who joins takes a bot's seat.
+@export_range(0, 3, 1) var bots: int = MIN_BOTS
 
 
 ## The defaults: today's game.
@@ -48,10 +59,11 @@ func is_default() -> bool:
 		is_equal_approx(count_multiplier, 1.0)
 		and max_alive == AUTO
 		and is_zero_approx(break_seconds)
+		and bots == MIN_BOTS
 	)
 
 
-## Whether `other` holds the same three values.
+## Whether `other` holds the same values.
 func same_as(other: MatchSettings) -> bool:
 	return other != null and to_dict() == other.to_dict()
 
@@ -97,6 +109,7 @@ func to_dict() -> Dictionary:
 		"count_multiplier": count_multiplier,
 		"max_alive": max_alive,
 		"break_seconds": break_seconds,
+		"bots": bots,
 	}
 
 
@@ -104,6 +117,8 @@ func to_dict() -> Dictionary:
 ## `&""` when it is fine. Strict: a value outside the bounds is refused, not clamped.
 static func problem(data: Dictionary) -> StringName:
 	for key: String in KEYS:
+		if not data.has(key) and OPTIONAL_KEYS.has(key):
+			continue
 		if not data.has(key) or not SnapshotCheck.fits_type(data[key], KEYS[key]):
 			return StringName(key)
 	if not _in_range(data["count_multiplier"], MIN_COUNT_MULTIPLIER, MAX_COUNT_MULTIPLIER):
@@ -112,6 +127,8 @@ static func problem(data: Dictionary) -> StringName:
 		return &"max_alive"
 	if not _is_auto_or_in_range(data["break_seconds"], MIN_BREAK, MAX_BREAK):
 		return &"break_seconds"
+	if data.has("bots") and (data["bots"] < MIN_BOTS or data["bots"] > MAX_BOTS):
+		return &"bots"
 	return &""
 
 
@@ -124,6 +141,7 @@ static func from_dict(data: Dictionary) -> MatchSettings:
 	out.count_multiplier = float(data["count_multiplier"])
 	out.max_alive = data["max_alive"]
 	out.break_seconds = float(data["break_seconds"])
+	out.bots = int(data.get("bots", MIN_BOTS))
 	return out
 
 
@@ -156,6 +174,7 @@ func clamped() -> MatchSettings:
 	out.count_multiplier = clampf(count_multiplier, MIN_COUNT_MULTIPLIER, MAX_COUNT_MULTIPLIER)
 	out.max_alive = clampi(max_alive, AUTO, _alive_ceiling())
 	out.break_seconds = _clamp_optional(break_seconds, MIN_BREAK, MAX_BREAK)
+	out.bots = clampi(bots, MIN_BOTS, MAX_BOTS)
 	return out
 
 

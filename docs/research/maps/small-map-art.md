@@ -110,6 +110,10 @@ purchase (a door, a buy, the box).
 Budget rules from the lot that bind here ([lamps and glow](../night-environment.md#lamps-and-glow-issue-244)):
 at most 8 lights reach a mesh, 6 so a fight has room. Tight rooms help: walls, floors and ceilings are cut per room,
 so a room's mesh is reached by its own one or two lamps and a neighbour's spill. Most "lights" are quads.
+The greybox's lamps are counted the same way (`tests/world/smallmap/test_smallmap_light_cap.gd`), and its
+directional moon is 0.1 against the lot's 0.36: indoors, with no shadow, it would lift every floor evenly (kit
+`docs/godot/compat-lighting.md`, Light cards indoors). A new scene with a light is listed in the lot suite's
+`LIGHT_SCENES`, which walks the whole project.
 
 ## Scale
 
@@ -138,6 +142,11 @@ cross-check the storey height.
 | Box | about 1.5 m long, top about 0.8 m | the box image | the crane (exists) | the crane |
 
 ![Openings against a 1.8 m player: the reference dashed, the kit solid, the lot grey](kit-scale.png)
+
+**The greybox overruled three of these targets** (#631, [the second map](../../design/smallmap.md#where-it-parts-from-the-kit-page)):
+the formula's rows are hard targets, and they ask more room than the reference estimate here. The storey is 3.4 m
+(a 3.2 m ceiling, row 9 of [the formula](small-map-formula.md)), and the purchase doorway and the stairs are 2.0 m wide
+(row 27). The windows, the sill, the risers and treads, the pillars and the sandbags keep the sizes above.
 
 What the tight sizes mean for our game, checked against the code:
 
@@ -240,6 +249,34 @@ shoes and elbows, one material on the kit atlas.
 
 ![In Godot under the lot's night: the room, the blocker in a doorway, and the player walking up and back down the straight stair](kit-stairs-room.png)
 
+## Cover and clutter
+
+Group 3 (issue #635): `tools/blender/build_smallmap_props.py` (pinned Blender, headless; the command is at its top)
+builds 16 files from the parts list's 8 pieces on the kit's atlas (`game/assets/smallmap/smallmap_palette.png`) and
+writes a fixture scene for each (`game/world/smallmap/fixtures/`). Its `--sheet` renders the written files back
+beside the Soldier, a zombie and three drive-in props. `tests/world/test_smallmap_props.gd` holds each fixture to
+its budget, its origin, one material on the atlas and its collision. The sizes and triangles are in the parts list
+above and in `game/assets/smallmap/smallmap_props.json`.
+
+![The pieces on the 0.5 m grid beside the Soldier, a zombie, a trash can, a picnic table and a crate](kit-props-sheet.png)
+
+![The small pieces: rubble, the radio set, the lantern and the helmet, beside the Soldier, a crate and the chair](kit-props-small.png)
+
+![The pieces in a room under the lot's night and one warm lamp, clutter at the walls and the middle open](kit-props-room.png)
+
+The palette is written as its sRGB values (`smallmap_kit.palette_image`, the same fix as the walls' group, #652). Written
+linear, as at first, every swatch was saved two to three times too dark: Sandbag `#a88d62` came out as `(100, 68, 31)`
+and the sheet read as logs and holes. The drive-in palette has the same fault (#651).
+
+| Rule | Value |
+| --- | --- |
+| Sandbags | bags 0.22 m tall on a 0.17 m course, so each sags onto the one below; header courses (bags across) at the bottom and middle, stretchers between; the top two courses one bag deep on the far side, a step to lean on from the room side. Ends gathered sideways only: pinched both ways they read as logs |
+| Tipped table | the top stands on its long edge facing out (+Y, the threat), the legs into the room, one leg snapped and lying beside it |
+| Tall cabinet | open at the front: a 0.92 x 1.72 m recess, 0.3 m deep, takes the lot's plaque (1.7 x 0.9 x 0.12 m) on end. The fixture's `PlaqueSlot` is turned a quarter about Z, so a plaque box put under it as it is on the lot stands upright |
+| Rubble | chamfered boxes with their corners pushed about (14 % of each size), Concrete with Plaster for fresh breaks and Soot now and then on a top. Grey2 breaks beside Concrete read as holes |
+| Collision | a hidden CSG box per piece (two for the sandbags' step, a cone for the heap) reaching the model's top. Walk-over dressing has none, as the lot's papers and debris: the two small chunks, the radio, the lantern and the helmet (all under 0.36 m) |
+| Far level | none built: the biggest piece is 1,320 tris and a room is seen from at most about 10 m; Godot's generated LODs (`meshes/generate_lods`) cover it |
+
 ## Modular kit parts list
 
 Coverage: **Exists** (in the game now), **Material** (a CSG box with a lot pattern, maybe a new pattern or tint),
@@ -271,14 +308,14 @@ Coverage: **Exists** (in the game now), **Material** (a CSG box with a lot patte
 | 21 | Pipe rail, flat and sloped | 2 m runs, 1.0 tall, posts at +-0.5 | `rail_flat`, `rail_sloped`, 128 tris each | Exists | S | 2 |
 | 22 | Landing or balcony edge | 2 x 0.3 x 0.2 with a 1.0 rail | `landing_edge`, 208 tris | Exists | S | 2 |
 | 23 | Debris blocker (purchase) | fills 1.4 x 2.4, 1.0 deep (drawn 1.74 x 1.27 x 2.53) | `debris_blocker`, 1,300 tris in six parts | Exists | M | 2 |
-| 24 | Sandbag line | 1 and 2 x 0.6 x 0.9 | blockout; replaces the kit's Sack Trench | Model | S | 3 |
-| 25 | Table, and tipped over | 1.6 x 0.8 x 0.78 | - | Model | S | 3 |
-| 26 | Chair | 0.45 x 0.45 x 0.9 | - | Model | S | 3 |
-| 27 | Filing cabinet | 0.5 x 0.6 x 1.3 | - | Model | S | 3 |
-| 28 | Shelf rack, X-braced | 1.2 x 0.45 x 2.0 | - | Model | S | 3 |
-| 29 | Tall cabinet (a long gun's wall buy) | 1.0 x 0.5 x 2.2 | - | Model | S | 3 |
-| 30 | Rubble: chunks and a cone | 0.2-0.6 chunks, 1.5 cone | the props' `debris` in part | Model | S | 3 |
-| 31 | Period clutter: radio set, lantern, helmet | under 0.5 | - | Model | S | 3 |
+| 24 | Sandbag line | 1.03 / 2.03 x 0.63 x 0.91, 704 / 1,320 tris | `sandbags_1m`, `sandbags_2m`; replaces the kit's Sack Trench | Exists | - | 3 |
+| 25 | Table, and tipped over | 1.6 x 0.79 x 0.78, 308 tris; tipped 1.6 x 0.8 x 0.79, 320 | `table`, `table_tipped` | Exists | - | 3 |
+| 26 | Chair | 0.45 x 0.47 x 0.9, 184 tris | `chair` | Exists | - | 3 |
+| 27 | Filing cabinet | 0.5 x 0.6 x 1.3 (0.78 deep with its open drawer), 376 tris | `filing_cabinet` | Exists | - | 3 |
+| 28 | Shelf rack, X-braced | 1.2 x 0.45 x 2.0, 312 tris | `shelf_rack` | Exists | - | 3 |
+| 29 | Tall cabinet (a long gun's wall buy) | 1.0 x 0.53 x 2.2, 420 tris | `tall_cabinet`, with a `PlaqueSlot` | Exists | - | 3 |
+| 30 | Rubble: chunks and a cone | chunks 0.2-0.63, 44-100 tris; cone 1.47 x 1.49 x 0.7, 386 | `rubble_a` to `rubble_d`, `rubble_cone` | Exists | - | 3 |
+| 31 | Period clutter: radio set, lantern, helmet | 0.42 / 0.35 / 0.36 at most, 168-268 tris | `radio`, `lantern`, `helmet` | Exists | - | 3 |
 | 32 | Crates, boxes, pallets | as built | props `crate`, `boxes`, `box`, `pallet`, `pallet_broken` | Exists | - | - |
 | 33 | Barrels, gas cans, tanks | as built | props `barrel`, `gas_can`, `gas_tank` | Exists | - | - |
 | 34 | Papers on the floor | as built | props `papers`, `papers_b`, `papers_c` | Exists | - | - |
@@ -289,16 +326,17 @@ Coverage: **Exists** (in the game now), **Material** (a CSG box with a lot patte
 | 39 | Moon shaft and bar-shadow quads | any opening | `MoonShaft` (`glow.gdshader`'s card, bars and rails: no texture) | Exists | - | 4 |
 | 40 | Light under and behind a purchase door | the doorway, spill 1.6 m | `DoorGlow`, on the far room's circuit | Exists | - | 4 |
 | 41 | Chalk messages | 0.3-3 wide, six lines | `ChalkMessage`, `chalk_messages.png` (`build_chalk_messages.py`) | Exists | - | 4 |
-| 42 | Bare tree, three variants | 4-8 tall | the props' trees have leaves | Model | M | 5 |
-| 43 | Utility pole and wire | 0.3 x 0.3 x 7, crossbar | `street_light` in part | Model | S | 5 |
-| 44 | Barbed wire coil and fence post | 2 m runs | - | Model | S | 5 |
+| 42 | Bare tree, three variants | 4.7, 6.4 and 8.4 tall | `bare_tree_a`, `_b`, `_c`: 328, 444, 444 tris; far 56, 80, 80 | Exists | M | 5 |
+| 43 | Utility pole and wire | 0.3 x 7.05, a 2 m crossbar; the wire a 12 m span | `utility_pole` 334 (far 24), `utility_wire` 144 (far 72) | Exists | S | 5 |
+| 44 | Barbed wire coil and fence post | coil 2.0 x 0.9 x 0.9; post 1.7 tall; 2 m runs | `barbed_coil` 768, `fence_post` 104, `wire_fence` 872 (far 60) | Exists | S | 5 |
 | 45 | Plank and metal fences | as built | props `fence`, `fence_long` | Exists | - | - |
-| 46 | Roof: pitched, broken, rafters | 2 m bays | - | Model | L | 5 |
+| 46 | Roof: pitched, broken, rafters | 2 m bays, an 8 m span at 30 degrees | `roof_bay` 524, `roof_bay_broken` 812, `roof_gable` 124 | Exists | L | 5 |
 | 47 | A set-piece wreck | the design's choice | `broken_car` and `wreck.tscn` cover a car | Exists (a new one is L) | - | 5 |
-| 48 | Frosted ground outside | any | CSG + `gravel`, a cool pale tint | Material | S | 5 |
+| 48 | Frosted ground outside | any | CSG + `gravel`, `#7f8794` (`game/assets/smallmap/materials/frost_ground.tres`) | Exists | S | 5 |
 
 **48 parts: 32 to model in Blender, 6 materials on CSG, 4 Godot jobs, 6 already in the game.** Nine of the 32 have a
-blockout already. Group 4 (36-41) is in the game: [Lamps and light cards](#lamps-and-light-cards).
+blockout already. Group 3 (parts 24-31) is built: [Cover and clutter](#cover-and-clutter). Group 4 (36-41) is in the
+game: [Lamps and light cards](#lamps-and-light-cards).
 
 | Group | Parts | Effort |
 | --- | --- | --- |
@@ -401,6 +439,83 @@ cards and three cones in view, the haze overdrawing the crane's glass), and noth
 weak GPU the part to watch is the overdraw of the cones and the floor patches; the lot's pools are 15 m, these are 2 to
 4 m. The lot's own frames are unchanged pixel for pixel (the night look tour's first six
 spots, with the new shaders and the old).
+
+## Roof and outside (group 5)
+
+Issue #638. `tools/blender/build_smallmap_outside.py` (pinned Blender, headless; the command is at its top) builds the
+pieces on the kit atlas (`smallmap_palette.png`) into `game/assets/smallmap/`, with `outside_pieces.json` (triangles,
+budget, bounds); `tools/world/build_smallmap_outside_fixtures.py` writes a fixture each with hidden CSG blockers. The
+repeated pieces are also written as `.obj` (one Mesh, for a MultiMesh).
+
+| Piece | Tris (far) | Budget | Size (m) | Notes |
+| --- | ---: | ---: | --- | --- |
+| `bare_tree_a`, `_b`, `_c` | 328 (56), 444 (80), 444 (80) | 1,500 (300) | 4.7, 6.4, 8.4 tall | a chunky trunk that forks two or three times, no leaves, frost on the forks and at the foot |
+| `utility_pole` | 334 (24) | 1,500 (300) | 0.3 across, 7.05 tall, 2 m crossbar | three green glass insulators across the line, step bolts, a transformer can |
+| `utility_wire` | 144 (72) | 800 (300) | a 12 m span, 0.55 m sag | from a pole's insulators along its +X to the next pole |
+| `barbed_coil` | 768 | 1,500 | 2.0 x 0.9 x 0.9 | a concertina on two rusty pickets |
+| `fence_post`, `wire_fence` | 104, 872 (60) | 800, 1,500 (300) | 1.7 tall; a 2 m run | a post and four barbed strands to +X; a lone post ends a run |
+| `neon_sign` | 492 | 5,000 | 8.9 x 8.1 | DRIVE-IN in Pink tubes (our own stroke lettering), an Amber arrow; the backdrop makes both glow |
+| `roof_bay` | 524 | 5,000 | 2 x 8.8, ridge 2.59 over the wall top | an 8 m span at 30 degrees, a 0.4 m overhang, rafters at 1 m centres, tie beam and king post, plank sheathing under tar-paper courses |
+| `roof_bay_broken` | 812 | 5,000 | as the bay | a 1.6 x 2.7 m hole in the front slope, one rafter snapped and hanging, battens across, charred lips |
+| `roof_gable` | 124 | 1,500 | 8.8 x 2.7 | the end wall under a row of bays, turned 90 degrees about Godot Y |
+
+The roof's origin is the bay's middle on the wall tops: a row of bays sits along X on walls 8 m apart outside to
+outside (a 7.4 m room between 0.3 m walls). A board at a bay's end runs 20 mm into the next bay: without the lap the
+moon showed through a crack between every two bays.
+
+![The pieces on the 0.5 m grid beside the Soldier, a fence, the ticket booth and a leafy tree](outside-sheet.png)
+
+## The backdrop
+
+The maintainer's decision (2026-11-02, in #638): the map is indoors, and through its windows, doors and broken walls the
+players see Deadnight's own world in the distance. `game/world/smallmap/backdrop.tscn`, written by
+`tools/world/build_smallmap_backdrop.py` (its places are constants at the top; the yard's size is the greybox's to
+set, #631), stands past the yard's fence and is never walked:
+
+- **The yard's edge** (31 x 27 m half sizes round a 29 x 21 m building): wire fence runs and posts, barbed coils across
+  a gate in the north side, 16 bare trees just outside, frosted ground (`frost_ground.tres`, the lot's `gravel` at
+  `#7f8794`).
+- **The drive-in, north** (the moon over it, as on the lot): its screen at 120 m with the lot's own screen shader and a
+  halo, the screen frame, 23 parked cars of the lot's five colours in curved rows, six lamps with halos, the marquee
+  (its bulbs glow), the ticket booth, the neon sign and a stretch of the lot's fence, on the lot's asphalt.
+- **Round it**: 70 far trees, two pole lines (one along the road south, one up to the drive-in), a wreck burning past
+  the yard's corner and a barrel fire south-west (flame and halo quads, no light).
+
+What keeps it cheap and readable in the Compatibility renderer:
+
+| Choice | Why |
+| --- | --- |
+| One `MultiMeshInstance3D` per model (`Backdrop` fills the glTF ones from `metadata/source` at load: a `.tscn` cannot point into an imported scene) | a draw for every copy of a model: 330 copies in 37 drawing nodes |
+| Unshaded `backdrop_haze.gdshader`, lit by the moon and the ambient in the shader | no light pass per mesh, a lamp indoors never lights the drive-in, and no slot in the light cap |
+| Its own haze: the scene's fog density, capped at 0.5 at 20 m rising to 0.82 at 150 m, brightening toward the horizon | the small map's fog (0.035) would sink everything past 40 m into the fog colour; capped, the screen, the cars and the trees read as layers |
+| `Backdrop` copies the environment's fog, ambient and moon into the materials every frame, each copy of the scene on its own materials | the round's darkening (`NightLight`) reaches the backdrop; two copies never change each other |
+| Colours passed as sRGB values, times their energies | the Compatibility renderer lights in sRGB space: the fog colour through `srgb_to_linear` drew ten times too dark |
+| Glow by atlas cell (Amber 6, Pink 19) in the drive-in and kit atlases | the marquee's bulbs and the neon light up with no extra mesh |
+| Far levels of detail for trees, poles, wires and the fence | 24 to 80 triangles where a near model is 300 to 870 |
+
+**Cost.** 62,227 triangles if all of it were in view; from the window spot 21,400 more primitives and 34 more draw calls
+(17 to 51). Chrome on an RTX 5080 (ANGLE D3D11, WebGL2), 1280 x 720, `tools/web_smoke/backdrop_web.py` unpaced, 600
+frames alternating 50 with the backdrop and 50 without, five runs over two exports on a shared machine: the median
+frame 2.0 to 2.5 ms without against 2.4 to 2.9 ms with it, about 0.4 ms (means 2.1 to 2.9 against 2.5 to 3.9, p95 3.5 to
+6.3 against 4.0 to 7.6). On SwiftShader (every pixel on the processor, a stand-in for a weak GPU), two runs of 300
+frames: 114 against 126 ms (about 10 %). The window bench holds a view through one window; looking out of the yard the
+whole drive-in is in view.
+
+Proof: `game/tests/captures/smallmap_backdrop_tour.tscn` puts the player's own shoulder camera in a blockout room (a
+zombie window, a broken wall, a doorway, the kit's roof with a broken bay) and in the yard, under the lot's night with
+the small map's fog (`--fog=0.035`), with the backdrop shown and hidden (`--off`); `test_smallmap_outside.gd` checks the
+budgets, the fixtures, that every model is filled, unshaded and outside the yard, the draw and triangle budget, and that
+the haze follows the scene's fog.
+
+![From the yard: the screen, the cars and lamps, the marquee, the fence and coils](backdrop-yard.png)
+
+![Through the broken wall: the fence, bare trees and the pole line in the haze](backdrop-broken-wall.png)
+
+![Through the zombie window: the screen and the cars beyond the coils](backdrop-window.png)
+
+Left for others: the moon lights the roof's underside with thin specular lines on the rafters (no shadows indoors;
+the level's moon is lowered indoors, see [lamps and light cards](#lamps-and-light-cards)); the backdrop's shader is a
+new GL program the first frame of the map compiles (it is on screen from the start, so not mid-play).
 
 ## Sources
 

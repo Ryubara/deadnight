@@ -2,9 +2,9 @@
 
 Two runs, each from a fresh page: a desktop window (1280 x 720, the keyboard) and a phone held sideways (844 x 390,
 mobile emulation, a finger sent as `Input.dispatchTouchEvent`). Each presses Solo on the menu's Play tab and expects
-the Play screen (the same panel the room host's lobby has), moves the settings (3x, a cap and a break), starts the night
-and reads the rules the running night holds: they must be the ones the panel showed (`window.deadnight.play_rules`
-against `night_rules`). A build before the change goes straight into the night; `--expect-none` accepts that and only
+the Play screen (the same panel the room host's lobby has), moves the settings (3x, a cap, a break and 3 bots), starts
+the night and reads the rules the running night holds: they must be the ones the panel showed (`window.deadnight.play_rules`
+against `night_rules`), and the night must have seated the 3 bots (`bots`, `players`: 4 in the frame). A build before the change goes straight into the night; `--expect-none` accepts that and only
 takes the screenshots (the "before" half of the pull request's captures).
 
     uv run --project ../gdstudio/python gds quiet -- uv run --with playwright==1.64.1 python \\
@@ -75,8 +75,8 @@ def desktop_run(page: Page, out: Path, label: str, result: dict) -> None:
     if result["screen_after_solo"] != "play_screen":
         return
     result["play_rules_at_open"] = full(page).get("play_rules")
-    # Start has the focus: Up reaches the break slider, the cap and the intensity; Down walks back.
-    for _ in range(3):
+    # Start has the focus: Up reaches the bots, the break slider, the cap and the intensity; Down walks back.
+    for _ in range(4):
         smoke.press(page, "ArrowUp")
     for _ in range(2):
         smoke.press(page, "ArrowRight")  # 1x -> 3x
@@ -86,6 +86,9 @@ def desktop_run(page: Page, out: Path, label: str, result: dict) -> None:
     smoke.press(page, "ArrowDown")
     for _ in range(4):
         smoke.press(page, "ArrowRight")  # a break set
+    smoke.press(page, "ArrowDown")
+    for _ in range(3):
+        smoke.press(page, "ArrowRight")  # 0 -> 3 bots
     page.wait_for_timeout(600)
     result["play_rules"] = full(page).get("play_rules")
     page.screenshot(path=out / f"{label}-desktop-solo-3x.png")
@@ -94,6 +97,8 @@ def desktop_run(page: Page, out: Path, label: str, result: dict) -> None:
     smoke.wait_for_night(page)
     result["night_rules"] = full(page).get("night_rules")
     page.wait_for_timeout(2500)
+    result["night_bots"] = full(page).get("bots")
+    result["night_players"] = full(page).get("players")
     page.screenshot(path=out / f"{label}-desktop-night.png")
 
 
@@ -116,13 +121,19 @@ def touch_run(page: Page, client: CDPSession, out: Path, label: str, result: dic
     tap(client, spot(state, "max_alive", PHONE))  # the middle of the cap's slider
     page.wait_for_timeout(300)
     tap(client, spot(state, "break_seconds", PHONE))
-    page.wait_for_timeout(600)
+    page.wait_for_timeout(300)
+    for _ in range(3):
+        tap(client, spot(state, "bots:end", PHONE))  # 0 -> 3 bots
+        page.wait_for_timeout(300)
+    page.wait_for_timeout(300)
     result["play_rules"] = full(page).get("play_rules")
     page.screenshot(path=out / f"{label}-touch-solo-3x.png")
     tap(client, spot(full(page), "Start the night", PHONE))
     smoke.wait_for_night(page)
     result["night_rules"] = full(page).get("night_rules")
     page.wait_for_timeout(2500)
+    result["night_bots"] = full(page).get("bots")
+    result["night_players"] = full(page).get("players")
     page.screenshot(path=out / f"{label}-touch-night.png")
 
 
@@ -174,6 +185,12 @@ def verdict(result: dict, expect_none: bool) -> list[str]:
         wrong.append(f"[{device}] the Play screen opened on {result.get('play_rules_at_open')!r}, not {USUAL!r}")
     if not str(result.get("play_rules", "")).startswith("3x|") or result.get("play_rules") == USUAL:
         wrong.append(f"[{device}] the settings did not move: {result.get('play_rules')!r}")
+    if not str(result.get("play_rules", "")).endswith("|3 bots"):
+        wrong.append(f"[{device}] the Bots row did not reach 3: {result.get('play_rules')!r}")
+    if result.get("night_bots") != 3 or result.get("night_players") != 4:
+        wrong.append(
+            f"[{device}] the night seated {result.get('night_bots')!r} bots in {result.get('night_players')!r} players, not 3 in 4"
+        )
     if result.get("night_rules") != result.get("play_rules"):
         wrong.append(
             f"[{device}] the night runs {result.get('night_rules')!r}, the panel showed {result.get('play_rules')!r}"
