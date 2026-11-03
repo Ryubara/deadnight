@@ -164,13 +164,22 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 		anchor = beliefs.order["at"]
 	var plan := BotArsenal.plan(me, held, _distance_to(beliefs, intent.target_id, here), threat)
 	var pack := BotCombat.near_count(beliefs, here, _profile.memory_seconds)
-	intent.melee_ok = BotCombat.may_melee(pack, plan.dry)
-	intent.quick_melee_ok = plan.dry and held != null and not held.is_melee()
+	intent.melee_ok = BotCombat.may_melee(pack, plan.dry or plan.cornered)
+	intent.quick_melee_ok = (plan.dry or plan.unloaded) and held != null and not held.is_melee()
 	# A flare ordered (`BotRevive`) holds the bot still, like a throw, and takes the weapon's handling.
 	var flaring := rescue == BotRevive.Mode.LURE
 	var ordered := not flaring and _throw(intent, beliefs, here, targets, mates, threat, kind)
 	var stepped := _step_away(
-		intent, beliefs, here, anchor, held, threat, kind, pack, plan.dry, ordered or flaring
+		intent,
+		beliefs,
+		here,
+		anchor,
+		held,
+		threat,
+		kind,
+		pack,
+		plan.dry or plan.cornered,
+		ordered or flaring
 	)
 	_check_trapped(intent, beliefs, here, stepped and intent.reflex == Vector3.ZERO)
 	if not stepped:

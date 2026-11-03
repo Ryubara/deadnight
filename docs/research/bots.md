@@ -787,7 +787,9 @@ is under 0.5 ms at 40 zombies; the page's cost section is updated with the measu
   light (`BotLevel.view_range`: 8 m plus 25 m times the round's ambient, or 33 m on lit ground), a ray from the eye to
   the chest and then the head, at most six rays a think (nearest first), a per-contact reaction drawn log-normal around
   the profile's mean and never under 0.20 s, a memory of three seconds that is never shot at, and hearing within 4 m
-  as a direction and a range class (no position, no id). A contact seen for less than its reaction is dropped.
+  as a direction and a range class (no position, no id). A contact seen for less than its reaction is dropped, except a
+  zombie in its swing within 2 m (`ARM_REACH`), which is noticed from any side: out of the cone it was dropped at every
+  think and its reaction began again, so dead swinging at a bot's back were never believed in (#695, seed 7).
 - **`BotMotor`** (aim and trigger; movement is phase 2): a critically damped spring on yaw and pitch with a hard cap on
   the speed of the turn, so no 100 ms window beats `BotProfile.max_aim_speed`; the shot's `dir` is derived from the
   view (`NightCommand.look_along`), never the other way; seeded filtered tracking noise that grows with distance, the
@@ -909,7 +911,14 @@ decides, the others hold a rule each, so a test pins them one by one):
   and another weapon loaded (the swap is quicker); a tactical reload under 30% of a magazine with nothing within 8 m,
   and a top-up under 70% when nothing is within 16 m; a swap to the loaded weapon that is 1.4 times better at the
   range of the fight (the simulator's `SWITCH_GAIN`) and to the crowbar when every gun is dry; the crowbar goes back
-  to a gun that can fire.
+  to a gun that can fire. A held gun with nothing left (magazine and reserve) is put down for a gun that has rounds in
+  reserve only, which is reloaded next (#695: the old plan held the empty gun for the rest of the night, kiting
+  whatever followed it, because reload needs reserve in the held gun, swap needs a loaded gun and `dry` counts the
+  other gun's reserve). `Plan.unloaded` (no gun can fire this moment) lets the quick melee fill the wait. A blade in
+  hand with no gun loaded goes back to the gun that needs its reload once the nearest zombie is past 6 m
+  (`RELOAD_GAP`); nearer, the bot is `cornered` and strikes with the blade, a pack of three or not (before, the pack
+  rule forbade the swing, the swap back waited for 8 m clear, and a bot kited ten dead for 500 s with a fire axe in
+  hand and a shotgun at 0/54).
 - **`BotGrenadier`**: a grenade at a pack of three (two in Crawl Space) within 3 m of each other, 3 to 12 m away, as
   the pack will stand when the 3 s fuse runs out (it keeps walking), when the blast is 6 m or more from the bot and
   **4 m plus a margin of 1.5 m from every teammate** (where they stand and where they will be by then; the margin is
@@ -1347,6 +1356,30 @@ the scratch folder of the task, not in the repository.
 The two gates still open on #564 need a quiet machine to settle: stuck under 1% per seed needs several batches of each
 setup to see a change smaller than the noise, and the think p99 read 1 to 14 ms in these runs because other agents
 were running. Measure both with nothing else running.
+
+## Forty-minute nights on the second map (#695)
+
+`smallmap_bot_night.tscn` with `--minutes=40 --rounds=10 --trace --short --zombies`, ten seeds each of one and of four
+bots. A night "ends" when the bots all fall or round 10 closes; a stall runs the whole 2,400 s.
+
+| | one bot | four bots |
+| --- | --- | --- |
+| before (`main`) | 2 of 10 stalled (seeds 2, 9) | 3 of 10 stalled (seeds 5, 7, 9) |
+| after, this change | 9 of 10 end (seed 2 stalled) | 8 of 10 end (seeds 7 and 9 stalled) |
+| after, with #709 (stairs) merged on top, the stalled seeds rerun | seed 2 ends | seeds 7 and 9 end |
+
+What a stall looked like in the trace, and what each cost:
+
+- A bot whose `arms` read `[0, 0]` for the gun in hand and `[0, n]` for the other (or the axe in hand, the shotgun at
+  `[0, 54]` and ten dead within 8 m): `BotArsenal` had no rule for it (see above). Fixed here.
+- `ctc=1 vis=1 tg=0` with the dead at 0.3 to 0.6 m: contacts in their reaction delay erased at every look
+  (`BotPerception.ARM_REACH`). Fixed here.
+- One dead one at (7, 1.5) in chase mode against the side wall of the stair along the hall's north wall, the bots at a
+  "choke" beside it, the ray from the zombie to the bot blocked by `StairASide`: the dead climbing the stair
+  ([#681](https://github.com/Ryubara/deadnight/issues/681), #709). Not this change; it ends once #709 is in.
+
+Read a stall from the beliefs (`ctc`, `vis`, `tg`, the contact's age) and the plan's inputs (`arms`, the weapon in hand,
+the nearest dead one) before guessing a cause: the first guess here (a train that gives no gap) was wrong.
 
 ## Revive return soak (#673)
 
