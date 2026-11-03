@@ -112,6 +112,11 @@ const F_USE_HELD := 1 << 11
 const F_VIEW := 1 << 12
 ## The quick melee button went down (`PlayerCommand.melee`, #411).
 const F_MELEE := 1 << 13
+## The last two bits are the weapon slot picked this tick (`NightCommand.slot`, 0 for none, 1 to 3):
+## a number, not a flag, so the three slot keys cost no more than two bits. A client that does not
+## know the field sends zeros, which pick nothing.
+const SLOT_SHIFT := 14
+const SLOT_MASK := (1 << WeaponSlots.BITS) - 1
 
 
 static func hello(
@@ -325,6 +330,7 @@ static func command(value: NightCommand) -> PackedByteArray:
 	flags |= F_USE_HELD if value.use_held else 0
 	flags |= F_VIEW if value.view_step >= 0 else 0
 	flags |= F_MELEE if motion.melee else 0
+	flags |= (clampi(value.slot, 0, WeaponSlots.MAX) & SLOT_MASK) << SLOT_SHIFT
 	out.encode_u16(11, flags)
 	out.encode_s16(13, CommandCodec.point_step(value.origin.x))
 	out.encode_s16(15, CommandCodec.point_step(value.origin.y))
@@ -362,6 +368,7 @@ static func read_command(data: PackedByteArray) -> NightCommand:
 	result.reload = flags & F_RELOAD != 0
 	result.use = flags & F_USE != 0
 	result.swap = flags & F_SWAP != 0
+	result.slot = mini((flags >> SLOT_SHIFT) & SLOT_MASK, WeaponSlots.MAX)
 	result.use_held = flags & F_USE_HELD != 0
 	result.view_step = data.decode_u16(23) if flags & F_VIEW != 0 else -1
 	result.origin = Vector3(
