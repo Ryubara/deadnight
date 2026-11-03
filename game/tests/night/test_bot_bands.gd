@@ -25,7 +25,11 @@ const ZOMBIE_SPEED := 2.4
 ## Tolerances either side of the level's number.
 const HIT_TOLERANCE := 0.12
 const HEAD_TOLERANCE := 0.07
-const DODGE_TOLERANCE := 0.15
+## Wider than the others (#708): the dodge is read from 40 to 70 blows. A change that only moved
+## when the guns fire (the tick's leftover is carried) moved the Veteran's 8-seed reading from
+## 0.61 to 0.67, while 16 seeds read 0.60 and 0.61 before and after, and the Regular's 0.15 and
+## 0.14 (the band's edge in both).
+const DODGE_TOLERANCE := 0.20
 
 
 func _seeds() -> int:
