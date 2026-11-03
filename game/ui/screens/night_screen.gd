@@ -48,6 +48,8 @@ static var start_tuning: RulesTuning = null
 static var shoulder_camera := false
 
 var night: Night
+## Gives the team's bots an order from the wheel on Q (`BotWheelDriver`).
+var wheel: BotWheelDriver
 
 var _hud: Hud
 var _loading: LoadingOverlay
@@ -99,6 +101,12 @@ func _ready() -> void:
 	_touch.mirrored_changed.connect(_on_mirrored_changed)
 	_touch.look_gain = _look_gain
 	add_child(_touch)
+	wheel = BotWheelDriver.new()
+	wheel.name = "BotWheelDriver"
+	wheel.night = night
+	wheel.hud_wheel = _hud.bot_wheel
+	wheel.touch = _touch
+	add_child(wheel)
 	_build_overlay()
 	night.night_over.connect(_on_night_over)
 	night.ready_to_play.connect(_watch_mouse)

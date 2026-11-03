@@ -56,6 +56,9 @@ var is_puppet := false
 var last_command := PlayerCommand.new()
 ## Whether the mouse really is captured, as the platform says.
 var grip := MouseGrip.new()
+## The look belongs to something else for now (the bot command wheel reads the mouse and the right
+## stick to pick an order): neither turns the view, and the move and the buttons go on.
+var look_locked := false
 
 var _controls_enabled := true
 var _was_down := {}
@@ -122,6 +125,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not local_input:
 		return
 	if event is InputEventMouseMotion and mouse_enabled() and not TouchLook.is_stray(event):
+		if look_locked:
+			return
 		camera_rig.look_mouse((event as InputEventMouseMotion).relative)
 	elif event.is_action_pressed(&"pause") and capture_mouse and _controls_enabled:
 		set_controls_enabled(false)
@@ -255,12 +260,16 @@ func sample_command() -> PlayerCommand:
 		command.throw_over = Input.is_action_pressed(ACTION_THROW_GRENADE)
 		command.throw_under = Input.is_action_pressed(ACTION_TOSS_GRENADE)
 		camera_rig.set_stick(
-			Input.get_vector(
-				ACTION_LOOK_LEFT,
-				ACTION_LOOK_RIGHT,
-				ACTION_LOOK_UP,
-				ACTION_LOOK_DOWN,
-				tuning.stick_deadzone
+			(
+				Vector2.ZERO
+				if look_locked
+				else Input.get_vector(
+					ACTION_LOOK_LEFT,
+					ACTION_LOOK_RIGHT,
+					ACTION_LOOK_UP,
+					ACTION_LOOK_DOWN,
+					tuning.stick_deadzone
+				)
 			)
 		)
 	command.yaw = camera_rig.yaw

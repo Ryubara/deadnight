@@ -48,6 +48,10 @@ var throw_abort := false
 ## none.
 var flare_yaw := NAN
 var flare_pitch := 0.0
+## The bot is boxed in (`BotTrapped`): the legs jump from a curated place when they stand at one.
+var trapped := false
+## A line to call out, sent once by the client (`BotSay`): the action, or empty for none.
+var say := {}
 ## A short reason, for the ring buffer of decisions.
 var note := ""
 

@@ -105,6 +105,9 @@ func hear(events: Array) -> void:
 			&"player_revived":
 				if int(event.get("reviver_id", -1)) == state.player_id:
 					telemetry.count(&"revive_successes")
+				if int(event.get("player_id", -1)) == state.player_id:
+					if int(event.get("reviver_id", -1)) > 0:
+						perception.beliefs.moments.append({"kind": &"revived"})
 			&"purchase_denied":
 				perception.beliefs.denials.append(
 					{"item": event.get("item_id", &""), "result": event.get("result", -1)}
@@ -113,6 +116,13 @@ func hear(events: Array) -> void:
 			&"purchase_made":
 				telemetry.count(&"buys")
 				perception.beliefs.purchased_at = now
+				if String(event.get("item_id", &"")).begins_with("door_"):
+					perception.beliefs.moments.append({"kind": &"door_bought"})
+			&"fuel_low":
+				perception.beliefs.moments.append({"kind": &"fuel_low"})
+			&"board_torn":
+				if int(event.get("boards", 1)) == 0:
+					perception.beliefs.moments.append({"kind": &"breach_open"})
 			&"lure_started":
 				# Its own flare burst: the dead within its radius walk to it for its seconds.
 				team.add_lure(
@@ -215,6 +225,12 @@ func _think() -> void:
 	else:
 		_fail()
 		intent = _fallback()
+	if not intent.say.is_empty():
+		# A line is said once, the moment it is chosen: the intent stays in force between thinks.
+		_send.call(intent.say)
+		telemetry.count(&"callouts")
+		telemetry.count(StringName("say_%s" % intent.say["line"]))
+		intent.say = {}
 	(
 		telemetry
 		. decide(

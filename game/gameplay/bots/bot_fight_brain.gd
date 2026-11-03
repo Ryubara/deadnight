@@ -57,6 +57,12 @@ var telemetry: BotTelemetry:
 		revive.telemetry = value
 ## What the bot does about a downed teammate (`BotRevive`).
 var revive: BotRevive
+## What the bot is for at the moment (`BotRoles`).
+var role := BotRoles.Role.ANCHOR
+## A bot with no way out (`BotTrapped`).
+var trapped := BotTrapped.new()
+## What the bot says (`BotCallouts`).
+var callouts := BotCallouts.new()
 ## Whether the last think was an errand (shopping, boards, the generator), for the metrics.
 var on_errand := false
 
@@ -101,7 +107,10 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	var me := state.me()
 	if me.is_empty() or me.get("downed", true):
 		revive.reset()
+		if not me.is_empty():
+			intent.say = callouts.downed(beliefs, me)
 		return intent
+	callouts.up()
 	var here: Vector3 = me["pos"]
 	var held := _held(me)
 	var kind := BotStance.of(beliefs.special)
@@ -110,6 +119,9 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	intent.target_id = _combat.choose(
 		targets, here, held, mates, beliefs.now, _blow_age(beliefs), _health(me)
 	)
+	var humans := _take_role(beliefs, here)
+	var marks := BotPings.marks(state.frame, beliefs.teammates)
+	revive.pinged = BotPings.downed(marks)
 	var rescue := revive.run(
 		intent, beliefs, me, held, state.round_number(), 1.0 / float(_profile.think_hz)
 	)
@@ -117,10 +129,14 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 		# Both hands on the revive: no shot, no step, no swap until it is done or let go of.
 		intent.throw_abort = _order != null
 		_order = null
+		intent.say = _callouts_plan(beliefs, me, true, false)
 		return intent
 	var preferred := revive.prefer(targets, beliefs, here, intent.target_id)
 	if preferred >= 0:
 		intent.target_id = preferred
+	var marked := BotPings.enemy(marks, targets)
+	if marked >= 0 and rescue == BotRevive.Mode.NONE:
+		intent.target_id = marked
 	var threat := beliefs.nearest_threat(here, _profile.memory_seconds)
 	var people := _people(beliefs, state.player_id)
 	var anchor := BotFollow.anchor_of(people)
@@ -131,14 +147,20 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	# A flare ordered (`BotRevive`) holds the bot still, like a throw, and takes the weapon's handling.
 	var flaring := rescue == BotRevive.Mode.LURE
 	var ordered := not flaring and _throw(intent, beliefs, here, targets, mates, threat, kind)
-	if not _step_away(
+	var stepped := _step_away(
 		intent, beliefs, here, anchor, held, threat, kind, pack, plan.dry, ordered or flaring
-	):
+	)
+	_check_trapped(intent, beliefs, here, stepped and intent.reflex == Vector3.ZERO)
+	if not stepped:
 		_last_reflex = Vector3.ZERO
 		if ordered:
 			intent.note = "throw"
 		elif rescue != BotRevive.Mode.NONE:
 			pass  # `BotRevive` set the goal and the note.
+		elif _hold_ping(intent, beliefs, marks, here):
+			pass
+		elif role == BotRoles.Role.FLANK and _flank(intent, beliefs, here, humans):
+			pass
 		elif _chase(intent, beliefs, here, held, mates, pack, plan.dry):
 			intent.note = "chase"
 		elif _errand(intent, beliefs, state, threat):
@@ -151,9 +173,99 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	if intent.target_id < 0:
 		intent.look_yaw = _glance(beliefs, here)
 	_handle_weapon(intent, plan, beliefs.now)
+	intent.say = _callouts_plan(beliefs, me, false, intent.reload)
 	if intent.note == "":
 		intent.note = "fight" if intent.target_id >= 0 else "hold"
 	return intent
+
+
+## Reads the team's roles for this moment and takes this bot's. Returns the people up (the ones the
+## flank is placed by): `{pos, velocity, facing}`.
+func _take_role(beliefs: BotBeliefs, here: Vector3) -> Array[Dictionary]:
+	var bots: Array[Dictionary] = [{"id": beliefs.me, "pos": here}]
+	var humans: Array[Dictionary] = []
+	for id in beliefs.teammates:
+		var mate: Dictionary = beliefs.teammates[id]
+		if id == beliefs.me or mate.get("downed", false) or mate.get("dead", false):
+			continue
+		if mate.get("bot", false):
+			bots.append({"id": id, "pos": mate["pos"]})
+		else:
+			humans.append(mate)
+	if team != null:
+		var maintainer := team.turn.holder
+		team.roles.update(beliefs.now, bots, humans, maintainer)
+		role = team.roles.role_of(beliefs.me)
+	return humans
+
+
+## The flank: a choke to the side of the people's heading (8 to 14 m, at most 11.5 from them), held
+## and fought from while the people stand; while they walk the bot follows with the rest.
+func _flank(
+	intent: BotIntent, beliefs: BotBeliefs, here: Vector3, humans: Array[Dictionary]
+) -> bool:
+	if humans.is_empty() or BotRoles.speed_of(humans) > BotRoles.FLANK_STILL:
+		return false
+	var centre := BotRoles.flank_centre(humans)
+	var spot := _stance.choke(here, centre, beliefs.now)
+	var place := BotRoles.within_limit(
+		spot if spot != Vector3.INF else _level.project(centre), humans
+	)
+	intent.note = "flank"
+	if _flat(here, place) < HOLD_RADIUS * 1.5:
+		return true
+	intent.goal = place
+	intent.goal_radius = HOLD_RADIUS * 1.5
+	intent.run = false
+	return true
+
+
+## A person's "hold here": the bot nearest to the mark goes and stays by it while it stands.
+func _hold_ping(
+	intent: BotIntent, beliefs: BotBeliefs, marks: Array[Dictionary], here: Vector3
+) -> bool:
+	var free: Array[Dictionary] = []
+	for id in beliefs.teammates:
+		var mate: Dictionary = beliefs.teammates[id]
+		if id != beliefs.me and mate.get("bot", false):
+			if not mate.get("downed", false) and not mate.get("dead", false):
+				free.append(mate)
+	var place := BotPings.hold_place(marks, beliefs.me, here, free)
+	if place == Vector3.INF:
+		return false
+	intent.goal = place
+	intent.goal_radius = BotPings.HOLD_STAND
+	intent.run = false
+	intent.note = "hold_ping"
+	return true
+
+
+## Whether the bot has found no way out for long enough (`BotTrapped`): it reports it once and, if
+## a place to jump from is near, goes there and jumps. It goes on fighting either way.
+func _check_trapped(intent: BotIntent, beliefs: BotBeliefs, here: Vector3, boxed: bool) -> void:
+	if trapped.update(boxed, beliefs.now):
+		beliefs.moments.append({"kind": &"trapped"})
+		if telemetry != null:
+			telemetry.event(&"bot_trapped", roundi(beliefs.now * 60.0), {"position": here})
+	if not trapped.trapped:
+		return
+	intent.trapped = true
+	intent.note = "trapped"
+	var link := BotTrapped.nearest_link(here, _level.links)
+	if link != null:
+		intent.goal = link.from
+		intent.goal_radius = 0.5
+
+
+## The line to call out this think, or none (`BotCallouts`).
+func _callouts_plan(
+	beliefs: BotBeliefs, me: Dictionary, holding: bool, reloading: bool
+) -> Dictionary:
+	var lowest := true
+	for id in beliefs.teammates:
+		if beliefs.teammates[id].get("bot", false) and id < beliefs.me:
+			lowest = false
+	return callouts.plan(beliefs, me, _profile, holding, reloading, lowest)
 
 
 ## Gives the intent a heading away from the dead when the bot should not stand where it is: a blow
@@ -415,7 +527,13 @@ func _errand(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat:
 	beliefs.denials.clear()
 	if intent.target_id >= 0:
 		return false
-	return _errands.run(intent, beliefs, state, threat)
+	# One bot at a time goes (the maintainer): the others wait for their turn.
+	if team != null and team.one_errand_at_a_time and not team.turn.may_go(beliefs.me, beliefs.now):
+		return false
+	var went := _errands.run(intent, beliefs, state, threat)
+	if went and team != null:
+		team.turn.took(beliefs.me, beliefs.now)
+	return went
 
 
 ## A bot with a crowbar in hand walks up to a zombie that is not coming to it (one tearing boards,

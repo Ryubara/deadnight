@@ -1,0 +1,40 @@
+{
+ "pendant_lamp": {
+  "budget": 600,
+  "max_xyz_blender": [
+   0.3,
+   0.3,
+   2.8
+  ],
+  "min_xyz_blender": [
+   -0.3,
+   -0.3,
+   2.138
+  ],
+  "size_xyz_blender": [
+   0.6,
+   0.6,
+   0.662
+  ],
+  "tris": 396
+ },
+ "wall_lantern": {
+  "budget": 600,
+  "max_xyz_blender": [
+   0.125,
+   0.0,
+   2.2
+  ],
+  "min_xyz_blender": [
+   -0.125,
+   -0.2,
+   1.8
+  ],
+  "size_xyz_blender": [
+   0.25,
+   0.2,
+   0.4
+  ],
+  "tris": 416
+ }
+}
