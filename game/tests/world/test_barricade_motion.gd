@@ -126,7 +126,7 @@ func test_a_burst_of_tears_stays_within_the_pool() -> void:
 	assert_int(_barricade.flying().size()).is_less_equal(Barricade.FLYING_MAX)
 	var copies := 0
 	for child in _barricade.get_children():
-		if child is MeshInstance3D:
+		if child is MeshInstance3D and not child is BoardOutline:
 			copies += 1
 	assert_int(copies).is_less_equal(Barricade.FLYING_MAX)
 	_step(ALL_OF_IT)

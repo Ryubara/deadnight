@@ -322,6 +322,11 @@ What is solid changes the moment the rules say so; only the drawing moves, with 
 A jump of several boards (a late join, a snapshot catching up) moves only the last board that changed; the others snap.
 Binding to the rules at the start of a night snaps.
 
+**The ghost of a missing board.** Every barricade on both maps (these six breaches, the second map's eleven windows and
+its side breach) draws a faint outline of each board it is missing, so a player sees at a glance what needs mending
+([the look and its cost](../research/board-outline.md)). One shape a slot, from the barricade's own boards; planks go
+back from the bottom up, so the outline is always the top slots and each plank nailed on takes the lowest one away.
+
 ### Which lamps hang on which circuit
 
 Each `Lamps` group carries `metadata/circuit`, and every light below it takes that circuit. Four are the generator's
