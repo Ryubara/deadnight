@@ -930,7 +930,21 @@ the claim table have pure unit tests; a mutant that makes the risk check always 
   8 m (`BotLink`), goes there and jumps (`BotIntent.trapped`, in the legs). There is no teleport.
 - `BotPings`: a person's `here` sends the nearest bot to hold the place while the mark stands, `enemy` names the first
   target while the bot sees the zombie, `downed` names the body to raise first, `door` is the errands' (it was
-  already). `ammo` is left to #647.
+  already). `ammo` is the next item (#647, below).
+- **The ammunition ping (#647).** `BotPings.ammo` reads the locker a person marked. A bot that is short of rounds for a
+  gun it carries (under `BotProfile.ammo_floor_mags` magazines of reserve), in a lull, with the gun (or a blade, which
+  is put away at the locker) in hand, walks to *that* locker and buys there, before every other errand (`BotErrands`
+  runs a `marked` job ahead of the generator, the breakers, the shop list and the boards; a mark lasts 20 s and a bot
+  that set out keeps going for at most `ERRAND_LIMIT` if it runs out on the way). It buys only within the use reach of
+  the marked locker: every locker sells the same rounds, but a mark is an order for one, so a bot standing at another
+  locker walks on. A bot that is not short, whose hand cannot be fed there (the locker sells for the weapon in hand), in
+  a wave with the dead about it (the urgent rounds below a magazine are still bought at once, wherever) or with no way to
+  the locker (the shop's own `avoided` rule) ignores the mark. Pure table:
+  `tests/bots/test_bot_economy_rounds.gd`; scenario in the real lot with a person and a bot, and the same bot with no
+  mark going to the near locker: `tests/night/test_bot_errand_buys.gd`; film through the person's camera:
+  `tests/captures/bots_ammo_ping.tscn`. The ping crosses the wire as before (`NetWire.Type.MARK`, no new message), so
+  no network test was added. Two bots that are both short both go (rounds are personal); the errand turn of the brain
+  still lets one bot at a time leave.
 
 *Measured* (same soak, 12 game minutes, seeds 1 to 3, a shared machine on which every think p99 was 5 to 40 ms, so no
 cost figure is taken from it): **at most one bot on an errand at any tick in all four runs (the same soak with the
@@ -946,7 +960,7 @@ no-person soaks; their scenarios (`tests/night/test_bot_team.gd`, `tests/bots/te
 (every low ray is a wall, the eyes see over it): a lot corner with no way out was not found on the real mesh, so the
 real-lot check is that no bot moved more than a metre in a tick over the soaks (the most was 0.64 m).
 
-**Left for later.** The flare to draw the dead off a body (#646), the ammunition ping (#647), the voice of the lines,
+**Left for later.** The flare to draw the dead off a body (#646), the voice of the lines,
 and the bot's own "downed bot waits for a human" being only one call.
 
 ### Phase 6: filling slots, difficulty and the server
