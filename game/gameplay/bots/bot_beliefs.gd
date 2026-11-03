@@ -38,6 +38,9 @@ var me := -1
 ## The standing order of the team's bots for this one (`BotOrders.current`): `{order, issuer_id,
 ## at}`. Roam until a person says otherwise.
 var order: Dictionary = {"order": BotOrders.DEFAULT, "issuer_id": 0, "at": Vector3.INF}
+## The bot's own full health: what the rules said last (`player_added`, `player_hurt`,
+## `player_healed` carry it; the frame does not), 100 until then. A health tonic raises it.
+var max_health := 100.0
 ## Grenades the bot carries: the count a player starts with until the rules say otherwise
 ## (`grenade_count_changed`: a throw, a refill at a round's start, a purchase).
 var grenades := START_GRENADES

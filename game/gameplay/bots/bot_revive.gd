@@ -97,6 +97,10 @@ var verdict: BotReviveRisk.Verdict
 ## Seconds a clearing bot was at it, for the metrics.
 var clear_seconds := 0.0
 
+## The brain's word that the bot is low on health with the dead near (`BotPlayState`): it does not
+## go for a body, and lets go of the walk to one, unless it is the last one up.
+var retreating := false
+
 var _profile: BotProfile
 var _retry_at := -INF
 var _health_log: Array[Vector2] = []
@@ -135,6 +139,11 @@ func run(
 		_order = null
 		return _end(Mode.NONE, 0)
 	var last := _last_standing(beliefs, me_id)
+	if retreating and not last and mode != Mode.HOLD:
+		_order = null
+		if team != null and victim != 0:
+			team.claims.release_victim(victim)
+		return _end(Mode.NONE, 0)
 	var threats := _threats(beliefs, round_number)
 	var gun := _gun(me, held)
 	var cover_for := 0

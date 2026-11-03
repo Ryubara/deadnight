@@ -36,6 +36,10 @@ const THREATS_KEPT := 8
 const BOXED_IN := 0.5
 const THREAT_SPEED := 4.0
 
+## The weight of the room ahead in a heading's score: a Safe bot raises it so that a retreat
+## prefers open ground over a dead end (`BotPlayState`).
+var room_weight := W_ROOM
+
 var _level: BotLevel
 
 
@@ -153,7 +157,7 @@ func _score(
 		score += W_AWAY * weight * gained / (1.0 + before / 5.0)
 	if goal_dir.length() > 0.01:
 		score += W_GOAL * heading.dot(goal_dir)
-	score += W_ROOM * minf(open / ROOM_LIMIT, 1.0)
+	score += room_weight * minf(open / ROOM_LIMIT, 1.0)
 	if _level.lit.is_valid() and _level.lit.call(end):
 		score += W_LIT
 	if previous.length() > 0.01 and heading.dot(previous) > 0.95:

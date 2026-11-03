@@ -25,6 +25,13 @@ extends Node
 ## `spread` (the mean distance between two bots) and, for a hold, `within_hold_3m` (the share of the
 ## ticks a bot that is up stood within 3 m of the spot) and `within_hold_3m_on_the_spot` (the same
 ## of the ticks it was not on a trip for a revive, a ping or a dodge).
+## For the play states (#693) the report also has, per bot, `downs` (the times it went down) and
+## `states` (the seconds up in each play state, `BotPlayState`), and for the run `downs`,
+## `rounds` (the rounds the night reached, the last one whole) and `downs_per_bot_per_round`:
+## run it with `--tough=1` (the shipped health), since a tough night has no downs to count, and
+## `--no-states` for the bots as they were before the play states (the state is still read),
+## `--downs` (print the health before each down) and `--profile=name:value,...` (set numbers of the
+## bots' profiles, for tuning).
 ## Prints `SOAK {json}` at the end: one object per bot and one for the whole run.
 
 ## The distance from the nearest person that counts as staying with them (metres).
@@ -36,6 +43,8 @@ const TRACE_EVERY := 30
 ## Metres from the held spot that the order promises, and the speed (m/s) under which a bot stands.
 const HOLD_RADIUS := 3.0
 const STANDING := 0.05
+## Ticks of health kept before a down (four seconds), for `--downs`.
+const HISTORY_TICKS := 240
 
 var _args := {}
 var _night: Night
@@ -76,6 +85,15 @@ var _stance_ticks := 0
 var _stance_held := 0
 var _spread_sum := 0.0
 var _spread_n := 0
+## By seat: whether the bot was down last tick, and how many times it went down, in all and by
+## round (`{round: {seat: downs}}`).
+var _was_down: Dictionary = {}
+var _downs: Dictionary = {}
+var _downs_by_round: Dictionary = {}
+## By seat: the ticks up in each play state (`{seat: {state name: ticks}}`).
+var _state_ticks: Dictionary = {}
+## By seat: the bot's health share on each of the last `HISTORY_TICKS` ticks.
+var _health_history: Dictionary = {}
 
 
 func _ready() -> void:
@@ -100,12 +118,25 @@ func _ready() -> void:
 	await _wait(3)
 	_seat_the_bots()
 	_give_the_order()
+	if _args.has("no-states"):
+		for bot in _host.bots:
+			(bot.brain as BotFightBrain).play.enabled = false
+	_tune_profiles()
 	if _args.has("map"):
 		_write_map(String(_args["map"]))
 	if _args.has("trace"):
 		_trace = FileAccess.open(String(_args["trace"]), FileAccess.WRITE)
 	_night.state.event_received.connect(_on_event)
 	_night.ticked.connect(_on_tick)
+
+
+## `--profile=name:value,name:value` sets those numbers of every bot's profile (tuning the play
+## states: `careful_below:0.7,safe_below:0.5`).
+func _tune_profiles() -> void:
+	for pair in String(_args.get("profile", "")).split(",", false):
+		var parts := pair.split(":")
+		for bot in _host.bots:
+			bot.profile.set(parts[0], float(parts[1]))
 
 
 ## The person's word, once, as the wheel gives it. A roam is the game's default and sends nothing.
@@ -199,6 +230,7 @@ func _on_tick() -> void:
 	_host.tick(Night.STEP)
 	_sample_distances()
 	_sample_orders()
+	_sample_downs()
 	_classify_stuck()
 	if _trace != null and _ticks % TRACE_EVERY == 0:
 		_write_trace()
@@ -314,6 +346,56 @@ func _sample_orders() -> void:
 			_spread_n += 1
 
 
+## What the bot's health did over the last seconds before it went down, and where it stood
+## (`--downs`).
+func _print_down(bot: BotClient, history: Array, round_number: int) -> void:
+	var samples: Array[String] = []
+	for i in range(0, history.size(), 30):
+		samples.append("%.2f" % history[i])
+	var body := _night.server.body_of(bot.state.player_id)
+	print(
+		(
+			"DOWN seat %d round %d tick %d state %s note %s health_every_half_second [%s] at %s"
+			% [
+				bot.state.player_id,
+				round_number,
+				_ticks,
+				(bot.brain as BotFightBrain).play_state_name(),
+				bot.intent.note,
+				", ".join(samples),
+				body.global_position.snappedf(0.1) if body != null else Vector3.ZERO,
+			]
+		)
+	)
+
+
+## Per tick, per bot: a fall from up to down is a down, and the play state of a bot that is up.
+func _sample_downs() -> void:
+	var round_number := _night.state.round_number()
+	for bot in _host.bots:
+		var id := bot.state.player_id
+		var me := bot.state.me()
+		var down: bool = me.is_empty() or me.get("downed", false) or me.get("dead", false)
+		var history: Array = _health_history.get(id, [])
+		history.append(float(me.get("health", 0.0)) / bot.perception.beliefs.max_health)
+		if history.size() > HISTORY_TICKS:
+			history.pop_front()
+		_health_history[id] = history
+		if down and not _was_down.get(id, false):
+			if _args.has("downs"):
+				_print_down(bot, history, round_number)
+			_downs[id] = int(_downs.get(id, 0)) + 1
+			var by_seat: Dictionary = _downs_by_round.get(round_number, {})
+			by_seat[id] = int(by_seat.get(id, 0)) + 1
+			_downs_by_round[round_number] = by_seat
+		_was_down[id] = down
+		if not down:
+			var label := String((bot.brain as BotFightBrain).play_state_name())
+			var ticks: Dictionary = _state_ticks.get(id, {})
+			ticks[label] = int(ticks.get(label, 0)) + 1
+			_state_ticks[id] = ticks
+
+
 func _flat_apart(a: Node3D, b: Node3D) -> float:
 	return (
 		Vector2(
@@ -408,8 +490,23 @@ func _finish(why: String) -> void:
 	for round_number: int in _per_round:
 		var tally: Array = _per_round[round_number]
 		rounds[round_number] = snappedf(float(tally[0]) / maxf(float(tally[1]), 1.0), 0.001)
+	var total_downs := 0
+	for id: int in _downs:
+		total_downs += int(_downs[id])
+	var rounds_reached := _night.state.round_number()
+	var downs_by_round := {}
+	for round_number: int in _downs_by_round:
+		var sum := 0
+		for id: int in _downs_by_round[round_number]:
+			sum += int(_downs_by_round[round_number][id])
+		downs_by_round[round_number] = sum
 	var all := {
 		"why": why,
+		"downs": total_downs,
+		"rounds": rounds_reached,
+		"downs_per_bot_per_round":
+		snappedf(float(total_downs) / maxf(float(_seats.size() * rounds_reached), 1.0), 0.001),
+		"downs_by_round": downs_by_round,
 		"seed": int(_args.get("seed", 1)),
 		"game_minutes": snappedf(float(_ticks) / 3600.0, 0.01),
 		"wall_seconds": snappedf(float(Time.get_ticks_msec() - _started_at) / 1000.0, 0.1),
@@ -479,6 +576,9 @@ func _bot_report(bot: BotClient) -> Dictionary:
 		"bot_stuck_reports": stuck_reports,
 		"brain_disabled": bot.telemetry.has_event(BotClient.BRAIN_DISABLED),
 		"kills": bot.state.kills,
+		"downs": int(_downs.get(bot.state.player_id, 0)),
+		"state_changes": int(bot.telemetry.counters.get(&"play_state_changes", 0)),
+		"states": _state_seconds(bot.state.player_id),
 		"buys": int(bot.telemetry.counters.get(&"buys", 0)),
 		"idle_longest": snappedf(float(_idle_longest.get(bot.state.player_id, 0)) / 60.0, 0.1),
 		"cells": (_cells.get(bot.state.player_id, {}) as Dictionary).size(),
@@ -491,6 +591,15 @@ func _bot_report(bot: BotClient) -> Dictionary:
 			0.1
 		),
 	}
+
+
+## The seconds a bot was up in each play state.
+func _state_seconds(id: int) -> Dictionary:
+	var seconds := {}
+	var ticks: Dictionary = _state_ticks.get(id, {})
+	for label: String in ticks:
+		seconds[label] = snappedf(float(ticks[label]) / 60.0, 0.1)
+	return seconds
 
 
 func _close_down() -> void:

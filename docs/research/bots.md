@@ -453,6 +453,87 @@ Not done here: the wheel and the HUD's word for the current order are #642 (on `
 roles of #229 (anchor, flank) are Follow's: a roaming or holding bot has none. The ping replies of #229 (hold here, shoot
 that one, raise that one) and the claim table sit above every order.
 
+## Play states: aggressive, careful, safe (#693)
+
+The maintainer, 2026-11-03: "Bots need different playstates, aggressive if they're high on health, but more safe e.g.
+keeping their distance when they're low health." The seed was #676's soak: a Hold bot is the one most often downed,
+because it never backs away.
+
+**The states.** `BotPlayState` (`game/gameplay/bots/bot_play_state.gd`, plain data, the only file with the logic; the
+brain asks it and has no branch of its own). A bot's *share* is its health over its own full health (read from
+`player_added`, `player_hurt` and `player_healed`, which carry `max_health` where the frame does not, so a health tonic
+counts), less what danger costs: each zombie believed beyond the first within 4 m takes 0.08 off, at most 0.24.
+
+| State | Enters below | Back up above | What the bot does |
+| --- | --- | --- | --- |
+| **Aggressive** | (the start) | 0.90 (from Careful) | As it always was: takes kills, may walk up to a zombie that is not coming (the crowbar's chase), keeps the profile's retreat margin (0 to 1.5 m). |
+| **Careful** | 0.70 | 0.75 (from Safe) | Holds its range: retreat margin 2.5 m, no chase. Errands and the order go on. |
+| **Safe** | 0.50 | | Keeps its distance: retreat margin 6 m, the retreat weighs room ahead 1.8 against 0.6 (open ground, not a dead end), and with no one to stay with it heads for the nearest teammate. No roaming and no errands. A revive is given up (or not begun) with a zombie within 8 m, unless it is the last one up. It stands and fights a zombie it cannot step back from, and a bot with a melee weapon backs away from a pack where a healthy one would swing. |
+
+Each switch has two numbers (hysteresis), and a bot becomes bolder only after 2 s in its state (more careful at once),
+so a bot on the edge does not flicker. All of it is on `BotProfile` under "Play states", editable in the inspector.
+
+**How it ranks against the orders (#641).** The order is what the bot is for, the state is how it carries it out; a
+revive claim, a ping and a dodge still sit above both, as for every order.
+
+| Order | Safe | Careful |
+| --- | --- | --- |
+| **Follow** | Keeps the near side of the leader: a band of 2.5 to 4.5 m (against 3 to 7 m in a fight), so it stays inside the group; the leader's band is not left. | The usual band, a wider margin from the dead. |
+| **Hold** | May step back from the held spot, at most 4 m (`hold_back`): the retreat is not bent toward the spot, and the bot does not walk back until it is better (the 3 m of the order's gate is given up while it is Safe). It returns when it is Careful again. | Holds the spot; backs off nothing. |
+| **Roam** | Free: it stops wandering (no new roam goal, no errand) and fights where it stands, with the wide margin, until it is better. | Roams as usual, wider margin, no chase. |
+
+**Needs against orders (#692).** The self-resupply of #692 adds a table of need by order (`BotNeeds.RULES`). A play
+state is one more need in that table. As built here, a Safe bot's answer to every errand under every order, rounds
+included, is `STAY` (`play.may_wander()` at the errand's door in `BotFightBrain`), and nothing makes an exception. The
+exception to settle at the merge is the empty gun (`EMPTY` in #692): a bot with nothing to shoot cannot keep its
+distance by fighting, so it should go for rounds even while Safe. Whichever pull request lands second merges `main`,
+moves these rows into that table and decides that cell.
+
+**Measured** (`bots_move_soak.tscn`, 20 game minutes, **the shipped health** (`--tough=1`: a tough night has no downs to
+count), four bots (Regular, Veteran, Rookie, Regular) and the old autopilot as the person, the same seeds with the
+states off (`--no-states`: the state is still read, nothing follows from it) and on. A night ends when everyone is
+down, so a run is shorter than 20 minutes when it ends early; the rate is downs per bot per round reached. Seeds are
+not reproducible to the digit (two runs of a seed are not the same night), so one seed's number says little: read the
+total):
+
+| Order | Seeds | Downs per bot per round, before | After | Downs per bot-minute, before | After | Kills per bot-minute, before | After |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **Hold** | 8 | 0.340 (91 downs) | **0.209** (61) | 0.157 | 0.120 | 1.08 | 1.25 |
+| **Follow** | 4 | 0.288 (38) | **0.150** (21) | 0.138 | 0.080 | 1.03 | 1.40 |
+| **Roam** | 4 | 0.524 (65) | **0.140** (19) | 0.326 | 0.065 | 2.30 | 2.53 |
+
+Two other sets were tried on Hold. The first (enter Careful below 0.60, Safe below 0.35, back up above 0.85 and 0.65)
+gave 0.229 over the 8 seeds (54 downs). A wider margin and hold-back on the shipped thresholds (8 m, 3.5 m, 6 m) gave
+0.283 over seeds 1 to 4, where the shipped set gave 0.186 and no states 0.333 on the same seeds: farther is not safer,
+the bot leaves the spot's cover. The shipped set (0.70, 0.90, 0.50, 0.75) is the best of the three, though the gap to
+the first set is inside the noise. The Hold gate of #641 (within 3 m of the spot for 92% of the time the bot is under
+the stance) read 0.89 before and 0.92 after (the mean over the seeds of the share on the spot; a seed is 0.65 to 0.96,
+the low ones are nights in which the person's walk and the first rounds take the bots away). Follow's gate (within 12
+m of the person, 95% of the time up) was 0.92 before and 0.90 after: a Safe follower keeps to the near side, a Careful
+one the usual band, and a bot that steps back from a zombie leaves the band for a moment. State changes were 0.5 to 2
+a bot-minute on Hold and Follow (up to 4 on Roam, where a bot meets more of the dead): one change every 30 to 120 s a
+bot (the test that pins the hysteresis: a wobble across a line changes the state once).
+
+**What is left.** The `--downs` probe (seed 2, Hold, first thresholds) printed each bot's health over the four seconds
+before it went down: of nine downs, five were a bot already Safe and stepping back (`hold_back`) at 10 to 30% health,
+three were Aggressive (one went from full to half and then down inside two seconds), one was Careful. The states cut
+the downs by a third to a half, they do not end them: a pack the bot cannot step away from still downs it, and the
+regeneration (5 s without a blow, then 25 a second) does not start while a zombie keeps hitting.
+
+**Proof.** `tests/bots/test_bot_play_state.gd` (23 cases): each switch and its hysteresis, a wobble across a line
+changing the state once, the dwell, the pressure of a pack, the share of a bot with a tonic, every answer under each
+order, the states-off bot answering as an aggressive one, a low bot backing away where a healthy one stands, a hurt bot's
+wider margin, a holder stepping back within 4 m and no farther, and its retreat not bent toward the spot. The film:
+`tests/captures/bots_play_states.tscn` (a Regular is hurt when a zombie comes near; the label names the state and the
+health; `--trace` prints the metres to the nearest zombie). The trace of the run, from the second the zombie was 10 m
+off: the bot was Safe at 25% and held 6.3 m from it (the zombie came on from 10 to 6.1 m, then stood off), regenerated
+through Careful to Aggressive, and an aggressive bot stood while the zombie came from 5.8 m to 2.7 m.
+
+**Not done here.** A Safe bot still stands against a zombie it cannot step back from (a wall behind it, a pack on every
+side), and still shoots. The thresholds are one set for the three skills; a Veteran could be bolder and a Rookie more
+careful (the profile fields allow it, nothing sets them apart yet). Safe does not yet go looking for a health tonic or a
+medic spot (there is none in the lot).
+
 ## Edge cases
 
 | Case | Behaviour |
