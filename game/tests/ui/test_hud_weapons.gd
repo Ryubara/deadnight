@@ -130,6 +130,15 @@ func test_a_weapon_put_away_mid_reload_does_not_stay_reloading() -> void:
 	assert_str(_ammo().hint_text).is_equal("")
 
 
+func test_a_full_double_barrel_after_a_bigger_magazine_is_not_low() -> void:
+	_give(&"smg")
+	_give(&"shotgun")
+	var shotgun := WeaponCatalog.get_def(&"shotgun")
+	assert_int(_fixture.hud.state.ammo_magazine).is_equal(shotgun.magazine_size)
+	assert_bool(_ammo().is_low).is_false()
+	assert_str(_ammo().hint_text).is_equal("")
+
+
 func test_a_weapon_that_uses_no_ammunition_shows_no_numbers_and_no_count() -> void:
 	_give(&"pistol")
 	_give(&"crowbar")
