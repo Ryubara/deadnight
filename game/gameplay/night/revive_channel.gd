@@ -12,6 +12,9 @@ extends RefCounted
 ## Set by the server, and again when a test swaps its tuning.
 var tuning: NightTuning
 
+## Whether a hand reaches a body without a wall between (`UseSight`); none walls nothing off.
+var sight: UseSight
+
 var _rules: GameRules
 ## Player id to body, the server's own dictionary.
 var _bodies: Dictionary
@@ -51,7 +54,7 @@ func in_reach(player_id: int) -> int:
 			continue
 		var there: Vector3 = _bodies[other_id].global_position
 		var apart := Vector2(here.x - there.x, here.z - there.z).length()
-		if apart > tuning.revive_reach:
+		if apart > tuning.revive_reach or (sight != null and not sight.clear(here, there)):
 			continue
 		if apart < best_apart or (apart == best_apart and other_id < best):
 			best = other_id
