@@ -1,7 +1,7 @@
 extends Node3D
 ## Places the camera for a greybox capture. Pick the view with a user argument after `--`:
-## `-- --view=top|night_top|start|concession|concession_in|booth|yard|backlot|plaza|road`, the
-## ticket plaza's `plaza_east|plaza_west|perk|door|roost` and the props' views
+## `-- --view=top|night_top|map_card|start|concession|concession_in|booth|yard|backlot|plaza|road`,
+## the ticket plaza's `plaza_east|plaza_west|perk|door|roost` and the props' views
 ## `yard_drums|yard_east|backlot_rows|alley|midway_court|field_west|field_east|screen_apron`.
 ## Add `--doors=open` to a view to take the purchase doors away first. In the browser the rig reads
 ## the page's query for the same words (`?view=plaza&doors=open`,
@@ -16,6 +16,8 @@ extends Node3D
 ## Camera spots for the player-height views: position, then the point looked at (metres).
 const VIEWS := {
 	"start": [Vector3(0, 1.7, -12), Vector3(0, 6.0, -48)],
+	# The lot from above the road toward the screen: the map picker's card (`MapInfo.preview_path`).
+	"map_card": [Vector3(0, 34.0, 56.0), Vector3(0, 0.0, -10.0)],
 	"concession": [Vector3(0, 1.7, -20), Vector3(0, 2.0, -4)],
 	"concession_in": [Vector3(0, 1.7, 6.5), Vector3(0, 1.6, -3)],
 	"booth": [Vector3(0, 5.6, 24.5), Vector3(0, 3.5, -30)],

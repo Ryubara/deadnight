@@ -41,6 +41,10 @@ var loops: Array[PackedVector3Array] = []
 ## Where a bot falls back to when it backs away (the field in front of the screen); `Vector3.INF`
 ## for nowhere in particular.
 var home := Vector3.INF
+## Places worth walking to across the lot (the shop's spots, the breaches, the doors, the breaker
+## posts and the fuel crates, a few metres apart at the least): where a roaming bot goes
+## (`BotRoam`). Empty for a level without them; a roaming bot then wanders.
+var roam_spots: Array[Vector3] = []
 ## The shop, the breaches, the breaker posts and the fuel crates (`LotBotData.fill` with the rules'
 ## tuning); null for a bot that does no errands.
 var shop: BotShop

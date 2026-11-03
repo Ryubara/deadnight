@@ -17,11 +17,13 @@ its own.
 """
 
 import math
+import re
 from pathlib import Path
 
 import build_greybox as bg
 
 OUT = Path("game/world/smallmap/smallmap_greybox.tscn")
+TUNING = Path("game/world/smallmap/smallmap_tuning.tres")  # the map's prices (MapTuning): the one source of the links'
 ROOT = "SmallMapGreybox"
 
 # --- Heights (formula rows 9 and 19; the kit's wall modules are 2.8 m and get a 0.4 m band on top) ----------------
@@ -74,9 +76,8 @@ RACK_H = 1.2
 STAIR_A = (3.0, -0.0, 0.0)  # (x of the foot, z of the north edge, floor) in the start room
 STAIR_B = (-3.0, -7.8, 0.0)  # in the side room
 
-# The paid links (row 11), with their placeholder price: #632 moves the price into the shop's tuning (formula row 20
-# and 21: one price P for all three, 400 to 475, 450 the middle).
-LINK_PRICE = 450
+# The paid links (row 11). Their price is the shop's (formula rows 20 and 21: one price P for all three, 400 to 475, 450
+# the middle), read from the map's tuning (`MapTuning`, smallmap_tuning.tres) so the economy has one source.
 DOOR_X = 14.0  # the door between the hall and the rewind room, at the hall's north-east corner (row 10: short sights)
 OPENING_X = 12.0  # the opening between the two halves upstairs
 LINKS = {
@@ -84,6 +85,14 @@ LINKS = {
     "Stairs_Start": "door_stairs_start",
     "Stairs_Side": "door_stairs_side",
 }
+# The rooms whose windows open for the dead when a link is bought (`metadata/opens`, NightWorld): the hall's are open
+# from the start. A stair joins a ground room to the upper floor, so it opens both.
+LINK_OPENS = {
+    "Door_Side": ["side"],
+    "Stairs_Start": ["upstairs"],
+    "Stairs_Side": ["side", "upstairs"],
+}
+START_AREAS = ["start"]
 STAND = bg.DOOR_STAND_DISTANCE
 
 # The windows (row 15): id, room, the wall's axis and fixed coordinate, the centre along the wall, the inward direction
@@ -107,6 +116,45 @@ BREACH_HEIGHT = 2.4
 SPAWN_OUT = 7.0  # metres outside a window (row 18: 5 to 15)
 BREACH_SPAWN_OUT = 6.0
 
+# The boards across a window (`Barricade`, five of them as the rules' BarricadeTuning.boards): the kit's 1.5 m board
+# (window_board.tscn), one above the other across the 1.3 m of opening above the sill; the breach's are spread over its
+# 2.4 m. A board is 1.5 m long, so a mended one swings about a point 0.75 m from its middle (`board_half`), not the
+# fence breaches' 2.05.
+BOARDS = 5
+BOARD_LENGTH = 1.5
+BOARD_PITCH = (WINDOW_TOP - WINDOW_SILL) / BOARDS  # 0.26: five fill the opening
+BREACH_BOARD_PITCH = BREACH_HEIGHT / BOARDS
+BOARD_OUT = 0.05  # metres outside the wall's centre line, on the dead's side
+
+# --- The shop (formula rows 22 to 24; the prices are smallmap_tuning.tres, the weapons are docs/design/smallmap.md) ----
+# Where a player stands to buy is a marker in `ShopSpots` (`kind`, `shop_id`; NightWorld.shop_spots), 1.35 m in front of
+# a plaque (or the cabinet, or the box) on a wall. The face of the wall is (x, z) and `into` the way the room lies from
+# it, as (dx, dz). Start 2 (0.2 and 0.6 P), side 2 (1.2 P), upstairs 4 and a cabinet (1.2 to 1.8 P).
+SPOT_IN = 1.35
+WALL_SPOTS = [
+    # (name, shop id, sign, room, wall face (x, z), into, floor)
+    ("PistolStart", "weapon_pistol", "REVOLVER", "start", (0.0, 11.0), (1, 0), 0.0),
+    ("CrowbarStart", "weapon_crowbar", "CROWBAR", "start", (0.0, 6.0), (1, 0), 0.0),
+    ("ShotgunSide", "weapon_shotgun", "SHOTGUN", "side", (16.0, -6.0), (-1, 0), 0.0),
+    ("SmgSide", "weapon_smg", "TOMMY GUN", "side", (5.5, -7.8), (0, 1), 0.0),
+    ("BatUpstairs", "weapon_baseball_bat", "BAT", "upstairs", (16.05, 2.3), (-1, 0), STOREY),
+    ("FlareUpstairs", "weapon_flare_gun", "FLARE GUN", "upstairs", (-0.05, 2.3), (1, 0), STOREY),
+    ("AxeUpstairs", "weapon_fire_axe", "FIRE AXE", "upstairs", (16.05, -4.0), (-1, 0), STOREY),
+    ("ShotgunUpstairs", "weapon_shotgun", "SHOTGUN", "upstairs", (5.0, -7.85), (0, 1), STOREY),
+]
+# The sniper cabinet: the rifle, at 1.5 P, in the upstairs half over the side room.
+CABINET = ("RifleCabinet", "weapon_rifle", "RIFLE", "upstairs", (-6.05, -4.0), (1, 0), STOREY)
+# The box (the crane, one place, never moves, formula row 22): in the side room, set back 1.5 m from its marker.
+BOX_MARKER = (10.5, 0.0, -5.9)
+BOX_YAW = 180.0  # toward the wall the box stands against (the marker faces its box)
+# Ammunition lockers: a crate against a wall; the spot sells the rounds of the weapon in hand.
+LOCKERS = [
+    ("LockerStart", "start", (8.0, 14.5), (0, -1), 0.0),
+    ("LockerSide", "side", (5.0, -0.3), (0, -1), 0.0),
+    ("LockerUpstairs", "upstairs", (6.0, -0.25), (0, -1), STOREY),
+    ("LockerUpstairsA", "upstairs", (12.0, 4.5), (0, -1), STOREY),
+]
+
 # --- Outside: not playable. Each room's windows open onto ground of their own, so the dead never walk round from one
 # room to another outside: the front yard (the hall's windows), the west yard (the rewind room's), the pocket behind
 # the breach, the bank (the upper floor's north windows, at the upper floor's height) and the hall's roof (the upper
@@ -127,8 +175,9 @@ MIDDLES = {
 # lifts every floor under the roof evenly (kit docs/godot/compat-lighting.md, Light cards indoors).
 INDOOR_MOON_ENERGY = 0.1
 
-# Lamps: plain warm lights, one or two a room, on no circuit (whether the generator comes to this map is the
-# maintainer's call, formula row 30).
+# Lamps: plain warm lights, one or two a room, on the battery circuit (always lit: whether the generator comes to this
+# map is the maintainer's call, formula row 30, and until it is answered the map has none), so the ground in reach of
+# one is lit for the dead's pace (`LotLamps.lit_at`).
 LAMPS = [
     ("Start", (4.0, 2.9, 10.5)),
     ("Start", (12.5, 2.9, 10.5)),
@@ -158,6 +207,10 @@ MATS = {
     "fence": "field_fence",
     "pocket": "breach_ground",
     "frame": "booth_wall",
+    "plaque": "plaque",
+    "crate": "ammo_crate",
+    "band": "ammo_band",
+    "cabinet": "concession_prop",
 }
 
 _shapes: dict[tuple[float, float, float], str] = {}
@@ -199,6 +252,18 @@ def rect_box(parent: str, name: str, rect, y0: float, y1: float, mat: str, layer
     bg.block(parent, name, x0, x1, z0, z1, y1 - y0, mat, y0, layers)
 
 
+def wood_box(parent: str, name: str, rect, y0: float, y1: float, mat: str) -> None:
+    """A floor box that steps like wood (metadata `surface`, `FootSurface`): the upper floor's planks."""
+    x0, x1, z0, z1 = rect
+    size = (x1 - x0, y1 - y0, z1 - z0)
+    pos = ((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+    bg.node(
+        name, "CSGBox3D", parent,
+        {"transform": bg.xform(pos), "use_collision": "true", "size": bg.vec(size),
+         "material": f'ExtResource("{mat}")', "metadata/surface": '"wood"'},
+    )  # fmt: skip
+
+
 def slab_with_hole(parent: str, name: str, rect, hole, y0: float, mat: str) -> None:
     """A floor slab over `rect` with a rectangular stairwell `hole` cut out (four boxes round it)."""
     x0, x1, z0, z1 = rect
@@ -211,7 +276,7 @@ def slab_with_hole(parent: str, name: str, rect, hole, y0: float, mat: str) -> N
     ]
     for tag, (a0, a1, b0, b1) in pieces:
         if a1 - a0 > 0.01 and b1 - b0 > 0.01:
-            rect_box(parent, f"{name}{tag}", (a0, a1, b0, b1), y0, y0 + SLAB, mat)
+            wood_box(parent, f"{name}{tag}", (a0, a1, b0, b1), y0, y0 + SLAB, mat)
 
 
 def stair(parent: str, name: str, foot_x: float, north_z: float, floor: float) -> tuple[float, float, float]:
@@ -229,7 +294,7 @@ def stair(parent: str, name: str, foot_x: float, north_z: float, floor: float) -
     bg.node(
         f"{name}Ramp", "CSGBox3D", parent,
         {"transform": ramp, "use_collision": "true", "size": bg.vec((length, thick, STAIR_WIDTH)),
-         "material": f'ExtResource("{MATS["stair"]}")'},
+         "material": f'ExtResource("{MATS["stair"]}")', "metadata/surface": '"wood"'},
     )  # fmt: skip
     # The treads, drawn only (the ramp is what is walked on).
     steps = round(STOREY / RISER)
@@ -250,13 +315,24 @@ def stair(parent: str, name: str, foot_x: float, north_z: float, floor: float) -
     return (foot_x, x1, z0, z1)
 
 
+def link_price(shop_id: str) -> int:
+    """The price of a shop item in the map's tuning (smallmap_tuning.tres)."""
+    for block_text in re.split(r"\n\n", TUNING.read_text(encoding="utf-8")):
+        item = re.search(r'^id = &"(\w+)"$', block_text, re.MULTILINE)
+        price = re.search(r"^price = (\d+)$", block_text, re.MULTILINE)
+        if item and price and item.group(1) == shop_id:
+            return int(price.group(1))
+    raise KeyError(shop_id)
+
+
 def link(name: str, slab_size, slab_at, stands: list[tuple[str, tuple[float, float, float]]]) -> None:
     """A paid link: a door group in `Doors` with its shop id, price and prerequisite (none: every link can be bought
     first, as Nacht's can), one slab the walking mesh is baked around, and a stand on each side a player buys from."""
     props = {
-        "metadata/cost": str(LINK_PRICE),
+        "metadata/cost": str(link_price(LINKS[name])),
         "metadata/shop_id": f'"{LINKS[name]}"',
         "metadata/requires": '""',
+        "metadata/opens": "[" + ", ".join(f'"{room}"' for room in LINK_OPENS[name]) + "]",
     }
     key = bg.node(name, "Node3D", "Doors", props)
     bg.box(key, "Slab", slab_size, slab_at, MATS["door"])
@@ -295,7 +371,66 @@ def window(spec, breach: bool = False) -> tuple[float, float, float]:
              MATS["frame"])  # fmt: skip
         body(key, "Blocker", (WINDOW_WIDTH, top - WINDOW_SILL, thick), (0, (WINDOW_SILL + top) / 2, 0),
              BLOCKER_LAYER, None)  # fmt: skip
+    # The boards: a `Barricade` (the rules' windows, BarricadeTuning.ids) with one board a slot, lowest first.
+    boards = bg.node("Boards", "Node3D", key,
+                     {"script": 'ExtResource("barricade")', "metadata/barricade_id": f'"{wid}"',
+                      "metadata/board_half": f"{BOARD_LENGTH / 2:g}"})  # fmt: skip
+    first, pitch = (0.3, BREACH_BOARD_PITCH) if breach else (WINDOW_SILL + BOARD_PITCH / 2, BOARD_PITCH)
+    for i in range(BOARDS):
+        bg.instance(boards, f"Board{i + 1}", "board", (0.0, first + i * pitch, -BOARD_OUT))
     return pos
+
+
+def sign_size(text: str) -> int:
+    """The font size of a plaque's name: 60, smaller for a long name so it stays within the 1.7 m plaque (a letter is
+    about 0.21 m wide at 60)."""
+    return min(60, int(420 / len(text)))
+
+
+def _yaw_of(into: tuple[int, int]) -> float:
+    return math.degrees(math.atan2(into[0], into[1]))
+
+
+def wall_spot(name, shop_id, text, room, face, into, floor, cabinet: bool = False) -> None:
+    """A weapon on a wall: a plaque (a cabinet for the rifle) with its name, and the marker a player buys from. Nothing
+    here is CSG, so the walking mesh does not change; the cabinet is solid to players and shots."""
+    x, z = face
+    dx, dz = into
+    yaw = _yaw_of(into)
+    spot = (x + dx * SPOT_IN, floor, z + dz * SPOT_IN)
+    if cabinet:
+        depth = 0.4
+        body("ShopProps", f"{name}Case", (1.3, 2.0, depth), (x + dx * depth / 2, floor + 1.0, z + dz * depth / 2),
+             bg.GROUND_LAYER, MATS["cabinet"])  # fmt: skip
+        sign_at = (x + dx * (depth + 0.02), floor + 1.5, z + dz * (depth + 0.02))
+    else:
+        bg.box("ShopProps", f"{name}Plaque", (1.7, 0.9, 0.12), (x + dx * 0.06, floor + 1.6, z + dz * 0.06), MATS["plaque"],
+               yaw, collide=False)  # fmt: skip
+        sign_at = (x + dx * 0.14, floor + 1.6, z + dz * 0.14)
+    bg.sign("ShopProps", f"{name}Sign", text, sign_at, yaw, sign_size(text))
+    props = {"transform": bg.xform(spot, yaw), "metadata/kind": '"wall"', "metadata/shop_id": f'"{shop_id}"',
+             "metadata/room": f'"{room}"'}  # fmt: skip
+    if cabinet:
+        props["metadata/cabinet"] = "true"
+    bg.node(f"Spot{name}", "Marker3D", "ShopSpots", props)
+
+
+def locker(name, room, face, into, floor) -> None:
+    """A green crate with a yellow band against a wall: the map's ammunition. The spot is 1.35 m in front of the wall."""
+    x, z = face
+    dx, dz = into
+    yaw = _yaw_of(into)
+    depth = 0.4
+    centre = (x + dx * depth / 2, floor + 0.5, z + dz * depth / 2)
+    body("ShopProps", name, (1.2, 1.0, depth), centre, bg.GROUND_LAYER, MATS["crate"])
+    bg.box("ShopProps", f"{name}Band", (1.24, 0.18, depth + 0.04), (centre[0], floor + 0.82, centre[2]), MATS["band"],
+           yaw, collide=False)  # fmt: skip
+    bg.sign(
+        "ShopProps", f"{name}Sign", "AMMO", (x + dx * (depth + 0.02), floor + 0.5, z + dz * (depth + 0.02)), yaw, 60
+    )
+    bg.node(f"Spot{name}", "Marker3D", "ShopSpots",
+            {"transform": bg.xform((x + dx * SPOT_IN, floor, z + dz * SPOT_IN), yaw), "metadata/kind": '"ammo"',
+             "metadata/shop_id": '""', "metadata/room": f'"{room}"'})  # fmt: skip
 
 
 def build() -> None:
@@ -303,13 +438,22 @@ def build() -> None:
     lines.append("[gd_scene format=3]")
     lines.append("")
     lines.append('[ext_resource type="Script" path="res://world/drive_in/lot_doors.gd" id="doors"]')
+    lines.append('[ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/smallmap/fixtures/window_board.tscn" id="board"]')
     lines.append('[ext_resource type="Shader" path="res://world/drive_in/night_sky.gdshader" id="night_sky"]')
     for mid in sorted(set(MATS.values())):
         lines.append(f'[ext_resource type="Material" path="res://assets/lot/materials/{mid}.tres" id="{mid}"]')
     lines.append("")
     lines.extend(bg.night_environment_resources())
-    bg.node(ROOT, "Node3D", None, {"metadata/map_id": '"smallmap"', "metadata/storey": f"{STOREY:g}",
-                                   "metadata/ceiling": f"{CEILING:g}"})  # fmt: skip
+    bg.node(ROOT, "Node3D", None, {
+        "metadata/map_id": '"smallmap"', "metadata/storey": f"{STOREY:g}", "metadata/ceiling": f"{CEILING:g}",
+        # What a night reads (MapLayout, MapTuning): the rooms open for the dead at the start, the saved meshes, the
+        # map's tuning, and the circuit every lamp hangs on (none of the generator's: the map has no power to switch).
+        "metadata/start_areas": "[" + ", ".join(f'"{a}"' for a in START_AREAS) + "]",
+        "metadata/navmeshes": '"res://world/smallmap/smallmap_navmeshes.res"',
+        "metadata/tuning": '"res://world/smallmap/smallmap_tuning.tres"',
+        "metadata/circuit": '"battery"',
+    })  # fmt: skip
 
     bg.node("Lighting", "Node3D", ".")
     bg.node("WorldEnvironment", "WorldEnvironment", "Lighting", {"environment": 'SubResource("night")'})
@@ -426,7 +570,7 @@ def build() -> None:
 
     # --- Lamps -----------------------------------------------------------------------------------------------------
     for i, (room, at) in enumerate(LAMPS, start=1):
-        bg.omni(room, f"Lamp{i}", at, 1.4, 8.0, BULB, powered=False)
+        bg.omni(room, f"Lamp{i}", at, 1.4, 8.0, BULB)
 
     # --- Outside -----------------------------------------------------------------------------------------------------
     bg.node("Outside", "Node3D", ".")
@@ -457,6 +601,18 @@ def build() -> None:
         base = BANK_TOP if name == "BankRim" else 0.0
         rect_box("Outside", name, (x0, x1, z0, z1), base, base + FENCE_H, MATS["fence"], bg.WALL_LAYERS)
     rect_box("Outside", "PocketRoof", (px0 - 0.3, px1, pz0 - 0.3, pz1 + 0.3), CEILING, CEILING + SLAB, MATS["ceiling"])
+
+    # --- The shop (rows 22 to 24) ----------------------------------------------------------------------------------
+    bg.node("ShopSpots", "Node3D", ".")
+    bg.node("ShopProps", "Node3D", ".")
+    for name, shop_id, text, room, face, into, floor in [*WALL_SPOTS, CABINET]:
+        wall_spot(name, shop_id, text, room, face, into, floor, cabinet=(name == CABINET[0]))
+    bx, by, bz = BOX_MARKER
+    bg.node("SpotBox", "Marker3D", "ShopSpots",
+            {"transform": bg.xform((bx, by, bz), BOX_YAW), "metadata/kind": '"crane"', "metadata/shop_id": '"crane_play"',
+             "metadata/crane_spot": "0", "metadata/room": '"side"'})  # fmt: skip
+    for name, room, face, into, floor in LOCKERS:
+        locker(name, room, face, into, floor)
 
     # --- Camera probes (row 28): every door, stair, opening and corner. Each faces the way a player walks through ----
     bg.node("CameraProbes", "Node3D", ".")

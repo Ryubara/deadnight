@@ -226,6 +226,8 @@ func test_with_a_person_and_three_bots_one_bot_flanks_and_the_others_stay_with_t
 	night.gather()
 	await night.settle(SETTLE_FRAMES)
 	_catcher.start()
+	# The roles are Follow's: the person gives that order (the default is to roam).
+	night.give_order(BotOrders.FOLLOW, 1, night.server.body_of(1).global_position)
 	night.run(25 * TICKS_PER_SECOND)
 	var flanks: Array[int] = []
 	for bot in night.host.bots:

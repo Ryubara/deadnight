@@ -27,7 +27,7 @@ A downed player can be revived until the round ends.
 | Back lot | mid to late | dark, wrecks and long lanes |
 | The ticket plaza (the road door) | late | the lot's last door: a closed court with its own perk machine |
 
-The order, prices and layout are in [the lot](map.md).
+The order, prices and layout are in [the lot](map.md); which map a night is played on, and the picker, in [maps](maps.md).
 
 ## Between nights
 

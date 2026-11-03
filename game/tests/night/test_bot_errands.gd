@@ -43,6 +43,7 @@ func _night(humans: int, bots: int, profile: BotProfile = null) -> SeatedNight:
 	for id in range(1, humans + 1):
 		night.human(id)
 	for id in range(humans + 1, humans + bots + 1):
+		night.stand_still = true
 		night.seat(id, profile if profile != null else BotProfile.regular(), SEED + id)
 	await night.settle(12)
 	_catcher.start()
