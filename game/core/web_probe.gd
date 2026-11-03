@@ -95,6 +95,9 @@ static func snapshot(top: Control) -> Dictionary:
 		"notice_log": "",
 		"touch": false,
 		"reticle": false,
+		"weapon": "",
+		"weapon_slots": "",
+		"weapon_slot_held": 0,
 		"settings_open": false,
 		"menu_buttons": "",
 		"tab": "",
@@ -212,6 +215,11 @@ static func snapshot(top: Control) -> Dictionary:
 		# Who joined or left, as the night's notices say it.
 		data["notices"] = "|".join(night_screen.night.hud.notices.texts())
 		data["notice_log"] = "|".join(night_screen.night.hud.notices.history)
+		# The weapon slot strip: what is carried by slot, and which slot is in hand.
+		var hud_state := night_screen.night.hud.state
+		data["weapon"] = String(hud_state.weapon_id)
+		data["weapon_slots"] = ",".join(PackedStringArray(hud_state.slot_ids))
+		data["weapon_slot_held"] = hud_state.slot_held
 	data["touch"] = night_screen.touch_active()
 	data["reticle"] = night_screen.reticle_shown()
 	data["settings_open"] = night_screen.settings_open()
