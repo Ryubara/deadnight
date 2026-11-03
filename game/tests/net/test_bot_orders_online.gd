@@ -6,13 +6,21 @@
 extends GdUnitTestSuite
 
 const STEP := Night.STEP
-## Metres the order promises for a hold.
+## Metres the order promises for a hold, and the share of the time a holding bot is inside them
+## (the soak gates 92% over a whole night, `docs/research/bots.md`; twenty samples cannot resolve
+## 92%, so this takes one miss in ten).
 const HOLD_RADIUS := 3.0
+const HOLD_SHARE := 0.9
 
 var _host: NightHost
 var _person: Night
 var _links: Array[WebSocketLink] = []
 var _bots: Array[BotClient] = []
+## What the bots of a night share, as `BotHost` hands it to every bot it seats: the table of which
+## seats are bots (the frame does not say, so without it a bot takes its neighbour for a person and
+## the two stand on one spot, pushing each other off it) and the team.
+var _bot_ids: Dictionary = {}
+var _team := BotTeam.new()
 
 
 func after_test() -> void:
@@ -20,6 +28,8 @@ func after_test() -> void:
 		link.close()
 	_links.clear()
 	_bots.clear()
+	_bot_ids.clear()
+	_team = BotTeam.new()
 	if is_instance_valid(_person):
 		_person.get_parent().queue_free()
 	if is_instance_valid(_host):
@@ -102,6 +112,9 @@ func _join_bot() -> BotClient:
 	)
 	LotBotData.fill(level, _host.world)
 	var bot := BotClient.new(state, BotProfile.regular(), 900 + link.player_id, link.send, level)
+	bot.bot_ids = _bot_ids
+	bot.team = _team
+	_bot_ids[state.player_id] = true
 	link.delivered.connect(func(events: Array) -> void: bot.hear(events))
 	bot.hear(early)
 	_bots.append(bot)
@@ -164,18 +177,33 @@ func test_a_remote_persons_order_reaches_the_bots_and_they_keep_it() -> void:
 	assert_float(_flat(kept["at"], spot)).is_less(1.5)
 	assert_str(str(BotOrders.current(_person.state.frame)["order"])).is_equal("hold")
 	# And the bots go there and stay.
-	await _run(60 * 30)
-	for bot in bots:
-		(
-			assert_float(_flat(_position_of(bot), kept["at"]))
-			. override_failure_message(
-				(
-					"bot %d is %.1f m from the spot"
-					% [bot.state.player_id, _flat(_position_of(bot), kept["at"])]
-				)
+	await _run(60 * 25)
+	# The order promises 3 m for a share of the time (a dodge or a push takes a bot off its place
+	# now and then), so count the half seconds of five seconds that each bot spends inside it.
+	var inside := 0
+	var counted := 0
+	for _half_second in 10:
+		await _run(30)
+		for bot in bots:
+			counted += 1
+			if _flat(_position_of(bot), kept["at"]) < HOLD_RADIUS:
+				inside += 1
+	(
+		assert_float(float(inside) / float(counted))
+		. override_failure_message(
+			(
+				"the bots were within %.0f m of the spot %d times in %d"
+				% [HOLD_RADIUS, inside, counted]
 			)
-			. is_less(HOLD_RADIUS)
 		)
+		. is_greater_equal(HOLD_SHARE)
+	)
+	# Two bots take two places of the ring about the spot, not one place between them.
+	(
+		assert_float(_flat(_position_of(bots[0]), _position_of(bots[1])))
+		. override_failure_message("the two holding bots stand on one place")
+		. is_greater(2.0)
+	)
 	# A second order replaces the first: Follow, then Roam.
 	await _run(40)
 	_person.give_bot_order(BotOrders.FOLLOW)
