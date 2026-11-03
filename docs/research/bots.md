@@ -265,6 +265,20 @@ We do not teleport in v1.
 
 `stuck_seconds`, `longest_stuck_episode` and `ladder_depth` are first-class metrics ([Testing](#how-to-test-bots-so-they-are-not-buggy)).
 
+### Goals the body cannot reach (#677)
+
+The walking mesh runs through each breach's gap into the pocket the dead break in from, and the breach's boards sit on a
+physics layer of their own (players only) that the bots' sight ray does not look at. A goal in the pocket, or past the
+fence within the 3 m snap, was therefore "on the mesh" with a good path, and the bot stood against the boards climbing
+the ladder: 5 to 11 s episodes in a probe (the issue's 21 s was a roaming bot that kept coming back). Now a new path is
+checked as a body walks it (`BotPath.walkable`: a ray along each segment at 0.15 m, `BotLevel.walk`, which sees walls and
+boards and looks past people and zombies, `WorldProbe.static_distance`). Stopped with more than 1 m of path left, the
+goal is marked unreachable at once (`walled_marks`) and the brain takes another; stopped with less, the path is cut
+0.45 m before the thing, so a goal at the fence's own edge is walked to as near as the body gets. The roam's reach
+question (`probe`) goes through the same check. `tests/night/test_bot_fence.gd` sends one bot to five pockets and to the
+fence's edge (longest stuck under 3 s; 5 to 11 s on `main`); the old negative control for a wall the mesh does not know
+turns the check off, since the check now sees such a wall.
+
 ## Economy
 
 The bot knows the shop table (prices, prerequisites, plan order) because every client has it. It shops from the

@@ -32,6 +32,13 @@ const GOAL_MOVED := 1.5
 const REACHED_SHORT := 2.5
 ## Metres a goal may lie off the mesh and still be snapped onto it.
 const SNAP_LIMIT := 3.0
+## Metres above a path point at which the way is tested for what a body cannot walk through (low
+## enough for the lowest board of a barricade); the metres of path past such a thing, at the most,
+## that are cut off (the bot stops short of it: the posts and boards at the mesh's edge) before the
+## goal counts as unreachable; and the metres short of it the bot stops (its body's radius).
+const WALK_HEIGHT := 0.15
+const WALLED_SLACK := 1.0
+const BODY_STANDOFF := 0.45
 ## Seconds a goal the mesh does not reach is not tried again.
 const UNREACHABLE_SECONDS := 5.0
 ## Seconds, at the least and at the most, the bot waits after a door for the map to take the mesh
@@ -55,6 +62,9 @@ var empty_answers := 0
 ## Goals marked unreachable, and doors that dropped the cache.
 var unreachable_marks := 0
 var door_drops := 0
+## Goals marked unreachable because a body cannot walk the path (the mesh runs through a barricade's
+## boards into the pocket the dead break in from).
+var walled_marks := 0
 ## Paths made so far: a new one is a new number, so a caller can tell a path from the one before.
 var generation := 0
 ## What the last `ask` came to.
@@ -248,6 +258,12 @@ func _query(here: Vector3, to: Vector3, now: float) -> Status:
 		block(to, now)
 		forget()
 		return Status.UNREACHABLE
+	found = walkable(found)
+	if found.is_empty():
+		walled_marks += 1
+		block(to, now)
+		forget()
+		return Status.UNREACHABLE
 	if _flat(found[found.size() - 1], target) > REACHED_SHORT:
 		block(to, now)
 		forget()
@@ -257,6 +273,33 @@ func _query(here: Vector3, to: Vector3, now: float) -> Status:
 	index = 0
 	generation += 1
 	return Status.OK
+
+
+## The path as a body can walk it. The mesh runs through what a body is stopped by (the boards
+## across a breach, the fence's posts at its edge). A path stopped by something with more than
+## `WALLED_SLACK` metres of it left is empty: the goal is unreachable, and the bot does not walk to
+## it and wedge against it. One stopped with less left is cut short `BODY_STANDOFF` metres before
+## the thing, the nearest point the bot can reach. A level without the check passes the path as it
+## is.
+func walkable(found: PackedVector3Array) -> PackedVector3Array:
+	if _level == null or not _level.walk.is_valid() or found.size() < 2:
+		return found
+	var low := Vector3(0.0, WALK_HEIGHT, 0.0)
+	for i in found.size() - 1:
+		var hit := _level.walk_hit(found[i] + low, found[i + 1] + low)
+		if hit < 0.0:
+			continue
+		var length := found[i].distance_to(found[i + 1])
+		var beyond := length - hit
+		for k in range(i + 1, found.size() - 1):
+			beyond += found[k].distance_to(found[k + 1])
+		if beyond > WALLED_SLACK:
+			return PackedVector3Array()
+		var cut := found.slice(0, i + 1)
+		var stop := maxf(hit - BODY_STANDOFF, 0.0)
+		cut.append(found[i].lerp(found[i + 1], stop / maxf(length, 0.0001)))
+		return cut
+	return found
 
 
 ## Moves `index` past the points the bot has reached or run past (a corner cut at speed is passed
@@ -295,7 +338,7 @@ func probe(here: Vector3, to: Vector3, now: float) -> bool:
 		return false
 	queries += 1
 	var start := NavigationServer3D.map_get_closest_point(map, here)
-	var found := NavigationServer3D.map_get_path(map, start, target, true)
+	var found := walkable(NavigationServer3D.map_get_path(map, start, target, true))
 	return not found.is_empty() and _flat(found[found.size() - 1], target) <= REACHED_SHORT
 
 
