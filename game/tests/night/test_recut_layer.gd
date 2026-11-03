@@ -96,7 +96,7 @@ func test_every_weapon_that_can_be_re_cut_gets_the_layer_in_its_shot() -> void:
 		_frame({weapon: 1})
 		_shot(weapon)
 		assert_array(_ids()).override_failure_message("%s: %s" % [weapon, _ids()]).contains(
-			[&"recut_layer"]
+			[RecutLayer.layers_for(weapon)[0]]
 		)
 
 
@@ -108,7 +108,7 @@ func test_every_catalogue_weapon_gets_it_once_it_is_re_cut() -> void:
 		_frame({weapon: 1})
 		_shot(weapon)
 		assert_array(_ids()).override_failure_message("%s: %s" % [weapon, _ids()]).contains(
-			[&"recut_layer"]
+			[RecutLayer.layers_for(weapon)[0]]
 		)
 
 

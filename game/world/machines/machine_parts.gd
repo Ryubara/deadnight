@@ -20,6 +20,8 @@ const WEAPON_MODELS := {
 	&"fifty_cal": "res://assets/weapons/fifty_cal/fifty_cal.glb",
 	&"pump_870": "res://assets/weapons/pump_870/pump_870.glb",
 	&"dual_pistols": "res://assets/weapons/service_pistol/service_pistol.glb",
+	&"ray_gun": "res://assets/weapons/ray_gun/ray_gun.glb",
+	&"freeze_gun": "res://assets/weapons/freeze_gun/freeze_gun.glb",
 }
 
 ## The weapons whose models the bench loads when one is re-cut, not with the night (#793).
