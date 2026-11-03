@@ -1070,9 +1070,9 @@ def build() -> None:
     box("ShopProps", "MP5Plaque", (1.7, 0.9, 0.12), (52.0, 1.6, 37.74), "plaque", collide=False)
     sign("ShopProps", "MP5Sign", "MP5", (52.0, 1.6, 37.66), 180)
     shop_spot("SpotMP5", "wall", "weapon_mp5", (52.0, 0, 36.4), 180)
-    box("ShopProps", "M4A1Plaque", (1.7, 0.9, 0.12), (-44.0, 1.6, 37.74), "plaque", collide=False)
-    sign("ShopProps", "M4A1Sign", "M4A1", (-44.0, 1.6, 37.66), 180)
-    shop_spot("SpotM4A1", "wall", "weapon_m4a1", (-44.0, 0, 36.4), 180)
+    box("ShopProps", "M4A1Plaque", (1.7, 0.9, 0.12), (-41.0, 1.6, 37.74), "plaque", collide=False)
+    sign("ShopProps", "M4A1Sign", "M4A1", (-41.0, 1.6, 37.66), 180)
+    shop_spot("SpotM4A1", "wall", "weapon_m4a1", (-41.0, 0, 36.4), 180)
     # The prize crane, inside the stand, beside the cabinet that was already there.
     shop_spot("SpotCrane", "crane", "crane_play", (-6.4, 0, 5.0), 270, crane_spot=0)
     # The crane's other places (rules: `crane.spot_doors`): the midway, the open field and the yard. A breakdown moves

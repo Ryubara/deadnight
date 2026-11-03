@@ -2561,12 +2561,12 @@ metadata/kind = "wall"
 metadata/shop_id = "weapon_mp5"
 
 [node name="M4A1Plaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -44.000, 1.600, 37.740)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -41.000, 1.600, 37.740)
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
 [node name="M4A1Sign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -44.000, 1.600, 37.660)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -41.000, 1.600, 37.660)
 pixel_size = 0.006
 text = "M4A1"
 font_size = 72
@@ -2575,7 +2575,7 @@ modulate = Color(0.1, 0.07, 0.02, 1)
 outline_modulate = Color(1, 0.9, 0.6, 1)
 
 [node name="SpotM4A1" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -44.000, 0.000, 36.400)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -41.000, 0.000, 36.400)
 metadata/kind = "wall"
 metadata/shop_id = "weapon_m4a1"
 
