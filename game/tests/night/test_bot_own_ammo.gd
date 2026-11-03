@@ -196,6 +196,39 @@ func test_a_following_bot_with_an_empty_gun_goes_anyway_and_comes_back_to_the_le
 	night.dispose()
 
 
+# --- A Safe bot (#693): keeps its distance, goes only with an empty gun ---
+
+
+## A profile whose bot is Safe whatever its health (every threshold above the full share).
+func _safe_profile() -> BotProfile:
+	var profile := BotProfile.regular()
+	profile.careful_below = 1.1
+	profile.aggressive_above = 1.2
+	profile.safe_below = 1.1
+	profile.safe_above = 1.2
+	return profile
+
+
+func test_a_safe_roaming_bot_low_on_rounds_does_not_go_for_them() -> void:
+	var night := await _night(true, _safe_profile())
+	_short(night, SHORT_RESERVE)
+	night.run(SETTLE_FRAMES)
+	var start := _where(night, BOT)
+	assert_bool(_until_bought(night, PATIENCE)).is_false()
+	assert_float(_flat(_where(night, BOT), start)).is_less(AT_LOCKER)
+	assert_array(_catcher.lines).is_empty()
+	night.dispose()
+
+
+func test_a_safe_roaming_bot_with_an_empty_gun_goes_for_rounds() -> void:
+	var night := await _night(true, _safe_profile())
+	_short(night, 0, 0)
+	assert_bool(_until_bought(night, TRIP)).is_true()
+	assert_float(_flat(_bought[0], CONCESSION_LOCKER)).is_less(AT_LOCKER)
+	assert_array(_catcher.lines).is_empty()
+	night.dispose()
+
+
 # --- Hold: keeps the spot until the reserve is under a magazine ---
 
 

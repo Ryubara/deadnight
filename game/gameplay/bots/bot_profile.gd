@@ -105,6 +105,35 @@ const REACTION_FLOOR := 0.20
 ## and the motor goes on alone.
 @export_range(1, 10, 1) var brain_failure_limit: int = 1
 
+@export_group("Play states")
+## How the bot's health moves it between Aggressive, Careful and Safe (`BotPlayState`, shares of
+## full health, 0 to 1). Each switch has two numbers, one to go down and a higher one to come back
+## up, so a bot at the edge does not flicker.
+## Aggressive drops to Careful below this, and comes back above `aggressive_above`.
+@export_range(0.0, 1.0, 0.01) var careful_below: float = 0.7
+@export_range(0.0, 1.0, 0.01) var aggressive_above: float = 0.9
+## Careful drops to Safe below this, and Safe comes back to Careful above `safe_above`.
+@export_range(0.0, 1.0, 0.01) var safe_below: float = 0.5
+@export_range(0.0, 1.0, 0.01) var safe_above: float = 0.75
+## Danger nearby counts as lost health: each zombie beyond the first inside `pressure_range`
+## takes `pressure_penalty` off the share, up to `pressure_cap`.
+@export_range(1.0, 10.0, 0.5, "suffix:m") var pressure_range: float = 4.0
+@export_range(0.0, 0.3, 0.01) var pressure_penalty: float = 0.08
+@export_range(0.0, 0.6, 0.01) var pressure_cap: float = 0.24
+## Seconds a bot stays in a state before it may become bolder (it becomes more careful at once).
+@export_range(0.0, 10.0, 0.1, "suffix:s") var play_state_dwell: float = 2.0
+## The retreat margin a Careful bot keeps from the dead, and a Safe one (the profile's own
+## `retreat_margin` when that is larger).
+@export_range(0.0, 20.0, 0.5, "suffix:m") var careful_margin: float = 2.5
+@export_range(0.0, 20.0, 0.5, "suffix:m") var safe_margin: float = 6.0
+## Metres a Safe bot under a Hold order may step back from the held spot.
+@export_range(0.0, 10.0, 0.5, "suffix:m") var hold_back: float = 4.0
+## Metres a Safe bot under a Follow order keeps from its person (the near side of the band).
+@export var safe_follow_band: Vector2 = Vector2(2.5, 4.5)
+## A Safe bot gives up a revive when the nearest zombie is within this many metres (unless it is the
+## last one up).
+@export_range(0.0, 30.0, 0.5, "suffix:m") var safe_revive_range: float = 8.0
+
 
 ## The shipped profile of a room's `MatchSettings.bot_skill` (a value out of range is the nearest).
 static func for_skill(skill: int) -> BotProfile:

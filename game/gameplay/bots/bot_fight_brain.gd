@@ -55,6 +55,8 @@ const HOLD_LEAVE := 1.0
 const HOLD_RUN_FROM := 8.0
 ## The `ROAM` order: how near counts as at a place, for the legs.
 const ROAM_RADIUS := 1.0
+## The weight of the room ahead in a Safe bot's retreat, against `BotSteering.W_ROOM`.
+const SAFE_ROOM_WEIGHT := 1.8
 
 ## The legs the bot walks on, set by the client: the brain asks them which places are blocked.
 var legs: BotLegs
@@ -71,6 +73,8 @@ var telemetry: BotTelemetry:
 		revive.telemetry = value
 ## What the bot does about a downed teammate (`BotRevive`).
 var revive: BotRevive
+## How boldly the bot plays, from its health (`BotPlayState`).
+var play: BotPlayState
 ## What the bot is for at the moment (`BotRoles`).
 var role := BotRoles.Role.ANCHOR
 ## A bot with no way out (`BotTrapped`).
@@ -93,6 +97,8 @@ var _spot := Vector3.INF
 var _planned_at := -INF
 var _planned_anchor := Vector3.INF
 var _was_fighting := false
+var _was_safe := false
+var _play_changes := 0
 var _last_reflex := Vector3.ZERO
 var _combat: BotCombat
 var _dodge: BotDodge
@@ -114,6 +120,7 @@ func _init(profile: BotProfile, level: BotLevel, dodge_seed: int = 1) -> void:
 	_dodge = BotDodge.new(profile, dodge_seed)
 	_grenadier = BotGrenadier.new(level)
 	_stance = BotStance.new(level)
+	play = BotPlayState.new(profile)
 	revive = BotRevive.new(profile)
 	revive.rounds = level.rounds
 	revive.level = level
@@ -127,6 +134,7 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	var me := state.me()
 	if me.is_empty() or me.get("downed", true):
 		revive.reset()
+		play.reset()
 		if not me.is_empty():
 			intent.say = callouts.downed(beliefs, me)
 		return intent
@@ -140,6 +148,8 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 		targets, here, held, mates, beliefs.now, _blow_age(beliefs), _health(me)
 	)
 	var humans := _take_role(beliefs, here)
+	var threat := beliefs.nearest_threat(here, _profile.memory_seconds)
+	_read_play_state(beliefs, me, here, threat)
 	var marks := BotPings.marks(state.frame, beliefs.teammates)
 	revive.pinged = BotPings.downed(marks)
 	var rescue := revive.run(
@@ -157,7 +167,6 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	var marked := BotPings.enemy(marks, targets)
 	if marked >= 0 and rescue == BotRevive.Mode.NONE:
 		intent.target_id = marked
-	var threat := beliefs.nearest_threat(here, _profile.memory_seconds)
 	var order := _standing_order(beliefs)
 	_holding = order == BotOrders.HOLD
 	var people := _people(beliefs, order)
@@ -198,7 +207,11 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 			and _flank(intent, beliefs, here, humans)
 		):
 			pass
-		elif not _holding and _chase(intent, beliefs, here, held, mates, pack, plan.dry, order):
+		elif (
+			not _holding
+			and play.may_push()
+			and _chase(intent, beliefs, here, held, mates, pack, plan.dry, order)
+		):
 			intent.note = "chase"
 		elif _errand(
 			intent, beliefs, state, threat, order, anchor, _holding and not _pinged_door(state)
@@ -219,6 +232,30 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	if intent.note == "":
 		intent.note = "fight" if intent.target_id >= 0 else "hold"
 	return intent
+
+
+## The bot's play state for this think (`BotPlayState`): its health and the dead within the
+## pressure range, and what that asks of a revive. A change is counted for the report.
+func _read_play_state(beliefs: BotBeliefs, me: Dictionary, here: Vector3, threat: float) -> void:
+	var pressure := 0
+	for id in beliefs.contacts:
+		var contact: Dictionary = beliefs.contacts[id]
+		if beliefs.is_believed(contact):
+			var at := beliefs.guess(contact, _profile.memory_seconds)
+			if _flat(here, at) <= _profile.pressure_range:
+				pressure += 1
+	var own := {"health": me.get("health", beliefs.max_health), "max_health": beliefs.max_health}
+	play.update(own, pressure, beliefs.now)
+	if play.changes != _play_changes:
+		_play_changes = play.changes
+		if telemetry != null:
+			telemetry.count(&"play_state_changes")
+	revive.retreating = play.gives_up_revive(threat, false)
+
+
+## The name of the bot's play state, for the reports.
+func play_state_name() -> StringName:
+	return play.state_name()
 
 
 ## Reads the team's roles for this moment and takes this bot's. Returns the people up (the ones the
@@ -332,11 +369,14 @@ func _step_away(
 		boss_blow = boss_blow or beliefs.contact(swing["id"]).get("look", &"") == &"headliner"
 	var dodge := not swings.is_empty() and (kind != BotStance.Kind.HOLD or boss_blow)
 	var keeps_off := _boss_distance(beliefs, here) < _profile.boss_keep and not throwing
-	var margin := maxf(_profile.retreat_margin, revive.kite_margin())
+	var margin := play.margin(maxf(_profile.retreat_margin, revive.kite_margin()))
 	# A bot with no round left stands to fight with the quick melee as one with a bat does.
 	var melee := (held != null and held.is_melee()) or dry
-	var backs := threat < margin and kind != BotStance.Kind.HOLD and not _holding
-	if (melee and BotCombat.may_melee(pack, dry)) or throwing:
+	# A holder backs off its spot only when low on health, and only a few metres.
+	var may_back := not _holding or play.may_back_off_hold(_flat(here, anchor))
+	var backs := threat < margin and kind != BotStance.Kind.HOLD and may_back
+	var stands_to_swing := melee and BotCombat.may_melee(pack, dry)
+	if (stands_to_swing and not play.prefers_open_ground()) or throwing:
 		backs = false
 	if not (dodge or keeps_off or backs):
 		return false
@@ -363,10 +403,39 @@ func _retreat(here: Vector3, beliefs: BotBeliefs, anchor: Vector3) -> Vector3:
 	if threats.is_empty():
 		return Vector3.ZERO
 	var toward := Vector3.ZERO
-	var pull := anchor if anchor != Vector3.INF else _level.home
+	var pull := _retreat_pull(here, beliefs, anchor)
+	_steering.room_weight = SAFE_ROOM_WEIGHT if play.prefers_open_ground() else BotSteering.W_ROOM
 	if pull != Vector3.INF:
 		toward = Vector3(pull.x - here.x, 0.0, pull.z - here.z).normalized() * HOME_BEND
 	return _steering.pick(here, threats, toward, _last_reflex)
+
+
+## Where a retreat bends toward: the people (or the hold's spot), else home. A Safe bot with no one
+## to stay with heads for its teammates, and a Safe holder is not pulled to the spot it backs from.
+func _retreat_pull(here: Vector3, beliefs: BotBeliefs, anchor: Vector3) -> Vector3:
+	if play.prefers_open_ground():
+		if _holding:
+			return here
+		if anchor == Vector3.INF:
+			var mates_at := _nearest_mate(beliefs, here)
+			if mates_at != Vector3.INF:
+				return mates_at
+	return anchor if anchor != Vector3.INF else _level.home
+
+
+## Where the nearest teammate that is up stands, or `Vector3.INF`.
+func _nearest_mate(beliefs: BotBeliefs, here: Vector3) -> Vector3:
+	var best := Vector3.INF
+	var best_apart := INF
+	for id in beliefs.teammates:
+		var mate: Dictionary = beliefs.teammates[id]
+		if id == beliefs.me or mate.get("downed", false) or mate.get("dead", false):
+			continue
+		var apart := _flat(here, mate["pos"])
+		if apart < best_apart:
+			best_apart = apart
+			best = mate["pos"]
+	return best
 
 
 ## The order the bot lives by: the team's (`BotOrders`), where a follow whose person is gone or
@@ -413,7 +482,18 @@ func _by_order(
 		BotOrders.HOLD:
 			_stand_at_spot(intent, beliefs, here, threat)
 		_:
-			_roam_about(intent, beliefs, here)
+			if play.may_wander():
+				_roam_about(intent, beliefs, here)
+			else:
+				_rest(intent, beliefs)
+
+
+## A roaming bot that is low on health stays where it is (and fights) until it is better.
+func _rest(intent: BotIntent, beliefs: BotBeliefs) -> void:
+	_spot = Vector3.INF
+	_roam.drop()
+	_forget_roam(beliefs)
+	intent.note = "fight" if intent.target_id >= 0 else "safe"
 
 
 ## `HOLD`: be at the spot the order was given, a place of the ring about it by seat, and fight from
@@ -429,6 +509,10 @@ func _stand_at_spot(intent: BotIntent, beliefs: BotBeliefs, here: Vector3, threa
 	_at_hold = apart <= (HOLD_LEAVE if _at_hold else HOLD_ARRIVE)
 	intent.note = "hold_order"
 	if _at_hold:
+		return
+	# A low holder stays where its retreat took it (a few metres off the spot) until it is better.
+	if play.stays_off_hold(_flat(here, beliefs.order["at"])):
+		intent.note = "hold_back"
 		return
 	intent.goal = place
 	intent.goal_radius = HOLD_ARRIVE
@@ -529,11 +613,14 @@ func _walk_to_people(
 		_spot = Vector3.INF
 		return
 	var fighting := threat < FIGHT_RANGE
+	var band_override := play.follow_band()
+	var safe := band_override != Vector2.ZERO
 	var now := beliefs.now
 	var blocked := _spot != Vector3.INF and legs != null and legs.path.is_blocked(_spot, now)
 	var due := (
 		now - _planned_at >= REPLAN_EVERY
 		or fighting != _was_fighting
+		or safe != _was_safe
 		or blocked
 		or (_planned_anchor != Vector3.INF and _flat(anchor, _planned_anchor) > ANCHOR_MOVED)
 	)
@@ -545,6 +632,7 @@ func _walk_to_people(
 		_planned_at = now
 		_planned_anchor = anchor
 		_was_fighting = fighting
+		_was_safe = safe
 		var avoid := Callable()
 		if legs != null:
 			avoid = Callable(legs.path, &"is_blocked").bind(now)
@@ -556,12 +644,15 @@ func _walk_to_people(
 			fighting,
 			_spot,
 			avoid,
-			_slot(beliefs)
+			_slot(beliefs),
+			band_override
 		)
 	if _spot != Vector3.INF:
 		intent.goal = _spot
 		intent.goal_radius = 1.0
 		var band := BotFollow.FIGHT_BAND if fighting else BotFollow.CALM_BAND
+		if safe:
+			band = band_override
 		intent.run = _flat(here, anchor) > band.y + LAG and threat > RUN_SAFE
 		intent.note = "follow"
 
@@ -707,6 +798,8 @@ func _errand(
 	_errands.legs = legs
 	_errands.order = order
 	_errands.anchor = anchor
+	# A Safe bot (`BotPlayState`) keeps its distance: only a person's ping and an empty gun move it.
+	_errands.keeps_distance = not play.may_wander()
 	for denial in beliefs.denials:
 		_errands.back_off(denial["item"], beliefs.now)
 	beliefs.denials.clear()

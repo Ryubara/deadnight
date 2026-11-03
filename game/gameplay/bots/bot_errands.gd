@@ -87,6 +87,9 @@ var linking := false
 ## table of needs.
 var order: StringName = BotOrders.ROAM
 var anchor := Vector3.INF
+## Set by the brain when the bot is Safe (`BotPlayState`): it keeps its distance, so it looks at a
+## person's ping and its own need for rounds only, and goes for rounds only with an empty gun.
+var keeps_distance := false
 ## What the bot decided last, for the ring buffer, and how many of each kind it began.
 var note := ""
 var counts: Dictionary = {}
@@ -220,7 +223,7 @@ func run(
 		counts["links"] = int(counts.get("links", 0)) + 1
 		return true
 	var jobs: Array[StringName] = [&"marked", &"fuel", &"circuits", &"shopping", &"repairs"]
-	if needs_only:
+	if needs_only or keeps_distance:
 		jobs = [&"marked", &"needs"]
 	for job in jobs if may_go else []:
 		var took := false
@@ -355,6 +358,8 @@ func _is_ammo_need(buy: BotEconomy.Buy) -> bool:
 ## begun is given a little more leash.
 func _verdict(buy: BotEconomy.Buy, me: Dictionary) -> BotNeeds.Verdict:
 	var level := BotNeeds.ammo_level(me.get("arms", {}), _profile.ammo_floor_mags)
+	if keeps_distance and level < BotNeeds.Level.EMPTY:
+		return BotNeeds.Verdict.STAY
 	var slack := BotNeeds.UNDERWAY_SLACK if _flat(_heading, buy.stand) < 1.0 else 0.0
 	var near := BotNeeds.is_near(buy.stand, _here, anchor, slack)
 	return BotNeeds.verdict(BotNeeds.Need.AMMO, order, level, near)
