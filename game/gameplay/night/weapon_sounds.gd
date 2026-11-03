@@ -24,8 +24,6 @@ const FIRE := {
 	&"pump_870": {"shot": &"shot_pump_870", "tail": &"tail_pump_870"},
 	&"dual_pistols": {"shot": &"shot_dual_pistols", "tail": &"tail_dual_pistols"},
 	&"flare_gun": {"shot": &"shot_flare"},
-	# The revolver's report until the pair has its own (#790).
-	&"dual_pistols": {"shot": &"shot_pistol", "tail": &"tail_pistol"},
 }
 ## The sound of a weapon coming up, and of its trigger pulled on nothing, where it has its own; any
 ## other weapon rustles and clicks the common way (`weapon_swap`, `dry_fire`).
