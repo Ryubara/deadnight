@@ -11,6 +11,12 @@ const BOARDS := 5
 const SPAWN_FROM := 5.0
 const SPAWN_TO := 15.0
 const BOARD_LAYER := 2
+## Metres inside a window the player stands for the dead to come to it.
+const STAND_BEHIND := 2.5
+## Windows the walking mesh does not join to the room behind them (the floor there is the
+## stairwell's opening): a dead that rose at one comes in by the next window along, so its boards
+## stand (#824).
+const NO_WAY_IN: Array[StringName] = [&"upper_b1"]
 
 var _night: Night
 var _seated: SeatedNight
@@ -145,8 +151,11 @@ func test_with_every_link_sold_the_map_leads_from_each_window_to_the_hall() -> v
 
 
 func test_the_dead_come_in_through_every_window_to_the_room_it_opens_into() -> void:
-	# A night of 24 dead at once on the whole map, a player who cannot fall standing in the hall: each
-	# window's dead tear its five boards and walk through into the right room, up stairs and all.
+	# A night of 24 dead at once on the whole map, a player who cannot fall standing in each window's
+	# room in turn, a metre or two behind it: the dead come to that window, tear its five boards and
+	# walk through into the right room, up stairs and all. (A player in the hall draws the dead of
+	# every window on that wall to the one window the way to the hall is shortest by: a dead that
+	# comes to another window than the one it rose at tears that one, #810.)
 	var tuning := RulesFixture.tuning()
 	tuning.health.max_health = 1000000.0
 	tuning.rounds.count_base = 400.0
@@ -167,8 +176,18 @@ func test_the_dead_come_in_through_every_window_to_the_room_it_opens_into() -> v
 		if event["type"] == &"board_torn":
 			torn[event["barricade_id"]] = true
 	var sim := _seated.server.sim
+	var windows: Array = _seated.world.spawn_gates().values().filter(
+		func(id: StringName) -> bool: return not NO_WAY_IN.has(id)
+	)
+	var wanted := windows.size()
+	var turn := 0
+	_stand_behind(windows[turn])
 	for tick in 5400:
 		_seated.tick()
+		if turn < windows.size() and torn.has(windows[turn]) and through.has(windows[turn]):
+			turn += 1
+			if turn < windows.size():
+				_stand_behind(windows[turn])
 		if tick % 30 == 0:
 			await get_tree().physics_frame
 		for zombie: ZombieBody in sim.zombies.values():
@@ -181,16 +200,11 @@ func test_the_dead_come_in_through_every_window_to_the_room_it_opens_into() -> v
 				# In, and put down at the door, so the next ones can rise (the cap is 24).
 				came_from.erase(zombie.id)
 				RulesFixture.kill(_seated.server.rules, 1, zombie.id)
-		if through.size() == 12 and torn.size() == 12:
+		if through.size() >= wanted and torn.size() >= wanted:
 			break
-	assert_int(torn.size()).override_failure_message("windows torn: %s" % [torn.keys()]).is_equal(
-		12
-	)
-	(
-		assert_int(through.size())
-		. override_failure_message("windows walked through: %s" % [through.keys()])
-		. is_equal(12)
-	)
+	for id: StringName in windows:
+		assert_bool(torn.has(id)).override_failure_message("%s was not torn" % id).is_true()
+		assert_bool(through.has(id)).override_failure_message("%s: none came in" % id).is_true()
 	for id: StringName in through:
 		var barricade := _seated.world.barricade(id)
 		var at: Vector3 = through[id]
@@ -206,3 +220,10 @@ func test_the_dead_come_in_through_every_window_to_the_room_it_opens_into() -> v
 			)
 			. is_less(0.8)
 		)
+
+
+## Puts the player on the inside of window `id`, in the room it opens into.
+func _stand_behind(id: StringName) -> void:
+	var barricade := _seated.world.barricade(id)
+	var at := barricade.centre() + barricade.inward() * STAND_BEHIND
+	_seated.server.body_of(1).teleport(Vector3(at.x, barricade.global_position.y + 0.1, at.z))

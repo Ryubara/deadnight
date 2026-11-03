@@ -77,9 +77,10 @@ game looked finished and a player's throw key did nothing. The wiring, now:
   every `grenade_count_changed` and every kill.
 - **A refused cook ends the hold.** On `cook_rejected`, a drop, or a blast in the hand the thrower is `abandon()`ed,
   so a held key does not pull a pin every tick until it is let go (`no_grenades`, `wrong_phase`, `player_downed`).
-- **A blast reaches every player's health** through `RulesAction.blow` (`PlayerBlast`: all of it in the hand and within
-  1 m, less to nothing at the blast radius; #805, [the rule](../design/weapons.md#blast-on-players)); the zombies a
-  blast hits are thrown and stunned through `ZombieSim.blast` (see Polish below).
+- **A blast reaches its thrower's health** through `RulesAction.blow` (`PlayerBlast`: all of it in the hand and within
+  1 m, less to nothing at the blast radius; the thrower alone, #856; #805,
+  [the rule](../design/weapons.md#blast-on-players)); the zombies a blast hits are thrown and stunned through
+  `ZombieSim.blast` (see Polish below).
 - **The view is a copy of the grenade.** `NightView` makes a `GrenadeView` from `grenade_thrown` / `grenade_dropped`,
   steps its own `GrenadeState` on every `frame` event with the same `WorldCast`, and swaps it for a `BlastEffect` at
   `grenade_exploded`. It is drawn at twice its size with a trail: at real size a hand grenade is lost from the shoulder
@@ -218,9 +219,38 @@ by analysis instead: length, peak and where the energy sits (the blast has nine 
 - **In the hand is a rule, not a distance.** The hand is 0.7 to 1.0 m from the chest the blast is measured to, so
   "within 1 m" would be luck: `BlastModel.against_player(..., held, ...)` takes all of the health for the thrower's own
   in-hand blast and skips the cover line.
-- **A player on the ground is not counted** (the rules refuse a blow on a downed player), so the grenade a downed player
-  dropped hurts the reviver at their side, not them.
+- **A player on the ground is not counted** (the rules refuse a blow on a downed player). Until #856 the grenade a downed
+  player dropped hurt the reviver at their side; now it hurts no one.
 - **The bots' distance is the curve's.** A blast hurts out to 8 m, so "not where it reaches" is a share, not a radius:
   `BotGrenadier.HARMLESS_SHARE` (a tenth of the health, a graze that mends in 5 s) gives `harmless_apart` 5.8 m, and a
-  test holds `SAFE_FROM_SELF` and `SAFE_FROM_TEAMMATES` to it. Teammates keep the 1.5 m margin. The old 4 m from a
-  teammate would have taken 33% of their health.
+  test holds `SAFE_FROM_SELF` and `SAFE_FROM_TEAMMATES` to it.
+
+## Only the thrower (#856)
+
+The maintainer's answer to #835's open question: a grenade hurts the player who threw it and nobody else.
+
+- **Where it is decided:** `GrenadeServer._blast_players` looks at the thrower only (a downed thrower, or one gone from
+  the server's list, takes nothing), so `player_blasted` carries the thrower's id and `own` is always true. A teammate
+  is not looked at: no event, no `blow`, no `player_hurt`, no feed line. `NightServer._blast_player` keeps its signature
+  for the ray gun's splash (#788), which is its shooter's own as well.
+- **A reviver is safe from the grenade a downed player dropped:** the thrower is on the ground and the rules refuse a
+  blow on them, so it hurts no one (it still hits the dead round it).
+- **Bots keep the 7.5 m from every teammate (`SAFE_FROM_TEAMMATES` 6 m plus `THROW_MARGIN`), though it protects no
+  health now.** The issue allowed relaxing it "if it costs nothing"; it does cost, so it stays. Measured with
+  `test_bot_grenade_soak.gd`'s night (three bots follow a person round the lot) lengthened to 120 s on seeds 11 to 16,
+  the thrower's own distance to each of its blasts read from the body (the soak now measures that, not "anyone"):
+
+  | Arm | Blasts in 6 nights | Touched the thrower (any share) | Over 10% of the thrower's health | Worst share |
+  | --- | --- | --- | --- | --- |
+  | Clearance kept (main, and this change) | 18 and 21 (two runs) | 3 of 18 | 0 | 0.015 |
+  | Clearance removed | 42 | 12 | 2 (0.37, 0.11) | 0.37 |
+  | Removed, and 1.5 m more from the bot itself | 46 | 19 | 5 (0.11 to 0.49) | 0.49 |
+
+  The committed soak (seeds 11 and 12, 90 s) failed with the clearance removed (worst 0.17 and 0.28 against its 0.1).
+  The scripted night (a bot, a pack ten metres off, a person well clear) throws at tick 227 in every arm, so the
+  clearance costs no throw where nobody stands near the pack. Runs are not repeatable to the blast (the same seed gave 5
+  and 2 blasts in two baseline runs), so read the ratios. **Why the bots hurt themselves** (the 19 hits of the last arm,
+  printed): in most the bot walks 2 to 8 m (usually 3 to 5) toward its own blast during the 3 s fuse, in 2 a zombie
+  stopped the grenade short (`grenade_struck`). The clearance, by keeping the throws to packs far from the group the bots
+  follow, hid that. The follow-up is to fix the short landing
+  and the walk into the blast (a bot holds still or steps out), then drop the teammate clearance.
