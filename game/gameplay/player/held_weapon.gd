@@ -8,7 +8,7 @@ extends RefCounted
 ## (#507); with one builder a change to how a weapon is held reaches every view at once.
 ##
 ## It owns the nodes it adds to the skeleton and never reads a clock: a view drives `hands`
-## (aim, converge, influence) and `fingers` (weights) as it needs.
+## (aim, converge, weight) and `fingers` (weights) as it needs.
 
 ## The mount on the right hand bone, the arms' pose and the fingers' pose, children of the skeleton
 ## in that order (the fingers run after the arms).
