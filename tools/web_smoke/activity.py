@@ -637,7 +637,7 @@ def share_real_flow(page: Page, frame, out: Path, mode: str) -> tuple[list[str],
     Share in Discord pressed once, and the commands the fake client received are read back from its page."""
     lines: list[str] = []
     rooms.wait_for(frame, "the main menu, ready", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
-    rooms.wait_for(frame, "the voice channel's night ready", lambda s: s.get("activity_room") == "ready", 90)
+    rooms.wait_for(frame, "the voice channel's night ready", lambda s: s.get("activity_room") == "ready", 150)
     page.mouse.click(5, 5)
     page.wait_for_timeout(1500)
     rooms.to_together(Driver(page, frame))
@@ -669,6 +669,10 @@ def share_real_flow(page: Page, frame, out: Path, mode: str) -> tuple[list[str],
         f"Discord's client received {sent}; authenticated {host['authenticated']}; refusals {host['refusals']}"
     )
     lines.append(f"authorize asked for {host['authorizedScopes']}; invite window opened {host['invited']} time(s)")
+    lines.append(f"commands (ms since the page opened): {[(c['cmd'], c['at']) for c in host['commands']]}")
+    lines.append(
+        f"the bridge's state: {frame.evaluate('JSON.stringify({...window.deadnightDiscord, code: !!(window.deadnightDiscord && window.deadnightDiscord.code)})')}"
+    )
     failures: list[str] = []
 
     def check(ok: bool, what: str) -> None:
@@ -845,7 +849,12 @@ def run(args: argparse.Namespace, bridge_js: bytes | None) -> int:
                 if args.embed in ("clipboard", "none"):
                     browser_context.grant_permissions(["clipboard-read", "clipboard-write"], origin=f"https://{HOST}")
             page = browser_context.new_page()
+            if os.environ.get("ACTIVITY_CPU_THROTTLE"):
+                # A slow runner (CI) loads the page and the bridge later than a fast machine: reproduces its timing.
+                cdp = browser_context.new_cdp_session(page)
+                cdp.send("Emulation.setCPUThrottlingRate", {"rate": float(os.environ["ACTIVITY_CPU_THROTTLE"])})
             page.on("console", lambda m: console.append(f"[{m.type}] {m.text}"))
+            page.on("requestfailed", lambda r: console.append(f"[requestfailed] {r.method} {r.url} {r.failure}"))
             if args.embed == "none":
                 page.goto(activity_url, wait_until="commit")
                 frame = page

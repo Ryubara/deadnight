@@ -65,7 +65,7 @@
     }
     if (opcode !== 1 || !payload || !payload.cmd) return;
     const { cmd, nonce, args } = payload;
-    if (cmd !== "CAPTURE_LOG") host.commands.push({ cmd, args: cmd === "AUTHENTICATE" ? "(token)" : args });
+    if (cmd !== "CAPTURE_LOG") host.commands.push({ cmd, at: Math.round(performance.now()), args: cmd === "AUTHENTICATE" ? "(token)" : args });
     switch (cmd) {
       case "CAPTURE_LOG":
         return answer(cmd, nonce, null);

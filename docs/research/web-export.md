@@ -643,6 +643,17 @@ silence, an error) and never ran the SDK's handshake: it replaced `discord-bridg
 `authenticate` and the rule that commands need a session were not in the run, and its stand-in client accepted every
 command. "Not a scope" was read off the reference's "No scopes required", which says nothing about the session.
 
+**A second cause, found by CI.** On the slow runner the same press still failed with `sign-in: none`: the game's first
+`POST /auth/discord` failed in transport (`network`, no request reached the backend; seen on this machine with
+`ACTIVITY_CPU_THROTTLE=3`, the Chromium log showed no failed request and the harness server logged
+`SSLV3_ALERT_CERTIFICATE_UNKNOWN` on some connections, so the exact link is not proved), and the game then signed in
+as a guest: no nickname, no token, no `authenticate`. Any flaky first request on a phone could do the same. Now both
+sign-in requests (Discord, guest) are sent up to three times while they fail in transport (a code Discord took answers
+401, which is not retried), and `ACTIVITY_CPU_THROTTLE=N` makes `activity.py` reproduce a slow device. Also fixed on
+the way: the bridge is a module the page adds after load, so a game that asked before it ran read "no
+`deadnightDiscord`" as "failed"; it now waits (30 s at most), and the head include sets the error when the module
+cannot load.
+
 **The harness now reproduces it.** `tools/web_smoke/activity.py --share --real-bridge [DIR] --local-backend
 --host-mode strict|reject-token|refuse-authorize` bundles the real bridge with the real SDK (esbuild, the versions of
 `deploy/web/Dockerfile`), serves it in the Activity's frame and puts `fake_discord_client.js` in the page around it: a
