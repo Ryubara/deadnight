@@ -263,7 +263,7 @@ func test_the_rules_the_host_chose_ride_the_ticket_into_the_room_and_every_welco
 	var ann := await _client("rules-a", "ann", "Tester", chosen)
 	var room := _server.room_of_match("rules-a")
 	# A ticket from before the bot count (no `bots`) asks for none.
-	var held := chosen.merged({"bots": 0})
+	var held := chosen.merged({"bots": 0, "bot_skill": MatchSettings.DEFAULT_SKILL})
 	assert_dict(room.server.rules.settings.to_dict()).is_equal(held)
 	assert_dict(ann.match_settings.to_dict()).is_equal(held)
 	# A friend's ticket carries the same rules (and even one without them changes nothing): the

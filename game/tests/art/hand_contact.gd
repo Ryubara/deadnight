@@ -52,14 +52,34 @@ func _init(skeleton: Skeleton3D) -> void:
 		_add_mesh(mi)
 
 
-## Every visible skinned mesh on the skeleton (the Soldier's parts: the hands are in the torso).
+## Every visible skinned mesh on the skeleton that is drawn up close (the Soldier's parts: the hands
+## are in the torso). A far level of detail (#139) is left out: it is hidden by its visibility
+## range, not by `visible`, so it is "visible" here, and its decimated hand would let a fingertip
+## that floats off the weapon up close pass on the far hand's longer tip (Deadnight #716). It is
+## known by its range (drawn only from `visibility_range_begin` on) or, in the raw model the grip
+## solver loads, where no range is set yet, by its name (`SoldierLook.FAR_SUFFIX`).
 static func _skinned_meshes(skeleton: Skeleton3D) -> Array[MeshInstance3D]:
 	var out: Array[MeshInstance3D] = []
 	for node in skeleton.find_children("*", "MeshInstance3D", true, false):
 		var mi := node as MeshInstance3D
-		if mi.skin != null and mi.mesh != null and mi.is_visible_in_tree():
+		if mi.skin != null and mi.mesh != null and mi.is_visible_in_tree() and is_near(mi):
 			out.append(mi)
 	return out
+
+
+## The skinned meshes measured.
+func meshes() -> Array[MeshInstance3D]:
+	var out: Array[MeshInstance3D] = []
+	for m in _meshes:
+		out.append(m.instance)
+	return out
+
+
+## Whether a mesh is drawn up close: not a far level of detail.
+static func is_near(mi: MeshInstance3D) -> bool:
+	return (
+		mi.visibility_range_begin <= 0.0 and not String(mi.name).ends_with(SoldierLook.FAR_SUFFIX)
+	)
 
 
 func _add_mesh(mi: MeshInstance3D) -> void:

@@ -23,7 +23,7 @@ The HUD reads one object, `HudState` (plain numbers, strings, arrays and diction
 | The local player's readings | `facing` (a property; `set_ammo` and `set_equipment` are for tools and captures, the weapons' events and the frame fill them), `set_prompt`, `set_area`, `set_markers` (the night fills it every frame, `NightMarkers`), `set_player_name` (`set_health` is for tools and captures) | what the rules do not own: which way you face, what is in reach, where the player stands |
 | HUD additions to the rules' events | optional `world` (a `Vector3`) on `zombie_damaged`, or `screen_x`, `screen_y` (0 to 1) | the night's binding adds `world` (the zombie, lifted to the head or the chest); the crosshair draws the number over that point through its `projector` every frame, so it stays on the wound while the camera turns and hides while the point is behind the lens. `screen_x`/`screen_y` place a number once, for tools |
 
-The ammo card and the equipment slot are the local player's only: another player's `ammo_added`, shot or reload leaves
+The ammo card and the weapon slots are the local player's only: another player's `ammo_added`, shot or reload leaves
 them alone (a teammate's rounds are not shown anywhere).
 
 Events for other players change their container (points, down state) and leave your own readings alone. Unknown events are
@@ -40,7 +40,8 @@ local player) into the direction on screen.
 | `HudFuel` | top right, **only for a moment** | the generator card: the tank as 20 segments, a percentage or `LOW` or `NO POWER`, one bulb per circuit with its sign's word beside it, in two columns (`SCREEN`, `SNACKS`, `BOOTH`, `BACK LOT`). Slides down into the column and fades in when the night makes progress at the generator, holds 4 s, leaves (see below) |
 | `HudFeed` | top right, under the generator card (at the top while it is away) | what happened on the lot ("RUBY OPENED THE CONCESSION STAND", someone down, generator warnings), then who joined or left; one line each, 480 units wide (wider than the column), ending on the cards' right text line: a long line shrinks toward 20, then ends in an ellipsis (a cleared special round adds `DOUBLE FEATURE CLEARED  +440 EACH`) |
 | `HudPoints` | bottom left | **a container per player**, `[portrait][points]` (see below), you first, then the others by id |
-| `HudHealth` | bottom left, under the players | a card: `HEALTH n` and the grenade count on one row, a bar of ten ticks (or `DOWN` and what to hope for), then the equipment: the weapon put away last, by name (no rounds; the ammo card says the rounds), cut to the room |
+| `HudHealth` | bottom left, under the players | a card: `HEALTH n` and the grenade count on one row, a bar of ten ticks (or `DOWN` and what to hope for). The weapon put away used to be named under the bar; the slot strip shows it now, one home for what is carried |
+| `HudSlots` | bottom right, **above the ammo card**, as wide as it (with the touch controls up: bottom left, under the health card, as wide as it) | the weapons carried, by slot ([see below](#the-weapon-slots)) |
 | `HudAmmo` | bottom right | magazine as a big numeral, reserve beside it on the same baseline, the weapon name on a coloured bar; hot orange when low; `RELOADING` while a reload runs; `--` for a weapon with no ammunition (the crowbar) |
 | `HudBanner` | top centre | a marquee board with chasing bulbs, on the top margin level with the corner cards: `ROUND N`, `ROUND N SURVIVED`, `THE LIGHTS GO OUT`, and an area's name as you enter it (an area never replaces a round banner). A special round starts with its name (`DOUBLE FEATURE`) over what it brings (`THE HEADLINER ARRIVES`, `2 HEADLINERS ARRIVE`, `ONLY RUNNERS`); clearing one puts `DOUBLE FEATURE CLEARED  +440` under `ROUND 5 SURVIVED`; a late joiner into one sees its banner once |
 | `HudMarquee` | top centre, under the banner | in the break before a special round, `COMING UP - ROUND 5 - IN 24` over the round's name in big letters that flicker like a failing neon sign (steady with reduced motion) over what it brings, between two rows of bulbs (the banner's); gone as the round starts. A HUD that joins in the break reads it from the schedule |
@@ -60,6 +61,29 @@ the new key. The glyph follows the **last device used**: a square keycap, a roun
 shakes the card and says why in place of the price. The breach's card
 says "HOLD TO NAIL BOARDS UP": holding the button keeps putting boards back
 ([rules](rounds.md#the-fences-boards)).
+
+## The weapon slots
+
+Two numbered places (`HudSlots`, a `HudSlotCell` each; three when the perk that carries a third weapon is in, #687: the
+places are `HudState.slot_count`, the cells share the card's width) show what is carried: the **silhouette** of each
+weapon with the **number of the key that takes it in hand** (`1`, `2`, `3`). The one in hand is the lit place: amber
+paper, dark ink; the one put away is cream on dark paper; an empty place is its number alone, dim. No rounds here: the
+ammo card is their one home. A player reads "what do I have, which is in my hand" in half a second, and the key is on
+the card.
+
+- **The order is the server's.** `arms` in the frame lists the weapons in slot order (`CombatServer` keeps a loadout in
+  its slots' order); the HUD reads it (`HudLoadout.sync`) and the events alone fill the same order. A weapon bought with
+  full hands sits in the slot of the weapon it replaces, so the numbers never trade places.
+- **The silhouettes are the models.** `WeaponSilhouettes` draws each weapon's own glb (the one the Soldier holds, from its
+  hold file) from the side with every surface flat white into a transparent texture, once, the first time it is
+  needed; the part tints it. A new weapon model has its silhouette with its hold file. Sizes follow the weapons' lengths
+  (never under 58 percent of the longest) so a pistol reads as a pistol; a club that stands on its end in the model is
+  laid along the width, its long side from the grip pointing right like a barrel.
+- **On a phone the strip moves** under the health card (`Hud.touch_layout`, set when the touch layer comes up): the
+  bottom right corner is the right thumb's (Fire and Melee sit exactly where the strip would). A left hand flips the
+  column and the strip with it.
+- **Keys:** `1` and `2` (and `3`) pick that slot's weapon; the slot in hand and an empty slot do nothing; the swap
+  button (F, the pad's d-pad up, the touch SWAP) goes on to the next one ([weapons](weapons.md#carrying-weapons)).
 
 ## Players' points
 

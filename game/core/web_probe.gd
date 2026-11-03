@@ -12,6 +12,12 @@ const ARROW_INSET := 24.0
 
 var _object: JavaScriptObject
 var _since := 0.0
+## The costs of the frames since the last publish, summed (`_add_costs`), averaged over `_frames`.
+var _frames := 0
+var _cost_sums := {}
+## True when the page asked for a profile (`window.deadnight_bench`, `phone_frames.py`):
+## only then are the per-frame costs read, so a player's page pays nothing for them.
+var _bench := false
 
 
 ## Writes `label` into `window.deadnight_marks` with the page's clock, so a browser run can line the
@@ -30,6 +36,9 @@ func _ready() -> void:
 		return
 	_object = JavaScriptBridge.create_object("Object")
 	JavaScriptBridge.get_interface("window").deadnight = _object
+	_bench = JavaScriptBridge.get_interface("window").deadnight_bench != null
+	if _bench:
+		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 	add_child(JudderProbe.new())
 	add_child(FlashWebProbe.new())
 	add_child(ViewWebProbe.new())
@@ -37,6 +46,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if _bench:
+		_add_costs()
 	_since += delta
 	if _since < PERIOD:
 		return
@@ -44,12 +55,76 @@ func _process(delta: float) -> void:
 	var data := snapshot(UIRouter.top())
 	for key in data:
 		_object[key] = data[key]
+	if _bench:
+		_publish_render_cost()
+		_follow_bench_switch()
+
+
+## What the frame costs the renderer and the scripts, for a phone-class profile (#689): draw calls,
+## triangles and objects the last frame drew, and the time the engine spent in the script
+## and physics callbacks, in milliseconds. A browser test reads them next to the frame times.
+func _publish_render_cost() -> void:
+	var rendering := RenderingServer
+	_object["draw_calls"] = rendering.get_rendering_info(
+		RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME
+	)
+	var view := get_viewport()
+	_object["draw_calls_3d"] = int(
+		view.get_render_info(
+			Viewport.RENDER_INFO_TYPE_VISIBLE, Viewport.RENDER_INFO_DRAW_CALLS_IN_FRAME
+		)
+	)
+	_object["primitives"] = rendering.get_rendering_info(
+		RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME
+	)
+	_object["objects"] = rendering.get_rendering_info(
+		RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME
+	)
+	for key: String in _cost_sums:
+		_object[key] = _cost_sums[key] / maxf(_frames, 1.0)
+	_cost_sums = {}
+	_frames = 0
+	var window_size := DisplayServer.window_get_size()
+	_object["canvas_w"] = window_size.x
+	_object["canvas_h"] = window_size.y
+
+
+## A profile run (`tools/web_smoke/phone_frames.py`) flips the 3D anti-aliasing while the page
+## runs, to compare it in the same minutes: `window.deadnight_msaa` is 0 (off) or 2 (2x).
+func _follow_bench_switch() -> void:
+	var window := JavaScriptBridge.get_interface("window")
+	var asked: Variant = window.deadnight_msaa
+	if asked == null:
+		return
+	var mode := Viewport.MSAA_DISABLED if int(asked) == 0 else Viewport.MSAA_2X
+	if get_viewport().msaa_3d != mode:
+		get_viewport().msaa_3d = mode
+
+
+## Adds this frame's script, physics and render times (ms) to the sums the next publish averages.
+func _add_costs() -> void:
+	var rid := get_viewport().get_viewport_rid()
+	_frames += 1
+	var costs := {
+		"process_ms": Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
+		"physics_ms": Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
+		"render_cpu_ms": RenderingServer.viewport_get_measured_render_time_cpu(rid),
+		"render_gpu_ms": RenderingServer.viewport_get_measured_render_time_gpu(rid),
+	}
+	if PerfProbe.enabled:
+		# What the labelled pieces of code took (`PerfProbe`, on with `?perf=1` in a bench).
+		var usec: Dictionary = PerfProbe.take()["usec"]
+		for label: StringName in usec:
+			costs["perf." + String(label)] = float(usec[label]) / 1000.0
+	for key: String in costs:
+		_cost_sums[key] = float(_cost_sums.get(key, 0.0)) + float(costs[key])
 
 
 ## What the top screen shows: its scene name, and for a night the round, the zombies still to
 ## kill, the zombies alive on the lot, the players in the frame, the player's own id and (online)
 ## the round trip, whether the menu is open, the mouse mode, the camera's yaw (radians) and whether
-## the player's body is drawn between physics ticks. Plain values only, so a page can read them.
+## the player's body is drawn between physics ticks and whether the view is through the player's own
+## camera (`view_is_players`). Plain values only, so a page can read them.
 static func snapshot(top: Control) -> Dictionary:
 	var data := {
 		"screen": "none",
@@ -95,6 +170,9 @@ static func snapshot(top: Control) -> Dictionary:
 		"notice_log": "",
 		"touch": false,
 		"reticle": false,
+		"weapon": "",
+		"weapon_slots": "",
+		"weapon_slot_held": 0,
 		"settings_open": false,
 		"menu_buttons": "",
 		"tab": "",
@@ -200,6 +278,10 @@ static func snapshot(top: Control) -> Dictionary:
 	var player: Player = night_screen.night.player() if night_screen.night.server != null else null
 	if player != null:
 		data["yaw"] = player.camera_rig.yaw  # so a browser test can see the mouse turn the view
+		# So a browser test can see the view is the person's own soldier, not a bot's (#702).
+		data["view_is_players"] = (
+			player.get_viewport().get_camera_3d() == player.camera_rig.camera()
+		)
 		# So a browser test can see the body is drawn between ticks (a screen can switch that off).
 		data["interpolated"] = player.is_physics_interpolated_and_enabled()
 	data["over"] = state.over
@@ -212,6 +294,11 @@ static func snapshot(top: Control) -> Dictionary:
 		# Who joined or left, as the night's notices say it.
 		data["notices"] = "|".join(night_screen.night.hud.notices.texts())
 		data["notice_log"] = "|".join(night_screen.night.hud.notices.history)
+		# The weapon slot strip: what is carried by slot, and which slot is in hand.
+		var hud_state := night_screen.night.hud.state
+		data["weapon"] = String(hud_state.weapon_id)
+		data["weapon_slots"] = ",".join(PackedStringArray(hud_state.slot_ids))
+		data["weapon_slot_held"] = hud_state.slot_held
 	data["touch"] = night_screen.touch_active()
 	data["reticle"] = night_screen.reticle_shown()
 	data["settings_open"] = night_screen.settings_open()

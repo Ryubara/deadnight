@@ -77,6 +77,7 @@ const GRENADE_EVENTS: Array[StringName] = [
 	&"grenade_thrown",
 	&"grenade_dropped",
 	&"grenade_bounced",
+	&"grenade_struck",
 	&"grenade_exploded",
 	&"blast_hit",
 	&"player_blasted",
@@ -202,8 +203,8 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			_join(action["player_id"], action.get("local", false), action.get("bot", false))
 		LEAVE:
 			_leave(action["player_id"])
-		SEAT_PERSON:
-			rules.apply(RulesAction.seat_person(action["player_id"]))
+		SEAT_PERSON, RulesAction.SEAT_BOT:
+			rules.apply({"type": action["type"], "player_id": action["player_id"]})
 		START_NIGHT:
 			rules.apply(RulesAction.start())
 		LOOK:
@@ -240,9 +241,7 @@ func submit(player_id: int, command: NightCommand) -> void:
 		command.view_tick = _view_tick_of(command.view_step)
 	var old: NightCommand = _pending.get(player_id)
 	if old != null:
-		command.reload = command.reload or old.reload
-		command.use = command.use or old.use
-		command.swap = command.swap or old.swap
+		command.inherit_edges(old)
 		command.motion.jump = command.motion.jump or old.motion.jump
 		command.motion.melee = command.motion.melee or old.motion.melee
 		command.motion.swap_shoulder = command.motion.swap_shoulder or old.motion.swap_shoulder
@@ -624,10 +623,12 @@ func _act(player_id: int, delta: float) -> void:
 		_shoot(player_id, command, delta)
 	if command.swap:
 		_combat(CombatAction.swap(player_id))
+	if command.slot != WeaponSlots.NONE:
+		_combat(CombatAction.select_slot(player_id, command.slot))
 	if _bodies[player_id].state.melee_ready:
 		_repairing[player_id] = &""
 		_quick_melee(player_id, command, delta)
-	if command.swap or command.fire or command.reload:
+	if command.swap or command.slot != WeaponSlots.NONE or command.fire or command.reload:
 		_repairing[player_id] = &""
 	if command.use:
 		_use(player_id)
@@ -635,9 +636,7 @@ func _act(player_id: int, delta: float) -> void:
 	_revive.hold(player_id, command.use_held)
 	_face_breach(player_id, delta)
 	# Edges are used once.
-	command.reload = false
-	command.use = false
-	command.swap = false
+	command.clear_edges()
 
 
 func _shoot(player_id: int, command: NightCommand, delta: float) -> void:

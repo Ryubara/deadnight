@@ -42,7 +42,8 @@ var grounded: bool = false
 var ground_normal: Vector3 = Vector3.UP
 ## Still: a rolling grenade that has stopped.
 var at_rest: bool = false
-## The contacts of the last step: `[{"point": Vector3, "speed": float, "wall": bool}]`.
+## The contacts of the last step: `[{"point": Vector3, "speed": float, "wall": bool, "zombie_id":
+## int}]` (`zombie_id` is -1 for the world).
 var contacts: Array[Dictionary] = []
 
 
@@ -95,30 +96,37 @@ func is_spent() -> bool:
 	return fuse_left <= 0.0
 
 
-## Moves one fixed step and burns that much fuse.
-func step(delta: float, cast: Callable) -> void:
+## Moves one fixed step and burns that much fuse. `bodies` is the zombies in the way, a Callable
+## of the same shape as `cast` whose hits also carry `away` and `zombie_id` (`ZombieBump`); the
+## server has it, a client's copy flies without it and is told where a zombie stopped it.
+func step(delta: float, cast: Callable, bodies: Callable = Callable()) -> void:
 	contacts = []
 	fuse_left -= delta
 	age += delta
 	if at_rest:
 		return
 	if grounded:
-		_roll(delta, cast)
+		_roll(delta, cast, bodies)
 	else:
 		velocity += Vector3.DOWN * def.gravity * delta
-		_travel(delta, cast)
+		_travel(delta, cast, bodies)
 
 
 ## Flies for `time_left` seconds at the current velocity, bouncing off whatever is in the way.
 ## Stops early when the grenade lands.
-func _travel(time_left: float, cast: Callable) -> void:
+func _travel(time_left: float, cast: Callable, bodies: Callable) -> void:
 	for _i in MAX_CONTACTS:
 		var motion := velocity * time_left
 		var length := motion.length()
 		if length <= 1e-7:
 			return
 		var dir := motion / length
-		var hit: Dictionary = cast.call(position, position + dir * (length + def.radius))
+		var to := position + dir * (length + def.radius)
+		var hit: Dictionary = cast.call(position, to)
+		if bodies.is_valid():
+			var bumped: Dictionary = bodies.call(position, to)
+			if not bumped.is_empty() and (hit.is_empty() or bumped["distance"] < hit["distance"]):
+				hit = bumped
 		if hit.is_empty() or hit["distance"] - def.radius > length:
 			position += motion
 			return
@@ -126,20 +134,40 @@ func _travel(time_left: float, cast: Callable) -> void:
 		var normal: Vector3 = hit["normal"]
 		position += dir * travelled + normal * SKIN
 		time_left *= (length - travelled) / length
-		if _bounce(normal):
+		if _bounce(normal, hit):
 			return
 
 
 ## Handles one contact. Answers true when the grenade has landed (so the rest of the step is not
 ## spent in the air).
-func _bounce(normal: Vector3) -> bool:
+func _bounce(normal: Vector3, hit: Dictionary) -> bool:
 	var normal_speed := velocity.dot(normal)
 	if normal_speed >= 0.0:
 		return false
-	var is_floor := normal.y >= FLOOR_Y
 	var tangent := velocity - normal * normal_speed
 	bounces += 1
-	contacts.append({"point": position, "speed": -normal_speed, "wall": not is_floor})
+	if hit.has("zombie_id"):
+		(
+			contacts
+			. append(
+				{
+					"point": position,
+					"speed": -normal_speed,
+					"wall": false,
+					"zombie_id": hit["zombie_id"],
+				}
+			)
+		)
+		velocity = (
+			tangent * def.zombie_slide
+			- normal * normal_speed * def.zombie_restitution
+			+ (hit["away"] as Vector3) * def.zombie_shove
+		)
+		return false
+	var is_floor := normal.y >= FLOOR_Y
+	contacts.append(
+		{"point": position, "speed": -normal_speed, "wall": not is_floor, "zombie_id": -1}
+	)
 	if is_floor and -normal_speed < def.rest_speed:
 		grounded = true
 		ground_normal = normal
@@ -152,7 +180,7 @@ func _bounce(normal: Vector3) -> bool:
 
 ## Rolling on a floor: gravity along the slope, friction against the motion, then feel for the
 ## floor again (a ledge or a hole drops it back into the air).
-func _roll(delta: float, cast: Callable) -> void:
+func _roll(delta: float, cast: Callable, bodies: Callable) -> void:
 	var gravity := Vector3.DOWN * def.gravity
 	var along := gravity - ground_normal * gravity.dot(ground_normal)
 	velocity += along * delta
@@ -163,7 +191,7 @@ func _roll(delta: float, cast: Callable) -> void:
 		velocity = Vector3.ZERO
 		at_rest = true
 		return
-	_travel(delta, cast)
+	_travel(delta, cast, bodies)
 	if not grounded:
 		return
 	var below: Dictionary = cast.call(

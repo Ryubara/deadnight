@@ -30,13 +30,15 @@ func test_the_rules_the_backend_signed_into_a_ticket_are_read_back() -> void:
 	var result := _verifier().admit(_tickets["with_settings"], NOW)
 	assert_bool(result["ok"]).is_true()
 	assert_str(result["match"]).is_equal("match-3")
-	# A ticket signed before the map choice and the bot count has neither: the drive-in lot, no bots.
+	# A ticket signed before the map choice and the bot count has neither: the drive-in lot, no bots,
+	# the regular skill.
 	var expected := {
 		"count_multiplier": 2.0,
 		"max_alive": 12,
 		"break_seconds": 0.0,
 		"map": "drive_in",
 		"bots": 0,
+		"bot_skill": MatchSettings.DEFAULT_SKILL,
 	}
 	assert_dict((result["settings"] as MatchSettings).to_dict()).is_equal(expected)
 
@@ -95,7 +97,7 @@ func test_a_ticket_without_rules_admits_with_none_and_one_with_rules_hands_them_
 	var admitted := _verifier().admit(with_rules, int(Time.get_unix_time_from_system()))
 	assert_bool(admitted["ok"]).is_true()
 	assert_dict((admitted["settings"] as MatchSettings).to_dict()).is_equal(
-		chosen.merged({"map": "drive_in", "bots": 0})
+		chosen.merged({"map": "drive_in", "bots": 0, "bot_skill": MatchSettings.DEFAULT_SKILL})
 	)
 	# With a map, the ticket hands it over; a map nobody can play refuses the ticket.
 	var on_map := TicketMaker.make(
