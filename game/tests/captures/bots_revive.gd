@@ -93,13 +93,19 @@ func _seat_the_hosted_bots() -> void:
 
 
 func _send(action: Dictionary, id: int) -> void:
-	_night.server.apply(bytes_to_var(var_to_bytes(action)), id)
+	# What the server answers (a bot's line, a mark) goes to the screen as a broadcast would.
+	var shown: Array[Dictionary] = []
+	for event in _night.server.apply(bytes_to_var(var_to_bytes(action)), id):
+		if event["type"] == &"bot_say":
+			shown.append(event)
+	if not shown.is_empty():
+		_night.state.apply_events(shown)
 
 
 func _on_event(event: Dictionary) -> void:
 	_host.hear([event])
 	match event["type"]:
-		&"revive_started", &"revive_stopped", &"player_revived", &"player_downed":
+		&"revive_started", &"revive_stopped", &"player_revived", &"player_downed", &"bot_say":
 			print("REVIVE_EVENT t=%.1f %s" % [float(_ticks_run) / 60.0, event])
 		&"zombie_removed":
 			if event["cause"] == &"killed":

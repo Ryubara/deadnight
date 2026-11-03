@@ -13,7 +13,9 @@ const ACTIONS: Array[StringName] = [
 	&"throw_grenade",
 	&"quick_melee",
 	&"sprint",
-	&"swap_shoulder"
+	&"swap_shoulder",
+	&"bot_wheel",
+	&"ping"
 ]
 
 var controls: TouchControls

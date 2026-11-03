@@ -112,8 +112,8 @@ func _telegraph_trial(profile: BotProfile, bot_seed: int, around: float) -> Dict
 
 
 func test_scenario_12_the_boss_telegraphed_blow_is_stepped_out_of_in_20_trials() -> void:
-	# The two profiles that read every telegraph (the rookie reads a third of them, as the simulator's
-	# weak player does: `test_scenario_12_a_rookie_reads_some_telegraphs`).
+	# The two profiles that read every telegraph (the rookie reads none, so that four of them lose
+	# the first boss night as often as the simulator's weak players: the test below).
 	var skills: Array[Callable] = [BotProfile.regular, BotProfile.veteran]
 	var angles := [-40.0, -20.0, 0.0, 20.0, 40.0]
 	var valid := 0
@@ -135,7 +135,7 @@ func test_scenario_12_the_boss_telegraphed_blow_is_stepped_out_of_in_20_trials()
 	assert_float(closest).is_greater(BotDodge.REACH + BotDodge.SLACK)
 
 
-func test_scenario_12_a_rookie_reads_some_telegraphs_and_not_all() -> void:
+func test_scenario_12_a_rookie_reads_no_telegraph_and_takes_every_blow() -> void:
 	var hurt := 0
 	var valid := 0
 	var angles := [-40.0, -20.0, 0.0, 20.0, 40.0]
@@ -145,8 +145,7 @@ func test_scenario_12_a_rookie_reads_some_telegraphs_and_not_all() -> void:
 			valid += 1
 			hurt += 1 if trial["hurt"] else 0
 	assert_int(valid).is_greater_equal(12)
-	assert_int(hurt).is_greater(2)
-	assert_int(hurt).is_less(valid)
+	assert_int(hurt).is_equal(valid)
 
 
 func test_scenario_12_control_a_bot_that_reacts_too_late_takes_the_blow() -> void:

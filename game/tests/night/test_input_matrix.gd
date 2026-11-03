@@ -55,7 +55,11 @@ const ROWS: Array = [
 	[&"throw_grenade", &"throw_grenade"],
 	[&"toss_grenade", &""],
 	# A ping is not in the command: the night makes it from the view (`test_night_pings.gd`).
-	[&"ping", &""],
+	[&"ping", &"ping"],
+	# The bot command wheel (#642): it opens on a hold and gives an order at the release, which is
+	# `test_bot_wheel_input.gd`'s business; here its key, button and touch control must reach the
+	# action, as for every row.
+	[&"bot_wheel", &"bot_wheel"],
 	[&"pause", &""],
 	[&"scoreboard", &""],
 ]
@@ -66,6 +70,8 @@ var _fixture: TouchFixture
 var _heard: Array[Dictionary] = []
 var _held: Array[InputEvent] = []
 var _jumps := 0
+## Whether the ping key went down on the last tick read (`_tick_command`).
+var _ping_edge := false
 
 
 func before_test() -> void:
@@ -137,6 +143,10 @@ func _read(action: StringName, c: NightCommand) -> bool:
 			return c.motion.throw_under
 		&"quick_melee":
 			return c.motion.melee
+		&"ping":
+			return _ping_edge
+		&"bot_wheel":
+			return Input.is_action_pressed(&"bot_wheel")
 	# The look stick turns the camera rig and not the command: `_shown` checks the view turned.
 	return true
 
@@ -244,7 +254,7 @@ func _hold(who: String, action: StringName) -> void:
 	var before := _snapshot()
 	var seen := false
 	for _i in HOLD_TICKS:
-		var command := _controller.command(_night.player(), 1)
+		var command := _tick_command()
 		seen = seen or _read(action, command)
 		NightFixture.run(_night, 1, command)
 	# The camera rig turns on frames, not ticks.
@@ -264,9 +274,17 @@ func _hold(who: String, action: StringName) -> void:
 	)
 
 
+## What the night reads each tick: the command, and whether the ping key went down (the night asks
+## for both every tick, `Night._human_command`; each is an edge, so each is read once).
+func _tick_command() -> NightCommand:
+	var command := _controller.command(_night.player(), 1)
+	_ping_edge = _controller.ping_pressed(_night.player())
+	return command
+
+
 func _let_go(ticks: int = 4) -> void:
 	for _i in ticks:
-		NightFixture.run(_night, 1, _controller.command(_night.player(), 1))
+		NightFixture.run(_night, 1, _tick_command())
 
 
 # --- The table is complete ---
