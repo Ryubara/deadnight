@@ -206,6 +206,34 @@ head and a half over his helmet: the room is close without being cramped, which 
 proportions. The palette holds at night: the Yellow door stays the warmest thing on the wall, and the zombie's green
 reads against both the plaster and the block.
 
+## Cover and clutter
+
+Group 3 (issue #635): `tools/blender/build_smallmap_props.py` (pinned Blender, headless; the command is at its top)
+builds 16 files from the parts list's 8 pieces on the kit's atlas (`game/assets/smallmap/smallmap_palette.png`) and
+writes a fixture scene for each (`game/world/smallmap/fixtures/`). Its `--sheet` renders the written files back
+beside the Soldier, a zombie and three drive-in props. `tests/world/test_smallmap_props.gd` holds each fixture to
+its budget, its origin, one material on the atlas and its collision. The sizes and triangles are in the parts list
+above and in `game/assets/smallmap/smallmap_props.json`.
+
+![The pieces on the 0.5 m grid beside the Soldier, a zombie, a trash can, a picnic table and a crate](kit-props-sheet.png)
+
+![The small pieces: rubble, the radio set, the lantern and the helmet, beside the Soldier, a crate and the chair](kit-props-small.png)
+
+![The pieces in a room under the lot's night and one warm lamp, clutter at the walls and the middle open](kit-props-room.png)
+
+The palette is written as its sRGB values (`smallmap_kit.palette_image`, the same fix as the walls' group, #652). Written
+linear, as at first, every swatch was saved two to three times too dark: Sandbag `#a88d62` came out as `(100, 68, 31)`
+and the sheet read as logs and holes. The drive-in palette has the same fault (#651).
+
+| Rule | Value |
+| --- | --- |
+| Sandbags | bags 0.22 m tall on a 0.17 m course, so each sags onto the one below; header courses (bags across) at the bottom and middle, stretchers between; the top two courses one bag deep on the far side, a step to lean on from the room side. Ends gathered sideways only: pinched both ways they read as logs |
+| Tipped table | the top stands on its long edge facing out (+Y, the threat), the legs into the room, one leg snapped and lying beside it |
+| Tall cabinet | open at the front: a 0.92 x 1.72 m recess, 0.3 m deep, takes the lot's plaque (1.7 x 0.9 x 0.12 m) on end. The fixture's `PlaqueSlot` is turned a quarter about Z, so a plaque box put under it as it is on the lot stands upright |
+| Rubble | chamfered boxes with their corners pushed about (14 % of each size), Concrete with Plaster for fresh breaks and Soot now and then on a top. Grey2 breaks beside Concrete read as holes |
+| Collision | a hidden CSG box per piece (two for the sandbags' step, a cone for the heap) reaching the model's top. Walk-over dressing has none, as the lot's papers and debris: the two small chunks, the radio, the lantern and the helmet (all under 0.36 m) |
+| Far level | none built: the biggest piece is 1,320 tris and a room is seen from at most about 10 m; Godot's generated LODs (`meshes/generate_lods`) cover it |
+
 ## Modular kit parts list
 
 Coverage: **Exists** (in the game now), **Material** (a CSG box with a lot pattern, maybe a new pattern or tint),
@@ -237,14 +265,14 @@ Coverage: **Exists** (in the game now), **Material** (a CSG box with a lot patte
 | 21 | Pipe rail, flat and sloped | 2 m runs, 1.0 tall, posts | blockout (rail) | Model | S | 2 |
 | 22 | Landing or balcony edge | 2 x 0.3 with rail | - | Model | S | 2 |
 | 23 | Debris blocker (purchase) | fills 1.4 x 2.4, 1.0 deep | - | Model | M | 2 |
-| 24 | Sandbag line | 1 and 2 x 0.6 x 0.9 | blockout; replaces the kit's Sack Trench | Model | S | 3 |
-| 25 | Table, and tipped over | 1.6 x 0.8 x 0.78 | - | Model | S | 3 |
-| 26 | Chair | 0.45 x 0.45 x 0.9 | - | Model | S | 3 |
-| 27 | Filing cabinet | 0.5 x 0.6 x 1.3 | - | Model | S | 3 |
-| 28 | Shelf rack, X-braced | 1.2 x 0.45 x 2.0 | - | Model | S | 3 |
-| 29 | Tall cabinet (a long gun's wall buy) | 1.0 x 0.5 x 2.2 | - | Model | S | 3 |
-| 30 | Rubble: chunks and a cone | 0.2-0.6 chunks, 1.5 cone | the props' `debris` in part | Model | S | 3 |
-| 31 | Period clutter: radio set, lantern, helmet | under 0.5 | - | Model | S | 3 |
+| 24 | Sandbag line | 1.03 / 2.03 x 0.63 x 0.91, 704 / 1,320 tris | `sandbags_1m`, `sandbags_2m`; replaces the kit's Sack Trench | Exists | - | 3 |
+| 25 | Table, and tipped over | 1.6 x 0.79 x 0.78, 308 tris; tipped 1.6 x 0.8 x 0.79, 320 | `table`, `table_tipped` | Exists | - | 3 |
+| 26 | Chair | 0.45 x 0.47 x 0.9, 184 tris | `chair` | Exists | - | 3 |
+| 27 | Filing cabinet | 0.5 x 0.6 x 1.3 (0.78 deep with its open drawer), 376 tris | `filing_cabinet` | Exists | - | 3 |
+| 28 | Shelf rack, X-braced | 1.2 x 0.45 x 2.0, 312 tris | `shelf_rack` | Exists | - | 3 |
+| 29 | Tall cabinet (a long gun's wall buy) | 1.0 x 0.53 x 2.2, 420 tris | `tall_cabinet`, with a `PlaqueSlot` | Exists | - | 3 |
+| 30 | Rubble: chunks and a cone | chunks 0.2-0.63, 44-100 tris; cone 1.47 x 1.49 x 0.7, 386 | `rubble_a` to `rubble_d`, `rubble_cone` | Exists | - | 3 |
+| 31 | Period clutter: radio set, lantern, helmet | 0.42 / 0.35 / 0.36 at most, 168-268 tris | `radio`, `lantern`, `helmet` | Exists | - | 3 |
 | 32 | Crates, boxes, pallets | as built | props `crate`, `boxes`, `box`, `pallet`, `pallet_broken` | Exists | - | - |
 | 33 | Barrels, gas cans, tanks | as built | props `barrel`, `gas_can`, `gas_tank` | Exists | - | - |
 | 34 | Papers on the floor | as built | props `papers`, `papers_b`, `papers_c` | Exists | - | - |
@@ -264,7 +292,7 @@ Coverage: **Exists** (in the game now), **Material** (a CSG box with a lot patte
 | 48 | Frosted ground outside | any | CSG + `gravel`, a cool pale tint | Material | S | 5 |
 
 **48 parts: 32 to model in Blender, 6 materials on CSG, 4 Godot jobs, 6 already in the game.** Nine of the 32 have a
-blockout already.
+blockout already. Group 3 (parts 24-31) is built: [Cover and clutter](#cover-and-clutter).
 
 | Group | Parts | Effort |
 | --- | --- | --- |
