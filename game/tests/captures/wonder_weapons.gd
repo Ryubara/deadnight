@@ -3,9 +3,10 @@ extends Node
 ## as a real mouse event. Not part of the game. Run with Movie Maker, 20 frames a second:
 ## `godot --path game res://tests/captures/wonder_weapons.tscn --fixed-fps 20 --write-movie out.png
 ## --quit-after 520`. Three zombies stand in a row ahead of the player. The ray gun fires at them
-## (the bolt, the burst and the splash on the two beside the one it hit), then the freeze gun
-## freezes the middle one, lets it stand a moment in its ice, and a second shot (aimed, over the
-## sights) shatters it. `MODE` picks the sequence: `ray`, `freeze` or `both`.
+## (the bolt, the burst and the blast on the two beside the one it hit), then the freeze gun
+## freezes the three in its bloom, they stand a moment in their ice, and a shot of the revolver
+## (aimed, over the sights) shatters the middle one. `MODE` picks the sequence: `ray`, `freeze` or
+## `both`.
 
 const SECOND := 60
 const MODE := "both"
@@ -162,9 +163,11 @@ func _freeze_gun() -> void:
 	_button(MOUSE_BUTTON_LEFT, true)
 	await _wait(3)
 	_button(MOUSE_BUTTON_LEFT, false)
-	# It stands in its ice a moment (the shell, the held pose), then the second shot, over the sights,
-	# well inside the three seconds.
+	# It stands in its ice a moment (the shell, the held pose), then the second shot, from the
+	# revolver (the freeze gun's own bolt does not break it) over the sights, well inside the three
+	# seconds.
 	await _wait(SECOND + 10)
+	_night.server.combat.apply(CombatAction.equip(_night.PLAYER_ID, &"pistol"))
 	_button(MOUSE_BUTTON_RIGHT, true)
 	_aim_at_the_middle()
 	await _wait(SECOND / 2)

@@ -7,8 +7,6 @@ extends RefCounted
 
 ## How far the shell stands off the body, in metres: the model grows along its normals by this.
 const SHELL_GROW := 0.03
-## How strongly the shell glows by itself, so a frozen zombie still reads blue on the dark lot.
-const GLOW := 0.7
 
 static var _shells: Dictionary[int, StandardMaterial3D] = {}
 
@@ -25,16 +23,11 @@ static func shell_for(wire: int) -> StandardMaterial3D:
 
 static func _make(def: StatusDef) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
+	# Unshaded: a lit material of its own setting is another program on the lot (`test_load_cost`
+	# holds the lit ones to a budget), and a shell that reads blue on the dark lot needs no light.
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_color = def.tint
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.roughness = 0.15
-	material.metallic_specular = 1.0
-	material.rim_enabled = true
-	material.rim = 1.0
-	material.rim_tint = 0.2
-	material.emission_enabled = true
-	material.emission = Color(def.tint.r, def.tint.g, def.tint.b)
-	material.emission_energy_multiplier = GLOW * def.tint.a
 	material.grow = true
 	material.grow_amount = SHELL_GROW
 	return material

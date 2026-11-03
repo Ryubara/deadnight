@@ -14,6 +14,12 @@ What the freeze gun and the ray gun (#788) taught us about putting a state on a 
 
 ## Things that bit
 
+- **The freeze is a property of the zombie kind, not of the weapon or the round**: `ZombieType.freeze_bolts` (a brute 3)
+  and `freezable` (bosses false) are data, and `StatusDef.kind_gated` says a status reads them. The bolts before the
+  last only slow (`chilled`) and the count (`StatusBoard.add_bolt`) lives as long as the slow. #794's elements that do
+  not depend on the kind leave `kind_gated` off.
+- **A weapon's own hit must not break what it put on**: `RulesAction.hit`'s `keeps` names the status the hit spares, or
+  the freeze gun's bolt (30 damage, a hit on the frozen zombie it just froze) would shatter its own target.
 - **A zombie that came for a fence's breach is pushed back to its boards** (`ZombieSim._keep_outside_the_boards`)
   every step, so a test or a capture that places one in the open must clear its `gate_id`, or it is back at the
   fence a tick later.
@@ -22,8 +28,9 @@ What the freeze gun and the ray gun (#788) taught us about putting a state on a 
 - **Grenades do not pass the combat server**, so "any hit kills a frozen zombie" is in the rules (`_hit` and
   `ExplosionPlay._blast_one`), the one place every damage goes through.
 - **The balance gate sees new weapons at once**: the crane's pool reaches the simulator, whose median round and time
-  to kill are gated. The provisional numbers of a wonder weapon are chosen to keep the gate green until the roster
-  research sets them.
+  to kill are gated, and the roster's ray gun (300 and a blast of 160) alone took the average median round past its
+  bound and the time to kill a walker to 0.36 s. The simulator does not model the freeze or the ray gun's hurt to its
+  shooter, so `NightSim.UNMODELLED` leaves the two prizes out of its crane until they are modelled.
 - **A capture needs a clear lane**: the lot is full of cars that block a shoulder camera's shot and hide a zombie.
   `tests/captures/wonder_weapons.gd` finds an open strip by dropping rays on a grid, then aims the view at the middle
   zombie.

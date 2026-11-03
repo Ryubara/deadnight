@@ -171,12 +171,10 @@ func _make() -> Piece:
 
 static func _material(colour: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
+	# Unshaded: a lit material of its own setting is another program on the lot (`test_load_cost`
+	# holds the lit ones to a budget), and ice that glows in the dark needs no light.
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_color = colour
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.roughness = 0.1
-	material.metallic_specular = 1.0
-	material.emission_enabled = true
-	material.emission = Color(colour.r, colour.g, colour.b)
-	material.emission_energy_multiplier = 0.5
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	return material
