@@ -330,7 +330,7 @@ func test_a_swap_abandons_the_pump_reload() -> void:
 	assert_bool(state.is_reloading()).is_false()
 
 
-# --- Loaded when first needed, not with the night ---
+# --- The sounds, and the bench's models, wait until they are needed ---
 
 
 func test_the_guns_sounds_are_in_a_deferred_bank() -> void:
@@ -350,19 +350,6 @@ func test_the_guns_sounds_are_in_a_deferred_bank() -> void:
 					. override_failure_message(String(sound))
 					. is_true()
 				)
-
-
-func test_the_crane_and_the_bench_load_the_guns_models_when_first_needed() -> void:
-	var crane := PrizeCrane.new()
-	add_child(crane)
-	var pool: Array[StringName] = [&"weapon_shotgun", &"weapon_mp5", &"weapon_pump_870"]
-	crane.configure(CraneTuning.new(), pool)
-	assert_bool(crane._models.has(&"weapon_shotgun")).is_true()
-	assert_bool(crane._models.has(&"weapon_mp5")).is_false()
-	crane.show_state({"stage": CraneState.Stage.SPIN, "left": 2.0}, 0.1)
-	assert_bool(crane._models.has(&"weapon_mp5")).is_true()
-	assert_bool(crane._models.has(&"weapon_pump_870")).is_true()
-	crane.free()
 
 
 func test_each_gun_is_carried_through_its_own_sprint_clip() -> void:

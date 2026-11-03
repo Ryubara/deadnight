@@ -154,7 +154,8 @@ for the dead's slowdown (`LotLamps.lit_at`).
   holds the aim, the level edge and that no wall or roof of the lot is inside the cone;
   `tests/captures/projector_spot_tour.tscn` shoots the lot from the field, the road and the booth (`--hide-spot` frees
   the light for a second run to count what it alone changes: free it, do not hide it, see the lesson).
-- **The prize crane's lamp** (`PrizeCrane`, one `OmniLight3D`, 5 m) is counted at each crane spot by
+- **The prize crane's lamp** (`PrizeCrane`, one `OmniLight3D`, 4.6 m since #830: in front of the prize board it
+  reached a seventh light onto the stand's floor at 5 m) is counted at each crane spot by
   `test_the_crane_at_any_of_its_spots_keeps_the_lot_within_the_budget`: a crane is built at every spot, its lamp joins
   the lot's and its own meshes join the lit ones, and no mesh is over the fight budget. Beside the stand the lamp is one
   more light on the stand's floor and roof, which is why they are cut in four (below): each piece stays at 6 or fewer.
