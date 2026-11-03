@@ -56,7 +56,7 @@ jobs:
       - run: uv run --with pyyaml python .github/scripts/groundwork.py check-files
       - name: The web deploy script refuses a branch other than main
         run: bash deploy/web/test_deploy.sh
-      - name: The deploy jobs refuse a build that is not the head of main
+      - name: The deploy jobs refuse a build older than the live one and deploy a newer one
         run: bash deploy/test_check_head.sh
       - name: The Discord bridge's share half refuses nothing it could have asked for first
         # A client that wants `authenticate` before any command (RPC 4006 otherwise, #627); no packages, node is on the runner.
@@ -327,13 +327,15 @@ jobs:
 
   deploy:
     # Publishes the build `web` just exported and smoke-tested to the Railway service `web` (a Caddy container, see
-    # deploy/web/), so the game at its public URL is always the head of main. Only main gets here: a pull request, and
+    # deploy/web/), so the game at its public URL is the newest green commit of main. Only main gets here: a pull request, and
     # a fork's run, has no secret. The project token (a Railway project token for gdstudio-net-test, environment
     # production) is the repository secret RAILWAY_TOKEN; without it the job warns and stops, it does not fail.
     # Railway CLI pinned to the version the deploy was tested with.
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: [godot, web]
-    # One deploy at a time; a waiting older deploy may be replaced by a newer one, since only the head of main matters.
+    # One deploy at a time, so the check below reads what the service runs after the deploy before this one finished.
+    # GitHub keeps one waiting job per group: a waiting deploy is replaced by a newer waiting one, and a build is
+    # deployed whenever it is newer than the live one, so the last green commit ends up live (#732).
     concurrency:
       group: deploy-web
       cancel-in-progress: false
@@ -353,18 +355,19 @@ jobs:
         with:
           persist-credentials: false
           sparse-checkout: deploy
-      - name: Skip a build that is not the head of main
+          fetch-depth: 0 # the check asks whether one commit is an ancestor of another
+      - if: env.skip != 'true'
+        run: npm install --global @railway/cli@5.63.1
+      - name: Skip a build that is older than the one the service runs
         if: env.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash deploy/check_head.sh "$GITHUB_SHA" || { test $? = 3 && echo "skip=true" >> "$GITHUB_ENV"; }
+        run: bash deploy/check_head.sh "$GITHUB_SHA" web || { test $? = 3 && echo "skip=true" >> "$GITHUB_ENV"; }
       - if: env.skip != 'true'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: web-build
           path: build/web
-      - if: env.skip != 'true'
-        run: npm install --global @railway/cli@5.63.1
       - name: Deploy and wait for the health check
         if: env.skip != 'true'
         run: bash deploy/web/deploy.sh build/web "$GITHUB_SHA"
@@ -376,7 +379,7 @@ jobs:
     # since the server imports the whole project. Same token and same skip as `deploy`.
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: [godot]
-    # One deploy at a time, like `deploy`: the head check below reads main when this job starts, after its wait.
+    # One deploy at a time, like `deploy`: the check below reads the live commit when this job starts, after its wait.
     concurrency:
       group: deploy-server
       cancel-in-progress: false
@@ -396,19 +399,22 @@ jobs:
         with:
           persist-credentials: false
           sparse-checkout: deploy
+          fetch-depth: 0 # the check asks whether one commit is an ancestor of another
           path: head-check
-      - name: Skip a build that is not the head of main
+      - if: env.skip != 'true'
+        run: npm install --global @railway/cli@5.63.1
+      - name: Skip a build that is older than the one the service runs
         if: env.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash head-check/deploy/check_head.sh "$GITHUB_SHA" || { test $? = 3 && echo "skip=true" >> "$GITHUB_ENV"; }
+        # run inside the checkout: the check reads its history
+        working-directory: head-check
+        run: bash deploy/check_head.sh "$GITHUB_SHA" deadnight-server || { test $? = 3 && echo "skip=true" >> "$GITHUB_ENV"; }
       - if: env.skip != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           lfs: true
-      - if: env.skip != 'true'
-        run: npm install --global @railway/cli@5.63.1
       - name: Deploy and wait until the server is live
         if: env.skip != 'true'
         run: bash deploy/server/deploy.sh deadnight-server
