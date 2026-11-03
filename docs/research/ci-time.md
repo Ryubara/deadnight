@@ -23,7 +23,7 @@ one, which includes its `before()` and `after()`; sorting those gaps gives the l
 After the speed-ups below the same job took 15 min 10 s (suites 853 s, down about 420 s on the suites both runs had; `main`
 had grown by 26 suites and 150 s meanwhile). The rest is compute and real time, so the job is also split.
 
-## Three jobs by test folder
+## Jobs by test folder (three, six since #775)
 
 `godot` is a matrix of three shards (`godot (1)` to `godot (3)`), each running its own test folders
 (`tools/ci_test_shards.py`: `night` and `rules`; `net`, `world` and `zombies`; everything else). A folder that is not
@@ -40,6 +40,34 @@ folder is 13 minutes of it, almost all in a few bot suites (`test_bot_bands` 185
 with room: after the move the three shards' suites take about 530, 560 and 580 s. A script of a split folder that is not
 named stays with the folder's shard, so a new bot suite is still run. Check the shard times in the job log before a PR
 adds minutes of suites; the step takes a minute of setup on top.
+
+**Six shards, by measured seconds (#775).** The three shards grew back to 12 to 15 minutes (shard 1 reached the 15-minute
+limit and was cancelled with no test failing, five times in one day). The suites alone were 655, 708 and 655 s in a
+fast run of `main` and 814, 838 and 673 s in a run 15 % slower, 2,018 and 2,325 s in all: 3 shards cannot meet "no
+shard over about 9 minutes" (a shard's job is its suites plus about 50 s of checkout, fetch and import), 4 could not
+survive a slow runner (10.5 min), so there are six, about 6 minutes of suites and 7 in all, and the limit stays 15.
+The seconds per script are the gaps between the `Run Test Suite:` lines of the job log (`gh api
+repos/<repo>/actions/jobs/<id>/logs --allow-escape-sequences`); the table is the mean of two runs.
+
+| Shard | Runs | Suites, s (fast / slow run) |
+| --- | --- | --- |
+| 1 | the rest of `night` (about 96 scripts), the main scene and a night run | 332 / 414 |
+| 2 | `night/test_bot_bands`, `player` | 349 / 356 |
+| 3 | `zombies`; `night/test_bot_soak`, `_orders_night`, `_combat`, `_team`, `_errand_buys` | 304 / 404 |
+| 4 | `net` | 358 / 377 |
+| 5 | `ui` and the small folders; `night/test_bot_own_ammo` | 343 / 362 |
+| 6 | `rules`, `world`; `night/test_bot_train` | 332 / 413 |
+
+The slowest suites on the runner (mean seconds): `night/test_bot_bands` 206 (eight seeds for each band),
+`rules/test_balance_targets` 109 to 127 (60 seeded nights per cell, the gate), `night/test_bot_soak` 80,
+`night/test_bot_orders_night` 68, `net/test_room_eight` 59, `night/test_bot_combat` 51, `night/test_bot_errands` 45,
+`net/test_night_scoreboard_online` 43, `night/test_bot_team` 43, `world/smallmap/test_smallmap_bot_night` 40,
+`night/test_bot_own_ammo` 40. All are seeded bot nights or real sockets: the time is the test. I read the scripts of
+the 25 to 35 s suites outside
+`net` (`player/test_aim_press_order`, `ui/test_hud_prompt_fit`, `night/test_shot_on_crosshair`, ...): none has a
+`create_timer`, they load a night and step it, so none grew because of a bug and none got its own issue. They are also
+the next place to look when a shard drifts: `test_bot_bands` alone is a third of a shard (`BOTS_BANDS_SEEDS` shortens it
+by hand).
 
 ## What a fast test does
 
