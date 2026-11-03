@@ -78,6 +78,8 @@ const REACTION_FLOOR := 0.20
 	&"upgrade_weapon",
 	&"tonic_hearty",
 	&"door_back_lot",
+	&"tonic_quick_load",
+	&"tonic_swift_rescue",
 ]
 ## Items on that list the bot saves for: while one is not yet affordable, nothing after it is
 ## bought.
@@ -217,6 +219,8 @@ static func veteran() -> BotProfile:
 				&"upgrade_weapon",
 				&"tonic_hearty",
 				&"door_back_lot",
+				&"tonic_quick_load",
+				&"tonic_swift_rescue",
 			]
 		)
 	)

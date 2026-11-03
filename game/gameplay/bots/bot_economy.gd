@@ -7,11 +7,12 @@ extends RefCounted
 ## The order is the simulator's player (`NightSim._shop`): the rounds the bot cannot fight without
 ## (below one magazine of reserve, bought at once, in a round too), the rounds of a short reserve
 ## (`BotProfile.ammo_floor_mags` magazines), then the things it is saving for in the order of
-## `BotProfile.shopping` (doors, wall weapons, the crane, the re-cut, the hearty tonic), and last
+## `BotProfile.shopping` (doors, wall weapons, the crane, the re-cut, the tonics), and last
 ## topping the reserves up with what is left once the next thing on the list is paid for. An item
 ## on the list is passed over when it is not affordable, unless the profile saves for it. Tonics
-## that do nothing for health are never bought. Grenades come last: a bot with fewer than
-## `BotProfile.grenades_wanted` buys a rack's worth once the next thing on the list is paid for.
+## are perks (`docs/design/perks.md`): one with no effect is never bought. Grenades come last: a bot
+## with fewer than `BotProfile.grenades_wanted` buys a rack's worth once the next thing on the list
+## is paid for.
 ##
 ## Keeping back a reserve: a fuel can from round `RESERVE_FUEL_FROM` on, so a plan item never leaves
 ## the bot unable to feed the generator.
@@ -95,6 +96,9 @@ class View:
 	var doors_open: Array = []
 	## What the bot has bought, by shop item id (the client's count).
 	var bought: Dictionary = {}
+	## The tonics the bot has now, as the frame's bits (`PerkEffects.mask_of`): a perk lost when it
+	## went down is bought again.
+	var perks := 0
 	## Where the crane stands (its place in the rules' list) and whether it can take a play.
 	var crane_spot := 0
 	var crane_ready := true
@@ -298,9 +302,15 @@ func _recut(view: View, item: ShopItem) -> Buy:
 	return _buy(view, item, stand, &"recut", PLAN)
 
 
-## A tonic is bought once, and only one that does something for health.
+## A tonic is bought while the bot has not got it, up to the limit, and only one that does
+## something (`ShopItem.effect`): a perk lost when the bot went down is bought again.
 func _tonic(view: View, item: ShopItem) -> Buy:
-	if not view.is_calm() or item.health_bonus <= 0.0 or int(view.bought.get(item.id, 0)) > 0:
+	if not view.is_calm() or item.effect == ShopItem.Effect.NONE:
+		return null
+	var bit := _shop.tonic_order().find(item.id)
+	if bit >= 0 and (view.perks & (1 << bit)) != 0:
+		return null
+	if PerkEffects.mask_count(view.perks) >= _shop.economy.max_tonics:
 		return null
 	var stand := _nearest(view, _shop.spots_of(item.id))
 	if stand == Vector3.INF:

@@ -561,6 +561,7 @@ func _view(
 	view.grenades = beliefs.grenades
 	view.doors_open = frame.get("doors", [])
 	view.bought = state.bought
+	view.perks = int(me.get("perks", 0))
 	var crane: Dictionary = frame.get("crane", {})
 	view.crane_spot = int(crane.get("spot", 0))
 	view.crane_ready = int(crane.get("stage", CraneState.Stage.READY)) == CraneState.Stage.READY

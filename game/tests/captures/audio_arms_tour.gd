@@ -76,7 +76,7 @@ func _buy_sequence() -> void:
 		["A door: unlock, then the till", &"door_concession"],
 		["A wall weapon", &"weapon_shotgun"],
 		["Rifle ammunition", &"ammo_rifle"],
-		["A tonic", &"tonic_second_wind"],
+		["A tonic", &"tonic_hearty"],
 		["The crane", &"crane_play"],
 	]:
 		_say(step[0])
