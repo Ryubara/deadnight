@@ -159,6 +159,12 @@ facing together):
 $godot --path game res://tests/captures/online_heights.tscn --resolution 1280x720 -- --out=<abs>/heights.png
 ```
 
+`test_world_parity.gd` holds that every solid thing a player can bump into (a `CollisionObject3D` or a colliding
+`CSGShape3D` other than a body) is in the client's viewport and in the server's, at the same place. A view or a drawing
+never adds collision of its own: the prize crane's cabinet did, only on the client, and a sprint past it ended 2.2 m
+from the server's body (#748); the cabinet is now `CraneBlock` in `NightWorld`, moved by the rules on a server and by
+the frame on a client.
+
 To use a server in your own test: add a `NightHost` (`port = 0` picks a free port, read back from
 `host.listener.port()`) and join with `Night.start_remote(url, Night.Mode.MANUAL)`; in `MANUAL` the test sends the
 commands through `night.link`.
