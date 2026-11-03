@@ -12,6 +12,10 @@ extends VBoxContainer
 ## on a setting added to `MatchSettings` without a row, so it cannot reach rooms and miss solo. The
 ## lobby reads `settings()` and hands it to the server with `NightHost.configure_match`; a guest's
 ## lobby calls `set_settings` with what the WELCOME carried and `set_editable(false)`.
+##
+## Each control is named by its setting's key (`count_multiplier`, `max_alive`, `break_seconds`,
+## `bots`, `bot_skill`; a map card by its map's id), which the web probe publishes as `focus`: a
+## browser smoke walks the keyboard to a control by that name, never by counting key presses (#743).
 
 ## A control moved: the settings as they now stand.
 signal changed(settings: MatchSettings)
@@ -87,6 +91,7 @@ func _init() -> void:
 	map_row.set_control(map_picker)
 	count_row = _row("count_multiplier", "Zombie intensity")
 	count_selector = UIOptionSelector.new()
+	count_selector.name = &"count_multiplier"
 	var labels := PackedStringArray()
 	for choice in MatchSettings.COUNT_CHOICES:
 		labels.append("%dx" % roundi(choice))
@@ -95,12 +100,15 @@ func _init() -> void:
 	count_row.set_control(count_selector)
 	alive_row = _row("max_alive", "Most alive at once")
 	alive_slider = _slider(0, _alive_ceiling, ALIVE_STEP)
+	alive_slider.name = &"max_alive"
 	alive_row.set_control(alive_slider)
 	break_row = _row("break_seconds", "Break between rounds")
 	break_slider = _slider(int(MatchSettings.MIN_BREAK), BREAK_MAX, 1)
+	break_slider.name = &"break_seconds"
 	break_row.set_control(break_slider)
 	bots_row = _row("bots", "Bots")
 	bots_selector = UIOptionSelector.new()
+	bots_selector.name = &"bots"
 	var bot_labels := PackedStringArray()
 	for count in range(MatchSettings.MIN_BOTS, MatchSettings.MAX_BOTS + 1):
 		bot_labels.append(str(count))
@@ -109,6 +117,7 @@ func _init() -> void:
 	# The skill sits beside the count in the same row: a sixth row would not fit a phone held
 	# sideways or a 720p window (`test_play_screen.gd`), and the two settings belong together.
 	skill_selector = UIOptionSelector.new()
+	skill_selector.name = &"bot_skill"
 	skill_selector.options = PackedStringArray(SKILL_LABELS)
 	skill_selector.selected_changed.connect(_on_changed.unbind(1))
 	skill_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL

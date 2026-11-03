@@ -178,12 +178,11 @@ def main() -> int:
                 problems.append(
                     f"only the host's rules are editable: A {two_a.get('lobby_rules_editable')}, B {two_b.get('lobby_rules_editable')}"
                 )
-            for _ in range(3):  # Start -> the break slider -> the alive slider -> the zombie intensity
-                smoke.press(a, "ArrowUp")
-            smoke.press(a, "ArrowRight")  # intensity 1x -> 2x
-            smoke.press(a, "ArrowDown")
-            for _ in range(4):  # most alive at once: Auto -> 4
-                smoke.press(a, "ArrowRight")
+            # The controls are found by their names (`focus` in the probe), never by counting presses (#743).
+            smoke.focus_control(a, "count_multiplier", "ArrowUp")
+            smoke.step_value(a, "count_multiplier", "ArrowRight", 1)  # intensity 1x -> 2x
+            smoke.focus_control(a, "max_alive", "ArrowDown")
+            smoke.step_value(a, "max_alive", "ArrowRight", 4)  # most alive at once: Auto -> 4
             # The game publishes its state a few times a second, so a press shows a moment later: wait for the end state.
             try:
                 moved = wait_for(
@@ -197,8 +196,7 @@ def main() -> int:
             result["rules_b"] = read_probe(b).get("lobby_rules")
             a.screenshot(path=args.out / "a_rules.png")
             b.screenshot(path=args.out / "b_rules.png")
-            for _ in range(2):  # the alive slider -> the break slider -> Start
-                smoke.press(a, "ArrowDown")
+            smoke.focus_control(a, "Start", "ArrowDown")
 
             # A presses Start and goes in; B is told and presses Play.
             smoke.press(a, "Enter")

@@ -159,7 +159,6 @@ static func snapshot(top: Control) -> Dictionary:
 		"lobby_rules_editable": false,
 		"play_rules": "",
 		"play_map": "",
-		"play_focus": "",
 		"lobby_map": "",
 		"spots": "",
 		"night_rules": "",
@@ -256,8 +255,6 @@ static func snapshot(top: Control) -> Dictionary:
 		# Solo's Play screen: the rules on its panel (the same panel the room host's lobby has).
 		data["play_rules"] = play.rules_text()
 		data["play_map"] = play.panel.map_picker.selected_id
-		var focused := play.get_viewport().gui_get_focus_owner()
-		data["play_focus"] = str(focused.name) if focused != null else ""
 	var night_screen := top as NightScreen
 	if night_screen == null or night_screen.night == null or night_screen.night.state == null:
 		return data
@@ -359,9 +356,13 @@ static func _spots(screen: Control) -> String:
 	)
 	if panel != null and panel.is_visible_in_tree():
 		# Each setting's control: its centre, and `key:end` a little inside its right end (an option
-		# selector's next arrow).
+		# selector's next arrow). The control is the one named by the key (`bots` and `bot_skill` share
+		# a row, and each has its own selector), else the row's.
 		for key: String in panel.setting_keys():
-			var rect := panel.row_for(key).control.get_global_rect()
+			var control := panel.find_child(key, true, false) as Control
+			if control == null:
+				control = panel.row_for(key).control
+			var rect := control.get_global_rect()
 			var middle := rect.get_center() / size
 			var end := Vector2(rect.end.x - ARROW_INSET, rect.get_center().y) / size
 			spots.append("%s:%.4f,%.4f" % [key, middle.x, middle.y])
