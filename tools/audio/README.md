@@ -30,3 +30,6 @@ Close sounds (#753): `close_levels.py` reads a run of the same capture with `--o
 listener, where the player's `max_db` holds the level) and prints each sound's ceiling, its highest sample and its
 loudest 400 ms; `--table game/tests/core/close_sound_levels.json` writes the table `test_close_sound_levels.gd` pins.
 `docs/research/gun-audio.md#close-sounds-under-gunfire` has the rule and the numbers.
+
+The flare gun's report (#761) is limited in its recipe with `limiter.py`'s `limit_crest`; `gun_levels.py --table` also writes
+a SHA-256 of every gun file it played, which `test_gun_audio_rules.gd` checks.

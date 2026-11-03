@@ -6,6 +6,16 @@
         "shot_pistol": -6.5,
         "tail_pistol": -20.5
       },
+      "files_sha256": {
+        "shot_pistol_1.ogg": "a3ca2d1fdbf09b065d7f0d2065a273372af098ea1ab734396f36002052ded7dd",
+        "shot_pistol_2.ogg": "bc041ab493af284c4c2707774338e8d699240e457797d7e40a30f65712b9f4ac",
+        "shot_pistol_3.ogg": "d67d3345af709cf5eeb410d235b0dadf00cc155ef489396ff7ff74c9db9aa240",
+        "shot_pistol_4.ogg": "fec78fd673d773f3cea884dec82a454f7915a70aa97f116c86a11a0dd2d25ff5",
+        "shot_pistol_5.ogg": "510d2dfcbd530c6b92628a60d5cbfd064d041275579e1c35fd1af6eea415b2ba",
+        "tail_pistol_1.ogg": "f98f5da4a42f13247871a0f7e3192fb18ad46413ea5d82e6bdf36b0a42f60327",
+        "tail_pistol_2.ogg": "6f19e03e197aac8051777a1fa1e61ab29c73ef612f432050ea81e02aa6f09c36",
+        "tail_pistol_3.ogg": "1ec00617242a2bea22dcbc0e2954a72cb3bb38fab9bfd5c2a08521a51ad3b451"
+      },
       "single_momentary_lufs": -18.0,
       "burst_lufs": -16.5,
       "peak_dbfs": -5.5,
@@ -15,6 +25,16 @@
       "trims_db": {
         "shot_smg": -6.5,
         "tail_smg": -20.5
+      },
+      "files_sha256": {
+        "shot_smg_1.ogg": "87547df0b699d98513acc4d0fbf1556c009c257c2a4584eb8f9f2240aa4bb516",
+        "shot_smg_2.ogg": "8e4eb41553345f10f44764fa953d5944e346c87ecc99f7ead5a38ac872a75cfe",
+        "shot_smg_3.ogg": "53934b50a0f68b5d6e4ebf3c77eaf139ecea2a7623013b29a17a652ec679930e",
+        "shot_smg_4.ogg": "7593d5c34150633acab3c6e4f27e265e975b4a969b30ec6a491dc3298f199210",
+        "shot_smg_5.ogg": "e253554e9386cc9542c1a49f4480551bdde6736d9081a2fe2818e5253f077d53",
+        "tail_smg_1.ogg": "9a238b304be1e37610afc412de895fcfebeccd464733f041cd13e4e1659f7a52",
+        "tail_smg_2.ogg": "69313b011ee34e41e249bfd620dbee727df9ee56b7fb4f7a1450f8cdc65ac387",
+        "tail_smg_3.ogg": "0e9a20ff159425b5499fb4e54a8042fc1ef88d5679610a04f134822a45cf95d2"
       },
       "single_momentary_lufs": -20.4,
       "burst_lufs": -13.4,
@@ -26,6 +46,16 @@
         "shot_rifle": -6.5,
         "tail_rifle": -20.5
       },
+      "files_sha256": {
+        "shot_rifle_1.ogg": "476961d8c9e6167b6eab3b553bb04027723d59249131352d4104b09a95a87fbd",
+        "shot_rifle_2.ogg": "20713dfc35bdbb81d9c077dbfa6cdb5e028992b5adeee1aba16d1e705f56c01e",
+        "shot_rifle_3.ogg": "db3bead5ca1da1a00d4aefa2b9586c60a7f5c099c2ee12b1542aba77977a4d9f",
+        "shot_rifle_4.ogg": "52786d9a7698d2f34ed98f35c736875d12e123fe4089eeca6d470e543087c14b",
+        "shot_rifle_5.ogg": "af32fb6f1f3aa9245c8e16ad2a57c7e5edd1330b8a6fbf9434fed84e5f57230c",
+        "tail_rifle_1.ogg": "4cee88a80478d2687c6e8dbd89150a811fe3fb318a3bcfd0900f2ca27c3ea1fd",
+        "tail_rifle_2.ogg": "7be2d91ce3772e8b4de7078e142c3dd4f9fc24188f72afc95794e4ef06dfc630",
+        "tail_rifle_3.ogg": "4233e46a02fa4a6ec987b967147ea6c999c402677bf8d49eae8830904efebd16"
+      },
       "single_momentary_lufs": -16.3,
       "burst_lufs": -17.6,
       "peak_dbfs": -4.9,
@@ -36,6 +66,16 @@
         "shot_shotgun": -7.0,
         "tail_shotgun": -21.0
       },
+      "files_sha256": {
+        "shot_shotgun_1.ogg": "0dff1f1e5cf92feb8f73073dcd5973e86b7ec363ab6e5a20293c61053334fd90",
+        "shot_shotgun_2.ogg": "db2689d3f35cd455608fe6ef04d6f9f69a4d49e3048d586732251f82cbaee380",
+        "shot_shotgun_3.ogg": "16971ccb54a0c197a2122723b34863e542136f1bd196acbf43cd893dbd7145e6",
+        "shot_shotgun_4.ogg": "ba95d30c846e8051409c734a756a4de6254a95cdf1f7722fd7d6d72935ac964b",
+        "shot_shotgun_5.ogg": "05f76498b4ac4e10b8f4e69aa8b46b1751de9af8bc896b79613a05d1709164a9",
+        "tail_shotgun_1.ogg": "d0103b836700bbe2a5cc01be3768bb5c08c4f7e88c86f6676c4b01a3ddadfb1f",
+        "tail_shotgun_2.ogg": "a1c89dcc2d53c67bc21477e5775348364d9f39ebefb569d5383933c85a2e068c",
+        "tail_shotgun_3.ogg": "e1c6d9dae2253935f0b512aaa4ab94823033debbac70fc585bd84b38f4ac5173"
+      },
       "single_momentary_lufs": -15.8,
       "burst_lufs": -14.3,
       "peak_dbfs": -5.5,
@@ -43,12 +83,17 @@
     },
     "flare_gun": {
       "trims_db": {
-        "shot_flare": -1.5
+        "shot_flare": -6.0
       },
-      "single_momentary_lufs": -16.4,
-      "burst_lufs": -17.6,
-      "peak_dbfs": -2.5,
-      "centroid_hz": 3103
+      "files_sha256": {
+        "shot_flare_1.ogg": "b09d88f10f6db2cc0c519415e99cea3a5a54c51cf3b2ad8ce11c624c58a4c59f",
+        "shot_flare_2.ogg": "3e402e69d64fb45527362e3355b2bd1df1e1bc5bf5e1fb4c4eb33f4a161eef35",
+        "shot_flare_3.ogg": "e69d3c82f858fe7f201bd924c18e4a0bfe514c63644b88be4f6b9271365e6d1d"
+      },
+      "single_momentary_lufs": -16.2,
+      "burst_lufs": -17.4,
+      "peak_dbfs": -5.2,
+      "centroid_hz": 3043
     }
   }
 }

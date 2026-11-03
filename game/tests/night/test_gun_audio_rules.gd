@@ -23,11 +23,6 @@ const MIN_BURST_ABOVE_BEDS_LU := 17.0
 ## shots without any sample over -1 dBFS (#718; measured with `tests/captures/audio_headroom.tscn`
 ## and `tools/audio/headroom.py`).
 const MAX_PEAK_DBFS := -4.5
-## The flare gun fires one shot a long while apart and its report is a sharp crack (a crest factor
-## of 20 dB: cutting its peak 1.2 dB takes 2.5 dB off its burst's loudness), so it only keeps clear
-## of -1 dBFS.
-const MAX_SLOW_GUN_PEAK_DBFS := -1.0
-const SLOW_GUNS: Array[String] = ["flare_gun"]
 ## The whole pitch rule in semitones, and the level rule in dB (either way).
 const PITCH_RANGE := 0.2
 const LEVEL_RANGE := 0.6
@@ -192,16 +187,15 @@ func test_the_guns_stay_above_the_night_beds_by_the_documented_loudness() -> voi
 			)
 			. is_greater_equal(MIN_BURST_ABOVE_BEDS_LU)
 		)
-		var ceiling := MAX_SLOW_GUN_PEAK_DBFS if weapon in SLOW_GUNS else MAX_PEAK_DBFS
 		(
 			assert_float(float(gun["peak_dbfs"]))
 			. override_failure_message(
 				(
 					"%s peaks at %s dBFS, over the %s that leaves room for other sounds"
-					% [weapon, gun["peak_dbfs"], ceiling]
+					% [weapon, gun["peak_dbfs"], MAX_PEAK_DBFS]
 				)
 			)
-			. is_less_equal(ceiling)
+			. is_less_equal(MAX_PEAK_DBFS)
 		)
 
 
@@ -226,4 +220,41 @@ func test_the_measured_loudness_is_of_the_trims_the_catalog_has() -> void:
 			assert_bool(table["guns"].has(String(weapon)))
 			. override_failure_message("no measurement of %s" % weapon)
 			. is_true()
+		)
+
+
+func test_the_measured_loudness_is_of_the_files_the_game_has() -> void:
+	# The table is the bench's measurement of these exact files (`gun_levels.py --table` hashes
+	# them): a sound re-rendered, or a variant added, without measuring again would leave the table
+	# describing other sounds (a row parting from the bench is how the flare gun's burst read 17.7 LU
+	# in the table and 16.7 in the bench, #761).
+	var table: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(TABLE))
+	for weapon: String in table["guns"]:
+		var gun: Dictionary = table["guns"][weapon]
+		var hashes: Dictionary = gun["files_sha256"]
+		var seen := 0
+		for id: String in gun["trims_db"]:
+			var def := SoundCatalog.get_def(StringName(id))
+			for variant in range(1, def.variants + 1):
+				var path := def.path_format % variant
+				var file := path.get_file()
+				(
+					assert_bool(hashes.has(file))
+					. override_failure_message(
+						"%s: %s was not measured: measure again" % [weapon, file]
+					)
+					. is_true()
+				)
+				(
+					assert_str(FileAccess.get_sha256(path))
+					. override_failure_message(
+						"%s: %s changed since it was measured: measure again" % [weapon, file]
+					)
+					. is_equal(String(hashes.get(file, "")))
+				)
+				seen += 1
+		(
+			assert_int(hashes.size())
+			. override_failure_message("%s: the table has files the catalog no longer has" % weapon)
+			. is_equal(seen)
 		)

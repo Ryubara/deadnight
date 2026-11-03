@@ -43,7 +43,7 @@ pinned by `game/tests/night/test_gun_audio_rules.gd`:
 | Variants of a report differ in their noise, not their note | frequencies within +-2 percent | `weapon_recipes.FREQUENCY_SPREAD` |
 | A shot is this far over the night's beds (one shot's loudest 400 ms / a two second burst) | 14 LU / 17 LU | `test_gun_audio_rules.gd` |
 | Nothing relies on a bus effect for its power or its headroom | the web build plays samples, which ignore them | the files and the trims |
-| A gun that fires without a break peaks no closer to full scale than (the flare gun, one shot in a long while: -1 dBFS) | -4.5 dBFS | the trims (#718, [below](#headroom-under-other-sounds)) |
+| Every firearm's shot or burst peaks no closer to full scale than | -4.5 dBFS | the trims (#718, [below](#headroom-under-other-sounds)); the flare gun's file too (#761, [below](#the-flare-guns-crack)) |
 | Another sound landing on that gun's shots (a reload, a teammate's gun, a zombie's voice, a door) | no sample over -1 dBFS | the same trims; `tests/captures/audio_headroom.tscn` |
 | A close sound (a voice of the dead, a board, the door, the blast) | its loudest file at most -9.8 dBFS 1.2 m ahead, what the loudest own gun leaves under -1 dBFS | a negative `near_cap_db` (#753, [below](#close-sounds-under-gunfire)) |
 
@@ -59,7 +59,8 @@ pinned by `game/tests/night/test_gun_audio_rules.gd`:
 - **Own shots are flat.** `WeaponSounds` plays the shooter's own report and tail with no position.
 - **Trims.** First revolver -1, SMG -2, rifle -1, shotgun -1 (the strongest: its file is the longest and lowest), flare
   gun -2 dB, tails 14 dB under their report. Now (#718, [headroom](#headroom-under-other-sounds)) the reports sit at
-  revolver -6.5, SMG -6.5, rifle -6.5, shotgun -7.0 and flare gun -1.5 dB, the tails 14 dB under.
+  revolver -6.5, SMG -6.5, rifle -6.5 and shotgun -7.0 dB, the tails 14 dB under, and (#761, a reshaped file) the
+  flare gun -6.0.
 - **The flare gun** gets the same treatment (crack, bark, thump, then the hiss).
 
 ## Measured
@@ -126,8 +127,9 @@ trim, and the mix stays a plain sum (the reload audibility measurement of #683 r
 
 **What was set.** Report trims (tails 14 dB under): revolver -2.5 to -6.5, SMG -2.5 to -6.5, shotgun (the
 double-barrel) -3.0 to -7.0, each a 4 dB cut, and the rifle -3.5 to -6.5, a 3 dB cut (4 dB left its two second burst
-16.7 LU over the beds, the test asks 17). The flare gun stays at -1.5: its report is a sharp crack (a crest factor of 20
-dB: a 1.2 dB cut of its peak takes 2.5 dB off its burst's loudness, under the 17 LU), and it fires once in a long while.
+16.7 LU over the beds, the test asks 17). The flare gun stayed at -1.5 then: its report was a sharp crack (a crest factor
+of 20 dB: a 1.2 dB cut of its peak takes 2.5 dB off its burst's loudness, under the 17 LU); it is reshaped in
+issue 761 ([below](#the-flare-guns-crack)).
 A teammate's reload steps are lifted by 5 dB (`teammate_reload_db`, was 6): a rifle round step landed on a tommy gun
 shot at -0.8 dBFS (4 samples over -1 dBFS) with 6, and with 5 every step of five weapons is still heard under a tommy
 gun 6 m off ([design](../design/audio.md#reloads)). A cut in trim is a cut in gain: peak, RMS and loudness fall
@@ -146,10 +148,11 @@ debris blocker. Peak of the mix in dBFS, with the samples over -1 dBFS in bracke
 | Tommy gun | -1.7 to **-5.7** | 0.0 (25) to **-1.2** (0) | 0.0 (286) to **-2.7** (0) | 0.0 (106) to **-3.6** (0) | 0.0 (56) to **-2.0** (0) |
 | Rifle | -2.4 to **-5.4** | -1.3 (0) to **-3.5** (0) | 0.0 (50) to **-2.3** (0) | -1.2 (0) to **-4.4** (0) | -1.9 (0) to **-4.8** (0) |
 | Shotgun | -1.6 to **-5.6** | -0.4 (17) to **-3.0** (0) | 0.0 (170) to **-3.0** (0) | 0.0 (113) to **-3.1** (0) | 0.0 (35) to **-2.3** (0) |
-| Flare gun (trim unchanged) | -3.1 | -1.9 (0) | 0.0 (35) to **-0.2 (8)** | -0.1 (10) to **-1.3** (0) | -2.1 (0) to **-2.4** (0) |
+| Flare gun (trim unchanged then; reshaped in #761) | -3.1 | -1.9 (0) | 0.0 (35) to **-0.2 (8)** | -0.1 (10) to **-1.3** (0) | -2.1 (0) to **-2.4** (0) |
 
 Before, 14 of the 25 cells had samples over -1 dBFS, most of them at 0.0 dBFS; after, one: the flare gun's crack landing
-on a teammate's revolver shot at -0.2 dBFS (8 samples, none at full scale), the one gun whose trim was not cut. The
+on a teammate's revolver shot at -0.2 dBFS (8 samples, none at full scale), the one gun whose trim was not cut (solved in
+issue 761). The
 worst of the others is -1.2 (the tommy gun under a teammate's reload) and -2.0 to -2.2 under a teammate's gun or the
 lot's sounds. The sounds that landed peak, alone, before then after: a teammate's gun -4.6 to -5.1 then -8.0 to -9.5, a
 reload step -5.8 to -12 then -6.8 to -13 (the SMG's magazine going in the loudest), a grenade blast -7.2.
@@ -163,8 +166,8 @@ gun; after -2.2 to -5.4, none over -1 dBFS.
 RMS) is unchanged: 11.1 dB for the tommy gun, 11.3 for the double-barrel, 14.6 for the revolver and 15.6 for the rifle.
 Against the night's beds (-35.3 LUFS, `tools/audio/gun_levels.py`, now `tests/night/gun_levels.json`): one shot's
 loudest 400 ms is 14.9 LU over the beds (tommy gun) to 19.5 (double-barrel), a two second burst 17.7 LU (rifle) to 21.9
-(tommy gun), against the 14 and 17 the test asks. `test_gun_audio_rules.gd` now also asks every gun but the flare gun
-to peak at -4.5 dBFS or lower.
+(tommy gun), against the 14 and 17 the test asks. `test_gun_audio_rules.gd` now also asks every gun
+to peak at -4.5 dBFS or lower (every gun but the flare gun until #761).
 
 **What this did not cover (both are done now).** The matrix plays each zombie voice and lot sound once, in a pool that
 had already played guns. Two things made the close sounds louder than that: *a pooled player kept the last sound's
@@ -242,14 +245,62 @@ cell then the lot's cell, before then after (peak of the mix in dBFS after):
 The ordinary run of the matrix (each sound once, a random file) has no sample over -1 dBFS for four guns in any cell;
 the flare gun's crack on a teammate's revolver shot is still -0.2 dBFS (8 samples), as before.
 
-**The flare gun is not solved.** Its crack peaks at -3.1 dBFS alone (a crest factor of 20 dB), 2.6 dB over the others,
-so it needs the others to be at -14 dBFS or lower, which no close sound can be, or itself to be at about -5.5 dBFS.
-That takes 2.4 dB off its burst, which the 17 LU rule does not allow: the table says its burst is 17.7 LU over the beds
-(0.7 to spare), and a fresh bench on `main` measures 16.7 (-18.6 LUFS, peak -2.3; the other four guns reproduce the
-table to the decibel). Cutting its trim 0.6 dB measured -19.2. A look-ahead limiter in the file (in the recipe, so it
-holds in the web build), tried on the three files off the pipeline, took 1.3 dB off their decoded peaks for 0.5 LU, the
-best trade found, and would still leave the dead on it near -0.7 dBFS. It stays a known exception (3 samples over -1
-dBFS in 110 s of the close sweep, 8 in the ordinary run), in the issue that follows this one.
+The flare gun's row of that table was the exception then; it is reshaped in
+[the next section](#the-flare-guns-crack).
+
+## The flare gun's crack
+
+Issue #761. After #753 every other own gun had no sample over -1 dBFS in any cell of the headroom capture; the flare gun
+still had some (4 and 2 in the zombie and lot cells, 2 and 1 close, 8 on a teammate's revolver shot). Its crack peaked
+at -3.1 dBFS alone (a crest factor of 20 dB, the loudest 400 ms 20 dB under its highest sample), so a trim for -5.5
+took its burst under the 17 LU rule: a fresh bench on `main` read its burst **16.7 LU** over the beds (-18.6 LUFS,
+peak -2.3) where the table said 17.7. The row had parted from the bench; most likely the thin crack's burst reads
+1.3 dB apart depending on which three variants the seed draws and where the 400 ms blocks fall on them (offline, over
+the orders and block alignments), and the test only checked the table's trims against the catalog.
+
+**Decision: reshape the file, no exception.** The flare gun follows the same two rules as the others (no sample over
+-1 dBFS under other sounds, burst 17 LU over the beds). A look-ahead limiter alone is not enough (the best trade found
+before: 1.3 dB off the decoded peaks for 0.5 LU), so the body is fuller too. `flare_shot` in `weapon_recipes.py`:
+puff 2.4 to 3.5 and bark 2.2 to 3.0 (the thump unchanged), a harder drive (2.5 to 6), then `limiter.limit_crest`
+(`FLARE_CREST_DB` 5: the highest sample at most 5 dB over the loudest 400 ms, a smooth gain, 2 ms look-ahead), then the
+pipeline's normalisation as before. The limiter is in the file, so the web build plays it too (it ignores bus
+effects; not re-run in Chromium, the [Browser](#browser) table below is the old file). Trim -1.5 to **-6.0**. A first
+try with a heavy thump (1.4) met the numbers and turned the pop into a boom (91 percent of its energy under 250 Hz
+against 44 to 69 for the other guns), so the bench's low-end share and centroid are read beside the LU.
+
+**Measured**, `game/tools/bench/audio_gun_bench.tscn` through `tools/audio/gun_levels.py` on `main` (82eac9bd) and with
+the change; the other four guns reproduce the table to 0.1:
+
+| Flare gun, own shots | Before (`main`) | After | Rule |
+| --- | --- | --- | --- |
+| Loudest 400 ms of one shot | -17.2 LUFS (18.1 LU over the beds) | -16.2 (19.1) | 14 LU |
+| Two second burst | -18.6 LUFS (16.7 LU) | -17.4 (17.9) | 17 LU |
+| Peak of a shot / of a burst | -2.2 / -2.3 dBFS | -5.2 / -5.2 | -4.5 |
+| Crest factor alone (peak minus RMS, headroom capture) | 20.4 dB | 17.5 | |
+| Centroid, energy under 250 Hz | 3066 Hz, 0.50 | 3043 Hz, 0.63 | (others 0.44 to 0.69) |
+
+Peak of the mix (dBFS, samples over -1 dBFS in brackets), the flare gun fired without a break, before then after:
+
+| Cell | Before | After |
+| --- | --- | --- |
+| alone | -3.1 | -5.4 |
+| a teammate reloads | -1.9 (0) | -3.8 (0) |
+| a teammate fires (`mate`) | **-0.2 (8)** | -2.5 (0) |
+| the dead's voices | -1.1 (0) | -2.4 (0) |
+| the lot's sounds | -2.4 (0) | -5.0 (0) |
+| every file, ordinary geometry: voices, lot | -0.6 (4), -0.8 (2) | -2.4 (0), -2.5 (0) |
+| every file, 1.2 m: voices, lot | -0.9 (2), -0.8 (1) | -2.3 (0), -3.6 (0) |
+
+The plots on the pull request show the sweep (before in grey, after in blue, -1 dBFS dashed) and the shot's envelope.
+Run: `generate.py --only shot_flare`, the bench, `gun_levels.py --table game/tests/night/gun_levels.json`, and
+`audio_headroom.tscn --own=flare_gun` (ordinary, `--all-variants`, `--all-variants --close`) through `headroom.py`.
+
+**The test now fails when the table and the game part.** `test_gun_audio_rules.gd` no longer has the flare gun's
+exception (-1 dBFS): every firearm peaks at -4.5 or lower in the table. The table also holds a SHA-256 of every variant
+file the bench played (`gun_levels.py --table` writes them) and `test_the_measured_loudness_is_of_the_files_the_game_has`
+fails when a file changed, or one was added or dropped, without a new measurement (checked: the old flare file under the
+new table fails it). A trim moved without measuring already failed. What the hash does not cover is the playing code
+(jitter, the audio service): the bench is re-run when that changes.
 
 ## Browser
 
