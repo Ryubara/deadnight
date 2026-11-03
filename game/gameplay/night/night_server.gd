@@ -67,6 +67,9 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"projectile_spawned",
 	&"projectile_burst",
 	&"lure_started",
+	&"element_burst",
+	&"element_arc",
+	&"fire_patch_started",
 	&"fire_rejected",
 ]
 ## What the grenade server answers that is worth sending on (its answer also repeats the rules'
@@ -169,7 +172,7 @@ func _init(
 	combat = CombatServer.new(WeaponCatalog.all(), rules, _probe.callable(), p_seed)
 	_cast = WorldCast.new(world.get_world_3d().direct_space_state)
 	grenades = GrenadeServer.new(
-		load(GRENADE_DEF) as GrenadeDef, rules, _cast.callable(), _probe.callable()
+		load(GRENADE_DEF) as GrenadeDef, rules, _cast.callable(), _probe.static_callable()
 	)
 	sim = ZombieSim.new(null, p_seed)
 	sim.rounds = rules.tuning.rounds
@@ -535,15 +538,20 @@ func _grenade(action: Dictionary) -> void:
 			&"blast_hit":
 				sim.blast(event["target_id"], event["impulse"], event["stun"])
 			&"player_blasted":
-				_blast_player(event, blast_at)
+				_blast_player(
+					event["player_id"], event["damage"], blast_at, &"grenade", event["thrower_id"]
+				)
 
 
-## The blast reached a player (the thrower, unless friendly fire is on): their health takes it.
-func _blast_player(event: Dictionary, from: Vector3) -> void:
-	var player_id: int = event["player_id"]
+## A blast reached a player (a grenade: the thrower and the team, every one by the same rule,
+## `PlayerBlast`): their health takes `damage`, and the rules' `player_hurt` (and `player_downed`)
+## says what it was (`harm`) and whose (`by_id`), for the HUD and the kill feed.
+func _blast_player(
+	player_id: int, damage: float, from: Vector3, harm: StringName, by_id: int
+) -> void:
 	if not _bodies.has(player_id):
 		return
-	rules.apply(RulesAction.blow(player_id, event["damage"], _bearing(player_id, from)))
+	rules.apply(RulesAction.blow(player_id, damage, _bearing(player_id, from), -1, harm, by_id))
 
 
 # --- Weapons and hands ---

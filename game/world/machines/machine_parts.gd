@@ -13,6 +13,7 @@ const WEAPON_MODELS := {
 	&"shotgun": "res://assets/weapons/double_shotgun/double_shotgun.glb",
 	&"rifle": "res://assets/weapons/lever_rifle/lever_rifle.glb",
 	&"flare_gun": "res://assets/weapons/flare_gun/flare_gun.glb",
+	&"dual_pistols": "res://assets/weapons/service_pistol/service_pistol.glb",
 }
 
 

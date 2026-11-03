@@ -59,11 +59,22 @@ func test_the_dropped_grenade_goes_off_when_its_fuse_runs_out_at_the_feet() -> v
 	var from_feet := Vector2(centre.x, centre.z).distance_to(Vector2(FEET.x, FEET.z))
 	assert_float(from_feet).is_less_equal(0.1)
 	assert_array(GrenadesFixture.of(events, &"blast_hit")).is_not_empty()
-	var own := GrenadesFixture.of(events, &"player_blasted").filter(
-		func(e: Dictionary) -> bool: return e["own"]
-	)
-	assert_array(own).has_size(1)
-	assert_int(own[0]["player_id"]).is_equal(1)
+	# The player on the ground takes no blow (the rules refuse one), so the blast does not count them.
+	assert_array(GrenadesFixture.of(events, &"player_blasted")).is_empty()
+
+
+func test_a_teammate_who_comes_to_revive_is_blasted_by_the_dropped_grenade() -> void:
+	_night.place({}, {1: FEET, 2: FEET + Vector3(0.6, 0, 0)})
+	_cook_then_down(1.0)
+	var events := _night.run_seconds(_def.fuse - 1.0 + 0.2)
+	var hurt := GrenadesFixture.of(events, &"player_blasted")
+	assert_array(hurt).has_size(1)
+	assert_int(hurt[0]["player_id"]).is_equal(2)
+	assert_int(hurt[0]["thrower_id"]).is_equal(1)
+	assert_bool(hurt[0]["own"]).is_false()
+	assert_bool(hurt[0]["in_hand"]).is_false()
+	# The grenade has dropped to the ground by the time it goes off: all of it, or nearly.
+	assert_float(hurt[0]["share"]).is_greater(0.9)
 
 
 func test_a_player_who_leaves_with_the_pin_out_drops_it_too() -> void:

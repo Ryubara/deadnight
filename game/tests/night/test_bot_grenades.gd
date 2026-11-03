@@ -1,7 +1,7 @@
 # A bot throws a grenade in the real server (bots plan, phase 3): at a pack, to where the pack
-# stands, and never with a teammate within 4 m of the blast. The rules of choosing are in
-# `tests/bots/test_bot_grenadier.gd`; this is the whole throw: the turn, the pin, the arm, the arc
-# the server flies and the blast it makes.
+# stands, and never where the blast reaches a teammate (under a tenth of their health). The rules
+# of choosing are in `tests/bots/test_bot_grenadier.gd`; this is the whole throw: the turn, the pin,
+# the arm, the arc the server flies and the blast it makes.
 extends GdUnitTestSuite
 
 const STEP := Night.STEP
@@ -67,13 +67,15 @@ func test_a_pack_ten_metres_off_is_hit_by_a_grenade_the_bot_throws() -> void:
 	night.dispose()
 
 
-func test_no_grenade_goes_off_within_four_metres_of_a_person_wherever_they_stand() -> void:
-	# The person stands round the pack at several distances; whenever a grenade does go off, they
-	# are 4 m or more from it. (The pack stands still, so the blast is where the pack is.)
+func test_no_grenade_goes_off_where_it_reaches_a_person_wherever_they_stand() -> void:
+	# The person stands round the pack at several distances; whenever a grenade does go off, it takes
+	# under a tenth of their health, and the throw is held back for the ones it would reach. (The
+	# pack stands still, so the blast is where the pack is.)
+	var def := GrenadesFixture.def()
 	var centre := PACK_AT + Vector3(0.6, 0.0, 0.6)
 	var thrown := 0
 	var held_back := 0
-	for ring in [1.5, 3.0, 3.9, 4.4, 6.0]:
+	for ring in [1.5, 3.0, 5.0, 6.5, 9.0]:
 		for angle in [0.0, PI * 0.5, PI, PI * 1.5]:
 			var mate_at: Vector3 = centre + Vector3(sin(angle), 0.0, cos(angle)) * ring
 			var night := await _night(mate_at)
@@ -83,7 +85,10 @@ func test_no_grenade_goes_off_within_four_metres_of_a_person_wherever_they_stand
 				held_back += 1
 			for blast in blasts:
 				thrown += 1
-				assert_float(_flat(blast, mate)).is_greater_equal(4.0)
+				var share := PlayerBlast.share(
+					_flat(blast, mate), def.player_full_radius, def.blast_radius
+				)
+				assert_float(share).is_less_equal(BotGrenadier.HARMLESS_SHARE + 0.001)
 			night.dispose()
 	# Both happened: the person near the pack stopped the throw, and a person far enough did not.
 	assert_int(held_back).is_greater(0)

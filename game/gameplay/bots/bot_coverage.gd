@@ -37,6 +37,7 @@ const WEAPONS := {
 	"crowbar": "rule: BotMotor swings it at a target inside its reach",
 	"baseball_bat": "rule: BotMotor swings it at a target inside its reach (melee)",
 	"fire_axe": "rule: BotMotor swings it at a target inside its reach (melee)",
+	"dual_pistols": "rule: BotMotor fires it like the pistol (the hands alternate on the server)",
 }
 ## `PingBoard.KINDS`: what a bot does about each mark a person puts up.
 const PINGS := {
