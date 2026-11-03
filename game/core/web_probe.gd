@@ -49,7 +49,8 @@ func _process(delta: float) -> void:
 ## What the top screen shows: its scene name, and for a night the round, the zombies still to
 ## kill, the zombies alive on the lot, the players in the frame, the player's own id and (online)
 ## the round trip, whether the menu is open, the mouse mode, the camera's yaw (radians) and whether
-## the player's body is drawn between physics ticks. Plain values only, so a page can read them.
+## the player's body is drawn between physics ticks and whether the view is through the player's own
+## camera (`view_is_players`). Plain values only, so a page can read them.
 static func snapshot(top: Control) -> Dictionary:
 	var data := {
 		"screen": "none",
@@ -200,6 +201,10 @@ static func snapshot(top: Control) -> Dictionary:
 	var player: Player = night_screen.night.player() if night_screen.night.server != null else null
 	if player != null:
 		data["yaw"] = player.camera_rig.yaw  # so a browser test can see the mouse turn the view
+		# So a browser test can see the view is the person's own soldier, not a bot's (#702).
+		data["view_is_players"] = (
+			player.get_viewport().get_camera_3d() == player.camera_rig.camera()
+		)
 		# So a browser test can see the body is drawn between ticks (a screen can switch that off).
 		data["interpolated"] = player.is_physics_interpolated_and_enabled()
 	data["over"] = state.over
