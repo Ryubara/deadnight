@@ -40,7 +40,7 @@ straight to the night of a server, `--room CODE` opens Play together on that cod
 | --- | --- | --- |
 | `main.tscn` | The root: film overlay, `core/main.gd` | the project (`run/main_scene`) |
 | `ui/screens/main_menu.tscn` | The menu: `MenuShell` (tabs Play, Loadout, Shop, Challenges, More) over `MenuStage`, a cheap live lot built in code | `main.gd` |
-| `ui/screens/night_screen.tscn` | **The game.** A bare `Control`; when the router enters it, `NightScreen` builds `Night`, the HUD and the touch controls and starts the night. Esc, Start or the touch pause button open its menu (Resume, Settings, Leave night); the result is its overlay | the menu's Play, `together_screen`, `join_screen`, `--connect` |
+| `ui/screens/night_screen.tscn` | **The game.** A bare `Control`; when the router enters it, `NightScreen` builds `Night`, the HUD and the touch controls and starts the night. Esc, Start or the touch pause button open its menu (Resume, Settings, Leave night); the result is its overlay | the Play screen (the menu's Solo), `together_screen`, `join_screen`, `--connect` |
 | `world/drive_in_greybox.tscn` | **The map**: the drive-in lot with lamps, doors, boards, breaker switches, fuel spots, spawn markers and navigation meshes. The rules and `NightWorld` find its nodes by name and by `meta` (`shop_id`, `barricade_id`): renaming one breaks the game and `tests/world/test_drive_in_greybox.gd` | `NightWorld` (`gameplay/night/night_world.gd`) |
 | `world/smallmap/smallmap_greybox.tscn` | The second map's greybox (#631), written by `tools/world/build_smallmap_greybox.py`: rooms, links (`Doors`), window sockets, spawns, camera probes ([the second map](smallmap.md)). Its zombie meshes are `world/smallmap/smallmap_navmeshes.res` | nothing yet: the map picker (#624) |
 | `gameplay/player/player.tscn` | The player's body: camera rig, collision, the soldier model. One per player, local and remote | `NightWorld`, `world/test_room.tscn` |
@@ -49,7 +49,7 @@ straight to the night of a server, `--room CODE` opens Play together on that cod
 | `ui/screens/customize_screen.tscn` | The wardrobe: pick a look, saved to the profile | the Loadout tab |
 | `ui/screens/settings_screen.tscn`, `credits_screen.tscn` | Settings (the player's options) and the credits | the More tab |
 | `ui/screens/menu_stage_screen.tscn` | The menu's stage alone, for frame-time runs | `main.gd --stage` |
-| `ui/screens/play_screen.tscn` | An old placeholder. Nothing routes to it | nothing |
+| `ui/screens/play_screen.tscn` | Solo's step before the night: the match settings (`MatchSettingsPanel`, the room host's panel) and Start the night | the menu's Solo |
 
 The parts of the lot are scenes under `world/drive_in/` (`props/`, `fixtures/`, one scene per kind of thing: cars,
 lamp posts, the marquee, boards, the circuit switch, the neon sign, the wreck), and the two machines under

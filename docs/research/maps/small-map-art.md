@@ -219,24 +219,24 @@ Coverage: **Exists** (in the game now), **Material** (a CSG box with a lot patte
 
 | # | Piece | Size on the grid (m) | Covered by | Coverage | Effort | Group |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 1 | Plain wall, ground floor | 1 / 2 / 3 x 0.3 x 2.8 | CSG + `blocks`, Concrete tint | Material | S | 1 |
-| 2 | Plain wall, upper floor | 1 / 2 / 3 x 0.2 x 2.8 | CSG + a new `plaster` pattern (`build_lot_textures.py`) | Material | S | 1 |
-| 3 | Narrow doorway with frame | 2 module, opening 1.4 x 2.4 | blockout | Model | S | 1 |
-| 4 | Purchase door leaf | 1.36 x 0.08 x 2.36, Yellow | blockout | Model | S | 1 |
-| 5 | Wide opening | 3 module, opening 2.0 x 2.4 | - | Model | S | 1 |
-| 6 | Arched opening (segmental, 8 facets) | 2 module, opening 1.4 x 2.4 | - | Model | S | 1 |
-| 7 | Zombie window with frame | 2 module, 1.2 x 1.3, sill 0.9 | blockout | Model | S | 1 |
-| 8 | Window boards | 1.5 x 0.19 x 0.05, five a window | `Barricade` moves them; `board.tscn` is a 4.1 m box | Model | S | 1 |
-| 9 | Glazed window (not an entry), mullions | 2 module, 1.6 x 1.4, sill 0.9 | - | Model | S | 1 |
-| 10 | Barred opening | 2 module, 2.0 x 2.4 | - | Model | S | 1 |
-| 11 | Broken wall (ragged hole, top) | 2 module | - | Model | M | 1 |
-| 12 | Pillar with cap and plinth | 0.5 x 0.5 x 2.8 | blockout | Model | S | 1 |
-| 13 | Beam | 0.36 x 0.4 x 2 / 4 / 6 | blockout | Model | S | 1 |
-| 14 | Corner and end trims | 0.3 x 0.3 x 2.8 | - | Model | S | 1 |
-| 15 | Ground floor | any, 0.2 slab | CSG + `concrete` | Material | S | 1 |
-| 16 | Upper floor | any, 0.2 slab | CSG + `planks` | Material | S | 1 |
-| 17 | Broken floor edge, joists showing | 2 x 2 x 0.2 | - | Model | M | 1 |
-| 18 | Ceiling underside | any | CSG + `concrete` or `plaster` | Material | S | 1 |
+| 1 | Plain wall, ground floor | 1 / 2 / 3 x 0.3 x 2.8 | CSG + `blocks`, material `smallmap_wall_ground` (Concrete) | Exists | S | 1 |
+| 2 | Plain wall, upper floor | 1 / 2 / 3 x 0.2 x 2.8 | CSG + the new `plaster` pattern, material `smallmap_wall_upper` (Plaster) | Exists | S | 1 |
+| 3 | Narrow doorway with frame | 2.0 x 0.38 x 2.8, clear 1.4 x 2.4 (488 tris); `_upper` 0.2 m in Plaster | `wall_door_narrow` | Exists | S | 1 |
+| 4 | Purchase door leaf | 1.35 x 0.13 x 2.36, Yellow (388 tris) | `door_purchase` | Exists | S | 1 |
+| 5 | Wide opening | 3.0 x 0.36 x 2.8, clear 2.0 x 2.4 (224 tris) | `wall_opening_wide` | Exists | S | 1 |
+| 6 | Arched opening (segmental, 8 facets) | 2.0 x 0.36 x 2.8, 1.4 wide, springing 2.0, crown 2.4 (616 tris) | `wall_arch` | Exists | S | 1 |
+| 7 | Zombie window with frame | 2.0 x 0.44 x 2.8, clear 1.2 x 1.3, sill 0.9 (624 tris); `_upper` | `wall_window_zombie`, a player-only blocker and five board markers | Exists | S | 1 |
+| 8 | Window boards | 1.5 x 0.06 x 0.19 (112 tris), five a window | `window_board` (+ `.obj` for the barricade's pooled copies) | Exists | S | 1 |
+| 9 | Glazed window (not an entry), mullions | 2.0 x 0.44 x 2.8, 1.6 x 1.4, sill 0.9 (772 tris); `_upper` | `wall_window_glazed` | Exists | S | 1 |
+| 10 | Barred opening | 2.0 x 0.3 x 2.8, bars 2.0 x 2.4 (360 tris) | `wall_barred` | Exists | S | 1 |
+| 11 | Broken wall (ragged hole, top) | 2.0 x 0.3 x 2.8, a six-facet hole and a top down to 2.22 (304 tris); `_upper` | `wall_broken` | Exists | M | 1 |
+| 12 | Pillar with cap and plinth | 0.64 x 0.64 x 2.8, shaft 0.5 (220 tris) | `pillar` | Exists | S | 1 |
+| 13 | Beam | 0.36 x 0.4 x 2 / 4 / 6, soffit at 2.4 (108 tris each) | `beam_2`, `beam_4`, `beam_6` | Exists | S | 1 |
+| 14 | Corner and end trims | corner 0.46 x 0.46 x 2.8 (352 tris), end 0.36 x 0.42 x 2.8 (132 tris) | `trim_corner`, `trim_end` | Exists | S | 1 |
+| 15 | Ground floor | any, 0.2 slab | CSG + `concrete`, material `smallmap_floor_ground` | Exists | S | 1 |
+| 16 | Upper floor | any, 0.2 slab | CSG + `planks`, material `smallmap_floor_upper` | Exists | S | 1 |
+| 17 | Broken floor edge, joists showing | 2.0 x 2.1 x 0.21 (992 tris) | `floor_edge_broken` | Exists | M | 1 |
+| 18 | Ceiling underside | any | CSG + `plaster`, material `smallmap_ceiling` (or `smallmap_floor_ground`) | Exists | S | 1 |
 | 19 | Straight stair, one storey | 1.4 x 4.5 x 3.0 | blockout | Model | M | 2 |
 | 20 | L stair with landing | 1.4 wide, landing 1.4 x 1.4 at 1.6 | - | Model | M | 2 |
 | 21 | Pipe rail, flat and sloped | 2 m runs, 1.0 tall, posts | blockout (rail) | Model | S | 2 |
@@ -282,6 +282,36 @@ blockout already.
 The groups share only `smallmap_kit.py` (the palette and the sizes) and the atlas, so five agents can work at once.
 Each builds its own script, writes its own files, and adds a fixture scene per piece. Group 4's light cards need
 group 1's doorway and window to sit in, but can be built against the blockout's sizes.
+
+## Group 1 as built: walls, openings, floors
+
+`tools/blender/build_smallmap_walls.py` (issue #633) builds parts 3-14 and 17 (twenty files: the openings also come
+in an `_upper` variant, 0.2 m thick in Plaster, for the upper floor) into `game/assets/smallmap/`, and writes a
+fixture scene per piece into `game/world/smallmap/fixtures/`. `tools/world/build_lot_textures.py` adds the
+`plaster` pattern and the five shell materials (`smallmap_wall_ground`, `smallmap_wall_upper`,
+`smallmap_floor_ground`, `smallmap_floor_upper`, `smallmap_ceiling`). Every piece is 108-992 triangles against its
+1.5k (or 5k) budget; the build fails over it, and `tests/world/test_smallmap_kit_walls.gd` checks the counts Godot
+draws, the openings' clear sizes and the window blockers.
+
+How the pieces are made, so the other groups match:
+
+- **A wall is one cast piece.** The face is an outline with holes (`Kit.plate`: Blender's `triangle_fill` fills it,
+  the face is pushed through the wall) and only its sharp edges get the 60 mm chamfer, so there are no seams where
+  boxes would meet. Frames, sills, lintels, voussoirs and bars are boxes on top, DarkWood frames proud by 40 mm.
+- **Clear openings stay exact.** The masonry hole is the clear size plus a 50 mm lining on each side, so a 1.4 x 2.4
+  m doorway is 1.4 x 2.4 m between the linings.
+- **Collision.** Hidden CSG boxes (layer 1) for the wall; the navigation bakes them. What players must not pass but
+  the dead or shots may: the zombie window's opening is a `PlayerBlocker` StaticBody3D on the boards' layer (the
+  navigation reads only CSG, so the dead's way stays open); the bars and the broken hole are CSG on the boards'
+  layer (players and the walking mesh stop, shots pass). The window fixture carries five `BoardSlot` markers for
+  `window_board.tscn`, a board in `board.tscn`'s shape that a `Barricade` takes as it is.
+- **The palette** is `game/assets/smallmap/smallmap_palette.png` for every group (the build writes it). Its swatches
+  are the sRGB values in `smallmap_kit.py`: the first build stored them as linear and every piece came out
+  far too dark ([lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-02-a-palette-written-as-linear-came-out-dark.md)).
+
+![The kit's walls and openings beside the Soldier, a zombie and the drive-in props on the 0.5 m grid](kit-walls-sheet.jpg)
+
+![A room built from the fixtures in Godot under the lot's night: the boarded zombie window, the purchase door, the arch, the broken wall, bars between pillars](kit-walls-room.jpg)
 
 ## Sources
 

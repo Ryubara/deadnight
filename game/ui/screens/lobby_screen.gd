@@ -25,6 +25,9 @@ const RULES_DELAY := 0.35
 ## Kept free around the panel when the window is shorter than the screen is tall (it scrolls then).
 const PANEL_MARGIN := 120.0
 
+## How many times (every 0.2 s) the bridge's state is read after a press of Share in Discord.
+const SHARE_READS_MAX := 600
+
 ## For a test: called instead of opening the night screen.
 static var opener := Callable()
 ## The autopilot plays the night this screen opens (`--bot`, for browser probes).
@@ -51,6 +54,10 @@ var copy_code_button: UIButton
 ## In a Discord Activity: Discord's own window for sending the code to friends, which needs no
 ## clipboard (`discord-bridge.js`, `shareLink`).
 var share_button: UIButton
+## What Discord answered to the share (`DiscordShare`): the sentence, and under it the probe line
+## with Discord's own numbers and error, which a report quotes.
+var share_says: UILabel
+var share_probe: UILabel
 ## Where the text to copy is shown selected when the window cannot copy for the player (a Discord
 ## Activity whose host blocks the clipboard): Ctrl+C then copies it.
 var copy_field: LineEdit
@@ -76,6 +83,9 @@ var _over := false
 var _me := ""
 var _play_shown := false
 var _shares: HBoxContainer
+var _share_timer: Timer
+var _share_reads := 0
+var _share_shown := ""
 var _preview_timer: Timer
 var _asking_preview := false
 
@@ -234,6 +244,19 @@ func _ready() -> void:
 	share_button = _button("Share in Discord", UIButton.Variant.SECONDARY, "ShareDiscord")
 	share_button.pressed.connect(_share)
 	_in_row(_shares, share_button, FIELD_WIDTH, true)
+	share_says = _label("", UILabel.Style.BODY)
+	share_says.name = "ShareSays"
+	share_probe = _label("", UILabel.Style.CAPTION)
+	share_probe.name = "ShareProbe"
+	for line: UILabel in [share_says, share_probe]:
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		line.custom_minimum_size.x = FIELD_WIDTH
+		line.visible = false
+		box.add_child(line)
+	_share_timer = Timer.new()
+	_share_timer.wait_time = 0.2
+	_share_timer.timeout.connect(_show_share)
+	add_child(_share_timer)
 	copy_field = LineEdit.new()
 	copy_field.name = "CopyField"
 	copy_field.editable = false
@@ -469,15 +492,7 @@ func lobby_rules() -> MatchSettings:
 
 ## The rules on the panel as the web probe reads them: `2x|Auto|20 s`.
 func rules_text() -> String:
-	var shown := rules.settings()
-	return (
-		"%dx|%s|%d s"
-		% [
-			roundi(shown.count_multiplier),
-			MatchSettingsPanel.alive_text(shown.max_alive),
-			roundi(rules.break_slider.value)
-		]
-	)
+	return rules.text()
 
 
 ## A control of the host's panel moved: the change is sent once the host stops for a moment.
@@ -604,16 +619,45 @@ func _copy(text: String, done: String) -> void:
 
 
 ## Opens Discord's share window with the lobby's code in the message: friends read it there and
-## paste it into Join with the code (or open the link). Does nothing outside an Activity.
+## paste it into Join with the code (or open the link). Does nothing outside an Activity. What
+## Discord answers is shown as it comes (`_show_share`): the hint to pick who to send it to only
+## once Discord has not refused, and when it did refuse, that, with the code to copy instead.
 func _share() -> void:
 	var message := TogetherScreen.SHARE_MESSAGE % code_label.text
-	JavaScriptBridge.eval(
-		(
-			"window.deadnightDiscord.share(%s, %s)"
-			% [JSON.stringify(message), JSON.stringify(code_label.text)]
-		)
-	)
-	_say("Pick who to send it to in Discord's window.")
+	if not DiscordShare.ask(message, code_label.text):
+		return
+	_share_reads = 0
+	_show_share()
+	_share_timer.start()
+
+
+## Reads the bridge's state and shows it; stops reading once nothing more can change.
+func _show_share() -> void:
+	var state := DiscordShare.read()
+	share_says.text = DiscordShare.says(state, code_label.text)
+	share_probe.text = DiscordShare.line(state)
+	share_says.visible = share_says.text != ""
+	share_probe.visible = share_probe.text != ""
+	var shown := share_says.text + share_probe.text
+	if shown != _share_shown:
+		_share_shown = shown
+		_scroll_to_share()
+	_share_reads += 1
+	# Settled, or two minutes of reading (a window left open that long, or an unanswered invite).
+	if DiscordShare.settled(state) or _share_reads > SHARE_READS_MAX:
+		_share_timer.stop()
+
+
+## Brings what Discord answered into view: it sits under the buttons, below the panel's edge in a
+## short window.
+func _scroll_to_share() -> void:
+	# After the panel has taken its new height, as for the copy field.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if _scroll != null and is_instance_valid(share_probe) and share_probe.is_visible_in_tree():
+		_scroll.ensure_control_visible(share_probe)
+	elif _scroll != null and share_says.is_visible_in_tree():
+		_scroll.ensure_control_visible(share_says)
 
 
 ## Shows `text` selected in the copy field and scrolls the field into view, so Ctrl+C copies it.
