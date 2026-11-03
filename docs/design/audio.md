@@ -325,6 +325,12 @@ stride sooner, a crouched creep slower, standing and flight are silent.
   `max_db` to its own level plus that, so close up the trim is the level and far away nothing changes.
   A sound with no cap sets it to the engine's +3 dB on every play (`ENGINE_MAX_DB`): a pooled player keeps the cap
   of whatever played on its slot before, and the level would depend on the pool's history (#752).
+  A loud file takes a *negative* cap, which holds its near level under its trim (`volume_db + near_cap_db`), so a gun
+  shot landing on it still leaves room under full scale (#753): the dead's voices, the boards, the door, the grenade's
+  blast, the till and the debris blocker are held so that the highest sample of any of their files, right beside the
+  listener, is at most what the loudest own gun leaves under -1 dBFS (about -9.8 dBFS;
+  `tests/core/test_close_sound_levels.gd`, [numbers](../research/gun-audio.md#close-sounds-under-gunfire)). From the
+  distance where the cap stops holding, a sound falls as it always did.
 - **Rear cue.** A sound with `rear_cue` is low-passed by how far behind the listener it is (`rear_amount`, from the
   listener node or the camera): 0 in front and at the side, 1 straight behind, where the cutoff is 1.8 kHz. Where the
   filter is not heard (the web build, below) it is also `NO_FILTER_REAR_DB` (3 dB) quieter straight behind.
