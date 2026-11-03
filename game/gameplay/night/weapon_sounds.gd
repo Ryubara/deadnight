@@ -3,9 +3,9 @@ extends Node
 ## What the guns sound like, made only from what the server sent (like `NightView`): each shot is
 ## a report and a tail on two voices with their own random variants, and the shooter's own shots
 ## play flat, close and un-panned, not from the muzzle a few metres ahead of the camera
-## (`docs/research/gun-audio.md`); a reload's steps
-## sound on the event frames of the reload clip; an empty trigger clicks; a swap rustles; a round
-## that hits a zombie thumps (and cracks on the head) and one that hits the lot ricochets. It
+## (`docs/research/gun-audio.md`); a reload's steps sound on the moments of the weapon's
+## `ReloadMotion`; an empty trigger clicks; a swap rustles; a round that hits a zombie thumps (and
+## cracks on the head) and one that hits the lot ricochets. It
 ## holds no game state and asks the server nothing. The design is `docs/design/audio.md`.
 
 ## What each firearm plays: the report and the tail after it. Ids are `ArmsCatalog`'s. The
@@ -17,44 +17,48 @@ const FIRE := {
 	&"shotgun": {"shot": &"shot_shotgun", "tail": &"tail_shotgun"},
 	&"flare_gun": {"shot": &"shot_flare"},
 }
-## Which reload clip each weapon is drawn with, and which sound each of the clip's events makes.
-## The soldier has four weapon classes: the revolver and the SMG change magazines, the flare gun
-## breaks open like the shotgun.
+## What each of a reload's steps sounds like, per firearm (#683): the step names are the events of
+## the weapon's `ReloadMotion` (`reload/<id>.tres`), which also says when each happens, so a step
+## sounds on the moment it is drawn. Each mechanism has its own: the revolver's cylinder, the tommy
+## gun's drum and bolt, the lever rifle's rounds and lever, the double-barrel's and the flare gun's
+## break, eject and snap; every one reaches for the belt pouch.
 const RELOAD := {
 	&"pistol":
 	{
-		"clip": &"Reload_Pistol",
-		"steps": {&"mag_out": &"reload_pistol_mag_out", &"mag_in": &"reload_pistol_mag_in"},
+		&"cylinder_out": &"reload_revolver_open",
+		&"eject": &"reload_revolver_eject",
+		&"pouch": &"reload_pouch",
+		&"rounds_in": &"reload_revolver_rounds",
+		&"cylinder_in": &"reload_revolver_close",
 	},
 	&"smg":
 	{
-		"clip": &"Reload_Pistol",
-		"steps": {&"mag_out": &"reload_smg_mag_out", &"mag_in": &"reload_smg_mag_in"},
+		&"mag_out": &"reload_smg_mag_out",
+		&"pouch": &"reload_pouch",
+		&"mag_in": &"reload_smg_mag_in",
+		&"bolt": &"reload_smg_bolt",
 	},
 	&"rifle":
 	{
-		"clip": &"Reload_Rifle",
-		"steps": {&"round_in": &"reload_rifle_round", &"lever": &"reload_rifle_lever"},
+		&"pouch": &"reload_pouch",
+		&"round_in": &"reload_rifle_round",
+		&"lever": &"reload_rifle_lever",
 	},
 	&"shotgun":
 	{
-		"clip": &"Reload_Shotgun",
-		"steps":
-		{
-			&"break_open": &"reload_shotgun_open",
-			&"shells_in": &"reload_shotgun_shells",
-			&"snap_shut": &"reload_shotgun_shut"
-		},
+		&"break_open": &"reload_shotgun_open",
+		&"eject": &"reload_shotgun_eject",
+		&"pouch": &"reload_pouch",
+		&"shells_in": &"reload_shotgun_shells",
+		&"snap_shut": &"reload_shotgun_shut",
 	},
 	&"flare_gun":
 	{
-		"clip": &"Reload_Shotgun",
-		"steps":
-		{
-			&"break_open": &"reload_shotgun_open",
-			&"shells_in": &"reload_shotgun_shells",
-			&"snap_shut": &"reload_shotgun_shut"
-		},
+		&"break_open": &"reload_flare_open",
+		&"eject": &"reload_flare_eject",
+		&"pouch": &"reload_pouch",
+		&"shells_in": &"reload_flare_in",
+		&"snap_shut": &"reload_flare_shut",
 	},
 }
 ## Lifts a sound off the ground to a player's head.
@@ -157,21 +161,21 @@ func _flush_impacts() -> void:
 
 
 func _on_reload(event: Dictionary) -> void:
-	var table: Dictionary = RELOAD.get(event["weapon_id"], {})
-	if table.is_empty():
+	var weapon_id: StringName = event["weapon_id"]
+	var steps: Dictionary = RELOAD.get(weapon_id, {})
+	var motion := ReloadMotion.for_weapon(weapon_id)
+	if steps.is_empty() or motion == null:
 		return
 	var shooter_id: int = event["shooter_id"]
 	var tag := _reload_tag(shooter_id)
 	schedule.cancel(tag)
-	var steps: Dictionary = table["steps"]
-	# The clip's frames are stretched over the weapon's own reload time (the rifle's lever, at
-	# 2.33 s of its clip, would come after its 2.2 s reload otherwise), so the steps sound with the
-	# weapon's dip and are all over by the time the reload is.
-	var scale := float(event["seconds"]) / maxf(ClipEvents.length(table["clip"]), 0.01)
+	# The motion's steps are shares of the reload, stretched over the weapon's own reload time as
+	# the motion is, so each sounds on the moment it is drawn and all are over before the reload.
+	var seconds := float(event["seconds"])
 	for step: StringName in steps:
 		var sound: StringName = steps[step]
-		for seconds in ClipEvents.times(table["clip"], step):
-			schedule.add(seconds * scale, func() -> void: _at_player(sound, shooter_id), tag)
+		for share in motion.event_shares(step):
+			schedule.add(share * seconds, func() -> void: _at_player(sound, shooter_id), tag)
 
 
 func _on_equipped(event: Dictionary) -> void:

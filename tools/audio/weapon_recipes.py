@@ -271,14 +271,6 @@ def _mag_in(rng: np.random.Generator, pitch: float) -> np.ndarray:
     return dsp.place(mix, _thud(rng, 210 * pitch, 0.09), 0.055, 0.9)
 
 
-def reload_pistol_mag_out(rng: np.random.Generator) -> np.ndarray:
-    return dsp.fade(_mag_out(rng, _jv(rng, 1.15, 0.05)), 0.001, 0.02)
-
-
-def reload_pistol_mag_in(rng: np.random.Generator) -> np.ndarray:
-    return dsp.fade(_mag_in(rng, _jv(rng, 1.15, 0.05)), 0.001, 0.02)
-
-
 def reload_smg_mag_out(rng: np.random.Generator) -> np.ndarray:
     return dsp.fade(_mag_out(rng, _jv(rng, 0.9, 0.05)), 0.001, 0.02)
 
@@ -330,6 +322,121 @@ def reload_shotgun_shut(rng: np.random.Generator) -> np.ndarray:
     mix = dsp.place(None, _metal_click(rng, _jv(rng, 520, 0.05), ring=0.07), 0.0, 1.0)
     mix = dsp.place(mix, _thud(rng, _jv(rng, 120, 0.1), 0.12), 0.0, 0.9)
     return dsp.fade(dsp.place(mix, _rasp(rng, 0.05, 900, 1800) * 0.4, 0.0), 0.001, 0.04)
+
+
+def _shells_falling(rng: np.random.Generator, count: int, base: float, spread: float, length: float) -> np.ndarray:
+    """Empty cases hitting the ground and each other: short high clicks scattered over `spread` seconds, each with
+    a bounce or two, fading as they settle."""
+    mix = np.zeros(dsp.samples(length))
+    for _ in range(count):
+        at = rng.uniform(0.0, spread)
+        gain = rng.uniform(0.5, 1.0)
+        for bounce in range(int(rng.integers(1, 3)) + 1):
+            tick = _metal_click(rng, base * rng.uniform(0.85, 1.25), ring=0.012)
+            mix = dsp.place(mix, tick, at, gain)
+            at += rng.uniform(0.05, 0.09)
+            gain *= 0.45
+            if at > length - 0.07 or bounce > 2:
+                break
+    return mix[: dsp.samples(length)]
+
+
+def reload_pouch(rng: np.random.Generator) -> np.ndarray:
+    """The hand at the belt pouch: a leather flap, a snap, and the cloth of the sleeve. The one step every gun shares,
+    in the middle of the reload, where the hands are busy and nothing metal sounds (Deadnight #683)."""
+    n = dsp.samples(0.26)
+    cloth = dsp.filt(dsp.white(rng, 0.26), "band", np.linspace(_jv(rng, 1800, 0.1), 3200, n), 1800)
+    cloth = cloth * dsp.attack_decay(n, 0.04, 0.12) * np.abs(0.5 + 0.5 * dsp.filt(dsp.white(rng, 0.26), "low", 40))
+    mix = dsp.place(None, cloth, 0.0, 0.8)
+    mix = dsp.place(mix, _thud(rng, _jv(rng, 210, 0.1), 0.06), 0.09, 0.6)  # the flap
+    snap = dsp.filt(dsp.white(rng, 0.02), "band", _jv(rng, 2600, 0.08), 1500) * dsp.decay(dsp.samples(0.02), 0.004)
+    mix = dsp.place(mix, snap, 0.1, 1.0)
+    return dsp.fade(mix, 0.002, 0.04)
+
+
+def reload_smg_bolt(rng: np.random.Generator) -> np.ndarray:
+    """The tommy gun's cocking knob pulled back: a steel slide, a catch, and the heavy clack of the bolt held open."""
+    mix = dsp.place(None, _rasp(rng, _jv(rng, 0.09, 0.1), 900, 2600) * 0.8, 0.0)
+    mix = dsp.place(mix, _metal_click(rng, _jv(rng, 700, 0.05), ring=0.05), 0.09, 1.0)
+    mix = dsp.place(mix, _thud(rng, _jv(rng, 150, 0.08), 0.1), 0.09, 0.8)
+    return dsp.fade(mix, 0.001, 0.03)
+
+
+def reload_shotgun_eject(rng: np.random.Generator) -> np.ndarray:
+    """The extractor kicks both empties out: a sprung ping, then two paper-and-brass cases on the asphalt."""
+    mix = dsp.place(None, _metal_click(rng, _jv(rng, 1500, 0.06), ring=0.03), 0.0, 0.9)
+    for at in (0.3, _jv(rng, 0.36, 0.05)):
+        case = _thud(rng, _jv(rng, 320, 0.1), 0.05) * 0.7
+        case[: dsp.samples(0.03)] += _metal_click(rng, _jv(rng, 2400, 0.08), ring=0.01)[: dsp.samples(0.03)] * 0.6
+        mix = dsp.place(mix, case, at, 0.8)
+        mix = dsp.place(mix, _metal_click(rng, _jv(rng, 2600, 0.1), ring=0.008), at + rng.uniform(0.06, 0.1), 0.3)
+    return dsp.fade(mix, 0.001, 0.03)
+
+
+def reload_revolver_open(rng: np.random.Generator) -> np.ndarray:
+    """The cylinder latch pushed and the crane swung out: a small click, a turning ratchet, a stop."""
+    mix = dsp.place(None, _metal_click(rng, _jv(rng, 1700, 0.05), ring=0.02), 0.0, 0.8)
+    for i in range(3):
+        mix = dsp.place(mix, _metal_click(rng, _jv(rng, 2300, 0.08), ring=0.008), 0.03 + 0.022 * i, 0.35)
+    mix = dsp.place(mix, _metal_click(rng, _jv(rng, 950, 0.05), ring=0.04), 0.1, 0.9)
+    return dsp.fade(dsp.place(mix, _thud(rng, _jv(rng, 260, 0.1), 0.05), 0.1, 0.5), 0.001, 0.03)
+
+
+def reload_revolver_eject(rng: np.random.Generator) -> np.ndarray:
+    """The ejector rod slapped: six brass cases out at once, ringing on the ground."""
+    mix = dsp.place(None, _rasp(rng, 0.05, 1800, 3400) * 0.6, 0.0)
+    mix = dsp.place(mix, _metal_click(rng, _jv(rng, 1300, 0.05), ring=0.03), 0.04, 0.9)
+    return dsp.fade(dsp.place(mix, _shells_falling(rng, 6, 3200, 0.16, 0.55), 0.1, 0.9), 0.001, 0.05)
+
+
+def reload_revolver_rounds(rng: np.random.Generator) -> np.ndarray:
+    """A speedloader of six rounds into the chambers: a brass rattle, then the knob turned and the release click."""
+    n = dsp.samples(0.07)
+    rattle = dsp.filt(dsp.white(rng, 0.07), "band", 3600, 2600) * dsp.attack_decay(n, 0.01, 0.03)
+    mix = dsp.place(None, rattle, 0.0, 0.7)
+    for i in range(3):
+        mix = dsp.place(mix, _metal_click(rng, _jv(rng, 2700, 0.1), ring=0.01), 0.01 + 0.015 * i, 0.4)
+    mix = dsp.place(mix, _thud(rng, _jv(rng, 300, 0.1), 0.05), 0.04, 0.6)
+    return dsp.fade(dsp.place(mix, _metal_click(rng, _jv(rng, 1400, 0.05), ring=0.025), 0.12, 0.9), 0.001, 0.03)
+
+
+def reload_revolver_close(rng: np.random.Generator) -> np.ndarray:
+    """The cylinder swung home with a flick: one firm snap and the frame's ring."""
+    mix = dsp.place(None, _metal_click(rng, _jv(rng, 820, 0.05), ring=0.06), 0.0, 1.0)
+    return dsp.fade(dsp.place(mix, _thud(rng, _jv(rng, 190, 0.08), 0.08), 0.0, 0.8), 0.001, 0.04)
+
+
+def _hollow(rng: np.random.Generator, freq: float, length: float) -> np.ndarray:
+    """A knock on a light hollow body (the flare gun's alloy barrel, a plastic cartridge): a short resonant tone."""
+    n = dsp.samples(length)
+    tone = dsp.filt(dsp.white(rng, length), "band", freq, freq * 0.15) * 6.0 + dsp.sine(freq * 0.5, n) * 0.4
+    return tone * dsp.decay(n, length * 0.35)
+
+
+def reload_flare_open(rng: np.random.Generator) -> np.ndarray:
+    """The flare gun's latch and its light barrel dropping open: a click and a hollow clunk."""
+    mix = dsp.place(None, _metal_click(rng, _jv(rng, 1300, 0.05), ring=0.02), 0.0, 0.8)
+    return dsp.fade(dsp.place(mix, _hollow(rng, _jv(rng, 520, 0.08), 0.12), 0.05, 0.9), 0.001, 0.03)
+
+
+def reload_flare_eject(rng: np.random.Generator) -> np.ndarray:
+    """The spent cartridge shaken out: a hollow tok off the barrel and a plastic bounce on the ground."""
+    mix = dsp.place(None, _hollow(rng, _jv(rng, 900, 0.08), 0.08), 0.0, 0.8)
+    for i, at in enumerate((0.26, 0.36)):
+        mix = dsp.place(mix, _hollow(rng, _jv(rng, 1300, 0.1), 0.06), at, 0.7 * (0.5**i))
+    return dsp.fade(mix, 0.001, 0.04)
+
+
+def reload_flare_in(rng: np.random.Generator) -> np.ndarray:
+    """A fat cartridge slid into the bore and seated: a soft slide and a hollow thump."""
+    mix = dsp.place(None, _rasp(rng, 0.07, 700, 1600) * 0.6, 0.0)
+    return dsp.fade(dsp.place(mix, _hollow(rng, _jv(rng, 420, 0.08), 0.12), 0.06, 1.0), 0.001, 0.03)
+
+
+def reload_flare_shut(rng: np.random.Generator) -> np.ndarray:
+    """The barrel flicked shut: a latch snap with the alloy's hollow ring, lighter than the shotgun's."""
+    mix = dsp.place(None, _metal_click(rng, _jv(rng, 1000, 0.05), ring=0.04), 0.0, 1.0)
+    return dsp.fade(dsp.place(mix, _hollow(rng, _jv(rng, 610, 0.08), 0.1), 0.0, 0.8), 0.001, 0.03)
 
 
 # ---- the generator ----------------------------------------------------------------------------------------------
@@ -683,8 +790,6 @@ REGISTRY: list[Entry] = [
     Entry("guns", "impact_flesh", 4, impact_flesh, -4.0),
     Entry("guns", "impact_head", 4, impact_head, -3.0),
     Entry("guns", "impact_world", 4, impact_world, -5.0),
-    Entry("guns", "reload_pistol_mag_out", 2, reload_pistol_mag_out, -5.0),
-    Entry("guns", "reload_pistol_mag_in", 2, reload_pistol_mag_in, -4.0),
     Entry("guns", "reload_smg_mag_out", 2, reload_smg_mag_out, -5.0),
     Entry("guns", "reload_smg_mag_in", 2, reload_smg_mag_in, -4.0),
     Entry("guns", "reload_rifle_round", 3, reload_rifle_round, -6.0),
@@ -692,6 +797,17 @@ REGISTRY: list[Entry] = [
     Entry("guns", "reload_shotgun_open", 2, reload_shotgun_open, -5.0),
     Entry("guns", "reload_shotgun_shells", 2, reload_shotgun_shells, -5.0),
     Entry("guns", "reload_shotgun_shut", 2, reload_shotgun_shut, -3.0),
+    Entry("guns", "reload_shotgun_eject", 2, reload_shotgun_eject, -4.0),
+    Entry("guns", "reload_smg_bolt", 2, reload_smg_bolt, -4.0),
+    Entry("guns", "reload_revolver_open", 2, reload_revolver_open, -4.0),
+    Entry("guns", "reload_revolver_eject", 2, reload_revolver_eject, -4.0),
+    Entry("guns", "reload_revolver_rounds", 2, reload_revolver_rounds, -4.0),
+    Entry("guns", "reload_revolver_close", 2, reload_revolver_close, -3.0),
+    Entry("guns", "reload_flare_open", 2, reload_flare_open, -4.0),
+    Entry("guns", "reload_flare_eject", 2, reload_flare_eject, -5.0),
+    Entry("guns", "reload_flare_in", 2, reload_flare_in, -4.0),
+    Entry("guns", "reload_flare_shut", 2, reload_flare_shut, -3.0),
+    Entry("guns", "reload_pouch", 3, reload_pouch, -5.0),
     Entry("world", "generator_sputter", 3, generator_sputter, -4.0),
     Entry("world", "generator_down", 1, generator_down, -3.0),
     Entry("world", "breaker_on", 2, breaker_on, -3.0),
