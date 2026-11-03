@@ -803,7 +803,7 @@ timing) are ours too ([Ocio Barriales](http://www.gameaipro.com/GameAIPro3/GameA
 | Rots after release | The abandoned L4D bots mod; Vermintide's open reports | Soak in CI, the coverage test, and an owner in each phase |
 | Makes the night easier or harder than people | Ellie's "killing machine" | The parity batch against the simulator, damage left alone |
 | Predictable and exploitable | Practice bots | Seeded variety in positions and timing |
-| Fires or throws into teammates | Any shooter | No grenade within 4 m of a teammate; blasts spare the party for now, checked again if friendly fire arrives |
+| Fires or throws into teammates | Any shooter | No grenade where its blast reaches a teammate or the bot: under a tenth of their health at that spot (`BotGrenadier.harmless_apart`, 5.8 m; the blast hurts players out to 8 m, #805) |
 
 ## Phases
 

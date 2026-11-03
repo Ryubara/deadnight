@@ -117,7 +117,7 @@ func _physics_process(_delta: float) -> void:
 		var space := get_world_3d().direct_space_state
 		_cast = WorldCast.new(space)
 		_probe = WorldProbe.new(space)
-		server = GrenadeServer.new(_def, rules, _cast.callable(), _probe.callable())
+		server = GrenadeServer.new(_def, rules, _cast.callable(), _probe.static_callable())
 	rules.apply(RulesAction.tick(STEP))
 	_run_demo()
 	server.apply(GrenadeAction.targets(_target_list()))
