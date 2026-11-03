@@ -23,6 +23,7 @@ static func fill(level: BotLevel, world: NightWorld, tuning: RulesTuning = null)
 	level.loops = loops(world.greybox)
 	level.links = links(world.greybox)
 	level.roam_spots = roam_spots(world)
+	level.mark_last = ZombieTuning.shipped().mark_last
 	if tuning != null:
 		level.shop = shop(world, tuning)
 

@@ -82,7 +82,10 @@ func _init(level: BotLevel, bot_seed: int) -> void:
 ## - `threats`: where the dead are believed to be;
 ## - `blocked`: `Callable(spot) -> bool` for a place the legs found no way to;
 ## - `reach`: `Callable(here, spot) -> bool` whether a walk gets there on the mesh as it is (a path
-##   query), and `mesh` the mesh's number (a place found unreachable is asked again after it moves).
+##   query), and `mesh` the mesh's number (a place found unreachable is asked again after it moves);
+## - `stopped_short_of`: the goal the legs stood at the end of the path to without being near it
+##   (`BotLegs.stopped_short_of`): the mesh ends short of the place, the bot is as near as it gets
+##   and counts itself there.
 func plan(
 	here: Vector3,
 	now: float,
@@ -92,7 +95,8 @@ func plan(
 	threats: Array[Vector3],
 	blocked: Callable = Callable(),
 	reach: Callable = Callable(),
-	mesh: int = 0
+	mesh: int = 0,
+	stopped_short_of := Vector3.INF
 ) -> Vector3:
 	if mesh != _mesh:
 		_mesh = mesh
@@ -106,7 +110,7 @@ func plan(
 		if blocked.is_valid() and blocked.call(spot):
 			_ban(spot, now)
 			spot = Vector3.INF
-		elif _flat(here, spot) <= ARRIVE:
+		elif _flat(here, spot) <= ARRIVE or _is_short(spot, stopped_short_of):
 			_arrive(now)
 			return Vector3.INF
 		elif not _worth_keeping(spot, threats):
@@ -116,6 +120,11 @@ func plan(
 		spread.append_array(claimed)
 		spot = _choose(here, now, people, spread, threats, reach)
 	return spot
+
+
+## Whether the legs stopped short of this very place.
+static func _is_short(point: Vector3, stopped_short_of: Vector3) -> bool:
+	return stopped_short_of.is_finite() and point.is_equal_approx(stopped_short_of)
 
 
 ## Forgets the place held (a fight, an errand or a revive took the bot away from it).
