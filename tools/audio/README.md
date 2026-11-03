@@ -35,3 +35,6 @@ Sharp sounds (#762): `limiter.py` is a look-ahead peak limiter with a smooth gai
 crest_db)` holds the highest sample `crest_db` over the loudest 400 ms); the boards, the door and the debris blocker end
 their recipes with it, their `peak_db` lowered and `near_cap_db` raised by what it took off, so a close sharp sound is
 louder at the same peak (the web build ignores a bus limiter). `docs/research/gun-audio.md#the-sharp-sounds-limited-in-their-recipe-762`.
+
+The flare gun's report (#761) is limited the same way (`limit_crest`); `gun_levels.py --table` also writes
+a SHA-256 of every gun file it played, which `test_gun_audio_rules.gd` checks.
