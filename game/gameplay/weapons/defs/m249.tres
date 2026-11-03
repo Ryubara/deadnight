@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://gameplay/weapons/weapon_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"m249"
+display_name = "Double-Feature Gun"
+kind = 0
+automatic = true
+damage = 15
+pellets = 1
+spread_deg = 2.6
+falloff_start = 14
+falloff_end = 40
+min_damage_fraction = 0.55
+max_range = 70
+penetration = 1
+penetration_falloff = 0.6
+zone_multipliers = Dictionary[StringName, float]({
+&"body": 1.0,
+&"head": 1.75,
+&"limb": 0.6
+})
+fire_interval = 0.09
+magazine_size = 100
+reserve_start = 150
+reserve_max = 250
+reload_time = 5.0
+moving_spread_deg = 2.4
+shake_trauma = 0.3
+flash_size = 0.42

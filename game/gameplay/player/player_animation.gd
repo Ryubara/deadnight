@@ -421,8 +421,8 @@ func equip(weapon: StringName) -> void:
 ## The weapon is reloading for `seconds` (the server's `reload_started`): its `ReloadMotion` plays
 ## over them, whatever the aim weight is (the motion is added to the pose the aim weight gives, so
 ## a reload while aiming returns to the aim).
-func reload(seconds: float) -> void:
-	_reload.start(seconds)
+func reload(seconds: float, rounds := 0) -> void:
+	_reload.start(seconds, rounds)
 
 
 ## The reload stops (a swap abandons it, the server cancels it too).

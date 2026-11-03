@@ -195,7 +195,10 @@ def pendants(lamps, storey: float) -> None:
     for i, (room, (x, y, z)) in enumerate(lamps, start=1):
         floor = storey if y > storey else 0.0
         path = place(room, f"Lamp{i}", scene, (x, floor, z), props={"hang": f"{HANG:g}"})
-        override(f"{path}/{BULB_NAME}", {}, groups=("powered_light",))
+        mask = bg.LIGHT_MASKS.get(f"{path}/{BULB_NAME}")
+        override(
+            f"{path}/{BULB_NAME}", {} if mask is None else {"light_cull_mask": str(mask)}, groups=("powered_light",)
+        )
 
 
 def decor_pendant(room: str, name: str, at, follows: str) -> None:
@@ -361,6 +364,7 @@ def machines() -> None:
         if perk is not None:
             props["perk"] = f'&"{perk}"'
             scale = (PERK_SCALE,) * 3
+        props.update(bg.light_layers(f"ShopProps/{name}"))
         place("ShopProps", name, machine(kind), (mx, floor, mz), yaw, scale, props)
         hidden_box("ShopProps", f"{name}Block", (bx, bh, bz), (mx, floor + bh / 2, mz))
         sx, sz = mx + math.sin(math.radians(yaw)) * dist, mz + math.cos(math.radians(yaw)) * dist

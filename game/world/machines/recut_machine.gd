@@ -59,6 +59,11 @@ const FILM_FAST := 0.9
 const FLASH_DECAY := 6.0
 const LAMP_COUNT := 5
 
+## The render layers the machine's glow lights (`Light3D.light_cull_mask`): the default layer and
+## its room's, so the glow does not reach through the wall into the next room
+## (docs/research/room-lights.md).
+@export_flags_3d_render var light_layers := 0xFFFFFFFF
+
 var _clock := 0.0
 ## Seconds into a re-cut, or -1 when the machine is idle.
 var _t := -1.0
@@ -102,6 +107,7 @@ func _physics_process(delta: float) -> void:
 func play(weapon_id: StringName) -> void:
 	_t = 0.0
 	_struck = false
+	_add_holder(weapon_id)
 	_show(weapon_id)
 	_skin = null
 	if _holders.has(weapon_id):
@@ -464,6 +470,7 @@ func _lamp_row() -> void:
 func _effects() -> void:
 	_light = OmniLight3D.new()
 	_light.name = "Glow"
+	_light.light_cull_mask = light_layers
 	_light.light_color = Color(1.0, 0.72, 0.4)
 	_light.omni_range = 5.5
 	_light.position = Vector3(0.0, 1.9, 1.2)
@@ -521,9 +528,18 @@ func _cradle_display() -> void:
 	_display.position = CRADLE
 	add_child(_display)
 	for id: StringName in MachineParts.WEAPON_MODELS:
-		var holder := MachineParts.weapon_model(id, WEAPON_LENGTH)
-		if holder == null:
-			continue
-		holder.visible = false
-		_display.add_child(holder)
-		_holders[id] = holder
+		if not MachineParts.ON_DEMAND.has(id):
+			_add_holder(id)
+
+
+## The model of `id` on the cradle, made the first time it is needed (the models of
+## `MachineParts.ON_DEMAND` are not loaded with the night).
+func _add_holder(id: StringName) -> void:
+	if _holders.has(id) or not MachineParts.WEAPON_MODELS.has(id):
+		return
+	var holder := MachineParts.weapon_model(id, WEAPON_LENGTH)
+	if holder == null:
+		return
+	holder.visible = false
+	_display.add_child(holder)
+	_holders[id] = holder
