@@ -371,7 +371,13 @@ func _step_away(
 	for swing in swings:
 		boss_blow = boss_blow or beliefs.contact(swing["id"]).get("look", &"") == &"headliner"
 	var dodge := not swings.is_empty() and (kind != BotStance.Kind.HOLD or boss_blow)
-	var keeps_off := _boss_distance(beliefs, here) < _profile.boss_keep and not throwing
+	# A holder keeps off a boss only a few metres from its spot (`BotProfile.hold_back`, as a Safe
+	# one backs off): the spot is the order, and a bot that runs the length of the lot from the
+	# boss and walks back to it is not holding anything (#769).
+	var leashed := _holding and _flat(here, anchor) >= _profile.hold_back
+	var keeps_off := (
+		_boss_distance(beliefs, here) < _profile.boss_keep and not throwing and not leashed
+	)
 	var margin := play.margin(maxf(_profile.retreat_margin, revive.kite_margin()))
 	# A bot with no round left stands to fight with the quick melee as one with a bat does.
 	var melee := (held != null and held.is_melee()) or dry
@@ -515,6 +521,11 @@ func _stand_at_spot(intent: BotIntent, beliefs: BotBeliefs, here: Vector3, threa
 		return
 	# A low holder stays where its retreat took it (a few metres off the spot) until it is better.
 	if play.stays_off_hold(_flat(here, beliefs.order["at"])):
+		intent.note = "hold_back"
+		return
+	# A holder that kept off a boss does not walk back into it: it stands and fights from where it
+	# is, and goes back to its place when the boss is not at it (#769).
+	if _boss_distance(beliefs, place) < _profile.boss_keep:
 		intent.note = "hold_back"
 		return
 	intent.goal = place

@@ -58,6 +58,10 @@ func test_a_gate_of_one_order_applies_to_that_order_only() -> void:
 	var drifting := _night(_bot({"stance_share": 0.8}))
 	assert_array(SoakWatch.verdict(drifting, BotOrders.HOLD, true)).has_size(1)
 	assert_array(SoakWatch.verdict(drifting, BotOrders.FOLLOW, true)).is_empty()
+	# A long trip is a report line, not a gate: a boss that stands at the spot keeps the holders off it
+	# for as long as it lives, and the stampede's choke takes a minute.
+	var away := _night(_bot({"trip_longest": 120.0, "away_seconds": 300.0}))
+	assert_array(SoakWatch.verdict(away, BotOrders.HOLD, true)).is_empty()
 
 
 func test_a_watched_night_reports_the_bots_and_the_gates_hold() -> void:
