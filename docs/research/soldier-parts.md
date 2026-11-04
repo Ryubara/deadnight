@@ -133,6 +133,11 @@ crawl and his SMG carry (31-38 mm); the IK's reload and long-gun hold are not (#
 a long sleeve's right forearm 30-39 mm into the chest (recorded, at most 4 cm); her rolled sleeves (the maintainer's
 look) are clean with every weapon.
 
+A sampled pose stays where it was sampled (#1143): `ClipFit.pose` pauses the player after the seek. A playing
+clip went on with the real time of the physics frames `prepare_sets` awaits, so `BodyFit.bone_point` (the live
+skeleton) was a later pose than the surface read before the wait: the swing skirt's `10 Run leg` read 0.142-0.144 m
+on the pull requests and 0.1348 m every time once held (the recorded 0.137 stands).
+
 ## The ladder's pieces (#1078)
 
 The fifteen wearables of [the ladder](../design/progression.md#wardrobe-costumes-and-the-locks), in two waves, in

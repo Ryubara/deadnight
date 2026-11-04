@@ -547,6 +547,62 @@ func test_a_level_that_gives_an_item_is_cheered_for_the_item_by_its_slot() -> vo
 		assert_array(_moments()).override_failure_message(String(slot)).is_equal([expected[slot]])
 
 
+func _challenge_done(who: int, id := &"d_kills") -> Dictionary:
+	return {
+		"type": &"challenge_done",
+		"player_id": who,
+		"id": id,
+		"family": 0,
+		"text": "Put down 4",
+		"target": 4,
+		"rung": 0,
+		"rungs": 1,
+		"reward": {"xp": 5},
+	}
+
+
+func test_a_challenge_done_is_cheered_as_the_player_who_finished_it() -> void:
+	_tell(_challenge_done(MATE))
+	_voice.step(0.05)
+	assert_array(_moments()).is_empty()
+	_settle()
+	assert_array(_moments()).is_equal(["challenge_done"])
+	assert_int(_voice.director.history[0]["speaker"]).is_equal(MATE)
+	assert_vector(_heard[0]["at"]).is_equal_approx(
+		AT_MATE + SoldierVoice.HEAD_LIFT, Vector3.ONE * 0.01
+	)
+
+
+func test_a_challenge_that_pays_a_level_is_cheered_as_the_challenge_in_either_order() -> void:
+	_tell(_challenge_done(OWN))
+	_tell(_level_up(OWN))
+	_settle()
+	assert_array(_moments()).is_equal(["challenge_done"])
+	_voice.director.history.clear()
+	_tell(_level_up(OWN, 3))
+	_tell(_challenge_done(OWN))
+	_settle()
+	assert_array(_moments()).is_equal(["challenge_done"])
+	assert_int(_heard.size()).is_equal(2)
+
+
+func test_a_tier_is_cheered_over_the_challenge_that_paid_it() -> void:
+	_tell(_challenge_done(OWN))
+	_tell(_level_up(OWN, 6))
+	_tell(_tier_up(OWN))
+	_settle()
+	assert_array(_moments()).is_equal(["tier_up"])
+	assert_int(_heard.size()).is_equal(1)
+
+
+func test_two_players_who_finish_a_challenge_together_are_cheered_one_after_the_other() -> void:
+	_tell(_challenge_done(OWN))
+	_tell(_challenge_done(MATE))
+	for _i in 200:
+		_voice.step(0.1)
+	assert_array(_moments()).is_equal(["challenge_done", "challenge_done"])
+
+
 func test_a_level_alone_is_cheered_as_a_level() -> void:
 	_tell(_level_up(MATE))
 	_tell(_level_up(MATE, 3))

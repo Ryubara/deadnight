@@ -3,7 +3,8 @@ extends GdUnitTestSuite
 ## one night of a game server whose tickets carry each account's XP; when the server tells that a
 ## player crossed a level, every one of the four plays that player's cheer (the player at the
 ## screen flat, the others where the soldier stands), once, and a level that also opens a tier
-## and gives an item is one cheer, the tier's.
+## and gives an item is one cheer, the tier's. A challenge the server tells done (#1076, #1135) is
+## cheered the same way, by every client, as the player who finished it.
 
 const SECRET := "test-ticket-secret-of-32-characters!"
 const SERVER_ID := "gs-test"
@@ -13,6 +14,8 @@ const MATCH := "match-voice"
 const BELOW_LEVEL_2 := 84
 const BELOW_LEVEL_6 := 424
 const CLIENTS := 4
+## The day the challenge clock stands on (any day: the quick catalogue's dailies are fixed by it).
+const DAY := 20401
 
 var _server: GameServer
 var _nights: Array[Night] = []
@@ -53,7 +56,9 @@ func _until(condition: Callable, seconds: float = 30.0) -> bool:
 	return true
 
 
-func _start() -> void:
+## A server for the night; with `challenges` it follows each seat's challenge board (a small
+## catalogue a few kills finish, no board at the backend).
+func _start(challenges := false) -> void:
 	_server = GameServer.new()
 	_server.port = 0
 	_server.capacity = CLIENTS
@@ -62,18 +67,23 @@ func _start() -> void:
 	_server.seed_value = 7
 	_server.verifier = TicketVerifier.new(SECRET, SERVER_ID)
 	_server.report_sender = func(_path: String, _body: Dictionary) -> int: return 200
+	if challenges:
+		_server.challenge_catalog = ChallengeFixture.quick_catalog()
+		_server.challenge_clock = ChallengeFixture.clock_on(DAY)
+		_server.board_reader = func(_user: String) -> Dictionary:
+			return {"status": 404, "json": ChallengeAward.NO_BOARD}
 	_world().add_child(_server)
 	await _until(func() -> bool: return _server.listener.is_listening())
 
 
 ## A client whose account holds `xp`; whatever its soldier voice plays is kept in `_lines[id]`
 ## (`{id, at, db}`) instead of going to the speakers.
-func _client(user: String, xp: int) -> Night:
+func _client(user: String, xp: int, settings := {}) -> Night:
 	var night := Night.new()
 	_world().add_child(night)
 	var link := WebSocketLink.new()
 	link.ticket = TicketMaker.make(
-		SECRET, SERVER_ID, MATCH, user, user.capitalize(), 60, {}, null, {"xp": xp}
+		SECRET, SERVER_ID, MATCH, user, user.capitalize(), 60, settings, null, {"xp": xp}
 	)
 	var url := "ws://127.0.0.1:%d" % _server.listener.port()
 	assert_bool(await night.start_remote(url, Night.Mode.MANUAL, 60.0, link)).is_true()
@@ -147,3 +157,38 @@ func test_a_level_that_opens_a_tier_is_one_cheer_for_every_client() -> void:
 			. is_equal(1)
 		)
 		assert_int(_said(listener, &"tier_up").size()).is_equal(1)
+
+
+func test_every_client_plays_the_line_of_a_teammates_finished_challenge() -> void:
+	await _start(true)
+	var chosen := MatchSettings.new()
+	chosen.count_multiplier = 5.0
+	for user in ["ann", "bo", "cy", "di"]:
+		await _client(user, 0, chosen.to_dict())
+	(
+		assert_bool(await _until(func() -> bool: return _room().server.challenges.follows(CLIENTS)))
+		. is_true()
+	)
+	# Ann puts down the four dead of the round: her daily "put down 4" is done, and the server
+	# tells all four clients.
+	var rules := _room().server.rules
+	rules.apply(RulesAction.skip_break())
+	var kills := 0
+	while kills < 4:
+		await get_tree().physics_frame
+		for zombie_id in rules.zombie_ids():
+			if kills < 4:
+				RulesFixture.kill(rules, 1, zombie_id)
+				kills += 1
+	(
+		assert_bool(await _until(func() -> bool: return _every_client_said(&"challenge_done")))
+		. is_true()
+	)
+	for _i in 60:
+		await get_tree().physics_frame
+	for listener in _lines:
+		var said := _said(listener, &"challenge_done")
+		assert_int(said.size()).override_failure_message("client %d" % listener).is_equal(1)
+		assert_bool(SoldierVoiceCatalog.is_take(said[0]["id"])).is_true()
+		# Hers, whoever hears it: flat at her screen, where she stands for the others.
+		assert_bool(said[0]["at"] == null).is_equal(listener == 1)

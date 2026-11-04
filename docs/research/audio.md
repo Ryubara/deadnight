@@ -597,13 +597,23 @@ soldiers above; the lines are in `tools/audio/soldier_voice.json` and `soldier_v
   (`SoldierVoiceCatalog.CHEER_OF_SLOT`: a card, an emblem or frame, else an unlock) over the level, so a level that
   gives an item is cheered for the item. Players who level up in the same window are cheered one after the other from a
   queue (the first version asked the director for each at once and the second was dropped:
-  [kit lesson](https://github.com/Ryubara/gdstudio/pull/599)). A bot has no level and no event. `challenge_done` is not
-  wired: the challenge tracker's event (#1076) was not on main; its moment and takes exist, and it is one row of
-  `SoldierVoiceCatalog.CHEER_OF_EVENT` once the event does.
+  [kit lesson](https://github.com/Ryubara/gdstudio/pull/599)). A bot has no level and no event.
+- **`challenge_done` wired (#1135).** `ChallengeAward`'s event (keys `player_id`, `id`, `family`, `text`, `target`,
+  `rung`, `rungs`, `reward`) is one row of `SoldierVoiceCatalog.CHEER_OF_EVENT` and `SoldierVoice` hears it with the
+  others. Its weight is 2, level with an item and under a tier: the challenge's own reward is XP, which can pay a level
+  in the same window (the challenge is told first, then the level), and a challenge that levels you up is cheered as
+  the challenge, whichever event came first. Takes: 3 in each voice (`challenge_done_1..3.ogg`, the line after the
+  record scratch), already made. Recorded through the real service in a solo night (`audio_progression_voice.gd
+  --challenges=5+,12,13.2,20`): a challenge and its level together are one line at 5.33 s; two challenges 1.2 s apart
+  are two lines, the second held for the first and its 2 s cooldown (said at 15.27 s). Heard over the night the
+  segments measure -22 to -24 LUFS with the beds and the gunfire, peaks -6.5 to -8.9 dBFS. The weight is a design
+  call the maintainer has open.
 - **Tests.** `tests/net/test_progression_voice_online.gd`: four clients over a real WebSocket, a level up of player 1
-  is played by all four (hers flat, the others where she stands) once each, and a level that opens a tier and gives an
-  item is one tier cheer on every client. `tests/night/test_soldier_voice.gd`: the slot table, a burst of events as one
-  cheer, two players one after the other, a cheer held behind a reload, a downed player's dropped.
+  is played by all four (hers flat, the others where she stands) once each, a level that opens a tier and gives an
+  item is one tier cheer on every client, and four kills that finish a challenge are one `challenge_done` line on
+  every client (it fails with the row removed). `tests/night/test_soldier_voice.gd`: the slot table, a burst of
+  events as one cheer, a challenge over the level it paid and under a tier, two players one after the other, a cheer
+  held behind a reload, a downed player's dropped.
 - **In a night.** `audio_progression_voice.tscn --mode=fight --account=420 --told=0` plays a night where the account
   holds 420 XP and the night pays the rest: the rules told level 6, its tier and its unlock together at 4.07 s and the
   soldier said `tier_up` take 1 at 4.27 s (0.2 s later); level 7 and its unlock at 38.40 s gave `unlock` take 1 at

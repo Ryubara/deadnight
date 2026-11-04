@@ -192,9 +192,9 @@ func test_an_unlock_card_says_what_it_is_and_its_name() -> void:
 	assert_array(_texts(cards[0])).is_equal(["NEW TOP", "Letter jacket"])
 	assert_array(_texts(cards[1])).is_equal(["NEW COLOUR", "Cherry"])
 	assert_array(_texts(cards[2])).is_equal(["NEW HEADWEAR", "Usher's cap"])
-	# A colour has its swatch; a cap has a chip with its slot's letter.
-	assert_object(PopupLadder.swatch_of(&"colour", &"cherry")).is_not_null()
-	assert_object(PopupLadder.swatch_of(&"headwear", &"ushers_cap")).is_null()
+	# Each shows the wardrobe's picture of the item (`test_popup_thumbnails.gd` holds the rest).
+	for card in cards:
+		assert_bool(card.has_thumbnail()).is_true()
 	# An unlock card is half the height of a level card.
 	assert_float(cards[0].size.y).is_less(PopupCard.LEVEL_SIZE.y * 0.65)
 	assert_array(_cues).is_equal([&"unlock", &"unlock", &"unlock"])

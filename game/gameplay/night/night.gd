@@ -119,6 +119,8 @@ var hud: Hud
 ## tests leave it empty, so they never touch the save). The night counts into it as it plays.
 var challenge_board: ChallengeBoard
 var challenges: ChallengeSession
+## Writes the board to the account at round ends, in a night that runs here (online, the server).
+var challenge_uplink: ChallengeUplink
 ## The player's profile file, set before `start` by the screen a person plays on (like the board).
 ## The night adds its XP to it as it plays, for a player with an account (a Guest one counts);
 ## online the server awards.
@@ -387,10 +389,12 @@ func _last_frame(events: Array) -> Dictionary:
 
 
 ## Counts the night into the player's challenges, when there is a board to count into. `online`:
-## a game server follows the account's board and tells the prompt (`ChallengeSession`).
+## a game server follows the account's board and tells the prompt (`ChallengeSession`); a night
+## that runs here writes the board itself.
 func _track_challenges(online: bool = false) -> void:
 	if challenge_board != null:
 		challenges = ChallengeSession.new(challenge_board, rules_tuning)
+		challenges.uplink = null if online else challenge_uplink
 		challenges.attach(state, online)
 		if hud != null:
 			_challenge_link = ChallengeHudLink.new(challenges, hud)
@@ -810,41 +814,8 @@ func _human_command() -> NightCommand:
 	if is_arriving():
 		NightArrival.quiet(command)
 	if _human.ping_pressed(player()):
-		link.send(_ping_request(command))
+		link.send(PingAim.request(command, world, state, get_world_3d().direct_space_state))
 	return command
-
-
-## What the ping key marks: what the crosshair is on, else where its ray lands (`PingAim`).
-func _ping_request(aim: NightCommand) -> Dictionary:
-	var landed := Vector3.INF
-	var cast := PhysicsRayQueryParameters3D.create(
-		aim.origin,
-		aim.origin + aim.dir * PingAim.REACH,
-		CameraProbe.PLAYER_MASK | PhysicsLayers.BODY
-	)
-	var hit := get_world_3d().direct_space_state.intersect_ray(cast)
-	if not hit.is_empty():
-		landed = hit["position"]
-	var shut := {}
-	var index := 0
-	for door_id in world.door_ids():
-		if not state.frame.get("doors", []).has(door_id):
-			shut[index] = world.door_points(door_id)
-		index += 1
-	var ammo: Array[Vector3] = []
-	for spot in world.shop_spots():
-		if spot["kind"] == &"ammo":
-			ammo.append(spot["position"])
-	return PingAim.pick(
-		aim.origin,
-		aim.dir,
-		state.zombies,
-		state.frame.get("players", {}),
-		state.player_id,
-		shut,
-		ammo,
-		landed
-	)
 
 
 ## What the server answered: the look server's packets go to the look table, the rest to the
