@@ -107,9 +107,12 @@ POCKET_SPAN = 7.0  # from the court's fence to the wall's free end: 4 m of gap a
 SWITCHES = [
     ("screen_lot", "", (0.0, 0.0, -46.2), (0.0, 1.0)),  # behind the players' spawns, in the avenue below the screen
     ("concession", "door_concession", (8.5, 0.0, -4.6), (0.0, -1.0)),  # on the stand's front wall, field side
-    ("booth", "door_booth", (4.6, 0.0, 21.5), (0.0, -1.0)),  # on the booth's north wall, midway side
-    ("back_lot", "door_back_lot", (-35.5, 0.0, -4.6), (0.0, -1.0)),  # on the field's south fence, by the gate
+    ("booth", "door_booth", (5.6, 0.0, 21.5), (0.0, -1.0)),  # on the booth's north wall, midway side
+    ("back_lot", "door_back_lot", (-34.0, 0.0, -4.6), (0.0, -1.0)),  # on the field's south fence, by the gate
 ]
+# No two use zones share ground, with half a metre between (#908, `UseZones.MIN_GAP`): a post's reach and its door's
+# (each `NightTuning.use_reach`, 2.5 m) need 5.5 m between the post and the slab's middle, a wall spot's (`spot_reach`,
+# 1.5 m from its marker) and a door's 4.5 m. `game/tests/world/test_use_zone_spacing.gd` walks the floor.
 # Where the projector model's lens is (its origin (0, 4.05, 25.25), the lens 0.88 m ahead and 1.06 m up on the model)
 # and the middle of the screen's face: the beam is aimed from one to the other.
 PROJECTOR_LENS = (0.0, 5.11, 24.37)
@@ -1350,9 +1353,9 @@ def build() -> None:
     silhouette("ShopProps", "GrenadeSilhouette", "grenades", (10.34, 1.6, 3.0), 90)
     shop_spot("SpotGrenades", "rack", "grenades", (11.4, 0, 3.0), 90)
     # The rifle, on the booth's front wall, midway side.
-    box("ShopProps", "RiflePlaque", (1.7, 0.9, 0.12), (-4.0, 1.6, 21.74), "plaque", collide=False)
-    silhouette("ShopProps", "RifleSilhouette", "weapon_rifle", (-4.0, 1.6, 21.66), 180)
-    shop_spot("SpotRifle", "wall", "weapon_rifle", (-4.0, 0, 20.4), 180)
+    box("ShopProps", "RiflePlaque", (1.7, 0.9, 0.12), (-4.5, 1.6, 21.74), "plaque", collide=False)
+    silhouette("ShopProps", "RifleSilhouette", "weapon_rifle", (-4.5, 1.6, 21.66), 180)
+    shop_spot("SpotRifle", "wall", "weapon_rifle", (-4.5, 0, 20.4), 180)
     # The prize crane, inside the stand, beside the cabinet that was already there.
     shop_spot("SpotCrane", "crane", "crane_play", (-6.4, 0, 5.0), 270, crane_spot=0)
     # The crane's other places (rules: `crane.spot_doors`): the midway, the open field and the yard. A breakdown moves

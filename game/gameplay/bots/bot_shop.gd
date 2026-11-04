@@ -7,6 +7,9 @@ extends RefCounted
 ## `LotBotData.fill` and read-only after: a bot learns the price of a thing from this table and
 ## from the prompt it is shown, never from the rules (`docs/research/bots.md#economy`).
 
+## Metres from a stand within which a bot looks at what it buys there (`thing_yaw`).
+const STAND_NEAR := 1.5
+
 ## The shop table and the generator's numbers.
 var economy: EconomyTuning
 var fuel: FuelTuning
@@ -17,8 +20,10 @@ var rounds: RoundTuning
 var boards := 1
 ## Grenades a pack holds (`ExplosiveTuning.max_grenades`).
 var max_grenades := 5
-## Metres a hand reaches to use a door, a spot, a breach or a breaker, and to buy a fuel can.
-var use_reach := 3.2
+## Metres a hand reaches to use a door, a breach or a breaker, a shop spot (from its marker), and
+## to buy a fuel can (`NightTuning`).
+var use_reach := 2.5
+var spot_reach := 1.5
 var fuel_reach := 2.0
 ## How far the dead must be (metres to the nearest) before an errand begins, and the share of a
 ## round's dead that, once only that many are left, makes a lull to shop in: the lot's numbers suit
@@ -37,6 +42,8 @@ var shopping: Array[StringName] = []
 var doors: Array[StringName] = []
 ## Where to stand to use each door (the middle of each of its slabs), by door id.
 var door_stands: Dictionary[StringName, Array] = {}
+## The middle of each door's slabs, by door id: what a bot at a stand looks at to buy it.
+var door_points: Dictionary[StringName, Array] = {}
 ## The shop spots: `{kind, shop_id, position, crane_spot}` (walls, the crane, lockers, the re-cut
 ## bench, the soda fountain).
 var spots: Array[Dictionary] = []
@@ -92,6 +99,33 @@ func spots_of(shop_id: StringName) -> Array[Dictionary]:
 
 
 ## The spots of `kind` (`ammo` lockers have no shop id).
+## Where a bot at the stand of `item` looks to buy it (#908): a person looks at what they use, and
+## where two use zones meet the one looked at is offered. The view yaw from `here` to a door's
+## nearest slab, or the way a shop spot's marker faces (its thing); NAN when the bot is more than
+## `STAND_NEAR` from the stand (it looks the way it walks) or the thing is not known. Near the stand
+## and with no card up, the bot also walks onto it: half a metre short can be out of the reach
+## (2.5 m from a slab, 1.5 m from a spot's marker), which the old 3.2 m reach forgave.
+func thing_yaw(item: StringName, prompt: StringName, stand: Vector3, here: Vector3) -> float:
+	if _flat(here, stand) > STAND_NEAR:
+		return NAN
+	if prompt == &"door":
+		var best := Vector3.INF
+		for point: Vector3 in door_points.get(item, []):
+			if best == Vector3.INF or _flat(here, point) < _flat(here, best):
+				best = point
+		if best == Vector3.INF or _flat(here, best) < 0.01:
+			return NAN
+		return atan2(-(best.x - here.x), -(best.z - here.z))
+	for spot in spots:
+		if _flat(spot["position"], stand) < 0.01:
+			return float(spot.get("yaw", NAN))
+	return NAN
+
+
+static func _flat(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()
+
+
 func spots_by_kind(kind: StringName) -> Array[Dictionary]:
 	var found: Array[Dictionary] = []
 	for spot in spots:

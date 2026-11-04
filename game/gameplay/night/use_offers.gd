@@ -19,39 +19,62 @@ static func door(
 		var item := rules.tuning.economy.item(door_id)
 		if item.requires != &"" and not rules.is_door_open(item.requires):
 			continue
-		var stands := world.door_stands(door_id)
-		for point in world.door_points(door_id):
-			# The slab's middle is half a door above the floor it stands on.
-			if (
-				_flat(here, point) <= tuning.use_reach
-				and world.on_level(here, point - Vector3(0.0, DOOR_MIDDLE, 0.0))
-				and (sight == null or sight.clear_door(here, point, stands))
-			):
-				return {"kind": &"door", "id": door_id, "price": rules.price_of(door_id)}
+		if UseZones.door_reaches(world, tuning, sight, door_id, here):
+			return {"kind": &"door", "id": door_id, "price": rules.price_of(door_id)}
 	return {}
 
 
-## A breach to put a board back across, or a breaker post, in reach of `here`, or `{}`.
+## A breach to put a board back across, or a breaker post, in reach of `here`, or `{}`. Of two
+## breaches in reach, the one nearest the way `view` looks (flat, unit; zero: the nearest).
 static func post(
-	world: NightWorld, rules: GameRules, tuning: NightTuning, here: Vector3, sight: UseSight = null
+	world: NightWorld,
+	rules: GameRules,
+	tuning: NightTuning,
+	here: Vector3,
+	sight: UseSight = null,
+	view := Vector3.ZERO
 ) -> Dictionary:
+	var best := {}
+	var best_score := INF
 	for id in world.barricade_ids():
 		var boards := rules.barricades.boards_of(id)
 		if boards >= rules.tuning.barricades.boards:
 			continue
 		var barricade := world.barricade(id)
-		var near := (
-			_flat(here, barricade.centre()) <= tuning.use_reach
-			and world.on_level(here, barricade.centre())
-			and (sight == null or sight.clear(here, barricade.centre(), UseSight.MOUNT_SKIN))
-		)
-		if barricade.depth_of(here) > 0.0 and near:
-			return {"kind": &"repair", "id": id, "boards": boards}
+		if not UseZones.breach_reaches(world, tuning, sight, barricade, here):
+			continue
+		var score := _score(here, barricade.centre(), view)
+		if score < best_score:
+			best_score = score
+			best = {"kind": &"repair", "id": id, "boards": boards}
+	if not best.is_empty():
+		return best
 	var post := world.switches.within_reach(here, tuning.use_reach, sight)
 	if post == null:
 		return {}
 	var on: bool = rules.generator.circuits.get(post.circuit_id, false)
 	return {"kind": &"circuit", "id": post.circuit_id, "on": on}
+
+
+## Of the offers in reach (`[{offer, at}]`, `at` the thing's place), the one the player looks at:
+## the smallest turn from `view` (flat, unit) to the thing; with no view, the first. `{}` for none.
+static func faced(offers: Array[Dictionary], here: Vector3, view: Vector3) -> Dictionary:
+	var best := {}
+	var best_score := INF
+	for entry in offers:
+		var score := _score(here, entry["at"], view)
+		if score < best_score:
+			best_score = score
+			best = entry["offer"]
+	return best
+
+
+## The turn (radians) from `view` to `there`, or the flat distance when there is no view.
+static func _score(here: Vector3, there: Vector3, view: Vector3) -> float:
+	var to := Vector3(there.x - here.x, 0.0, there.z - here.z)
+	if view == Vector3.ZERO or to.length() < 0.01:
+		return to.length() if view == Vector3.ZERO else 0.0
+	return view.angle_to(to)
 
 
 ## The can stand within reach of `here`: what the rules would sell and for how much, or `{}`.
@@ -72,7 +95,3 @@ static func fuel(
 		"price": offer["price"],
 		"units": offer["units"],
 	}
-
-
-static func _flat(a: Vector3, b: Vector3) -> float:
-	return Vector2(a.x - b.x, a.z - b.z).length()

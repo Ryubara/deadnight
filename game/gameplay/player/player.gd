@@ -54,6 +54,10 @@ var has_model := true
 ## True for a body made by `make_puppet`: the drawn copy of a player on another machine.
 var is_puppet := false
 var last_command := PlayerCommand.new()
+## The dead this body is stopped by (#914), filled before each tick by whoever moves the body: the
+## server from what this player's client saw, a predicting client from the frame it drew. Without
+## one (a test's body) nothing stops it.
+var dead: DeadField
 ## Whether the mouse really is captured, as the platform says.
 var grip := MouseGrip.new()
 ## The look belongs to something else for now (the bot command wheel reads the mouse and the right
@@ -306,7 +310,7 @@ func _idle_command() -> PlayerCommand:
 ## Run one tick of the simulation with `command` and show the result.
 func tick(command: PlayerCommand) -> void:
 	last_command = command
-	PlayerSimulation.simulate(self, state, command, tuning, get_physics_process_delta_time())
+	PlayerSimulation.simulate(self, state, command, tuning, get_physics_process_delta_time(), dead)
 	rotation.y = state.facing
 	_ease_step(state.stepped_up, get_physics_process_delta_time())
 	camera_rig.aiming = state.aiming

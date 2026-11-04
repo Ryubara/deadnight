@@ -3,6 +3,11 @@ extends Node3D
 ## The look of a blast, client only: a fireball and a ring that grow to the blast radius, a flash
 ## of light, a scorch mark on the floor and a few gibs. None of it changes anything the server
 ## decided. Effects last long enough to land on a 10 fps capture (a frame is 0.1 s).
+##
+## It is a one-shot and frees itself: each part (fireball, ring, flash, scorch, the gibs) frees
+## itself when it is done, and the effect goes with the last of them. A part that has faded to
+## nothing is never left in the tree, where it would still cost a draw call or hold one of a mesh's
+## eight light slots (issue #929).
 
 const FIREBALL_COLOUR := Color(1.0, 0.62, 0.22)
 const RING_COLOUR := Color(1.0, 0.85, 0.5, 0.35)
@@ -12,16 +17,25 @@ const FIREBALL_SECONDS := 0.7
 const RING_SECONDS := 0.5
 const FLASH_ENERGY := 12.0
 const SCORCH_SECONDS := 6.0
+const SCORCH_FADE_SECONDS := 1.0
 const GIB_SECONDS := 1.4
 const GIB_GRAVITY := 14.0
 
 var _gibs: Array[Dictionary] = []
+## How many parts are still playing; the effect frees itself when the last one ends.
+var _parts := 0
 
 
 func _init() -> void:
 	# Tweens and `_process` move these on the drawn frame, not the physics tick
 	# (docs/research/physics-interpolation.md).
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+
+
+func _ready() -> void:
+	# Godot turns `_process` on for any script that has one when the node is ready; only a burst of
+	# gibs moves anything in it, so a blast that plays alone turns it off again.
+	set_process(not _gibs.is_empty())
 
 
 ## Plays a blast at `point` with the grenade's radii.
@@ -37,11 +51,14 @@ func play(point: Vector3, def: GrenadeDef) -> void:
 func gibs(at: Vector3, impulse: Vector3, seed_value: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
+	var material := _flat(GIB_COLOUR)
+	_hold()
+	set_process(true)
 	for _i in 6:
 		var mesh := BoxMesh.new()
 		var size := rng.randf_range(0.07, 0.16)
 		mesh.size = Vector3(size, size, size)
-		mesh.material = _flat(GIB_COLOUR)
+		mesh.material = material
 		var instance := MeshInstance3D.new()
 		instance.mesh = mesh
 		instance.position = to_local(at)
@@ -53,13 +70,20 @@ func gibs(at: Vector3, impulse: Vector3, seed_value: int) -> void:
 
 
 func _process(delta: float) -> void:
+	var flying: Array[Dictionary] = []
 	for gib in _gibs:
 		gib["age"] += delta
-		gib["velocity"] += Vector3.DOWN * GIB_GRAVITY * delta
 		var node: Node3D = gib["node"]
-		node.position += (gib["velocity"] as Vector3) * delta
 		if gib["age"] > GIB_SECONDS:
-			node.visible = false
+			node.queue_free()
+			continue
+		gib["velocity"] += Vector3.DOWN * GIB_GRAVITY * delta
+		node.position += (gib["velocity"] as Vector3) * delta
+		flying.append(gib)
+	_gibs = flying
+	if _gibs.is_empty():
+		set_process(false)
+		_release()
 
 
 func _fireball(radius: float) -> void:
@@ -79,6 +103,7 @@ func _fireball(radius: float) -> void:
 		. set_ease(Tween.EASE_OUT)
 	)
 	tween.tween_property(sphere.material, "albedo_color:a", 0.0, FIREBALL_SECONDS)
+	_free_when_done(tween, instance)
 
 
 func _ring(radius: float) -> void:
@@ -99,6 +124,7 @@ func _ring(radius: float) -> void:
 		. set_ease(Tween.EASE_OUT)
 	)
 	tween.tween_property(torus.material, "albedo_color:a", 0.0, RING_SECONDS)
+	_free_when_done(tween, instance)
 
 
 func _flash(radius: float) -> void:
@@ -109,6 +135,7 @@ func _flash(radius: float) -> void:
 	add_child(light)
 	var tween := create_tween()
 	tween.tween_property(light, "light_energy", 0.0, FIREBALL_SECONDS)
+	_free_when_done(tween, light)
 
 
 func _scorch(point: Vector3, radius: float) -> void:
@@ -123,7 +150,31 @@ func _scorch(point: Vector3, radius: float) -> void:
 	add_child(instance)
 	var tween := create_tween()
 	tween.tween_interval(SCORCH_SECONDS)
-	tween.tween_property(quad.material, "albedo_color:a", 0.0, 1.0)
+	tween.tween_property(quad.material, "albedo_color:a", 0.0, SCORCH_FADE_SECONDS)
+	_free_when_done(tween, instance)
+
+
+## Counts a part that is playing.
+func _hold() -> void:
+	_parts += 1
+
+
+## A part ended: the effect goes with the last one.
+func _release() -> void:
+	_parts -= 1
+	if _parts <= 0:
+		queue_free()
+
+
+## Frees `part` when `tween` ends, so it stops costing a draw call (or a light slot) the moment it
+## has faded to nothing.
+func _free_when_done(tween: Tween, part: Node) -> void:
+	_hold()
+	tween.finished.connect(
+		func() -> void:
+			part.queue_free()
+			_release()
+	)
 
 
 func _glow(colour: Color) -> StandardMaterial3D:

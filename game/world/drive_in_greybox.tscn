@@ -3159,17 +3159,17 @@ metadata/kind = "rack"
 metadata/shop_id = "grenades"
 
 [node name="RiflePlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.000, 1.600, 21.740)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.500, 1.600, 21.740)
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
 [node name="RifleSilhouette" type="Node3D" parent="ShopProps"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -4.000, 1.600, 21.660)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -4.500, 1.600, 21.660)
 script = ExtResource("silhouette")
 shop_id = &"weapon_rifle"
 
 [node name="SpotRifle" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -4.000, 0.000, 20.400)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -4.500, 0.000, 20.400)
 metadata/kind = "wall"
 metadata/shop_id = "weapon_rifle"
 
@@ -4552,12 +4552,12 @@ metadata/circuit = "concession"
 metadata/door = "door_concession"
 
 [node name="Switch_booth" parent="Switches" instance=ExtResource("switch")]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 4.600, 0.000, 21.500)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 5.600, 0.000, 21.500)
 metadata/circuit = "booth"
 metadata/door = "door_booth"
 
 [node name="Switch_back_lot" parent="Switches" instance=ExtResource("switch")]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -35.500, 0.000, -4.600)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -34.000, 0.000, -4.600)
 metadata/circuit = "back_lot"
 metadata/door = "door_back_lot"
 
