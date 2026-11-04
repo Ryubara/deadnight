@@ -13,8 +13,10 @@ const MIN_SHOTS := 3
 ## Metres along the drift between two checks.
 const STEP := 0.5
 ## A shot's view must be open for this far before it meets a wall (a wall or a pillar in its
-## face). const OPEN_VIEW := 1.5 Where the lens of a player's own camera stands from them: behind
-## and above, as the shoulder rig does.
+## face).
+const OPEN_VIEW := 1.5
+## Where the lens of a player's own camera stands from them: behind and above, as the shoulder
+## rig does.
 const PLAYER_LENS := Vector3(0.0, 2.1, 3.2)
 
 var _scene: Node3D
