@@ -19,6 +19,16 @@ The second map's sounds (the depot's room tone, the yard, a debris blocker, feet
 like the rest; `smallmap_levels.py` measures them (`table`: level and reach from the banks and the files; `capture`: the
 mix of the walk through the map, level by stage). `docs/research/maps/small-map-audio.md` has the numbers.
 
+The progression sounds (#1062): `progress_recipes.py` makes the record scratch for a challenge done, the snare roll and
+brass of a level up and of a tier up, the unlock's ticket punch and bell and the card's paper rustle (synthesised, into
+`game/assets/audio/progress/`); `progress_levels.py` reads the recording of `game/tests/captures/audio_progress_levels.tscn`
+(every cue through the real service and its rules, eight unlocks in two seconds, moments close together, the night's
+sounds a cue must not hide, three bursts, the night's beds) and prints and gates the level, the length, the loudness
+against a pistol shot, the stacks, the moments, how far each cue is under a shot, a groan, a shriek, a beep and a
+soldier's line in their own band, and whether a cue stands out of a burst (`--pin` writes
+`game/tests/core/progress_sound_levels.json`, which `test_progress_sounds.gd` holds the files to).
+`docs/research/menu-sfx.md#the-progression-sounds-1062` has the numbers.
+
 Headroom (#718): `headroom.py` reads recordings of `game/tests/captures/audio_headroom.tscn` (the player's own gun fired
 without a break while a reload, a teammate's gun, the dead's voices or the lot's sounds land on it) and prints, for each
 pair, the peak of the mix and the samples over -1 dBFS, then the gun alone (RMS, crest factor, loudness) and each sound's

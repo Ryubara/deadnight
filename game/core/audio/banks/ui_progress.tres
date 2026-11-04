@@ -1,0 +1,110 @@
+[gd_resource type="Resource" script_class="SoundBank" format=3]
+
+[ext_resource type="Script" path="res://core/audio/sound_bank.gd" id="1_bank"]
+[ext_resource type="Script" path="res://core/audio/sound_def.gd" id="2_def"]
+
+[sub_resource type="Resource" id="Resource_ui_challenge_done"]
+resource_name = "ui_challenge_done"
+script = ExtResource("2_def")
+id = &"ui_challenge_done"
+path_format = "res://assets/audio/progress/scratch_%d.ogg"
+variants = 2
+bus = &"UI"
+loop = false
+volume_db = -5.0
+pitch_semitones = 0.3
+group = &"ui_scratch"
+priority = 90
+cooldown = 0.0
+max_distance = 50.0
+unit_size = 8.0
+near_cap_db = inf
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
+[sub_resource type="Resource" id="Resource_ui_level_up"]
+resource_name = "ui_level_up"
+script = ExtResource("2_def")
+id = &"ui_level_up"
+path_format = "res://assets/audio/progress/level_up_%d.ogg"
+variants = 2
+bus = &"UI"
+loop = false
+volume_db = -3.0
+pitch_semitones = 0.0
+group = &"ui_fanfare"
+priority = 95
+cooldown = 0.0
+max_distance = 50.0
+unit_size = 8.0
+near_cap_db = inf
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
+[sub_resource type="Resource" id="Resource_ui_tier_up"]
+resource_name = "ui_tier_up"
+script = ExtResource("2_def")
+id = &"ui_tier_up"
+path_format = "res://assets/audio/progress/tier_up_%d.ogg"
+variants = 1
+bus = &"UI"
+loop = false
+volume_db = -2.5
+pitch_semitones = 0.0
+group = &"ui_fanfare"
+priority = 96
+cooldown = 0.0
+max_distance = 50.0
+unit_size = 8.0
+near_cap_db = inf
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
+[sub_resource type="Resource" id="Resource_ui_unlock"]
+resource_name = "ui_unlock"
+script = ExtResource("2_def")
+id = &"ui_unlock"
+path_format = "res://assets/audio/progress/unlock_%d.ogg"
+variants = 3
+bus = &"UI"
+loop = false
+volume_db = -5.0
+pitch_semitones = 0.0
+group = &"ui_unlock"
+priority = 80
+cooldown = 0.0
+max_distance = 50.0
+unit_size = 8.0
+near_cap_db = inf
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
+[sub_resource type="Resource" id="Resource_ui_card_earned"]
+resource_name = "ui_card_earned"
+script = ExtResource("2_def")
+id = &"ui_card_earned"
+path_format = "res://assets/audio/progress/card_earned_%d.ogg"
+variants = 2
+bus = &"UI"
+loop = false
+volume_db = -5.0
+pitch_semitones = 0.0
+group = &"ui_unlock"
+priority = 80
+cooldown = 0.0
+max_distance = 50.0
+unit_size = 8.0
+near_cap_db = inf
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
+[resource]
+script = ExtResource("1_bank")
+label = "The progression sounds: a record scratch, a snare roll and brass, an unlock and a card (#1062)"
+deferred = true
+sounds = Array[ExtResource("2_def")]([SubResource("Resource_ui_challenge_done"), SubResource("Resource_ui_level_up"), SubResource("Resource_ui_tier_up"), SubResource("Resource_ui_unlock"), SubResource("Resource_ui_card_earned")])

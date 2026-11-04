@@ -33,6 +33,7 @@ func _ready() -> void:
 	NightScreen.challenge_path = ChallengeSave.DEFAULT_PATH
 	if args.has("arrival") or args.has("noarrival"):
 		NightScreen.arrival_enabled = args.has("arrival") and not args.has("noarrival")
+	NightScreen.profile_path = ProfileSave.DEFAULT_PATH
 	if args.has("look"):
 		NightScreen.own_look = NightScreen.look_from_flag(args.get_string("look"))
 	PhoneRender.apply(get_viewport())
@@ -81,6 +82,7 @@ func _ready() -> void:
 ## overlays it put in the router's layer go.
 func _exit_tree() -> void:
 	NightScreen.challenge_path = ""
+	NightScreen.profile_path = ""
 	for overlay in _overlays:
 		if is_instance_valid(overlay):
 			overlay.queue_free()

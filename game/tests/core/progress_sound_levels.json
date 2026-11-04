@@ -1,0 +1,84 @@
+{
+ "_what": "written by tools/audio/progress_levels.py --pin; see docs/research/menu-sfx.md, 'The progression sounds'",
+ "cues": {
+  "card_earned": {
+   "centroid_hz": 1986,
+   "fight_lufs_m": -36.2,
+   "fight_under_pistol_lu": 11.7,
+   "first50_percent": 0.4,
+   "lufs_m": -26.2,
+   "peak": -12.8,
+   "seconds": 0.5
+  },
+  "challenge_done": {
+   "centroid_hz": 2740,
+   "fight_lufs_m": -30.4,
+   "fight_under_pistol_lu": 5.9,
+   "first50_percent": 3.2,
+   "lufs_m": -20.4,
+   "peak": -12.6,
+   "seconds": 0.58
+  },
+  "level_up": {
+   "centroid_hz": 3291,
+   "fight_lufs_m": -28.5,
+   "fight_under_pistol_lu": 4.0,
+   "first50_percent": 0.1,
+   "lufs_m": -18.5,
+   "peak": -10.3,
+   "seconds": 1.09
+  },
+  "tier_up": {
+   "centroid_hz": 2400,
+   "fight_lufs_m": -28.4,
+   "fight_under_pistol_lu": 3.9,
+   "first50_percent": 0.3,
+   "lufs_m": -18.4,
+   "peak": -10.0,
+   "seconds": 1.9
+  },
+  "unlock": {
+   "centroid_hz": 1672,
+   "fight_lufs_m": -36.7,
+   "fight_under_pistol_lu": 12.2,
+   "first50_percent": 27.5,
+   "lufs_m": -26.7,
+   "peak": -13.2,
+   "seconds": 0.35
+  }
+ },
+ "fight_db": -10.0,
+ "gates": {
+  "audible_bands": 2,
+  "audible_over_db": 0.0,
+  "clip_db": -1.0,
+  "mask_gate_db": 6.0,
+  "moments_ceiling_db": -9.0
+ },
+ "moments": {
+  "level_tier": {
+   "peak": -10.0
+  },
+  "scratch_level": {
+   "peak": -12.6
+  },
+  "tier_level": {
+   "peak": -9.7
+  },
+  "tier_scratch": {
+   "peak": -10.0
+  }
+ },
+ "stacks": {
+  "stack_0.15": {
+   "count": 8,
+   "peak": -11.8
+  },
+  "stack_0.25": {
+   "count": 8,
+   "peak": -13.6
+  }
+ },
+ "worst_burst_peak_db": -7.4,
+ "worst_mask_margin_db": 6.0
+}

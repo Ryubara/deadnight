@@ -2214,3 +2214,8 @@ a cut). The seed 8 night, six runs on #1040's branch with the fix: no gate broke
 **Not changed, and seen:** a Follow or Hold bot set down on the same piece has the same trouble (their goals fail the
 same way and nothing walks them off); the fix is Roam's. The piece itself is in the mesh the map bakes: changing `mid_w`
 or its stand would remove this one, not the other ways a bot gets onto a piece.
+
+**Since then (#1051):** the piece and the 130 others a body could stand on are off the walking mesh
+(`docs/research/map-review.md`), so a bot under any order walks off them (`test_bot_off_the_walking_mesh.gd`), and
+`test_bot_cut_off.gd` now reads that the spot is no longer cut off. `BotRoam`'s walk back stays as the guard for a piece
+a later map or bake leaves, and no check on the two maps finds one: it is tested in `test_bot_roam.gd` alone.
