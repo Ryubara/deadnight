@@ -1,4 +1,4 @@
-# A one-off measurement for #989, not kept: the idle main menu of three CI-built web exports, in turns, on the same
+# A one-off measurement for #989 (the smoke's own steps before its idle window: v4), not kept: the idle main menu of three CI-built web exports, in turns, on the same
 # runner (the builds are the `web-build` artifacts of earlier runs: #920's parent, #920, and a later main), with the
 # machine's CPU and cores beside the frames. Runs on a push to the issue's branch, only when this file changes.
 name: idle-ab
@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        replica: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
+        replica: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -66,4 +66,6 @@ jobs:
         if: always()
         with:
           name: idle-ab-${{ matrix.replica }}
-          path: out
+          path: |
+            out/*.json
+            out/*.txt

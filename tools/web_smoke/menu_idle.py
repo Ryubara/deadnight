@@ -34,6 +34,7 @@ from smoke import (
     MENU_FRAME_SECONDS,
     SOFTWARE_GL,
     VIEWPORT,
+    probe,
     serve,
     stats,
     trace,
@@ -52,7 +53,7 @@ def process_cpu(cdp) -> dict[str, float]:
 
 
 def run_one(
-    build: Path, seconds: float, shot: Path | None, throttle: float, query: str, screen: str, flags: list[str]
+    build: Path, seconds: float, shot_path: Path, throttle: float, query: str, screen: str, flags: list[str]
 ) -> dict:
     server, port = serve(build)
     try:
@@ -69,13 +70,15 @@ def run_one(
             load_s = round(time.monotonic() - started, 2)
             page.mouse.click(5, 5)
             page.wait_for_timeout(SETTLE_MS)
-            # The smoke's own window first (no wrapped WebGL calls), so its `menu_frames` can be read beside the trace.
+            # What the smoke does before its window (it reads the probe and takes a screenshot), then the window itself
+            # with no wrapped WebGL calls, so its `menu_frames` can be read beside the trace. A build whose menu is
+            # still busy answers differently with and without these two calls (#989).
+            probe(page)
+            page.screenshot(path=shot_path)
             gate = stats(page.evaluate(FRAME_TIMES_JS, MENU_FRAME_SECONDS))
             cpu_before = process_cpu(browser_cdp)
             followed = trace(page, seconds)
             cpu_after = process_cpu(browser_cdp)
-            if shot:
-                page.screenshot(path=shot)
             state = page.evaluate("window.deadnight || {}")
             browser.close()
     finally:
@@ -112,7 +115,7 @@ def main() -> int:
     for n in range(args.pairs):
         order = builds if n % 2 == 0 else list(reversed(builds))
         for label, folder in order:
-            shot = args.out / f"{label}_{n}.png" if n == 0 else None
+            shot = args.out / f"{label}_{n}.png"
             result = run_one(folder, args.seconds, shot, args.throttle, args.query, args.screen, args.flag)
             results[label].append(result)
             print(
