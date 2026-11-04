@@ -10,6 +10,9 @@ const PERIOD := 0.25
 ## arrow, in units.
 const ARROW_INSET := 24.0
 
+## Whether the page asked for the probes (see `asked`): -1 not yet read, 0 no, 1 yes.
+static var _asked := -1
+
 var _object: JavaScriptObject
 var _since := 0.0
 ## The costs of the frames since the last publish, summed (`_add_costs`), averaged over `_frames`.
@@ -18,6 +21,36 @@ var _cost_sums := {}
 ## True when the page asked for a profile (`window.deadnight_bench`, `phone_frames.py`):
 ## only then are the per-frame costs read, so a player's page pays nothing for them.
 var _bench := false
+## What the page last was told, by key: only a value that differs crosses the bridge (a property
+## write is a call into the page, and a string one allocates there), so a page nobody reads gets
+## about no writes.
+var _published := {}
+
+
+## Whether the page asks for the probes that only a browser test reads (the judder, view and pad
+## probes, which cross the JavaScript bridge in every frame): `?probe` in its address
+## (`?probe=flash` too), `window.deadnight_probe` set before the game starts, or a profile run
+## (`window.deadnight_bench`). A player's page asks for none of them and never pays for them (#935).
+## Read once; false off the web.
+static func asked() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	if _asked < 0:
+		var script := (
+			"(new URLSearchParams(location.search).has('probe') || !!window.deadnight_probe"
+			+ " || window.deadnight_bench != null) ? 1 : 0"
+		)
+		_asked = 1 if int(JavaScriptBridge.eval(script, true)) == 1 else 0
+	return _asked == 1
+
+
+## The entries of `data` whose value differs from `last` (or that `last` lacks).
+static func changed(last: Dictionary, data: Dictionary) -> Dictionary:
+	var out := {}
+	for key: String in data:
+		if not last.has(key) or typeof(last[key]) != typeof(data[key]) or last[key] != data[key]:
+			out[key] = data[key]
+	return out
 
 
 ## Writes `label` into `window.deadnight_marks` with the page's clock, so a browser run can line the
@@ -39,6 +72,8 @@ func _ready() -> void:
 	_bench = JavaScriptBridge.get_interface("window").deadnight_bench != null
 	if _bench:
 		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+	if not asked():
+		return
 	add_child(JudderProbe.new())
 	add_child(FlashWebProbe.new())
 	add_child(ViewWebProbe.new())
@@ -53,8 +88,10 @@ func _process(delta: float) -> void:
 		return
 	_since = 0.0
 	var data := snapshot(UIRouter.top())
-	for key in data:
-		_object[key] = data[key]
+	var news := changed(_published, data)
+	for key: String in news:
+		_object[key] = news[key]
+		_published[key] = news[key]
 	if _bench:
 		_publish_render_cost()
 		_follow_bench_switch()

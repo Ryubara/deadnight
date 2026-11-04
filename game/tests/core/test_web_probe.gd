@@ -183,3 +183,29 @@ func test_the_lobby_reports_its_code_its_seats_and_the_buttons_it_shows() -> voi
 	assert_str(data["lobby_buttons"]).is_equal("Start")
 	assert_str(data["room_status"]).contains("2 of 4 here")
 	screen.queue_free()
+
+
+func test_only_what_changed_is_published() -> void:
+	var last := {"screen": "main_menu", "alive": 0, "yaw": 0.0, "note": ""}
+	assert_dict(WebProbe.changed(last, last.duplicate())).is_empty()
+	var now := {"screen": "main_menu", "alive": 3, "yaw": 0.0, "note": "", "new": true}
+	var delta := WebProbe.changed(last, now)
+	assert_array(delta.keys()).contains_exactly_in_any_order(["alive", "new"])
+	# A 0 that becomes 0.0 is another value to the page (an integer, then a number), and is written.
+	assert_dict(WebProbe.changed({"yaw": 0}, {"yaw": 0.0})).contains_keys(["yaw"])
+	# The first publish writes everything.
+	assert_int(WebProbe.changed({}, now).size()).is_equal(now.size())
+
+
+func test_a_page_that_nobody_probes_gets_no_probes() -> void:
+	assert_bool(WebProbe.asked()).is_false()  # off the web: false without reading a page
+	var probe := auto_free(WebProbe.new()) as WebProbe
+	add_child(probe)
+	assert_int(probe.get_child_count()).is_equal(0)
+	# The three that read the page in every frame are added only behind `asked()`, never above it.
+	var source := FileAccess.get_file_as_string("res://core/web_probe.gd")
+	var gate := source.find("if not asked():")
+	assert_int(gate).is_greater(0)
+	for probe_class in ["JudderProbe", "ViewWebProbe", "PadWebProbe", "FlashWebProbe"]:
+		var added := source.find("add_child(%s.new())" % probe_class)
+		assert_int(added).is_greater(gate)
