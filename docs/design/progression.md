@@ -75,6 +75,13 @@ the Marquee) was written before the request for a 55-level ladder. The maintaine
 | Night Report lines *Lamps*, *Holdings*, *Mentor* and *Solo +10%*; the Night Report paying stubs | The simpler [XP lines](#where-xp-comes-from) (Rounds, Points, Upkeep, Headliner, Rescue, the bonuses) | The proposal replaced them and the maintainer approved the proposal's XP table; each line is a stat the night already counts |
 | 22 to 32 hours to level 55 (53,250 XP) | **About 8 hours** (18,010 XP), a rising curve | "Gotta make it short" |
 
+!!! note "Rules 1 and 2 are replaced for combat kit (2026-11-04)"
+    The maintainer approved a slightly better kit for players who have played more: "the higher level player would
+    ideally have a slightly better kit but that's a reward for them playing more". Weapons and tonics stay free for
+    everyone, and the night's economy, rounds and fuel stay the same for all. How slight, what resets on a prestige and
+    what stays: [Attachments, modifiers, skills, skins and prestige](../research/weapon-progression.md). The
+    level-1 and level-50 sentence above and rules 1 and 2 below are read with that page.
+
 ## What the research says
 
 Study was for understanding only; no name, number or presentation below is ours to reuse. Forum threads are named as
