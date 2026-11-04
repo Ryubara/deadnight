@@ -66,6 +66,15 @@ SPRINT_LEAN = {"Body": (6, 0, 0), "Abdomen": (9, 0, 0), "Torso": (7, 0, 0), "Nec
 CRAWL_ATTACK = "Crawl_Attack"
 CLAW = {"Index": (35, 45), "Middle": (35, 45), "Pinky": (30, 40)}  # degrees of curl at each finger bone
 CRAWL_ATTACK_EVENTS = {"gather": 0, "coil": 8, "strike": 13, "grab": 16, "end": 30}
+# Crawl_Stagger and Crawl_Death (Deadnight #1000): a crawler's flinch when a shot hits it and its fall when it dies,
+# from the Crawl's first frame like the attack, so neither stands the body up as the walker's HitReact (1.66 m
+# against the crawl's 0.85) and Death (1.81 m) did. The flinch jerks the body back on its planted hands and snaps
+# the head; it is as long as the type's stagger (the game plays it from the start of each stagger). The fall lets the
+# arms go and drops the chest and head to the floor, and the last frame is held while it lies.
+CRAWL_STAGGER = "Crawl_Stagger"
+CRAWL_STAGGER_EVENTS = {"hit": 0, "recoil": 3, "recover": 7, "end": 10}
+CRAWL_DEATH = "Crawl_Death"
+CRAWL_DEATH_EVENTS = {"buckle": 4, "drop": 9, "settle": 15, "end": 20}
 GAIT_SCALE = 1.3  # the walker's size in the game (ZombieModels): the speeds below are at that size
 REACH_USE = 0.97  # the furthest a foot may be from the hip, of the thigh and shin together (a knee never locks)
 LEGS = (("UpperLeg.L", "LowerLeg.L", "Foot.L"), ("UpperLeg.R", "LowerLeg.R", "Foot.R"))
@@ -335,6 +344,53 @@ def crawl_attack(arm, acts, every):
     sc.write(arm, CRAWL_ATTACK, keys, every, "full", False, events=dict(f))
 
 
+def crawl_stagger(arm, acts, every):
+    """The crawler's flinch (see CRAWL_STAGGER above): the Crawl's first frame, both hands planted; a shot throws the
+    body back along the floor, the chest twists and lifts a little, the head snaps, then it settles on its hands."""
+    base = filled(arm, sc.sample(acts["Crawl"], 0))
+    left, right = hand_at(arm, base, "L"), hand_at(arm, base, "R")
+
+    def moved(pose, forward=0.0, down=0.0, **bones):
+        out = sc.offset(pose, **bones)
+        out["Body"]["loc"] = out["Body"]["loc"] + Vector((0.0, forward, down))
+        return out
+
+    f = CRAWL_STAGGER_EVENTS
+    recoil = moved(base, forward=-0.24, Abdomen=(-12, 16, 0), Torso=(-9, 12, 0), Neck=(-14, -14, 0), Head=(-16, -8, 0))
+    recoil = aim_hand(arm, recoil, "L", left + Vector((0.0, 0.10, 0.02)))
+    recoil = aim_hand(arm, recoil, "R", right + Vector((0.0, 0.10, 0.02)))
+    after = moved(base, forward=-0.08, Abdomen=(-4, 6, 0), Torso=(-3, 4, 0), Neck=(-5, -5, 0), Head=(-6, -3, 0))
+    after = aim_hand(arm, after, "L", left + Vector((0.0, 0.04, 0.0)))
+    after = aim_hand(arm, after, "R", right + Vector((0.0, 0.04, 0.0)))
+    keys = [(0, base), (f["recoil"], recoil), (f["recover"], after), (f["end"], base)]
+    sc.write(arm, CRAWL_STAGGER, keys, every, "full", False, events=dict(f))
+
+
+def crawl_death(arm, acts, every):
+    """The crawler's fall (see CRAWL_DEATH above): the arms buckle, the chest and then the head drop to the floor, the
+    body slides a little forward and lies still."""
+    base = filled(arm, sc.sample(acts["Crawl"], 0))
+    left, right = hand_at(arm, base, "L"), hand_at(arm, base, "R")
+
+    def moved(pose, forward=0.0, down=0.0, **bones):
+        out = sc.offset(pose, **bones)
+        out["Body"]["loc"] = out["Body"]["loc"] + Vector((0.0, forward, down))
+        return out
+
+    f = CRAWL_DEATH_EVENTS
+    buckle = moved(base, forward=-0.04, Abdomen=(-4, 6, 0), Torso=(-3, 5, 0), Neck=(6, -6, 0), Head=(8, -4, 0))
+    buckle = aim_hand(arm, buckle, "L", left + Vector((0.0, 0.02, 0.0)))
+    buckle = aim_hand(arm, buckle, "R", right + Vector((0.0, 0.02, 0.0)))
+    drop = moved(base, forward=0.06, down=-0.0, Abdomen=(10, 8, 0), Torso=(8, 6, 0), Neck=(12, -6, 0), Head=(10, -4, 0))
+    drop = aim_hand(arm, drop, "L", left + Vector((0.12, -0.1, 0.0)))
+    drop = aim_hand(arm, drop, "R", right + Vector((-0.12, -0.2, 0.0)))
+    lie = moved(drop, forward=0.10, Abdomen=(2, 0, 0), Torso=(2, 0, 0), Neck=(2, 2, 0), Head=(2, 2, 0))
+    lie = aim_hand(arm, lie, "L", left + Vector((0.16, -0.16, 0.0)))
+    lie = aim_hand(arm, lie, "R", right + Vector((-0.16, -0.3, 0.0)))
+    keys = [(0, base), (f["buckle"], buckle), (f["drop"], drop), (f["settle"], lie), (f["end"], lie)]
+    sc.write(arm, CRAWL_DEATH, keys, every, "full", False, events=dict(f))
+
+
 def measure_gait(arm, action, scale=GAIT_SCALE, hz=60, planted=0.2, settle=0.5, seconds=5.0):
     """The ground speed (m/s at `scale`) a clip's planted feet cover at its authored rate, as the game's test measures
     it (game/tests/zombies/test_zombie_gait.gd, docs/research/zombie-gait.md): from `settle` seconds in, `seconds`
@@ -397,6 +453,8 @@ def build(arm, probe=False):
     sc.write(arm, TEAR, keys, every, "full", True, events=dict(f))
 
     crawl_attack(arm, acts, every)
+    crawl_stagger(arm, acts, every)
+    crawl_death(arm, acts, every)
     miss, shape = sprint(arm, acts["Run"], every)
     print("SPRINT_LEGS", {k: (round(v["thigh"], 3), round(v["ankle"].length, 3), round(v["ankle_spread"], 4))
                           for k, v in shape.items()}, "reach miss", round(miss, 4))  # fmt: skip
@@ -416,7 +474,7 @@ def build(arm, probe=False):
                 n += 1
         sc.write(arm, "Probe", keys, every, "full", False)
         sc.CLIPS.pop("Probe")
-    return [TEAR, SPRINT, CRAWL_ATTACK, *(["Probe"] if probe else [])]
+    return [TEAR, SPRINT, CRAWL_ATTACK, CRAWL_STAGGER, CRAWL_DEATH, *(["Probe"] if probe else [])]
 
 
 def add_tracks(arm, names):

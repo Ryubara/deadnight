@@ -181,7 +181,8 @@ func nudge(yaw_delta: float, pitch_delta: float) -> void:
 	)
 
 
-## Mouse motion in pixels.
+## Mouse motion in screen pixels (`InputEventMouseMotion.screen_relative`, not the stretched
+## `relative`): the same hand turns the view the same at every window size.
 func look_mouse(relative: Vector2) -> void:
 	var scale_factor := _tuning.mouse_radians_per_pixel * sensitivity * _look_scale()
 	apply_look(relative.x * scale_factor, relative.y * scale_factor)

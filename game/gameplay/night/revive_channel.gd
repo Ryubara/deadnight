@@ -118,6 +118,15 @@ func stop(player_id: int, reason: StringName) -> void:
 	)
 
 
+## The night is over: every hold ends with `reason` and no time is kept, so the frozen frame shows
+## nobody raising anybody.
+func end_all(reason: StringName) -> void:
+	for holder: int in _holding.keys():
+		stop(holder, reason)
+	_time.clear()
+	_seen.clear()
+
+
 ## A player left: nothing of theirs is held or waited on any more.
 func forget(player_id: int) -> void:
 	_holding.erase(player_id)

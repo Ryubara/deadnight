@@ -31,6 +31,9 @@ uniform vec4 mask_rect = vec4(0.0, 0.0, 1.0, 1.0);
 // Two world-space clip planes (`GlowClip`): a point is not drawn where dot(point, xyz) > w, so a glow
 // stops at the wall it hangs on or stands near instead of showing in the room behind it. A plane with a
 // zero normal is off (the defaults draw the picture the lot always had).
+// `front_only` draws the card from its front (+Z) side only, for a glow that belongs to a face (a sign's halo): from
+// behind the thing it hangs on there is no glow to see.
+uniform bool front_only = false;
 uniform vec4 clip_a = vec4(0.0);
 uniform vec4 clip_b = vec4(0.0);
 
@@ -53,6 +56,9 @@ float bar_light(float at, float count) {
 }
 
 void fragment() {
+	if (front_only && !FRONT_FACING) {
+		discard;
+	}
 	if (dot(world_at, clip_a.xyz) > clip_a.w && dot(clip_a.xyz, clip_a.xyz) > 0.0) {
 		discard;
 	}

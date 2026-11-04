@@ -351,10 +351,13 @@ func _end_room(match_id: String) -> void:
 	for transport_id: int in _room_of.keys():
 		if _room_of[transport_id] == room:
 			_room_of.erase(transport_id)
+	# What the backend is told: a night that ran its intermission out has finished, and its lobby
+	# reopens for the people who were here; any other end (everyone left, a crash) drops the lobby.
+	var told: Variant = {"finished": true, "present": room.returning} if room.finished else null
 	room.get_parent().queue_free()
-	_log("room_closed", {"match": match_id, "rooms": _rooms.size()})
+	_log("room_closed", {"match": match_id, "rooms": _rooms.size(), "finished": room.finished})
 	room_closed.emit(match_id)
-	_tell_backend("POST", "/internal/matches/%s/end" % match_id.uri_encode(), null)
+	_tell_backend("POST", "/internal/matches/%s/end" % match_id.uri_encode(), told)
 
 
 # --- The backend ---

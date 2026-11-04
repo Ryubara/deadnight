@@ -71,7 +71,7 @@ func tick() -> void:
 
 func _toward(here: Vector3) -> Vector3:
 	var next := goal
-	for point in NavigationServer3D.map_get_path(map, here, goal, true):
+	for point in NavigationServer3D.map_get_path(map, here, goal, true, NavLayers.WALK):
 		if _flat(here, point) > LOOK_AHEAD:
 			next = point
 			break
