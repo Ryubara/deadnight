@@ -68,3 +68,5 @@ numbers, not by ear: the sound is for the maintainer's ears.
 - The first camera sat behind the drive-in's screen (the spot is by it), and the helicopter was cropped by the top edge
   ([lesson in the kit](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-04-a-cutscene-camera-at-a-fixed-offset-stood-behind-the-lots-screen.md)).
 - A new rules action needs a sample in `test_validation.gd` ([lesson](../lessons/2026-11-04-a-new-rules-action-had-no-sample-in-the-validation-suite.md)).
+- A new run-time light, sound export and sound group each failed a suite that pins the lights and sound tables
+  ([lesson](../lessons/2026-11-04-pinning-tests-in-other-folders-failed-for-a-new-light-and-a-new-sound-field.md)).

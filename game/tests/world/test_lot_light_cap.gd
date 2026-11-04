@@ -21,6 +21,8 @@ const LIGHT_SCRIPTS := {
 	"res://world/machines/recut_machine.gd": "the re-cut bench's lamp: in the booth, counted there",
 	"res://world/machines/soda_fountain.gd":
 	"the soda fountain's lamp: in the stand, counted there",
+	"res://gameplay/arrival/arrival_cutscene.gd":
+	"the helicopter's lamp: one spot for the few seconds of the drop, before the fight it opens",
 	"res://gameplay/night/warmup/night_warmup.gd":
 	"the warm-up's stage, 150 m above the lot, out of reach",
 	"res://ui/components/look_preview.gd": "own world: a viewport of its own",

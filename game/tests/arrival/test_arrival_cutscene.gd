@@ -103,7 +103,7 @@ func test_a_key_a_click_a_pad_button_and_a_tap_skip_and_a_look_does_not() -> voi
 		_show._input(event)
 		_run(_tuning.fade_out_seconds)
 		assert_array(_finished).is_equal([true])
-		_show.queue_free()
+		_show.free()
 		_finished = []
 	_begin()
 	_run(_tuning.skip_after + 0.1)
