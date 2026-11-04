@@ -124,6 +124,9 @@ var challenges: ChallengeSession
 ## online the server awards.
 var profile_store: ProfileStore
 var progress: ProgressSession
+## Sends the profile's queued writes to the account; null keeps them on this machine until a night
+## has one. (A Callable does not keep its object alive: the night holds the uplink.)
+var profile_uplink: ProfileUplink
 ## Puts the names and the next door on the HUD from the player's camera (made with the view, when
 ## there is a HUD).
 var markers: NightMarkers
@@ -392,6 +395,8 @@ func _track_progress() -> void:
 		return
 	var clock := challenge_board.clock if challenge_board != null else ChallengeClock.system()
 	progress = ProgressSession.new(profile_store, clock, NightTally.fuel_items_of(rules_tuning))
+	if profile_uplink != null:
+		progress.uploader = profile_uplink.send
 	progress.attach(state, challenges)
 	# The rules tell the player the same `xp_gained` and `level_up` events a game server would; the
 	# profile is written here (`ProgressSession`).

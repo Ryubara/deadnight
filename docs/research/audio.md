@@ -556,3 +556,40 @@ table and the one mix (male `vox_<event>_<n>` from `voice/soldier/`, female `vox
   character choice (#678), which knows who speaks.
 - **Not heard.** No agent listens; the numbers above are the proof, and the maintainer's ears decide whether Sarah
   wants another dB or another voice.
+
+## The progression voice lines (#1063)
+
+Eight moments of three takes each in both voices, for the progression events of
+[the design](../design/progression.md#voice-lines): `level_up`, `tier_up`, `unlock`, `challenge_done`, `poster_set`,
+`card`, `emblem` (an emblem or a frame) and `first_game`. 48 files (24 a voice), the male takes of `voice/soldier/` and
+the female takes of `voice/soldier_female/` (139 files each now), the same recipe, voice, model and settings as the two
+soldiers above; the lines are in `tools/audio/soldier_voice.json` and `soldier_voice_female.json`, appended after
+`idle` so that every earlier take keeps its file name and its seed.
+
+- **Made on the free tier.** The maintainer, 2026-11-04: "Even with no commercial rights go ahead and get them going
+  I'll get the package with commercial rights in a moment." The subscription endpoint read `tier: free` before and
+  after; every new manifest entry carries `"plan": "free"` and `"generated": "2026-11-04"`
+  (`elevenlabs_voice.py encode --plan free --generated 2026-11-04`), and both `LICENSE.md` files list the 24 prompts.
+  **They are not licensed for commercial use: regenerate them under the commercial plan before any release (#252).**
+- **Lines.** Short in-world cheers of 32 to 52 characters (1,018 a voice, 42 on average; the older lines average 50),
+  checked by reading aloud: "[excited] Level up! Now we're cooking!", "[shouting, triumphant] New rank! Hear that
+  brass?!", "[smug] Challenge done. Easy as pie.", "[delighted] The whole set! Every poster on the wall!", "[laughs]
+  Day's first game. Bonus time!". The same words in both voices (no line names a sex); the delivery differs.
+- **Check.** Scribe on all 48: 0 flagged, no tag spoken, no word missing.
+- **Characters.** 6,457 used before, 8,661 after (read once after a pause) for 48 requests, their check and nothing
+  else: 2,204 of the 3,000 the maintainer allowed for this work, 1,339 left in the month (resets 2026-12-03). The lines
+  are 2,036 characters written (1,018 a voice); audio tags are not billed. A budget test holds the new events to
+  1,300 a voice.
+- **Rank.** 61 to 64, in the band between the chatter and the urgent lines: [design](../design/audio.md#the-soldiers-voices).
+  One new tuning value, `urgent_priority` 65 in `NightSoundTuning`: a line of that rank or more cuts a cheer that is
+  speaking (the director's 25-rank margin alone would have left a boss waiting for a celebration).
+- **In a fight.** `game/tests/captures/audio_progression_voice.tscn` (modes `listen`, `beside`, `fight`) plays the cheers
+  through the real service; `tools/audio/voice_clip.py` makes the `.mp4`s with the sound in them. In a 60 s autopilot
+  night with all eight told to the soldier (5 s apart, 12 shots): a cheer measures -20.7 to -25.1 LUFS in its first
+  1.2 s (mean -23.7 in both voices; the other lines of that night -23.1 to -24.0, a round start -27.8 and -31.9), the
+  shots -17.8 (male run) and -17.7 (female run), the beds -36.2: a cheer sits 5.9 to 6.0 LU under the gunfire and 12.5 LU
+  over the beds, the soldier's usual place (5 and 10.6 LU for the first capture). The female run plays the night's lines
+  with her take set through a wrapper on `SoldierVoice.play` (the night's player is the male character).
+- **Still to do.** The wiring of the server's events (`level_up`, `tier_up`, `unlock_earned`, `challenge_done` of
+  #1059) to
+  `celebrate`, and the four-client test, wait for #1059. No agent listens; the maintainer's ear decides the takes.

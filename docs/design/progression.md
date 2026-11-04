@@ -34,7 +34,7 @@ they matter, and where each lands. Where this table differs from the earlier pla
 | 8 | **All weapons and tonics free** from the first night. **A higher level has a slightly better kit**: "yeah the higher level player would ideally have a slightly better kit but that's a reward for them playing more." | [Rules](#rules-we-hold-ourselves-to), [Combat bonuses](#combat-bonuses), #1055 |
 | 9 | **Popups in real time**, as soon as they trigger, during play; XP and milestones credit live, not at a round's end. "Animations for this stuff need to be good" | [Popups, motion and sound](#popups-motion-and-sound), #1064 |
 | 10 | **Sounds**: a record scratch of our own making when a challenge is done; an honourable, battlefield-like sound for a level up (snare and brass; bigger on a tier) | [Popups, motion and sound](#popups-motion-and-sound), #1062 |
-| 11 | **Progression voice lines**: several celebration lines for every progression event, male and female, ElevenLabs, heard by every client; they wait on the maintainer's credits and commercial licence | [Voice lines](#voice-lines), #1063 (blocked), #252 |
+| 11 | **Progression voice lines**: several celebration lines for every progression event, male and female, ElevenLabs, heard by every client; made on the free tier, regenerated under the commercial plan before release | [Voice lines](#voice-lines), #1063, #252 |
 | 12 | **Wardrobe**: a grid; locked names are `???` with a silhouette of the base icon and the unlock instructions on hover; **no fitting room**; mouths are free | [Wardrobe](#wardrobe-costumes-and-the-locks), #1065, #1061 |
 | 13 | **Costumes** in their own tab, each with a **"Default"** colour option, and the player's own colours from the palette they have unlocked ("costumes in their default colors will have a Default option, and the users will have the ability to choose their own colors") | [Wardrobe](#wardrobe-costumes-and-the-locks), #1066 |
 | 14 | **Plate frames**: part of levels 1 to 55, plus exclusive ones from challenges ("beat this map"); calling cards and emblems yes; **no title phrases, no ticket book, no applause** | [The plate](#plate-calling-cards-emblems-and-frames), #1070, #1071, #1072 |
@@ -48,9 +48,9 @@ they matter, and where each lands. Where this table differs from the earlier pla
 | 22 | **Left out**: Bad Weather nights, the fitting room, rested XP, the ticket book, applause, title phrases | [What changed](#what-changed-from-the-earlier-plan) |
 
 **Open:** what prestige resets and which rewards are exclusive (after #1055); how slight the combat edge is (#1055);
-the extraction details (#1056, each point a choice); rarity (#1053); the voice lines wait on the credits and licence
-(#252); the sizes of the first-game bonus and the opening night (first guesses; what they are is still with the
-maintainer).
+the extraction details (#1056, each point a choice); rarity (#1053); the voice lines are free-tier takes to regenerate
+under the commercial plan (#252); the sizes of the first-game bonus and the opening night (first guesses; what they
+are is still with the maintainer).
 
 ## What changed from the earlier plan
 
@@ -674,9 +674,11 @@ commercial license." So (#1063): several celebration takes each for a level up, 
 (the line after the record scratch), a poster set, a card, emblem or frame, and the first game of the day, male and
 female, made with ElevenLabs. Every client hears them through the server events the XP issues emit: `SoldierVoice`
 already makes a voice from a server event, and a teammate's level up is heard by everyone. **Priority:** they outrank
-combat chatter but not urgent lines (hurt, downed, a boss, a warning). **Blocked on the maintainer**: the lines need
-the new credits and the commercial licence ([#252](https://github.com/Ryubara/deadnight/issues/252)); free-tier sounds
-are not licensed for commercial use.
+combat chatter but not urgent lines (hurt, downed, a boss, a warning). **Made (#1063, 2026-11-04)**: 24 takes in each
+voice on the free tier, at the maintainer's word ("go ahead and get them going, I'll get the package with commercial
+rights in a moment"); they are **not licensed for commercial use** and are regenerated under the commercial plan before
+release ([#252](https://github.com/Ryubara/deadnight/issues/252)). The server events are wired to them when #1059 lands
+([research](../research/audio.md#the-progression-voice-lines-1063)).
 
 ## Level icons
 
@@ -790,6 +792,10 @@ base on rounds reached and points per round.
   game server must send are in [Progression on the backend](../research/platform-backend.md#progression-the-profile-slot-round-reports-and-the-xp-clamp).
   One decision there: the server posts XP **without** the two one-offs and claims them (`openingNight`, `bonusDay`); the
   backend knows the profile and pays each once.
+- **Built (#1106): a signed-in solo night sends its XP.** The queue holds **changes** (`{id, xp, opening_night,
+  bonus_day, done}`), not profiles: the backend takes the whole profile on a revision, so each send reads the account's
+  own latest, puts the change on it and writes that. The account's profile is read at sign-in and replaces the file's
+  (no merge of an offline file). How: [the solo night's write](../research/progression.md#a-signed-in-solo-nights-write-1106).
 - **What a level is seen by:** the ticket the backend mints carries `level`, `icon` and `xp`; never the client's word
   in the night.
 - **What would force more:** a leaderboard, any ranking, anything paid, or a reward a cheater would gain from (none
@@ -873,7 +879,7 @@ files):
 | 4 | #1060 The 55 level icons and the atlas (art; parallel) | - |
 | 5 | #1061 More mouths, free (art; parallel) | - |
 | 6 | #1062 The record scratch, level-up fanfare and unlock sounds (audio; parallel) | - |
-| 7 | #1063 Progression voice lines (**blocked on the maintainer**: credits and licence, #252) | 3, 6 |
+| 7 | #1063 Progression voice lines (made on the free tier; regenerate under the commercial plan, #252) | 3, 6 |
 | 8 | #1064 The popup lane, live, with motion proved by clips | 3, 4, 6 |
 | 9 | #1065 The wardrobe grid, `???`, locks | 1, 4 |
 | 10 | #1066 The Costumes tab | 9 |
@@ -901,7 +907,7 @@ curve).
 | 1 | What does prestige reset, and which rewards are exclusive? | After #1055 |
 | 2 | How slight is the combat edge, and what is it (ammunition, reload, an attachment, a skill)? | After #1055 |
 | 3 | Are 50 XP for the opening night and 100 for the first game of the day the right size? | First guesses; tune from telemetry |
-| 4 | Do the voice lines wait for the new credits and the commercial licence? | Yes (#252, #1063 is blocked) |
+| 4 | Do the voice lines wait for the new credits and the commercial licence? | Made now on the free tier (maintainer, 2026-11-04); regenerated under the commercial plan before release (#252) |
 | 5 | Which rarity tiers, if any, and what do the top ones cost? | #1053 |
 | 6 | Extraction's quota, steps, last stand and what a win pays | #1056 |
 | 7 | Is a weekly bill (live operations) in scope, and who runs it? | Defer |

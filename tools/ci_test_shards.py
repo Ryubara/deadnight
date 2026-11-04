@@ -24,7 +24,7 @@ import re
 import sys
 from pathlib import Path
 
-from ci_shard_time import JOB_LIMIT_SECONDS
+from ci_shard_time import JOB_LIMIT_SECONDS, WEB_JOB_LIMIT_SECONDS
 
 # Eight shards: 3,000 s of suites on the runner (3,350 s on a slow one) is 380 to 420 s each, about 8 to 9 minutes in all
 # on the slowest runner seen with the setup, against a limit of 15; the rule of thumb is total / 480 s, rounded up, with
@@ -115,6 +115,11 @@ def self_test(root: Path) -> None:
         limit = re.search(r"timeout-minutes: (\d+)", job)
         assert limit and int(limit.group(1)) * 60 == JOB_LIMIT_SECONDS, (
             "ci_shard_time.JOB_LIMIT_SECONDS is not the job's"
+        )
+        web = text.split("\n  web:\n", 1)[1].split("\n  deploy:\n", 1)[0]
+        web_limit = re.search(r"\n    timeout-minutes: (\d+)", web)
+        assert web_limit and int(web_limit.group(1)) * 60 == WEB_JOB_LIMIT_SECONDS, (
+            "ci_shard_time.WEB_JOB_LIMIT_SECONDS is not the web job's"
         )
     print(f"ok: {len(every)} scripts in {SHARDS} shards")
 

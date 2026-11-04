@@ -31,6 +31,8 @@ extends Node
 ##   `challenges=0`  with `xp=1`, the accounts' challenge boards are not followed (the arm without
 ##                the tracker; on by default: `challenge.advance`, `challenge.told`,
 ##                `server.challenges`)
+##   `signin=1`   sign in as a guest first (`?backend=` names the backend), so the night is a
+##                signed-in solo night: its XP is kept in the profile and sent to the account
 ##   `map=ID`     the map of the night (`MapRegistry`: `drive_in`, `small_indoor`; default the lot)
 ##   `seconds=S`  stop after S seconds of night whatever round it is (default 600)
 ##   `out=PATH`   on a desktop: write the report there and quit
@@ -95,6 +97,9 @@ func _ready() -> void:
 	NightScreen.start_seed = Night.SEED
 	NightScreen.start_tuning = tuning(_args)
 	NightScreen.shoulder_camera = true
+	if _args.get_int("signin") == 1:
+		# A guest account first, so the night keeps its XP in the profile and sends it to the backend.
+		await TogetherApi.new(self, TogetherScreen.backend_url()).sign_in("Autopilot")
 	UIRouter.reset(NIGHT, UITransition.Kind.CUT)
 
 

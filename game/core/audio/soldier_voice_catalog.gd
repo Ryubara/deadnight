@@ -20,6 +20,20 @@ const VOICES := {
 	MALE: {"folder": "voice/soldier/", "prefix": "vox_"},
 	FEMALE: {"folder": "voice/soldier_female/", "prefix": "voxf_"},
 }
+## The progression moments (#1063): the cheers for a level, a tier, an unlock, a challenge done, a
+## poster set, a card, an emblem or frame and the first game of the day. Each ranks above the
+## chatter (kills, reloads, idle) and below the urgent lines (hurt, downed, a boss, a teammate
+## down), so an urgent line cuts one and one never cuts an urgent line.
+const PROGRESS: Array[StringName] = [
+	&"level_up",
+	&"tier_up",
+	&"unlock",
+	&"challenge_done",
+	&"poster_set",
+	&"card",
+	&"emblem",
+	&"first_game",
+]
 const FOLDER := "voice/soldier/"
 const PREFIX := "vox_"
 ## The level of every take, how far a teammate's voice carries and what the local player's own is
@@ -90,6 +104,11 @@ static func is_take(id: StringName) -> bool:
 		if text.begins_with(VOICES[voice]["prefix"]):
 			return true
 	return false
+
+
+## Whether `event` is one of the progression moments.
+static func is_progress(event: StringName) -> bool:
+	return PROGRESS.has(event)
 
 
 static func events() -> Array:

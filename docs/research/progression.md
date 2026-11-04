@@ -331,8 +331,38 @@ the game server follows it. Nothing is written per kill.
 - **Answers**: 200, 201 and 204 take a report; any other 4xx but 408 and 429 refuses it for good (dropped, logged); the
   rest and no answer are retried in order after 2, 5, 15, 30 and 60 s (200 reports kept at most), so the backend being
   down never stops a night. The backend holds one account to 1,500 XP a match, the same as `XpRules.NIGHT_CAP`.
-- **A signed-in solo night** is capped by the backend at 120 XP a minute of wall clock (`PUT /saves/profile`). Sending
-  `ProfileStore`'s queue to that slot (`ProgressSession.uploader`) is not part of this issue; it is filed on its own.
+- **A signed-in solo night** is capped by the backend at 120 XP a minute of wall clock (`PUT /saves/profile`); how the
+  game sends it is [below](#a-signed-in-solo-nights-write-1106).
+
+### A signed-in solo night's write (#1106)
+
+`ProfileUplink` (`game/net/profile_uplink.gd`) is the `ProgressSession.uploader` and the sign-in read.
+
+- **The queue holds changes.** The backend takes the whole profile on its revision and refuses one that takes anything
+  away, so a file's profile is never sent. A queued write is what the night added: `{id, xp, opening_night, bonus_day,
+  done}`. `send` reads the account's latest (`GET /saves/profile`; a 404 is a fresh profile on revision 0), puts the
+  write on it (`Profile.apply_write`) and writes on that revision. A profile in a newer schema than the game reads is
+  never written over.
+- **What the answers do.** 409 `revision_conflict`: read again and put the same change on the new latest (four
+  tries). 422 `implausible_progress`: the write stays queued and goes again at the next round's end (the allowance
+  grows with the clock, up to an hour of it). 422 `implausible_day` (a clock a day off): sent without the first-game day
+  and its 100 XP. A network failure or any other refusal: stays queued.
+- **One write for what waits.** The clamp counts the minutes since the account's last XP write, so a queue of three
+  rounds sent one after the other would be refused after the first. `ProfileStore.flush(send, true)` joins the queue into
+  one write first (`coalesce`: XP added, the one-offs and finished challenges kept). A second `flush` while one is out
+  does nothing; the running one takes what was queued meanwhile.
+- **Read at sign-in.** `TogetherApi.sign_in` starts `ProfileUplink.sync_after_sign_in` (under the root, not awaited: a
+  night never waits on the backend). It reads the account's profile into the file (`ProfileStore.adopt`): the XP is the
+  account's, with the changes still queued on top. A queue that belongs to another account (the file names the account
+  it was made for; a Guest account that ran out is a new one) is dropped. `ProfileUplink.sync_path` is empty in tests
+  and captures, as `NightScreen.profile_path` is; `Main` sets it.
+- **A Callable does not keep its RefCounted object alive.** `Night` holds the uplink (its `send` was freed once, with
+  the local that made it); `send` and `flush` hold themselves while a request is out, so a night that ends mid-request
+  still saves.
+- **A night with no sign-in earns nothing**, as the decision says. A player who presses Solo before ever opening Play
+  together is not signed in. Signing in at start-up is a separate issue.
+- **Tests:** `game/tests/net/test_profile_uplink.gd` runs the real backend (`BackendFixture`, `npm ci` in
+  `spikes/backend`); the browser run is `tools/web_smoke/solo_profile.py` (the autopilot with `signin=1`).
 
 ### The horde, measured
 

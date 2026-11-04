@@ -19,7 +19,8 @@ var store: ProfileStore
 ## What the night has counted (read it, do not feed it).
 var tally: NightTally
 ## Sends a queued write to the backend (a Callable taking the write, answering whether it was
-## taken); empty until the backend takes writes (#1075). A refused write stays queued.
+## taken: `ProfileUplink.send`; it may await). A refused write stays queued, and goes again at the
+## next round's end; what is queued is sent as one write.
 var uploader := Callable()
 ## The night's `XpAward`, when the local rules tell the player their XP as events (a signed-in solo
 ## night): the one-off awards and challenge rewards, which no stat shows, are told to it so its
@@ -142,11 +143,10 @@ func _persist() -> void:
 	if _meter == null:
 		return
 	var gained_xp := _meter.xp() - _credited
-	if gained_xp <= 0 and not _pending_opening and _pending_day == Profile.NO_DAY:
-		return
-	if store.credit(maxi(gained_xp, 0), _pending_opening, _pending_day):
-		_credited += maxi(gained_xp, 0)
-		_pending_opening = false
-		_pending_day = Profile.NO_DAY
-		if uploader.is_valid():
-			store.flush(uploader)
+	if gained_xp > 0 or _pending_opening or _pending_day != Profile.NO_DAY:
+		if store.credit(maxi(gained_xp, 0), _pending_opening, _pending_day):
+			_credited += maxi(gained_xp, 0)
+			_pending_opening = false
+			_pending_day = Profile.NO_DAY
+	if uploader.is_valid() and store.has_account():
+		store.flush(uploader, true)
