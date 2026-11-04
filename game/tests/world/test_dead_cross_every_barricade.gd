@@ -17,6 +17,11 @@ const BODY_TO := 1.55
 const BODY_TO_CLIMBING := 1.1
 ## Metres outside the barricade the dead start, and inside which the player stands.
 const START_OUT := 5.0
+## An upstairs window opens onto a gallery or a terrace 2.5 m deep and no more: a dead put 5 m out
+## stands in the air over the alley, and its walk starts from wherever the mesh is nearest it.
+const START_OUT_UPSTAIRS := 1.2
+## A window whose sill foot is higher than this is upstairs (m).
+const UPSTAIRS_FROM := 1.0
 const STAND_IN := 3.6
 ## It is across when it is this far inside.
 const ACROSS := 1.6
@@ -72,7 +77,8 @@ func _cross(id: StringName, side: float, speed: float) -> String:
 	var floor_y := barricade.global_position.y
 	var stand := barricade.centre() + barricade.inward() * STAND_IN
 	_seated.server.body_of(1).teleport(Vector3(stand.x, floor_y + 0.1, stand.z))
-	var start := barricade.centre() - barricade.inward() * START_OUT + across * side
+	var out := START_OUT_UPSTAIRS if floor_y > UPSTAIRS_FROM else START_OUT
+	var start := barricade.centre() - barricade.inward() * out + across * side
 	start.y = floor_y
 	var zombie := sim.spawn(900, speed, start, 0.0, null, id)
 	zombie.enter(ZombieBody.Mode.CHASE)
