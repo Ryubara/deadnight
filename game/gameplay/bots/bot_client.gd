@@ -321,6 +321,20 @@ func _track_crew(delta: float) -> void:
 			beliefs.teammates.erase(id)
 
 
+## Where the zombies the bot believes in stand, within a few metres: the ones its legs walk round.
+func _dead_near(here: Vector3) -> Array[Vector3]:
+	var near: Array[Vector3] = []
+	var beliefs := perception.beliefs
+	for id in beliefs.contacts:
+		var contact := beliefs.contacts[id]
+		if not beliefs.is_believed(contact) or contact["mode"] == ZombieBody.Mode.DYING:
+			continue
+		var at := beliefs.guess(contact, profile.memory_seconds)
+		if Vector2(at.x - here.x, at.z - here.z).length() <= BotLegs.DEAD_LOOK:
+			near.append(at)
+	return near
+
+
 ## The legs turn the intent into a way to walk; the motor sends it.
 func _walk(delta: float, me: Dictionary, may_query: bool) -> void:
 	var beliefs := perception.beliefs
@@ -332,7 +346,7 @@ func _walk(delta: float, me: Dictionary, may_query: bool) -> void:
 	var here: Vector3 = me.get("pos", Vector3.ZERO)
 	var threat := beliefs.nearest_threat(here, profile.memory_seconds)
 	var asked := legs.path.queries
-	legs.step(delta, now, me, intent, crew, threat, may_query)
+	legs.step(delta, now, me, intent, crew, threat, may_query, _dead_near(here))
 	intent.wish = legs.wish
 	intent.sprint = legs.sprint
 	intent.jump = legs.jump
