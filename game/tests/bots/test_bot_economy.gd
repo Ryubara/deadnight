@@ -179,13 +179,14 @@ func test_on_a_team_links_map_a_gun_in_reach_comes_before_the_links_after_it() -
 	# A bot with only its start gun that can pay for the shotgun is offered nothing after it (the
 	# team link rule would buy the next door first, #910); a bot with a second gun still is.
 	var profile := _profile([&"weapon_shotgun", &"door_booth"])
-	var view := _view(1300, {"doors_open": [&"door_concession"]})
+	var start_only := {WeaponCatalog.START_WEAPON: [10, 80, 0], CROWBAR: [0, 0, 0]}
+	var view := _view(1300, {"doors_open": [&"door_concession"], "arms": start_only})
 	assert_array(_items(BotEconomy.new(_shop, profile).candidates(view))).contains([&"door_booth"])
 	_shop.team_links = true
 	assert_array(_items(BotEconomy.new(_shop, profile).candidates(view))).is_equal(
 		[&"weapon_shotgun"]
 	)
-	var armed := _view(1300, {"doors_open": [&"door_concession"]})
+	var armed := _view(1300, {"doors_open": [&"door_concession"], "arms": start_only.duplicate()})
 	armed.arms[&"smg"] = [30, 120, 0]
 	assert_array(_items(BotEconomy.new(_shop, profile).candidates(armed))).contains([&"door_booth"])
 

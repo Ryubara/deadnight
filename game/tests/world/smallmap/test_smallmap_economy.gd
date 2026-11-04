@@ -19,9 +19,10 @@ const LAST_ROUND := 60
 ## Row 24: each price within this share of its ratio of the link price.
 const PRICE_TOLERANCE := 0.10
 
-## Row 24: the ratio of the link price each wall weapon sells at, by room: the start room's one, the
-## side room's two, and the upstairs' range (the two and the cabinet).
-const START_RATIOS: Array[float] = [0.2]
+## Row 24: the ratio of the link price each wall weapon sells at, by room: the start room's one (the
+## revolver at 270, #898; the crowbar that sold at a fifth of a link is gone, #910), the side room's
+## two, and the upstairs' range (the two and the cabinet).
+const START_RATIOS: Array[float] = [0.6]
 const SIDE_RATIO := 1.2
 const UPSTAIRS_RATIO_FROM := 1.2
 const UPSTAIRS_RATIO_TO := 1.8
@@ -188,7 +189,7 @@ func test_row_23_every_wall_spot_sells_a_weapon_the_tuning_prices() -> void:
 # --- Row 24: wall prices climb with the distance from the start ---
 
 
-func test_row_24_the_start_room_sells_at_a_fifth_of_a_link() -> void:
+func test_row_24_the_start_room_sells_at_three_fifths_of_a_link() -> void:
 	var prices: Array[float] = []
 	for spot in _walls_in("start"):
 		prices.append(float(_price(spot["shop_id"])) / _link_price())
