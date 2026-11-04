@@ -59,7 +59,7 @@ static func _spin_ended(rules: GameRules) -> void:
 	var cfg := rules.tuning.crane
 	var buyer := rules.players.get(crane.buyer_id) as PlayerState
 	if crane.breaks:
-		var refund := _refund(rules, buyer, roundi(crane.price * cfg.refund_fraction))
+		var refund := _refund(rules, buyer, PointSteps.award(crane.price * cfg.refund_fraction))
 		crane.stage = CraneState.Stage.LEAVING
 		crane.left = cfg.breakdown_seconds
 		(

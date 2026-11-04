@@ -70,7 +70,7 @@ func _ready() -> void:
 	UITokens.active_changed().connect(_on_tokens_changed)
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
-	focus_entered.connect(UIAudio.play.bind(&"focus"))
+	focus_entered.connect(UIAudio.play.bind(&"focus", self))
 	toggled.connect(_on_toggled)
 	_update_targets()
 	for spring in [_on, _hover, _focus]:
@@ -155,7 +155,7 @@ func _draw_tick(box: Rect2, amount: float) -> void:
 
 func _on_mouse_entered() -> void:
 	_inside = true
-	UIAudio.play(&"hover")
+	UIAudio.play(&"hover", self)
 	if not disabled:
 		grab_focus()
 	set_process(true)
@@ -166,8 +166,12 @@ func _on_mouse_exited() -> void:
 	set_process(true)
 
 
-func _on_toggled(_pressed: bool) -> void:
-	UIAudio.play(&"press")
+func ui_sound_role() -> StringName:
+	return &"toggle"
+
+
+func _on_toggled(on: bool) -> void:
+	UIAudio.play(&"on" if on else &"off", self)
 	set_process(true)
 
 

@@ -38,6 +38,29 @@ func test_it_runs_from_the_dead_not_toward_them() -> void:
 		assert_float(heading.dot(away)).is_greater(0.5)
 
 
+func test_a_heading_toward_a_point_to_keep_out_of_is_no_way_out() -> void:
+	# The dead come from the south and a live grenade lies 5 m north (#872): straight away from the
+	# dead is straight at the blast. With the point kept out of, the heading takes the bot no nearer
+	# to it; without, it runs at it.
+	var level := await _hall()
+	var steering := BotSteering.new(level)
+	var here := _arena.centre(3, 3)
+	var blast := here + Vector3(0.0, 0.0, -5.0)
+	var dead := _threat(here + Vector3(0.0, 0.0, 2.0), 6.0)
+	var free := steering.pick(here, dead, Vector3.ZERO, Vector3.ZERO)
+	assert_float(free.dot(Vector3(0.0, 0.0, -1.0))).is_greater(0.5)
+	steering.keep_out = [blast]
+	steering.keep_out_reach = 8.0
+	for _i in 3:
+		var kept := steering.pick(here, dead, Vector3.ZERO, Vector3.ZERO)
+		if kept != Vector3.ZERO:
+			var end := here + kept * BotSteering.STEP
+			var before := Vector2(here.x - blast.x, here.z - blast.z).length()
+			assert_float(Vector2(end.x - blast.x, end.z - blast.z).length()).is_greater_equal(
+				before
+			)
+
+
 func test_a_wall_behind_the_bot_bends_the_escape_along_it() -> void:
 	var level := await _hall()
 	var steering := BotSteering.new(level)

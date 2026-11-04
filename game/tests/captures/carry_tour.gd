@@ -68,8 +68,8 @@ func _wall() -> void:
 	var spot := _spot(&"wall", &"weapon_shotgun")
 	var standing := spot["position"] as Vector3
 	_night.player().teleport(standing + Vector3(0.0, 0.1, 0.0))
-	# The weapon hangs on the wall ahead of the marker: the sign above it is at its place.
-	var sign_at := _night.world.greybox.get_node("ShopProps/ShotgunSign") as Node3D
+	# The weapon hangs on the wall ahead of the marker: the silhouette above it is at its place.
+	var sign_at := _night.world.greybox.get_node("ShopProps/ShotgunSilhouette") as Node3D
 	_face(sign_at.global_position, standing)
 	await _hold(HOLD)
 	_stage("wall card: the shotgun replaces the revolver")
@@ -94,9 +94,9 @@ func _crane() -> void:
 	var standing := crane_spot["position"] as Vector3
 	var crane_at: Vector3 = _night.view.crane.crane.global_position
 	var flat := Vector3(crane_at.x - standing.x, 0.0, crane_at.z - standing.z).normalized()
-	var side := Vector3(flat.z, 0.0, -flat.x) * 1.2
-	_night.player().teleport(standing - flat * 1.6 + side + Vector3(0.0, 0.1, 0.0))
-	_face(crane_at, standing - flat * 1.6 + side)
+	var side := Vector3(flat.z, 0.0, -flat.x) * 0.9
+	_night.player().teleport(standing - flat * 1.0 + side + Vector3(0.0, 0.1, 0.0))
+	_face(crane_at, standing - flat * 1.0 + side)
 	await _hold(HOLD)
 	await _press_use()
 	await _hold(SPIN_TICKS + 60)

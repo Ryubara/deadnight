@@ -15,7 +15,8 @@ extends RefCounted
 ## walking and shooting). The look server answers a join and a look with `look_packet` events
 ## (`LOOK_PACKET`). `step(delta)` runs one fixed tick and returns the events for every client: the
 ## rules events (a zombie's blow is a `blow` action, answered by the rules' `player_hurt`), the
-## weapons events (`CombatServer`), `player_damaged` (the blow as the world saw it: `from`, where it
+## weapons events (`CombatServer`), `zombie_shattered` (a frozen zombie the rules killed: where it
+## stood, for the pieces), `player_damaged` (the blow as the world saw it: `from`, where it
 ## came from, and the zombie's id, type and `knockback`: metres the blow throws the player, recorded
 ## for the player's own motion to apply), and last a `frame`. A frame carries the whole picture a
 ## client or a HUD draws from. Frame fields: tick, phase, round, remaining, fuel, circuits ({id:
@@ -69,6 +70,8 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"projectile_spawned",
 	&"projectile_burst",
 	&"lure_started",
+	&"status_applied",
+	&"status_ended",
 	&"element_burst",
 	&"element_arc",
 	&"fire_patch_started",
@@ -91,6 +94,8 @@ const GRENADE_EVENTS: Array[StringName] = [
 ]
 ## The grenade the night throws.
 const GRENADE_DEF := "res://gameplay/grenades/defs/frag.tres"
+## Metres over a player's feet at which their own burst is measured to (the chest).
+const SELF_SPLASH_LIFT := 1.0
 ## A held trigger meets these every tick; they are not news.
 const QUIET_REJECTIONS: Array[StringName] = [&"cooldown", &"reloading"]
 ## The frame names where a player looks up or down in steps of this many radians (3 degrees): a
@@ -148,6 +153,10 @@ var _facing_breach: Dictionary[int, StringName] = {}
 var _face_left: Dictionary[int, float] = {}
 ## The teammates raising downed players (held `use` beside a downed one).
 var _revive: ReviveChannel
+## Which presses may buy: none from a repair, a replacing one only when meant (#908).
+var _guard: UseGuard
+## The marker of the spot `_spot_offer` last answered with.
+var _spot_at := Vector3.ZERO
 ## What decides whether a ping is true, and whether an order to the bots is taken.
 var _ping_judge: PingJudge
 var _order_judge: OrderJudge
@@ -191,11 +200,13 @@ func _init(
 	_sight = UseSight.new(_probe.static_callable())
 	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
 	_revive.sight = _sight
+	_guard = UseGuard.new(tuning)
 	_ping_judge = PingJudge.new(tuning, ping_board, rules, world, sim, _bodies, _announce)
 	_order_judge = OrderJudge.new(_ping_judge, bot_orders, rules, world, _bodies, _announce)
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
 	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
+	director.zombie_shattered.connect(_announce)
 	world.bind(rules)
 	rules.event_emitted.connect(_on_rules_event)
 	crowd.bind(rules, sim)
@@ -368,6 +379,7 @@ func _leave(player_id: int) -> void:
 		pings.erase(player_id)
 		_repairing.erase(player_id)
 		_revive.forget(player_id)
+		_guard.forget(player_id)
 		ping_board.forget(player_id)
 		bot_orders.forget(player_id)
 		say_board.forget(player_id)
@@ -634,9 +646,33 @@ func _combat(action: Dictionary) -> void:
 			continue
 		if event["type"] == &"lure_started":
 			sim.add_lure(event["lure_id"], event["point"], event["radius"], event["seconds"])
+		if event["type"] == &"projectile_burst":
+			_hurt_the_shooter(event)
+		if event["type"] == &"status_applied" or event["type"] == &"status_ended":
+			sim.set_status(event["target_id"], event["wire"], event["halts"], event["speed_scale"])
 		_outbox.append(event)
 		if event["type"] == &"reload_started":
 			_shock(event["shooter_id"])
+
+
+## A burst of a weapon that hurts its shooter (`WeaponDef.self_splash_share`, the ray gun's 25%):
+## the shooter takes that share of the splash at their own distance from the burst. A teammate
+## takes nothing, as a grenade's rule. The re-cut copy in hand is the one that is measured.
+func _hurt_the_shooter(burst: Dictionary) -> void:
+	var shooter: int = burst["shooter_id"]
+	var state := combat.state_of(shooter, burst["weapon_id"])
+	if state == null or state.def.self_splash_share <= 0.0 or not _bodies.has(shooter):
+		return
+	var at := _bodies[shooter].global_position + Vector3(0.0, SELF_SPLASH_LIFT, 0.0)
+	var damage := DamageModel.splash(state.def, at.distance_to(burst["point"]))
+	if damage > 0.0:
+		_blast_player(
+			shooter,
+			damage * state.def.self_splash_share,
+			burst["point"],
+			burst["weapon_id"],
+			shooter,
+		)
 
 
 ## The shock perk (`ShockPlay`): a reload gives off a shock round the player.
@@ -659,6 +695,9 @@ func _target_list() -> Array:
 
 func _act(player_id: int, delta: float) -> void:
 	_hand_wait[player_id] = maxf(_hand_wait[player_id] - delta, 0.0)
+	# What the card shows, each tick, so a press knows how long its offer has been up (#908).
+	var target := {} if _is_downed(player_id) else use_target(player_id)
+	_guard.see(player_id, target, combat.now)
 	var command := _pending.get(player_id) as NightCommand
 	if command == null or _is_downed(player_id):
 		_repairing[player_id] = &""
@@ -680,7 +719,9 @@ func _act(player_id: int, delta: float) -> void:
 	if command.swap or command.slot != WeaponSlots.NONE or command.fire or command.reload:
 		_repairing[player_id] = &""
 	if command.use:
-		_use(player_id)
+		# A swap or a slot this tick changed the hand the offer is for.
+		var changed := command.swap or command.slot != WeaponSlots.NONE
+		_use(player_id, use_target(player_id) if changed else target)
 	_hold_repair(player_id, command)
 	_revive.hold(player_id, command.use_held)
 	_face_breach(player_id, delta)
@@ -779,32 +820,61 @@ func use_target(player_id: int) -> Dictionary:
 			"progress": _revive.progress(raise),
 			"bleed": rules.bleed_left_of(raise),
 		}
+	# The maps keep the zones apart (`UseZones`); where two still meet, a held repair keeps its
+	# breach and otherwise the one the player looks at wins (#908).
+	var view := _view_of(player_id)
+	var offers: Array[Dictionary] = []
 	var door := UseOffers.door(world, rules, tuning, here, _sight)
 	if not door.is_empty():
-		return door
-	var offer := _spot_offer(player_id, here)
-	if not offer.is_empty():
-		return offer
-	var post := UseOffers.post(world, rules, tuning, here, _sight)
-	if not post.is_empty():
-		return post
-	return UseOffers.fuel(world, rules, tuning, here, _sight)
+		offers.append({"offer": door, "at": _nearest(world.door_points(door["id"]), here)})
+	var spot := _spot_offer(player_id, here)
+	if not spot.is_empty():
+		offers.append({"offer": spot, "at": _spot_at})
+	var post := UseOffers.post(world, rules, tuning, here, _sight, view)
+	if post.get("kind") == &"repair":
+		if post["id"] == _repairing.get(player_id, &""):
+			return post
+		offers.append({"offer": post, "at": world.barricade(post["id"]).centre()})
+	elif not post.is_empty():
+		offers.append({"offer": post, "at": world.switches.post(post["id"]).global_position})
+	var fuel := UseOffers.fuel(world, rules, tuning, here, _sight)
+	if not fuel.is_empty():
+		offers.append({"offer": fuel, "at": world.fuel.standing_point(fuel["id"])})
+	return UseOffers.faced(offers, here, view)
 
 
-## The offer of the nearest shop spot in reach that has one, or `{}`.
+static func _nearest(points: Array[Vector3], here: Vector3) -> Vector3:
+	var best := here
+	var best_apart := INF
+	for point in points:
+		if point.distance_to(here) < best_apart:
+			best_apart = point.distance_to(here)
+			best = point
+	return best
+
+
+## Where the player looks, flat: the view of their latest command, else the way the body faces.
+func _view_of(player_id: int) -> Vector3:
+	var command := _pending.get(player_id) as NightCommand
+	var yaw := command.motion.yaw if command != null else _bodies[player_id].state.facing
+	return Vector3(-sin(yaw), 0.0, -cos(yaw))
+
+
+## The offer of the nearest shop spot in reach that has one, or `{}` (its marker in `_spot_at`).
 func _spot_offer(player_id: int, here: Vector3) -> Dictionary:
 	var best := {}
 	var best_apart := INF
 	for spot in world.shop_spots():
 		var apart := world.reach_distance(here, spot["position"])
-		if apart > tuning.use_reach or apart >= best_apart:
+		if apart >= best_apart:
 			continue
-		if not _sight.clear(here, spot["position"]):
+		if not UseZones.spot_reaches(world, tuning, _sight, spot["position"], here):
 			continue
 		var offer := _offer_at(player_id, spot)
 		if not offer.is_empty():
 			best = offer
 			best_apart = apart
+			_spot_at = spot["position"]
 	return best
 
 
@@ -876,8 +946,9 @@ func _ammo_offer(player_id: int, weapon: StringName) -> Dictionary:
 	}
 
 
-func _use(player_id: int) -> void:
-	var target := use_target(player_id)
+func _use(player_id: int, target: Dictionary) -> void:
+	if _guard.refuses(player_id, target, combat.now, is_repairing(player_id)) != &"":
+		return
 	match target.get("kind"):
 		&"door", &"weapon", &"ammo", &"grenades", &"crane", &"recut", &"tonic":
 			buy(player_id, target["id"])
@@ -921,6 +992,7 @@ func _repair(player_id: int, breach: StringName) -> void:
 	if _hand_wait[player_id] <= 0.0:
 		_hand_wait[player_id] = tuning.repair_interval
 		rules.apply(RulesAction.repair(player_id, breach))
+		_guard.board(player_id, combat.now)
 		_facing_breach[player_id] = breach
 		_face_left[player_id] = tuning.repair_interval
 

@@ -3,15 +3,13 @@ extends RefCounted
 ## When and where a bot throws its grenade. It looks for a pack the blast would take (the dead
 ## within `CLUSTER_RADIUS` of each other, as they will stand when the fuse runs out: they keep
 ## coming), and throws only when
-## - the blast would land where it does not reach a player: at least `SAFE_FROM_TEAMMATES` metres
-##   from every teammate (where they stand and where they walk to by then) and `SAFE_FROM_SELF`
-##   metres from the bot itself. A blast hurts a player by `PlayerBlast`, all the way out to the
-##   blast radius, so "not reach" is the distance where it takes `HARMLESS_SHARE` of their health
-##   (`harmless_apart`), which both numbers are at least (a test holds them to it). Only the
-##   thrower takes a grenade's damage (#856), so the teammate distance no longer protects anyone's
-##   health; it stays because taking it away doubled the throws and the bots then hit themselves
-##   (`docs/research/grenades.md`, "Only the thrower");
-## - the way to it is open (the arc is clear of walls);
+## - the blast would land where it does not reach the bot: at least `SAFE_FROM_SELF` metres from
+##   it. A blast hurts a player by `PlayerBlast`, all the way out to the blast radius, so "not
+##   reach" is the distance where it takes `HARMLESS_SHARE` of their health (`harmless_apart`),
+##   which the number is at least (a test holds it to it). Only the thrower takes a grenade's
+##   damage (#856), so no teammate is looked at (`docs/research/grenades.md`, "Only the thrower");
+## - the way to it is open: the arc is clear of walls, and of the dead that would stop the grenade
+##   short, nearer the bot than `SAFE_FROM_SELF`, to lie at its own feet (#872);
 ## - the pack is big enough (`MIN_PACK`; the crawlers of Crawl Space, which are hard to hit with a
 ##   gun, count from `MIN_PACK_LOW`), and the bot has waited out the last throw (`COOLDOWN`).
 ##
@@ -21,17 +19,22 @@ extends RefCounted
 ## Pure: positions in, a `Throw` out, or null. The motor does the throwing (`BotMotor`).
 
 const DEF_PATH := "res://gameplay/grenades/defs/frag.tres"
-## The blast must be this far from every teammate, and from the bot (metres): the rule is that it
-## takes under `HARMLESS_SHARE` of the bot's health there, and the throw is planned `THROW_MARGIN`
-## further off from a teammate, for the way the grenade lands a metre or so from where it was aimed
-## (hops, view not quite on) and the teammate walks on. A teammate takes nothing (#856); the bots
-## walk with the people, so the distance also keeps the throws to packs away from the bot itself.
-const SAFE_FROM_TEAMMATES := 6.0
-const SAFE_FROM_SELF := 6.0
+## The blast must be this far from the bot (metres): the rule is that it takes under
+## `HARMLESS_SHARE` of the bot's health there (`harmless_apart`, 5.8 m), and the grenade lands a
+## metre or so from where it was aimed (hops, view not quite on), so the bot is planned a metre
+## further off: a blast that lands exactly there takes 2% of its health.
+const SAFE_FROM_SELF := 7.0
+## A zombie nearer than this (metres) keeps the bot from throwing: it is busy with it. Not
+## `SAFE_FROM_SELF`, which is about where the blast lands.
+const NEAR_ZOMBIE := 6.0
 ## The share of a player's health a blast may take at the bot's spot and still not "reach" it: 10%,
 ## a graze that mends in seconds.
 const HARMLESS_SHARE := 0.1
 const THROW_MARGIN := 1.5
+## Metres from its own live grenade within which a bot does not walk on (follow, chase, errand): a
+## runner covers the 10 metres from the blast's edge to its middle in the 2 s the fuse has left,
+## so only standing and fighting until it goes off keeps the bot out (#872).
+const WAIT_RANGE := 20.0
 ## Metres across a pack, and the zombies that make one.
 const CLUSTER_RADIUS := 3.0
 const MIN_PACK := 3
@@ -90,15 +93,10 @@ func _init(level: BotLevel) -> void:
 	landings(&"under")
 
 
-## A throw to make now, or null. `contacts` are the believed zombies in sight, `mates` the other
-## players (`pos`, `velocity`), `left` the grenades carried.
+## A throw to make now, or null. `contacts` are the believed zombies in sight, `left` the grenades
+## carried.
 func plan(
-	here: Vector3,
-	contacts: Array[Dictionary],
-	mates: Array[Dictionary],
-	left: int,
-	now: float,
-	low_pack: bool = false
+	here: Vector3, contacts: Array[Dictionary], left: int, now: float, low_pack: bool = false
 ) -> Throw:
 	if left <= 0 or now - last_throw < COOLDOWN or contacts.size() < _need(low_pack):
 		return null
@@ -106,7 +104,7 @@ func plan(
 	if cluster.is_empty():
 		return null
 	var landing: Vector3 = cluster["centre"]
-	if not is_safe(landing, here, mates):
+	if not is_safe(landing, here):
 		return null
 	var apart := _flat(here, landing)
 	var style := &"under" if apart <= UNDERARM_UP_TO else &"over"
@@ -123,7 +121,7 @@ func plan(
 	throw.pitch = pitch
 	throw.landing = landing
 	throw.pack = int(cluster["count"])
-	if not arc_is_open(here, throw):
+	if not arc_is_open(here, throw, contacts):
 		return null
 	return throw
 
@@ -158,28 +156,21 @@ func best_cluster(contacts: Array[Dictionary], here: Vector3, need: int) -> Dict
 	return best
 
 
-## Whether a blast at `landing` is clear of the bot and of every teammate, where they stand and
-## where they will be when the fuse runs out.
-func is_safe(landing: Vector3, here: Vector3, mates: Array[Dictionary]) -> bool:
-	if _flat(landing, here) < SAFE_FROM_SELF:
-		return false
-	var apart := SAFE_FROM_TEAMMATES + THROW_MARGIN
-	for mate in mates:
-		if mate.get("dead", false):
-			continue
-		var at: Vector3 = mate["pos"]
-		if _flat(landing, at) < apart:
-			return false
-		var then: Vector3 = at + (mate.get("velocity", Vector3.ZERO) as Vector3) * def.fuse
-		if _flat(landing, then) < apart:
-			return false
-	return true
+## Whether a blast at `landing` is clear of the bot.
+func is_safe(landing: Vector3, here: Vector3) -> bool:
+	return _flat(landing, here) >= SAFE_FROM_SELF
 
 
 ## The distance from a blast beyond which it takes under `HARMLESS_SHARE` of a player's health
-## (`PlayerBlast`): the least `SAFE_FROM_SELF` and `SAFE_FROM_TEAMMATES` may be.
+## (`PlayerBlast`): the least `SAFE_FROM_SELF` may be.
 func harmless_apart() -> float:
 	return PlayerBlast.distance_for(HARMLESS_SHARE, def.player_full_radius, def.blast_radius)
+
+
+## The metres from its own live grenade at which a bot steps out: the harmless distance and the
+## throw margin, a little before the blast's edge.
+func step_out_reach() -> float:
+	return harmless_apart() + THROW_MARGIN
 
 
 ## Where a contact will stand when the fuse runs out: it walks on at its speed, and stops a body's
@@ -247,8 +238,11 @@ static func _floor(from: Vector3, to: Vector3) -> Dictionary:
 	return {"distance": from.distance_to(to) * from.y / (from.y - to.y), "normal": Vector3.UP}
 
 
-## Whether the walls leave the arc alone: a few samples of the flight, each joined to the next.
-func arc_is_open(here: Vector3, throw: Throw) -> bool:
+## Whether the walls leave the arc alone, and so do the dead that would stop it short: a few
+## samples of the flight, each joined to the next. A zombie in the way (`ZombieBump`, where it will
+## stand as the grenade passes) that the grenade meets nearer the bot than `SAFE_FROM_SELF` drops it
+## there, at the bot's own feet; one met farther off only lands it among the dead (#872).
+func arc_is_open(here: Vector3, throw: Throw, contacts: Array[Dictionary] = []) -> bool:
 	var under := throw.style == &"under"
 	var angle := throw.pitch + deg_to_rad(def.under_lift_deg if under else def.over_lift_deg)
 	var speed := def.under_speed if under else def.over_speed
@@ -266,8 +260,27 @@ func arc_is_open(here: Vector3, throw: Throw) -> bool:
 		)
 		if not _level.clear(from, to):
 			return false
+		if not contacts.is_empty() and _stopped_short(here, from, to, t, contacts):
+			return false
 		from = to
 	return true
+
+
+## Whether a zombie stops the grenade on the segment `from` to `to` (flown by `time`) nearer the
+## bot than `SAFE_FROM_SELF`.
+func _stopped_short(
+	here: Vector3, from: Vector3, to: Vector3, time: float, contacts: Array[Dictionary]
+) -> bool:
+	var bodies := {}
+	for contact in contacts:
+		var at: Vector3 = contact["position"] + (contact["velocity"] as Vector3) * time
+		at.y = (contact["position"] as Vector3).y
+		bodies[int(contact["id"])] = {"pos": at}
+	var bump := ZombieBump.nearest(from, to, bodies)
+	if bump.is_empty():
+		return false
+	var dir := (to - from).normalized()
+	return _flat(from + dir * float(bump["distance"]), here) < SAFE_FROM_SELF
 
 
 func _need(low_pack: bool) -> int:

@@ -8,6 +8,12 @@ extends Node
 ##   the lit lens on the belly.
 ## - `grenade`: a pack of the dead stands ten metres off; a bot turns, lobs a grenade and the blast
 ##   takes the pack.
+## - `grenade_beside` (#872): the same pack, with two of the bots standing 3.5 m to either side of
+##   it (they stand idle, so they do not shoot the pack first) and the filmed bot back in the
+##   line: the bots keep no distance from their teammates (only the thrower takes a grenade's
+##   damage), so it throws, nobody beside the pack is hurt, and it stands and fights
+##   until its grenade has gone off. Before #872 the bots held the throw while a teammate was
+##   within 7.5 m of the pack.
 ## - `stampede`: Midnight Stampede, runners only: the bots hold where they are and do not run.
 ##
 ## Not part of the game. Run with Movie Maker through the kit's `gds godot`, so no window takes the
@@ -61,7 +67,7 @@ func _tuning() -> RulesTuning:
 			tuning = NightFixture.special_tuning(&"stampede")
 			tuning.rounds.count_base = 14.0
 			tuning.rounds.speed_base = 2.2
-		"grenade":
+		"grenade", "grenade_beside":
 			tuning = SeatedNight.one_a_round()
 		_:
 			tuning = RulesFixture.tuning()
@@ -76,6 +82,12 @@ func _seat_the_hosted_bots() -> void:
 		_probe.callable(), _night.world.is_lit, _night.rules_tuning.rounds, _night.world.map()
 	)
 	LotBotData.fill(level, _night.world)
+	if _scenario == "grenade_beside":
+		# The filmed seat is a hosted bot too, in place of the old autopilot; the others stand idle.
+		var thrower := BotProfile.regular()
+		thrower.follows = false
+		_night.bot = BotClient.new(_night.state, thrower, 101, _night.link.send, level)
+		return
 	var profiles: Array[BotProfile] = [
 		BotProfile.rookie(), BotProfile.regular(), BotProfile.veteran()
 	]
@@ -97,6 +109,12 @@ func _line_up() -> void:
 	for i in seats.size():
 		var at := Autopilot.HOME + Vector3(SPACING * (float(i) - 1.5), 0.1, 0.0)
 		_night.server.body_of(seats[i]).teleport(at)
+	if _scenario == "grenade_beside":
+		# Seats 2 and 3 stand 3.5 m to either side of the pack's middle, a little short of it.
+		_night.server.body_of(Night.PLAYER_ID).teleport(Autopilot.HOME + Vector3(0.0, 0.1, 0.0))
+		var middle := Autopilot.HOME + Vector3(-1.35, 0.1, -11.65)
+		_night.server.body_of(2).teleport(middle + Vector3(-3.5, 0.0, 2.5))
+		_night.server.body_of(3).teleport(middle + Vector3(3.5, 0.0, 2.5))
 
 
 func _send(action: Dictionary, id: int) -> void:
@@ -105,6 +123,8 @@ func _send(action: Dictionary, id: int) -> void:
 
 func _on_event(event: Dictionary) -> void:
 	_host.hear([event])
+	if event["type"] in [&"grenade_thrown", &"grenade_exploded", &"player_blasted", &"player_hurt"]:
+		print("movie frame %d: %s %s" % [Engine.get_frames_drawn(), event["type"], event])
 
 
 func _on_tick() -> void:
@@ -114,7 +134,7 @@ func _on_tick() -> void:
 
 ## Puts the dead where the scene wants them.
 func _stage() -> void:
-	if _scenario == "grenade":
+	if _scenario == "grenade" or _scenario == "grenade_beside":
 		_stage_the_pack()
 		return
 	for id: int in _night.server.sim.zombies:

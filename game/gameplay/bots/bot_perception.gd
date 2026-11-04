@@ -169,6 +169,7 @@ func _sighted(zombie: Dictionary) -> void:
 			"velocity": Vector3.ZERO,
 			"look": zombie.get("look", ZombieModels.DEFAULT),
 			"mode": zombie["mode"],
+			"status": zombie.get("status", 0),
 			"yaw": zombie.get("yaw", 0.0),
 			"episode": zombie.get("episode", 0),
 			"attack_at": beliefs.now if zombie["mode"] == ZombieBody.Mode.ATTACK else -1.0,
@@ -228,6 +229,7 @@ func _update(contact: Dictionary, zombie: Dictionary) -> void:
 	contact["yaw"] = zombie.get("yaw", contact.get("yaw", 0.0))
 	_note_swing(contact, zombie)
 	contact["mode"] = zombie["mode"]
+	contact["status"] = zombie.get("status", 0)
 	contact["last_seen"] = beliefs.now
 	var gap: float = beliefs.now - contact["anchor_at"]
 	if gap >= VELOCITY_WINDOW:
