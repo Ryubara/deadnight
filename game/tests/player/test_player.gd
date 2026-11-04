@@ -455,8 +455,9 @@ func test_the_weapon_rides_the_right_hand() -> void:
 	var mount := _animation.weapon_mount()
 	assert_object(mount).is_not_null()
 	assert_str(mount.bone_name).is_equal(PlayerAnimation.HAND_BONE)
-	# The weapon, and the repair hammer and the grenade waiting hidden.
-	assert_int(mount.get_child_count()).is_equal(3)
+	# The weapon, and the repair hammer, the grenade and the perk's bottle (#912) waiting hidden.
+	assert_int(mount.get_child_count()).is_equal(4)
+	assert_bool(_animation.bottle().visible).is_false()
 	assert_bool(_animation.weapon().is_visible_in_tree()).is_true()
 	assert_bool(_animation.hammer().visible).is_false()
 	assert_str(_animation.weapon_class).is_equal("Rifle")
