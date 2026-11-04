@@ -11,7 +11,8 @@ How the progression's cards (#1064) are built and what proves them. The design i
 | `PopupQueue` | The plain data and the clock: which card starts when, the three-at-most and eight-waiting limits, the merge into "N new items", the tier made of its level card, the drop, the stamp, the slide. Moved by `advance(delta)`, no `Tween`, so a test steps it by hand |
 | `PopupCard` | One paper ticket. It draws itself once; the lane moves, fades and scales its icon from outside, so a card standing still costs no redraw |
 | `PopupLane` | A `HudPart`: hears the events of the local player, makes the cards, plays their cues (`PopupLink` sends them to `Audio.play_ui`), follows the part above it |
-| `PopupLadder` | The words of an item (slot caption, name, swatch), the next unlock of a level and the holes |
+| `PopupLadder` | The words of an item (slot caption, name), the next unlock of a level and the holes |
+| `LadderItem` | What a row of `unlocks.json` is: its name and what to draw, read from the part registry, the cloth palette or `MapRegistry` (the wardrobe's own sources) |
 | `MenuPopups` | The same lane in the router's layer for every menu screen; a night's screen sends it away (`set_night`) |
 
 ## What the lane does that a column cannot
@@ -25,6 +26,16 @@ How the progression's cards (#1064) are built and what proves them. The design i
   with a boss bar too, one.
 - **It waits while the HUD is hidden** (the helicopter drop, #1057): the queue is blocked, nothing starts and nothing
   ages, and the cards are shown when the HUD comes back.
+
+## One source with the wardrobe
+
+An unlock card shows the item's thumbnail and name as the wardrobe's grid does (#1131): `LadderItem.of(slot, item)`
+finds the row, reads the part's label from `LookCatalog` (the cell's own title), a colour's from the cloth palette,
+a map's from `MapRegistry` (the map whose `unlock_level` is the row's level), and the card draws `ItemIcons` (a
+wearable), `ItemIcons.draw_chip` (a colour) or the map's preview on the cell's plate. A row with no art (a plate item)
+keeps the letter chip and its id spelled out. `test_popup_thumbnails.gd` compares every announced row's name with the
+wardrobe cell's title at level 55. A name too long for the card is cut by the label's ellipsis, never wider than the
+card.
 
 ## Layout before the first frame
 
