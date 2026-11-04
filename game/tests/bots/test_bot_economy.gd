@@ -51,6 +51,11 @@ func _spot(kind: StringName, shop_id: StringName, at: Vector3, crane_spot := 0) 
 ## A view of a bot with the pistol in hand and the crowbar, in a break of round 1, full reserve,
 ## the two grenades it starts with, every door open (a test about doors shuts them with
 ## `doors_open`).
+## The re-cut's price in the shipped shop (5,000 flat, #909).
+func _recut_price() -> int:
+	return _shop.economy.item(&"upgrade_weapon").price
+
+
 func _view(points: int, changes: Dictionary = {}) -> BotEconomy.View:
 	var view := BotEconomy.View.new()
 	view.points = points
@@ -151,7 +156,7 @@ func test_an_item_the_bot_saves_for_stops_the_list_there() -> void:
 	var profile := _profile([&"upgrade_weapon", &"door_back_lot"], [&"upgrade_weapon"])
 	var view := _view(1300, {"doors_open": [&"door_concession", &"door_booth"]})
 	assert_bool(_choose(view, profile).is_none()).is_true()
-	var enough := _view(1500, {"doors_open": [&"door_concession", &"door_booth"]})
+	var enough := _view(_recut_price(), {"doors_open": [&"door_concession", &"door_booth"]})
 	assert_str(String(_choose(enough, profile).item)).is_equal("upgrade_weapon")
 	var no_saving := _profile([&"upgrade_weapon", &"door_back_lot"])
 	assert_str(String(_choose(view, no_saving).item)).is_equal("door_back_lot")
@@ -217,14 +222,16 @@ func test_the_crane_is_played_only_where_it_stands_and_only_for_a_prize_worth_ta
 
 func test_the_re_cut_is_for_a_firearm_in_hand_that_has_not_been_cut() -> void:
 	var profile := _profile([&"upgrade_weapon"])
-	assert_str(String(_choose(_view(1500), profile).item)).is_equal("upgrade_weapon")
-	var cut := _view(1500, {"arms": {PISTOL: [10, 80, 1], CROWBAR: [0, 0, 0]}})
+	assert_str(String(_choose(_view(_recut_price()), profile).item)).is_equal("upgrade_weapon")
+	var cut := _view(_recut_price(), {"arms": {PISTOL: [10, 80, 1], CROWBAR: [0, 0, 0]}})
 	assert_bool(_choose(cut, profile).is_none()).is_true()
-	var blade := _view(1500, {"held": CROWBAR})
+	var blade := _view(_recut_price(), {"held": CROWBAR})
 	assert_bool(_choose(blade, profile).is_none()).is_true()
 	var two := BotProfile.veteran()
 	two.shopping.assign([&"upgrade_weapon"])
-	var one_cut := _view(1500, {"arms": {PISTOL: [10, 80, 1], RIFLE: [8, 80, 0]}, "held": RIFLE})
+	var one_cut := _view(
+		_recut_price(), {"arms": {PISTOL: [10, 80, 1], RIFLE: [8, 80, 0]}, "held": RIFLE}
+	)
 	assert_str(String(_choose(one_cut, two).item)).is_equal("upgrade_weapon")
 	assert_bool(_choose(one_cut, profile).is_none()).is_true()
 
