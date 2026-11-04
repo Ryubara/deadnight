@@ -272,3 +272,20 @@ func test_the_swing_skirt_holds_the_legs_in_and_keeps_the_hands_out() -> void:
 					fails.append("%d %s %s: %.3f m" % [preset, clip, part, worst[part]])
 		_drop(model, fit)
 	assert_array(fails).is_empty()
+
+
+## A sampled pose stays where it was sampled (#1143): the probes await physics frames and then read
+## the bones, and a clip that went on playing gave each read a later pose than the surface read
+## before the wait.
+func test_a_sampled_pose_holds_still_while_the_probes_wait() -> void:
+	var look := CharacterLook.from_preset(10)
+	look.parts[&"legs"] = &"swing"
+	var model := _model(look)
+	var skeleton := model.find_child("Skeleton3D", true, false) as Skeleton3D
+	var fit := BodyFit.new(_host, skeleton)
+	ClipFit.new(fit, model).pose("Run", 0.2)
+	var knee := fit.bone_point("LowerLeg.L")
+	for _i in 6:
+		await get_tree().process_frame
+	assert_vector(fit.bone_point("LowerLeg.L")).is_equal(knee)
+	_drop(model, fit)

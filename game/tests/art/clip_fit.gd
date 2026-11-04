@@ -111,6 +111,9 @@ func pose(clip: String, seconds: float) -> void:
 	_skeleton.reset_bone_poses()
 	_player.play(StringName(clip))
 	_player.seek(seconds, true)
+	# Held there: a playing clip goes on with every frame the probes await, and the bones read
+	# after the wait (`BodyFit.bone_point`) would be a later pose than the surface read before it.
+	_player.pause()
 
 
 ## The checks on the pose the skeleton holds now (or `poses`): {check name: [{mesh, group, depth,
