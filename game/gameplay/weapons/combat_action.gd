@@ -129,8 +129,11 @@ static func tick(delta: float) -> Dictionary:
 ## for a target whose hit zones are not the walker's size, `"scale"`, and for one with a weak spot,
 ## `"weak": true`. Also the
 ## frame the lag compensation remembers.
-static func targets(list: Array) -> Dictionary:
-	return {"type": TARGETS, "list": list}
+## `revision` (0 or more) says which state of the dead the list is: the same number as the last
+## action means the same list, and the server keeps its table and repeats the last frame in the
+## history without reading the list again. -1 (the default) always reads it.
+static func targets(list: Array, revision: int = -1) -> Dictionary:
+	return {"type": TARGETS, "list": list, "revision": revision}
 
 
 ## A zombie that may be shot. The rules own its health; the server only needs to know it is alive.

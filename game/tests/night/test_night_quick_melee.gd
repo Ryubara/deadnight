@@ -63,6 +63,7 @@ func _place(body: ZombieBody) -> void:
 	var flat := Vector3(dir.x, 0.0, dir.z).normalized()
 	body.position = _night.state.position() + flat * REACH_AHEAD
 	body.velocity = Vector3.ZERO
+	_night.server.sim.touch()
 
 
 ## Holds the key for a few ticks (a tap), keeping the zombie where it is.

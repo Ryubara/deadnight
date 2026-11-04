@@ -549,3 +549,23 @@ func test_a_code_looked_at_shows_the_map_of_the_room_before_joining() -> void:
 	assert_bool(live.rules.map_picker.is_visible_in_tree()).is_true()
 	live.free()
 	StubMaps.remove()
+
+
+func test_a_backend_that_keeps_no_rules_is_said_to_the_host_not_left_to_lose_them() -> void:
+	# A backend from before the rules sends lobbies with no `settings` at all, and ignores the rules
+	# a start carries: the host's choices would vanish (Deadnight #944).
+	var api := LobbyFixture.FakeApi.new(self)
+	api.lobby = LobbyFixture.lobby([LobbyFixture.member("a", "Ann", 1, true)])
+	api.lobby.erase("settings")
+	var screen := await _screen(api, {"lobby": api.lobby})
+	assert_bool(screen.rules_supported()).is_false()
+	assert_bool(screen.rules_editable()).is_false()
+	assert_bool(screen._rules_note.visible).is_true()
+	assert_str(screen._rules_note.text).contains("out of date")
+	# One that keeps them says nothing.
+	var current := LobbyFixture.FakeApi.new(self)
+	current.lobby = LobbyFixture.lobby([LobbyFixture.member("a", "Ann", 1, true)])
+	var fine := await _screen(current, {"lobby": current.lobby})
+	assert_bool(fine.rules_supported()).is_true()
+	assert_bool(fine.rules_editable()).is_true()
+	assert_bool(fine._rules_note.visible).is_false()

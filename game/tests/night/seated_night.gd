@@ -202,6 +202,7 @@ func drop_zombie(at: Vector3, speed := -1.0, max_ticks := 900) -> ZombieBody:
 	if speed >= 0.0:
 		zombie.speed = speed
 	zombie.enter(ZombieBody.Mode.CHASE)
+	server.sim.touch()
 	return zombie
 
 
@@ -320,6 +321,7 @@ func _stage() -> void:
 		zombie.position = NavigationServer3D.map_get_closest_point(world.map(), owner + ahead)
 		zombie.gate_id = &""
 		zombie.enter(ZombieBody.Mode.CHASE)
+		server.sim.touch()
 
 
 ## What a bot sends: plain data, to the server as a connection's message from player `id`. (A

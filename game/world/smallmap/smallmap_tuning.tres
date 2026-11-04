@@ -29,14 +29,14 @@ pool_weights = PackedFloat32Array()
 script = ExtResource("2_item")
 id = &"weapon_pistol"
 kind = 1
-price = 90
+price = 270
 pool_weights = PackedFloat32Array()
 
 [sub_resource type="Resource" id="Wall_crowbar"]
 script = ExtResource("2_item")
 id = &"weapon_crowbar"
 kind = 1
-price = 270
+price = 90
 pool_weights = PackedFloat32Array()
 
 [sub_resource type="Resource" id="Wall_shotgun"]

@@ -113,6 +113,7 @@ func test_a_spawn_names_its_type_and_what_the_world_needs() -> void:
 		"damage",
 		"knockback",
 		"telegraph_seconds",
+		"reach",
 		"barrier_speed",
 		"hit_chance",
 	]:
