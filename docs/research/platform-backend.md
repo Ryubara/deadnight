@@ -426,7 +426,7 @@ lobby reads its rules back with `MatchSettings.from_json`, which makes the whole
 
 ### The host's level decides the map (#1098)
 
-The back rooms open at level 10 ([the design](../design/maps.md)). The host's level decides, not the
+The back rooms open at level 10 ([the design](../design/maps.md#levels-open-maps)). The host's level decides, not the
 holder's: a guest below a map's level still plays a hosted night there.
 
 - `src/settings.ts` keeps `MAP_UNLOCK_LEVELS` (`drive_in` 1, `small_indoor` 10), the game's `MapInfo.unlock_level`;
@@ -441,8 +441,9 @@ holder's: a guest below a map's level still plays a hosted night there.
   into the ticket of every member, so the order the players arrive in decides nothing and XP the host earns in the night
   moves the badge (`level`) and not the gate. A night that reopens its lobby reads the host again at its next start, so
   a host who passed the role on changes it for the next match.
-- A backend from before this signs no `hostLevel`; the game server then leaves the host's choice
-  (`TicketVerifier.NO_LEVEL`).
+- A backend from before this signs no `hostLevel`; the game server then counts the host as level 1
+  (`TicketVerifier.NO_LEVEL`), so the back rooms are never opened by a missing claim (#1107).
+  `test_map_unlock_net.gd` runs the rule over this backend: a level-3 host and a level-12 guest, and the reverse.
 
 ### A setting is never dropped (#944)
 

@@ -37,7 +37,18 @@ const MOMENTS: Array[StringName] = [
 	&"boss_arrive",
 	&"boss_dead",
 	&"idle",
+	&"level_up",
+	&"tier_up",
+	&"unlock",
+	&"challenge_done",
+	&"poster_set",
+	&"card",
+	&"emblem",
+	&"first_game",
 ]
+## The progression lines (#1063) were made on the free tier on 2026-11-04, with the characters the
+## maintainer allowed for them (3,000, the speech-to-text check included), per voice.
+const PROGRESS_BUDGET := 1300
 
 
 func _folder(voice: StringName) -> String:
@@ -143,12 +154,17 @@ func test_the_manifest_lists_every_take_with_the_approved_settings() -> void:
 func test_the_characters_requested_stay_inside_the_budget() -> void:
 	for voice: StringName in SoldierVoiceCatalog.voices():
 		var requested := 0
+		var progress := 0
 		for entry: Dictionary in _manifest(voice).values():
 			if entry["source"] == "text-to-speech":
-				requested += int(entry["characters"])
+				if SoldierVoiceCatalog.is_progress(StringName(entry["event"])):
+					progress += int(entry["characters"])
+				else:
+					requested += int(entry["characters"])
 		assert_int(requested).override_failure_message(String(voice)).is_less_equal(
 			SPEC[voice]["budget"]
 		)
+		assert_int(progress).override_failure_message(String(voice)).is_less_equal(PROGRESS_BUDGET)
 
 
 func test_the_female_voice_says_every_moment_in_her_own_voice() -> void:

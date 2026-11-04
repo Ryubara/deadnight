@@ -9,7 +9,8 @@ extends RefCounted
 ## - **Priority.** Only a request of `interrupt_priority` or more (hurt, downed) may cut any line
 ##   that is speaking, and only one it ranks above: downed over hurt over everything else. A
 ##   request that outranks the line speaking by `cut_margin` (a streak over a kill, a boss over a
-##   mutter) cuts it too.
+##   mutter) cuts it too. A progression cheer (`SoldierVoiceCatalog.PROGRESS`) ranks above the
+##   chatter and gives way to any line of `urgent_priority` or more (a boss, a teammate down).
 ## - **Cooldown** per moment and per speaker, and a `chance` that the moment is voiced at all.
 ## - **Variety.** A moment never repeats one of its last `remember_takes` takes (fewer when few).
 
@@ -91,9 +92,14 @@ func would_interrupt(priority: int) -> bool:
 	if not is_speaking():
 		return false
 	var current := int(_line["priority"])
+	var cheer := SoldierVoiceCatalog.is_progress(_line["event"])
 	return (
 		priority > current
-		and (priority >= _t.interrupt_priority or priority - current >= _t.cut_margin)
+		and (
+			priority >= _t.interrupt_priority
+			or priority - current >= _t.cut_margin
+			or (cheer and priority >= _t.urgent_priority)
+		)
 	)
 
 
