@@ -38,9 +38,23 @@ func record(time: float, targets: Array) -> void:
 	for target in targets:
 		at[target["id"]] = placed(target)
 	_frames.append({"time": time, "targets": at})
+	_trim(time)
+
+
+func _trim(time: float) -> void:
 	var oldest := time - max_rewind - HISTORY_MARGIN
 	while _frames.size() > 2 and _frames[1]["time"] < oldest:
 		_frames.pop_front()
+
+
+## Stores the frame of the last `record` again at `time`: the targets have not changed. The frames
+## share one table (nothing writes to a frame; `rewind` copies), so a tick with nothing new costs
+## no table. Does nothing before the first `record`.
+func record_again(time: float) -> void:
+	if _frames.is_empty():
+		return
+	_frames.append({"time": time, "targets": _frames[_frames.size() - 1]["targets"]})
+	_trim(time)
 
 
 ## A target as the history keeps it: `{"pos", "yaw", "scale", "weak", "pose"}` with the defaults

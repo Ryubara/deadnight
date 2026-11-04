@@ -15,6 +15,10 @@ extends RefCounted
 ##   `hudcost=1` once `hudalive` dead (default 60) stand: the HUD's redraws a second and its draw
 ##              calls (`HudCostProbe.run_night`, printed as `HUDCOST_NIGHT`); `hudsecs=S` (10),
 ##              `hudquit=1` ends the run after it
+##   `dead=0`   hide the dead from drawing (their views still move and animate)
+##   `shot=PATH` with `shot_frame=N`: save one picture of the view at frame N (`ShotTaker`)
+##   `census=1` a line a second of where the dead stand and the renderer's CPU and GPU time
+##   `anim=0`   stop the animation throttle: the dead keep their pose (no tree, no skeleton update)
 ##   `hints=0`  the touch hints ("DRAG TO MOVE") are marked used, as for a player who has played: an
 ##              autopilot never touches, so they would stay up and animate for the whole run (#834)
 ## It changes nothing the rules or the physics see.
@@ -57,6 +61,23 @@ static func apply(args: NetArgs, night: Night, screen: Control) -> void:
 				var e := (node as WorldEnvironment).environment
 				if e != null:
 					e.fog_enabled = false
+	if args.has("shot"):
+		var taker := ShotTaker.new()
+		taker.path = args.get_string("shot")
+		for frame in args.get_string("shot_frame", "600").split(",", false):
+			taker.frames.append(int(frame))
+		screen.add_child(taker)
+	var horde: ZombieHorde = night.view.horde if night.view != null else null
+	if horde != null:
+		if args.has("dead") and args.get_int("dead") == 0:
+			horde.visible = false
+		if args.has("anim") and args.get_int("anim") == 0:
+			horde.throttle.set_process(false)
+	if horde != null and args.get_int("census") == 1:
+		var census := CrowdCensus.new()
+		census.horde = horde
+		census.camera = viewport.get_camera_3d()
+		screen.add_child(census)
 	if args.has("ui") and args.get_int("ui") == 0:
 		for child in screen.get_children():
 			if child is Hud or child is TouchControls:
