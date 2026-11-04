@@ -234,15 +234,29 @@ func _route(transport_id: int, pending: Pending, data: PackedByteArray) -> void:
 		room = await _open_room(match_id, admitted.get("settings"))
 	if not _pending.has(transport_id):
 		return
-	_hand_over(transport_id, room, admitted["user"], admitted["name"], data)
+	_hand_over(
+		transport_id,
+		room,
+		admitted["user"],
+		admitted["name"],
+		data,
+		int(admitted.get("level", 0)),
+		int(admitted.get("icon", 0))
+	)
 
 
 func _hand_over(
-	transport_id: int, room: NightHost, user: String, user_name: String, hello: PackedByteArray
+	transport_id: int,
+	room: NightHost,
+	user: String,
+	user_name: String,
+	hello: PackedByteArray,
+	level := 0,
+	icon := 0
 ) -> void:
 	_pending.erase(transport_id)
 	_room_of[transport_id] = room
-	room.attach(transport_id, user, user_name)
+	room.attach(transport_id, user, user_name, level, icon)
 	room.receive(transport_id, hello)
 
 

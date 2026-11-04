@@ -24,7 +24,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Transport | `WebSocketLink` (client) and `WsListener` (server) from the spike's `WebSocketPeer`/`TCPServer` code; `GameLink` is the interface `LoopbackLink` (single-player) and `WebSocketLink` share. Port 8910 | `ConditionedTransport` (delay, jitter, loss) is not ported |
 | Server | `NightHost`: `godot --headless --path game -- --server [--port N]`, one `NightServer`, up to 8 players (`NightHost.MAX_PLAYERS`, [measured](#eight-players-690)), the lowest free id is the seat, a new night is built when the last player leaves | `GameServer`'s per-client baselines and acks |
 | Tick | the night's own **60 Hz** step; a `TICK` to each client every 2nd step (30 a second) | the spike's 30 Hz tick |
-| Protocol | `NetWire`, version 14 (the layout is in its header; 14 put a zombie's status effect in its mode byte, [status effects](status-effects.md); 13 added the `ORDER` message and the frame's `bot_orders`, [bot orders](bots.md#orders-follow-roam-and-hold-641); 11 put the quick melee in a flag of the command, #411; 5 put the client's measured round trip in the ping, [Scoreboard](scoreboard.md); 6 put the view step in a command; 7 sent the zombies of a frame as deltas, #57; 8 added the aim pose and look to each player of the frame, [below](#other-players-weapons-518); 9 put every seat's name in the WELCOME and a `player_named` event on a join, #485; 10 added the `PLATFORM` message; 12 added each player's `stance` to the frame, [below](#other-players-sprint-crouch-and-jump-549)); a command is a fixed 25 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks; a `PLATFORM` message (type 12, two bytes) says after the welcome whether the client is a browser, because the crowd a night stands is the weakest client's ([crowd budget](crowd-budget.md#decision-120-for-a-desktop-and-a-server-40-with-a-browser-in-the-match-453)); a client that does not send it counts as a browser; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone; `ORDER` (type 13, nine bytes: the order's index, the spot in centimetres, the bot it is for) a person's order to the bots, rate limited at 2 a second and answered with a `bot_order_set` event for everyone | the version only in the handshake; refusal of another version |
+| Protocol | `NetWire`, version 15 (the layout is in its header; 15 put each person's level and icon in the WELCOME's `levels` and the `player_named` event, [below](#the-level-and-icon-beside-a-name-1077), and a 14 client still plays; 14 put a zombie's status effect in its mode byte, [status effects](status-effects.md); 13 added the `ORDER` message and the frame's `bot_orders`, [bot orders](bots.md#orders-follow-roam-and-hold-641); 11 put the quick melee in a flag of the command, #411; 5 put the client's measured round trip in the ping, [Scoreboard](scoreboard.md); 6 put the view step in a command; 7 sent the zombies of a frame as deltas, #57; 8 added the aim pose and look to each player of the frame, [below](#other-players-weapons-518); 9 put every seat's name in the WELCOME and a `player_named` event on a join, #485; 10 added the `PLATFORM` message; 12 added each player's `stance` to the frame, [below](#other-players-sprint-crouch-and-jump-549)); a command is a fixed 25 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks; a `PLATFORM` message (type 12, two bytes) says after the welcome whether the client is a browser, because the crowd a night stands is the weakest client's ([crowd budget](crowd-budget.md#decision-120-for-a-desktop-and-a-server-40-with-a-browser-in-the-match-453)); a client that does not send it counts as a browser; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone; `ORDER` (type 13, nine bytes: the order's index, the spot in centimetres, the bot it is for) a person's order to the bots, rate limited at 2 a second and answered with a `bot_order_set` event for everyone | the version only in the handshake; refusal of another version |
 | Snapshots | the `NightServer` frame, sent as a **difference against the frame that client had before** (`FrameDelta`): TCP never reorders or loses, so the previous frame is the baseline and no ack is needed. Compressed with Zstandard above 256 bytes | the spike's centimetre deltas against an acked baseline (they were for a protocol over an unreliable link) |
 | Events | every client hears every event (shots, hits, rules); a late joiner gets the rules' snapshot in `WELCOME` (`HudState.load_snapshot`) and the doors, boards and circuits from the frames (`WorldMirror`) | |
 | The local player | **predicted**: the client moves its own body at once and records where each numbered command left it; the frame's `ack` says which command the server used, and `Reconciler` moves the body a share (25 %) of the way to the server's answer per frame, snapping over 2.5 m | the spike replays the unacknowledged inputs on the server's position; the game does not replay yet |
@@ -407,6 +407,35 @@ The Bots setting (#643) adds no byte and no version: `bots` is a key of `match_s
 as 0, and a ticket or snapshot with it is taken by a build that does not know it, which ignores the key), a
 `player_added` event carries `bot`, a `bot_replaced` event says a person took a bot's seat, and each player of the
 snapshot has `bot`. The bots' names ride the WELCOME's `names` like any seat's. See [rounds](../design/rounds.md#bots).
+
+## The level and icon beside a name (#1077)
+
+The ticket the backend signs carries the account's `level`, `icon` (`level_NN`) and `xp`
+([platform backend](platform-backend.md#progression-the-profile-slot-round-reports-and-the-xp-clamp)).
+`TicketVerifier.admit` reads the level (a whole number from 1 to 55, else none) and the icon (the number NN, or the
+level when it is missing or not a ladder icon) and hands them to the room (`NightHost.attach`). The seat keeps them
+(`_levels`: player id to `Vector2i(level, icon)`) beside its name and they go out two ways, both **keys of what was
+already sent**: the WELCOME's snapshot has `levels` (people with a level only) and the `player_named` event has `level`
+and `icon` when the seat has them. `player_leveled` (`player_id`, `level`, `icon`) says a level changed in the night:
+`NightHost.set_level(player_id, level)` sends it (#1059 calls it when its tally pays a level). A `player_named` without
+a level clears the seat's, which is how a bot that takes a leaver's seat comes with none. **Bots never have a level**;
+a person whose ticket has none (a server with no backend) shows the name alone. A client says nothing about its level:
+the HELLO carries only the ticket, and every other message is a fixed layout of numbers the server reads, so there is
+nothing to forge; a ticket changed after signing fails its signature (`test_level_tags_online.gd`).
+
+**The version.** `NetWire.VERSION` is 15 and `MIN_VERSION` stays 14: 15 adds keys only, so a page loaded before the
+deploy reads the same layouts, finds its `names` where it left them and shows no level (a version 13 client is refused as
+before). The test says hello as 14 and as 15 over a real socket. **What a join costs** (4 seats with levels,
+`LEVELBYTES` in the test's log): the WELCOME grows by 35 bytes (1017 to 1052, compressed), and each other client hears
+one `player_named` that is 44 bytes longer (110 to 154) in a tick of its own.
+
+The HUD keeps the pair in `HudState.team` (`level`, `icon`), and `HudState.level_of(member)` is what every part reads:
+zero for a bot, a seat with none and every seat when the viewer turned **Player levels** off (Settings, Accessibility,
+`accessibility/show_levels`, on by default). The tag over a head is `HudMarkers._tag`: icon (24 px from the 64 px atlas),
+name, level, kept inside the screen like any other word, its rectangle in `HudMarkers.tags`; the scoreboard and the
+night report put the icon before the name and the level after it in the name column (`HudLevelCell`), and the lobby's
+seat list shows them from the backend's member list (`level`, `icon` on each member, from the profile as the ticket
+reads it).
 
 ## Revives
 

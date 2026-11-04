@@ -36,6 +36,27 @@ static func tier_of(level: int) -> int:
 	return (clampi(level, 1, MAX_LEVEL) - 1) / TIER_SIZE
 
 
+## What a server says of a seat's level, as `Vector2i(level, icon)` (the level 1 to `MAX_LEVEL`, the
+## icon the same range): from a `Vector2i`, or a pair `[level, icon]` of numbers. `Vector2i.ZERO`
+## for anything else, a level outside the ladder too, since a client must not index outside the
+## atlas with a server's word. An icon outside the ladder follows the level.
+static func seat_tag(held: Variant) -> Vector2i:
+	var pair := Vector2i.ZERO
+	if typeof(held) == TYPE_VECTOR2I:
+		pair = held
+	elif typeof(held) == TYPE_ARRAY and (held as Array).size() == 2:
+		var level: Variant = held[0]
+		var icon: Variant = held[1]
+		if (
+			(typeof(level) == TYPE_INT or typeof(level) == TYPE_FLOAT)
+			and (typeof(icon) == TYPE_INT or typeof(icon) == TYPE_FLOAT)
+		):
+			pair = Vector2i(int(level), int(icon))
+	if pair.x < 1 or pair.x > MAX_LEVEL:
+		return Vector2i.ZERO
+	return Vector2i(pair.x, pair.x if pair.y < 1 or pair.y > MAX_LEVEL else pair.y)
+
+
 ## The name of the tier a level is in.
 static func tier_name(level: int) -> String:
 	return TIER_NAMES[tier_of(level)]

@@ -119,8 +119,19 @@ var circuits: Dictionary[StringName, bool] = {}
 ## (`set_player_stats`), never counted here. "dead" (bled out), "bleed" (seconds a downed player has
 ## left), "revive" (the hold's progress, 0 to 1), "reviver" (who holds it, 0 for nobody) and
 ## "self_revive" (seconds left of the revive perk's own, 0 for none) are the server's too
-## (`set_player_revive`).
+## (`set_player_revive`). "level" and "icon" (the account's level and the ladder icon beside it, 0
+## for none: a bot, a night with no backend) are the server's too (`set_player_level`); a part reads
+## them through `level_of`, which also honours the viewer's setting.
 var team: Dictionary[int, Dictionary] = {}
+## Whether the viewer wants levels shown beside names (the setting `SettingsService.SHOW_LEVELS`,
+## on by default): off hides every level on this screen, the data stays.
+var show_levels := true:
+	set(value):
+		if show_levels != value:
+			show_levels = value
+			_mark(TEAM)
+			_mark(MARKERS)
+			_flush()
 ## Whole seconds the night has run, as the server counts them (a break and a round both count).
 var night_clock := 0
 ## The interaction in reach: {} for none, else {"kind", "label", "cost"} (see `set_prompt`).
@@ -355,6 +366,27 @@ func set_night_clock(seconds: int) -> void:
 	_flush()
 
 
+## The level and icon a team member shows, `Vector2i(level, icon)`; `Vector2i.ZERO` for none: a bot
+## has no level, nor has a seat whose ticket had none, nor does a viewer who turned levels off.
+func level_of(member: Dictionary) -> Vector2i:
+	var level := int(member.get("level", 0))
+	if not show_levels or level < 1 or bool(member.get("bot", false)):
+		return Vector2i.ZERO
+	return Vector2i(level, int(member.get("icon", level)))
+
+
+## Sets the level and icon a player's tag shows (0 for none).
+func set_player_level(player_id: int, level: int, icon: int) -> void:
+	var member := _member(player_id)
+	var tag := LevelCurve.seat_tag(Vector2i(level, icon))
+	if int(member["level"]) != tag.x or int(member["icon"]) != tag.y:
+		member["level"] = tag.x
+		member["icon"] = tag.y
+		_mark(TEAM)
+		_mark(MARKERS)
+	_flush()
+
+
 func local_name() -> String:
 	return str(team.get(local_player_id, {}).get("name", ""))
 
@@ -443,7 +475,7 @@ func load_snapshot(data: Dictionary) -> void:
 		var saved: Dictionary = players[player_id]
 		var member := _member(int(player_id))
 		if kept.has(int(player_id)):
-			for field in ["name", "seat", "look", "ping"]:
+			for field in ["name", "seat", "look", "ping", "level", "icon"]:
 				member[field] = kept[int(player_id)][field]
 		member["downed"] = bool(saved.get("downed", false))
 		member["dead"] = bool(saved.get("dead", false))
@@ -465,6 +497,15 @@ func load_snapshot(data: Dictionary) -> void:
 				team[int(player_id)]["name"] = str(named[player_id]).strip_edges().left(
 					HudStyle.NAME_LIMIT
 				)
+	# The levels of the seats (a WELCOME's `levels`: player id -> Vector2i(level, icon)); a seat the
+	# snapshot does not list has none (a server of protocol 14 sends no `levels`: the tags stay bare).
+	var levels: Variant = data.get("levels")
+	if typeof(levels) == TYPE_DICTIONARY:
+		for player_id in team:
+			var held: Variant = levels.get(player_id, levels.get(str(player_id)))
+			var pair := LevelCurve.seat_tag(held)
+			team[player_id]["level"] = pair.x
+			team[player_id]["icon"] = pair.y
 	var local: Dictionary = team.get(local_player_id, {})
 	points = int(local.get("points", 0))
 	grenades = int(local.get("grenades", 0))
@@ -572,6 +613,11 @@ func _handler(type: StringName) -> Callable:
 		&"player_named":
 			handler = func(e: Dictionary) -> void:
 				set_player_name(int(e["player_id"]), str(e["name"]))
+				# A name with no level clears the seat's (a bot named the seat of a person).
+				set_player_level(int(e["player_id"]), int(e.get("level", 0)), int(e.get("icon", 0)))
+		&"player_leveled":
+			handler = func(e: Dictionary) -> void:
+				set_player_level(int(e["player_id"]), int(e["level"]), int(e.get("icon", 0)))
 		&"player_hurt":
 			handler = _on_player_hurt
 		&"weapon_replaced":
@@ -824,6 +870,8 @@ func _member(player_id: int) -> Dictionary:
 			"reviver": 0,
 			"self_revive": 0.0,
 			"bot": false,
+			"level": 0,
+			"icon": 0,
 		}
 		_mark(TEAM)
 	return team[player_id]

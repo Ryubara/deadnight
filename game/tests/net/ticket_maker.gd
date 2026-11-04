@@ -7,7 +7,8 @@ static var _count := 0
 
 
 ## A ticket for `user` in `match_id` on `server_id`, good for `seconds` from now; `settings` (a
-## `MatchSettings.to_dict`) are the rules the host chose, none when empty.
+## `MatchSettings.to_dict`) are the rules the host chose, none when empty; `extra` are more claims
+## (`level`, `icon`, `xp` as the backend signs them from the account's profile).
 static func make(
 	secret: String,
 	server_id: String,
@@ -15,7 +16,8 @@ static func make(
 	user: String,
 	user_name: String = "Tester",
 	seconds: int = 60,
-	settings: Dictionary = {}
+	settings: Dictionary = {},
+	extra: Dictionary = {}
 ) -> String:
 	_count += 1
 	var now := int(Time.get_unix_time_from_system())
@@ -31,6 +33,7 @@ static func make(
 	}
 	if not settings.is_empty():
 		claims["settings"] = settings
+	claims.merge(extra, true)
 	var head := TicketVerifier.HEADER
 	var body := _encode(JSON.stringify(claims).to_utf8_buffer())
 	var signature := Crypto.new().hmac_digest(

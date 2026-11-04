@@ -26,9 +26,16 @@ const LABEL_SIZE := HudStyle.MIN_TEXT
 ## state holds a new float place nearly every frame, and the part is drawn when the picture would
 ## change by a quarter of a unit (a quarter of a pixel at 1080p), not when a float does (#948).
 const PLACE_STEPS := 4.0
+## A level tag: the icon, drawn from the 64 px atlas at this size, then the name, then the level,
+## with these gaps between (docs/design/progression.md#the-level-over-a-head).
+const TAG_ICON := 24.0
+const TAG_GAP := 6.0
 
 ## Where each marker is drawn on the last frame: {id: {"at": Vector2, "pinned": bool}}.
 var placed: Dictionary = {}
+## Where each ally's tag (icon, name, level and what follows) was drawn on the last frame, canvas
+## units: {id: Rect2}. Every tag stays inside the screen.
+var tags: Dictionary = {}
 
 ## What the last draw was made from (`_key`).
 var _drawn_key: Array = []
@@ -37,10 +44,13 @@ var _drawn_key: Array = []
 var _shapes := HudShapes.new()
 var _rings: Array[Array] = []
 var _words: Array[Array] = []
+## The level icons of a draw [rect, region of the atlas]: all of them before any word.
+var _icons: Array[Array] = []
 
 
 func _ready() -> void:
 	resized.connect(queue_redraw)
+	texture_filter = LevelIcons.FILTER
 
 
 func topics() -> Array[StringName]:
@@ -79,6 +89,8 @@ func _key() -> Array:
 					str(marker.get("label", "")),
 					bool(marker.get("downed", false)),
 					bool(marker.get("dead", false)),
+					int(marker.get("level", 0)),
+					int(marker.get("icon", 0)),
 					int(marker.get("bleed", 0)),
 					roundi(float(marker.get("revive", 0.0)) * 100.0),
 				]
@@ -100,6 +112,8 @@ func _draw() -> void:
 	_shapes = HudShapes.new()
 	_rings.clear()
 	_words.clear()
+	_icons.clear()
+	tags.clear()
 	for marker in state.markers:
 		var spot: Dictionary = placed.get(marker["id"], {})
 		if spot.is_empty():
@@ -111,6 +125,10 @@ func _draw() -> void:
 	_shapes.flush(self)
 	for ring: Array in _rings:
 		draw_arc(ring[0], ring[1], ring[2], ring[3], 32, ring[4], ring[5], true)
+	if not _icons.is_empty():
+		var atlas := LevelIcons.atlas()
+		for icon: Array in _icons:
+			draw_texture_rect_region(atlas, icon[0], icon[1])
 	for word: Array in _words:
 		draw_string_outline(
 			word[0], word[1], word[2], HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, 7, tokens.shadow
@@ -205,12 +223,7 @@ func _draw_ally(font: Font, marker: Dictionary, at: Vector2) -> void:
 		PackedVector2Array([tip + Vector2(0, 14), tip + Vector2(-10, 0), tip + Vector2(10, 0)]),
 		tokens.accent
 	)
-	_text(
-		font,
-		str(marker.get("label", "")).to_upper(),
-		tip + Vector2(0.0, -10.0),
-		tokens.accent_bright
-	)
+	_tag(font, marker, tip + Vector2(0.0, -10.0), tokens.accent_bright, "")
 
 
 ## A teammate on the ground: a red marker with their name and the seconds they have left, and a ring
@@ -238,12 +251,60 @@ func _draw_downed(font: Font, marker: Dictionary, at: Vector2) -> void:
 	var arm := DOWNED_RADIUS * 0.45
 	_shapes.line(at + Vector2(-arm, 0.0), at + Vector2(arm, 0.0), colour, 4.0)
 	_shapes.line(at + Vector2(0.0, -arm), at + Vector2(0.0, arm), colour, 4.0)
-	var words := str(marker.get("label", "")).to_upper()
-	if dead:
-		words += "  DEAD"
-	else:
-		words += "  %d S" % int(marker.get("bleed", 0))
-	_text(font, words, at + Vector2(0.0, -DOWNED_RADIUS - 10.0), colour)
+	var tail := "  DEAD" if dead else "  %d S" % int(marker.get("bleed", 0))
+	_tag(font, marker, at + Vector2(0.0, -DOWNED_RADIUS - 10.0), colour, tail)
+
+
+## A teammate's tag, centred on `baseline_centre`: icon, name and level when the marker has a level
+## (0 for none: a bot, or the viewer turned levels off), else the name alone as it always was;
+## `tail` follows (the clock of a body on the ground). The whole tag is kept inside the screen like
+## any other text, and its place is told in `tags`.
+func _tag(
+	font: Font, marker: Dictionary, baseline_centre: Vector2, colour: Color, tail: String
+) -> void:
+	var who := str(marker.get("label", "")).to_upper()
+	var level := int(marker.get("level", 0))
+	if level < 1:
+		_text(font, who + tail, baseline_centre, colour)
+		tags[marker["id"]] = _words_rect(font, who + tail, baseline_centre)
+		return
+	var level_text := str(level)
+	var tail_width := _width(font, tail) if tail != "" else 0.0
+	var name_width := _width(font, who)
+	var level_width := _width(font, level_text)
+	var total := TAG_ICON + TAG_GAP + name_width + TAG_GAP + level_width + tail_width
+	var left := clampf(
+		baseline_centre.x - total * 0.5,
+		TEXT_MARGIN,
+		maxf(size.x - TEXT_MARGIN - total, TEXT_MARGIN)
+	)
+	var icon_top := baseline_centre.y - TAG_ICON * 0.5 - LABEL_SIZE * 0.3
+	var icon := Rect2(left, icon_top, TAG_ICON, TAG_ICON)
+	_icons.append([icon, LevelIcons.region(int(marker.get("icon", level)))])
+	var x := left + TAG_ICON + TAG_GAP
+	_words.append([font, Vector2(x, baseline_centre.y), who, colour])
+	x += name_width + TAG_GAP
+	_words.append([font, Vector2(x, baseline_centre.y), level_text, tokens.ink])
+	x += level_width
+	if tail != "":
+		_words.append([font, Vector2(x, baseline_centre.y), tail, colour])
+	var top := minf(icon_top, baseline_centre.y - LABEL_SIZE)
+	tags[marker["id"]] = Rect2(left, top, total, maxf(TAG_ICON, LABEL_SIZE))
+
+
+func _width(font: Font, text: String) -> float:
+	return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE).x
+
+
+## Where `_text` puts `text`: the box of its letters.
+func _words_rect(font: Font, text: String, baseline_centre: Vector2) -> Rect2:
+	var width := _width(font, text)
+	var left := clampf(
+		baseline_centre.x - width * 0.5,
+		TEXT_MARGIN,
+		maxf(size.x - TEXT_MARGIN - width, TEXT_MARGIN)
+	)
+	return Rect2(left, baseline_centre.y - LABEL_SIZE, width, LABEL_SIZE)
 
 
 ## Centred text with a dark outline, so it holds on a lit or dark ground: kept for the end of the

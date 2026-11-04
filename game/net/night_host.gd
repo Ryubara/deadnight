@@ -124,6 +124,10 @@ var _by_player: Dictionary[int, HostPeer] = {}
 ## Player id -> the name the seat shows (the ticket's name, made unique); players without a name
 ## are left out and are `PLAYER n` on every screen. Kept with the seat while it is away.
 var _names: Dictionary = {}
+## Player id -> `Vector2i(level, icon)` the seat shows beside its name, from the ticket the backend
+## signed (never from the client): a bot, or a person whose ticket has none, is left out and shows
+## no level. Kept with the seat while it is away.
+var _levels: Dictionary = {}
 ## Players whose socket dropped, by id: their seat, kept until they come back or the time is up.
 var _away: Dictionary[int, Away] = {}
 var _events: Array[Dictionary] = []
@@ -340,12 +344,16 @@ func _hz() -> int:
 
 
 ## A `GameServer` hands this room a connection (`user` is who the backend's ticket says it is).
-func attach(transport_id: int, user: String = "", user_name: String = "") -> void:
+func attach(
+	transport_id: int, user: String = "", user_name: String = "", level := 0, icon := 0
+) -> void:
 	_on_connected(transport_id)
 	var peer: HostPeer = _peers.get(transport_id)
 	if peer != null:
 		peer.user = user
 		peer.user_name = user_name
+		peer.level = level
+		peer.icon = icon
 
 
 ## What the connection sent, from a `GameServer` that routes it here.
@@ -418,6 +426,7 @@ func _on_disconnected(transport_id: int) -> void:
 func _free_seat(player_id: int) -> void:
 	_away.erase(player_id)
 	_names.erase(player_id)
+	_levels.erase(player_id)
 	if server != null:
 		var inherited := _bot_inherits(player_id)
 		if inherited.is_empty():
@@ -529,7 +538,7 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 		# The seat is a bot's: the person takes it as it stands, and the round goes on. The name
 		# goes first, so the notice the others read says who, and a person without a name gets
 		# the usual `PLAYER n` in the bot's place.
-		_name_seat(player_id, peer.user_name)
+		_name_seat(player_id, peer.user_name, peer.level, peer.icon)
 		if not _names.has(player_id):
 			_collect(
 				[{"type": &"player_named", "player_id": player_id, "name": "PLAYER %d" % player_id}]
@@ -538,7 +547,7 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 		_collect(server.apply({"type": NightServer.RESYNC, "player_id": player_id}))
 	else:
 		# The name goes out before the join, so the others' notice reads "ANN JOINED", not "PLAYER 2".
-		_name_seat(player_id, peer.user_name)
+		_name_seat(player_id, peer.user_name, peer.level, peer.icon)
 		_collect(server.apply({"type": NightServer.JOIN, "player_id": player_id, "local": false}))
 	if not _night_began():
 		_collect(server.apply({"type": NightServer.START_NIGHT}))
@@ -551,12 +560,15 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 
 
 ## What a WELCOME carries: the rules' snapshot and the names of the seats (`names`: player id ->
-## name, the bots' too), so a client that joins late, or comes back, shows everyone by name at once.
+## name, the bots' too) and their levels (`levels`: player id -> `Vector2i(level, icon)`, people
+## with a level only), so a client that joins late, or comes back, shows everyone by name and level
+## at once.
 func _welcome_snapshot() -> Dictionary:
 	var snapshot := server.rules.to_dict()
 	var names := bots.names()
 	names.merge(_names, true)
 	snapshot["names"] = names
+	snapshot["levels"] = _levels.duplicate()
 	return snapshot
 
 
@@ -602,14 +614,44 @@ func _run_bots(events: Array[Dictionary], frame: Dictionary) -> void:
 
 
 ## Gives the seat the name the ticket said, made unique among the seats (`Ann`, `Ann (2)`, ...), and
-## tells everyone (a `player_named` event; the joiner's own WELCOME carries it too). A seat with no
-## name stays without one.
-func _name_seat(player_id: int, wanted: String) -> void:
+## its level and icon (0 for none), and tells everyone (a `player_named` event with `level` and
+## `icon` when the seat has them; the joiner's own WELCOME carries it too). A seat with no name
+## stays without one, and a seat with no level without a level.
+func _name_seat(player_id: int, wanted: String, level := 0, icon := 0) -> void:
 	var shown := unique_name(wanted, _names, player_id)
+	_levels.erase(player_id)
+	if level > 0:
+		_levels[player_id] = Vector2i(level, icon)
 	if shown == "":
+		if level > 0:
+			_collect([_level_event(player_id, level, icon)])
 		return
 	_names[player_id] = shown
-	_collect([{"type": &"player_named", "player_id": player_id, "name": shown}])
+	var named := {"type": &"player_named", "player_id": player_id, "name": shown}
+	if level > 0:
+		named["level"] = level
+		named["icon"] = icon
+	_collect([named])
+
+
+## The seat's level changed in the night (XP paid at a round's end): everyone's tag shows the new
+## one (a `player_leveled` event). A seat a bot holds, or one nobody holds, is left as it is.
+func set_level(player_id: int, level: int, icon: int = level) -> void:
+	if level < 1 or (not _by_player.has(player_id) and not _away.has(player_id)):
+		return
+	if _levels.get(player_id, Vector2i.ZERO) == Vector2i(level, icon):
+		return
+	_levels[player_id] = Vector2i(level, icon)
+	_collect([_level_event(player_id, level, icon)])
+
+
+## What a seat's level is, as `Vector2i(level, icon)` (`Vector2i.ZERO` for none).
+func level_of(player_id: int) -> Vector2i:
+	return _levels.get(player_id, Vector2i.ZERO)
+
+
+static func _level_event(player_id: int, level: int, icon: int) -> Dictionary:
+	return {"type": &"player_leveled", "player_id": player_id, "level": level, "icon": icon}
 
 
 ## `wanted` (edge spaces cut, at most `NAME_MAX` characters) or, when another seat of `taken`
@@ -664,6 +706,9 @@ func _resume(peer: HostPeer, player_id: int) -> void:
 	peer.token = Crypto.new().generate_random_bytes(NetWire.TOKEN_SIZE)
 	peer.zombie_base = {}
 	_by_player[player_id] = peer
+	# A new ticket brings the level as the backend has it now.
+	if peer.level > 0:
+		set_level(player_id, peer.level, peer.icon)
 	listener.send(
 		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, _welcome_snapshot())
 	)
@@ -879,6 +924,9 @@ class HostPeer:
 	## Who the backend's ticket says this is (`""` when the server has no backend), and their name.
 	var user := ""
 	var user_name := ""
+	## The level and icon its ticket says (0 for none).
+	var level := 0
+	var icon := 0
 
 	func _init(p_transport_id: int, now: float = 0.0) -> void:
 		transport_id = p_transport_id

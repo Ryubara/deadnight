@@ -18,6 +18,8 @@ const USED := "ticket already used"
 const BAD_SETTINGS := "ticket carries rules this server does not take"
 ## Followed by the keys: the host chose a setting this build of the game server has not heard of.
 const UNKNOWN_SETTING := "ticket carries a setting this server does not know"
+## What the ticket's `icon` claim starts with: `level_07`, the file name of the ladder's icon.
+const ICON_PREFIX := "level_"
 
 var _secret: PackedByteArray
 var _server_id: String
@@ -30,11 +32,11 @@ func _init(secret: String, server_id: String) -> void:
 	_server_id = server_id
 
 
-## `{"ok": true, "user": sub, "name", "match": matchId, "settings"}` for a ticket this server may
-## admit (and spends it), or `{"ok": false, "reason"}`. `settings` is the `MatchSettings` the host
-## chose, or null when the ticket has none (the usual rules). Rules this server cannot take (a value
-## out of its bounds: the backend and the game disagree) refuse the ticket, loudly, instead of
-## starting a night with other rules than the host asked for.
+## `{"ok": true, "user": sub, "name", "match": matchId, "settings", "level", "icon"}` for a ticket
+## this server may admit (and spends it), or `{"ok": false, "reason"}`. `settings` is the
+## `MatchSettings` the host chose, or null when the ticket has none (the usual rules). Rules this
+## server cannot take (a value out of its bounds: the backend and the game disagree) refuse the
+## ticket, loudly, instead of starting a night with other rules than the host asked for.
 func admit(ticket: String, now: int) -> Dictionary:
 	var claims := claims_of(ticket, now)
 	if claims.is_empty():
@@ -60,13 +62,38 @@ func admit(ticket: String, now: int) -> Dictionary:
 	if _used.has(jti):
 		return {"ok": false, "reason": USED}
 	_used[jti] = int(claims["exp"])
+	var shown := level_claims(claims)
 	return {
 		"ok": true,
 		"user": claims["sub"],
 		"name": str(claims.get("name", "")),
 		"match": claims["matchId"],
 		"settings": settings,
+		"level": shown["level"],
+		"icon": shown["icon"],
 	}
+
+
+## The level and icon a ticket's claims give the seat, both whole numbers from 1 to the top level,
+## or both 0 when the ticket has none (a ticket from before the backend kept profiles, a claim out
+## of range): the seat then shows no level. The backend signs them from the account's stored
+## profile; the client's own word never reaches here. The icon is the claim `level_NN` (the file of
+## the ladder's icon, `LevelIcons`) read as the number NN, and follows the level when it is missing
+## or wrong.
+static func level_claims(claims: Dictionary) -> Dictionary:
+	var held: Variant = claims.get("level")
+	if typeof(held) != TYPE_FLOAT and typeof(held) != TYPE_INT:
+		return {"level": 0, "icon": 0}
+	var level := int(held)
+	if float(held) != float(level) or level < 1 or level > LevelCurve.MAX_LEVEL:
+		return {"level": 0, "icon": 0}
+	var icon := level
+	var named := str(claims.get("icon", ""))
+	if named.begins_with(ICON_PREFIX) and named.substr(ICON_PREFIX.length()).is_valid_int():
+		var number := named.substr(ICON_PREFIX.length()).to_int()
+		if number >= 1 and number <= LevelCurve.MAX_LEVEL:
+			icon = number
+	return {"level": level, "icon": icon}
 
 
 ## Why the `settings` claim of a ticket is refused ("" when the game takes it). A key this build

@@ -58,6 +58,9 @@ const TOUCH_HINTS_SEEN := &"controls/touch_hints_seen"
 ## Which challenge prompts show in the night: 0 all, 1 only finished challenges and milestone steps,
 ## 2 none (`HudChallenge.Mode`).
 const CHALLENGE_PROMPTS := &"accessibility/challenge_prompts"
+## Whether each player's level and icon show beside their name (the tags over heads, the scoreboard,
+## the lobby and the night report); on by default. A viewer's own choice about their own screen.
+const SHOW_LEVELS := &"accessibility/show_levels"
 ## The player's character look as JSON (`CharacterLook.to_json`); empty means the default look.
 const CHARACTER_LOOK := &"character/look"
 ## The platform profile as last read, for the menu to show (`MenuProfile`): JSON, read-only on the
@@ -86,6 +89,7 @@ const DEFAULTS := {
 	UI_SCALE: 1.0,
 	CAMERA_SHAKE: 100,
 	CHALLENGE_PROMPTS: 0,
+	SHOW_LEVELS: true,
 	MOUSE_SENSITIVITY: 1.0,
 	INVERT_Y: false,
 	TOUCH_CONTROLS: 0,

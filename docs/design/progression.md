@@ -699,7 +699,9 @@ ticket the backend signs, then in the WELCOME's names and the `player_named` eve
 their usual difficulties (the earlier idea of a level near the lobby's average is dropped). A Guest account is an
 account and has a level like any other; only a bot has none.
 Also on the scoreboard, the lobby list and the night report. A name tag never shows a card or an emblem in the night.
-Build: #1077.
+Built in #1077: [how it travels and what it costs](../research/multiplayer.md#the-level-and-icon-beside-a-name-1077).
+The setting is **Player levels** (Settings, Accessibility). A level gained in a night reaches the tags through
+`NightHost.set_level` (the `player_leveled` event); the server's XP tally (#1059) calls it.
 
 ## Prestige
 

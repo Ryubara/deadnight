@@ -19,6 +19,9 @@ const NIGHT_SCREEN := "res://ui/screens/night_screen.tscn"
 const FIELD_WIDTH := 620.0
 const SEAT_NUMBER_WIDTH := 48.0
 const TAG_WIDTH := 96.0
+## The level icon before a name in the seat list, and the room the level number has after it.
+const SEAT_ICON := 24.0
+const SEAT_LEVEL_WIDTH := 44.0
 const LEAVE_WIDTH := 150.0
 ## How long the host's last change waits for another before it is sent (a slider drag is a stream).
 const RULES_DELAY := 0.35
@@ -357,6 +360,15 @@ func seat_texts() -> Array[String]:
 	return out
 
 
+## The level each seat row shows (0 for none: a bot, an open seat, or levels turned off), for tests.
+func seat_levels() -> Array[int]:
+	var out: Array[int] = []
+	for row in _seat_rows:
+		var level := row["level"] as Label
+		out.append(int(level.text) if level.visible and level.text != "" else 0)
+	return out
+
+
 ## Reads the code again (the timer does this every two seconds in a preview): the state, the round
 ## and whether there is room move on while the screen is open.
 func refresh_preview() -> void:
@@ -604,6 +616,10 @@ func _show_seats() -> void:
 	var names: Array = []
 	var hosts: Array = []
 	var away: Array = []
+	# Each member's `Vector2i(level, icon)` as the backend reads it from their profile (zero for
+	# none), when the viewer wants levels shown.
+	var levels: Array[Vector2i] = []
+	var show_levels := bool(Settings.get_value(SettingsService.SHOW_LEVELS))
 	var max_players := NightHost.MAX_PLAYERS
 	if mode == Mode.LIVE:
 		max_players = int(lobby.get("maxPlayers", NightHost.MAX_PLAYERS))
@@ -611,6 +627,12 @@ func _show_seats() -> void:
 			names.append(str(member["name"]))
 			hosts.append(bool(member.get("host", false)))
 			away.append(bool(member.get("away", false)))
+			var claims := TicketVerifier.level_claims(
+				{"level": member.get("level"), "icon": member.get("icon")}
+			)
+			levels.append(
+				Vector2i(claims["level"], claims["icon"]) if show_levels else Vector2i.ZERO
+			)
 	else:
 		max_players = int(preview.get("maxPlayers", NightHost.MAX_PLAYERS))
 		for who: Variant in preview.get("names", []):
@@ -621,10 +643,13 @@ func _show_seats() -> void:
 		_seat_rows.append(_make_seat_row())
 	# The bots take the highest seats, as the server seats them (`NightBots`).
 	var bot_from := max_players - bots_shown()
+	var room_for_icons := levels.any(func(held: Vector2i) -> bool: return held.x > 0)
 	for i in _seat_rows.size():
 		var row := _seat_rows[i]
 		(row["box"] as Control).visible = i < max_players
 		(row["number"] as Label).text = str(i + 1)
+		var held: Vector2i = levels[i] if i < levels.size() else Vector2i.ZERO
+		_show_level(row, held, room_for_icons)
 		if i >= names.size() and i >= bot_from and i < max_players:
 			(row["name"] as Label).text = NightBots.name_for(i + 1, bots_skill())
 			(row["name"] as Label).modulate.a = 1.0
@@ -642,21 +667,48 @@ func _show_seats() -> void:
 			(row["tag"] as Label).text = ""
 
 
+## The icon and the level of a seat's row: both blank for a bot or an open seat, and gone from every
+## row of a list where nobody has a level (the names then start where they always did).
+func _show_level(row: Dictionary, held: Vector2i, room: bool) -> void:
+	var icon := row["icon"] as TextureRect
+	var level := row["level"] as Label
+	icon.visible = room
+	level.visible = room
+	icon.modulate.a = 1.0 if held.x > 0 else 0.0
+	if held.x > 0:
+		icon.texture = LevelIcons.texture(held.y)
+	level.text = str(held.x) if held.x > 0 else ""
+
+
 func _make_seat_row() -> Dictionary:
 	var box := HBoxContainer.new()
 	box.add_theme_constant_override(&"separation", _tokens.space_md)
 	var number := _label("", UILabel.Style.BODY)
 	number.custom_minimum_size.x = SEAT_NUMBER_WIDTH
+	var icon := TextureRect.new()
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.texture_filter = LevelIcons.FILTER
+	icon.custom_minimum_size = Vector2.ONE * SEAT_ICON
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.visible = false
 	var seat_name := _label("", UILabel.Style.BODY)
 	seat_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	seat_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	var level := _label("", UILabel.Style.OVERLINE)
+	level.custom_minimum_size.x = SEAT_LEVEL_WIDTH
+	level.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	level.visible = false
 	var tag := _label("", UILabel.Style.OVERLINE)
 	tag.custom_minimum_size.x = TAG_WIDTH
 	box.add_child(number)
+	box.add_child(icon)
 	box.add_child(seat_name)
+	box.add_child(level)
 	box.add_child(tag)
 	_seats.add_child(box)
-	return {"box": box, "number": number, "name": seat_name, "tag": tag}
+	return {
+		"box": box, "number": number, "icon": icon, "name": seat_name, "level": level, "tag": tag
+	}
 
 
 func _set_enabled(enabled: bool) -> void:

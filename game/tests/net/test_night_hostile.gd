@@ -164,7 +164,7 @@ func test_a_connection_that_never_says_hello_is_dropped() -> void:
 
 func test_another_version_is_refused_with_the_servers_own() -> void:
 	await _server()
-	for version in [NetWire.VERSION + 1, NetWire.VERSION - 1, 1, 0, 255]:
+	for version in [NetWire.VERSION + 1, NetWire.MIN_VERSION - 1, 1, 0, 255]:
 		var ws := await _socket()
 		ws.send(PackedByteArray([NetWire.Type.HELLO, version, 0]), WebSocketPeer.WRITE_MODE_BINARY)
 		var refusal := await _refusal_of(ws)

@@ -1,17 +1,20 @@
 class_name NetWire
 extends RefCounted
-## The bytes of a night's connection (protocol version 14 puts the zombie's status effect in its
-## mode byte (`ZombieCodec`: frozen, chilled); version 13 has the ORDER message, a person's order to
-## the bots, and the `bot_orders` of the frame; version 12 carries each player's stance, sprint,
-## crouch and in the air, in the frame; version 11 has the quick melee flag in a command's flags
-## (`F_MELEE`); version 10 has the client's PLATFORM message; version
-## 9 had a WELCOME and events that carry every seat's name; version 8 carried each player's aim pose
-## and look up or down so a client can draw the weapons of the others; version 7 had zombie deltas
-## and an interest radius, version 6 had every zombie whole in a frame, version 5 had no view step
-## in a command, version 4 had a ping of 5 bytes with no round trip in it, version 3 had no ticket
-## in the hello, version 2 no resume token, version 1 sent a command as 47 bytes of floats), one
-## message to a WebSocket frame: a type byte, then the fields. `LookWire` continues the numbering
-## with types 8 and 9.
+## The bytes of a night's connection (protocol version 15 puts each person's level and icon in the
+## WELCOME (`levels`, player id -> `Vector2i(level, icon)`) and in the `player_named` event
+## (`level`, `icon`), with the `player_leveled` event for a level that changes; the layouts are the
+## same and a version 14 client reads them and shows no level; version 14 puts the zombie's status
+## effect in its mode byte (`ZombieCodec`: frozen, chilled); version 13 has the ORDER message, a
+## person's order to the bots, and the `bot_orders` of the frame; version 12 carries each player's
+## stance, sprint, crouch and in the air, in the frame; version 11 has the quick melee flag in a
+## command's flags (`F_MELEE`); version 10 has the client's PLATFORM message; version 9 had a
+## WELCOME and events that carry every seat's name; version 8 carried each player's aim pose and
+## look up or down so a client can draw the weapons of the others; version 7 had zombie deltas and
+## an interest radius, version 6 had every zombie whole in a frame, version 5 had no view step in a
+## command, version 4 had a ping of 5 bytes with no round trip in it, version 3 had no ticket in the
+## hello, version 2 no resume token, version 1 sent a command as 47 bytes of floats), one message to
+## a WebSocket frame: a type byte, then the fields. `LookWire` continues the numbering with types 8
+## and 9.
 ##
 ## HELLO    C->S  u8 type=1, u8 version, u8 token length (0 or 8), the resume token the last WELCOME
 ##                gave (a client that lost its socket asks for its seat back), then the rest is the
@@ -67,9 +70,10 @@ enum Refusal { VERSION = 1, FULL = 2, DENIED = 3 }
 ## The protocol version of this build. Raise it whenever a layout above changes (a field added,
 ## resized or reordered, a type renumbered). New keys in the events and the frame do not need it:
 ## clients ignore keys they do not know. The policy is in docs/research/multiplayer.md.
-const VERSION := 14
+const VERSION := 15
 ## The oldest client version a server of this build still takes. Equal to `VERSION` while the web
-## client and the server ship from one commit; lower it only for a layout both versions can read.
+## client and the server ship from one commit; lower it only for a layout both versions can read:
+## 15 only adds keys, so a 14 client (a page open from before the deploy) plays on without levels.
 const MIN_VERSION := 14
 ## Port of a game server unless told otherwise. (Not 9080: the Godot editor's MCP bridge listens
 ## there on the maintainer's machine and Windows lets a second listener bind it silently.)

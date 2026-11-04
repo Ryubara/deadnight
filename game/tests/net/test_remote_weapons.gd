@@ -471,7 +471,10 @@ func _frame_with(weapon: StringName, aim: bool, pitch: int) -> Dictionary:
 
 func test_a_client_of_the_version_before_is_refused() -> void:
 	assert_bool(NetWire.accepts(NetWire.VERSION)).is_true()
-	assert_bool(NetWire.accepts(NetWire.VERSION - 1)).is_false()
+	# The oldest version a server takes is the first it can still read the layouts of (15 only added
+	# keys to 14, `MIN_VERSION`); the one before that is refused.
+	assert_bool(NetWire.accepts(NetWire.MIN_VERSION)).is_true()
+	assert_bool(NetWire.accepts(NetWire.MIN_VERSION - 1)).is_false()
 	# Version 7 drew the others without a weapon, aim or look, and version 8 without names: a server
 	# of this build refuses both, and so it does every version before.
 	for old in [1, 2, 3, 4, 5, 6, 7, 8]:
