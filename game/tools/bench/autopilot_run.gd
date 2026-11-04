@@ -60,6 +60,7 @@ var _done := false
 var _ablated := false
 var _sampler: PerfSampler
 var _jumped := false
+var _hud_probed := false
 ## False for a long run (`frames=0`): the per-frame rows would be the growth being measured.
 var _keep_frames := true
 
@@ -105,6 +106,9 @@ func _process(delta: float) -> void:
 	if not _jumped:
 		_jumped = true
 		_start_at_round(night)
+	if _args.get_int("hudprobe") == 1 and not _hud_probed and night.state.zombies.size() >= 60:
+		_hud_probed = true
+		_probe_hud(UIRouter.top())
 	_played += delta
 	if _keep_frames:
 		_rows.append([delta * 1000.0, night.state.round_number(), night.state.zombies.size()])
@@ -245,6 +249,36 @@ func _start_at_round(night: Night) -> void:
 	var points := _args.get_int("points", 20000)
 	for id: int in rules.players:
 		(rules.players[id] as PlayerState).points = points
+
+
+## Draw calls of the frame with each part of the HUD hidden in turn (`hudprobe=1`), printed as
+## `HUDPROBE {json}`: what each part costs in draws, read once the crowd stands.
+func _probe_hud(screen: Control) -> void:
+	var hud: Node = null
+	for child in screen.get_children():
+		if child is Hud:
+			hud = child
+	if hud == null:
+		return
+	var report := {"all": await _draws()}
+	for part in hud.get_children():
+		if not (part is CanvasItem) or not (part as CanvasItem).visible:
+			continue
+		(part as CanvasItem).visible = false
+		report[str(part.name)] = await _draws()
+		(part as CanvasItem).visible = true
+	print("HUDPROBE ", JSON.stringify(report))
+
+
+## The mean draw calls over five frames.
+func _draws() -> int:
+	for _i in 3:
+		await get_tree().process_frame
+	var total := 0
+	for _i in 5:
+		await get_tree().process_frame
+		total += int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+	return total / 5
 
 
 func _state_of_night() -> Dictionary:

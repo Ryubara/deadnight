@@ -90,6 +90,56 @@ jobs:
           path: out/chunks
           if-no-files-found: warn
 
+  leak:
+    # A thirty minute night of four players (the person and three bots) at a fixed step, held to what a long night may
+    # grow by (tools/perf/leak_budget.json, docs/research/performance.md): nodes, objects, resources and memory after
+    # the first twelve minutes, and no more than two orphans.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: repos/deadnight
+          persist-credentials: false
+          lfs: true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Ryubara/gdstudio
+          path: repos/gdstudio
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: cache/downloads
+          key: tools-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
+      - name: Make the workspace and fetch the pinned Godot
+        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot
+      - name: Import the project
+        run: |
+          set -o pipefail
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          "$godot" --headless --path repos/deadnight/game --import 2>&1 | tee import.log
+          ! grep -E "^(SCRIPT )?ERROR" import.log
+      - name: Play thirty minutes and hold the counts flat
+        run: |
+          set -o pipefail
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          "$godot" --headless --path repos/deadnight/game --fixed-fps 60 -- --autopilot --rounds=999 --hold=9999 --seconds=1800 --count=1 --bots=3 --frames=0 --labels=0 --sample=1 --out="$PWD/leak.json" 2>&1 | tee leak.log
+          ! grep -E "^(SCRIPT )?ERROR" leak.log
+          python3 repos/deadnight/tools/perf/check_budget.py leak.json repos/deadnight/tools/perf/leak_budget.json --markdown leak-summary.md
+      - name: Show it in the run's summary
+        if: always()
+        run: '[ -f leak-summary.md ] && cat leak-summary.md >> "$GITHUB_STEP_SUMMARY" || true'
+      - name: Upload the samples
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: leak-night
+          path: |
+            leak.json
+            leak.log
+          if-no-files-found: warn
+
   report:
     needs: soak
     if: always() && needs.soak.result != 'skipped'

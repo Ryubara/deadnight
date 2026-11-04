@@ -36,8 +36,10 @@ func test_what_perf_probe_timed_in_the_second_is_in_the_row_per_frame() -> void:
 		PerfProbe.count(&"test.events")
 		sampler._process(0.25)
 	var row := sampler.rows[0]
-	# 2 ms in each of 4 frames: about 2 ms a frame (a loaded machine may sleep longer).
-	assert_float(row["labels_ms"]["test.work"]).is_between(1.9, 30.0)
+	# 2 ms at least in each of 4 frames: a sleep is never shorter than asked, and a busy machine may
+	# make it much longer, so there is no upper bound to hold.
+	assert_float(row["labels_ms"]["test.work"]).is_greater(1.9)
+	assert_float(row["labels_median_ms"]["test.work"]).is_greater(1.9)
 	assert_int(row["counts"]["test.events"]).is_equal(4)
 
 

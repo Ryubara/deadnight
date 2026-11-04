@@ -6,7 +6,7 @@
 and `perf_sampler.gd`): one row a second of the monitors and counts of a night. The budget (default `budget.json`
 beside this file) names, for one case, the most each count may reach while the crowd stands, how much a count may
 grow over the steady seconds (a leak), and how many times a fixed piece of GDScript (`calibration_ms`) one frame may
-cost. A count is the same on every machine at the same seed, so it is held tight; a time is held as a ratio of the
+cost; how many times a tick a counted piece of work (`PerfProbe.count`) happens. A count is the same on every machine at the same seed, so it is held tight; a time is held as a ratio of the
 calibration, which a slow runner and a busy machine both scale, so it is held loose and is a regression catcher, not
 a frame-rate promise (docs/research/performance.md).
 
@@ -70,6 +70,13 @@ def judge(report: dict, budget: dict) -> tuple[list[str], list[str]]:
         lines.append(f"{key}: grows {slope:.1f} a minute (limit {limit})")
         if slope > limit:
             broken.append(f"{key} grows {slope:.1f} a minute over the steady rows, over its limit {limit}")
+    for key, limit in budget.get("max_per_tick", {}).items():
+        # Work counted by `PerfProbe.count` (a decode, a list built): the same on every machine.
+        ticks = sum(row["frames"] for row in rows)
+        per_tick = sum(row.get("counts", {}).get(key, 0) for row in rows) / max(ticks, 1)
+        lines.append(f"{key}: {per_tick:.2f} a tick (limit {limit})")
+        if per_tick > limit:
+            broken.append(f"{key} happens {per_tick:.2f} times a tick, over its limit {limit}")
     for key, limit in budget.get("max_ratio_of_calibration", {}).items():
         calibration = statistics.median(row["calibration_ms"] for row in rows)
         ratio = statistics.median(row[key] for row in rows) / calibration
