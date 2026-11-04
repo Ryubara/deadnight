@@ -4,12 +4,13 @@
 # the long ones to round 10 and prints the numbers for the design page).
 extends GdUnitTestSuite
 
-## Game seconds of the solo night, and of the night of four on the whole map. The solo bot pays for
-## its two links first and the shotgun (or the box) comes in the break of round 4, at 140 to 170 s
-## on twenty seeds; a bot starts no errand with a dead within 12 m, so that one break is a matter of
-## luck in the fight (it was missed on CI, with the same purchases, and not on a rerun). The night
-## runs past the breaks of rounds 5 and 6, which the bot has the points for, so the weapon is bought
-## in one of three breaks and not in one.
+## Game seconds of the solo night, and of the night of four on the whole map. The solo bot buys the
+## first link and then its first gun (the overlay saves for the shotgun, and a bot with only its
+## start gun is offered nothing after a gun it can pay for), by 107 s on 12 of 14 seeds and by 225 s
+## on all; before, the two stairs came first and the gun in the break of round 4, which a night lost
+## on one seed of four (#910). A bot starts no errand with a dead within 12 m, so the
+## night still runs past the breaks of rounds 5 and 6: the weapon is bought in one of several
+## breaks.
 const SOLO_SECONDS := 330.0
 const FOUR_SECONDS := 150.0
 ## Game seconds in which four bots on the shut map have bought every link (round 4 at the latest).

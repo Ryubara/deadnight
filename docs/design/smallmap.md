@@ -227,6 +227,12 @@ door's 40 s rotation, so the busy and the far cover instead of waiting. A link s
 one a flight up; a door's stand is chosen by walking cost (8 m a metre of height), so a bot on the ground floor takes the
 foot, not the flat-nearer stand it would reach only by going round the whole map. The lot leaves the flag off.
 
+The overlay's **`bot_saves_for`** names the shotgun (and the re-cut and the hearty tonic, as the profiles do): while
+the shotgun is out of reach nothing after it on the list is bought. And once a bot that holds only its start gun can
+pay for a gun, nothing after that gun is offered either, the team link rule included, so the first gun comes before
+the second and third stairs (#910: a solo bot that paid for both stairs first met round 3 with the revolver and went
+down on one of four seeds).
+
 ### Proof
 
 `tests/captures/smallmap_bot_night.tscn` plays a night of hosted bots to a round and prints the numbers (`--bots`,
