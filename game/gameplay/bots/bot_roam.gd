@@ -14,6 +14,13 @@ extends RefCounted
 ## spends its time trying the places behind a shut door. The only chance is the bot's own
 ## seeded stream, so the same trace gives the same walk.
 ##
+## A bot can end on a piece of the walking mesh that nothing joins to the rest (a step out of
+## another bot's way, a blow, a place that lies on a polygon cut for a barricade): then every place
+## is refused and, banned for ten minutes, none would be tried again from anywhere. Told apart from
+## a place behind a shut door by the spot the bot last made a choice from, which the bot can no
+## longer reach (`exact`), it takes the refusals back and walks straight back to that spot
+## (`rejoin`), and chooses again from there (#1041).
+##
 ## Pure data and arithmetic: the level, the clock and the stream are the caller's.
 
 ## Metres from the people beyond which a place is no better for being farther.
@@ -46,6 +53,13 @@ const LOOK_TURN := 1.9
 const LOOK_SECONDS := 1.3
 ## Metres from a place at which the bot counts itself there.
 const ARRIVE := 1.5
+## Metres from the spot it last chose from within which a bot that can reach no place walks back to
+## that spot, and the seconds the walk back is given.
+const REJOIN_RANGE := 6.0
+const REJOIN_SECONDS := 8.0
+## Metres a path may end short of a point and still reach it, when asking whether the bot is
+## joined to the spot it chose from (`exact`).
+const EXACT_SHORT := 0.5
 ## A bot with no place of the level to go to wanders: candidates at these radii (metres), this
 ## many directions at each.
 const WANDER_RINGS: Array[float] = [9.0, 15.0]
@@ -60,12 +74,23 @@ var dwelling := false
 var look_yaw := 0.0
 ## The places walked to, newest last.
 var visited: Array[Vector3] = []
+## The spot the stranded bot walks straight back to, or `Vector3.INF` when it is not stranded.
+var rejoin := Vector3.INF
+## Times the bot found itself cut off from the rest of the mesh.
+var strandings := 0
+## `Callable(here, spot) -> bool`: whether a walk gets from `here` to the spot, ending within
+## `EXACT_SHORT` of it (`reach` allows more). Whether the bot is joined to the spot it chose from;
+## without it a bot is never taken for cut off.
+var exact := Callable()
 
 var _level: BotLevel
 var _rng := RandomNumberGenerator.new()
 var _dwell_until := -INF
 var _look_until := -INF
 var _banned: Dictionary = {}
+var _refused: Array[Vector2i] = []
+var _free := Vector3.INF
+var _rejoin_until := -INF
 var _mesh := -1
 
 
@@ -86,6 +111,8 @@ func _init(level: BotLevel, bot_seed: int) -> void:
 ## - `stopped_short_of`: the goal the legs stood at the end of the path to without being near it
 ##   (`BotLegs.stopped_short_of`): the mesh ends short of the place, the bot is as near as it gets
 ##   and counts itself there.
+## While `rejoin` is finite the bot is walking back to the spot it chose from and no place is
+## returned.
 func plan(
 	here: Vector3,
 	now: float,
@@ -101,6 +128,11 @@ func plan(
 	if mesh != _mesh:
 		_mesh = mesh
 		_banned.clear()
+	_refused.clear()
+	if rejoin.is_finite():
+		if not _joined(here, now):
+			return Vector3.INF
+		rejoin = Vector3.INF
 	if dwelling:
 		if now < _dwell_until:
 			_look_about(now)
@@ -111,7 +143,7 @@ func plan(
 			_ban(spot, now)
 			spot = Vector3.INF
 		elif _flat(here, spot) <= ARRIVE or _is_short(spot, stopped_short_of):
-			_arrive(now)
+			_arrive(here, now)
 			return Vector3.INF
 		elif not _worth_keeping(spot, threats):
 			spot = Vector3.INF
@@ -119,7 +151,42 @@ func plan(
 		var spread: Array[Vector3] = others.duplicate()
 		spread.append_array(claimed)
 		spot = _choose(here, now, people, spread, threats, reach)
+		if spot != Vector3.INF:
+			_free = here
+		elif _is_stranded(here):
+			_strand(now)
 	return spot
+
+
+## Whether the bot is back on the part of the mesh the spot it left is on. A walk that has had its
+## time (a wall in the way) forgets the spot: the bot is not helped by it, and goes back to choosing
+## among the places, refusals and all.
+func _joined(here: Vector3, now: float) -> bool:
+	if now >= _rejoin_until:
+		_free = Vector3.INF
+		return true
+	if _flat(here, _free) <= ARRIVE * 0.5:
+		return true
+	return exact.is_valid() and exact.call(here, _free)
+
+
+## Whether every place was refused because the bot is cut off, not because the places are: it
+## chose from a spot close by, and no walk gets back to that spot.
+func _is_stranded(here: Vector3) -> bool:
+	if _refused.is_empty() or not _free.is_finite() or not exact.is_valid():
+		return false
+	var apart := _flat(here, _free)
+	return apart > ARRIVE * 0.5 and apart <= REJOIN_RANGE and not exact.call(here, _free)
+
+
+## Takes back the refusals of this think (a bot that cannot get anywhere says nothing of the places)
+## and sets out to walk back to the spot it chose from.
+func _strand(now: float) -> void:
+	for key in _refused:
+		_banned.erase(key)
+	rejoin = _free
+	_rejoin_until = now + REJOIN_SECONDS
+	strandings += 1
 
 
 ## Whether the legs stopped short of this very place.
@@ -141,7 +208,8 @@ func _worth_keeping(point: Vector3, threats: Array[Vector3]) -> bool:
 	return true
 
 
-func _arrive(now: float) -> void:
+func _arrive(here: Vector3, now: float) -> void:
+	_free = here
 	visited.append(spot)
 	if visited.size() > VISITED:
 		visited.pop_front()
@@ -159,6 +227,7 @@ func _look_about(now: float) -> void:
 
 func _ban(point: Vector3, now: float) -> void:
 	_banned[_key(point)] = now + BAN_SECONDS
+	_refused.append(_key(point))
 
 
 func _is_banned(point: Vector3, now: float) -> bool:
