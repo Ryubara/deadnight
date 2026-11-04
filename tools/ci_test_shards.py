@@ -21,7 +21,7 @@ SHARDS = 6
 NAMED: dict[int, tuple[str, ...]] = {
     # ~375 s: the rest of the night folder (those not moved below), and the once-per-run steps
     1: ("night",),
-    # ~350 s, and the two reach sweeps moved below
+    # ~350 s
     2: ("player",),
     # ~355 s
     3: ("zombies",),
@@ -42,7 +42,7 @@ NAMED: dict[int, tuple[str, ...]] = {
         "tuning",
         "test_main_scene.gd",
     ),
-    # ~470 s once the reach sweeps moved to 2 (the `world` folder grew the body sweeps, #848)
+    # ~370 s
     6: ("rules", "world"),
 }
 # The `night` folder alone is 900 s (the bot suites are minutes long each), so its heaviest scripts are named one by
@@ -58,15 +58,11 @@ MOVED: dict[str, int] = {
     "night/test_bot_errand_buys.gd": 3,  # 31
     "night/test_bot_own_ammo.gd": 5,  # 40
     "night/test_bot_train.gd": 6,  # 18
-    # The real body run at the walls (#846, #848): shard 6 was 11 minutes of suites, shard 2 under 4.
-    "world/test_midway_fence_reach.gd": 2,  # 132
-    "world/test_drive_in_escape_sweep.gd": 2,  # 76
 }
 
 
 def entries(root: Path) -> list[str]:
-    """Every test folder and every test script directly under tests/, as `res://` paths. A split folder gives its
-    scripts one by one and its subfolders whole (`world/smallmap`), which stay with the folder's shard."""
+    """Every test folder and every test script directly under tests/, as `res://` paths."""
     tests = root / "tests"
     found = []
     split = {name.split("/")[0] for name in MOVED}
@@ -75,11 +71,6 @@ def entries(root: Path) -> list[str]:
             continue
         if path.is_dir() and path.name in split:
             found.extend(f"res://tests/{path.name}/{test.name}" for test in sorted(path.glob("test_*.gd")))
-            found.extend(
-                f"res://tests/{path.name}/{sub.name}"
-                for sub in sorted(path.iterdir())
-                if sub.is_dir() and not sub.name.startswith(".") and any(sub.rglob("test_*.gd"))
-            )
             continue
         if path.is_dir() or (path.suffix == ".gd" and path.name.startswith("test_")):
             found.append(f"res://tests/{path.name}")
