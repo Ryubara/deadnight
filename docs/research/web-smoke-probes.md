@@ -8,8 +8,9 @@ a screen gains a control (#715 put the bot skill in the Bots row; #741 and #743 
 
 - The game publishes `focus`: the name of the control that has the keyboard (the nearest named node, so a button's
   inner control reads as the button). The Play screen and the room lobby share `MatchSettingsPanel`, whose controls
-  are named by their setting key: `count_multiplier`, `max_alive`, `break_seconds`, `bots`, `bot_skill`; a map card is
-  named by its map id (`drive_in`); the Play screen's buttons are `Start`, `Reset` and `Back`.
+  are named by their setting key: `count_multiplier`, `perk_limit`, `max_alive`, `break_seconds`, `bots`,
+  `bot_skill`; a map card is named by its map id (`drive_in`); the Play screen's buttons are `Start`, `Reset` and
+  `Back`.
 - `smoke.focus_control(page, wanted, key)` presses `key` until `focus` is `wanted`, at most `smoke.FOCUS_TRIES`
   presses, and raises `TimeoutError` naming the wanted control, the one reached and every control passed.
 - `smoke.step_value(page, wanted, key, times)` presses a value key and checks the focus was on `wanted` before and
@@ -21,7 +22,8 @@ a screen gains a control (#715 put the bot skill in the Bots row; #741 and #743 
 ## Order of the walk
 
 The focus links decide, not the picture. On the Play screen Up from `Start` reaches `bot_skill`, then `bots`, then
-`break_seconds`, `max_alive`, `count_multiplier` and the map cards; Down from `break_seconds` lands on `bot_skill`
+`break_seconds`, `max_alive`, `perk_limit`, `count_multiplier` and the map cards (the perk limit shares the intensity's
+row, #913); Down from `break_seconds` lands on `bot_skill`
 (the nearer selector), so `bots` is reached going up. Walk up from Start and come back to `Start` going down.
 
 ## Adding a control

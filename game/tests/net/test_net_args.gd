@@ -27,7 +27,8 @@ func test_every_setting_has_an_option_and_reaches_the_settings() -> void:
 				"small_indoor",
 				"--bots=3",
 				"--bot-skill",
-				"2"
+				"2",
+				"--perk-limit=1"
 			]
 		)
 		. match_settings()
@@ -42,6 +43,7 @@ func test_every_setting_has_an_option_and_reaches_the_settings() -> void:
 				"map": "small_indoor",
 				"bots": 3,
 				"bot_skill": 2,
+				"perk_limit": 1,
 			}
 		)
 	)
@@ -56,6 +58,7 @@ func test_each_setting_alone_changes_only_that_setting() -> void:
 		"map": ["--map", "small_indoor"],
 		"bots": ["--bots", "4"],
 		"bot_skill": ["--bot-skill", "0"],
+		"perk_limit": ["--perk-limit", "1"],
 	}
 	# A setting added to the match without an option fails here.
 	assert_array(options.keys()).contains_exactly_in_any_order(MatchSettings.KEYS.keys())
@@ -76,6 +79,7 @@ func test_a_value_the_game_does_not_take_is_found_by_its_setting() -> void:
 		"bot_skill": ["--bot-skill", "5"],
 		"count_multiplier": ["--count", "50"],
 		"break_seconds": ["--break", "500"],
+		"perk_limit": ["--perk-limit", "2"],
 	}
 	for key: String in cases:
 		var settings := _args(cases[key]).match_settings()

@@ -85,6 +85,7 @@ func test_the_play_screen_controls_are_named_by_their_setting_for_the_smokes() -
 	var panel := screen.panel
 	var wanted := {
 		"count_multiplier": panel.count_selector,
+		"perk_limit": panel.perk_selector,
 		"max_alive": panel.alive_slider,
 		"break_seconds": panel.break_slider,
 		"bots": panel.bots_selector,

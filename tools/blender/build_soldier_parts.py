@@ -32,6 +32,7 @@ from mathutils import Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kitlib
+import soldier_arms
 import soldier_clips as sc
 from palette_import import ensure_import
 
@@ -436,6 +437,7 @@ def clean_soldier(path):
     for t in list(ad.nla_tracks):
         ad.nla_tracks.remove(t)
     ad.action = None
+    soldier_arms.shorten_forearms(arm)  # #978: before any clip is solved by reach
     sc.build(arm)
     kit_actions = [a for a in bpy.data.actions if "|" in a.name]
     for a in kit_actions:
@@ -580,7 +582,7 @@ def torso_rule(kind):
     def rule(t):
         ax = abs(t.centre.x)
         sleeve = t.mat == "Black" and t.size >= 150
-        cuff = t.mat == "Black" and t.size < 150 and ax > 0.8
+        cuff = t.mat == "Black" and t.size < 150 and ax > soldier_arms.along(0.8)
         pouch = t.mat == "DarkGrey" and t.centre.y < -0.09 and 1.09 < t.centre.z < 1.35 and ax < 0.2
         collar = t.mat == "Character_Main" and t.bone in ("Head", "Neck")
         if t.mat == "Skin":
@@ -689,8 +691,8 @@ def weld_key(co):
 def push_taper(co):
     """How much of the bare-skin push a rest-pose vertex takes: none at the wrist (the hand is never pushed: its
     grips, #678) and at the ankle (the shoe's top is not), all of it a few centimetres away."""
-    if abs(co.x) > 0.5:  # an arm, along X at rest: the wrist seam is at |x| 0.83-0.89
-        return 1.0 - ramp(abs(co.x), 0.74, 0.83)
+    if abs(co.x) > 0.5:  # an arm, along X at rest: the wrist seam is at |x| 0.83-0.89 on the kit's arm (#978: along)
+        return 1.0 - ramp(abs(co.x), soldier_arms.along(0.74), soldier_arms.along(0.83))
     if co.z < 0.6:  # a shin: the ankle seam is at z 0.19-0.26
         return ramp(co.z, 0.27, 0.36)
     return 1.0
@@ -743,7 +745,7 @@ def push_faces(me, amounts, hands, elbow=False):
         if n.length < 1e-9:
             continue
         co = me.vertices[ids[0]].co
-        taper = push_taper(co) * (ramp(abs(co.x), 0.56, 0.64) if elbow else 1.0)
+        taper = push_taper(co) * (ramp(abs(co.x), soldier_arms.along(0.56), soldier_arms.along(0.64)) if elbow else 1.0)
         d = n.normalized() * amount * taper
         for vi in ids:
             me.vertices[vi].co += d
@@ -806,7 +808,7 @@ def body_part(body, tags, region, rule, name, mat, arm, push=(), low_collar=Fals
 # rings. The bare-armed tops used to pull those rings in to the arm, which bared both openings: from the side the eye
 # looked into the hand and the forearm and out through them. They now drop the rings and join the two openings with
 # one band of skin.
-WRIST_X = (0.74, 0.95)  # |x| of the openings a bare wrist joins, at rest
+WRIST_X = (soldier_arms.along(0.74), soldier_arms.along(0.95))  # |x| of the openings a bare wrist joins, at rest
 
 
 def open_loops(bm, keep):

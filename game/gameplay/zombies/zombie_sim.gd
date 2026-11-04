@@ -51,6 +51,19 @@ const STRAND_GAP := 3.0
 const STRAND_FAR := 12.0
 const STRAND_SECONDS := 12.0
 
+## A zombie that has pulled at one breach's boards this many seconds without getting through (a
+## player puts them back as fast as it tears them, out of the line of fire past a jamb) bursts
+## them: the sim says `zombie_burst`, the director tears the rest, and the zombie is through (it
+## has no gate any more, so a board put back at once does not hold it). One dead held at a window
+## for ever kept a round going for minutes with its last dead standing (#950).
+const SIEGE_SECONDS := 30.0
+
+## See `_keeps_its_route`: how much longer a new route has to be, how near the target the old one
+## has to end, and how little of it may be left for the zombie to go on along it.
+const ROUTE_FLIP := 6.0
+const ROUTE_KEEP := 3.5
+const ROUTE_ARRIVED := 1.0
+
 var tuning: ZombieTuning
 ## Used for the speed of a zombie off lit ground; without it light changes nothing.
 var rounds: RoundTuning
@@ -91,6 +104,9 @@ var _grid := SeparationGrid.new()
 var _cleared := PackedInt64Array()
 ## Time handed to `tick` that has not made a whole step yet.
 var _pending: float = 0.0
+## The ground offset of `_offset_of`, the pathing it was asked of (`_ground_offset`).
+var _offset_of: ZombiePathing
+var _offset := NAN
 
 
 func _init(p_tuning: ZombieTuning = null, p_seed: int = 0) -> void:
@@ -362,21 +378,29 @@ func _step(targets: Dictionary) -> Array[Dictionary]:
 func _think(
 	zombie: ZombieBody, delta: float, targets: Dictionary, events: Array[Dictionary]
 ) -> void:
-	var lure := _lure_for(zombie)
+	# Run for every zombie of the crowd every step: a call, a lookup or a made value that the zombie
+	# does not need this step is left out (`docs/research/crowd-budget.md`, #947).
+	var lure: ZombieLure = null if lures.is_empty() else _lure_for(zombie)
 	var lure_id := lure.id if lure != null else 0
 	if lure_id != zombie.lure_id:
 		zombie.lure_id = lure_id
 		zombie.repath_left = 0.0
+	var has_target := true
 	if lure == null:
-		_retarget(zombie, delta, targets)
-	var has_target := lure != null or targets.has(zombie.target_id)
+		has_target = _retarget(zombie, delta, targets)
 	var target_pos := zombie.position
 	if lure != null:
 		target_pos = lure.position
 	elif has_target:
 		target_pos = targets[zombie.target_id]
-	_repath(zombie, delta, has_target, target_pos)
-	_watch_strand(zombie, delta, has_target and lure == null, target_pos, events)
+	zombie.repath_left -= delta
+	if zombie.repath_left <= 0.0 and has_target:
+		_repath(zombie, target_pos)
+	# A zombie whose path ends near its target is not stranded; the common case asks no more.
+	if zombie.path_gap >= STRAND_GAP and has_target and lure == null:
+		_watch_strand(zombie, delta, true, target_pos, events)
+	else:
+		zombie.stranded_for = 0.0
 	var waypoint := _waypoint(zombie, target_pos)
 	# At a lure a zombie stands about it, facing it: no target to walk to and none to swing at.
 	var gathered := (
@@ -384,15 +408,24 @@ func _think(
 	)
 	if gathered and zombie.mode == ZombieBody.Mode.CHASE:
 		ZombieBrain.face(zombie, tuning, delta, lure.position)
+	# The brain reads the speed on the ground only to walk, and whether a swing may land only to start
+	# or land one: both are left unasked for a zombie that does neither this step.
+	var acting := has_target and not gathered
+	var walking := acting and zombie.mode == ZombieBody.Mode.CHASE
+	var may_swing := acting and (walking or zombie.mode == ZombieBody.Mode.ATTACK)
 	var strike := ZombieBrain.step(
 		zombie,
 		tuning,
 		delta,
-		has_target and not gathered,
+		acting,
 		target_pos,
 		waypoint,
-		_ground_speed(zombie),
-		_can_swing(zombie.position, target_pos, zombie.profile.reach_in(tuning))
+		_ground_speed(zombie) if walking else 0.0,
+		(
+			_can_swing(zombie.position, target_pos, zombie.profile.reach_in(tuning))
+			if may_swing
+			else true
+		)
 	)
 	if not strike.is_empty():
 		strike["type"] = &"zombie_struck"
@@ -400,6 +433,8 @@ func _think(
 	zombie.tearing = false
 	if zombie.gate_id != &"":
 		_work_the_boards(zombie, delta, events)
+	if not zombie.tearing:
+		zombie.siege_seconds = 0.0
 	zombie.position += (zombie.velocity + zombie.push) * delta
 	_settle_on_ground(zombie, delta)
 	zombie.push = zombie.push.move_toward(Vector3.ZERO, tuning.push_decay * delta)
@@ -411,12 +446,13 @@ func _think(
 func _watch_strand(
 	zombie: ZombieBody, delta: float, chasing: bool, target_pos: Vector3, events: Array[Dictionary]
 ) -> void:
+	# The cheap tests first; none of them changes anything.
 	var stranded := (
 		chasing
-		and zombie.mode == ZombieBody.Mode.CHASE
-		and not _is_at_its_gate(zombie)
 		and zombie.path_gap >= STRAND_GAP
+		and zombie.mode == ZombieBody.Mode.CHASE
 		and _flat(zombie.position, target_pos) >= STRAND_FAR
+		and not _is_at_its_gate(zombie)
 	)
 	if not stranded:
 		zombie.stranded_for = 0.0
@@ -464,9 +500,7 @@ func _settle_on_ground(zombie: ZombieBody, delta: float) -> void:
 	var lift := gate.lift_at(zombie.position) if gate != null else 0.0
 	# Drawn climbing from the moment it is off the floor, not while it only nears the ledge.
 	zombie.climbing = lift >= CLIMB_DRAWN_FROM
-	var offset := pathing.ground_offset()
-	if is_nan(offset) and storey > 0.0:
-		offset = NAV_LIFT
+	var offset := _ground_offset()
 	var ground := NAN
 	if not is_nan(offset) and not zombie.path.is_empty():
 		ground = _ground_under(zombie) - offset
@@ -480,7 +514,20 @@ func _settle_on_ground(zombie: ZombieBody, delta: float) -> void:
 	if not is_nan(ground):
 		floor_y = move_toward(floor_y, ground, tuning.climb_speed * delta)
 	zombie.lift = lift
-	zombie.position.y = floor_y + lift
+	# On a floor it is on (most of the crowd, most steps) there is nothing to write.
+	var settled := floor_y + lift
+	if settled != zombie.position.y:
+		zombie.position.y = settled
+
+
+## How far over the floor this map's path points run (`pathing.ground_offset()`, which a pathing
+## keeps for its life: asked once for each pathing, not once for each zombie each step), or the
+## baker's lift on a map with storeys and a pathing that does not say; NAN for none.
+func _ground_offset() -> float:
+	if pathing != _offset_of:
+		_offset_of = pathing
+		_offset = pathing.ground_offset()
+	return NAV_LIFT if is_nan(_offset) and storey > 0.0 else _offset
 
 
 ## The gate whose sill the zombie is climbing over now: it stands in an opening's reach and the
@@ -504,6 +551,10 @@ func _ground_under(zombie: ZombieBody) -> float:
 		return path[0].y
 	var from := path[to_index - 1]
 	var to := path[to_index]
+	# A segment that stays at one height is that height wherever the zombie is along it (most of
+	# the lot): no need to work out where.
+	if from.y == to.y:
+		return to.y
 	var along := Vector2(to.x - from.x, to.z - from.z)
 	var length_squared := along.length_squared()
 	if length_squared < COINCIDENT_DISTANCE * COINCIDENT_DISTANCE:
@@ -564,15 +615,41 @@ func _work_the_boards(zombie: ZombieBody, delta: float, events: Array[Dictionary
 	zombie.move_speed = zombie.velocity.length()
 	if depth < stop - tuning.board_slack:
 		return
+	if _slide_to_the_opening(zombie, gate, delta):
+		return
 	if zombie.mode == ZombieBody.Mode.CHASE:
 		zombie.enter(ZombieBody.Mode.ATTACK)
 	if zombie.mode != ZombieBody.Mode.ATTACK:
 		return
 	zombie.tearing = true
+	zombie.siege_seconds += delta
+	if zombie.siege_seconds >= SIEGE_SECONDS:
+		# Through for good: a hand that puts a board back at once does not shut it out again.
+		events.append({"type": &"zombie_burst", "zombie_id": zombie.id, "gate_id": zombie.gate_id})
+		zombie.siege_seconds = 0.0
+		zombie.tear_progress = 0.0
+		zombie.gate_id = &""
+		return
 	zombie.tear_progress += delta * zombie.profile.barrier_speed
 	if zombie.tear_progress >= board_seconds:
 		zombie.tear_progress -= board_seconds
 		events.append({"type": &"zombie_tore", "zombie_id": zombie.id, "gate_id": zombie.gate_id})
+
+
+## A zombie at the boards but beside the opening (in front of a jamb, or out toward the gap's end)
+## works its way along the wall to the front of it, at its own pace, and does not tear from there:
+## a person inside has the jamb between them and it, and #950's round waited 190 s on one (#997).
+## Whether it is beside the opening (and so slid and did not tear).
+func _slide_to_the_opening(zombie: ZombieBody, gate: ZombieGate, delta: float) -> bool:
+	var aside := gate.aside_of(zombie.position)
+	if aside == 0.0:
+		return false
+	if zombie.mode == ZombieBody.Mode.CHASE or zombie.mode == ZombieBody.Mode.ATTACK:
+		var pace := minf(_ground_speed(zombie), absf(aside) / delta)
+		var inward_part := gate.inward * zombie.velocity.dot(gate.inward)
+		zombie.velocity = inward_part - gate.inward.cross(Vector3.UP) * signf(aside) * pace
+	zombie.move_speed = zombie.velocity.length()
+	return true
 
 
 ## The gate this zombie is in front of: its own while it is within that gap's width, otherwise the
@@ -667,11 +744,13 @@ func _target_distance(a: Vector3, b: Vector3) -> float:
 	return flat + STOREY_WEIGHT * absf(a.y - b.y) if storey > 0.0 else flat
 
 
-## Keeps the nearest target, switching only to one clearly nearer (`retarget_margin`).
-func _retarget(zombie: ZombieBody, delta: float, targets: Dictionary) -> void:
+## Keeps the nearest target, switching only to one clearly nearer (`retarget_margin`). The answer is
+## whether the zombie has a target in `targets` afterwards.
+func _retarget(zombie: ZombieBody, delta: float, targets: Dictionary) -> bool:
 	zombie.retarget_left -= delta
-	if zombie.retarget_left > 0.0 and targets.has(zombie.target_id):
-		return
+	var has_target := targets.has(zombie.target_id)
+	if zombie.retarget_left > 0.0 and has_target:
+		return true
 	zombie.retarget_left = tuning.retarget_interval
 	var best_id := -1
 	var best_dist := INF
@@ -681,16 +760,17 @@ func _retarget(zombie: ZombieBody, delta: float, targets: Dictionary) -> void:
 			best_dist = d
 			best_id = player_id
 	var current := INF
-	if targets.has(zombie.target_id):
+	if has_target:
 		current = _target_distance(zombie.position, targets[zombie.target_id])
 	if best_dist + tuning.retarget_margin < current or current == INF:
 		zombie.target_id = best_id
+		return targets.has(best_id)
+	return has_target
 
 
-func _repath(zombie: ZombieBody, delta: float, has_target: bool, target_pos: Vector3) -> void:
-	zombie.repath_left -= delta
-	if zombie.repath_left > 0.0 or not has_target:
-		return
+## Asks for a new way to the target. `_think` calls it when the zombie's timer has run out and it
+## has a target.
+func _repath(zombie: ZombieBody, target_pos: Vector3) -> void:
 	# Only a zombie on the move follows a path: one that is swinging, rising, staggered or held
 	# keeps its timer at zero and asks the moment it walks again (a crowd at the players' feet is
 	# mostly swinging, and every path it asked for was thrown away).
@@ -701,23 +781,65 @@ func _repath(zombie: ZombieBody, delta: float, has_target: bool, target_pos: Vec
 		interval *= tuning.repath_far_factor
 	zombie.repath_left = interval
 	var began := PerfProbe.begin()
-	zombie.path = pathing.find_path(zombie.position, target_pos)
+	var path := pathing.find_path(zombie.position, target_pos)
 	PerfProbe.end(&"sim.path", began)
+	if _keeps_its_route(zombie, path, target_pos):
+		zombie.path_gap = _flat(zombie.path[-1], target_pos)
+		return
+	zombie.path = path
 	zombie.path_index = 0
 	zombie.path_gap = _flat(zombie.path[-1], target_pos) if not zombie.path.is_empty() else INF
 	if lit_probe.is_valid():
 		zombie.lit = lit_probe.call(zombie.position)
 
 
+## Whether the zombie goes on along the route it has, and not the one just found. A target that
+## stands where the walking mesh is not (between two parked cars, against a wall) is reached at the
+## nearest point of the mesh, and which point that is changes as the target shuffles a metre: the
+## way round the other side of the obstacle is 20 m longer, and a dead that turned back at every
+## repath walked up and down between the two for ever while the round waited for it (#950). A new
+## route that is `ROUTE_FLIP` metres longer than what is left of the old one is not taken while the
+## old one still ends within `ROUTE_KEEP` of the target; one that is nearly walked is let go.
+func _keeps_its_route(zombie: ZombieBody, found: PackedVector3Array, target_pos: Vector3) -> bool:
+	if zombie.path.is_empty() or found.is_empty():
+		return false
+	if _flat(zombie.path[-1], target_pos) > ROUTE_KEEP:
+		return false
+	var left := _length_left(zombie)
+	return left >= ROUTE_ARRIVED and _length_of(found) > left + ROUTE_FLIP
+
+
+## Metres of the zombie's path still to walk, from where it stands.
+func _length_left(zombie: ZombieBody) -> float:
+	var path := zombie.path
+	var index := mini(zombie.path_index, path.size() - 1)
+	var length := _flat(zombie.position, path[index])
+	for i in range(index + 1, path.size()):
+		length += _flat(path[i - 1], path[i])
+	return length
+
+
+func _length_of(path: PackedVector3Array) -> float:
+	var length := 0.0
+	for i in range(1, path.size()):
+		length += _flat(path[i - 1], path[i])
+	return length
+
+
 ## The next point of the path not yet reached; the target itself when there is no path.
 func _waypoint(zombie: ZombieBody, fallback: Vector3) -> Vector3:
 	var path := zombie.path
 	var last := path.size() - 1
-	while zombie.path_index < last:
-		if _flat(zombie.position, path[zombie.path_index]) >= tuning.waypoint_reach:
-			break
-		zombie.path_index += 1
-	return path[zombie.path_index] if zombie.path_index < path.size() else fallback
+	var index := zombie.path_index
+	if index < last:
+		var here := zombie.position
+		var reach := tuning.waypoint_reach
+		while index < last:
+			if _flat(here, path[index]) >= reach:
+				break
+			index += 1
+		zombie.path_index = index
+	return path[index] if index < path.size() else fallback
 
 
 ## Pushes standing zombies that overlap apart, using a grid one radius wide. A zombie is pushed by

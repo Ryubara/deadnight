@@ -39,7 +39,9 @@ goes down loses all** (`perks.lost_on_down` = `ALL`). The self-revive loses noth
 
 **The limit** (all five, solo, mean round): 3 perks 11.5, 4 perks 11.8, 6 perks 12.1; four players, prices x1.5: 3 perks
 16.3 against 18.6 for 4. The genre carries four, and three is a round and a half less for a team: **four**
-(`economy.max_tonics`, which was already four).
+(`economy.max_tonics`, which was already four). A night can lift it (#913, the `perk_limit` match setting): the
+simulator takes `NightSim`'s `settings` and `balance_cli.gd --perks=unlimited`, and its player buys past four only
+when his shopping list names more tonics; the numbers above are for the default.
 
 **The price** (all five, mean round, solo / four players): half 12.0 / -; the shipped 11.8 / 18.1; x1.5 11.8 / 18.6; x2
 11.6 / 16.7. At half price the solo median passes the gate's ceiling (15 against 14); at x1.5 it reaches its floor (10).

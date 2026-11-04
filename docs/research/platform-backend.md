@@ -338,9 +338,9 @@ What keeps it from happening again:
   has one the game lacks); a backend from before the list fails it too. `deploy/backend/test_check_keys.sh` is the
   script's own test, in `conventions`.
 - **An unknown or wrong setting is an error that names it.** The backend answers `400 bad_settings` with `detail`
-  (`unknown setting perk_limit`, `bad bots`, never a value) on a change and on a start, and logs it; the client shows
+  (`unknown setting a_rule`, `bad bots`, never a value) on a change and on a start, and logs it; the client shows
   it. The game server refuses a ticket that carries a key it does not know (`ticket carries a setting this server does not
-  know: perk_limit`) and a dedicated server stops on an option it cannot take (`--map nowhere`).
+  know: a_rule`) and a dedicated server stops on an option it cannot take (`--map nowhere`).
 - **A backend that keeps no rules is said to the host.** A lobby with no `settings` key (a backend from before the
   rules), or a `404` on the change, shows "This server is out of date and keeps none of these rules" on the lobby screen
   and makes its panel read-only, instead of letting the host's choices vanish.
