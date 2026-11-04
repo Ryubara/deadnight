@@ -2044,7 +2044,7 @@ material = ExtResource("backlot_prop")
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -47.000, 2.100, 35.500)
 use_collision = true
 size = Vector3(6, 4.2, 0.6)
-material = ExtResource("neon")
+material = ExtResource("backlot_wall")
 
 [node name="Lamps" type="Node3D" parent="BackLot"]
 metadata/circuit = "back_lot"
@@ -2077,11 +2077,13 @@ away = Vector3(-0.7071, 0, -0.7071)
 pool_half = 3.62
 aim_tilt = 47.0
 
-[node name="NeonSign" type="OmniLight3D" parent="BackLot/Lamps" groups=["powered_light"]]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -47.000, 3.500, 33.500)
-light_color = Color(1.000, 0.227, 0.290, 1)
-light_energy = 1.8
-omni_range = 12
+[node name="NeonSign" parent="BackLot/Lamps" instance=ExtResource("neon_sign")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -47.000, 2.900, 35.140)
+text = "OVERFLOW"
+neon_color = Color(1, 0.36, 0.2, 1)
+halo_front_only = true
+lights_ground = true
+light_angle = 60.0
 
 [node name="ZombieSpawns" type="Node3D" parent="BackLot"]
 

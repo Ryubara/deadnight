@@ -44,10 +44,32 @@ battery's flicker times the tank's sag, never both flickers.
 
 A sign follows the flicker by following a lamp of the group, as `LotNeonSign` follows its lamp: `LightFollower.level`
 is the lamp's energy over its scene energy, and the lamp's energy is the circuit, the tank and `FailingBattery`
-together. The back lot's `NeonSign` omni is already in the group (`BackLot/Lamps`, `metadata/flicker =
-"failing_battery"`), so a `LotNeonSign` with `light_path` on it flickers with the lot and goes dark with the circuit.
-A node that is not a lamp can call `FailingBattery.level(seconds, lamp_number)` itself.
+together. The back lot's sign is a `LotNeonSign` placed in the group (`BackLot/Lamps/NeonSign`, `metadata/flicker =
+"failing_battery"`), so its own spot is the sixth lamp of the group, its tubes, word and halo flicker with the lot and
+go dark with the circuit. A node that is not a lamp can call `FailingBattery.level(seconds, lamp_number)` itself.
 `test_a_sign_follows_the_flicker_through_the_lamp_it_follows` is the example.
+
+## The back lot's sign (#852)
+
+The orange `SignBoard` block (a flat `neon` slab, as bright with its circuit off as on) is a plank board now, with a
+`LotNeonSign` on its north face: the word OVERFLOW (the lot is the drive-in's overflow parking), a dark board, four
+tubes drawn as one mesh, a halo and a spot that replaces the omni `NeonSign` in the same light slot. The collision and the
+walking mesh are the old block's. `lights_ground` keeps the lamp counted by `LotLamps.lit_at` (the omni was), so the
+rules' lit ground is the same to within 2.5 m² (the lamp stands 0.4 m from where the omni did); the sign scene's own
+lamp is `decor` (a picture only) everywhere else.
+
+- **The buzz is not a second strobe.** The tubes burn at `level * buzz`, and `buzz` dips to 0.55 now and then. The test
+  `test_the_signs_tubes_keep_the_flash_budget_with_their_buzz` counts the flashes of the tubes' own emission over 15
+  minutes: no second holds more than three, and the tubes never go black.
+- **The halo is the face's.** `LotNeonSign.halo_front_only` makes `glow.gdshader` draw the card from its front only
+  (`FRONT_FACING`, one boolean uniform, no new program). A flat halo wider than its board would otherwise show round the
+  board's silhouette from the strip behind it, as a glow with nothing to glow from.
+- **The cone is 60 degrees.** `LightReach` counts a spot by the box of its widest end (`range * tan(angle)`): the
+  scene's 85 degrees made a 114 m box that reached the generator yard's ground and took a crane spot over the budget of
+  six lights a mesh. `LotNeonSign.light_angle` narrows it for this sign.
+- **Draw calls.** The sign draws 4 meshes (board, tubes, word, halo), the old block was one box in a batched cell: the
+  four tubes were four calls before they were merged. The captures in the pull request print the renderer's counts at the
+  same views before and after.
 
 ## From behind the wall (#832's method)
 
@@ -74,4 +96,4 @@ meshes as the omni's sphere did (`test_lot_light_cap.gd` holds the tile budget; 
 tilted 65 reached one tile more and failed it).
 
 Not changed here: the field's posts near the same fences (the field's own lamps), room lamps (#841), the apron's (#850),
-the back lot's `NeonSign` omni (#852 replaces it with a sign).
+the back lot's `NeonSign` omni (replaced by the sign above, #852).

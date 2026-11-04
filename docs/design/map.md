@@ -280,7 +280,7 @@ the lamps are the warm pools in it ([night environment](../research/night-enviro
 | Midway | 1,104 m² | 487 m² (44%) | two dim lamps and the booth's front light, and the field's posts at its north end; the alleys dark |
 | Booth | 120 m² | 110 m² (92%) | two lights, and the projector beam (the brightest thing on the map) |
 | Generator yard | 1,932 m² | 463 m² (24%) | four work lamps and the generator's glow, the generator set in its cage (its day tank, stack and running light show over the walls): lit while the tank has fuel, and the most to lose |
-| Back lot | 1,932 m² | 580 m² (30%) | five lamp posts and the neon sign, dimmed and failing like a dying battery ([below](#the-back-lots-failing-lights)); dark until its breaker is thrown |
+| Back lot | 1,932 m² | 578 m² (30%) | five lamp posts and the neon sign, dimmed and failing like a dying battery ([below](#the-back-lots-failing-lights)); dark until its breaker is thrown |
 | Ticket plaza | 640 m² | 274 m² (43%) | the ticket kiosk, and a wreck's headlights (127 m², the only ground lit with the tank dry) |
 
 "Lit" is the rules' word, not the eye's: ground within 6 m (`LightTuning.lamp_reach`) of a lamp whose circuit is on,
@@ -453,7 +453,7 @@ go dark when the tank runs dry. A player choosing what to give up wants the grou
 | `screen_lot` | the field's posts and the screen's glow | 1,900 m² of the field, 113 in the midway, 43 elsewhere | 3.6 / 6.7 | 571 m² |
 | `concession` | the stand, the midway's two lamps | 217 m² in the stand, 206 m² in the midway, 69 m² outside them | 3.0 / 5.6 | 164 m² |
 | `booth` | the booth and the projector beam | 110 m² in the booth, 168 m² in the midway | 4.8 / 9.0 | 58 m² |
-| `back_lot` | the back lot's posts and the neon sign, the ticket kiosk | 549 m² in the back lot, 116 m² in the plaza, 103 m² through its walls (the field, the midway) | 4.2 / 7.9 | 183 m² |
+| `back_lot` | the back lot's posts and the neon sign, the ticket kiosk | 547 m² in the back lot, 116 m² in the plaza, 103 m² through its walls (the field, the midway) | 4.2 / 7.9 | 183 m² |
 | `mains` | the yard's four work lamps and the generator's glow | 447 m² of the yard | none: the idle draw (1.8 / 3.4) | |
 | `battery` | the wreck's headlights | 127 m² of the plaza | none: not the generator's | |
 
@@ -678,7 +678,7 @@ second with a stumbling recovery, one event at most every 3.6 s and never out. I
 (`FailingBattery`), so a recording and a test see the same lights, and it is only the picture: the ground is lit for the
 rules while the circuit is on. It is not a strobe: the most any second holds is three flashes of one lamp and two of the
 lot (the common photosensitivity guidance), and the lights never switch off. The back lot's price and role stay as the
-table above has them: 580 m² lit (30%), a circuit that costs 4.2 a minute at round 1, a door bought in the dark. The
+table above has them: 578 m² lit (30%), a circuit that costs 4.2 a minute at round 1, a door bought in the dark. The
 plaza's kiosk and marquee, on the same circuit, burn steady. How it is built, measured and followed by a sign:
 [the failing battery](../research/failing-battery.md).
 
