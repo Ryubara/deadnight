@@ -10,7 +10,7 @@ skin lives in `game/ui/skin/` and the screens in `game/ui/screens/`; the addon i
 | `deadnight_tokens.tres` | A `UITokens` resource set in the project setting `gds_ui/tokens`: darker surfaces, a neon red `hot`, a bigger display size. Everything else is the addon's default palette |
 | `NeonSign` | The title: hollow glass tubes drawn with `draw_string_outline` (three wide low-alpha strokes for glow, a coloured tube, a white-hot core, a radial halo texture). Ignition and the failing tube are pure functions of an accumulated clock, so captures repeat |
 | `NightSky` + `drive_in_night.gdshader` | The lot at night in one procedural pass: stars, treeline, the big screen throwing light, parked cars, the projector's beam. Colours come from the tokens; one backdrop for every screen |
-| `FilmOverlay` + `film_grain.gdshader` | Grain, vignette, flicker and a scratch, on a `CanvasLayer` (110) above the router (100) so it covers screens and transitions alike |
+| `FilmOverlay` + `film_grain.gdshader` | Grain, vignette, flicker and a scratch, the last node of the router's own `CanvasLayer` (100), after its screens and its transition, so it covers both (a layer of its own was a canvas pass and a fence the web page kept, #883) |
 | `MainMenu` | Play irises open, Settings slides, Credits burns; Quit is left out when `OS.has_feature("web")` |
 | `CreditsList` | A resource of lines (`# Heading`, then names) that the credits screen reads |
 
@@ -140,7 +140,7 @@ Nothing in the menu invents data; every number has a source, and an empty source
 | Panel | Reads | From | Until it exists |
 | --- | --- | --- | --- |
 | Soldier, Loadout | the saved look, the showcase weapon | `character/look` and `loadout/weapon` in the settings file (`LookStore`, `Settings`) | built |
-| Top right | name, Billing level and progress, stubs | the cached profile (`xp`, `stubs`, display name; the level is derived, `150 + 30 x level` XP to the next, see [progression](../design/progression.md#billing-account-level)) | a small `MenuProfile` reader over the settings key `profile/cache` (JSON, read-only, no network): level 1 and 0 stubs when empty |
+| Top right | name, Billing level and progress, stubs | the cached profile (`xp`, `stubs`, display name; the level is derived, `150 + 30 x level` XP to the next, see [progression](../design/progression.md#xp-and-the-ladder-of-55); the approved plan replaces the curve with the 55-level table and drops stubs) | a small `MenuProfile` reader over the settings key `profile/cache` (JSON, read-only, no network): level 1 and 0 stubs when empty |
 | Challenges and Today's challenges | active dailies with progress and the time to the next refresh, the three open orders, the milestones | the challenge tracker's read API (#399, one small class) | a stub with the same shape feeds the screen and the tests until #399 lands |
 | Loadout, weapon mastery | mastery level and points of the showcase weapon | the cached profile | zero levels, labelled |
 | Shop | stub balance, owned and priced cosmetics, locks | the cached profile and the look catalogue's gates (`LookCatalog`: a Billing level, stubs or an order) | catalogue entries from `LookCatalog`; **prices are placeholders** and say so |

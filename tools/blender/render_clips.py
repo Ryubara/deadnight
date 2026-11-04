@@ -25,6 +25,7 @@ import numpy as np
 from mathutils import Euler, Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import drink_clip
 import kitlib
 import soldier_clips as sc
 
@@ -56,7 +57,9 @@ def moments(name):
 
 
 # Events after which a part of the held weapon is gone (None: the whole weapon, thrown).
-GONE_AFTER = {"pin_out": "Pin", "spoon_off": "Spoon", "release": None}
+GONE_AFTER = {"pin_out": "Pin", "spoon_off": "Spoon", "release": None, "cap_off": "Cap", "discard": None}
+# Events before which the held thing is not in the hand yet (the perk bottle, #912).
+SHOWN_FROM = ("bottle_visible",)
 
 
 def attach(path, kit, turn=(180, 0, 0), scale=1.0):
@@ -82,7 +85,10 @@ def attach_grip(path, arm, hold):
     """Import our weapon and hold it the way the game draws it: on the hand bone Index1.R, where the solved grip of
     the hold file `hold` puts it (soldier_clips.game_grip); return its root object. The glTF import turns the model's
     Y-up axes to Z up, so that turn is undone before the grip's transform (written in the model's own axes)."""
-    weapon, _left = sc.game_grip(hold)
+    if hold == drink_clip.HOLD:
+        weapon, _lip = drink_clip.bottle()
+    else:
+        weapon, _left = sc.game_grip(hold)
     before = set(bpy.data.objects)
     kitlib.gltf_import(path)
     new = [o for o in bpy.data.objects if o not in before]
@@ -110,6 +116,9 @@ def show_parts(weapon, events, frame):
     """Hide the weapon's parts whose event has passed at `frame` (the pin after pin_out, the grenade after release)."""
     if weapon is None:
         return
+    for ev in SHOWN_FROM:
+        if ev in events:
+            set_hidden(weapon, frame < events[ev])
     for ev, part in GONE_AFTER.items():
         at = events.get(ev)
         gone = at is not None and (frame > at if part is None else frame >= at)
@@ -161,6 +170,7 @@ def main():
         help="Class=path.glb=hold: hold one of our weapons for a class's sheet the way the game does, through the "
         "solved grip of game/gameplay/player/holds/<hold>.tres (Rifle=game/assets/weapons/lever_rifle/lever_rifle.glb=rifle)",
     )
+    ap.add_argument("--zoom", type=float, default=1.0, help="closer in, on the chest and head (2: twice as close)")
     args = ap.parse_args(argv)
     args.out = args.out.resolve()
 
@@ -204,11 +214,11 @@ def main():
     scene.view_settings.view_transform = "Standard"
     cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
     cam.data.type = "ORTHO"
-    cam.data.ortho_scale = 3.3
+    cam.data.ortho_scale = 3.3 / args.zoom
     scene.collection.objects.link(cam)
     scene.camera = cam
     # The Soldier faces -Y; his right is -X. Camera in front, to his right, a little above the chest.
-    target = Vector((0, 0, 0.92))
+    target = Vector((0, -0.25 * (1 - 1 / args.zoom), 0.92 + 0.6 * (1 - 1 / args.zoom)))
     view = {"front": (-0.55, -1.0, 0.25), "back": (-0.55, 1.0, 0.25), "side": (-1.0, 0.0, 0.05), "top": (0, 0.55, 1.0)}
     pos = target + Vector(view[args.view]).normalized() * 20
     cam.location = pos
@@ -235,6 +245,8 @@ def main():
                        ("Reload_Rifle", "Walk", "Rifle"), ("Swing_Melee", "Run", "Melee")]  # fmt: skip
     sheets["GrenadeSplit"] = [(n, "Run", "Grenade") for n in sc.CLIPS if n.startswith("Grenade_")]
     sheets["RepairSplit"] = [(n, "Walk", "Repair") for n in sc.CLIPS if n.startswith("Repair_")]
+    # The perk drink (#912): over the standing Idle, and over Walk (the legs keep walking under it).
+    sheets["Drink"] = [("Drink_Perk", None, "Drink"), ("Drink_Perk", "Walk", "Drink")]
     # Moving while aiming: the kit Run for reference, then the four aim-move clips, every third frame of the cycle.
     sheets["AimMove"] = [(n, None, "Rifle") for n in ("Run", *sc.AIM_MOVES)]
     # Downed and revive (#504): the old Downed (Death's last frame) above the clips that replace it.
@@ -265,6 +277,8 @@ def main():
                 frames = list(range(0, sc.CLIPS[name]["frames"], 3))
             elif sheet.startswith("Sprint"):
                 frames = list(range(0, sc.CLIPS["Run"]["frames"], 2))
+            elif sheet == "Drink":
+                frames = [0, 7, 13, 17, 21, 24, 30, 37, 44, 46, 53, 60]
             elif sheet.startswith(("Grenade", "Repair", "Revive")):
                 frames = key_moments(acts[name], sc.CLIPS[name]["events"])
             else:

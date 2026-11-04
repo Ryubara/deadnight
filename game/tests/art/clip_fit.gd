@@ -60,6 +60,7 @@ static func add_player_clips(anim_player: AnimationPlayer) -> void:
 		[PlayerAnimation.SPRINT_GLB, PlayerAnimation.SPRINT_SPEC, SprintCarry.CLIPS],
 		[QuickStrike.GLB, QuickStrike.SPEC, QuickStrike.CLIPS],
 		[DualClips.GLB, DualClips.SPEC, DualClips.CLIPS],
+		[DrinkLayer.GLB, DrinkLayer.SPEC, [DrinkLayer.CLIP]],
 	]
 	for f: Array in files:
 		SoldierClipFile.add(library, spec, f[0], f[1], f[2])

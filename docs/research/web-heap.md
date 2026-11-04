@@ -106,11 +106,40 @@ gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/heap_soak.p
 `heap_soak.py` prints one JSON row per collection and writes `<label>.json` (and `<label>_sampling.txt`). `gds quiet`
 stops a command at 900 s: 12 minutes with the load is the longest one run.
 
-## Left for another issue
+## The fences and the redraws that were left (#883)
 
-A frame still makes about 8 ids on the best page (5 fences, 2 buffers, a vertex array), which is 4 MB a minute at 100
-frames a second and a third of that at a phone's 30. A flat heap needs the renderer to stop creating them (a newer
-engine, or a custom template whose id tables are not padded), which is a maintainer's decision about the pinned tool.
+Issue #834 left about 8 ids a frame: 5 fence syncs, about 2 buffers and a vertex array. Where they came from:
+
+- **A fence for each canvas pass.** The Compatibility renderer ends every canvas (the root, each `CanvasLayer`, empty
+  or hidden too) with a fence sync whose WebGL id the page keeps. The game had three overlay layers (the controller
+  hint, "turn your phone", the film) above the router's: they are now the last children of the router's own layer
+  (`Main._add_overlays`, in that order, freed with the scene), so a night makes 2 fences a frame, not 5. The tours
+  still give the prompt a layer of its own. `BenchAblation` has `canvas=1` (prints the passes), `views=0` and
+  `off=A,B` to count what a pass costs.
+- **Touch hints** drew their pulse (a dot and a ring, circles and arcs) again every frame. The pill is now drawn when
+  it changes, and the pulse is a child `Node2D` whose position, scale and fade are set each frame (moving a drawn
+  item makes no new command). Up or used, a night now makes the same buffers a frame (1.4 against 1.3 in a minute).
+- The marquee's bulbs and the objective markers' polygons were also fixed here, and were then done better by #969
+  and #1004 on `main` (the bulbs step, the shapes in one command), so this change keeps main's.
+
+Autopilot night, phone page, unpaced Chrome, 12 minutes (about 160 000 frames), forced collection every 30 s, two
+builds in parallel, `main` at the merge of #1021 against this change:
+
+| Arm | fences a frame | buffers a frame | minute 3 | minute 12 | rate from minute 3 |
+| --- | --- | --- | --- | --- | --- |
+| `main`, hints up | 5.0 | 11.5 | 48.1 MB | 145.7 MB | 10.8 MB a minute |
+| this change, hints up | 2.0 | 4.7 | 29.4 MB | 62.3 MB | 3.6 MB a minute |
+| `main`, hints marked used (`hints=0`) | 5.0 | 4.7 | 33.4 MB | 82.2 MB | 5.4 MB a minute |
+| this change, hints marked used | 2.0 | 4.7 | 29.4 MB | 62.2 MB | 3.6 MB a minute |
+
+![Heap over a night, main and this change](web-heap-883.png)
+
+A new player's night (hints up, the real case) grows 3 times slower; the #834 bar was on hints used, 1.5 times slower
+than `main`. It is still not flat: 3.6 MB a minute, 62 MB at the end of a night. What remains is 2 fences (the router's
+canvas and the 3D pass) and the buffers that grow as the night goes on (1.4 a frame in the first minute, 4.7 over
+twelve: the round banner, damage and the markers while they show), about 7 ids a frame. A flat heap needs the renderer
+to stop creating them (a newer engine or a template whose id tables are not padded), a maintainer's decision about the
+pinned tool; at a phone's 30 frames a second the rate is a third of this.
 
 ## The probes in a player's page (#935)
 

@@ -245,7 +245,7 @@ places, the quick-load cooler 1.2 m from a place behind the wall, the upstairs s
 | Kit and scale | Toon props and greybox walls, 2.4 to 3.0 m fences | the second map's own kit, 3.2 m ceilings | consistent: both read as 1958 brick; plaques, machines and prompt text are the same |
 | Reach assumed | 1.1 m (jump) in the test and the page | 1.1 m in the formula and the counter | measured 1.25 m (J) |
 | Words on cards | the lot's | the map's own (`MapWords`), tested | fine |
-| Use zones (missed by this review, found in play: [#908](https://github.com/Ryubara/deadnight/issues/908)) | 7 overlapping pairs at the old 3.2 m reach; none after the reaches shrank and two posts and the rifle moved | 51 pairs (a locker 1.45 m from `upper_a2`, perks 2.1 to 2.9 m apart); 26 left at the new reaches, listed for [#917](https://github.com/Ryubara/deadnight/issues/917) | the spacing sweep is a test on both maps ([use reach](use-reach.md#spacing-and-the-press-908)) |
+| Use zones (missed by this review, found in play: [#908](https://github.com/Ryubara/deadnight/issues/908)) | 7 overlapping pairs at the old 3.2 m reach; none after the reaches shrank and two posts and the rifle moved | 51 pairs (a locker 1.45 m from `upper_a2`, perks 2.1 to 2.9 m apart); 26 left at the new reaches, listed for [#917](https://github.com/Ryubara/deadnight/issues/917); none since [#994](https://github.com/Ryubara/deadnight/issues/994) (the side room's south-west window dropped, five things moved) | the spacing sweep is a test on both maps ([use reach](use-reach.md#spacing-and-the-press-908)) |
 
 ## The reach (J)
 

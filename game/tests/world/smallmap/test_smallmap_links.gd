@@ -15,8 +15,8 @@ const OPENS := {
 const SIDE_ROOM := Vector3(5.0, 0.0, -2.0)
 const UPSTAIRS_A := Vector3(11.0, 3.4, 2.3)
 const UPSTAIRS_B := Vector3(5.0, 3.4, -4.0)
-## The windows of each room (formula row 15, #917): the hall's open from the start.
-const WINDOWS := {"start": 2, "side": 3, "upstairs": 2}
+## The windows of each room (formula row 15, #917, #994): the hall's open from the start.
+const WINDOWS := {"start": 2, "side": 2, "upstairs": 2}
 
 var _night: Night
 

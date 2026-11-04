@@ -214,11 +214,12 @@ Pull requests #920, #943 and #965 failed the gate on nights in the range of `mai
   18.0 s. The old limit (5.5 over a floor of 8 s, set from 28 runs) failed 8 of these 181 healthy runs, #965's 85.9 s
   among them.
 - **No divisor the runs recorded predicts the night.** Log correlation with the night: menu 0.58, idle menu frame 0.51
-  (and #920's idle frames were 99 to 131 ms on a still stage, which is not explained), the running night's frame time
-  0.71, the lot's first steps 0.62. A fit of the night on any of them, or on two, leaves a spread (leave-one-out) of
-  0.22 to 0.27 in the logarithm against 0.29 for no predictor; replaying the gate with each as the divisor, at a limit
-  that passes all 181 runs, fails the same share of a night made 1.5, 2 and 3 times longer (6 to 10 %, 35 to 56 %,
-  86 to 97 %) whichever it is. Within a run the slow steps vary too ("Setting the scene: moonlight" 3 to 26 s).
+  (and #920's idle frames were 99 to 131 ms on a still stage: [the idle menu after #920](#the-idle-menu-after-920-989)),
+  the running night's frame time 0.71, the lot's first steps 0.62. A fit of the night on any of them, or on two, leaves
+  a spread (leave-one-out) of 0.22 to 0.27 in the logarithm against 0.29 for no predictor; replaying the gate with each
+  as the divisor, at a limit that passes all 181 runs, fails the same share of a night made 1.5, 2 and 3 times longer (6
+  to 10 %, 35 to 56 %, 86 to 97 %) whichever it is. Within a run the slow steps vary too ("Setting the scene: moonlight"
+  3 to 26 s).
 - **So the divisor is chosen to be steady, not to explain**: the menu's time floored at **14 s**, the median menu.
   A menu that loads faster (or slower, to 14 s) no longer moves the gate; a slow runner still raises the divisor with its
   menu. The limit is **7.5**, 10 % over the worst of the 181 (6.8 at that floor); the backstop stays 150 s.
@@ -236,6 +237,43 @@ What is left with a GPU is 8 lit `StandardMaterial3D` settings combinations at 1
 a double-sided textured one, the emissive-and-textured one of the soldier and the dead): the next cut is a material that
 looks different, so it is an artist's decision, not made here. `tests/night/test_load_cost.gd` fails when the night
 draws more than 8, and lists them.
+
+### The idle menu after #920 (#989)
+
+The smoke's `menu_frames` (the mean of `requestAnimationFrame` over 3 s, 2.5 s after the menu's first click, the stage a
+still) was 99 to 131 ms on four attempts of #920 against 55 to 122 on the runs before it. #920 merged at 12:26 UTC on
+4 November, so the question stands on `main` too. What was measured:
+
+- **The stage's work in a frame is the same.** `tools/web_smoke/menu_idle.py` opens two web exports (#920's parent with
+  the four stage files of the pull request put back, and `main`), in turns, in SwiftShader at 1280 x 720 as CI, and counts
+  what the engine asks of WebGL in every frame of the idle menu. Both: **277 draws, 1 clear, 1 framebuffer blit, 6
+  framebuffer bindings, 8 uploads, 277 program switches, every frame, no frame different** (the stage is drawn once;
+  the rest is the menu's own canvas). The CPU the GPU process used per frame: 207.7 against 207.3 ms (5 pairs; it is
+  SwiftShader's spinning threads, so it says "the same", not "how much work"). Mean frame, 5 pairs at 16 cores: median
+  20.4 against 20.3 ms; 6 pairs pinned to 2 cores: 30.3 against 29.2 ms, the first 3 s 35.7 against 37.9. No difference
+  is left to find in the engine's work, and the machine's own noise (other agents, 20 to 50 ms runs) is bigger than any
+  difference.
+- **Not the wasm compiler.** A frame trace of the idle menu shows the first 6 s are 25 to 40 % slower than the rest
+  (second 1 of the trace: 35 to 46 ms, from the 7th second 20 to 24 ms), in both builds, with the GL counts constant.
+  Chrome's `--js-flags=--no-liftoff` (compile the wasm optimised before running; the menu then took 17 s to load) kept
+  the same shape, so it is not Liftoff handing over to TurboFan. The cause of that decay is not found.
+- **A side finding.** `index.html?stage=still` (the stage alone, no menu) draws 4 calls and a frame in 16.6 ms on
+  `main`; on #920's parent it drew 97 calls and a frame in 400 ms, so that page did not hold a still there (the main
+  menu did, in both). Not what the gate reads; the reason is not looked into.
+- **On CI the shift is real, and no runner measure of the same run explains it.** The 151 `web-smoke` artifacts of 3 and
+  4 November (`gh run download <id> -n web-smoke`): the 134 runs without #920 had an idle frame of 55.6 to 121.6 ms
+  (mean 89.1, median 97.9), 4 of them (3 %) at 120 or more; the 17 runs with it (its own three heads that ran a smoke,
+  and `main` after the merge) 61.0 to 144.5 (mean 106.0, median 102.2), 7 of them (41 %) at 120 or more (Fisher, p
+  0.00002). The 19 runs of the hour before the merge were 57 to 100. The nights were the same (57.6 against 59.0 s on
+  average), and the seven slow-idle runs had fast nights (49 to 66 s); the menu's load is 8.5 s against 13.9 (#966). So
+  an idle frame of 130 to 145 ms came with a night that, on a pre-#920 run, went with an idle frame near 85. The shift
+  lives in the 3 s window after the menu comes up on the runner and in nothing the browser here reproduces.
+- **What can tell next.** The smoke now follows 9 s more of the idle menu (`menu_trace` in `result.json`: the mean frame
+  each second and the WebGL calls per frame, counted only for those seconds so the night the gate times is not slowed).
+  Read it on the next runs of `main`: `draws` other than 277 means the runner draws something the browser here does not;
+  277 with a long first seconds means the runner's threads (two cores for the renderer, the compositor and SwiftShader's
+  workers) are the cause, and the 3 s `menu_frames` is a window on a decay, not a steady state, that moved earlier when
+  the menu got quicker. The load gate does not use it (#966).
 
 ### The load grew again, and where (#828)
 

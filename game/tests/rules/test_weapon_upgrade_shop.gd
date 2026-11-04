@@ -110,6 +110,7 @@ func test_the_hearty_tonic_raises_the_most_health_and_the_health_with_it() -> vo
 	var bonus := _rules.tuning.economy.item(&"tonic_hearty").health_bonus
 	assert_float(bonus).is_greater(0.0)
 	_rules.apply(RulesAction.buy(1, &"tonic_hearty"))
+	RulesFixture.drink_down(_rules, 1)  # the perk is had when its drink ends (#912)
 	assert_float(_rules.max_health_of(1)).is_equal(base + bonus)
 	assert_float(_rules.health_of(1)).is_equal(base + bonus)
 	var healed := _log.of(&"player_healed")[0]
@@ -122,6 +123,7 @@ func test_a_hurt_player_keeps_the_hurt_and_gets_the_room() -> void:
 	_rules.apply(RulesAction.skip_break())
 	_rules.apply(RulesAction.blow(1, 40.0))
 	_rules.apply(RulesAction.buy(1, &"tonic_hearty"))
+	RulesFixture.drink_down(_rules, 1)  # the perk is had when its drink ends (#912)
 	var bonus := _rules.tuning.economy.item(&"tonic_hearty").health_bonus
 	assert_float(_rules.health_of(1)).is_equal(60.0 + bonus)
 
@@ -130,6 +132,7 @@ func test_going_down_takes_the_tonic_and_its_health_and_getting_up_gives_the_pla
 	_begin()
 	var base := _rules.max_health_of(1)
 	_rules.apply(RulesAction.buy(1, &"tonic_hearty"))
+	RulesFixture.drink_down(_rules, 1)  # the perk is had when its drink ends (#912)
 	assert_float(_rules.max_health_of(1)).is_greater(base)
 	_rules.apply(RulesAction.set_downed(1, true))
 	_rules.apply(RulesAction.set_downed(1, false))
@@ -141,4 +144,5 @@ func test_a_tonic_with_no_bonus_leaves_health_alone() -> void:
 	_begin()
 	var base := _rules.max_health_of(1)
 	_rules.apply(RulesAction.buy(1, &"tonic_double_shot"))
+	RulesFixture.drink_down(_rules, 1)
 	assert_float(_rules.max_health_of(1)).is_equal(base)

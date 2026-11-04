@@ -105,6 +105,11 @@ func _press_use(night: Night) -> void:
 	await get_tree().create_timer(0.3).timeout
 	command.use = false
 	await get_tree().create_timer(0.3).timeout
+	# A perk bought is had when its drink ends (#912), and a purchase meanwhile is refused.
+	var id := night.state.player_id
+	var drunk := func() -> bool: return not _host.server.is_drinking(id)
+	assert_bool(await _until(drunk)).is_true()
+	await get_tree().create_timer(0.1).timeout
 
 
 func _rich(player_id: int) -> void:
