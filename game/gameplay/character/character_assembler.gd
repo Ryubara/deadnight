@@ -38,14 +38,18 @@ static func assemble(look: CharacterLook, seat := 0) -> Node3D:
 
 
 ## Puts `look` and the armband of `seat` on a Soldier model that already stands somewhere (a
-## player's body, which has its own animation), in place of what it wore before.
+## player's body, which has its own animation), in place of what it wore before. What the look does
+## not wear leaves the model (`SoldierLook.trim`): four bodies and four HUD portraits are alive in a
+## night, and each would otherwise hold every part of the catalogue.
 static func dress(model: Node, look: CharacterLook, seat := 0) -> void:
-	SoldierLook.apply(model, look.to_soldier_look())
+	var worn := look.to_soldier_look()
+	SoldierLook.apply(model, worn)
+	SoldierLook.trim(model, worn)
 	var skeleton := model.find_child(SKELETON, true, false) as Skeleton3D
-	var worn := skeleton.get_node_or_null(ARMBAND_BONE_NODE)
-	if worn != null:
-		skeleton.remove_child(worn)
-		worn.queue_free()
+	var band := skeleton.get_node_or_null(ARMBAND_BONE_NODE)
+	if band != null:
+		skeleton.remove_child(band)
+		band.queue_free()
 	_add_armband(skeleton, seat)
 
 

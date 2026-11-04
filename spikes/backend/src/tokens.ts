@@ -2,7 +2,8 @@
 // verify it with Crypto.hmac_digest, while Ed25519 would need a GDExtension.
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-export type TokenKind = "session" | "ticket";
+/** `guest` is the long-lived credential of a Guest account: it signs a guest back in, and is no session. */
+export type TokenKind = "session" | "ticket" | "guest";
 
 export interface TokenClaims {
   sub: string;

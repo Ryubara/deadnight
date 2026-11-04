@@ -43,6 +43,9 @@ static var _token := ""
 static var _user := {}
 ## The Discord code this run traded in already: Discord takes a code once (a second try is a 400).
 static var _spent_code := ""
+## Whether the last guest sign-in of the run came back to an account it already had (the stored
+## credential was good) and not a new one: what a browser test reads after a reload.
+static var _returning := false
 
 ## The backend's base address; a test or `?backend=` changes it.
 var base_url := DEFAULT_BACKEND
@@ -52,6 +55,9 @@ var instance_id := ""
 ## Keeps this API's own session instead of the run's: a test with several players in one process
 ## gives each its own (the game itself has one player per run).
 var isolated := false
+## Where the guest credential is kept (`GuestAccount`); empty keeps none. A test run has none unless
+## the test gives one.
+var guest_path := GuestAccount.default_path()
 
 var _parent: Node
 var _own_token := ""
@@ -74,10 +80,21 @@ static func forget() -> void:
 	_token = ""
 	_user = {}
 	_spent_code = ""
+	_returning = false
 
 
 static func signed_in() -> bool:
 	return _token != ""
+
+
+## The backend's id of the run's account (empty before sign-in).
+static func account_id() -> String:
+	return str(_user.get("id", ""))
+
+
+## True when the run's guest sign-in found its account again with the credential it kept.
+static func returned_to_account() -> bool:
+	return _returning
 
 
 static func user_name() -> String:
@@ -87,7 +104,9 @@ static func user_name() -> String:
 ## Signs in unless this run already has a session: with Discord when the page is an Activity (its
 ## bridge, `deploy/web/discord-bridge.js`, has the OAuth code; the name is the player's nickname in
 ## the server, else their Discord display name), else, or when that does not work, as a guest
-## called `display_name` (the backend cleans it; empty is `Guest NNNN`).
+## called `display_name` (the backend cleans it; empty is `Guest NNNN`, or the name a returning
+## guest has). A guest comes back to the same account when the credential the last visit kept is
+## still good (`GuestAccount`): 7 days from the last sign-in, the backend decides.
 func sign_in(display_name: String = "") -> Dictionary:
 	if _has_session():
 		return {"ok": true}
@@ -104,9 +123,14 @@ func sign_in(display_name: String = "") -> Dictionary:
 				_keep(with_discord["token"], with_discord["user"])
 				_authenticate_discord(str(with_discord.get("access_token", "")))
 				return with_discord
-	var answer := await _sign_in_call("/auth/guest", {"name": display_name})
+	var body := {"name": display_name}
+	var credential := _kept_credential()
+	if credential != "":
+		body["guestToken"] = credential
+	var answer := await _sign_in_call("/auth/guest", body)
 	if answer["ok"]:
 		_keep(answer["token"], answer["user"])
+		_remember(answer)
 	return answer
 
 
@@ -230,6 +254,7 @@ func detached(parent: Node) -> TogetherApi:
 	var other := TogetherApi.new(parent, base_url)
 	other.instance_id = instance_id
 	other.isolated = isolated
+	other.guest_path = guest_path
 	other._own_token = _own_token
 	other._own_user = _own_user
 	return other
@@ -347,6 +372,23 @@ func _call(
 		if typeof(json) == TYPE_DICTIONARY:
 			detail = str((json as Dictionary).get("detail", ""))
 	return _failed(reason, detail)
+
+
+## The credential the last visit kept, or "" (a Discord Activity signs in with Discord and keeps
+## none; a failed sign-in never removes it, the backend decides when it has run out).
+func _kept_credential() -> String:
+	if instance_id != "":
+		return ""
+	return GuestAccount.load_credential(base_url, guest_path)
+
+
+## Keeps the credential the backend sent, which restarts the 7 days; a backend from before it sends
+## none, and the player is a new guest each visit as before.
+func _remember(answer: Dictionary) -> void:
+	_returning = bool(answer.get("returning", false))
+	var credential := str(answer.get("guestToken", ""))
+	if credential != "" and instance_id == "":
+		GuestAccount.save_credential(base_url, credential, guest_path)
 
 
 func _has_session() -> bool:
