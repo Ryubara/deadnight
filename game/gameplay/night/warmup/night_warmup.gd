@@ -80,7 +80,7 @@ const PARKED_BODIES := {
 	&"farmhand": 4,
 	&"runner": 3,
 	&"brute": 3,
-	&"crawler": 3
+	&"crawler": 20
 }
 const DIGITS_NUMBER := 1234567890
 const BUSES_MUTED: Array[StringName] = [&"Effects", &"Voice"]
