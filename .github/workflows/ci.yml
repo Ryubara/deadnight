@@ -354,14 +354,14 @@ jobs:
           touch apt-marker
           if [ "${{ steps.apt-cache.outputs.cache-hit }}" = "true" ]; then
             sudo cp cache/apt-debs/*.deb /var/cache/apt/archives/
-            echo "restored $(ls cache/apt-debs | wc -l) packages from the cache"
+            echo "restored $(find cache/apt-debs -name "*.deb" | wc -l) packages from the cache"
           fi
           uv run --with playwright=="$PLAYWRIGHT_VERSION" playwright install-deps chromium-headless-shell
           if [ "${{ steps.apt-cache.outputs.cache-hit }}" != "true" ]; then
             mkdir -p cache/apt-debs
             # apt gives a download the server's modification time, so "new" is by change time, against a file made before.
             find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -cnewer apt-marker -exec cp {} cache/apt-debs/ \;
-            echo "kept $(ls cache/apt-debs | wc -l) packages for the cache"
+            echo "kept $(find cache/apt-debs -name "*.deb" | wc -l) packages for the cache"
             # An empty folder is not worth a cache entry: the next run would hit it and download everything anyway.
             rmdir cache/apt-debs 2>/dev/null || true
           fi
