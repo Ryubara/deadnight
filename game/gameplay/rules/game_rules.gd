@@ -28,7 +28,7 @@ extends RefCounted
 ##   settings_changed: settings (MatchSettings.to_dict), after a configure action, before the start
 ##   round_started: round, zombie_count, special_id (&"" for a normal round), boss_count
 ##   special_round_cleared: round, special_id, reward (paid to each player on their feet)
-##   round_ended: round, special_id
+##   round_ended: round, special_id, standing (the ids of the players not down when it ended)
 ##   zombie_spawn_requested: zombie_id, zombie_type, look, boss, health, speed, point_roll (spawn
 ##     point = point_roll % count), damage, knockback, telegraph_seconds, reach, barrier_speed,
 ##     hit_chance
@@ -249,6 +249,12 @@ func points_of(player_id: int) -> int:
 func kills_of(player_id: int) -> int:
 	var player := players.get(player_id) as PlayerState
 	return player.kills if player != null else 0
+
+
+## Zombies this player has killed with a shot to the head (or the weak spot) this night.
+func headshots_of(player_id: int) -> int:
+	var player := players.get(player_id) as PlayerState
+	return player.headshot_kills if player != null else 0
 
 
 ## Times this player has gone down this night.
@@ -648,6 +654,11 @@ func _remove_zombie(
 
 func _end_round() -> void:
 	var economy := tuning.economy
+	# Who stood at the end of it, before the downed are got up: the board's rounds survived.
+	var standing: Array = []
+	for player: PlayerState in players.values():
+		if not player.downed:
+			standing.append(player.id)
 	for player: PlayerState in players.values():
 		# The cap on repair pay runs from one round's end to the next: the break's repairs count.
 		player.repair_points_this_round = 0
@@ -671,7 +682,7 @@ func _end_round() -> void:
 				_award(player.id, _special.reward_at(round_number), &"special_reward")
 	if _special != null:
 		_emit(&"special_round_cleared", _special.cleared(round_number))
-	_emit(&"round_ended", {"round": round_number, "special_id": special_id()})
+	_emit(&"round_ended", {"round": round_number, "special_id": special_id(), "standing": standing})
 	_special = null
 	_enter_break(settings.break_for(tuning.rounds))
 

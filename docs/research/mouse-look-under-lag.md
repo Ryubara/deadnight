@@ -83,10 +83,7 @@ same total over a second at every rate, and a client of a game server over a rea
 failed on `main` (39 failed assertions) and pass. Touch keeps `LookSmoother` and its frame-independent total
 (`tests/ui/touch/test_touch_player.gd`, unchanged and green).
 
-## Found on the way, not changed
+## Found on the way
 
-`InputEventMouseMotion.relative` is in the viewport's units: with `canvas_items` stretch (the project's) it is the real
-motion times `1920 / window width`. A 1280 pixel window turns the view 1.5 times as far per mouse pixel as a 1920 one,
-a 2560 pixel window 0.75 times (a 64 pixel headless window: 30 times). `screen_relative` is the unscaled motion, which
-the engine docs recommend for mouse look. It is not what the maintainer saw (it does not change with lag), and
-switching changes everybody's sensitivity, so it is its own issue.
+`InputEventMouseMotion.relative` is in the viewport's units, so the stretch scaled the turn with the window. It was its
+own issue and is fixed: [Mouse sensitivity at every window size](mouse-look-window-size.md) (#928).

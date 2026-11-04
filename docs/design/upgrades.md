@@ -161,6 +161,7 @@ simulator's worth of each is in [the research](../research/weapon-roster.md#what
 
 | Weapon | Re-cut hit | Magazine | Reserve (limit) | Round 15, body / head | Element or special |
 | --- | ---: | ---: | --- | ---: | --- |
+| House Pistol (#898, the start) | 14 | 23 | 135 (225) | 22 / 9 (300 health on the current curve) | numbers only (the explosive rounds stay on the revolver: an open question for the maintainer) |
 | Revolver | 42 | 15 | 60 (120) | 7 / 3 | **explosive rounds** (0.40 s) |
 | Tommy gun | 24.5 | 45 | 180 (270) | 12 / 6 | numbers only |
 | Double-barrel | 38.5 x 8 | 3 | 24 (48) | 1 / 1 | numbers only: it is a close one-pull kill already |

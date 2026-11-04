@@ -18,7 +18,7 @@ var _objective := HudStyle.label("", HudStyle.TEXT, tokens.ink)
 
 func _init() -> void:
 	super()
-	_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	(_objective as HudLabel).wrap_words(TextServer.AUTOWRAP_WORD_SMART)
 	_objective.custom_minimum_size.x = WIDTH - float(HudStyle.PAD + HudStyle.PAD_LEFT)
 	_objective.max_lines_visible = 2
 	_objective.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS

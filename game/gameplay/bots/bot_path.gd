@@ -252,7 +252,7 @@ func _query(here: Vector3, to: Vector3, now: float) -> Status:
 	_made_at = now
 	queries += 1
 	var start := NavigationServer3D.map_get_closest_point(map, here)
-	var found := NavigationServer3D.map_get_path(map, start, target, true)
+	var found := NavigationServer3D.map_get_path(map, start, target, true, NavLayers.WALK)
 	if found.is_empty():
 		empty_answers += 1
 		block(to, now)
@@ -326,11 +326,12 @@ func _off_path(here: Vector3) -> float:
 	return best
 
 
-## Whether a walk from `here` to `to` ends within `REACHED_SHORT` of it on the mesh as it is now. A
-## question the mesh cannot answer yet (none, or a door's new mesh on its way) is taken as yes.
-## Counts as a path query. The errands use it to tell a stand behind a shut door from one a bot can
-## walk to.
-func probe(here: Vector3, to: Vector3, now: float) -> bool:
+## Whether a walk from `here` to `to` ends within `short` (`REACHED_SHORT` by default) of it on the
+## mesh as it is now. A question the mesh cannot answer yet (none, or a door's new mesh on its way)
+## is taken as yes. Counts as a path query. The errands use it to tell a stand behind a shut door
+## from one a bot can walk to; the flank passes a smaller `short`, for a place that must be on the
+## ground it can walk and not a few metres past the edge of it.
+func probe(here: Vector3, to: Vector3, now: float, short := REACHED_SHORT) -> bool:
 	if not has_map() or _iteration() < 1 or holding(now):
 		return true
 	var target := snap(to)
@@ -338,8 +339,8 @@ func probe(here: Vector3, to: Vector3, now: float) -> bool:
 		return false
 	queries += 1
 	var start := NavigationServer3D.map_get_closest_point(map, here)
-	var found := walkable(NavigationServer3D.map_get_path(map, start, target, true))
-	return not found.is_empty() and _flat(found[found.size() - 1], target) <= REACHED_SHORT
+	var found := walkable(NavigationServer3D.map_get_path(map, start, target, true, NavLayers.WALK))
+	return not found.is_empty() and _flat(found[found.size() - 1], target) <= short
 
 
 ## The metres of walk from `here` to `to` on the mesh as it is now, or `INF` when it does not get
@@ -353,7 +354,7 @@ func walk_length(here: Vector3, to: Vector3, now: float) -> float:
 		return INF
 	queries += 1
 	var start := NavigationServer3D.map_get_closest_point(map, here)
-	var found := NavigationServer3D.map_get_path(map, start, target, true)
+	var found := NavigationServer3D.map_get_path(map, start, target, true, NavLayers.WALK)
 	if found.is_empty() or _flat(found[found.size() - 1], target) > REACHED_SHORT:
 		return INF
 	var length := 0.0

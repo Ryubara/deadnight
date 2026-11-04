@@ -86,8 +86,8 @@ func _night(tuning: RulesTuning, flare: bool) -> SeatedNight:
 	night.give_order(BotOrders.FOLLOW, 1, _home() + BODY)
 	if flare:
 		night.server.combat.apply(CombatAction.give_weapon(2, &"flare_gun"))
-		night.server.combat.apply(CombatAction.equip(2, &"pistol"))
-	var pistol := night.server.combat.state_of(2, &"pistol")
+		night.server.combat.apply(CombatAction.equip(2, &"house_pistol"))
+	var pistol := night.server.combat.state_of(2, &"house_pistol")
 	pistol.ammo = ROUNDS
 	pistol.reserve = 0
 	_bot(night).perception.beliefs.grenades = 0

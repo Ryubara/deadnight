@@ -155,6 +155,19 @@ static func problem(data: Dictionary) -> StringName:
 	return &""
 
 
+## The keys of `data` that are no setting of this build (a backend or a client that knows a setting
+## this game does not). `problem` leaves them alone, so a snapshot from a newer server still reads;
+## the places where a person's choice enters (a ticket, a command line) refuse them instead of
+## starting a night without the setting (Deadnight #944).
+static func unknown_keys(data: Dictionary) -> Array[String]:
+	var out: Array[String] = []
+	for key: Variant in data:
+		if not KEYS.has(key):
+			out.append(str(key))
+	out.sort()
+	return out
+
+
 ## Settings from `to_dict`'s data (a snapshot, a WELCOME, an action), or null when `problem` finds
 ## fault with it.
 static func from_dict(data: Dictionary) -> MatchSettings:

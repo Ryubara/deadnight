@@ -11,6 +11,7 @@ extends GdUnitTestSuite
 ## until their own pull requests land, so the plain numbers are here and the row is checked
 ## against them; a weapon that is in the catalogue is checked against its own file as well.
 const PLAN := {
+	&"house_pistol": [8.0, 1, 15, 90, 150, 0.0, 14.0, 23, 135, 225, 0.0, 0.0, &""],
 	&"pistol": [24.0, 1, 10, 40, 80, 0.0, 42.0, 15, 60, 120, 0.0, 0.40, &"explosive"],
 	&"smg": [14.0, 1, 30, 120, 180, 0.0, 24.5, 45, 180, 270, 0.0, 0.0, &""],
 	&"shotgun": [22.0, 8, 2, 16, 32, 0.0, 38.5, 3, 24, 48, 0.0, 0.0, &""],
@@ -48,7 +49,7 @@ func _plain(id: StringName) -> WeaponDef:
 	return def
 
 
-func test_the_table_has_a_profile_for_each_of_the_fourteen_and_for_no_other() -> void:
+func test_the_table_has_a_profile_for_each_of_the_fifteen_and_for_no_other() -> void:
 	assert_int(_spec.profiles.size()).is_equal(PLAN.size())
 	for id: StringName in PLAN:
 		assert_bool(_spec.allows(id)).override_failure_message(String(id)).is_true()
