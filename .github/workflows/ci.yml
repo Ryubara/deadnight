@@ -84,16 +84,21 @@ jobs:
     needs: conventions
     if: needs.conventions.outputs.godot == 'true'
     runs-on: ubuntu-24.04
-    # The suite is split over six parallel jobs by test folder and heavy script (tools/ci_test_shards.py; one job took
-    # 15 to 20 minutes, #524; three took 12 to 15 each, #775): each shard takes about 7 minutes (about 6 of suites, one
-    # of setup), and the limit is twice that. The jobs are `godot (1)` to `godot (6)`;
-    # `build-ok` waits for all of them and is the one required name, so the ruleset does not list them.
-    timeout-minutes: 22  # raised for #1016 only: shard 1 runs just over 15 until #1018 rebalances to eight shards
+    # The suite is split over eight parallel jobs, `godot (1)` to `godot (8)`, by the seconds each test script takes
+    # (tools/ci_test_shards.py deals them out from tools/ci_test_times.json; one job took 15 to 20 minutes, #524; three
+    # took 12 to 15 each, #775; six hit the limit again, #1015). A balanced shard takes 6 to 9 minutes (about 1 of setup),
+    # and the limit is 15. The last step of each shard (tools/ci_shard_time.py) annotates a job past 9 minutes and fails
+    # one past 12, so a drifting shard is red before it times out. `build-ok` waits for all of them and is the one
+    # required name, so the ruleset does not list them.
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
+      - name: Start the shard's clock
+        # The share-of-the-limit check at the end measures the job from here (the checkout is part of its time).
+        run: echo "SHARD_CLOCK=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: repos/deadnight
@@ -167,19 +172,28 @@ jobs:
         run: |
           if [ -f perf-summary.md ]; then cat perf-summary.md >> "$GITHUB_STEP_SUMMARY"; fi
 
-      - name: Run the tests (GdUnit4), this shard's folders
+      - name: Run the tests (GdUnit4), this shard's scripts
+        id: tests
         # No `-d`: with the debugger attached, the first script error stops the engine at a prompt and the job hangs.
         # `--ignoreHeadlessMode` is needed because GdUnit4 otherwise refuses to run headless; the report folder is
         # uploaded below even when a test fails.
         run: |
           set -o pipefail
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          python3 repos/deadnight/tools/ci_shard_time.py --self-test
           python3 repos/deadnight/tools/ci_test_shards.py --root repos/deadnight/game --self-test
           read -r -a folders < <(python3 repos/deadnight/tools/ci_test_shards.py --root repos/deadnight/game --shard "${{ matrix.shard }}")
           echo "shard ${{ matrix.shard }}: ${folders[*]}"
           "$godot" --headless --path repos/deadnight/game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd "${folders[@]}" -c --ignoreHeadlessMode --verbose 2>&1 | tee tests.log
           # Godot prints a leak after the run has finished, so only the log shows it (see the night step).
           ! grep -E "leaked at exit|still in use" tests.log
+      - name: Hold the shard to its share of the job's limit
+        # Warns past 60 % of the 15 minutes and fails past 80 %, and puts the slowest suites in the job summary
+        # (docs/research/ci-time.md, "Keeping the shards balanced"). Not when the tests step never ran or never finished.
+        if: always() && steps.tests.conclusion != 'skipped'
+        run: |
+          python3 repos/deadnight/tools/ci_shard_time.py check --log tests.log --shard "${{ matrix.shard }}" \
+            --elapsed "$(( $(date +%s) - SHARD_CLOCK ))" --summary "$GITHUB_STEP_SUMMARY"
       - name: List what leaked at exit
         # `--verbose` (night and test steps) makes the engine name each leaked instance and resource; this keeps just
         # those lines, so a failed leak check says which objects it was (issue #487).
@@ -301,6 +315,9 @@ jobs:
         run: uv run --with playwright==1.64.1 playwright install --with-deps chromium-headless-shell
       - name: Open the build in a browser
         run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/smoke.py repos/deadnight/build/web smoke
+      - name: Count the bridge calls of a plain page
+        # A player's page opens no probe: the menu and a night the autopilot plays cross the JavaScript bridge about never (#935).
+        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/bridge_calls.py repos/deadnight/build/web smoke/bridge-calls --max-per-second 1
       - name: Lose the pointer lock in the browser
         # The browser's first Esc frees the lock and never reaches the page: the night's menu must open at once (#476).
         run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/pointer_lock.py repos/deadnight/build/web smoke/pointer-lock

@@ -94,14 +94,18 @@ the random spread of every play (a level jitter of +-0.8 dB is on every play too
 
 The menu has an **ambience bed** since #926, so it is no longer silent between its sounds: [below](#the-ambience-bed-926).
 It is not a row of the table (it answers no control), and the hint levels above were checked against it and did not
-move. A menu **music** bed is not made: the bed does what the maintainer asked for ("the menu needs to feel more
-alive"), and a score would have to be written and licensed (the night's `bed_score` is the break's).
+move. A menu **music** bed was not made then ("the menu needs to feel more alive" was met by the bed); it is made
+since (issue 979), synthesised, on the Music bus: [the menu's music](menu-music.md). The levels below are of the
+first bed, the crickets and the projector; the margins with the music are in that page.
 
 ## The ambience bed (#926)
 
 Between its sounds the menu was silent. Now the drive-in is there under it: the projector's motor and, very quietly,
 the crickets. `MenuAmbience` (`core/audio/menu_ambience.gd`) starts two beds on the **Ambience** bus, so the slider is
-Settings, Audio, "Ambience" (80 percent by default, 0 is mute):
+Settings, Audio, "Ambience" (80 percent by default, 0 is mute). Since #979 the menu holds three beds more (a pad and
+bells on the Music bus and a wind on the Ambience bus, [the menu's music](menu-music.md)); this section is the first two,
+whose trims are now -31 dB (the projector) and -38 dB (the crickets), and the margins in the table are of the bed as it
+was then (the new ones are in the music's page):
 
 | Bed | File (the night's own) | Trim | The night's trim of the same file | What it is |
 | --- | --- | --- | --- | --- |
@@ -175,7 +179,8 @@ are **assumed curves, not measurements of a device**, written in the tool's head
 A bed's **player pool** was too small once the menu had a bed: the night's beds (up to seven: crickets, highway, score,
 wind, the world's bed and the small map's two) take two seconds to fade out after the night and hold their players, and
 the pool had six, so the menu's bed, started the moment Leave night returned to the menu, found no free player and was
-silent (`start_bed` returns null with no warning). `AudioService.POOL_BEDS` is 10, and `test_menu_ambience.gd` leaves a
+silent (`start_bed` returns null with no warning). `AudioService.POOL_BEDS` was 10 and is 12 since the menu holds
+five beds (#979), and `test_menu_ambience.gd` leaves a
 night at once to prove it.
 
 ### The walk, before and after
@@ -285,5 +290,6 @@ Plots and a recording with sound of both walks are on the pull request.
   change louder than the press that caused it and the commit louder than a pistol shot. The ladder is read on both the
   peak and the loudness now.
 - **Open**: a person's taste on the bed and the hints (the speaker check says they are plain, not that they are good;
-  see [the bed](#the-ambience-bed-926)); a menu music bed (not made); the shop's purchase sound when buying exists; the
-  lobby's ready and countdown sounds when the lobby gets them (decided in the table of silences above).
+  see [the bed](#the-ambience-bed-926)); a person's taste on the menu's music (made since, #979); the shop's
+  purchase sound when buying exists; the lobby's ready and countdown sounds when the lobby gets them (decided in the
+  table of silences above).

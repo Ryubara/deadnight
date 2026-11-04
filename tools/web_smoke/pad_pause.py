@@ -26,7 +26,7 @@ from pathlib import Path
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Page, sync_playwright
 from pointer_lock import SOFTWARE_GL, VIEWPORT, probe, serve, wait_for
-from smoke import start_solo
+from smoke import probing, start_solo
 
 LOAD_TIMEOUT_S = 150
 # The night's load on a CI runner took 82 s to 107 s, and over 150 s on a slow one (see smoke.py).
@@ -72,7 +72,7 @@ def reacted(page: Page, what: str, test) -> dict:
 
 
 def run(page: Page, url: str, out: Path, result: dict) -> None:
-    page.goto(url, wait_until="commit")
+    page.goto(probing(url), wait_until="commit")
     wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", LOAD_TIMEOUT_S)
     page.mouse.click(5, 5)
     page.wait_for_timeout(2500)

@@ -62,6 +62,11 @@ RECORDER_JS = """
   requestAnimationFrame(frame);
 }
 """
+# The tour ends in a night, whose mouse grip asks for the pointer lock once the build is done. The browser grants it only
+# inside a click or key press that is still fresh, so a slow runner got "A user gesture is required to request Pointer
+# Lock" (#1026) and a fast one took the real lock. The tour looks at shaders, not at the mouse: it never asks (and, on a
+# machine in use, never clips the real cursor).
+NO_POINTER_LOCK = "Element.prototype.requestPointerLock = function () { return Promise.resolve(); };"
 SLICE_JS = "([from, to]) => window.__frames.filter(f => f[0] >= from && f[0] <= to).map(f => f[1])"
 
 
@@ -204,6 +209,7 @@ def main() -> int:
             browser = p.chromium.launch(headless=True, args=SOFTWARE_GL)
         page = browser.new_page(viewport={"width": width, "height": height})
         page.add_init_script("(" + RECORDER_JS.strip() + ")();")
+        page.add_init_script(NO_POINTER_LOCK)
         if args.throttle > 1.0 and args.browser != "firefox":
             session = page.context.new_cdp_session(page)
             session.send("Emulation.setCPUThrottlingRate", {"rate": args.throttle})

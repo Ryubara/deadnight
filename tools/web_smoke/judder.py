@@ -40,6 +40,7 @@ from smoke import (
     VIEWPORT,
     gl_info,
     probe,
+    probing,
     reach_menu,
     serve,
     start_solo,
@@ -100,7 +101,7 @@ MIN_FRAMES = 60  # a frame is in a stretch while the soldier moves at this share
 
 
 def play(page, url: str) -> None:
-    page.goto(url, wait_until="commit")
+    page.goto(probing(url), wait_until="commit")
     reach_menu(page)
     start_solo(page)
     wait_for_night(page)

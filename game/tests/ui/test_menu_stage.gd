@@ -124,11 +124,20 @@ func test_a_still_draws_once_per_change_and_a_covered_menu_draws_nothing() -> vo
 
 func test_a_live_stage_draws_every_frame_and_steps_down_when_told() -> void:
 	var view := _view()
+	view.size = Vector2(1920, 1080)
 	await get_tree().process_frame
 	assert_int(view.level).is_equal(StageGovernor.Level.LIVE)
 	assert_int(view.viewport().render_target_update_mode).is_equal(SubViewport.UPDATE_ALWAYS)
+	assert_int(view.viewport().msaa_3d).is_equal(MenuStageView.MSAA)
+	var full := view.viewport().size
 	view.set_level(StageGovernor.Level.HALF)
-	assert_int(view.stretch_shrink).is_equal(2)
+	assert_vector(view.viewport().size).is_equal(
+		Vector2i(roundi(full.x * 0.5), roundi(full.y * 0.5))
+	)
+	assert_int(view.viewport().msaa_3d).is_equal(MenuStageView.MSAA)
+	# Half goes back to live when asked (the governor climbs back when frames recover).
+	view.set_level(StageGovernor.Level.LIVE)
+	assert_vector(view.viewport().size).is_equal(full)
 	view.set_level(StageGovernor.Level.STILL)
 	assert_int(view.viewport().render_target_update_mode).is_equal(SubViewport.UPDATE_ONCE)
 

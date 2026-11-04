@@ -4,7 +4,7 @@ extends Node
 ## replaced (a Label3D of the old settings) and with neither; and the time the meshes take to make,
 ## cold (the models not yet loaded) and warm. Not part of the game. Run it windowed:
 ##
-##   gds godot -- --path game res://tests/captures/wall_silhouette_cost.tscn --resolution 1920x1080
+##   gds godot -- --path game res://tools/captures/wall_silhouette_cost.tscn --resolution 1920x1080
 ##       -- --map=drive_in|small_indoor
 ##
 

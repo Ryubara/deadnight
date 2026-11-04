@@ -30,6 +30,11 @@ const BODY_CLEARANCE := 0.4
 const BODY_HALF_WIDTH := 0.3
 ## And this much more, so a body is clear of a jamb and not touching it.
 const JAMB_MARGIN := 0.02
+## The dead tears the boards from in front of the opening (#997): its middle stays this far (m)
+## inside the clear width, so a person inside has the opening, not a jamb, between them and it.
+## Beside the opening (in front of a jamb, within `SPAN_SLACK` of the gap's end) nobody inside can
+## shoot it.
+const TEAR_MARGIN := 0.1
 
 var id: StringName = &""
 ## The middle of the gap, on the fence line.
@@ -132,3 +137,19 @@ func keep_in_opening(point: Vector3) -> Vector3:
 		return point
 	var sideways := inward.cross(Vector3.UP)
 	return point - sideways * (along - clampf(along, -room, room))
+
+
+## Half the width in front of the opening where a dead may stand to tear the boards: the clear
+## width less `TEAR_MARGIN`. `INF` for a gate with no jambs (a test's straight-line field).
+func tear_room() -> float:
+	if not is_finite(clear_half):
+		return INF
+	return maxf(clear_half - TEAR_MARGIN, 0.0)
+
+
+## Metres `point` is beside the opening's front along the wall, signed toward where it must go to
+## be in front of it: 0 when it is in front.
+func aside_of(point: Vector3) -> float:
+	var room := tear_room()
+	var along := along_of(point)
+	return along - clampf(along, -room, room) if is_finite(room) else 0.0

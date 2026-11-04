@@ -162,7 +162,7 @@ gets its grip by placing three empties and running the solver, never by tuning n
 | `Trigger` | guns: the middle of the trigger's front face, where the finger's pad presses | +Y the press (backward) |
 | `Support` | two-handed guns: the left hand's handle (fore-end, vertical foregrip) | +Z toward the left index finger (the muzzle, on a fore-end); +Y the way its fingers point (to the gun's right on a fore-end held from below, forward on a vertical grip) |
 
-**The solver** (`game/tests/art/solve_grips.gd`, with `GripSolver` and `HandContact`) works in the hand bone's space
+**The solver** (`game/tools/art/solve_grips.gd`, with `GripSolver` and `HandContact`) works in the hand bone's space
 (`Index1`), so its result holds in every pose:
 
 1. The hand's handle line: across the knuckles (pinky to index) at the middle finger; the straight fingers' direction
@@ -592,6 +592,12 @@ Soldier's library when the tree is built.
   long guns' clips are built through the grip files: when a grip is solved again (`solve_grips.gd`), rebuild the
   Sprint file (not needed after `--fingers`, which keeps the `hold`) and check the hands with `test_hand_grips.gd`,
   which measures both hands on every weapon's skin in the sprint too.
+- **On the shorter forearm (#978).** The left wrist of every long gun's carry was 175-180 degrees off its turn in the
+  gun hold, and near half a turn the tree's blend between the two takes either way round: the puppet's left hand spun
+  77-86 degrees in one tick of the sprint start. Each carry rolls its left forearm about its own axis, one roll for the
+  loop (45-60 degrees; `left forearm roll` in the `SPRINT` line), the least that keeps the wrist within 150 degrees
+  (`CARRY_WRIST_MAX`); the hand's world turn and place do not change. The right elbow is bent out twice as far as the
+  IK's (`SPRINT_RIGHT_OUT`), or the seat's armband on the right upper arm sank 8 mm deeper into the chest.
 - **Checked:** `game/tests/player/test_sprint_carry.gd` (the clips are on Run's cycle; the carry plays only sprinting
   on the ground, holds in the air and never starts there; its phase matches Run to 0.002 s; it catches up after a
   landing without jumping; aim, a hip shot, a reload and a swing take it out within 0.15 s; the first shot's `muzzle`

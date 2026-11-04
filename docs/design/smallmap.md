@@ -24,7 +24,7 @@ Metres, x east, z south.
 | Room | Where (inside the walls) | What it is |
 | --- | --- | --- |
 | Start room | 16 x 14.5 m | the loading hall: a counter of 5 x 3.5 m on four pillars to run round, 2 windows (south, facing the drive-in's screen, and east), the players' start south of the counter facing the south window |
-| Side room | 22 x 7.5 m, along the hall's north side and 6 m past it to the west | the rewind room: a row of four pillars joined by film racks to run round, a window on its south (west of the hall) and north walls and a breach in the west end onto the shed |
+| Side room | 22 x 7.5 m, along the hall's north side and 6 m past it to the west | the rewind room: a row of four pillars joined by film racks to run round, a window on its north wall at the east end and a breach in the west end onto the shed |
 | Upstairs | over the side room (22 x 7.6 m) and over the hall's north strip (16 x 4.5 m) | two halves joined by an opening with no door; 2 windows, both over the hall (south onto the terrace, west onto the gallery the dead climb to by the outside stair) |
 
 The links: the door between the hall and the rewind room at the hall's north-east corner, and one stair in each
@@ -71,7 +71,7 @@ godot --headless --path game -s res://tests/world/smallmap/smallmap_report.gd
 | 12 | One ring, closed only by the third link | yes | exact | yes |
 | 13 | The ring's lap | 68.4 m | 48 to 72 m | yes |
 | 14 | Loop round the side room's rack row | 31.2 m | 25 to 36 m | yes |
-| 15 | Windows start / side (one a breach) / upstairs (over the hall), the maintainer's rule (#917) | 2 / 3 / 2 | exact | yes |
+| 15 | Windows start / side (one a breach) / upstairs (over the hall), the maintainer's rule (#917), the side room's south-west window dropped (#994) | 2 / 2 / 2 | exact | yes |
 | 16 | Directions to watch start / side / upstairs | 3 / 3 / 2 | exact | yes |
 | 17 | Players' start (the middle of the eight places) to the nearest window | 4.4 m | 4 to 7 m | yes |
 | 18 | A window's spawn outside it, on the yard (in by its own window, its room only) | 7.0 to 14.8 m | 5 to 15 m | yes |
@@ -104,7 +104,12 @@ a corridor that squeezes the shoulder camera, a line through a wall).
 ## Walking it
 
 `test_smallmap_walk.gd` walks three real player bodies (`PlayerSimulation`) from goal to goal along the zombies' mesh
-for 90 s and runs a body and a jump at every window from inside. The long run is the move soak:
+for 90 s and runs a body and a jump at every window from inside. `test_smallmap_escape_sweep.gd` runs the real body
+at everything beside the walls (counters, cabinets, machines, the window sills): it stands it on every top of 1.25 m or
+less within 6 m of a wall or a closed link's slab, and on the floor beside every taller top, sprints and jumps at what
+is ahead, three hops deep, for each of the eight sets of links, and fails on a standing place outside the building
+(the yards, the hall's roof), in a room the links do not open yet, or 2 m and more over its floor (#848). The long run
+is the move soak:
 
 ```text
 godot --headless --path game res://tests/captures/smallmap_move_soak.tscn -- --minutes=20 --bodies=4 --seed=1
@@ -143,27 +148,24 @@ the map names the lot (#697).
 
 ### The windows
 
-The seven entries (six windows and the breach) are `Barricade`s of five boards each (`Windows/Window_<id>/Boards`, the
+The six entries (five windows and the breach) are `Barricade`s of five boards each (`Windows/Window_<id>/Boards`, the
 rules' `BarricadeTuning.ids`), with the kit's 1.5 m boards (so a mended board swings about 0.75 m,
 `Barricade.board_half`, not the fence breaches' 2.05). The dead rise on the yard 7 to 15 m from a window, walk to its
 boards and tear them off one by one (1.2 s a board, as on the lot), then come in; an upper window's dead climb the
 outside stair first and walk along the gallery or the terrace to it ([Outside and windows](#outside-and-windows-917)). A
 player puts a board back for points, as at the lot's fence; the players-only blocker in the opening keeps everyone in
-whatever the boards do (the sill is 0.9 m, a jump is 1.1 m). `test_smallmap_windows.gd` runs a night of 24 at once and
-fails unless every one is torn and walked through, to the room it opens into and the height it is at; it also fails a
-window without floor inside it or ground or a deck outside it at its own height, and an upper window whose dead do not
-rise on the yard and walk up to it.
+whatever the boards do (the sill is 0.9 m, the body climbs 1.25 m, `CameraProbe.BODY_REACH`).
+`test_smallmap_windows.gd` runs a night of 24 at once and fails unless every one is torn and walked through, to the
+room it opens into and the height it is at; it also fails a window without floor inside it or ground or a deck outside
+it at its own height, and an upper window whose dead do not rise on the yard and walk up to it.
 
 ### The shop (formula rows 22 to 25)
 
 | Where | What | Price | Ratio to P |
 | --- | --- | ---: | ---: |
-| Hall, west wall | Crowbar | 90 | 0.2 |
 | Hall, west wall | Revolver (no longer the start weapon, #898: the House Pistol is; it hits three times as hard) | 270 | 0.6 |
 | Side room, middle and north walls | Pump shotgun, Tommy gun | 540 each | 1.2 |
-| Upstairs, four walls | Baseball bat | 540 | 1.2 |
-| | Flare gun | 630 | 1.4 |
-| | Fire axe | 720 | 1.6 |
+| Upstairs, two walls | Flare gun | 630 | 1.4 |
 | | Pump shotgun (a second wall of it) | 540 | 1.2 |
 | Upstairs, the cabinet (over the side room) | Hunting rifle | 675 | 1.5 |
 | Side room, north wall: the box (our crane) | a random gun you lack | 425 | 0.94 |
@@ -171,15 +173,20 @@ rise on the yard and walk up to it.
 
 The six new firearms (#793) are the box's alone on this map: a wall sells only the weaker guns (the maintainer's rule,
 issue 858). Prices climb room by room as the formula asks, each within 10% of its ratio (`test_smallmap_economy.gd`).
-Eight weapons make nine places, so the shotgun hangs on two walls (same price, different rooms): the wall of a weapon
+Five weapons make six places, so the shotgun hangs on two walls (same price, different rooms): the wall of a weapon
 already carried sells its rounds. The box has **one place and never moves**: its `leave_chances` are empty, so no play
 breaks it down; it needs no link (the walls around it are the side room's). The prizes are the lot's (the shotgun
 heaviest). At most **24 dead stand at once**, whatever the round and the party (`alive_cap`, on a desktop and in the
 browser).
 
-**The nine places are all there are** (#858): a wall sells only the weaker guns ([the wall
+**The six places are all there are** (#858, #910): a wall sells only the weaker guns ([the wall
 tier](weapons.md#the-wall-tier)), so the pump 870, the MP5 and the M4A1 get no place on this map; they come only from
-the box, with the other guns above the tier. `test_wall_tier.gd` fails on a tenth wall that sells one.
+the box, with the other guns above the tier. **No wall sells a melee weapon** (#910): the crowbar's hall wall and the
+bat's and the axe's upstairs walls (three of the first nine places) are gone, plaques and markers with them, and their
+prices left the tuning; they were not given to another gun, because every gun a wall may sell already has a wall
+(the shotgun two) and a second Tommy gun or flare gun would put more firepower on sale in a change meant to take
+some out. The hall keeps the revolver, so the formula's wall count of 2 / 2 / 4 and a cabinet is now 1 / 2 / 2 and a
+cabinet. `test_wall_tier.gd` fails on a seventh wall that sells one, or any melee weapon.
 
 ### What the map leaves out
 
@@ -225,6 +232,12 @@ door's 40 s rotation, so the busy and the far cover instead of waiting. A link s
 one a flight up; a door's stand is chosen by walking cost (8 m a metre of height), so a bot on the ground floor takes the
 foot, not the flat-nearer stand it would reach only by going round the whole map. The lot leaves the flag off.
 
+The overlay's **`bot_saves_for`** names the shotgun (and the re-cut and the hearty tonic, as the profiles do): while
+the shotgun is out of reach nothing after it on the list is bought. And once a bot that holds only its start gun can
+pay for a gun, nothing after that gun is offered either, the team link rule included, so the first gun comes before
+the second and third stairs (#910: a solo bot that paid for both stairs first met round 3 with the revolver and went
+down on one of four seeds).
+
 ### Proof
 
 `tests/captures/smallmap_bot_night.tscn` plays a night of hosted bots to a round and prints the numbers (`--bots`,
@@ -264,7 +277,6 @@ terrace; their dead rise in the alley by the stair's foot and climb it, in view 
 | --- | --- | --- | --- |
 | `start_1` | hall, south | the front yard, the gate and the drive-in's screen | the drive-in's side, straight across the yard |
 | `start_4` | hall, east | the east yard and the pole line | round the building's east side |
-| `side_1` | side room, south (west of the hall) | the notch between the shed and the hall, under the gallery | from the west yard |
 | `side_2` | side room, north | the back yard and its trees | from the dark behind the depot |
 | `side_breach` | side room, west | the shed, open to the yard | through the shed and the broken wall |
 | `upper_a1` | upstairs over the hall, west | the gallery | up the alley's outside stair and along the gallery |
@@ -278,6 +290,15 @@ bots walk too) would send a bot out of one window and in by the other, to stop a
 and a bot never reached the rifle cabinet or the Third Holster). The
 hall's west wall has no window: it is the shop wall inside and the outside stair outside.
 
+**The side room's south-west window, dropped (#994).** The side room had a third entry, `side_1`, in its south wall
+west of the hall, 2.8 m from the breach round the corner and 3.2 m from the Swift Rescue alcove beside it. A press
+reaches 2.5 m from a window and 1.5 m from a shop spot, and two use zones keep 0.5 m of floor between them
+([use reach](../research/use-reach.md#spacing-and-the-press-908)): the window needed 4.5 m to the alcove's spot and
+5.5 m to the breach, and the room's west end (6 m wide, with the side stair's foot in its north-west corner) has room
+for neither. Two openings in one corner were also one direction for the dead, not two. So the side room has one entry
+at each end: the breach at the west, `side_2` at the north-east; the alcove stays. The breach moved 0.5 m south (its
+middle at z -2.0) to keep the side stair's zone clear, still facing the shed's open back door.
+
 **Each perk in its own alcove.** The five coolers stood in pairs on three walls. Each now stands at the back of a bay
 2.4 m wide and 1.3 m deep out of an outside wall, open full height to the room, its spot at the bay's mouth, and no two
 on one wall; the bays read from outside as bays of the building (a bay of two floors on the north wall, solid below
@@ -290,14 +311,14 @@ one script. What each socket wears, and what moved to make it fit:
 
 | Socket | Wears | What moved |
 | --- | --- | --- |
-| Windows (7) | the kit's window module (`wall_window_zombie`, `_upper` upstairs); boards in the module's own slots on the room side | the wall's gap runs to the module's 2.8 m top (a `Lintel` body fills it); the sill, jambs and blocker are collision only |
+| Windows (6) | the kit's window module (`wall_window_zombie`, `_upper` upstairs); boards in the module's own slots on the room side | the wall's gap runs to the module's 2.8 m top (a `Lintel` body fills it); the sill, jambs and blocker are collision only |
 | The breach | a kit post each side of the gap, a beam across its top, walked-over rubble, and a 0.9 m sill of the wall's stone: it is a window like the others (#915), its boards in the same 0.9 to 2.2 m opening | the gap is the windows' 1.5 m, and the dead climb over the sill (`ZombieGate.sill`) |
 | Door (hall to side room), upstairs opening | the kit's wide opening (`wall_opening_wide`), its own hidden jambs and lintel | the wall's gap is the module's 3 m wide; the clear opening is the 2.0 x 2.4 m it was |
 | The door's leaf, the stairs' blockers | `door_purchase` stretched to 2 m, `debris_blocker` stretched to the 2 m flight; each with a `DoorGlow` of the far room's lamp | the slab stays (hidden): the walking mesh and `LotDoors` are as they were |
 | The two flights | the kit's `stair_straight` stretched to 2.0 x 5.1 x 3.4 m over the greybox's hidden ramp (rails off, the flight has a wall each side) | none: the ramp is what is walked on |
 | Pillars, racks | the kit's pillar to 2.8 m with a block band above it; two shelf racks a bay, squat as their 1.2 m collision so the view over them stays open | the boxes are hidden collision now |
 | Lamps | `PendantLight` (`hang` 0.4 m: the kit's lamp hangs from 2.8 m, the ceiling is 3.2 m): one real light each (the `powered_light` group), a halo, a pool and a cone of haze | the 8 omni lamps at 2.9 m, range 8, are these lights at 2.45 m, range 5.5 |
-| Extra light | decor pendants (no light slot) over the box and each shop wall, wall lanterns at the three links, moon shafts in four windows, chalk messages in four places | none |
+| Extra light | decor pendants (no light slot) over the box and each shop wall, wall lanterns at the three links, moon shafts in two windows, chalk messages in four places | none |
 | Cabinet | the kit's `tall_cabinet` with the plaque on end in its recess | the cabinet's box is the fixture's |
 | Clutter | filing cabinets, chairs, tipped tables, a rubble cone, walked-over rubble, helmets, radios and lanterns (`Dressing`) | solid pieces stand against walls and in corners; the saved walking meshes are baked again |
 | Outside | the backdrop (`backdrop.tscn`); the yard is the backdrop's 62 x 54 m, frosted ground, its boundary a wire fence seen through (the boxes that stop the dead are hidden), turned so the drive-in is south (#917) | the yard grew from 50 x 56 m; the haze is 0.035 (the lot's 0.013 barely shows in a 6 m room) |

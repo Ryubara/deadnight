@@ -33,6 +33,7 @@ import threading
 import time
 from pathlib import Path
 
+import smoke
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Page, sync_playwright
 from smoke import reach_menu, start_solo, wait_for_night
@@ -62,10 +63,7 @@ MOTION_JS = """
 """
 
 
-class Quiet(http.server.SimpleHTTPRequestHandler):
-    def log_message(self, *_args) -> None:
-        pass
-
+class Quiet(smoke.Quiet):
     def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
         super().end_headers()

@@ -22,7 +22,7 @@ const PLAZA_EAST := 16.0
 const PLAZA_END := 58.0
 const PLAZA_GATE := 38.0
 ## The most a body is measured to climb from level ground (`test_jump_reach.gd`).
-const BODY_REACH := 1.25
+const BODY_REACH := CameraProbe.BODY_REACH
 ## A wall must stand this much over the tallest prop beside it plus the reach: the run-up and a
 ## corner give a
 ## little, and the old wall stood 0.04 m short of the reach.

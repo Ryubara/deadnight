@@ -357,6 +357,9 @@ def make_handler(
                             else (404, "text/plain", b"")
                         )
                 status, kind, content = cache[path]
+                if status == 200 and path in ("", "/", "/index.html"):
+                    # The test reads `window.deadnight`, which a player's page does not publish (#983).
+                    content = content.replace(b"<head>", b"<head>" + smoke.PROBES_ON, 1)
             self.reply(status, kind, content)
 
         def api(self, body: bytes | None) -> None:

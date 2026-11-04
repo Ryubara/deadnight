@@ -263,7 +263,16 @@ func test_the_rules_the_host_chose_ride_the_ticket_into_the_room_and_every_welco
 	var ann := await _client("rules-a", "ann", "Tester", chosen)
 	var room := _server.room_of_match("rules-a")
 	# A ticket from before the bot count (no `bots`) asks for none.
-	var held := chosen.merged({"bots": 0, "bot_skill": MatchSettings.DEFAULT_SKILL})
+	var held := (
+		chosen
+		. merged(
+			{
+				"bots": 0,
+				"bot_skill": MatchSettings.DEFAULT_SKILL,
+				"perk_limit": MatchSettings.PERKS_DEFAULT,
+			}
+		)
+	)
 	assert_dict(room.server.rules.settings.to_dict()).is_equal(held)
 	assert_dict(ann.match_settings.to_dict()).is_equal(held)
 	# A friend's ticket carries the same rules (and even one without them changes nothing): the
@@ -274,6 +283,16 @@ func test_the_rules_the_host_chose_ride_the_ticket_into_the_room_and_every_welco
 	var cy := await _client("rules-b", "cy")
 	assert_bool(cy.match_settings.is_default()).is_true()
 	assert_bool(_server.room_of_match("rules-b").server.rules.settings.is_default()).is_true()
+	# The perk limit the host lifted (#913) rides the ticket as the JSON float the backend signs, and
+	# every player of that match, the first and one who joins after, reads it in the WELCOME.
+	var lifted := chosen.merged({"perk_limit": 1.0})
+	var di := await _client("rules-c", "di", "Tester", lifted)
+	assert_int(_server.room_of_match("rules-c").server.rules.settings.perk_limit).is_equal(
+		MatchSettings.PERKS_UNLIMITED
+	)
+	assert_int(di.match_settings.perk_limit).is_equal(MatchSettings.PERKS_UNLIMITED)
+	var ed := await _client("rules-c", "ed")
+	assert_int(ed.match_settings.perk_limit).is_equal(MatchSettings.PERKS_UNLIMITED)
 
 
 func test_a_ticket_with_rules_out_of_bounds_is_turned_away_and_no_room_opens() -> void:

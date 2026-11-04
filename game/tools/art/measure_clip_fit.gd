@@ -3,7 +3,7 @@ extends Node
 ## more looks: one `FIT` line per clip and check with a fault, and a `FIT_SUMMARY`. Not a test: the
 ## table behind `test_soldier_clip_fit.gd` and docs/research/soldier-parts.md, "Fit".
 ##
-##     godot --headless --path game res://tests/art/measure_clip_fit.tscn --
+##     godot --headless --path game res://tools/art/measure_clip_fit.tscn --
 ##         [--looks=10,0] [--clips=Idle,Run] [--menu] [--write=<file.json>]
 ##
 ## `--write` also writes the deepest sinking per look, clip and check as JSON: the recorded depths

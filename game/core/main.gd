@@ -7,7 +7,8 @@ extends Control
 ## `--room CODE` (or `?room=CODE`) joins the night of an invite code, `--instance_id ID` (a Discord
 ## Activity) opens the menu and makes the voice channel's night ready for Play together, `--dev`
 ## shows the server address setting, `--stage` (`?stage`) opens only the menu's 3D stage for a
-## frame-time run and `--stage=still` (`?stage=still`) its still level,
+## frame-time run, `--stage=still` (`?stage=still`) its still level and `--stage=live`
+## (`?stage=live`) its live level whatever the renderer (software ones start as a still),
 ## `--connect [ws://host:port]` goes from the menu straight into the night of that server,
 ## `--report [seconds]` prints a line of what the joined night looks like from here, and
 ## `--look N` (a preset) or `--look seed:N` (a random look) wears that look instead of the saved
@@ -19,6 +20,9 @@ const STAGE := "res://ui/screens/menu_stage_screen.tscn"
 
 ## The options the page or the command line gave; a test sets them before the node enters the tree.
 var launch_args: PackedStringArray = OS.get_cmdline_user_args()
+
+## What this put in the router's layer, taken out again when it goes.
+var _overlays: Array[Node] = []
 
 
 func _ready() -> void:
@@ -32,16 +36,7 @@ func _ready() -> void:
 	PhoneRender.apply(get_viewport())
 	add_child(WebProbe.new())
 	add_child(WebClipboard.new())  # copy and paste inside a Discord Activity's frame (#516)
-	# Above the router, below the film: "turn your phone" when a touch device is held upright.
-	var prompt_layer := CanvasLayer.new()
-	prompt_layer.layer = TouchRotatePrompt.LAYER
-	prompt_layer.add_child(TouchRotatePrompt.new())
-	add_child(prompt_layer)
-	# The same for a game in a frame without the focus: "click once to use a controller".
-	var hint_layer := CanvasLayer.new()
-	hint_layer.layer = ControllerHint.LAYER
-	hint_layer.add_child(ControllerHint.new())
-	add_child(hint_layer)
+	_add_overlays()
 	await get_tree().process_frame
 	if KillBench.requested():
 		add_child(KillBench.new())
@@ -50,7 +45,9 @@ func _ready() -> void:
 		add_child(AutopilotRun.new(args))
 		return
 	if args.has("stage"):
-		UIRouter.reset(STAGE, UITransition.Kind.CUT, {"still": args.get_string("stage") == "still"})
+		var level := args.get_string("stage")
+		var params := {"still": level == "still", "live": level == "live"}
+		UIRouter.reset(STAGE, UITransition.Kind.CUT, params)
 		return
 	UIRouter.reset(MENU, UITransition.Kind.FADE)
 	TogetherScreen.dev_enabled = TogetherScreen.dev_enabled or args.has("dev")
@@ -78,9 +75,14 @@ func _ready() -> void:
 		UIRouter.push(NIGHT, UITransition.Kind.IRIS)
 
 
-## The save is the real game's: leaving the root (a test frees it) puts the path away again.
+## The save is the real game's: leaving the root (a test frees it) puts the path away again, and the
+## overlays it put in the router's layer go.
 func _exit_tree() -> void:
 	NightScreen.challenge_path = ""
+	for overlay in _overlays:
+		if is_instance_valid(overlay):
+			overlay.queue_free()
+	_overlays.clear()
 
 
 ## A game server: with a backend (`ServerConfig`) the nights of its matches, else one night for
@@ -110,3 +112,16 @@ func _serve(args: NetArgs) -> void:
 	host.seed_value = args.get_int("seed", -1)
 	host.match_settings = settings
 	add_child(host)
+
+
+## The controller hint, "turn your phone" and the film (grain and vignette over everything) go in
+## the router's own canvas layer, after its screens and its transition, in that order. A canvas
+## layer is a canvas pass of its own, empty or not, and the Compatibility renderer ends each pass
+## with a fence sync whose WebGL id the web page keeps until it closes (#883): three layers of
+## overlays were three fences a frame, a third of the page's remaining heap growth.
+func _add_overlays() -> void:
+	var film := FilmOverlay.new()
+	film.name = "Film"
+	for overlay: Node in [ControllerHint.new(), TouchRotatePrompt.new(), film]:
+		UIRouter.add_child(overlay)
+		_overlays.append(overlay)

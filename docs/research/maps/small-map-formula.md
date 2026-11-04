@@ -224,7 +224,7 @@ style adds the last block.
 | 12 | One ring, closed by the third link; any two links leave a chain with a dead end | as Nacht (W) | exact | reachability per set of sold links |
 | 13 | The ring's lap | 60 m (E) | 48 to 72 m | path length on the mesh |
 | 14 | A loop of its own in the side room (a pillar row) | 30 m (E) | 25 to 36 m | path length |
-| 15 | Windows | start 5, side room 3 (one of them a dead-end breach the dead come out of), upstairs 4 with at least one in each half | exact; on our map **start 2, side room 3 (one a breach), upstairs 2, both over the start room**, the maintainer's rule of 2026-11-03 (#917) | the barricades and their rooms |
+| 15 | Windows | start 5, side room 3 (one of them a dead-end breach the dead come out of), upstairs 4 with at least one in each half | exact; on our map **start 2, side room 2 (one a breach), upstairs 2, both over the start room**, the maintainer's rule of 2026-11-03 (#917), the side room's third dropped for the use zones' spacing (#994) | the barricades and their rooms |
 | 16 | Directions to watch from each room's middle | start 3, side 3, upstairs 2 with the stairs closed (W, E) | exact | walls with an entry |
 | 17 | Players' start to the nearest window | 5.5 m (E) | 4 to 7 m | from the spawn markers' centre |
 | 18 | A window's spawn outside it | 5 to 15 m (E) | 5 to 15 m, never inside, on the yard's ground; its dead come in by their own window and reach their own room only | from each spawn to its window; the way from it to the floor inside its window passes through that window |
@@ -262,13 +262,16 @@ of measured values is on its page, and `test_smallmap_formula.gd` fails a row th
 measured: 585 m² inside (start 205, side 151, upstairs 228), the ring's lap 68 m, the loops 29 and 31 m, the longest
 sight line 23 m, 3.2 m ceilings, a 3.4 m rise, X, spawns 6 to 7 m outside. After the rework of the outside and the
 windows (#917): 578 m² (start 200, side 150, upstairs 217), the lap 68 m, windows 2 / 3 / 2, spawns 7 to 14.8 m out.
+After the use zones were spaced (#994): windows 2 / 2 / 2, the side room's south-west window gone.
 
 **Windows that make sense (the maintainer's decision, 2026-11-03, #917).** Row 15's counts are Nacht's; on our map the
 maintainer ruled that the ground floor has one window a wall ("we really only need 1 window per wall") and the upstairs
 "a few", each reached by the dead walking up outside stairs onto a deck, and that a map's layout must make sense to a
 player. So the hall has two (its third outside wall is the shop wall, with the outside stair beyond it), the side room
-three (one the breach) and the upstairs two, both over the hall (a window of the other half on the same deck would join
-the halves outside by a shorter way than the opening, and a bot would take it). Row 18 still asks that each room's dead
+two (the breach at its west end and a window at its north-east; a third in its south-west corner shared the
+breach's corner and the Swift Rescue alcove's ground, #994) and the upstairs two, both over the hall (a window of the
+other half on the same deck would join the halves outside by a shorter way than the opening, and a bot would take
+it). Row 18 still asks that each room's dead
 reach that room only, now with the ground at one level: the yard is walled into a front yard, an alley with the outside
 stair and a back yard (a bank at the upper floor's height had made it hold before, and read as two grounds); and it asks
 that the dead come in by their own window.

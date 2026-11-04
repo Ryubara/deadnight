@@ -193,8 +193,27 @@ legs, so the model and the night agree. The gate (60 nights, seed 4000, the six 
 `dry_rounds` 0). What moved is the free hand's yardstick: the blow is worth 83 health a second against round 1's
 walker (it was 42), 48 to 82 on rounds 2 to 7, 59 to 79 on rounds 8 to 10, so on round 1 a free hand takes no weapon
 (it needs 1.5 times 83); a weapon beats it on round 2 (the smg, rifle, bat, mp5, ppsh, m4a1, m249) and again on round
-8; from round 5 only the rifle does, and on round 10 only the axe. Not done, and a finding: the bat, the axe and the
-crowbar are modelled on the body but the sweep crowns them too (x1.5, x2.5), so their real blow is the head's.
+8; from round 5 only the rifle does, and on round 10 only the axe. The bat, the axe and the
+crowbar had the same fault and are fixed in #924 (next section).
+
+## The bat, the axe and the crowbar landed every blow on the head too (#924)
+
+The same sweep, the same cause: from the eye (1.55 m) with a 0.4 m thickness it met the head sphere (1.62 m) at every
+reach (0.7, 1.1, 1.5 m), every crosshair height (head, chest, legs), walking up or striking, so the real blow was the
+table's number times the head's multiplier: crowbar 45 x 1.5 = 68, bat 60 x 1.5 = 90, axe 150 x 2.5 = 375 (a probe
+through the combat server with the walker's fitted hit set, `tests/captures/melee_zone_probe.gd`: 126 blows each, all
+head). `WeaponWorth` and the simulator read the body, so they valued the real weapons low: the axe killed a walker in
+one blow to round 16 in the night and to round 10 in the model. The three are flat now, as V is (zone multipliers
+x1.0): the bat 60 and the axe 150 as the tables always said; the crowbar 55 (it was 45), so that a weapon carried in a
+slot is never a weaker blow than the free V (50): on round 1 a crowbar blow kills a walker, as V's does.
+
+The gate (60 nights, seed 4000, six cells) stays as it was: medians 5 / 13 / 15 / 16 / 18 / 18, `dry_rounds` 0 in
+every cell, and `test_balance_targets` passes. The model's valuations changed only for the crowbar (82 to 100 a
+second), and the gate did not move. One test in `test_sim_weapons` did: with only the crowbar, a round-1 walker (50)
+is now the crowbar's (one blow, 0.55 s) and not V's (one blow, 0.6 s). The hits-to-kill table of
+[the weapons design page](../design/weapons.md#hits-to-kill-by-round) covers every melee weapon, held by
+`test_melee_hits_to_kill.gd` (the combat server) and `test_night_melee.gd` (the real attack button).
+A finding left open: a melee hit is a head-zone hit for the rules (8 points for a non-killing hit, not 4).
 
 ## The weak boss night against the bots (#568)
 

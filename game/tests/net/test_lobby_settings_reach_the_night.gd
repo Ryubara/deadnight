@@ -273,6 +273,12 @@ func _observed(room: NightHost) -> Dictionary:
 		"break_seconds": rules.settings.break_for(rules.tuning.rounds),
 		"bots": room.bots.count(),
 		"bot_skill": -1,
+		"perk_limit":
+		(
+			MatchSettings.PERKS_UNLIMITED
+			if rules.settings.tonic_limit(rules.tuning.economy) == MatchSettings.UNLIMITED_PERKS
+			else MatchSettings.PERKS_DEFAULT
+		),
 	}
 	for skill in [
 		MatchSettings.SKILL_ROOKIE, MatchSettings.SKILL_REGULAR, MatchSettings.SKILL_VETERAN
@@ -293,6 +299,7 @@ func _expected(room: NightHost, wanted: MatchSettings) -> Dictionary:
 		"break_seconds": wanted.break_for(rules.tuning.rounds),
 		"bots": wanted.bots,
 		"bot_skill": wanted.bot_skill if wanted.bots > 0 else -1,
+		"perk_limit": wanted.perk_limit,
 	}
 
 
@@ -341,6 +348,8 @@ func _move(panel: MatchSettingsPanel, key: String) -> MatchSettings:
 		"bot_skill":
 			panel.bots_selector.select(2, true)
 			panel.skill_selector.select(MatchSettings.SKILL_VETERAN, true)
+		"perk_limit":
+			panel.perk_selector.select(MatchSettings.PERKS_UNLIMITED, true)
 		_:
 			fail("the setting '%s' has no control in this test: add its case" % key)
 	return panel.settings()
@@ -464,6 +473,18 @@ func test_the_skill_the_host_picks_as_they_press_start_is_the_bots_in_the_night(
 	await _moved_and_started_at_once("bot_skill")
 
 
+func test_the_perk_limit_the_host_picks_after_the_lobby_is_open_is_the_nights(
+	_do_skip := _why_not() != "", _skip_reason := SKIP
+) -> void:
+	await _moved_and_sent_then_started("perk_limit")
+
+
+func test_the_perk_limit_the_host_picks_as_they_press_start_is_the_nights(
+	_do_skip := _why_not() != "", _skip_reason := SKIP
+) -> void:
+	await _moved_and_started_at_once("perk_limit")
+
+
 # --- The rest of the path ---
 
 
@@ -501,6 +522,7 @@ func test_a_start_with_no_rules_in_it_keeps_what_the_host_sent_while_waiting(
 	wanted.break_seconds = 11.0
 	wanted.bots = 3
 	wanted.bot_skill = MatchSettings.SKILL_ROOKIE
+	wanted.perk_limit = MatchSettings.PERKS_UNLIMITED
 	var changed := await host.set_settings(screen.lobby, wanted)
 	assert_bool(changed["ok"]).is_true()
 	var started := await host.start(screen.lobby)
@@ -510,7 +532,9 @@ func test_a_start_with_no_rules_in_it_keeps_what_the_host_sent_while_waiting(
 
 
 func test_every_setting_has_a_case_in_this_suite() -> void:
-	var cased := ["map", "count_multiplier", "max_alive", "break_seconds", "bots", "bot_skill"]
+	var cased := [
+		"map", "count_multiplier", "max_alive", "break_seconds", "bots", "bot_skill", "perk_limit"
+	]
 	for key: String in MatchSettings.KEYS:
 		(
 			assert_bool(cased.has(key))
@@ -545,11 +569,11 @@ func test_a_setting_the_backend_does_not_know_is_an_error_the_host_reads(
 	var host := await _guest("Ann")
 	var made := await host.create_lobby()
 	var asked := MatchSettings.new().to_dict()
-	asked["perk_limit"] = 3
+	asked["a_modifier"] = true
 	var answer := await host._call("PUT", "/lobbies/%s/settings" % made["lobby"]["id"], asked)
 	assert_bool(answer["ok"]).is_false()
 	assert_str(answer["error"]).is_equal("bad_settings")
-	assert_str(answer["text"]).contains("unknown setting perk_limit")
+	assert_str(answer["text"]).contains("unknown setting a_modifier")
 
 
 func test_a_backend_with_no_route_for_the_rules_is_told_to_the_host_as_out_of_date() -> void:

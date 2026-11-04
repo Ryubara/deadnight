@@ -31,6 +31,7 @@ What the numbers say:
 | Proportions | about 3 heads tall (2.8-3.3): the head is a third of the height and 0.9-1.1 m wide, three times the spacing of the shoulder joints (0.30 m) |
 | Legs | short: hips at 38-43 % of the height |
 | Hands | oversized mitts with three-joint fingers and a thumb; after the head, the second read of the silhouette |
+| Arms | the kit's are long: 0.53-0.57 of the height (upper arm 0.388, forearm 0.440, hand 0.384 m on all three), the forearm longer than the upper arm, the fingertips hanging below the knee. Ours are 0.507: the forearm no longer than the upper arm, the fingertips at the knee standing ([Proportions](characters.md#proportions), #978) |
 | Rig | one `CharacterArmature`: 43 bones on the kit characters (`Root`, `Body`, `Hips`, `Abdomen`, `Torso`, `Neck`, `Head`, shoulders, arms, three-joint fingers, legs, IK pole targets); the zombie has the same 43 plus `Tongue1-5`, `Eyelid.L/R` |
 | Clips | shared by bone name: Idle, Run, Jump (three parts), HitReact, Death, Punch, Wave, Yes, No on all; Walk on all but the Soldier; Run_Gun, Idle_Shoot, Duck on the kit characters; Crawl, Run_Arms, Run_Attack, Idle_Attack on the zombie |
 | Animation | 24 fps, in place (no root motion); the kit clips key only the bones they move (7-19 of 43), the rest hold the file's standing pose; new clips start from the kit's poses (`Idle_Shoot` frame 0 for every weapon hold) and split at `Abdomen` (32 upper bones, 11 lower): [Animation](animation.md) |
