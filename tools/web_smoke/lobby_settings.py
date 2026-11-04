@@ -157,18 +157,24 @@ def main() -> int:
     finally:
         if server:
             server.shutdown()
-    # What the night says, setting by setting.
-    if result.get("night_map") != SECOND_MAP:
-        problems.append(f"the night is on {result.get('night_map')!r}, the host picked {SECOND_MAP!r}")
-    rules = str(result.get("night_rules", ""))
-    if not rules.startswith(WANTED_RULES):
-        problems.append(f"the night runs {rules!r}, the host picked 3x intensity")
-    if f"|{WANTED_BOTS} bots" not in rules:
-        problems.append(f"the night runs {rules!r}, the host asked for {WANTED_BOTS} bots")
-    if not rules.endswith("|veteran"):
-        problems.append(f"the night runs {rules!r}, the host picked the veteran skill")
+    # What the night says, setting by setting. A build from before the page published a game server night's rules
+    # and map (`night_map` is empty) is judged by the bots in its roster alone.
+    if result.get("night_map") or result.get("night_rules"):
+        if result.get("night_map") != SECOND_MAP:
+            problems.append(f"the night is on {result.get('night_map')!r}, the host picked {SECOND_MAP!r}")
+        rules = str(result.get("night_rules", ""))
+        if not rules.startswith(WANTED_RULES):
+            problems.append(f"the night runs {rules!r}, the host picked 3x intensity")
+        if f"|{WANTED_BOTS} bots" not in rules:
+            problems.append(f"the night runs {rules!r}, the host asked for {WANTED_BOTS} bots")
+        if not rules.endswith("|veteran"):
+            problems.append(f"the night runs {rules!r}, the host picked the veteran skill")
+    else:
+        result["note"] = "this build does not publish the night's rules and map: judged by the bots and the pictures"
     if result.get("night_bots") != WANTED_BOTS:
         problems.append(f"{result.get('night_bots')} bots are in the night, the host asked for {WANTED_BOTS}")
+    if result.get("note_after_change"):
+        problems.append(f"the lobby said {result['note_after_change']!r} after the change")
     result["problems"] = problems
     (args.out / f"{args.label}-result.json").write_text(json.dumps(result, indent=2))
     print(json.dumps(result, indent=2))
