@@ -223,6 +223,29 @@ func test_a_zombie_going_down_or_coming_out_of_the_ground_is_not_a_contact() -> 
 	assert_bool(perception.beliefs.contacts.has(3)).is_false()
 
 
+func test_between_looks_the_contacts_follow_their_zombies_in_a_crowd_of_a_hundred() -> void:
+	var perception := _perception()
+	# Two in front, ninety-eight behind the bot's back (never contacts), all in one frame.
+	var zombies: Array[Dictionary] = [
+		_zombie(1, Vector3(0, 0, -6)),
+		_zombie(2, Vector3(1, 0, -6)),
+	]
+	for i in 98:
+		zombies.append(_zombie(10 + i, Vector3(-20.0 + i * 0.4, 0, 20.0)))
+	var now := _watch(perception, zombies, 1.5)
+	assert_array(perception.beliefs.contacts.keys()).contains_exactly_in_any_order([1, 2])
+	# They walk on; the ticks between two looks carry the contacts with them.
+	zombies[0]["position"] = Vector3(0, 0, -5)
+	zombies[1]["position"] = Vector3(1, 0, -4)
+	perception.observe(now + STEP, false, {"pos": HERE}, zombies, 1, 0.0)
+	assert_vector(perception.beliefs.contacts[1]["position"]).is_equal(Vector3(0, 0, -5))
+	assert_vector(perception.beliefs.contacts[2]["position"]).is_equal(Vector3(1, 0, -4))
+	# One leaves the frame: it leaves the beliefs on the next tick, the other stays.
+	zombies.remove_at(1)
+	perception.observe(now + 2.0 * STEP, false, {"pos": HERE}, zombies, 1, 0.0)
+	assert_array(perception.beliefs.contacts.keys()).contains_exactly([1])
+
+
 # --- A swing at the bot's back (#695) ---
 
 
