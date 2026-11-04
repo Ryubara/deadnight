@@ -39,6 +39,9 @@ extends Resource
 @export_range(1, 10, 1) var freeze_bolts: int = 1
 
 @export_group("Attack")
+## Metres from its feet at which it starts a swing; 0 is the tuning's (`ZombieTuning.reach`). A
+## crawler's is shorter: it grabs from the floor at what its arm and lunge cover.
+@export_range(0.0, 5.0, 0.05, "or_greater", "suffix:m") var reach: float = 0.0
 ## Health a landed blow takes from a player.
 @export_range(0.0, 500.0, 1.0, "or_greater") var damage: float = 20.0
 ## Metres a landed blow throws the player back.
