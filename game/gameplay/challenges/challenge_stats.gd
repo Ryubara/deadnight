@@ -15,6 +15,8 @@ const BOARDS := &"boards_repaired"
 const DOORS := &"doors_bought"
 const BUYS := &"buys"
 const FUEL_CANS := &"fuel_cans"
+## Times the player went down (a blow took the last of their health, or the rules put them down).
+const DOWNS := &"downs"
 ## Teammates the player got up from being down (not themselves).
 const REVIVES := &"revives"
 ## Points taken in (what the HUD shows as gains), without the starting purse.
@@ -36,6 +38,7 @@ const FIXED: Array[StringName] = [
 	DOORS,
 	BUYS,
 	FUEL_CANS,
+	DOWNS,
 	REVIVES,
 	POINTS,
 	ROUNDS,
