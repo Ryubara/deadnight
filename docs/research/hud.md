@@ -229,3 +229,7 @@ What building `HudChallenge` (the paper ticket that says a challenge moved) taug
 - **Captures:** a Movie Maker frame is about `seconds x 10 + 6` at 10 fps here (the scene's own seconds start after the
   night builds). `--touch` after `--` turns the phone's controls on in a desktop capture, so the prompt is judged
   against the real buttons.
+- A HUD's cost is its draw calls, not its script (#948): every polygon, polyline or circle drawn in a `_draw`
+  is a call of its own and ends the rect batch around it, and a label with an outline and a shadow is four. Draw a
+  card's shapes with `HudShapes` (one triangle array) and make labels with `HudStyle.label` (`HudLabel`: two calls).
+  See [The HUD's draw cost](hud-draw-cost.md).
