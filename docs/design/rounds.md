@@ -860,6 +860,19 @@ Measured again after merging the flat re-cut: `main` 5.62 (5), 10.88 (11), 13.43
 few tenths of a round with any change that shifts a purchase by a moment, so the pay is judged on the median and the
 shape, as the gate does.
 
+## The drink and the balance gate (#912)
+
+A tonic is drunk for 2.5 s before it is had, and the counter refuses any purchase from a player holding a bottle. The
+simulator used to buy a tonic and the next item in the same instant, so the second purchase answered `DRINKING` and did
+not happen; it now drinks the tonic down in the break before it buys again (`NightSim._drink_out`; the crane ticks the
+rules the same way). The climb test (`test_the_same_climb_goes_less_far_when_the_re_cut_and_the_tonic_do_nothing`)
+went red at 60 nights, `average:4` 14.27 without the re-cut and the tonic and 14.77 with (the gap was 0.82 on `main`).
+At 300 nights, seed 4000, the drink moves the gap by little: `main` against the branch, shipped / without / gap:
+four players 15.34 / 14.62 / 0.72 against 15.28 / 14.62 / 0.66; eight players 17.03 / 15.81 / 1.22 against 16.80 /
+15.74 / 1.06. The upgrade carries the climb as before; a gap of two means of 60 nights is only good to a few tenths, so
+a cell of that test whose gap misses 0.5 at 60 nights is read again at 300 (`CLIMB_CONFIRM_NIGHTS`), and the
+verdict is the longer read's. Its threshold (`CLIMB_CARRIED`, 0.5) did not move.
+
 ## Open questions
 
 - **Points glut after round 12 or so.** Once the doors, weapons and tonics are bought, fuel and rounds absorb
