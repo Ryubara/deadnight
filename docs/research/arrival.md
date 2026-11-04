@@ -70,3 +70,5 @@ numbers, not by ear: the sound is for the maintainer's ears.
 - A new rules action needs a sample in `test_validation.gd` ([lesson](../lessons/2026-11-04-a-new-rules-action-had-no-sample-in-the-validation-suite.md)).
 - A new run-time light, sound export and sound group each failed a suite that pins the lights and sound tables
   ([lesson](../lessons/2026-11-04-pinning-tests-in-other-folders-failed-for-a-new-light-and-a-new-sound-field.md)).
+- A test that named `WarmupManifest` left scripts in use at exit and failed its shard on the leak gate
+  ([lesson](../lessons/2026-11-04-a-test-that-named-the-warm-up-manifest-failed-the-leak-gate.md)).
