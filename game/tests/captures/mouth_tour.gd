@@ -64,7 +64,7 @@ func _menu() -> void:
 	var mouths := LookCatalog.options(&"mouth")
 	for i in mouths.size():
 		wardrobe.choose("part:mouth", i)
-		print("[mouth] row reads ", wardrobe.selector(&"mouth").text())
+		print("[mouth] cell reads ", wardrobe.cell("part:mouth", i).shown_name())
 		await _beat("menu_%s" % mouths[i]["id"])
 	shell.tab_bar.button(MenuTab.Id.PLAY).pressed.emit()
 	await _beat("")

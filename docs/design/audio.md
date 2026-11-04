@@ -318,6 +318,12 @@ and which take speaks; the table of moments, takes and ranks is `SoldierVoiceCat
   (`NightSoundTuning`), so an urgent line is never kept waiting for a celebration and a cheer never cuts one.
   `celebrate` queues the cheer after the line that speaks instead of dropping it (a level up is rare, a kill's bark is
   not); the cooldown (2 to 30 s a speaker) keeps a burst of rewards from being a chorus.
+- **Heard by every client.** The server's `level_up`, `tier_up` and `unlock_earned` (`XpAward`, #1059) reach every
+  client's `SoldierVoice`, which cheers the player they name: flat for the player at the screen, from where the soldier
+  stands for a teammate. A level, its tier and what it unlocks arrive together, so the soldier waits `cheer_window`
+  (0.25 s) and says one cheer for each player: the tier over an item (a card, an emblem or frame by its slot, else an
+  unlock) over the level. Players who level up in the same window are cheered one after the other. A bot has no level
+  and no cheer. `challenge_done` joins when the challenge tracker tells it (#1076).
 - **Cooldown and chance.** Each moment has a cooldown for each speaker (a reload 6 s, a streak 20 s, a kill 5 s) and a
   chance (a kill is voiced 45% of the time, a reload 70%), so the commonest moments are not a running commentary.
 - **Variety.** A moment never repeats one of its last three takes, from a seeded generator, so a night repeats

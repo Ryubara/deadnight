@@ -46,6 +46,8 @@ static var _spent_code := ""
 ## Whether the last guest sign-in of the run came back to an account it already had (the stored
 ## credential was good) and not a new one: what a browser test reads after a reload.
 static var _returning := false
+## The run's sign-in while one is out (see `sign_in`), else null.
+static var _flight: SignInFlight = null
 
 ## The backend's base address; a test or `?backend=` changes it.
 var base_url := DEFAULT_BACKEND
@@ -62,6 +64,12 @@ var guest_path := GuestAccount.default_path()
 var _parent: Node
 var _own_token := ""
 var _own_user := {}
+
+
+## A sign-in in progress: what a second caller waits on.
+class SignInFlight:
+	extends RefCounted
+	signal finished
 
 
 func _init(parent: Node, backend: String = DEFAULT_BACKEND) -> void:
@@ -81,6 +89,7 @@ static func forget() -> void:
 	_user = {}
 	_spent_code = ""
 	_returning = false
+	_flight = null
 
 
 static func signed_in() -> bool:
@@ -107,9 +116,30 @@ static func user_name() -> String:
 ## called `display_name` (the backend cleans it; empty is `Guest NNNN`, or the name a returning
 ## guest has). A guest comes back to the same account when the credential the last visit kept is
 ## still good (`GuestAccount`): 7 days from the last sign-in, the backend decides.
+##
+## One sign-in at a time for the run's session: a call that comes while another is out (the
+## start-up one, `StartupSignIn`, and a Play together screen opened meanwhile) waits for it and
+## sends no request of its own when it gave the run a session; when it failed the waiter signs in
+## itself, as it would have alone.
 func sign_in(display_name: String = "") -> Dictionary:
 	if _has_session():
 		return {"ok": true}
+	var flight: SignInFlight = null
+	if not isolated:
+		while _flight != null:
+			await _flight.finished
+		if _has_session():
+			return {"ok": true}
+		flight = SignInFlight.new()
+		_flight = flight
+	var answer := await _sign_in_request(display_name)
+	if flight != null:
+		_flight = null
+		flight.finished.emit()
+	return answer
+
+
+func _sign_in_request(display_name: String) -> Dictionary:
 	if instance_id != "" and OS.has_feature("web"):
 		var code := await _discord_code()
 		if code != "" and code != _spent_code:

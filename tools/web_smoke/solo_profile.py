@@ -15,7 +15,12 @@ IndexedDB, the way `guest_account.py` does) and reads the `profile` slot:
    account and agrees with it, and a second page of the same browser opens the menu on the Challenges tab (the shot).
 
     uv run --project ../gdstudio/python gds quiet -- uv run --with playwright==1.64.1 python \\
-        tools/web_smoke/solo_profile.py build/web build/solo-profile [--gpu] [--rounds 2]
+        tools/web_smoke/solo_profile.py build/web build/solo-profile [--gpu] [--rounds 2] [--returning]
+
+With `--returning` the page is not told to sign in (no `signin=1`): a first visit makes the Guest account by Play
+together (the way a player does, the credential kept in the browser's storage), then the same browser opens the game
+again for a solo night and the game signs in at start-up by itself (`StartupSignIn`, #1122). The checks above hold, and
+the account the night's XP went to is the first visit's, not a new one.
 
 The first argument is a folder with the export. Writes `result.json`, `console.txt` and screenshots; exits 1 when a
 check fails.
@@ -140,6 +145,9 @@ def main() -> int:
     parser.add_argument("out", type=Path)
     parser.add_argument("--gpu", action="store_true", help="use the machine's Chrome and GPU")
     parser.add_argument("--rounds", type=int, default=2, help="play until this round has started")
+    parser.add_argument(
+        "--returning", action="store_true", help="a returning Guest: sign in at start-up, not by `signin=1`"
+    )
     parser.add_argument("--timeout", type=float, default=600, help="seconds to wait for the night")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
@@ -151,7 +159,8 @@ def main() -> int:
     origin = f"http://127.0.0.1:{port}"
     backend_process, backend = start_backend(origin)
     result["backend"] = backend
-    url = f"{origin}/index.html?backend={backend}&autopilot&signin=1&rounds={args.rounds}&hold=6&break=3&seconds=900"
+    signin = "" if args.returning else "&signin=1"
+    url = f"{origin}/index.html?backend={backend}&autopilot{signin}&rounds={args.rounds}&hold=6&break=3&seconds=900"
     try:
         with sync_playwright() as p:
             browser = (
@@ -160,14 +169,29 @@ def main() -> int:
                 else p.chromium.launch(headless=True, args=smoke.SOFTWARE_GL)
             )
             try:
-                # One context for both pages: the second page finds the first one's files and credential.
-                context = browser.new_context(viewport=smoke.VIEWPORT)
-                page = context.new_page()
+                # One context for every page: a later page finds the first one's files and credential.
+                first_account = ""
+                if args.returning:
+                    # Visit one: Play together makes the Guest account and the browser keeps its credential.
+                    context, page = guest_account.open_context(
+                        browser, f"{origin}/index.html?backend={backend}&probe", console, problems, "visit 1"
+                    )
+                    first = guest_account.to_lobby(page, "Ann")
+                    first_account = first.get("account_id", "")
+                    result["first_visit_account"] = first_account
+                    for _ in range(40):
+                        if guest_account.stored_credential(page, backend):
+                            break
+                        page.wait_for_timeout(250)
+                else:
+                    context = browser.new_context(viewport=smoke.VIEWPORT)
+                    page = context.new_page()
                 page.on("console", lambda m: console.append(f"[{m.type}] {m.text} {m.location.get('url', '')}"))
                 page.on(
                     "pageerror",
                     lambda e: None if any(text in str(e) for text in IGNORED) else problems.append(f"[pageerror] {e}"),
                 )
+                # Visit two (or the only one): the game opens for a solo night.
                 page.goto(url, wait_until="commit")
                 deadline = time.monotonic() + args.timeout
                 shot = False
@@ -200,6 +224,8 @@ def main() -> int:
                 status, signed = guest_account.request("POST", f"{backend}/auth/guest", {"guestToken": credential})
                 account = signed.get("user", {}).get("id", "")
                 result["account_id"] = account
+                if args.returning and account != first_account:
+                    problems.append(f"the night's XP should go to the first visit's account {first_account}: {account}")
                 if status != 200 or not account:
                     problems.append(f"the stored credential should sign in: {status} {signed}")
                 status, saved = guest_account.request("GET", f"{backend}/saves/profile", token=signed.get("token"))

@@ -359,10 +359,18 @@ the game server follows it. Nothing is written per kill.
 - **A Callable does not keep its RefCounted object alive.** `Night` holds the uplink (its `send` was freed once, with
   the local that made it); `send` and `flush` hold themselves while a request is out, so a night that ends mid-request
   still saves.
-- **A night with no sign-in earns nothing**, as the decision says. A player who presses Solo before ever opening Play
-  together is not signed in. Signing in at start-up is a separate issue.
-- **Tests:** `game/tests/net/test_profile_uplink.gd` runs the real backend (`BackendFixture`, `npm ci` in
-  `spikes/backend`); the browser run is `tools/web_smoke/solo_profile.py` (the autopilot with `signin=1`).
+- **A night with no sign-in earns nothing**, as the decision says. **A returning Guest signs in when the game opens**
+  (`StartupSignIn`, called by `Main`, #1122): a credential kept for the backend (`GuestAccount`) is traded in the
+  background for the account and its profile, so a Solo night earns XP for a player who never opens Play together.
+  `begin` returns at once (the menu and a night never wait). A `TogetherApi.sign_in` that comes while another is out
+  (Play together opened during the start-up one) waits for it and sends no second request; when the first failed, the
+  waiter signs in itself. A failed start-up sign-in leaves the player as before. **Open, the maintainer's:** a brand-new
+  player has no credential, so nothing is sent and their first Solo earns nothing until they open Play together; whether
+  a first Solo should make a Guest account for someone who never asked is not decided.
+- **Tests:** `game/tests/net/test_profile_uplink.gd` and `test_startup_sign_in.gd` run the real backend
+  (`BackendFixture`, `npm ci` in `spikes/backend`); the browser run is `tools/web_smoke/solo_profile.py` (the autopilot
+  with `signin=1`, or with `--returning`: a first visit makes the Guest by Play together, and the second, a solo night
+  with no `signin=1`, signs in at start-up by itself).
 
 ### The challenge board, signed in (#1124)
 

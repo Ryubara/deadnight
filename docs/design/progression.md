@@ -340,10 +340,11 @@ to win the night; the edge is audited with a seeded bot night so it stays inside
   dark with `???` and hover instructions until the player owns every piece, lit after. Four costumes use starting
   pieces only, so a new player has a quick start. Equipping a costume sets the look; the player may then change any
   part they own.
-- The code already has the seam: `LookUnlocks` asks a gate `{"billing": n}`; it becomes `{"level": n}`, and the part and
-  palette gates (`PART_GATES`, `PALETTE_GATES`) are filled from `unlocks.json`. The saved look and the wire format are
-  unchanged (an index per part); a look wearing something the player does not own is repaired on load, and the server
-  drops it for a client that is not the owner.
+- **Built (#1065):** `LookUnlocks` asks a gate `{"level": n}`, and the part and palette gates are read from
+  `unlocks.json` (the same table, extended with a `part` key on each wearable's row; `LookCatalog.part_gates()`,
+  `palette_gates()`). The saved look and the wire format are unchanged (an index per part); a look wearing something
+  the player does not own is repaired on load, and the game server drops it for a player whose level it knows. The
+  grid, the silhouettes and the hover words are on [Customization](customization.md#the-screen).
 
 ![The wardrobe grid](../research/progression-grid.png)
 
@@ -732,8 +733,10 @@ already makes a voice from a server event, and a teammate's level up is heard by
 combat chatter but not urgent lines (hurt, downed, a boss, a warning). **Made (#1063, 2026-11-04)**: 24 takes in each
 voice on the free tier, at the maintainer's word ("go ahead and get them going, I'll get the package with commercial
 rights in a moment"); they are **not licensed for commercial use** and are regenerated under the commercial plan before
-release ([#252](https://github.com/Ryubara/deadnight/issues/252)). The server events are wired to them when #1059 lands
-([research](../research/audio.md#the-progression-voice-lines-1063)).
+release ([#252](https://github.com/Ryubara/deadnight/issues/252)). The server's `level_up`, `tier_up` and
+`unlock_earned` are wired to them for every client; `challenge_done` waits for the challenge tracker (#1076)
+([research](../research/audio.md#the-progression-voice-lines-1063),
+[sound design](audio.md#the-soldiers-voices)).
 
 ## Level icons
 

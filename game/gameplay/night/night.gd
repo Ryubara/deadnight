@@ -209,6 +209,10 @@ func start(
 	var table := p_rules_tuning if p_rules_tuning != null else load(GameRules.DEFAULT_TUNING_PATH)
 	server = NightServer.new(world, p_seed, night_tuning, world.rules_for(table), match_settings)
 	rules_tuning = server.rules.tuning
+	# The one at this machine wears what their profile's level opens (a look a test or a flag gave
+	# is let through whole: no level is known for it).
+	if own_look == null:
+		server.player_levels[PLAYER_ID] = LookUnlocks.saved().level
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
 	bot_orders.sender = link.send
 	state = ClientState.new()
@@ -809,41 +813,8 @@ func _human_command() -> NightCommand:
 	if is_arriving():
 		NightArrival.quiet(command)
 	if _human.ping_pressed(player()):
-		link.send(_ping_request(command))
+		link.send(PingAim.request(command, world, state, get_world_3d().direct_space_state))
 	return command
-
-
-## What the ping key marks: what the crosshair is on, else where its ray lands (`PingAim`).
-func _ping_request(aim: NightCommand) -> Dictionary:
-	var landed := Vector3.INF
-	var cast := PhysicsRayQueryParameters3D.create(
-		aim.origin,
-		aim.origin + aim.dir * PingAim.REACH,
-		CameraProbe.PLAYER_MASK | PhysicsLayers.BODY
-	)
-	var hit := get_world_3d().direct_space_state.intersect_ray(cast)
-	if not hit.is_empty():
-		landed = hit["position"]
-	var shut := {}
-	var index := 0
-	for door_id in world.door_ids():
-		if not state.frame.get("doors", []).has(door_id):
-			shut[index] = world.door_points(door_id)
-		index += 1
-	var ammo: Array[Vector3] = []
-	for spot in world.shop_spots():
-		if spot["kind"] == &"ammo":
-			ammo.append(spot["position"])
-	return PingAim.pick(
-		aim.origin,
-		aim.dir,
-		state.zombies,
-		state.frame.get("players", {}),
-		state.player_id,
-		shut,
-		ammo,
-		landed
-	)
 
 
 ## What the server answered: the look server's packets go to the look table, the rest to the

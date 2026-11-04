@@ -7,9 +7,10 @@ extends RefCounted
 ## way to reach one client. Nothing here knows the transport.
 ##
 ## A look from a client is never trusted: a look of another version or length is replaced by the
-## default look, and an option the player has not unlocked is put back to the slot's first
-## option. `unlocks_for` is a Callable (player_id) -> LookUnlocks that the platform backend will
-## answer; without one every player has the starting unlocks.
+## default look, and an option the player has not unlocked is put back to the first
+## option that player may wear. `unlocks_for` is a Callable (player_id) -> LookUnlocks (the night
+## server answers it from the levels it knows, `NightServer.player_levels`); without one every
+## player has the starting unlocks.
 
 ## Seats in the lot: `NightHost.MAX_PLAYERS` (a test holds them equal).
 const SEATS := 8
