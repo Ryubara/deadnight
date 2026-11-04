@@ -75,6 +75,11 @@ or 6; shard 1 was cancelled at the limit on one `main` run, and #968 had shard 6
   --report`: each shard's expected seconds. If the heaviest is over `REPORT_SHARD_BUDGET` (440 s), add a shard (`SHARDS`
   there and the matrix in the workflow; the self-test fails until both agree). The size rule from before still holds:
   total suite seconds / 480, rounded up, plus a margin for a slow runner and growth (3,250 s / 480 = 6.8, so eight).
+- **Refreshed on 2026-11-04 (#1091).** The report on the old times said 3,569 s and 454 s a shard against the 440 s
+  budget, every shard flagged, with 28 scripts at the default. The mean of three green `main` runs (24 logs from
+  artifacts of about 2 MB each, reduced to the times file and deleted) gave 3,254 s and 414 s a shard, none flagged,
+  two scripts (merged after those runs) still at the default: stale times, not growth, had asked for a ninth shard.
+  The same runs took 380 to 559 s a shard with setup. The budget was not raised.
 - **Do not hand-edit** a shard's list; there is none. A script that is slow on purpose gets its time from the file.
 
 The slowest suites on the runner (mean seconds): `rules/test_balance_targets` 169 (60 seeded nights per cell, the gate),
