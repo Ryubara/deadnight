@@ -87,7 +87,7 @@ The script, from the labels (mean of the three windowed runs, ms a frame, nested
 | The bots (`tick.bots` + `tick.bot`) | 1.9 | three bots thinking and walking in a crowd |
 | The HUD (`hud.*`) | 0.2 | the labelled script; the rest of its 1.5 to 3 ms is drawing |
 | Sound (`audio.*`, `snd.*`) | 0.1 | pooled voices, at most 2 starts a frame |
-| Particles, decals | 0 | none exist: the effects are pooled shader quads (blood 16 drops, impacts 24) |
+| Particles, decals | 0 | the effects are pooled shader quads (blood 16 drops, impacts 24); the only emitters are the machines' one-shot sparks and fizz, which run when someone uses the machine (the soak's person re-cuts in the late-round run, #1011) |
 | The engine's own (skinning 135 skeletons, drawing, physics server, audio mix) | about 8 | what is left of a 20 ms frame |
 
 Network: a snapshot of 120 dead is 561 bytes for each of four players at 60 Hz ([crowd-budget.md](crowd-budget.md)); the
@@ -196,7 +196,7 @@ and where the two differ the system is over its budget and the issue named is th
 | Orphan nodes | 0 (limit 2) | 0 | 0 |
 | Static memory | 290 MB (limit) | 240 MB | the page's heap: 3.9 MB a minute ([web-heap.md](web-heap.md)) |
 | Lights shining | 64 (limit; 8 a mesh is the engine's) | 57 | 30 on the lot |
-| Particles, decals | 0 (none exist) | 0 | 0 |
+| Particles, decals | 3 particle systems emitting at once (the Re-Cut's sparks, the soda fountain's fizz, the crane's sparks, one-shot, under a second each), 0 decals | 0 to 1 | 0 |
 | Sounds | 32 positional, 12 plain, 6 beds | 22 to 25 playing | the same, 2 starts a frame |
 | Physics bodies | 6 | 4 (the players; the dead are not bodies) | 4 |
 | Skeletons (bodies parked included) | 150 (limit) | 135 | 40 on screen at most |

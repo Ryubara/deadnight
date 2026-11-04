@@ -11,7 +11,7 @@
     "mem_static_mb": 300,
     "bodies": 6,
     "lights": 68,
-    "particles": 0,
+    "particles": 3,
     "decals": 0,
     "sounds_playing": 50,
     "skeletons": 160,
