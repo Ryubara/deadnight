@@ -12,9 +12,15 @@ extends HBoxContainer
 	set(value):
 		hint = value
 		_hint_label.text = value
-		_hint_label.visible = value != ""
+		_hint_label.visible = value != "" and _stack == null
 
 var control: Control
+
+## The widths a tight column asks for instead of the tokens' (`set_widths`); 0 keeps the tokens'.
+var _title_width := 0.0
+var _control_width := 0.0
+## The title above the control instead of beside it (`set_stacked`): the column that holds them.
+var _stack: VBoxContainer
 
 var _tokens := UITokens.active()
 var _title_label := UILabel.new()
@@ -56,10 +62,16 @@ func _ready() -> void:
 func _apply_tokens() -> void:
 	_tokens = UITokens.active()
 	add_theme_constant_override(&"separation", _tokens.space_lg)
-	_text_column.custom_minimum_size.x = _tokens.control_width * 0.5
+	_text_column.custom_minimum_size.x = (
+		0.0
+		if _stack != null
+		else (_title_width if _title_width > 0.0 else _tokens.control_width * 0.5)
+	)
 	_value_label.custom_minimum_size.x = _tokens.control_height * 1.5
 	if _slot != null:
-		_slot.custom_minimum_size.x = _tokens.control_width
+		_slot.custom_minimum_size.x = (
+			_control_width if _control_width > 0.0 else _tokens.control_width
+		)
 
 
 func _on_tokens_changed(_next: UITokens) -> void:
@@ -71,15 +83,54 @@ func set_control(node: Control) -> void:
 	control = node
 	var slot := HBoxContainer.new()
 	_slot = slot
-	slot.custom_minimum_size.x = _tokens.control_width
+	slot.custom_minimum_size.x = _control_width if _control_width > 0.0 else _tokens.control_width
 	slot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	node.size_flags_horizontal = (
 		Control.SIZE_SHRINK_BEGIN if node is UIToggle else Control.SIZE_EXPAND_FILL
 	)
 	node.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	slot.add_child(node)
-	add_child(slot)
-	move_child(slot, 1)
+	if _stack != null:
+		_stack.add_child(slot)
+	else:
+		add_child(slot)
+		move_child(slot, 1)
+
+
+## A row for a column narrower than the tokens' form: the title's and the control's least widths,
+## and no value column (a row with no number beside it), so a card that cannot be wider than its
+## area still holds the row (#980).
+func set_widths(title_width: float, control_width: float, with_value_column := false) -> void:
+	_title_width = title_width
+	_control_width = control_width
+	_value_label.visible = with_value_column
+	_apply_tokens()
+
+
+## The title above the control, so the row needs only the control's width: for a column too narrow
+## to hold both side by side. The hint goes (it would only add height).
+func set_stacked(on: bool) -> void:
+	if (_stack != null) == on:
+		return
+	if on:
+		_stack = VBoxContainer.new()
+		_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_stack.add_theme_constant_override(&"separation", 0)
+		add_child(_stack)
+		move_child(_stack, 0)
+		_text_column.reparent(_stack, false)
+		if _slot != null:
+			_slot.reparent(_stack, false)
+	else:
+		_text_column.reparent(self, false)
+		move_child(_text_column, 0)
+		if _slot != null:
+			_slot.reparent(self, false)
+			move_child(_slot, 1)
+		_stack.queue_free()
+		_stack = null
+	_hint_label.visible = hint != "" and _stack == null
+	_apply_tokens()
 
 
 ## Shows a value beside the control (a slider's number). The column is reserved on every row, so

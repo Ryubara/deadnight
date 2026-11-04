@@ -20,6 +20,8 @@ var back_button: UIButton
 var reset_button: UIButton
 
 var _margin: MarginContainer
+var _card: UIPanel
+var _rules_scroll: UIFitScroll
 var _column: VBoxContainer
 var _overline: UILabel
 var _title: UILabel
@@ -33,6 +35,7 @@ func _ready() -> void:
 	var centre := CenterContainer.new()
 	_margin.add_child(centre)
 	var card := UIPanel.new()
+	_card = card
 	card.variant = UIPanel.Variant.MARQUEE
 	centre.add_child(card)
 	var column := VBoxContainer.new()
@@ -45,7 +48,13 @@ func _ready() -> void:
 	_title = _label("The night's rules", UILabel.Style.TITLE)
 	column.add_child(_title)
 	panel = MatchSettingsPanel.new()
-	column.add_child(panel)
+	# The rules scroll in what height the canvas leaves (a Large interface size is 864 units high),
+	# and the title above and the buttons below stay where they are (#980).
+	_rules_scroll = UIFitScroll.new()
+	_rules_scroll.name = "Rules"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_rules_scroll.add_child(panel)
+	column.add_child(_rules_scroll)
 	var footer := HBoxContainer.new()
 	footer.add_theme_constant_override(&"separation", _tokens.space_md)
 	column.add_child(footer)
@@ -99,6 +108,10 @@ func _fit_for_fingers() -> void:
 		# The canvas is only 540 units high: the panel keeps a thin edge above and below.
 		_margin.add_theme_constant_override(&"margin_top", _tokens.space_sm)
 		_margin.add_theme_constant_override(&"margin_bottom", _tokens.space_sm)
+	_rules_scroll.margin = float(_tokens.space_sm if phone else _tokens.space_xl)
+	# The column is as wide as the canvas leaves: a phone's narrowest canvas is 960 units wide.
+	var around := 2.0 * float(margin_size) + _card.get_theme_stylebox(&"panel").get_minimum_size().x
+	_column.custom_minimum_size.x = minf(PANEL_WIDTH, size.x - around)
 	for button in [start_button, reset_button, back_button]:
 		(button as Control).custom_minimum_size.y = MenuLook.TAP_TARGET if phone else 0.0
 	# The phone's map cards sit two to a row: the first row is the one Up leaves from.

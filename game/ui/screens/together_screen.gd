@@ -67,9 +67,15 @@ func _ready() -> void:
 	var panel := UIPanel.new()
 	panel.variant = UIPanel.Variant.MARQUEE
 	centre.add_child(panel)
+	# The card never grows past the canvas: a phone held sideways is 540 units high and the card in
+	# its tallest state (the name prompt, the notes) is not, so its rows scroll (#980).
+	var scroll := UIFitScroll.new()
+	scroll.name = "Scroll"
+	scroll.margin = float(_tokens.space_md)
+	panel.add_child(scroll)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override(&"separation", _tokens.space_md)
-	panel.add_child(box)
+	scroll.add_child(box)
 	box.add_child(_label("TOGETHER", UILabel.Style.OVERLINE))
 	box.add_child(_label("Play together", UILabel.Style.TITLE))
 	status = _label("", UILabel.Style.BODY)
