@@ -258,18 +258,30 @@ func _frames(count: int) -> void:
 		await get_tree().process_frame
 
 
-## The rows of the page being shown, top to bottom, none over another and all inside the panel.
+## The rows of the page being shown, top to bottom, none over another and all inside the panel's
+## scroll area (a row below its bottom is allowed when the area scrolls: #980).
 func _assert_page_is_clean(what: String) -> void:
 	_assert_order(what)
 	_assert_one_selected_tab(what)
 	var page: VBoxContainer = _screen._pages[_screen._current]
-	var panel := page.get_parent().get_parent() as Control
-	var inside := panel.get_global_rect().grow(1.0)
+	var scroll := page.get_parent().get_parent() as ScrollContainer
+	var inside := scroll.get_global_rect().grow(1.0)
+	var bar := scroll.get_v_scroll_bar()
+	var scrolls := bar.max_value > bar.page + 1.0
 	var rows := _visible_rows(page)
 	for i in rows.size():
 		var rect := rows[i].get_global_rect()
+		var held := (
+			inside.encloses(rect)
+			or (
+				scrolls
+				and rect.position.x >= inside.position.x
+				and rect.end.x <= inside.end.x
+				and rect.position.y >= inside.position.y
+			)
+		)
 		(
-			assert_bool(inside.encloses(rect))
+			assert_bool(held)
 			. override_failure_message(
 				(
 					"%s: row %d (%s) %s is outside the panel %s"

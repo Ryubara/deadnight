@@ -111,7 +111,7 @@ func refresh() -> void:
 	if context.board == null:
 		return
 	var limits: Dictionary = ALL_SHOWN_COMPACT if context.compact else ALL_SHOWN
-	var inner := width(context.compact) - 56.0 - 22.0
+	var inner := fit_width(context.compact) - 56.0 - 22.0 - UIScroll.side_room(_scroll)
 	if family in [Family.ALL, Family.DAILY]:
 		_list.add_child(
 			MenuLook.heading(
