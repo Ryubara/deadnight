@@ -269,6 +269,17 @@ is the carried list in shop ids, the start weapons in it, and `weapon_released` 
 and keeps the other as the one put away, the hands take the new model). The purchase carries the released weapon, so
 the two never disagree even when the buyer names none (then the oldest goes).
 
+**A seat is not a loadout** ([#904](https://github.com/Ryubara/deadnight/issues/904)). The two parts above agree only
+while they hold the same list, and the combat server's list is kept by player id. A player who leaves (`player_removed`)
+takes it with them: `CombatServer` forgets the weapons, rounds, re-cuts and the weapon in hand of that id
+(`CombatAction.forget_player`), because the room hands the lowest free id to the next person. Before, the next person
+began with what the one before carried, free and re-cut, while the rules' list said the start weapon only, so the wall
+and the crane sold and refused by one list and gave by the other. `test_weapon_sources.gd` walks every weapon of the
+catalogue from every source either map has (each wall, each prize of the crane) through every carry (a free hand, full
+hands, the third-weapon perk, everything re-cut, after a down that took the perk) and checks the rules, the combat
+server, the frame and the HUD's slots say the same; `test_weapon_sources_online.gd` does the crane, the walls and the
+seat over a real socket.
+
 A re-cut goes with its weapon: a fresh copy can be re-cut again, for the same 5,000 as any re-cut (#909), so cycling
 weapons does not make re-cuts cheaper.
 
