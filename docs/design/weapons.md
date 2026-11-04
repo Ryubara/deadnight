@@ -246,8 +246,8 @@ ray gun as a pistol), and their sounds are #791's
   boss night keeps its shape. A frozen brute shatters on one hit like any other. The balance simulator does not
   model the freeze, so it needs no round factor.
 
-**Status effects** are one system, not a freeze: a `StatusDef` (`weapons/status/defs/<id>.tres`: `frozen`,
-`chilled`) says what a status does while it lasts (`halts`, `speed_scale`, `shatters`, whether the zombie kind gates
+**Status effects** are one system, not a freeze: a `StatusDef` (`weapons/status/defs/<id>.tres`: `frozen`, `chilled`,
+`burning`) says what a status does while it lasts (`halts`, `speed_scale`, `shatters`, whether the zombie kind gates
 it, what a kind that cannot take it gets, the shell's colour) and a `WeaponDef` says which one it puts on and for how
 long. The server's `StatusBoard` (owned by `CombatServer`) keeps the seconds left of every status on every zombie and
 the bolts counted so far, runs them down on the combat clock and answers `status_applied` and `status_ended` events;
@@ -255,7 +255,8 @@ the night server tells the zombie simulation (`ZombieSim.set_status`), and the r
 (`GameRules.statuses`) to kill a hit zombie that is under one that shatters. The snapshot carries the status in the
 zombie's mode byte (`ZombieCodec`, protocol 14), so every client draws it (`ZombieView.set_status`, `StatusLook`: one
 shell material for every zombie under a status, built in the warm-up). A new element for the re-cut (#794) is a new
-`StatusDef` file, an id in `StatusCatalog` and a `status` on the weapon; [what it taught](../research/status-effects.md).
+`StatusDef` file, an id in `StatusCatalog` and a `status` on the weapon; [what it
+taught](../research/status-effects.md).
 
 Bots (`BotMotor`, `WeaponWorth`): a frozen zombie is a contact with a `status`; one shot kills it, so the bot shoots it
 once and waits half a second for the kill before it tries again, and never in a burst; a bot does not fire the ray gun
@@ -554,7 +555,7 @@ puts it back in the pool as every weapon does.
 | Hits the shooter | **25% of the blast** inside 3.0 m (40 at the very centre); a teammate takes nothing (as the grenade's rule) | no |
 | The effect | none: it is a hard hit and a blast | everything in the bloom **freezes for 3 s** (below) |
 | Ammunition | 10 / 40 (60), reload 2.6 s, 0.45 s a shot | 6 / 24 (36), reload 3.0 s, 0.8 s a shot |
-| Re-cut (once, 1,500) | direct 525, blast 280, magazine 15, reserve 60 (90): a body kill to round 19, a head kill to 22 | magazine 9, reserve 36 (54), **the bloom 2.8 m** (`UpgradeTuning.bloom_multiplier`) |
+| Re-cut (once, 1,500) | direct 525, blast 280, magazine 15, reserve 60 (90): a body kill to round 19, a head kill to 22 | magazine 9, reserve 36 (54), **the bloom 2.8 m** (`RecutProfile.burst_radius_multiplier`), **a brute freezes on the second bolt** (`freeze_bolts_less`) |
 
 **The freeze.** A frozen zombie stands still for **3 seconds**: it neither walks nor strikes, and it keeps what it was
 tearing. **Any hit on a frozen zombie kills it at once and shatters it** (any weapon of any player, a blast, a melee

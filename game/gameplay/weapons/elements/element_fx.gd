@@ -3,11 +3,12 @@ extends Node3D
 ## What a re-cut weapon's element looks like on a client: a ring of light round a blast, the
 ## crackle of an arc from one zombie to the next, and the fire a burning flare leaves on the ground.
 ## It draws what the server decided (`element_burst`, `element_arc`, `fire_patch_started`) in the
-## colour of the element (`ElementDef.tint`) and decides nothing. Unshaded, no light and no shader
-## of its own (the lot's light cap leaves room for a flash and a blast only), so nothing is built
-## the first time one is drawn that a warm-up does not already hold.
+## colour of the element (`ElementDef.tint`) and decides nothing. A zombie a fire round set alight
+## wears flames that follow it for the seconds the server says it burns (`element_burn`). Unshaded,
+## no light and no shader of its own (the lot's light cap leaves room for a flash and a blast only),
+## so nothing is built the first time one is drawn that a warm-up does not already hold.
 
-enum Kind { BLAST, ARC, FIRE }
+enum Kind { BLAST, ARC, FIRE, BURN }
 
 ## A blast's shell swells to its radius and fades in this long.
 const BLAST_SECONDS := 0.32
@@ -25,6 +26,14 @@ const FIRE_EMBERS := 24
 const FIRE_EMBER_SECONDS := 0.9
 const FIRE_EMBER_RISE := 1.6
 const FIRE_EMBER_SIZE := 0.16
+## The flames on a burning zombie: how high on the body they stand, how wide the ember cloud is, how
+## many tongues, how big each is, how fast they flicker, and how long they die down at the end.
+const BURN_LIFT := 0.95
+const BURN_EMBER_RADIUS := 0.38
+const BURN_TONGUES := 3
+const BURN_TONGUE_SIZE := Vector2(0.42, 0.85)
+const BURN_FLICKER_HZ := 11.0
+const BURN_FADE_SECONDS := 0.4
 
 var kind: Kind = Kind.BLAST
 var tint := Color.WHITE
@@ -42,6 +51,9 @@ var _seed := 0
 var _embers: GPUParticles3D
 var _core: MeshInstance3D
 var _core_material: StandardMaterial3D
+var _horde: ZombieHorde
+var _zombie_id := -1
+var _tongues: Array[MeshInstance3D] = []
 
 
 ## A blast of `radius` bursting at `at`.
@@ -80,6 +92,21 @@ static func fire(at: Vector3, radius: float, for_seconds: float, colour: Color) 
 	return fx
 
 
+## The flames of a zombie set burning for `for_seconds`, following its view in `horde` (a horde of
+## none leaves them where they were put).
+static func burn(
+	horde: ZombieHorde, zombie_id: int, for_seconds: float, colour: Color
+) -> ElementFx:
+	var fx := ElementFx.new()
+	fx.kind = Kind.BURN
+	fx.tint = colour
+	fx.seconds = for_seconds
+	fx._radius = BURN_EMBER_RADIUS
+	fx._horde = horde
+	fx._zombie_id = zombie_id
+	return fx
+
+
 func _ready() -> void:
 	match kind:
 		Kind.BLAST:
@@ -89,6 +116,9 @@ func _ready() -> void:
 			_make_arc()
 		Kind.FIRE:
 			_make_fire()
+		Kind.BURN:
+			_make_burn()
+	_follow()
 	_apply()
 
 
@@ -96,13 +126,36 @@ func _process(delta: float) -> void:
 	advance(delta)
 
 
+## Begins a burn's seconds again (a second hit on a zombie already alight): one fire, not two.
+func restart(for_seconds: float) -> void:
+	seconds = for_seconds
+	_age = 0.0
+	_apply()
+
+
+## Whether it is the burn on this zombie.
+func burns(zombie_id: int) -> bool:
+	return kind == Kind.BURN and _zombie_id == zombie_id
+
+
 ## Moves the effect on by `delta` seconds; it frees itself when its time is up.
 func advance(delta: float) -> void:
 	_age += delta
-	if _age >= seconds:
+	if _age >= seconds or not _follow():
 		queue_free()
 		return
 	_apply()
+
+
+## A burn stands on its zombie's view. False when the zombie is not drawn any more or has fallen.
+func _follow() -> bool:
+	if kind != Kind.BURN or _horde == null:
+		return true
+	var view := _horde.view_of(_zombie_id)
+	if view == null or view.is_dying():
+		return false
+	global_position = view.global_position + Vector3.UP * BURN_LIFT
+	return true
 
 
 ## Stops the effect at `at_progress` (0 to 1) and keeps it there: the warm-up draws it still.
@@ -125,6 +178,8 @@ func _apply() -> void:
 			_draw_arc()
 		Kind.FIRE:
 			_apply_fire()
+		Kind.BURN:
+			_apply_burn()
 
 
 func _unshaded(colour: Color) -> StandardMaterial3D:
@@ -234,6 +289,38 @@ func _apply_fire() -> void:
 	_shell.scale = Vector3(
 		1.0 - 0.04 * (flicker * 0.5 + 0.5), 1.0, 1.0 - 0.04 * (flicker * 0.5 + 0.5)
 	)
+	_embers.emitting = fade >= 1.0
+
+
+func _make_burn() -> void:
+	var quad := QuadMesh.new()
+	quad.size = BURN_TONGUE_SIZE
+	for index in BURN_TONGUES:
+		var material := _unshaded(tint)
+		material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		var tongue := MeshInstance3D.new()
+		tongue.mesh = quad
+		tongue.material_override = material
+		tongue.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var around := TAU * float(index) / float(BURN_TONGUES)
+		tongue.position = Vector3(cos(around), 0.1 * float(index) - 0.1, sin(around)) * 0.18
+		add_child(tongue)
+		_tongues.append(tongue)
+	_embers = _make_embers()
+	add_child(_embers)
+	_embers.emitting = true
+
+
+func _apply_burn() -> void:
+	if _tongues.is_empty():
+		return
+	var fade := clampf((seconds - _age) / BURN_FADE_SECONDS, 0.0, 1.0)
+	for index in _tongues.size():
+		var wave := sin(_age * BURN_FLICKER_HZ + float(index) * 2.1)
+		var tongue := _tongues[index]
+		tongue.scale = Vector3(1.0 - 0.15 * wave, 0.8 + 0.3 * wave, 1.0) * (0.4 + 0.6 * fade)
+		var material := tongue.material_override as StandardMaterial3D
+		material.albedo_color = Color(tint.lightened(0.15 * float(index)), 0.62 * fade)
 	_embers.emitting = fade >= 1.0
 
 

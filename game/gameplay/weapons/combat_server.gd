@@ -47,6 +47,9 @@ extends RefCounted
 ##   element_arc: shooter_id, weapon_id, element, from, to (a point for each zombie the arc reached)
 ##   fire_patch_started: patch_id, shooter_id, weapon_id, element, point, radius, seconds (the
 ##     ground a re-cut flare gun's burst sets burning; its hits are `damage_dealt` with `element`)
+##   element_burn: shooter_id, weapon_id, element, target_id, seconds (a hit of a re-cut weapon set
+##     a zombie burning, or began its seconds again; the status itself is `status_applied` and each
+##     burn's hit is `damage_dealt` with `element`)
 ##   projectile_spawned: projectile_id, shooter_id, weapon_id, position, velocity
 ##   projectile_burst: projectile_id, shooter_id, weapon_id, point, radius, kind
 ##   action_rejected: reason
@@ -75,6 +78,9 @@ var _quick_def: WeaponDef
 var _next_projectile: int = 1
 ## The fire patches a re-cut flare gun leaves, and the numbers of the blast and the arc.
 var _elements := ElementPlay.new()
+## The burns running, by target id: `ElementPlay.Burn`. The seconds left are the status's
+## (`StatusBoard`); the burn here knows whose it is and when its next hit falls.
+var _burns: Dictionary[int, ElementPlay.Burn] = {}
 var _events: Array[Dictionary] = []
 
 
@@ -175,6 +181,7 @@ func _dispatch(action: Dictionary) -> void:
 		CombatAction.UNTRACK_TARGET:
 			_alive.erase(action["target_id"])
 			statuses.forget(action["target_id"])
+			_burns.erase(action["target_id"])
 		_:
 			_emit(&"action_rejected", {"reason": &"unknown_action"})
 
@@ -387,6 +394,8 @@ func _tick(delta: float) -> void:
 				_emit(&"reload_round", fields)
 			if done:
 				_emit(&"reload_finished", fields)
+	# The burns fall before the statuses run down, so the last second of a burn still hurts.
+	_burn_targets(delta)
 	_events.append_array(statuses.step(delta))
 	_step_projectiles(delta)
 	_burn_patches(delta)
@@ -641,7 +650,7 @@ func _put_status(target_id: int, def: WeaponDef) -> void:
 		return
 	if status.kind_gated and not statuses.has(target_id, status.id):
 		var type := rules.tuning.roster.type_of(rules.zombie_type(target_id))
-		var needed := type.freeze_bolts if type != null else 1
+		var needed := maxi(type.freeze_bolts - def.freeze_bolts_less, 1) if type != null else 1
 		var bolts := needed
 		if type != null and not type.freezable:
 			bolts = 0
@@ -800,12 +809,73 @@ func _alive_targets() -> Dictionary:
 func _element_hits(shooter_id: int, def: WeaponDef, damage: Dictionary) -> void:
 	var element := def.element
 	var hit_ids := damage.keys()
+	if element.has_burn():
+		for target_id: int in damage:
+			_ignite(shooter_id, def, target_id)
 	for target_id: int in damage:
 		var point: Vector3 = damage[target_id]["point"]
 		if element.has_blast():
 			_blast(shooter_id, def, point, target_id)
 		if element.has_arc():
 			_arc(shooter_id, def, point, hit_ids)
+
+
+## A hit of a weapon whose element burns sets the zombie burning for the element's seconds, if it
+## is still standing: the status goes on (a longer time already running is kept, so a second hit
+## begins the seconds again and never adds a second fire) and the burn is the shooter's.
+func _ignite(shooter_id: int, def: WeaponDef, target_id: int) -> void:
+	var element := def.element
+	var status := StatusCatalog.get_def(element.burn_status)
+	if status == null or not _alive.has(target_id):
+		return
+	var burn: ElementPlay.Burn = _burns.get(target_id)
+	if burn == null:
+		burn = ElementPlay.Burn.new()
+		burn.next_tick = element.burn_tick_seconds
+		_burns[target_id] = burn
+	burn.shooter_id = shooter_id
+	burn.weapon_id = def.id
+	burn.element = element
+	_events.append(statuses.apply(target_id, status, element.burn_seconds))
+	_emit(
+		&"element_burn",
+		{
+			"shooter_id": shooter_id,
+			"weapon_id": def.id,
+			"element": element.id,
+			"target_id": target_id,
+			"seconds": element.burn_seconds,
+		}
+	)
+
+
+## One combat step of the burns: each zombie that is still under its burning takes a hit every
+## `burn_tick_seconds`, for the shooter who set it alight. A frozen zombie takes none (a hit would
+## shatter it, and the fire has gone out under the ice); a burn whose status ran out, or whose
+## zombie is gone, is forgotten.
+func _burn_targets(delta: float) -> void:
+	if _burns.is_empty():
+		return
+	var alive := _alive_targets()
+	for target_id: int in _burns.keys():
+		var burn := _burns[target_id]
+		if not alive.has(target_id) or not statuses.has(target_id, burn.element.burn_status):
+			_burns.erase(target_id)
+			continue
+		burn.next_tick -= delta
+		while burn.next_tick <= WeaponState.READY_EPSILON:
+			burn.next_tick += burn.element.burn_tick_seconds
+			if statuses.has(target_id, &"frozen") or not _alive.has(target_id):
+				continue
+			var total := {
+				"damage": burn.element.burn_dps * burn.element.burn_tick_seconds,
+				"zone": Hitbox.BODY,
+				"pellets": 1,
+				"head": false,
+				"point": ElementPlay.arc_end(alive[target_id]),
+				"element": burn.element.id,
+			}
+			_hurt(burn.shooter_id, target_id, total, false, burn.weapon_id)
 
 
 func _blast(shooter_id: int, def: WeaponDef, point: Vector3, hit_id: int) -> void:

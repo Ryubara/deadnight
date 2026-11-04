@@ -689,6 +689,10 @@ func _replay_effects() -> void:
 			}
 		)
 	)
+	# The flames of a zombie set burning, on no zombie: where they were put.
+	var flames := ElementFx.burn(null, -1, WARMUP_LURE_SECONDS, Color(1.0, 0.5, 0.12))
+	flames.position = sample
+	view.add_child(flames)
 	for fx: ElementFx in view.find_children("*", "ElementFx", true, false):
 		fx.freeze(0.3)
 	await _chunk(SHOT_FRAMES + 1)
