@@ -219,6 +219,7 @@ catalogue from every source either map has (each wall, each prize of the crane) 
 hands, the third-weapon perk, everything re-cut, after a down that took the perk) and checks the rules, the combat
 server, the frame and the HUD's slots say the same; `test_weapon_sources_online.gd` does the crane, the walls and the
 seat over a real socket.
+
 A re-cut goes with its weapon: a fresh copy can be re-cut again, for the same 5,000 as any re-cut (#909), so cycling
 weapons does not make re-cuts cheaper.
 
