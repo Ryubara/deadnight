@@ -1,0 +1,65 @@
+# A one-off measurement for #989, not kept: the idle main menu of three CI-built web exports, in turns, on the same
+# runner (the builds are the `web-build` artifacts of earlier runs: #920's parent, #920, and a later main), with the
+# machine's CPU and cores beside the frames. Runs on a push to the issue's branch, only when this file changes.
+name: idle-ab
+
+on:
+  push:
+    branches: [ci-explain-the-menu-s-slower-idle-frames-on-a]
+    paths: [.github/workflows/idle-ab.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  ab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        replica: [1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Say what machine this is
+        run: |
+          mkdir -p out
+          {
+            date -u +%FT%TZ
+            nproc
+            grep -m1 "model name" /proc/cpuinfo
+            grep -m1 "cpu MHz" /proc/cpuinfo
+            grep -m1 "flags" /proc/cpuinfo | tr ' ' '\n' | grep -c -E "^(avx2|avx512f)$" || true
+            cat /proc/loadavg
+            free -m | sed -n 2p
+            echo "image: ${ImageVersion:-unknown}"
+          } | tee out/machine.txt
+      - name: Fetch the three builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # artifact ids: #920's parent (run 41829238647), #920 itself (run 41829250613), a later main (run 41869057276)
+          for pair in pre:13324588325 p920:13329201106 main:13346506157; do
+            name=${pair%%:*}
+            id=${pair##*:}
+            gh api "repos/Ryubara/deadnight/actions/artifacts/$id/zip" > "$name.zip"
+            mkdir -p "builds/$name"
+            unzip -q "$name.zip" -d "builds/$name"
+            rm "$name.zip"
+          done
+          du -sh builds/*
+      - name: Install the browser
+        run: uv run --with playwright==1.64.1 playwright install --with-deps chromium-headless-shell
+      - name: The idle menu of each build, in turns
+        run: |
+          uv run --with playwright==1.64.1 python tools/web_smoke/menu_idle.py pre=builds/pre p920=builds/p920 main=builds/main --out out --pairs 4 --seconds 9 | tee out/log.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: idle-ab-${{ matrix.replica }}
+          path: out
