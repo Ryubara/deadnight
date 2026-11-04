@@ -54,6 +54,15 @@ const BOARD_HALF := 2.05
 var barricade_id: StringName = &""
 ## Half the length of this barricade's boards (`BOARD_HALF` unless the scene says otherwise).
 var board_half := BOARD_HALF
+## The window the boards stand in (#915): how high its sill is (the dead climb over it; the
+## generators write `metadata/sill`) and how thick the wall is (`metadata/thickness`). A barricade
+## is always a window with a sill, never a door.
+var sill := 0.0
+var thickness := 0.4
+## Half the width of the opening (`metadata/gap_half`; the boards' half length unless said).
+var opening_half := BOARD_HALF
+## Half the width that is clear between the jambs (`metadata/clear_half`, `INF` when not said).
+var clear_half := INF
 ## Metres from the camera beyond which the boards are not drawn (`metadata/board_view_end`; 0 draws
 ## them at any distance, as the field's are). The later areas' breaches set it to spare a phone's
 ## draw calls (#728).
@@ -80,6 +89,10 @@ func _ready() -> void:
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	barricade_id = StringName(get_meta(&"barricade_id", ""))
 	board_half = float(get_meta(&"board_half", BOARD_HALF))
+	sill = float(get_meta(&"sill", 0.0))
+	thickness = float(get_meta(&"thickness", thickness))
+	opening_half = float(get_meta(&"gap_half", board_half))
+	clear_half = float(get_meta(&"clear_half", INF))
 	view_end = float(get_meta(&"board_view_end", 0.0))
 	for child in get_children():
 		if child is StaticBody3D:

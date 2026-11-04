@@ -83,9 +83,19 @@ PLAZA_WALL_H = 4.2
 # an apron outside (APRON_DEPTH deep, APRON_WIDTH wide, walled in) where the dead stand before they tear the boards off.
 # The ids are the rules' (`BarricadeTuning.ids`); the number of boards is `BarricadeTuning.boards`.
 BREACH_WIDTH = 4.0
+# Every breach is a window, never a door (#915): a sill the dead climb over (BREACH_SILL, the second map's waist-high
+# 0.9 m, under the player's 1.1 m jump so the players-only blocker is what keeps them in) under an opening that ends
+# at BREACH_TOP, with a header to the fence's top. The gap in the fence stays open to the ground for the navigation
+# mesh: the sill, jambs and header are bodies the baker never reads, and the zombie simulation lifts the dead over the
+# sill (`ZombieGate.sill`). The five boards fill the opening, one BOARD_PITCH above the last.
+BREACH_SILL = 0.9
+BREACH_TOP = 2.4
+FRAME_THICK = 0.56  # the sill, jambs and header stand proud of the 0.4 m fence by 0.08 m on each side
+JAMB_WIDTH = 0.2
+BLOCKER_LAYER = 2  # the boards' layer: players collide with it, shots do not (Barricade.BOARD_LAYER)
 BOARDS = 5
-BOARD_FIRST = 0.3  # the middle of the lowest board; the boards are 0.45 m tall, so five fill the gap to its top
-BOARD_PITCH = 0.6
+BOARD_PITCH = (BREACH_TOP - BREACH_SILL) / BOARDS  # 0.3: the planks (0.27 tall) fill the opening with a hair between
+BOARD_FIRST = BREACH_SILL + BOARD_PITCH / 2  # the middle of the lowest board
 APRON_DEPTH = 8.0
 APRON_WIDTH = 12.0
 SPAWN_OUTSIDE = 4.0  # the dead appear this far outside the fence line
@@ -96,6 +106,9 @@ SPAWN_OUTSIDE = 4.0  # the dead appear this far outside the fence line
 YARD_BREACHES = [("yard_e1", 62, 6, (-1, 0)), ("yard_e2", 62, 30, (-1, 0)), ("yard_s", 36, 38, (0, -1))]
 BACK_BREACHES = [("back_w1", -62, 10, (1, 0)), ("back_w2", -62, 34, (1, 0)), ("back_s", -36, 38, (0, -1))]
 PLAZA_BREACHES = [("plaza_w", -16, 49.5, (1, 0)), ("plaza_e", 16, 49.5, (-1, 0))]
+# The yard's and the back lot's south fences are 2.4 m (`gaps_on(..., 2.4)`): their breaches have no header.
+LOW_FENCE_H = 2.4
+LOW_FENCE_BREACHES = {"yard_s", "back_s"}
 MIDWAY_POCKETS = [("mid_w", -12.5), ("mid_e", 12.5)]
 # Phone budget (#728): the later aprons are behind the perimeter wall and are drawn only within APRON_VIEW_END metres of
 # the camera (they show through a torn gap), their boards within BOARD_VIEW_END (the lot is 120 m across).
@@ -700,6 +713,72 @@ def instance(parent: str, name: str, res: str, pos, rot_y: float = 0.0, props: d
     node_names.add(f"{parent}/{name}")
 
 
+_solids: dict[tuple[float, float, float], str] = {}
+
+
+def solid(parent: str, name: str, size, pos, layer: int, mat: str | None) -> None:
+    """A StaticBody3D box the navigation baker never reads (it takes CSG only), drawn in `mat` (None: not drawn). The
+    box is centred at `pos` in the parent's space."""
+    key = (round(size[0], 3), round(size[1], 3), round(size[2], 3))
+    tag = "x".join(f"{v:g}" for v in key).replace(".", "p")
+    shape = f"solid_shape_{tag}"
+    if key not in _solids:
+        _solids[key] = shape
+        resources.extend([f'[sub_resource type="BoxShape3D" id="{shape}"]', f"size = {vec(key)}", ""])
+    path = node(
+        name, "StaticBody3D", parent, {"transform": xform(pos), "collision_layer": str(layer), "collision_mask": "0"}
+    )
+    node("Shape", "CollisionShape3D", path, {"shape": f'SubResource("{shape}")'})
+    if mat is not None:
+        mesh = f"solid_mesh_{tag}_{mat}"
+        if f'[sub_resource type="BoxMesh" id="{mesh}"]' not in resources:
+            resources.extend(
+                [
+                    f'[sub_resource type="BoxMesh" id="{mesh}"]',
+                    f'material = ExtResource("{mat}")',
+                    f"size = {vec(key)}",
+                    "",
+                ]
+            )
+        node("Mesh", "MeshInstance3D", path, {"mesh": f'SubResource("{mesh}")'})
+
+
+def breach_frame(field: str, tag: str, at, rot: float, wall_h: float = PERIMETER_H) -> None:
+    """The window around a breach's boards: sill, two jambs, header and the players-only blocker (#915). A sibling of
+    the Barricade, which takes every StaticBody3D child for a board. Local +Z points into the field, as the boards'."""
+    frame = f"Frame{tag}"
+    node(frame, "Node3D", field, {"transform": xform(at, rot)})
+    parent = f"{field}/{frame}"
+    opening = BREACH_TOP - BREACH_SILL
+    solid(
+        parent, "Sill", (BREACH_WIDTH, BREACH_SILL, FRAME_THICK), (0, BREACH_SILL / 2, 0), WALL_LAYERS, "field_struct"
+    )
+    header = wall_h - BREACH_TOP  # none in a low fence (2.4 m): the opening runs to its top
+    if header > 0:
+        solid(
+            parent,
+            "Header",
+            (BREACH_WIDTH, header, FRAME_THICK),
+            (0, BREACH_TOP + header / 2, 0),
+            WALL_LAYERS,
+            "field_struct",
+        )
+    for side, name in ((-1, "JambL"), (1, "JambR")):
+        x = side * (BREACH_WIDTH / 2 - JAMB_WIDTH / 2)
+        solid(
+            parent,
+            name,
+            (JAMB_WIDTH, opening, FRAME_THICK),
+            (x, BREACH_SILL + opening / 2, 0),
+            WALL_LAYERS,
+            "field_struct",
+        )
+    # Players are kept in by the opening whatever the boards do (a jump is 1.1 m, the sill 0.9): on the boards' layer,
+    # so shots and grenades go through it.
+    blocked = max(wall_h, BREACH_TOP) - BREACH_SILL
+    solid(parent, "Blocker", (BREACH_WIDTH, blocked, 0.4), (0, BREACH_SILL + blocked / 2, 0), BLOCKER_LAYER, None)
+
+
 def breach(
     field: str,
     tag: str,
@@ -711,6 +790,7 @@ def breach(
     apron: bool = True,
     view_end: float = 0.0,
     board_view_end: float = 0.0,
+    wall_h: float = PERIMETER_H,
 ) -> None:
     """The boards across one gap of the fence, and the walled apron outside it where the dead gather.
 
@@ -725,6 +805,10 @@ def breach(
         "transform": xform((bx, 0, bz), rot),
         "script": 'ExtResource("barricade")',
         "metadata/barricade_id": f'"{bid or tag.lower()}"',
+        # The window the boards stand in: the sill the dead climb over and the wall's thickness (`ZombieGate`).
+        "metadata/sill": f"{BREACH_SILL:g}",
+        "metadata/thickness": f"{FRAME_THICK:g}",
+        "metadata/clear_half": f"{BREACH_WIDTH / 2 - JAMB_WIDTH:g}",
     }
     if board_view_end:
         props["metadata/board_view_end"] = f"{board_view_end:g}"
@@ -733,6 +817,7 @@ def breach(
         instance(
             f"{field}/Breach{tag}", f"Board{i + 1}", "board", (0.0, BOARD_FIRST + i * BOARD_PITCH, 0.03 * (-1) ** i)
         )
+    breach_frame(field, tag, (bx, 0, bz), rot, wall_h)
     if not apron:
         return
     # The apron: out from the fence line along -inward.
@@ -841,7 +926,18 @@ def breaches_of(area: str, table, mat: str, spawns: dict[str, list[float]]) -> N
     zs = group("ZombieSpawns", area)
     for bid, bx, bz, inward in table:
         tag = "".join(part.title() for part in bid.split("_"))
-        breach(area, tag, bx, bz, inward, bid, mat, view_end=APRON_VIEW_END, board_view_end=BOARD_VIEW_END)
+        breach(
+            area,
+            tag,
+            bx,
+            bz,
+            inward,
+            bid,
+            mat,
+            view_end=APRON_VIEW_END,
+            board_view_end=BOARD_VIEW_END,
+            wall_h=LOW_FENCE_H if bid in LOW_FENCE_BREACHES else PERIMETER_H,
+        )
         for i, along in enumerate(spawns.get(bid, [0.0])):
             spawn_marker(zs, f"Spawn{tag}{i + 1 if i else ''}", apron_spawn(bx, bz, inward, along), bid)
 
