@@ -13,6 +13,18 @@
     "end": 29
    }
   },
+  "Crawl_Attack": {
+   "loop": false,
+   "frames": 30,
+   "seconds": 1.25,
+   "events": {
+    "gather": 0,
+    "coil": 8,
+    "strike": 13,
+    "grab": 16,
+    "end": 30
+   }
+  },
   "Sprint": {
    "loop": true,
    "frames": 16,

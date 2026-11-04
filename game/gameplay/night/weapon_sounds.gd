@@ -11,6 +11,8 @@ extends Node
 ## What each firearm plays: the report and the tail after it. Ids are `ArmsCatalog`'s. The
 ## crowbar's swing and blow are `NightSounds`' (melee), not these.
 const FIRE := {
+	# The start pistol (#898), in the deferred bank `firearms_2`.
+	&"house_pistol": {"shot": &"shot_house_pistol", "tail": &"tail_house_pistol"},
 	&"pistol": {"shot": &"shot_pistol", "tail": &"tail_pistol"},
 	&"smg": {"shot": &"shot_smg", "tail": &"tail_smg"},
 	&"rifle": {"shot": &"shot_rifle", "tail": &"tail_rifle"},
@@ -28,6 +30,7 @@ const FIRE := {
 ## The sound of a weapon coming up, and of its trigger pulled on nothing, where it has its own; any
 ## other weapon rustles and clicks the common way (`weapon_swap`, `dry_fire`).
 const EQUIP := {
+	&"house_pistol": &"equip_house_pistol",
 	&"ppsh": &"equip_ppsh",
 	&"m249": &"equip_m249",
 	&"m4a1": &"equip_m4a1",
@@ -37,6 +40,7 @@ const EQUIP := {
 	&"dual_pistols": &"equip_dual_pistols",
 }
 const DRY := {
+	&"house_pistol": &"dry_house_pistol",
 	&"ppsh": &"dry_ppsh",
 	&"m249": &"dry_m249",
 	&"m4a1": &"dry_m4a1",
@@ -132,6 +136,13 @@ const RELOAD := {
 		&"pouch": &"reload_pouch",
 		&"mag_in": &"reload_dual_mag_in",
 		&"slide": &"reload_dual_slide",
+	},
+	&"house_pistol":
+	{
+		&"mag_out": &"reload_house_mag_out",
+		&"pouch": &"reload_pouch",
+		&"mag_in": &"reload_house_mag_in",
+		&"slide": &"reload_house_slide",
 	},
 	&"flare_gun":
 	{

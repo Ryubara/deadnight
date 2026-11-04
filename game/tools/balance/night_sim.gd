@@ -884,7 +884,7 @@ class SimPlayer:
 	var downed: bool = false
 	## Bled out: down until the round ends.
 	var dead: bool = false
-	var weapon: StringName = &"pistol"
+	var weapon: StringName = &"house_pistol"
 	## Every weapon carried (catalogue id to its magazine and reserve).
 	var arms: Dictionary[StringName, SimArm] = {}
 	## The blow every player has whatever they carry.

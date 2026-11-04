@@ -315,6 +315,40 @@ backend would have been refused; `tickets.json` now holds a ticket the backend s
 done: none. The lobby screen's panel is the host's way in (`LobbyScreen.rules`, `TogetherApi.set_settings`); a
 lobby reads its rules back with `MatchSettings.from_json`, which makes the whole float a whole number the same way.
 
+### A setting is never dropped (#944)
+
+On 2026-11-03 the maintainer made a lobby, set a second map, bots and intensity, and every night was the usual one on
+the drive-in with no bots. Nothing in the code lost them: the live `backend` service had been deployed once, on
+2026-11-02 at 08:34 UTC, from a build that came before the host's rules (#559), and nothing deployed it again (the `ci`
+workflow deployed `web` and `deadnight-server`). That backend answered `PUT /lobbies/:id/settings` with a bare `404 Not
+Found`, ignored the `settings` a start carries, and sent lobbies with no `settings` at all, so every ticket was without
+rules and the room was built on the defaults: all six settings lost at once, by one cause. The lobby said "Something
+went wrong (Not Found). Try again." and went on.
+
+What keeps it from happening again:
+
+- **The backend is deployed with the game.** The `deploy-backend` job of `ci` (`deploy/backend/deploy.sh`) publishes
+  `spikes/backend` to the `backend` service on every green push to `main`, beside `web` and `deadnight-server`, with the
+  same skip of a build older than the live one (`deploy/check_head.sh`). The Postgres service keeps its data.
+- **A deploy compares the keys.** `/health` lists `settingsKeys`; `deploy/backend/check_keys.sh` compares them with the
+  keys of `MatchSettings.KEYS` in the game's source and fails the deploy job when a backend lacks a key the game has (or
+  has one the game lacks); a backend from before the list fails it too. `deploy/backend/test_check_keys.sh` is the
+  script's own test, in `conventions`.
+- **An unknown or wrong setting is an error that names it.** The backend answers `400 bad_settings` with `detail`
+  (`unknown setting a_rule`, `bad bots`, never a value) on a change and on a start, and logs it; the client shows
+  it. The game server refuses a ticket that carries a key it does not know (`ticket carries a setting this server does not
+  know: a_rule`) and a dedicated server stops on an option it cannot take (`--map nowhere`).
+- **A backend that keeps no rules is said to the host.** A lobby with no `settings` key (a backend from before the
+  rules), or a `404` on the change, shows "This server is out of date and keeps none of these rules" on the lobby screen
+  and makes its panel read-only, instead of letting the host's choices vanish.
+- **One test per setting, through the real stack.** `tests/net/test_lobby_settings_reach_the_night.gd` runs the real
+  backend, a real game server and the real lobby screen with its panel, for each key of `MatchSettings.KEYS` twice
+  (changed while the lobby waits, changed as Start is pressed), plus the last change winning and a start with no rules
+  in it, and reads the room's rules, the lot it built, the bots it seated and the lot the client built from the WELCOME;
+  a key with no case fails the suite, and one more compares the backend's list with the game's. A setting that is added
+  (the perk limit, #913) therefore cannot ship until it reaches the night. `tools/web_smoke/lobby_settings.py` does the
+  same from the web build in a browser, against a local stack or a deployed one.
+
 ## What is not decided or not proven
 
 - **Starting game servers on demand.** The spike uses a static pool that announces itself. Creating a Railway service

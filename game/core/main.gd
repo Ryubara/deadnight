@@ -98,20 +98,15 @@ func _serve(args: NetArgs) -> void:
 	if config.uses_backend():
 		add_child(GameServer.make(config, port, args.get_int("seed", -1)))
 		return
+	var settings := args.match_settings()
+	var wrong := MatchSettings.problem(settings.to_dict())
+	if not wrong.is_empty():
+		# A value the game does not take stops the server; it never starts a night on other rules.
+		push_error("game server: the option for '%s' is not one the game takes" % wrong)
+		get_tree().quit(1)
+		return
 	var host := NightHost.new()
 	host.port = port
 	host.seed_value = args.get_int("seed", -1)
-	host.match_settings = _match_from(args)
+	host.match_settings = settings
 	add_child(host)
-
-
-## The match settings a game server is started with: `--count 2`, `--max-alive 12`, `--break 10`,
-## `--bots 2`, `--perk-limit 1` (each left out is the default), pulled into their bounds.
-func _match_from(args: NetArgs) -> MatchSettings:
-	var settings := MatchSettings.new()
-	settings.count_multiplier = args.get_float("count", settings.count_multiplier)
-	settings.max_alive = args.get_int("max-alive", settings.max_alive)
-	settings.break_seconds = args.get_float("break", settings.break_seconds)
-	settings.bots = args.get_int("bots", settings.bots)
-	settings.perk_limit = args.get_int("perk-limit", settings.perk_limit)
-	return settings.clamped()
