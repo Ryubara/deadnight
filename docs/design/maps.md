@@ -62,9 +62,9 @@ three and four. With the 8-hour curve level 10 comes after about half an hour of
   host's level into every ticket of the match (`hostLevel`; every ticket carries the host's, so the order the players
   arrive in decides nothing). `TicketVerifier.admit` reads it and applies `MatchSettings.fit_host`: a ticket whose rules
   name a map the host's level does not open opens the room on the drive-in lot (the other rules stand) and the game
-  server logs `map_locked`. A claim that is there but damaged counts as level 1, so it never opens a map. **A ticket
-  with no `hostLevel` (a backend from before levels) leaves the host's choice**: the check starts to bite when the backend
-  signs the claim (the backend's profile slot, #1075, and the follow-up that signs `hostLevel` into tickets). A client
+  server logs `map_locked`. A claim that is there but damaged counts as level 1, so it never opens a map, and a ticket
+  with no `hostLevel` (a backend from before levels) is level 1 as well (`TicketVerifier.NO_LEVEL`). The backend signs the
+  claim from the host's stored profile (#1098), and `test_map_unlock_net.gd` runs the rule over the real backend. A client
   cannot change a room's rules over the net (`NightHost.configure_match` is the server's).
 - **In a browser test** a page that asks for the probes sets `window.deadnight_player_level` before the game starts
   (`tools/web_smoke/smoke.py give_level`), because a fresh build has no profile and so every player is level 1.

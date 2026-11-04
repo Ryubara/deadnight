@@ -51,8 +51,8 @@ func test_the_soldiers_takes_play_at_the_mixs_voice_numbers() -> void:
 				assert_float(def.max_distance).is_equal(mix.voice_max_distance)
 				assert_float(def.unit_size).is_equal(mix.voice_unit_size)
 				took += 1
-	# Both voices: the male soldier's 115 takes and the female soldier's 115.
-	assert_int(took).is_equal(230)
+	# Both voices: the male soldier's 139 takes and the female soldier's 139.
+	assert_int(took).is_equal(278)
 
 
 func test_the_aim_assist_file_holds_the_old_constants() -> void:

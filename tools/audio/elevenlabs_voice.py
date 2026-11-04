@@ -17,6 +17,8 @@ Commands:
 - `encode`    trims, levels (to `target_lufs` in the voice's json, peak limited to -1 dBFS) and writes Ogg Vorbis
               into the voice's folder, plus `manifest.json` (file -> event, text, characters, model, voice,
               settings, seed, seconds, loudness).
+              `--plan free --generated 2026-11-04` records the plan and the day in each manifest entry it writes
+              (the licence's regeneration list, #252, reads them); `--only` keeps the other entries as they are.
 - `check`     transcribes each take (`POST /v1/speech-to-text`, model `scribe_v1`; it costs credits, about 8 a
               take, so a transcript is kept in `--cache` and never fetched twice) and flags the takes where an audio
               tag was spoken aloud (its words in the transcript outside Scribe's own `[laughs]` marks) or words are
@@ -161,9 +163,13 @@ def seconds_of(wav: Path) -> float:
         return f.getnframes() / f.getframerate()
 
 
-def encode(all_takes: list[dict], data: dict, cache: Path, exe: str, samples_dir: Path, out: Path) -> None:
+def encode(
+    all_takes: list[dict], data: dict, cache: Path, exe: str, samples_dir: Path, out: Path, stamp: dict | None = None
+) -> None:
     out.mkdir(parents=True, exist_ok=True)
-    manifest = {}
+    # Takes encoded earlier stay in the manifest when only some events are encoded (`--only`).
+    saved = out / "manifest.json"
+    manifest = json.loads(saved.read_text(encoding="utf-8")) if saved.exists() else {}
     trim = (
         "silenceremove=start_periods=1:start_threshold=-48dB:start_silence=0.02,"
         "areverse,silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.12,areverse"
@@ -204,8 +210,11 @@ def encode(all_takes: list[dict], data: dict, cache: Path, exe: str, samples_dir
                 "source": "maintainer-approved sample" if t["sample"] else "text-to-speech",
                 "seconds": round(length, 2),
                 "lufs_before": round(lufs, 1),
+                **(stamp or {}),
             }
             print(f"{ogg.name}: {length:.2f} s, {lufs:.1f} LUFS -> {data['target_lufs']}")
+    names = [f"{t['name']}.ogg" for t in takes(data)]
+    manifest = {name: manifest[name] for name in names if name in manifest}
     text = json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
     (out / "manifest.json").write_text(text, encoding="utf-8", newline="\n")
 
@@ -261,6 +270,8 @@ def main() -> None:
     parser.add_argument("--samples", type=Path, help="folder of the approved sample mp3s (default: the cache)")
     parser.add_argument("--only", help="comma-separated events")
     parser.add_argument("--budget", type=int, default=6500)
+    parser.add_argument("--plan", help="`encode`: the ElevenLabs plan that made the takes (free, creator ...)")
+    parser.add_argument("--generated", help="`encode`: the date the takes were requested (YYYY-MM-DD)")
     args = parser.parse_args()
     data = load(args.voice)
     if args.command == "credits":
@@ -281,7 +292,12 @@ def main() -> None:
     elif args.command == "encode":
         if not args.ffmpeg:
             sys.exit("--ffmpeg is required")
-        encode(all_takes, data, args.cache, args.ffmpeg, samples_dir, VOICES[args.voice][1])
+        stamp = {}
+        if args.plan:
+            stamp["plan"] = args.plan
+        if args.generated:
+            stamp["generated"] = args.generated
+        encode(all_takes, data, args.cache, args.ffmpeg, samples_dir, VOICES[args.voice][1], stamp)
     elif args.command == "check":
         check(all_takes, args.cache)
 

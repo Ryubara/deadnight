@@ -18,23 +18,29 @@ const NEWER_VERSION := &"newer_version"
 
 
 ## The envelope text: `queue` is an array of write dictionaries (`ProfileStore`'s).
-static func to_json(profile: Profile, queue: Array[Dictionary], revision: int = 0) -> String:
+static func to_json(
+	profile: Profile, queue: Array[Dictionary], revision: int = 0, account: String = ""
+) -> String:
 	var envelope := {
 		"revision": revision,
 		"schemaVersion": SCHEMA_VERSION,
 		"data": profile.to_dict(),
 		"queue": queue,
+		"account": account,
 	}
 	return JSON.stringify(envelope, "\t")
 
 
-## `{profile, queue, revision, problem}`: what the text holds, or a null profile with why
-## (`unreadable`, `newer_version`).
+## `{profile, queue, revision, account, problem}`: what the text holds, or a null profile with why
+## (`unreadable`, `newer_version`). `account` is the backend's id of the account the profile and its
+## queue belong to ("" when unknown: a file from before, or a night before the first read).
 static func from_json(text: String) -> Dictionary:
 	# An instance reports a parse failure as a code; `parse_string` would print an engine error.
 	var json := JSON.new()
 	var parsed: Variant = json.data if json.parse(text) == OK else null
-	var failed := {"profile": null, "queue": [], "revision": 0, "problem": UNREADABLE}
+	var failed := {
+		"profile": null, "queue": [], "revision": 0, "account": "", "problem": UNREADABLE
+	}
 	if not parsed is Dictionary:
 		return failed
 	var envelope: Dictionary = parsed
@@ -55,30 +61,35 @@ static func from_json(text: String) -> Dictionary:
 		"profile": Profile.from_dict(data),
 		"queue": queue,
 		"revision": maxi(0, int(envelope.get("revision", 0))),
+		"account": str(envelope.get("account", "")),
 		"problem": NO_PROBLEM,
 	}
 
 
 ## Writes to `path` (a temporary file first, so a crash leaves the old save). True when written.
 static func write(
-	profile: Profile, queue: Array[Dictionary], revision: int, path: String = DEFAULT_PATH
+	profile: Profile,
+	queue: Array[Dictionary],
+	revision: int,
+	path: String = DEFAULT_PATH,
+	account: String = ""
 ) -> bool:
 	var temporary := path + ".tmp"
 	var file := FileAccess.open(temporary, FileAccess.WRITE)
 	if file == null:
 		return false
-	file.store_string(to_json(profile, queue, revision))
+	file.store_string(to_json(profile, queue, revision, account))
 	file.close()
 	if FileAccess.file_exists(path):
 		DirAccess.remove_absolute(path)
 	return DirAccess.rename_absolute(temporary, path) == OK
 
 
-## `{profile, queue, revision, problem}` from the file at `path`. No file is a fresh start (a
-## null profile and no problem); a damaged one is moved aside.
+## `{profile, queue, revision, account, problem}` from the file at `path`. No file is a fresh start
+## (a null profile and no problem); a damaged one is moved aside.
 static func read(path: String = DEFAULT_PATH) -> Dictionary:
 	if not FileAccess.file_exists(path):
-		return {"profile": null, "queue": [], "revision": 0, "problem": NO_PROBLEM}
+		return {"profile": null, "queue": [], "revision": 0, "account": "", "problem": NO_PROBLEM}
 	var result := from_json(FileAccess.get_file_as_string(path))
 	if result["problem"] == UNREADABLE:
 		DirAccess.rename_absolute(path, path + ".broken")

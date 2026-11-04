@@ -92,6 +92,17 @@ func say_in(delay: float, event: StringName, speaker: int, after_line := false) 
 	schedule.add(wait, func() -> void: say(event, speaker))
 
 
+## A progression cheer (`SoldierVoiceCatalog.PROGRESS`) said by `speaker`: it waits for the line
+## that speaks now instead of being dropped (a level up is rare, a kill's bark is not), and the
+## director still refuses it to a speaker who said it just now, so a burst of rewards is not a
+## chorus. A player who is down says nothing but their fall.
+func celebrate(event: StringName, speaker: int) -> void:
+	if not SoldierVoiceCatalog.is_progress(event):
+		push_error("%s is not a progression moment" % event)
+		return
+	say_in(0.0, event, speaker, true)
+
+
 func _on_event(event: Dictionary) -> void:
 	match event["type"]:
 		&"break_started":

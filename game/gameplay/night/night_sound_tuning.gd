@@ -131,6 +131,9 @@ static var _shipped: NightSoundTuning = null
 @export_range(0, 200, 1) var interrupt_priority := 80
 ## Any line may cut one this many ranks below it.
 @export_range(0, 200, 1) var cut_margin := 25
+## From this priority up a line cuts a progression cheer (a level up, a challenge done ...) that is
+## speaking: the cheers rank above the chatter but give way to the urgent lines.
+@export_range(0, 200, 1) var urgent_priority := 65
 ## How many of a moment's last takes it will not play again.
 @export_range(0, 8, 1) var remember_takes := 3
 

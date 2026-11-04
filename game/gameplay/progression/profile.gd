@@ -28,6 +28,20 @@ func add_xp(amount: int) -> void:
 	xp += maxi(amount, 0)
 
 
+## Adds a queued write (`ProfileStore`: `{xp, opening_night, bonus_day, done}`, every key optional):
+## what the backend is sent, and what the cached profile takes, so the two agree.
+func apply_write(write: Dictionary) -> void:
+	add_xp(int(write.get("xp", 0)))
+	opening_night = opening_night or write.get("opening_night", false) == true
+	var day := int(write.get("bonus_day", NO_DAY))
+	if day != NO_DAY:
+		bonus_day = maxi(bonus_day, day)
+	var finished: Variant = write.get("done", [])
+	if finished is Array:
+		for id: Variant in finished:
+			mark_done(StringName(str(id)))
+
+
 ## Whether the day's first-game XP is still owed for local day `day`.
 func bonus_due(day: int) -> bool:
 	return bonus_day != day

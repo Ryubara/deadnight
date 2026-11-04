@@ -23,6 +23,14 @@ var _heard := false
 var _tally: NightTally
 
 
+## A tracker on `state`, reading the night's XP for the report at its end: the server's own tally
+## when an account holds the night, else what the night would have paid.
+static func follow(state: ClientState, fuel_items: Array[StringName]) -> ReportTracker:
+	var tracker := ReportTracker.new()
+	tracker.attach(state, fuel_items)
+	return tracker
+
+
 ## Starts listening to what this client hears. `fuel_items` are the shop ids that sell fuel, as
 ## `NightTally` takes them.
 func attach(state: ClientState, fuel_items: Array[StringName] = [&"fuel_can"]) -> void:

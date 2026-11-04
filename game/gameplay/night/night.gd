@@ -126,6 +126,9 @@ var profile_store: ProfileStore
 var progress: ProgressSession
 ## What the night report shows (`ReportTracker`), made with the client state.
 var report: ReportTracker
+## Sends the profile's queued writes to the account; null keeps them on this machine until a night
+## has one. (A Callable does not keep its object alive: the night holds the uplink.)
+var profile_uplink: ProfileUplink
 ## Puts the names and the next door on the HUD from the player's camera (made with the view, when
 ## there is a HUD).
 var markers: NightMarkers
@@ -209,7 +212,7 @@ func start(
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
 	_track_challenges()
-	_track_report()
+	report = ReportTracker.follow(state, NightTally.fuel_items_of(rules_tuning))
 	_track_progress()
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks, world.layout.words())
@@ -258,7 +261,7 @@ func start_remote(
 	bot_orders.sender = link.send
 	state = ClientState.new()
 	_track_challenges()
-	_track_report()
+	report = ReportTracker.follow(state, NightTally.fuel_items_of(rules_tuning))
 	var failure := {"reason": ""}
 	var welcome := {}
 	online.welcomed.connect(func(snapshot: Dictionary) -> void: welcome["snapshot"] = snapshot)
@@ -388,13 +391,6 @@ func _track_challenges() -> void:
 			_challenge_link = ChallengeHudLink.new(challenges, hud)
 
 
-## Reads the night's XP for the report at its end (`ReportTracker`): the server's own tally when an
-## account holds the night, else what the night would have paid.
-func _track_report() -> void:
-	report = ReportTracker.new()
-	report.attach(state, NightTally.fuel_items_of(rules_tuning))
-
-
 ## Counts the night into the player's XP, when there is a profile to keep it in. Only a night that
 ## runs here: an online night's XP is the game server's.
 func _track_progress() -> void:
@@ -402,6 +398,8 @@ func _track_progress() -> void:
 		return
 	var clock := challenge_board.clock if challenge_board != null else ChallengeClock.system()
 	progress = ProgressSession.new(profile_store, clock, NightTally.fuel_items_of(rules_tuning))
+	if profile_uplink != null:
+		progress.uploader = profile_uplink.send
 	progress.attach(state, challenges)
 	# The rules tell the player the same `xp_gained` and `level_up` events a game server would; the
 	# profile is written here (`ProgressSession`).

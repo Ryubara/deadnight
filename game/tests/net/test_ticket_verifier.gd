@@ -125,15 +125,15 @@ func test_a_ticket_without_rules_admits_with_none_and_one_with_rules_hands_them_
 		SECRET, "gs-test", "m", "gi", "Gi", 60, chosen.merged({"perk_limit": 2})
 	)
 	assert_bool(_verifier().admit(odd, int(Time.get_unix_time_from_system()))["ok"]).is_false()
-	# With a map, the ticket hands it over (the second map too); a map nobody can play refuses the
-	# ticket.
+	# With a map, the ticket hands it over (the second map too, to a host whose level opens it); a
+	# map nobody can play refuses the ticket.
 	var on_map := TicketMaker.make(
 		SECRET, "gs-test", "m", "cy", "Cy", 60, chosen.merged({"map": "drive_in"})
 	)
 	var given := _verifier().admit(on_map, int(Time.get_unix_time_from_system()))
 	assert_str((given["settings"] as MatchSettings).map).is_equal("drive_in")
 	var second := TicketMaker.make(
-		SECRET, "gs-test", "m", "ed", "Ed", 60, chosen.merged({"map": "small_indoor"})
+		SECRET, "gs-test", "m", "ed", "Ed", 60, chosen.merged({"map": "small_indoor"}), 10
 	)
 	var on_second := _verifier().admit(second, int(Time.get_unix_time_from_system()))
 	assert_str((on_second["settings"] as MatchSettings).map).is_equal("small_indoor")
@@ -211,11 +211,23 @@ func test_a_host_of_level_10_or_more_keeps_the_back_rooms() -> void:
 	)
 
 
-func test_a_ticket_that_does_not_say_the_hosts_level_leaves_the_map_alone() -> void:
-	# A backend from before levels: nothing to check the map against.
+func test_a_ticket_that_does_not_say_the_hosts_level_is_level_1() -> void:
+	# A backend from before levels (or an account with no progress): the host counts as level 1, so
+	# the back rooms it asks for are the lot, as for any host below the level.
+	assert_int(TicketVerifier.NO_LEVEL).is_equal(1)
 	var result := _hosted("di", "small_indoor", null)
-	assert_int(result["host_level"]).is_equal(TicketVerifier.NO_LEVEL)
-	assert_str((result["settings"] as MatchSettings).map).is_equal("small_indoor")
+	assert_bool(result["ok"]).is_true()
+	assert_int(result["host_level"]).is_equal(1)
+	assert_str((result["settings"] as MatchSettings).map).is_equal("drive_in")
+	assert_str(result["map_refused"]).is_equal("small_indoor")
+	# The host's other rules stand.
+	assert_int((result["settings"] as MatchSettings).bots).is_equal(2)
+	# A ticket with no rules at all is unaffected, and still says level 1.
+	var plain := TicketMaker.make(SECRET, "gs-test", "m", "dk", "Dk", 60, {})
+	var admitted := _verifier().admit(plain, int(Time.get_unix_time_from_system()))
+	assert_bool(admitted["ok"]).is_true()
+	assert_object(admitted["settings"]).is_null()
+	assert_int(admitted["host_level"]).is_equal(1)
 
 
 func test_a_damaged_level_claim_opens_nothing() -> void:
