@@ -177,6 +177,9 @@ func _show_stats(state: HudState) -> void:
 			int(player.get("ping", HudState.NO_PING)),
 			int(player.get("revives", 0))
 		)
+		state.set_player_tally(
+			player_id, int(player.get("headshots", 0)), int(player.get("rounds", 0))
+		)
 		state.set_player_revive(
 			player_id,
 			bool(player.get("dead", false)),

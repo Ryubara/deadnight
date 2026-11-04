@@ -147,9 +147,11 @@ the rig-sharing recipe as they are, "new" ones have to be made.
 | Crawl | `Crawl` | 1.67 s | kit | crawlers; legless bodies play it as is. The rules emit `zombie_crippled` (`speed_scale` 0.35) when a [grenade blast](weapons.md#grenades) takes the legs: the zombie drops to the ground, plays `Crawl` at the scaled speed, and swaps to the Crawler variant's legless mesh |
 | Attack | `Punch`, `Idle_Attack`, `Run_Attack` | 0.75, 1.67, 0.67 s | kit | swipe in reach; a grab-and-bite at a downed player; a lunge at run speed |
 | Crawler attack | `Crawl_Attack` | 1.25 s | **made** (#971) | a lunge along the floor and a grab at the ankles: [The crawler's attack](#the-crawlers-attack) |
-| Hit reaction | `HitReact` | 0.58 s | kit | upper body; played additively over the walk |
+| Hit reaction | `HitReact` | 0.58 s | kit | upper body; played additively over the walk (the crawler's is `Crawl_Stagger`) |
+| Crawler stagger | `Crawl_Stagger` | 0.42 s | **made** (#1000) | a flinch on the floor: [A crawler's every action](#a-crawlers-every-action) |
 | Stagger | `Stagger` | | **new** | a heavy hit (melee, shotgun): a step back |
-| Death | `Death` | 0.75 s | kit | |
+| Death | `Death` | 0.75 s | kit | the walker's (the crawler's is `Crawl_Death`) |
+| Crawler death | `Crawl_Death` | 0.83 s | **made** (#1000) | the arms give, the chest and head drop to the floor and it lies: [A crawler's every action](#a-crawlers-every-action) |
 | Death variants | `Death_Forward`, `Death_Crawl` | | **new** | three deaths keep a cleared wave from looking the same |
 | Barrier break-in | `Tear_Boards` | 1.21 s | **made** (#221) | reach, grab, strain, yank, at the fence's boards: [Tearing boards](#tearing-boards) |
 | Vault a counter or fence | `Jump`, `Jump_Idle`, `Jump_Land` | 0.33, 0.50, 0.33 s | kit | three parts for a vault over the snack-bar counter |
@@ -206,6 +208,33 @@ time scale as the headliner's attack); the type's `reach` and `telegraph_seconds
 | The player's reaction | the hurt arc (`HudDamage`) swings in from the crawler's bearing as for any blow; with no knock-back a grab leaves the player where they were |
 | Bots | `BotDodge.CRAWLER_WINDUP` (0.65 s); their reach numbers are the walker's, so a bot that keeps out of a walker's blow is out of a crawler's |
 | Test | `game/tests/zombies/test_crawler_attack.gd`: a crawler in the real night (spawn, director, codec, horde, the sim's own swing) never rises above its crawl while it attacks, and the clip, reach, telegraph and view state each have a test |
+
+### A crawler's every action
+
+A body that cannot stand has its own clip for every action (#1000; #971 was the attack). Its stagger played the walker's
+`HitReact` (the mesh's top went to 1.66 m against the crawl's 0.85 m) and its death the walker's `Death` (1.81 m), so
+a crawler stood up when a shot hit it and again when it died, for the same reason as the attack: `ZombieView._enter`
+chose the state by mode and the body only for the move and the swing. The list of actions of a body, and what each plays:
+
+| Action (`ZombieBody.Mode`) | Walker (standing) | Crawler (lying) | Highest point (crawler, game scale) |
+| --- | --- | --- | --- |
+| Emerging | `move` (the model rises out of the ground) | `crawl` (the same rise) | the crawl's |
+| Chase | `move` | `crawl` | 0.85 m |
+| Attack | `attack` (`Punch`) | `crawl_attack` (`Crawl_Attack`) | 0.87 m |
+| Stagger | `stagger` (`HitReact`) | `crawl_stagger` (`Crawl_Stagger`) | 0.87 m |
+| Dying | `die` (`Death`) | `crawl_die` (`Crawl_Death`) | 0.85 m |
+| Tearing boards | `tear` (`Tear_Boards`) | never: a crawler goes under the boards (`ZombieSim._work_the_boards`) | |
+| Climbing a sill (#986, not merged when this was written) | `crawl` with a lean, for any look | the same | not measured here: check it when #986 lands |
+
+`Crawl_Stagger` (10 frames, 0.42 s at 24 fps, the length of the type's `stagger_seconds` 0.4 s; full body, not looping):
+from the Crawl's first frame, both hands planted, the body is thrown back 0.24 m (kit scale) along the floor, the chest
+twists and lifts, the head snaps up and to the side (`recoil` 3), and it settles (`recover` 7, `end` 10) back on the
+frame the crawl restarts from. `Crawl_Death` (20 frames, 0.83 s, not looping, the last frame held while it lies): the
+arms buckle (`buckle` 4), the chest and then the face drop to the floor and the arms slide out to the sides (`drop` 9,
+`settle` 15). Both are built by `tools/blender/build_zombie_clips.py` beside `Crawl_Attack`, and the hit set
+`crawler.stagger` is fitted to `Crawl_Stagger` (`tools/hit_fit/fit_hit_shapes.gd`; a dying zombie is not shot at).
+`game/tests/zombies/test_crawler_attack.gd` walks every mode of `ZombieBody.Mode` through the view and the real night
+and fails when a crawler's highest bone in any of them stands over the crawl's.
 
 ### Tearing boards
 

@@ -62,9 +62,9 @@ and `game/ui/screens/main_menu.gd`.
   first menu (#33). The Play screen (`PlayScreen`, #449) holds the settings a room host sets (the same
   `MatchSettingsPanel`) and was left unrouted ("a one-line change left to the menu work", #449); the menu rework
   (#466) wrote "Solo opens the night" and the scenes table called the screen an old placeholder, so nothing owned the
-  line. Solo now opens it and Start opens the night. A headless run measures text as nothing, so a layout test there
-  cannot see a phone overflow: the Play screen's fit at 844 x 390 (540 units high) is checked by
-  `tests/captures/solo_settings_tour.tscn` (real fonts; it prints each control outside the window) and by
+  line. Solo now opens it and Start opens the night. The Play screen's fit at 844 x 390 (540 units high) is checked by
+  `test_ui_fit.gd` (below), by `tests/captures/solo_settings_tour.tscn` (real fonts; it prints each control outside the
+  window) and by
   `tools/web_smoke/solo_settings.py` (a finger and a keyboard through the real build). On a phone the screen drops the
   overline, the hints and the margins and makes every row and button a tap target (62 units).
 
@@ -102,3 +102,29 @@ counted by `Settings.write_count`). Captures: `tests/captures/menu_shell_tour.ts
 `tests/captures/lobby_hover_tour.tscn` hovers the lobby's buttons with a real mouse event (windowed, through `gds godot`),
 and exported as the main scene of a web build it publishes where each button is (`window.hoverRects`) for a browser to
 hover (#628, before and after).
+
+- **Panels ran under the footer and off the edge (#980).** The maintainer: "containers shouldn't be too tall or bleed
+  below areas where it shouldn't such as the footer area where it says 'Enter Select Esc Back Q E Tabs'". Each panel
+  was a full-rect column in a `Control`, or a card in a `CenterContainer`: a container grows to its content and nothing
+  clips it. The Loadout tab's wardrobe ended 47 units under the hints on the 1080 canvas (757 high and 1020 wide on a
+  phone's 372 by 818 panel), the Settings screen was 741 to 1103 units high and 1280 wide, Play together 897, Join 599,
+  and the Quick join card 975 on a failure. The canvas is 1080 units high on every desktop window shape and 540 on a
+  phone, 960 (a 667 x 375 phone) to 1170 wide, so the sizes to check are few: 1280 x 720, 1920 x 1080 and 2560 x 1440
+  (one canvas), 1000 x 500, and the phones 844 x 390, 932 x 430 and 667 x 375; a phone held upright is covered by the
+  turn prompt.
+**The test:** `tests/ui/test_ui_fit.gd` opens every tab and screen at those sizes and at the interface sizes
+0.8 and 1.25, and fails when a control's shown rectangle (cut by the scroll areas above it) crosses the screen, its
+panel, the header (tab bar and plate) or the footer (the key hints), or is wider than a clipper that cannot scroll.
+`ui_fit.gd` is the check, `ui_fit_run.gd` opens the screens (under the router's themed stage: without the theme a
+title is 23 units high, not 83), `tests/captures/ui_fit_tour.tscn` prints the same sentences with a picture of each.
+It failed 167 and 64 times on `main`. The longest words are in it: sixteen wide letters for the name and the
+biggest numbers (the plate), the longest backend sentence (Quick join), and the dailies at their longest.
+
+**The parts:** `UIFitScroll` (`gds_ui`) asks for its content's height and no more than the screen leaves; Settings,
+Play, Play together, Join and Quick join put their rows in one, with the title and buttons outside it. A tab's
+column goes in `MenuPanel.hold`, a scroll area as tall as the panel and reaching past it by the theme's room, so the
+buttons keep the panel's width. The wardrobe's list no longer asks for 640 units: it takes what the tab leaves, its
+rows are as narrow as their strips (`UIRow.set_widths`) and stack (title above the control) when the tab is
+narrower than a row, and on a phone the showcase weapon is its first row. The name plate takes the width the tab
+bar leaves, a name ends in an ellipsis before the ring, and the shell places the panel again when the canvas
+changes. The standalone wardrobe screen (`customize_screen.tscn`) is not routed to by anything and is not swept.

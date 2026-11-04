@@ -51,7 +51,10 @@ image):
 - `PUT/GET /saves/:slot`: a save is `{revision, schemaVersion, data}`; a stale `revision` is a 409 instead of lost
   progress. Format rules: [Save format](#save-format).
 - `POST /internal/servers/heartbeat` (shared secret): a game server announces itself, its capacity and the ids of the
-  matches it is running. `POST /internal/matches/:id/end` (shared secret): a match is over, its slot is free.
+  matches it is running. `POST /internal/matches/:id/end` (shared secret): a match is over, its slot is free. A night
+  that ran its end-of-night intermission out sends `{finished: true, present: [user ids still in the room]}` and its
+  lobby opens again for them (open, same code, host, settings and Activity instance; a user already in another lobby
+  is not put back); any other end drops the lobby ([end of a night](end-of-night.md)).
   How lobbies and capacity end: [Lobby and match lifecycle](#lobby-and-match-lifecycle).
 - `src/stub-gameserver.ts` stands in for headless Godot: it heartbeats, and admits only a valid ticket
   that is unexpired, for this server and unused (`jti`), sent as the first WebSocket message.
@@ -240,7 +243,7 @@ injected clock.
 | What | Ends when |
 | --- | --- |
 | Open lobby | Idle for 10 minutes (create, join, leave, start and a member's `GET` all count as activity), or its last member leaves. A member not seen for a minute is dropped while another is still there ([presence](#the-lobby-before-the-night)). |
-| Started lobby | The game server calls `POST /internal/matches/:id/end`, or its heartbeat stops listing the match, or it is 2 hours old, or its last member leaves. |
+| Started lobby | The game server calls `POST /internal/matches/:id/end` (a finished night reopens the lobby), or its heartbeat stops listing the match, or it is 2 hours old, or its last member leaves. |
 | A user's place | A user is in one open lobby; starting the lobby, leaving it or its end frees them. The host role passes to the next member when the host leaves. |
 
 A sweep every 30 s drops expired lobbies, and a lookup of an expired one answers `not_found` at once.

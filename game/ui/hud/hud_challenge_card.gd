@@ -49,6 +49,7 @@ func _init() -> void:
 	# Ink on paper: no outline, no shadow under the letters.
 	for label in [caption, count, words]:
 		label.add_theme_constant_override(&"outline_size", 0)
+		(label as HudLabel).halo_size = 0
 		label.add_theme_constant_override(&"shadow_offset_y", 0)
 		label.add_theme_color_override(&"font_shadow_color", Color(0.0, 0.0, 0.0, 0.0))
 

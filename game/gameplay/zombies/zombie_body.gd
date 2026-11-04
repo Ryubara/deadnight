@@ -52,6 +52,10 @@ var lure_id: int = 0
 var tear_progress: float = 0.0
 ## True while it stands at its boards working one loose this tick (a client plays the tear clip).
 var tearing: bool = false
+## How far the sill of a window lifts it above the floor it walks on now (`ZombieGate.lift_at`).
+var lift: float = 0.0
+## True while it climbs over a window's sill (`ZombieGate`): a client draws it scrambling.
+var climbing: bool = false
 ## The status effect it is drawn under, as the wire id of a `StatusDef` (0 for none); the snapshot
 ## carries it. `ZombieSim.set_status` sets it with what the status does.
 var status: int = 0
@@ -102,5 +106,6 @@ func view_entry() -> Dictionary:
 		"speed": move_speed,
 		"look": look(),
 		"tearing": tearing,
+		"climbing": climbing and is_alive(),
 		"status": status,
 	}

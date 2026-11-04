@@ -10,6 +10,9 @@ const ARC_SPAN := 0.55
 const ARC_WIDTH := 22.0
 const MAX_ARCS := 6
 const FRAME_WIDTH := 28.0
+## How many steps the frame's strength and an arc's life are drawn in: eight levels of alpha, a
+## step nobody sees in a pulse. The board is redrawn when a step changes, not every frame (#934).
+const STEPS := 32
 
 ## Arcs alive: {"angle", "age"}.
 var arcs: Array[Dictionary] = []
@@ -18,6 +21,8 @@ var frame_strength := 0.0
 
 var _t := HudTuning.current()
 var _time := 0.0
+## What the part showed when it was last redrawn (`_look_key`).
+var _drawn_key := 0
 
 
 func _process(delta: float) -> void:
@@ -30,6 +35,7 @@ func topics() -> Array[StringName]:
 
 func refresh() -> void:
 	_update_frame()
+	_redraw_if_changed()
 
 
 func on_event(event: Dictionary) -> void:
@@ -41,7 +47,7 @@ func on_event(event: Dictionary) -> void:
 	arcs.append({"angle": wrapf(bearing + state.facing, -PI, PI), "age": 0.0})
 	while arcs.size() > MAX_ARCS:
 		arcs.pop_front()
-	queue_redraw()
+	_redraw_if_changed()
 
 
 func advance(delta: float) -> void:
@@ -50,14 +56,12 @@ func advance(delta: float) -> void:
 		arc["age"] = float(arc["age"]) + delta
 	arcs = arcs.filter(func(a: Dictionary) -> bool: return a["age"] < _t.damage_arc_life)
 	_update_frame()
-	if not arcs.is_empty() or frame_strength > 0.0:
-		queue_redraw()
+	_redraw_if_changed()
 
 
 func _update_frame() -> void:
 	if state == null:
 		return
-	var before := frame_strength
 	var fraction := state.health / state.max_health if state.max_health > 0.0 else 0.0
 	if state.is_local_downed():
 		frame_strength = 0.6
@@ -67,8 +71,24 @@ func _update_frame() -> void:
 		frame_strength = (0.25 + 0.35 * need) * beat
 	else:
 		frame_strength = 0.0
-	if frame_strength != before:
+
+
+## Redraws only when what is drawn has changed by a step. A draw is a polygon per arc that the
+## Compatibility renderer builds into buffers of its own, and the frame's pulse and the arcs'
+## swing moved a little every frame (the web page's heap grew by it, #834).
+func _redraw_if_changed() -> void:
+	var key := _look_key()
+	if key != _drawn_key:
+		_drawn_key = key
 		queue_redraw()
+
+
+## A number that differs whenever the frame or an arc differs by a visible step; 0 for nothing.
+func _look_key() -> int:
+	var key := int(frame_strength * STEPS)
+	for arc in arcs:
+		key = key * (STEPS + 1) + 1 + int(float(arc["age"]) / _t.damage_arc_life * STEPS)
+	return key
 
 
 func _draw() -> void:
