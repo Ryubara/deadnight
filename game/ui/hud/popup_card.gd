@@ -24,7 +24,6 @@ const MORE_SIZE := Vector2(372.0, 48.0)
 const WIDTH := LEVEL_SIZE.x
 
 const ICON := 64.0
-const ICON_SMALL := 20.0
 const CHIP := 40.0
 const HOLE_RADIUS := 5.0
 const HOLE_GAP := 22.0
@@ -33,9 +32,10 @@ const PERFORATION_RADIUS := 2.2
 const BULB_GAP := 21.0
 const BULB_RADIUS := 3.0
 const BULBS_INSET := 5.0
-## The space between the icon and the number, and between the number and the words (padding).
-const BESIDE := 6.0
-const PADDING := 16.0
+## The space between the icon and the number, and between the number and the words (padding): the
+## game's one order and two gaps for a level beside a name (`LevelTag`).
+const BESIDE := LevelTag.ICON_GAP
+const PADDING := LevelTag.NAME_GAP
 
 var kind: PopupQueue.Kind = PopupQueue.Kind.LEVEL
 var data: Dictionary = {}
@@ -48,7 +48,8 @@ var _number := _ink(HudStyle.label("", HudStyle.BIG, _tokens.ink_on_accent, true
 var _words := _ink(HudStyle.label("", HudStyle.TEXT, _tokens.ink_on_accent))
 var _next := HBoxContainer.new()
 var _next_label := _ink(HudStyle.label("NEXT", HudStyle.SMALL, _tokens.ink_disabled, false, 1.0))
-var _next_icon := TextureRect.new()
+var _badge := HBoxContainer.new()
+var _next_icon := LevelTag.icon_rect(1)
 var _next_level := _ink(HudStyle.label("", HudStyle.SMALL, _tokens.hot, true))
 var _next_name := _ink(HudStyle.label("", HudStyle.SMALL, _tokens.ink_on_accent))
 var _chip := Control.new()
@@ -68,14 +69,14 @@ func _init() -> void:
 	icon.texture_filter = LevelIcons.FILTER
 	icon.size = Vector2(ICON, ICON)
 	icon.pivot_offset = Vector2(ICON, ICON) * 0.5
-	_next_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_next_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_next_icon.texture_filter = LevelIcons.FILTER
-	_next_icon.custom_minimum_size = Vector2(ICON_SMALL, ICON_SMALL)
+	_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_badge.add_theme_constant_override(&"separation", int(LevelTag.ICON_GAP))
+	_badge.add_child(_next_icon)
+	_badge.add_child(_next_level)
 	_next.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_next.add_theme_constant_override(&"separation", int(BESIDE))
+	_next.add_theme_constant_override(&"separation", int(LevelTag.NAME_GAP))
 	_next_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for part: Control in [_next_label, _next_icon, _next_level, _next_name]:
+	for part: Control in [_next_label, _badge, _next_name]:
 		_next.add_child(part)
 	_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_chip.size = Vector2(CHIP, CHIP)
@@ -172,11 +173,13 @@ func _set_level() -> void:
 	if not next.is_empty():
 		_next.position = Vector2(words_at, 46.0)
 		_next.size = Vector2(room, 24.0)
-		_next_icon.texture = LevelIcons.texture(int(next["level"]))
+		LevelTag.set_icon(_next_icon, int(next["level"]))
 		HudStyle.set_text(_next_level, str(int(next["level"])))
 		HudStyle.set_text(_next_name, PopupLadder.name_of(next["item"]))
-		_next_level.custom_minimum_size.x = 28.0
-		_next_label.custom_minimum_size.x = 56.0
+		_next_level.custom_minimum_size.x = LevelTag.level_room(
+			_next_level.get_theme_font(&"font"), HudStyle.SMALL
+		)
+		_next_label.custom_minimum_size.x = 46.0
 		_next_name.custom_minimum_size.x = 40.0
 
 
