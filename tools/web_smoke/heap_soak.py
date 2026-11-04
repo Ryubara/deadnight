@@ -111,7 +111,7 @@ def stacks(profile: dict) -> list[tuple[int, str]]:
 def run(args: argparse.Namespace) -> dict:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    server, port = smoke.serve(Path(args.build))
+    server, port = smoke.serve(Path(args.build), probing=not args.plain)
     query = f"autopilot&rounds=99&hold=0&seconds={int(args.minutes * 60 + 240)}&{args.query}"
     if not args.plain:
         query += "&probe"

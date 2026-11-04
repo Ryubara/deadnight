@@ -157,18 +157,39 @@ GL_JS = """
 """
 
 
+# What a served page gets first in its head so the game adds its probes (`WebProbe.asked` reads `window.deadnight_probe`).
+PROBES_ON = b"<script>window.deadnight_probe=true</script>"
+
+
 class Quiet(http.server.SimpleHTTPRequestHandler):
     extensions_map: ClassVar[dict[str, str]] = {
         **http.server.SimpleHTTPRequestHandler.extensions_map,
         ".wasm": "application/wasm",
     }
+    # A player's page publishes nothing to `window.deadnight` (no snapshot, no probes: #983), so a test that reads it
+    # is served the page with the probes asked for. `serve(folder, probing=False)` serves the page a player opens.
+    probing: ClassVar[bool] = True
 
     def log_message(self, *_args) -> None:  # the run's own report is the log
         pass
 
+    def do_GET(self) -> None:
+        if self.probing and self.path.split("?")[0] in ("/", "/index.html"):
+            html = Path(self.directory, "index.html").read_bytes().replace(b"<head>", b"<head>" + PROBES_ON, 1)
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(html)))
+            self.end_headers()
+            self.wfile.write(html)
+            return
+        super().do_GET()
 
-def serve(folder: Path) -> tuple[http.server.ThreadingHTTPServer, int]:
-    handler = functools.partial(Quiet, directory=str(folder))
+
+def serve(folder: Path, probing: bool = True) -> tuple[http.server.ThreadingHTTPServer, int]:
+    """Serves the export on a free port. With `probing` (the default) the page is served with the probes asked for;
+    pass False to open the page a player opens (`bridge_calls.py`, `heap_soak.py --plain`)."""
+    kind = Quiet if probing else type("PlainQuiet", (Quiet,), {"probing": False})
+    handler = functools.partial(kind, directory=str(folder))
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server, server.server_address[1]
@@ -348,7 +369,7 @@ def main() -> int:
 
     deployed = args.build.startswith(("http://", "https://"))
     server, port = (None, 0) if deployed else serve(Path(args.build))
-    url = args.build if deployed else f"http://127.0.0.1:{port}/index.html"
+    url = probing(args.build) if deployed else f"http://127.0.0.1:{port}/index.html"
     with sync_playwright() as p:
         if args.gpu:  # the installed Chrome, which has the machine's GPU; the headless shell is always software
             flags = UNPACED if args.unpaced else []
