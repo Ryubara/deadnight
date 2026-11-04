@@ -203,7 +203,9 @@ func test_the_crane_never_runs_dry_for_a_player_with_two_hands() -> void:
 	_begin(1)
 	var item := _rules.tuning.economy.item(&"crane_play")
 	var carried: Array[StringName] = (_rules.players[1] as PlayerState).weapons
-	assert_int(item.pool_without(carried).size()).is_equal(item.pool.size() - carried.size())
+	# The start pistol is no prize (`test_crane_pool.gd`): only what is in the pool is taken out of it.
+	var carried_prizes := carried.filter(func(id: StringName) -> bool: return id in item.pool)
+	assert_int(item.pool_without(carried).size()).is_equal(item.pool.size() - carried_prizes.size())
 	# Enough points for every play, whatever the pool's size (a play is `crane_play`'s price).
 	_rules.apply(RulesAction.grant_points(1, item.price * item.pool.size() * 2))
 	for _i in item.pool.size() * 2:

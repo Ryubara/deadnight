@@ -6,7 +6,7 @@
 // clock, so tests move time by hand.
 import { randomBytes, randomUUID } from "node:crypto";
 import type { GameServerInfo } from "./servers.ts";
-import { type MatchSettings, parseSettings } from "./settings.ts";
+import { type MatchSettings, checkSettings } from "./settings.ts";
 
 export interface Member {
   userId: string;
@@ -58,10 +58,13 @@ export type LobbyError =
 
 export class LobbyFailure extends Error {
   readonly reason: LobbyError;
+  /** What the client can be told about the refusal beyond the reason (the setting it sent that is wrong). */
+  readonly detail: string | undefined;
 
-  constructor(reason: LobbyError) {
+  constructor(reason: LobbyError, detail?: string) {
     super(reason);
     this.reason = reason;
+    this.detail = detail;
   }
 }
 
@@ -300,9 +303,9 @@ export class LobbyService {
     const lobby = this.get(id);
     if (lobby.hostId !== userId) throw new LobbyFailure("not_host");
     if (lobby.state === "started") throw new LobbyFailure("already_started");
-    const chosen = parseSettings(settings);
-    if (chosen === null) throw new LobbyFailure("bad_settings");
-    lobby.settings = chosen;
+    const checked = checkSettings(settings);
+    if ("problem" in checked) throw new LobbyFailure("bad_settings", checked.problem);
+    lobby.settings = checked.settings;
     lobby.lastActiveAt = this.now();
     return lobby;
   }
@@ -316,8 +319,12 @@ export class LobbyService {
     if (lobby.hostId !== userId) throw new LobbyFailure("not_host");
     if (lobby.state === "started") throw new LobbyFailure("already_started");
     const given = settings !== undefined && settings !== null;
-    const chosen = given ? parseSettings(settings) : lobby.settings;
-    if (given && chosen === null) throw new LobbyFailure("bad_settings");
+    let chosen = lobby.settings;
+    if (given) {
+      const checked = checkSettings(settings);
+      if ("problem" in checked) throw new LobbyFailure("bad_settings", checked.problem);
+      chosen = checked.settings;
+    }
     const matchId = randomUUID();
     const server = this.hooks.allocate(matchId);
     if (!server) throw new LobbyFailure("no_server");

@@ -7,7 +7,7 @@ script = ExtResource("1_def")
 id = &"pistol"
 display_name = "Revolver"
 kind = 0
-weapon_class = 0
+weapon_class = 1
 wall_tier = 1
 crane_weight = 1
 automatic = false
@@ -22,7 +22,7 @@ penetration = 0
 penetration_falloff = 0.6
 zone_multipliers = Dictionary[StringName, float]({
 &"body": 1.0,
-&"head": 2.5,
+&"head": 1.75,
 &"limb": 0.6
 })
 fire_interval = 0.28

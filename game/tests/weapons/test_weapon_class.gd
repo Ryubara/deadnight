@@ -5,6 +5,7 @@ extends GdUnitTestSuite
 ## move is checked against what it replaced.
 
 const OLD_WALL_TIERS := {
+	&"house_pistol": 1,
 	&"pistol": 1,
 	&"crowbar": 1,
 	&"baseball_bat": 1,

@@ -155,7 +155,7 @@ func test_the_other_player_sees_the_zombie_shatter() -> void:
 	var wire := StatusCatalog.get_def(&"frozen").wire
 	await _until(func() -> bool: return _entry_on(b, id).get("status", 0) == wire)
 	# Another gun's shot kills a frozen zombie (the freeze gun's own bolt only keeps it frozen).
-	_host.server._combat(CombatAction.equip(A, &"pistol"))
+	_host.server._combat(CombatAction.equip(A, &"house_pistol"))
 	await _ticks(40)
 	await _fire_at(a, id)
 	assert_bool(_host.server.sim.zombies.has(id)).is_false()

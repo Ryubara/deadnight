@@ -1,3 +1,5 @@
+# gdlint:disable=max-public-methods
+# The body is the boundary between the night and the view: every method is one of those doors.
 class_name Player
 extends CharacterBody3D
 ## Third-person player node: samples the controls into a command each physics tick, runs the
@@ -172,9 +174,24 @@ func make_puppet() -> void:
 	collision_layer = 0
 	collision_mask = 0
 	set_physics_process(false)
-	var rig := get_node(^"CameraRig") as ThirdPersonCamera
-	rig.set_process(false)
+	make_viewless()
+
+
+## Makes this body one no one looks through, before it is in the tree: a bot's, a remote player's on
+## the server, a puppet. It gives up the view (`release_view`) and its camera rig is not run in
+## every drawn frame (`ThirdPersonCamera.rest`); what reads the rig (the weapon's pose) is told the
+## look in each tick instead (`tick`), and a bot's aim, which the server takes from its command,
+## never read it. `look_through` makes it a view again.
+func make_viewless() -> void:
 	release_view()
+	(get_node(^"CameraRig") as ThirdPersonCamera).rest()
+
+
+## Makes this body the view: its camera is the current one and its rig runs in every drawn frame
+## (the autopilot's body under the shoulder camera).
+func look_through() -> void:
+	camera_rig.resume()
+	camera_rig.camera().make_current()
 
 
 ## Gives up the view: the body's camera does not start `current`, so a body that enters the tree
@@ -313,20 +330,30 @@ func tick(command: PlayerCommand) -> void:
 	PlayerSimulation.simulate(self, state, command, tuning, get_physics_process_delta_time(), dead)
 	rotation.y = state.facing
 	_ease_step(state.stepped_up, get_physics_process_delta_time())
-	camera_rig.aiming = state.aiming
-	camera_rig.side = state.shoulder_side
-	camera_rig.sprinting = state.sprinting
-	camera_rig.crouching = state.crouching
-	camera_rig.downed = _animation != null and _animation.is_downed()
-	camera_rig.ground_speed = state.ground_speed()
-	camera_rig.grounded = state.on_floor
-	camera_rig.track(global_position)
+	if camera_rig.is_resting():
+		_aim_resting_rig(command.yaw, command.pitch)
+	else:
+		camera_rig.aiming = state.aiming
+		camera_rig.side = state.shoulder_side
+		camera_rig.sprinting = state.sprinting
+		camera_rig.crouching = state.crouching
+		camera_rig.downed = _animation != null and _animation.is_downed()
+		camera_rig.ground_speed = state.ground_speed()
+		camera_rig.grounded = state.on_floor
+		camera_rig.track(global_position)
 	if state.jumped:
 		jumped.emit()
 	if state.landed:
 		landed.emit(state.landed_speed)
 	if state.footstep:
 		footstep.emit(state.ground_speed(), state.sprinting)
+
+
+## The look of a rig that is not run (`make_viewless`), from the head: what the weapon's pose reads.
+func _aim_resting_rig(view_yaw: float, view_pitch: float) -> void:
+	camera_rig.aim_along(
+		global_position + Vector3(0.0, tuning.pivot_height, 0.0), view_yaw, view_pitch
+	)
 
 
 ## The body is lifted onto a ledge in one tick (the simulation's business), the model it carries
@@ -355,7 +382,10 @@ func teleport(position: Vector3) -> void:
 	_model.position = _model_rest
 	# Drawn here from the next frame on, not slid in from where it stood.
 	reset_physics_interpolation()
-	camera_rig.snap_to(position)
+	if camera_rig.is_resting():
+		_aim_resting_rig(camera_rig.yaw, camera_rig.pitch)
+	else:
+		camera_rig.snap_to(position)
 
 
 ## Whether the controls act. A gamepad needs no mouse: it plays while the mouse waits for its lock.

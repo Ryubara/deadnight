@@ -29,10 +29,12 @@ func _shoot_first_zombie() -> Dictionary:
 	var ahead := Vector3(0.0, 0.0, -4.0)
 	body.position = _night.state.position() + ahead
 	body.velocity = Vector3.ZERO
+	_night.server.sim.touch()
 	var spot := body.position
 	for _i in 12:
 		body.position = spot
 		body.velocity = Vector3.ZERO
+		_night.server.sim.touch()
 		NightFixture.run(_night, 1, NightFixture.shoot_at(_night, spot))
 		for event in _heard:
 			if event["type"] == &"damage_dealt":
@@ -71,6 +73,7 @@ func test_a_blow_with_the_crowbar_bleeds_as_a_melee_hit() -> void:
 	for _i in 12:
 		body.position = spot
 		body.velocity = Vector3.ZERO
+		_night.server.sim.touch()
 		NightFixture.run(_night, 1, NightFixture.shoot_at(_night, spot))
 	var hits := _heard.filter(
 		func(e: Dictionary) -> bool: return e["type"] == &"damage_dealt" and e["melee"]

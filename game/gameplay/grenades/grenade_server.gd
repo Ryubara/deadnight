@@ -79,6 +79,8 @@ var _cooks: Dictionary[int, Dictionary] = {}
 var _grenades: Array[GrenadeState] = []
 var _next_id: int = 1
 var _targets: Dictionary[int, Dictionary] = {}
+## The `GrenadeAction.targets` revision `_targets` was read at (-1: none, or a list without one).
+var _targets_revision := -1
 var _players: Dictionary[int, Vector3] = {}
 var _events: Array[Dictionary] = []
 
@@ -201,6 +203,7 @@ func from_dict(data: Dictionary) -> StringName:
 	_grenades.clear()
 	for entry: Dictionary in data["grenades"]:
 		_grenades.append(GrenadeState.from_dict(def, entry))
+	_targets_revision = -1
 	_targets.clear()
 	for target_id: int in data["targets"]:
 		_targets[target_id] = (data["targets"][target_id] as Dictionary).duplicate()
@@ -255,6 +258,10 @@ func _dispatch(action: Dictionary) -> void:
 		GrenadeAction.TICK:
 			_tick(action["delta"])
 		GrenadeAction.TARGETS:
+			var revision: int = action.get("revision", -1)
+			if revision >= 0 and revision == _targets_revision:
+				return
+			_targets_revision = revision
 			_targets.clear()
 			for target: Dictionary in action["list"]:
 				_targets[target["id"]] = {

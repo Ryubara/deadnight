@@ -16,6 +16,11 @@ extends Node
 ##   within 7.5 m of the pack.
 ## - `stampede`: Midnight Stampede, runners only: the bots hold where they are and do not run.
 ##
+## `--rigs=run` runs the hosted bots' camera rigs in every drawn frame as before #938 (a rig no one
+## looks through now rests and is told the look in each tick), for a before and after of the pose;
+## the default is `--rigs=rest`. `--view=bot` films the bot of seat 2 from beside and behind it
+## (its weapon's pose is what the rig change touches) instead of through the old autopilot's camera.
+##
 ## Not part of the game. Run with Movie Maker through the kit's `gds godot`, so no window takes the
 ## person's keyboard:
 ## `gds godot -- --path game res://tests/captures/bots_combat.tscn --fixed-fps 10
@@ -33,6 +38,7 @@ var _host := BotHost.new()
 var _probe: WorldProbe
 var _scenario := "boss"
 var _staged := {}
+var _side_camera: Camera3D
 var _pack_made := false
 
 
@@ -53,11 +59,28 @@ func _ready() -> void:
 	await _ticks(3)
 	_seat_the_hosted_bots()
 	_line_up()
+	if _arg("rigs", "rest") == "rest":
+		# The harness seats its bots without the `bot` flag a hosted bot joins with.
+		for id: int in SEATS:
+			_night.server.body_of(id).make_viewless()
+	if _arg("view", "autopilot") == "bot":
+		_side_camera = Camera3D.new()
+		add_child(_side_camera)
+		_side_camera.make_current()
 	if _scenario == "boss":
 		_night.server.rules.round_number = 4
 	_host.hear(_night.server.rules.apply(RulesAction.skip_break()))
 	_night.state.event_received.connect(_on_event)
 	_night.ticked.connect(_on_tick)
+
+
+func _process(_delta: float) -> void:
+	if _side_camera == null:
+		return
+	var body: Player = _night.server.body_of(SEATS[0])
+	var chest := body.global_position + Vector3(0.0, 1.3, 0.0)
+	_side_camera.global_position = chest + Vector3(1.9, 0.5, 2.6)
+	_side_camera.look_at(chest + Vector3(-1.5, 0.0, -2.0))
 
 
 func _tuning() -> RulesTuning:
