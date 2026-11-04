@@ -65,6 +65,9 @@ var _caption := HudStyle.label(
 )
 var _status := HudStyle.label("", HudStyle.SMALL, tokens.ink_muted, false, HudStyle.TRACK_CAPTION)
 var _gauge := Control.new()
+## The lit segments, in a layer of their own: the low-fuel pulse is this layer's alpha, so the
+## pulse redraws nothing (#948).
+var _lit := Control.new()
 var _time := 0.0
 var _age := 0.0
 ## The presence the layout last took, so a held panel costs no layout.
@@ -85,6 +88,10 @@ func _init() -> void:
 	)
 	panel.custom_minimum_size.x = WIDTH
 	_gauge.draw.connect(_draw_gauge)
+	_lit.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lit.draw.connect(_draw_lit)
+	_gauge.add_child(_lit)
+	_lit.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	panel.body.add_child(_gauge)
 	panel.minimum_size_changed.connect(_fit_panel)
 	add_child(panel)
@@ -105,8 +112,9 @@ func advance(delta: float) -> void:
 			showing = false
 			_age = 0.0
 		_apply()
-	if showing and state != null and state.fuel_low and not UIMotion.reduced:
-		_gauge.queue_redraw()
+	var pulse := _pulse()
+	if not is_equal_approx(_lit.self_modulate.a, pulse):
+		_lit.self_modulate.a = pulse
 
 
 ## How much of the panel shows, 0 to 1: in, held, out.
@@ -187,6 +195,7 @@ func refresh() -> void:
 	panel.accent = tokens.hot if state.fuel_low or state.fuel_empty else tokens.accent
 	panel.lit = 1.0 if state.fuel_empty else 0.0
 	_gauge.queue_redraw()
+	_lit.queue_redraw()
 
 
 func _cut_circuit_words() -> void:
@@ -211,30 +220,47 @@ func _status_word() -> String:
 	return "LOW" if state.fuel_low else "%d%%" % roundi(state.fuel_fraction() * 100.0)
 
 
+## How lit the lit segments are: 1, or a pulse while the fuel is low.
+func _pulse() -> float:
+	if state != null and state.fuel_low and not UIMotion.reduced:
+		return 0.65 + 0.35 * sin(_time * PULSE_RATE)
+	return 1.0
+
+
+func _segment_size() -> Vector2:
+	return Vector2((_gauge.size.x + SEGMENT_GAP) / SEGMENTS - SEGMENT_GAP, SEGMENT_HEIGHT)
+
+
 func _draw_gauge() -> void:
-	var warn := state.fuel_low or state.fuel_empty
-	var pulse := 1.0
-	if state.fuel_low and not UIMotion.reduced:
-		pulse = 0.65 + 0.35 * sin(_time * PULSE_RATE)
-	var lit_colour := tokens.hot if warn else tokens.accent_bright
-	var segment := Vector2((_gauge.size.x + SEGMENT_GAP) / SEGMENTS - SEGMENT_GAP, SEGMENT_HEIGHT)
-	for i in SEGMENTS:
-		var at := Vector2(i * (segment.x + SEGMENT_GAP), 0.0)
-		var on := i < lit_segments
-		var colour := lit_colour if on else tokens.outline
-		colour.a = pulse if on else 1.0
-		_gauge.draw_rect(Rect2(at, segment), colour)
-	_draw_bulbs()
+	var segment := _segment_size()
+	# The dark segments and the bulbs are one command (`HudShapes`); the words go over them.
+	var shapes := HudShapes.new()
+	for i in range(lit_segments, SEGMENTS):
+		shapes.rect(Rect2(Vector2(i * (segment.x + SEGMENT_GAP), 0.0), segment), tokens.outline)
+	_draw_bulbs(shapes)
 
 
-func _draw_bulbs() -> void:
+## The lit segments at full strength; the layer's alpha is the pulse.
+func _draw_lit() -> void:
+	var warn := state != null and (state.fuel_low or state.fuel_empty)
+	var colour := tokens.hot if warn else tokens.accent_bright
+	var segment := _segment_size()
+	var shapes := HudShapes.new()
+	for i in mini(lit_segments, SEGMENTS):
+		shapes.rect(Rect2(Vector2(i * (segment.x + SEGMENT_GAP), 0.0), segment), colour)
+	shapes.flush(_lit)
+
+
+func _draw_bulbs(shapes: HudShapes) -> void:
 	if state.circuits.is_empty():
+		shapes.flush(_gauge)
 		return
 	var font := tokens.text_font(0.0, WORD_TRACKING)
 	var cell_width := _gauge.size.x / float(BULB_COLUMNS)
 	# Centres the capitals on the bulb: half the height between the baseline's ascent and descent.
 	var lift := (font.get_ascent(HudStyle.MIN_TEXT) - font.get_descent(HudStyle.MIN_TEXT)) * 0.5
 	var index := 0
+	var words: Array[Array] = []
 	for circuit_id in _ordered_circuits():
 		var on := lit_circuits.has(circuit_id)
 		var centre := Vector2(
@@ -242,8 +268,15 @@ func _draw_bulbs() -> void:
 			SEGMENT_HEIGHT + BULB_ROWS_TOP + BULB_ROW_PITCH * (index / BULB_COLUMNS)
 		)
 		if on:
-			_gauge.draw_circle(centre, BULB_RADIUS * GLOW_REACH, Color(tokens.accent, 0.2))
-		_gauge.draw_circle(centre, BULB_RADIUS, tokens.accent_bright if on else tokens.outline)
+			shapes.circle(centre, BULB_RADIUS * GLOW_REACH, Color(tokens.accent, 0.2))
+		shapes.circle(centre, BULB_RADIUS, tokens.accent_bright if on else tokens.outline)
+		words.append([centre, circuit_id, on])
+		index += 1
+	shapes.flush(_gauge)
+	for word: Array in words:
+		var centre: Vector2 = word[0]
+		var circuit_id: StringName = word[1]
+		var on: bool = word[2]
 		_gauge.draw_string(
 			font,
 			Vector2(centre.x + BULB_RADIUS + BULB_WORD_GAP, centre.y + lift),
@@ -253,7 +286,6 @@ func _draw_bulbs() -> void:
 			HudStyle.MIN_TEXT,
 			tokens.ink if on else tokens.ink_disabled
 		)
-		index += 1
 
 
 ## The circuits in the order the lot is opened (the signs' own order), unknown ones last.

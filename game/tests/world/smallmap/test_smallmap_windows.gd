@@ -149,7 +149,7 @@ func test_with_every_link_sold_the_map_leads_from_each_window_to_the_hall() -> v
 	var gates := _seated.world.spawn_gates()
 	assert_int(gates.size()).is_equal(WINDOWS)
 	for point: Vector3 in gates:
-		var way := NavigationServer3D.map_get_path(map, point, hall, true)
+		var way := NavigationServer3D.map_get_path(map, point, hall, true, NavLayers.DEAD)
 		var end := way[way.size() - 1] if not way.is_empty() else point
 		(
 			assert_float(Vector2(end.x - hall.x, end.z - hall.z).length())
@@ -308,7 +308,7 @@ func test_an_upper_windows_dead_climb_to_it_from_the_yard() -> void:
 		)
 		var outside := barricade.centre() - barricade.inward() * ASIDE
 		outside.y = barricade.global_position.y
-		var way := NavigationServer3D.map_get_path(map, point, outside, true)
+		var way := NavigationServer3D.map_get_path(map, point, outside, true, NavLayers.DEAD)
 		var end := way[way.size() - 1] if not way.is_empty() else point
 		(
 			assert_float(end.distance_to(outside))
