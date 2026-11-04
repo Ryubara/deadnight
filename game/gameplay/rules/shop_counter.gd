@@ -107,7 +107,7 @@ static func _check(rules: GameRules, player: PlayerState, bought: Quote) -> Game
 		ShopItem.Kind.TONIC:
 			if player.tonics.has(item.id):
 				result = GameRules.BuyResult.ALREADY_OWNED
-			elif player.tonics.size() >= rules.settings.tonic_limit(tuning.economy):
+			elif PerkPlay.held(player) >= rules.settings.tonic_limit(tuning.economy):
 				result = GameRules.BuyResult.LIMIT_REACHED
 		ShopItem.Kind.UPGRADE:
 			if not tuning.upgrade.allows(bought.weapon):

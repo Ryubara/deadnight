@@ -51,6 +51,14 @@ static func is_drinking(player: PlayerState) -> bool:
 	return player != null and player.drinking != &""
 
 
+## How many perks count against the limit: those had and the one in the hand. Nothing else can
+## be bought while a bottle is in the hand (`BuyResult.DRINKING` comes first), so this cannot
+## let a purchase past the limit; it keeps the machine's card honest (a full player is told so
+## while drinking their last one) and a second way to a perk from breaking the limit.
+static func held(player: PlayerState) -> int:
+	return player.tonics.size() + (1 if is_drinking(player) else 0)
+
+
 ## The perk is had: the tonic is on the list and a health tonic raises the most health.
 static func _have(rules: GameRules, player: PlayerState, tonic_id: StringName) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []

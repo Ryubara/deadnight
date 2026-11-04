@@ -81,6 +81,7 @@ legs are free. Not with a grenade cooking in the hand (the press is ignored: the
 | --- | --- | --- |
 | A blow | It hurts as ever; the drink goes on and the perk comes at its end | The genre's: buying a perk mid-fight is a risk you take, not a cancel button |
 | Going down (a blow or forced) | The drink is spilled (`drink_spilled`): no perk, no refund; the bottle falls from the hand | A drink not finished is not a perk had, whatever `lost_on_down` says; the down's own loss applies to the perks had |
+| The limit | The bottle in the hand counts against it (`PerkPlay.held`): a full player at another machine reads the limit card, and a press there is `DRINKING` first (full hands come before the limit in the till's order, `ShopCounter.quote`) | Nothing else can be bought mid-drink, so no path reaches a perk past the limit; a spilled drink gives its place back |
 | The night snapshot | `drinking` and `drink_left` are in it (version 16): a restored night finishes the drink | |
 
 Tested in `tests/rules/test_perk_drink.gd` (the rules), `tests/night/test_night_perk_drink.gd` (a press at a machine,
