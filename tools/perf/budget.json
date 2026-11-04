@@ -1,5 +1,5 @@
 {
-  "case": "round 12, 3x, 4 players (the person and three bots, all holding accounts so the night awards XP as a game server does: --xp=1), the desktop's crowd, played headless at a fixed step",
+  "case": "round 12, 3x, 4 players (the person and three bots, all holding accounts so the night awards XP and follows their challenge boards as a game server does: --xp=1), the desktop's crowd, played headless at a fixed step",
   "round_from": 12,
   "crowd_share": 0.9,
   "min_steady_rows": 15,
@@ -20,10 +20,13 @@
     "pairs": 50
   },
   "max_per_tick": {
-    "xp.gained": 0.12
+    "xp.gained": 0.12,
+    "challenge.advance": 0.18,
+    "challenge.told": 0.01
   },
   "max_label_ratio_of_calibration": {
-    "server.xp": 0.01
+    "server.xp": 0.01,
+    "server.challenges": 0.012
   },
   "max_ratio_of_calibration": {
     "frame_median_ms": 15

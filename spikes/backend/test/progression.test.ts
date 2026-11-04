@@ -522,6 +522,67 @@ test("the challenges slot is an ordinary save: the board's facts, a known schema
   await api.app.close();
 });
 
+// ---- the game server's tracker: it reads a seat's board once, and writes it back in a round report (#1076)
+
+test("a game server reads a seat's challenge board, with its secret and nothing else of the account's saves", async () => {
+  const api = await backend();
+  const ana = await api.discord(1, "ana");
+  const read = (secret: string | null, userId = ana.id) =>
+    api.app.inject({
+      method: "GET",
+      url: `/internal/users/${userId}/saves/challenges`,
+      headers: secret === null ? {} : { authorization: `Bearer ${secret}` },
+    });
+  assert.equal((await read(null)).statusCode, 401);
+  assert.equal((await read("x".repeat(32))).statusCode, 401); // a player's session token is no game server's secret
+  const none = await read(GAME_SECRET); // no board yet: the server starts a fresh one, and only this body says so
+  assert.equal(none.statusCode, 404);
+  assert.deepEqual(none.json(), { error: "not_found" });
+  const board = { dealt_day: api.today(), lifetime: { kills: 40 } };
+  assert.equal((await api.put(ana, envelope(0, board), "challenges")).statusCode, 200);
+  const answer = await read(GAME_SECRET);
+  assert.equal(answer.statusCode, 200);
+  assert.deepEqual(answer.json(), { revision: 1, schemaVersion: 1, data: board });
+  assert.equal((await read(GAME_SECRET, "nobody")).statusCode, 404);
+  // The profile is not on this route (the ticket carries what a server needs of it).
+  assert.equal((await api.app.inject({ method: "GET", url: `/internal/users/${ana.id}/saves/profile`, headers: { authorization: `Bearer ${GAME_SECRET}` } })).statusCode, 404);
+  await api.app.close();
+});
+
+test("a report's board replaces the stored one, and a board that is refused never takes the XP with it", async () => {
+  const api = await backend();
+  const ana = await api.discord(1, "ana");
+  const ben = await api.discord(2, "ben");
+  const board = (kills: number) => ({ schemaVersion: 1, data: { dealt_day: api.today(), lifetime: { kills } } });
+  const first = (await api.report("m1", roundReport(1, [seat(ana.id, 20, { board: board(7), done: ["d_kills"] }), seat(ben.id, 5)]))).json();
+  assert.deepEqual(first.seats.map((s: { board?: string }) => s.board), ["saved", undefined]);
+  assert.deepEqual((await api.get(ana, "challenges")).json(), { revision: 1, schemaVersion: 1, data: board(7).data });
+  assert.equal((await api.get(ben, "challenges")).statusCode, 404); // a seat that reported no board has none made for it
+  assert.deepEqual((await profileOf(api, ana)).data.done, ["d_kills"]); // the finished ids still go to the profile
+
+  // The next round replaces the board, on top of whatever revision the player's own client wrote since.
+  assert.equal((await api.put(ana, envelope(1, { ...board(7).data, swapped: true }), "challenges")).statusCode, 200);
+  const second = (await api.report("m1", roundReport(2, [seat(ana.id, 10, { board: board(19) })]))).json();
+  assert.equal(second.seats[0].board, "saved");
+  assert.deepEqual((await api.get(ana, "challenges")).json(), { revision: 3, schemaVersion: 1, data: board(19).data });
+
+  // The same report again pays nothing and writes the same board (a retry is how a lost board gets through).
+  const again = (await api.report("m1", roundReport(2, [seat(ana.id, 10, { board: board(19) })]))).json();
+  assert.deepEqual([again.seats[0].status, again.seats[0].board], ["duplicate", "saved"]);
+  assert.deepEqual((await api.get(ana, "challenges")).json().data, board(19).data);
+
+  // A board of a version the backend does not know, or one too big, is refused; the XP is paid.
+  const before = (await profileOf(api, ana)).data.xp;
+  const odd = (await api.report("m2", roundReport(1, [seat(ana.id, 30, { board: { schemaVersion: 9, data: {} } })]))).json();
+  assert.deepEqual([odd.seats[0].status, odd.seats[0].credited, odd.seats[0].board], ["paid", 30, "refused"]);
+  const big = (await api.report("m3", roundReport(1, [seat(ana.id, 30, { board: { schemaVersion: 1, data: { pad: "x".repeat(70_000) } } })]))).json();
+  assert.deepEqual([big.seats[0].status, big.seats[0].credited, big.seats[0].board], ["paid", 30, "refused"]);
+  assert.equal((await profileOf(api, ana)).data.xp, before + 60);
+  assert.deepEqual((await api.get(ana, "challenges")).json().data, board(19).data);
+
+  await api.app.close();
+});
+
 // ---- end to end over real sockets: sign in, lobby, handoff, a round report from the game server, a better ticket
 
 test("end to end: a player is handed a game server, the server reports a round, the next ticket carries the level", async () => {
