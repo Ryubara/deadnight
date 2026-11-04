@@ -25,6 +25,9 @@ const ROOMS := [
 	["upstairs", Vector3(-6.3, 3.2, -8.1), Vector3(16.3, 6.65, 4.6), 3.4],
 	["start", Vector3(-0.3, -0.5, 0.0), Vector3(16.3, 3.2, 14.8), 0.0],
 	["side", Vector3(-6.3, -0.5, -8.1), Vector3(16.3, 3.2, 0.0), 0.0],
+	# The side room's south-west alcove under the gallery (the rescue cooler's, #917): open to the room
+	# through its south wall, walled on its west and back sides, the hall's west wall its east.
+	["side", Vector3(-2.6, -0.5, -0.2), Vector3(-0.3, 3.2, 1.35), 0.0],
 ]
 ## The groups whose thin, tall boxes are the walls.
 const WALL_GROUPS := ["Start", "Side", "UpperA", "UpperB"]
