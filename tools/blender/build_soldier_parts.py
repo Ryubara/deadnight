@@ -4,12 +4,13 @@ Run with the pinned Blender, headless:
 
     blender -b --factory-startup -P tools/blender/build_soldier_parts.py -- \
         --soldier <bundle>/models/PpLF4rt4ah.glb --out game/assets/characters/soldier_parts \
-        [--preview <scratch>/previews]
+        [--preview <scratch>/previews] [--preview-mouths greaser,ranger]
 
 Writes `soldier_parts.glb` (CharacterArmature, every Soldier clip, one skinned mesh per part named `<slot>__<part>`),
 `soldier_parts_atlas.png` and `parts.json` (the catalog the game and the customization screen read). `--preview`
 also writes one `<preset>.glb` per starting look (only its parts, its colours baked into the atlas) for
-render_sheet.py. The look schema and the part list are in docs/design/characters.md.
+render_sheet.py; `--preview-mouths` also writes `<preset>__<mouth>.glb` for each mouth of the presets named (and each
+worn by the other character, `<preset>_<body>__<mouth>.glb`), for render_soldier_heads.py. The look schema and the part list are in docs/design/characters.md.
 
 The ladder's pieces (#1078) are in soldier_ladder.py.
 
@@ -65,7 +66,7 @@ FIXED = {
     "metal": "#8f92a0",
     "eye": "#161616",
     "amber": "#d1ab46",
-    "lips": "#b4504c",  # the female Soldier's mouth until #895 (kept: a swatch's cell never moves)
+    "lips": "#b4504c",  # the `open` mouth's tongue (#1061; her mouth until #895)
     "blush": "#e08c7c",  # her cheeks on the "Rosy" face
     "mouth": "#2a1414",  # #895: the mouth, dark like the eyes so it reads on every skin tone at night
     "lens_red": "#c8332e",  # #1078: the Cinema glasses' two lenses
@@ -207,16 +208,31 @@ SLOTS = {
         },
     },
     "arm": {"default": "none", "parts": {"none": "None", "armband": "Armband"}},
-    # The character (#678): the last slot, so the wire's slot order only grows. No mesh of its own: `female` shows
-    # the `<slot>__<part>__female` variant of every part that has one (BODY_VARIANTS), so every outfit fits both.
+    # The character (#678). No mesh of its own: `female` shows the `<slot>__<part>__female` variant of every part that
+    # has one (BODY_VARIANTS), so every outfit fits both.
     "body": {"default": "male", "parts": {"male": "Male", "female": "Female"}},
+    # The mouth (#1061): free to everyone, on every head. Appended after `body`, so the wire's slot order only grows
+    # (CharacterLook version 3). The designs are on docs/research/character-faces.md.
+    "mouth": {
+        "default": "smile",
+        "parts": {
+            "smile": "Smile",
+            "line": "Calm",
+            "grin": "Grin",
+            "open": "Open",
+            "smirk": "Smirk",
+            "oh": "Surprised",
+            "frown": "Frown",
+            "teeth": "Teeth",
+        },
+    },
 }
 HIDES_HAIR = {"helmet", "ballcap", "ranger"}
 HIDES_LEGS = {"coveralls"}  # a one-piece: its legs are part of the top, so the look's trousers do not show
 BODY_SLOT = "body"
 FEMALE = "female"
 # The slots whose every part has a female variant: her face, and the torso and legs shaped by female_shape.
-BODY_VARIANTS = ("head", "torso", "legs")
+BODY_VARIANTS = ("head", "torso", "legs", "mouth")
 # Parts of other slots with a variant of her own: what hangs on her chest (soldier_ladder.female_neck).
 HER_NECK = ("lanyard", "bolo")
 HER_NECK_RIGID = 0.25  # an island of a neck piece smaller than this moves whole
@@ -224,6 +240,9 @@ HER_NECK_RIGID = 0.25  # an island of a neck piece smaller than this moves whole
 LADDER_PARTS = (("torso", "usher"), ("torso", "coveralls"), ("legs", "overalls"), ("feet", "saddle"),
                 ("eyewear", "cinema"), ("headwear", "visor"), ("neck", "lanyard"), ("neck", "bolo"))  # fmt: skip
 # What the face choices are called on her: no beard; freckles and rosy cheeks instead.
+# Slots with no far mesh: a mouth is one of the small pieces a collapse would cut to slivers, and a copy of each would be
+# 16 more hidden mesh nodes on every body in the night, so one mesh shows at every distance.
+WHOLE_FAR = ("mouth",)
 FEMALE_LABELS = {("head", "plain"): "Natural", ("head", "stubble"): "Freckles", ("head", "beard"): "Rosy"}
 # The hair each character starts from, so switching the character in the loadout swaps one for the other.
 BODY_HAIR = {"male": "crew", "female": "bob"}
@@ -1431,7 +1450,7 @@ def her_hair(arm, mat, crown):
 # and with an open-necked top the hood's open ring showed the inside of the head (#895). Each head is now one closed
 # shape: the hood's outside (the convex hull of the kit's hood, face panel and rim, so every hat, hair and pair of
 # glasses sits where it did), a quad sphere pushed out onto it, smooth, with a buzz of hair painted above a cut
-# hairline, and a neck down into the shoulders. The eyes and brows are the kit's; the mouth is new (MOUTH_STYLE).
+# hairline, and a neck down into the shoulders. The eyes and brows are the kit's; the mouth is a part of its own.
 HEAD_SEGS = 6  # quads per cube edge of the head's quad sphere (216 quads; smooth-shaded, no facets show)
 HEAD_RELAX = 2  # smoothing passes over the head's shape
 HEAD_ON_HULL_Z = 1.72  # below this the head stays on the hull (the collar's top ring is on it)
@@ -1444,11 +1463,13 @@ HAIR_TEMPLE_Y = -0.06  # behind this the hairline steps down at the temple
 HAIR_SIDE_Z, HAIR_SLOPE = 1.95, 0.5  # from the temple the line falls 0.5 m a metre towards the nape
 BEARD_Z, BEARD_BACK_Y, BEARD_SIDE_X = 1.74, 0.02, 0.27  # the jaw below the cheeks, and the sideburns up to the hair
 EYE_PROUD = 0.006  # how far the eyes' front stands out of the new face
-# The mouth (#895). The design and the two set aside are on docs/research/character-faces.md.
-MOUTH_STYLE = "smile"
+# The mouths (#895, #1061). The designs are on docs/research/character-faces.md.
 MOUTH_Z = 1.672  # its middle: between the eyes' bottom (1.748) and the chin
 MOUTH_W = {"male": 0.135, FEMALE: 0.115}  # wide enough to read as a mouth past 10 m on a phone
 MOUTH_DEPTH, MOUTH_PROUD = 0.012, 0.004  # into the head, and standing out of it
+MOUTH_INNER_PROUD = 0.0055  # a tongue or teeth stand this far out of the head, just in front of the dark
+MOUTH_LOW = 1.64  # the head's jaw turns under at a crease at z 1.637: a mouth over it sinks into it, whatever its cuts
+DECAL_SAG = 0.0015  # how far a decal's front may sink between its corners
 
 
 def head_hull(body, tags):
@@ -1603,7 +1624,7 @@ def seat_features(features, head):
 
 def decal(p, outline, swatch, head, proud=MOUTH_PROUD, depth=MOUTH_DEPTH):
     """A flat shape on the face: `outline` is (x, z) points round it (front view, counter-clockwise seen from the
-    front); its front stands `proud` out of the face at each point and its back is `depth` inside."""
+    front); its front stands `proud` out of the face all over and its back is `depth` inside."""
     bm = bmesh.new()
     front, back = [], []
     for x, z in outline:
@@ -1611,18 +1632,22 @@ def decal(p, outline, swatch, head, proud=MOUTH_PROUD, depth=MOUTH_DEPTH):
         front.append(bm.verts.new((x, y - proud, z)))
         back.append(bm.verts.new((x, y + depth, z)))
     n = len(outline)
-    bm.faces.new(list(reversed(front)))
+    face = bm.faces.new(list(reversed(front)))
     bm.faces.new(back)
     for i in range(n):
         j = (i + 1) % n
         bm.faces.new((front[i], front[j], back[j], back[i]))
-    # Outward by hand: recalc_face_normals turned this thin a shape inside out (the front culled away).
-    middle = sum((v.co for v in bm.verts), Vector()) / len(bm.verts)
+    # One closed shell, so one test turns it all outward: recalc_face_normals turned this thin a shape inside out (the
+    # front culled away), and face by face from the middle turned the corners of a wide one the wrong way.
     bm.normal_update()
-    for f in bm.faces:
-        if f.normal.dot(f.calc_center_median() - middle) < 0:
+    if face.normal.y > 0:
+        for f in bm.faces:
             f.normal_flip()
     bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method="BEAUTY", ngon_method="BEAUTY")
+    on_face = set(front)
+    hug_face(bm, on_face, head, proud)
+    for f in bm.faces:  # one smooth front: flat, a lamp picked out each triangle of a dark shape
+        f.smooth = all(v in on_face for v in f.verts)
     me = bpy.data.meshes.new("tmp")
     bm.to_mesh(me)
     bm.free()
@@ -1637,44 +1662,125 @@ def decal(p, outline, swatch, head, proud=MOUTH_PROUD, depth=MOUTH_DEPTH):
     return p
 
 
-def mouth_outline(style, width, z=MOUTH_Z):
-    """The mouth seen from the front, (x, z) counter-clockwise. `smile`: an open half-moon, flat on top, round below;
-    `line`: a closed mouth, a bar whose corners turn up; `grin`: the half-moon, wider and shallower."""
-    hw = width / 2
-    if style in ("smile", "grin"):
-        deep = 0.056 if style == "smile" else 0.04
-        top = z + deep * 0.45
-        # From the right corner round the bottom to the left corner, then back along the top: the top line has
-        # points of its own so it follows the face's curve (a straight chord between the corners sank into it).
-        arc = [(hw * math.cos(a), top - deep * math.sin(a)) for a in (math.pi * i / 10 for i in range(11))]
-        return arc + [(-hw + width * i / 6, top) for i in range(1, 6)]
-    if style == "line":
-        n, thick, lift = 6, 0.026, 0.012
-        xs = [-hw + width * i / n for i in range(n + 1)]
-        lower = [(x, z - thick / 2 + lift * (2 * x / width) ** 2) for x in xs]
-        upper = [(x, z + thick / 2 + lift * (2 * x / width) ** 2) for x in reversed(xs)]
-        return lower + upper
+def hug_face(bm, front, head, proud):
+    """Cuts a decal's front wherever its surface comes within DECAL_SAG of where it should stand, and lifts the new
+    corners onto the face: flat between its outline, a wide shape sank behind the head's bulge and the jaw's turn, and
+    skin showed through it (#1061). `front` is the set of its corners, and grows."""
+    from mathutils.bvhtree import BVHTree
+
+    me = head.data
+    tree = BVHTree.FromPolygons([v.co for v in me.vertices], [p.vertices for p in me.polygons])
+
+    def stands(co):
+        """How far `co` stands out of the face."""
+        hit, _n, _i, _d = tree.ray_cast(Vector((co.x, -2.0, co.z)), Vector((0, 1, 0)))
+        return (hit.y if hit else FRONT) - co.y
+
+    least = proud - DECAL_SAG
+    for _ in range(8):
+        low = set()
+        for f in (f for f in bm.faces if all(v in front for v in f.verts)):
+            low.update(e for e in f.edges if stands((e.verts[0].co + e.verts[1].co) / 2) < least)
+            if stands(f.calc_center_median()) < least:
+                low.add(max(f.edges, key=lambda e: e.calc_length()))
+        if not low:
+            return
+        made = bmesh.ops.subdivide_edges(bm, edges=list(low), cuts=1)
+        for v in (g for g in made["geom_inner"] if isinstance(g, bmesh.types.BMVert)):
+            v.co.y -= proud - stands(v.co)
+            front.add(v)
+        bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3])
+    raise ValueError("a decal would not settle on the face")
+
+
+def half_moon(width, deep, z=MOUTH_Z):
+    """An open half-moon, flat on top, round below. From the right corner round the bottom to the left corner, then
+    back along the top: the top line has points of its own so it follows the face's curve (a straight chord between
+    the corners sank into it)."""
+    hw, top = width / 2, z + deep * 0.45
+    arc = [(hw * math.cos(a), top - deep * math.sin(a)) for a in (math.pi * i / 10 for i in range(11))]
+    return arc + [(-hw + width * i / 6, top) for i in range(1, 6)]
+
+
+def bar(width, tall, middle, z=MOUTH_Z, n=8):
+    """A closed mouth: for t from -1 to 1 across it, `tall(t)` high round the height z + `middle(t)`."""
+    ts = [-1 + 2 * i / n for i in range(n + 1)]
+    lower = [(width / 2 * t, z + middle(t) - tall(t) / 2) for t in ts]
+    upper = [(width / 2 * t, z + middle(t) + tall(t) / 2) for t in reversed(ts)]
+    return lower + upper
+
+
+def ellipse(rx, rz, z=MOUTH_Z, n=14):
+    return [(rx * math.cos(2 * math.pi * i / n), z + rz * math.sin(2 * math.pi * i / n)) for i in range(n)]
+
+
+def mouth_layers(style, width):
+    """The mouth seen from the front: [(swatch, outline, proud)], the dark shape first and what stands on it after.
+    Every outline is (x, z) points round it. The dark shape has height, so it stays a mark at 64 px, and the widest
+    stops well short of the cheeks, so no line runs up the side of the face (#895)."""
+    k = width / MOUTH_W["male"]  # her mouths are narrower by this much; their heights stay
+    if style == "smile":
+        return [("mouth", half_moon(width, 0.056), MOUTH_PROUD)]
+    if style == "line":  # calm: a thick bar whose corners turn up a little
+        return [("mouth", bar(width, lambda t: 0.038 * (1 - 0.35 * t**6), lambda t: 0.012 * t**2), MOUTH_PROUD)]
+    if style == "frown":  # flat across the middle, the corners fall
+        return [("mouth", bar(width, lambda t: 0.038 * (1 - 0.35 * t**6), lambda t: 0.008 - 0.026 * t**4), MOUTH_PROUD)]
+    if style == "grin":  # a crescent: wider than the smile, its corners up in points
+        wide = width * 1.22
+        ts = [-1 + 2 * i / 8 for i in range(9)]
+        low = [(wide / 2 * t, MOUTH_Z + 0.032 - 0.062 * (1 - t**2) ** 0.8) for t in ts]
+        top = [(wide / 2 * t, MOUTH_Z + 0.04 - 0.018 * (1 - t**2)) for t in reversed(ts)]
+        return [("mouth", low + top, MOUTH_PROUD)]
+    if style == "open":  # laughing, a tall half-moon with a tongue low in it
+        z = MOUTH_Z + 0.014
+        tongue = ellipse(0.03 * k, 0.012, z - 0.02, 10)
+        return [("mouth", half_moon(width * 0.95, 0.075, z), MOUTH_PROUD), ("lips", tongue, MOUTH_INNER_PROUD)]
+    if style == "smirk":  # lopsided: thin and level at one corner, thick and up at the other
+        return [
+            (
+                "mouth",
+                bar(width * 0.9, lambda t: 0.024 + 0.007 * (t + 1), lambda t: -0.012 + 0.04 * ((t + 1) / 2) ** 2.4),
+                MOUTH_PROUD,
+            )
+        ]
+    if style == "oh":  # a small round "o"
+        return [("mouth", ellipse(0.034 * k, 0.042, MOUTH_Z + 0.012), MOUTH_PROUD)]
+    if style == "teeth":  # bared: a dark rounded bar with a row of four teeth on it
+        layers = [("mouth", bar(width, lambda t: 0.058 * (1 - 0.45 * t**8), lambda t: 0.0), MOUTH_PROUD)]
+        hw, half, gap = width / 2 - 0.014, 0.015, 0.008
+        step = 2 * hw / 4
+        for i in range(4):
+            x0, x1 = -hw + step * i + gap / 2, -hw + step * (i + 1) - gap / 2
+            low, high = MOUTH_Z - half, MOUTH_Z + half
+            layers.append(("white", [(x0, low), (x1, low), (x1, high), (x0, high)], MOUTH_INNER_PROUD))
+        return layers
     raise ValueError(style)
 
 
-def face_extras(kind, female, features, head, arm, mat, style=MOUTH_STYLE):
-    """The parts of a face kept whole in the far level of detail: the mouth, and for her the lashes and the
-    freckles (stubble's place) or rosy cheeks (beard's)."""
+def mouth_part(name, style, female, head, arm, mat):
+    """One mouth on the bare face `head`: the same mesh fits every head of that character, whose shape is one."""
     p = Piece()
-    pts = mouth_outline(style, MOUTH_W[FEMALE if female else "male"])
-    decal(p, pts, "mouth", head)
-    if female:
-        add_lashes(p, features, head)
-        if kind == "stubble":  # freckles: three dots under each eye
-            for side in (-1, 1):
-                for dx, dz in ((0.14, 1.732), (0.175, 1.718), (0.21, 1.734)):
-                    y = face_surface(head, side * dx, dz)
-                    p.add(cube((0.016, 0.012, 0.016)), "skin_shade", at=(side * dx, y + 0.001, dz), bevel=0.0)
-        if kind == "beard":  # rosy cheeks
-            for side in (-1, 1):
-                y = face_surface(head, side * 0.2, 1.715)
-                p.add(cyl(0.04, 0.04, 0.012, 10), "blush", at=(side * 0.2, y + 0.002, 1.715), rot=rx(90),
-                      scale=(1.0, 0.62, 1.0), bevel=0.0)  # fmt: skip
+    for swatch, outline, proud in mouth_layers(style, MOUTH_W[FEMALE if female else "male"]):
+        assert min(z for _x, z in outline) >= MOUTH_LOW, f"{style} crosses the jaw's crease"
+        decal(p, outline, swatch, head, proud=proud)
+    return p.build(name, "Head", arm, mat)
+
+
+def face_extras(kind, features, head, arm, mat):
+    """Her face's small pieces, kept whole in the far level of detail: the lashes and the freckles (stubble's place)
+    or rosy cheeks (beard's)."""
+    p = Piece()
+    add_lashes(p, features, head)
+    if kind == "stubble":  # freckles: three dots under each eye
+        for side in (-1, 1):
+            for dx, dz in ((0.14, 1.732), (0.175, 1.718), (0.21, 1.734)):
+                y = face_surface(head, side * dx, dz)
+                p.add(cube((0.016, 0.012, 0.016)), "skin_shade", at=(side * dx, y + 0.001, dz), bevel=0.0)
+    if kind == "beard":  # rosy cheeks
+        for side in (-1, 1):
+            y = face_surface(head, side * 0.2, 1.715)
+            p.add(cyl(0.04, 0.04, 0.012, 10), "blush", at=(side * 0.2, y + 0.002, 1.715), rot=rx(90),
+                  scale=(1.0, 0.62, 1.0), bevel=0.0)  # fmt: skip
     return p.build("face_extras", "Head", arm, mat)
 
 
@@ -1890,14 +1996,14 @@ def export(path, arm, meshes, images):
 
 def part_entry(s, p, label, tris, tris_far, female):
     """One part in parts.json; `female` holds her variant's meshes, `label_female` what she calls it, `body` the
-    character a hair cut belongs to."""
+    character a hair cut belongs to. A part of a WHOLE_FAR slot has no far mesh: the near one shows at every distance."""
     empty = p == "none" or s == BODY_SLOT
     near = f"{s}__{p}"
     entry = {
         "label": label,
         "mesh": None if empty else near,
         "tris": tris.get(near, 0),
-        "mesh_far": None if empty else near + "__far",
+        "mesh_far": None if empty or s in WHOLE_FAR else near + "__far",
         "tris_far": tris_far.get(near, 0),
     }
     if s == "headwear" and p in HIDES_HAIR:
@@ -1908,7 +2014,8 @@ def part_entry(s, p, label, tris, tris_far, female):
         entry["body"] = HAIR_BODY[p]
     if (s, p) in female:
         her = f"{near}__{FEMALE}"
-        entry[FEMALE] = {"mesh": her, "tris": tris[her], "mesh_far": her + "__far", "tris_far": tris_far[her]}
+        her_far = None if s in WHOLE_FAR else her + "__far"
+        entry[FEMALE] = {"mesh": her, "tris": tris[her], "mesh_far": her_far, "tris_far": tris_far[her]}
     if (s, p) in FEMALE_LABELS:
         entry["label_" + FEMALE] = FEMALE_LABELS[s, p]
     return entry
@@ -1920,7 +2027,7 @@ def main():
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--preview", type=Path, help="also write one .glb per preset here (for render_sheet.py)")
     ap.add_argument("--preview-only", default="", help="comma-separated preset ids: write only these previews")
-    ap.add_argument("--mouth", default=MOUTH_STYLE, help="a mouth design to try (smile, line, grin); ships smile")
+    ap.add_argument("--preview-mouths", default="", help="comma-separated preset ids: also write each mouth on them")
     args = ap.parse_args(sys.argv[sys.argv.index("--") + 1 :])
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -1962,9 +2069,9 @@ def main():
     thin_brows(her_features)
     hull = head_hull(body, tags)
     female = {}  # (slot, part) -> her variant
-    # The far heads decimate the head and its eyes and brows only and take the face's small pieces whole (the
-    # mouth, her lashes and freckles): a collapse turned them into slivers that the glTF round trip dropped (Godot
-    # counted fewer triangles).
+    # The far heads decimate the head and its eyes and brows only and take her face's small pieces whole (her lashes
+    # and freckles): a collapse turned them into slivers that the glTF round trip dropped (Godot counted fewer
+    # triangles). The mouths are parts of their own, whole at every distance (WHOLE_FAR).
     far_base, extras_of = {}, {}
     for pid in SLOTS["head"]["parts"]:
         for her in (False, True):
@@ -1974,17 +2081,27 @@ def main():
             f.data = (her_features if her else features).data.copy()
             bpy.context.collection.objects.link(f)
             seat_features(f, head)
-            extras = face_extras(pid, her, f, head, arm, mat, args.mouth)
+            if pid == next(iter(SLOTS["head"]["parts"])):  # the heads of a character share one shape
+                for mouth in SLOTS["mouth"]["parts"]:
+                    mesh = f"mouth__{mouth}__{FEMALE}" if her else f"mouth__{mouth}"
+                    m = mouth_part(mesh, mouth, her, head, arm, mat)
+                    if her:
+                        female["mouth", mouth] = m
+                    else:
+                        parts["mouth", mouth] = m
+            extras = face_extras(pid, f, head, arm, mat) if her else None
             join(head, f)
             base = head.copy()
             base.data = head.data.copy()
             base.name = base.data.name = name  # far_copy names its copy after this
             bpy.context.collection.objects.link(base)
-            far_base[name], extras_of[name] = base, extras
-            f = extras.copy()
-            f.data = extras.data.copy()
-            bpy.context.collection.objects.link(f)
-            join(head, f)
+            far_base[name] = base
+            if extras:
+                extras_of[name] = extras
+                f = extras.copy()
+                f.data = extras.data.copy()
+                bpy.context.collection.objects.link(f)
+                join(head, f)
             head.name = head.data.name = name
             if her:
                 female["head", pid] = head
@@ -2043,43 +2160,54 @@ def main():
     def look_sum(lk, counts):
         return sum(counts.get(k, 0) for k in shown(lk))
 
-    # Every preset, and each of them worn by the other character, must fit the budgets.
+    # Every preset, each of them worn by the other character, and each of those with every mouth must fit the budgets.
     def worn_both(lk):
         other = {**lk, "parts": {**lk["parts"], BODY_SLOT: "male" if lk["parts"][BODY_SLOT] == FEMALE else FEMALE}}
         return (lk, other)
 
-    looks_checked = {f"{pid}/{i}": lk2 for pid, _n, lk in PRESETS for i, lk2 in enumerate(worn_both(lk))}
-    # Each of the ladder's pieces in the place of its slot's part in every preset, on both: held to the budgets, not
-    # to the far ratio, which stays solved over the presets so a new piece does not recut every far mesh.
+    def with_mouth(lk, mouth):
+        return {**lk, "parts": {**lk["parts"], "mouth": mouth}}
+
+    def every_mouth(lk):
+        return [with_mouth(lk2, m) for lk2 in worn_both(lk) for m in SLOTS["mouth"]["parts"]]
+
+    looks_checked = {f"{pid}/{i}": lk2 for pid, _n, lk in PRESETS for i, lk2 in enumerate(every_mouth(lk))}
+    # Each of the ladder's pieces in the place of its slot's part in every preset, on both, with every mouth: held to
+    # the budgets, not to the far ratio, which stays solved over the presets so a new piece does not recut every far mesh.
     ladder_looks = {
         f"{pid}+{part}/{i}": lk2
         for pid, _n, lk in PRESETS
         for slot, part in LADDER_PARTS
-        for i, lk2 in enumerate(worn_both({**lk, "parts": {**lk["parts"], slot: part}}))
+        for i, lk2 in enumerate(every_mouth({**lk, "parts": {**lk["parts"], slot: part}}))
     }
-    # The far ratio is solved over every look as built and as worn by the other character (#895: the heads' mouths
-    # are kept whole like her face pieces, so they count as they are).
-    extra_tris = {name: kitlib.tris(o) for name, o in extras_of.items()}
+    # The far ratio is solved over every look as built, as worn by the other character and with every mouth (the
+    # mouths and her face pieces are kept whole, so they count as they are).
+    whole_tris = {name: kitlib.tris(o) for name, o in extras_of.items()}
+    mouths = {k for k in by_name if k.split("__")[0] in WHOLE_FAR}
+    mouth_tris = {k: tris[k] for k in mouths}
 
     def with_extras(counts):
-        return {k: v + extra_tris.get(k, 0) for k, v in counts.items()}
+        return {**mouth_tris, **{k: v + whole_tris.get(k, 0) for k, v in counts.items()}}
 
-    far_sources = {**by_name, **far_base}
+    far_sources = {**{k: o for k, o in by_name.items() if k not in mouths}, **far_base}
     far_by_name, far_ratio = far_parts(
         far_sources, lambda counts: {k: look_sum(lk, with_extras(counts)) for k, lk in looks_checked.items()}
     )
-    for name, extras in extras_of.items():
-        far = join(far_by_name[name], extras)
+    for name, base in far_base.items():
+        far = far_by_name[name]
+        if name in extras_of:
+            far = join(far, extras_of[name])
         far.name = far.data.name = f"{name}__far"
-        bpy.data.objects.remove(far_base[name])
-    tris_far = {k: kitlib.tris(o) for k, o in far_by_name.items()}
+        bpy.data.objects.remove(base)
+    tris_far = {k: kitlib.tris(o) for k, o in far_by_name.items()} | mouth_tris
 
     presets = []
     for pid, name, lk in PRESETS:
-        for lk2 in worn_both(lk):
+        for lk2 in every_mouth(lk):
             t, t_far = look_sum(lk2, tris), look_sum(lk2, tris_far)
-            assert t <= BUDGET, f"{pid} ({lk2['parts'][BODY_SLOT]}): {t} tris over the {BUDGET} budget"
-            assert t_far <= FAR_BUDGET, f"{pid} ({lk2['parts'][BODY_SLOT]}): {t_far} far tris over {FAR_BUDGET}"
+            who = f"{pid} ({lk2['parts'][BODY_SLOT]}, {lk2['parts']['mouth']})"
+            assert t <= BUDGET, f"{who}: {t} tris over the {BUDGET} budget"
+            assert t_far <= FAR_BUDGET, f"{who}: {t_far} far tris over {FAR_BUDGET}"
         presets.append({"id": pid, "name": name, **lk, "tris": look_sum(lk, tris), "tris_far": look_sum(lk, tris_far)})
 
     for key, lk2 in ladder_looks.items():
@@ -2124,7 +2252,7 @@ def main():
     (out / "parts.json").write_text(json.dumps(catalog, indent=1) + "\n", encoding="utf-8", newline="\n")
     print("PARTS", json.dumps({"clips": n_clips, "bones": len(arm.data.bones), "tris": tris}))
     print("PRESETS", json.dumps({p["id"]: p["tris"] for p in presets}))
-    print("BOTH", json.dumps({k: [look_sum(lk, tris), look_sum(lk, tris_far)] for k, lk in looks_checked.items()}))
+    print("WORST", json.dumps([max(look_sum(lk, c) for lk in looks_checked.values()) for c in (tris, tris_far)]))
     ladder = [(k, look_sum(lk, tris), look_sum(lk, tris_far)) for k, lk in ladder_looks.items()]
     print("LADDER", json.dumps({"near": max(ladder, key=lambda x: x[1]), "far": max(ladder, key=lambda x: x[2])}))
     print("FAR", json.dumps({"ratio": round(far_ratio, 3), "presets": {p["id"]: p["tris_far"] for p in presets},
@@ -2141,8 +2269,12 @@ def main():
             for lk2 in worn_both(p):
                 suffix = "" if lk2["parts"][BODY_SLOT] == p["parts"][BODY_SLOT] else "_" + lk2["parts"][BODY_SLOT]
                 export(args.preview / f"{p['id']}{suffix}.glb", arm, [by_name[k] for k in shown(lk2)], images=True)
-                keep_far = [far_by_name[k] for k in shown(lk2)]
+                keep_far = [far_by_name.get(k, by_name[k]) for k in shown(lk2)]
                 export(args.preview / f"{p['id']}{suffix}_far.glb", arm, keep_far, images=True)
+                if p["id"] in args.preview_mouths.split(","):
+                    for m in SLOTS["mouth"]["parts"]:
+                        keep = [by_name[k] for k in shown(with_mouth(lk2, m))]
+                        export(args.preview / f"{p['id']}{suffix}__{m}.glb", arm, keep, images=True)
         mat.node_tree.nodes["Image Texture"].image = atlas
 
 

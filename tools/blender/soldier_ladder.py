@@ -330,10 +330,10 @@ def cut_front(o, lib, half, swatch, z=(0.8, 1.44)):
     bm.free()
 
 
-def _button(p, lib, at, r, swatch, back=False):
-    """A flat round button standing on the surface at `at`, facing front or back."""
-    y = at.y + (0.007 if back else -0.007)
-    p.add(lib.cyl(r, r * 0.85, 0.016, 6), swatch, at=(at.x, y, at.z), rot=lib.rx(-90 if back else 90), bevel=0)
+def _button(p, lib, at, r, swatch):
+    """A flat round button standing on the surface at `at`, facing front."""
+    y = at.y - 0.007
+    p.add(lib.cyl(r, r * 0.85, 0.016, 5), swatch, at=(at.x, y, at.z), rot=lib.rx(90), bevel=0)
 
 
 # --- wave one --------------------------------------------------------------------------------------------------------
@@ -350,9 +350,7 @@ def usher_jacket(lib, parts, arm, mat):
         for sx in (-1, 1):
             _button(p, lib, on.front(sx * 0.06, z, 0.0), 0.021, "accent")
     y = on.back(0.0, 1.08, 0.0).y
-    p.add(lib.cube((0.30, 0.03, 0.055)), "accent", at=(0, y + 0.006, 1.08), bevel=0)
-    for sx in (-1, 1):
-        _button(p, lib, Vector((sx * 0.105, y + 0.02, 1.08)), 0.018, "secondary", back=True)
+    p.add(lib.cube((0.20, 0.03, 0.055)), "accent", at=(0, y - 0.004, 1.08), bevel=0)  # wider, the back curves away
     buttons = p.build("usher_buttons", "Torso", arm, mat)
     borrow_skin(buttons, [o], rigid=0.2)
     lib.join(o, buttons)
@@ -427,27 +425,25 @@ def overalls(lib, parts, arm, mat):
     band = [lip(rows[0], 0.0), *rows, lip(rows[-1], 0.0)]
     p = lib.Piece().add(wrap(band), "secondary", bevel=0, smooth=True)
     # The bib: on the trunk from the waist to the chest, the corners cut in at the top.
-    xs = (-1.0, -0.66, -0.33, 0.0, 0.33, 0.66, 1.0)
-    zs = (1.03, 1.09, 1.145, 1.20, 1.255, 1.31, 1.355)
+    xs = (-1.0, -0.5, 0.0, 0.5, 1.0)  # +-0.5 is where her chest stands out
+    zs = (1.03, 1.09, 1.145, 1.20, 1.255, 1.355)
 
     def half(z):
         return 0.19 - 0.05 * lib.ramp(z, 1.05, 1.355)
 
     bib = [[upper.front_over(x * half(z), z, 0.03) for x in xs] for z in zs]
     p.add(panel(bib, 0.05), "secondary", bevel=0, smooth=True)
-    pocket = min(c.y for row in bib[2:5] for c in row[1:6])  # on the bib's most forward point under it
-    p.add(lib.cube((0.17, 0.016, 0.115)), "secondary_shade", at=(0, pocket - 0.004, 1.205), bevel=0)
+    pocket = min(c.y for row in bib[2:5] for c in row[1:4])  # on the bib's most forward point under it
+    p.add(lib.cube((0.17, 0.016, 0.115)), "secondary_shade", at=(0, pocket - 0.012, 1.205), bevel=0)
     # The straps: from the bib's top corners over the shoulder to the waist at the back.
     for sx in (-1, 1):
         path, normals = [], []
         stops = [
             (0.135, 12),
-            (0.15, 40),
             (0.165, 66),
             (0.175, 90),
             (0.165, 118),
             (0.15, 140),
-            (0.13, 158),
             (0.115, 170),
         ]
         for x, deg in stops:
@@ -462,7 +458,7 @@ def overalls(lib, parts, arm, mat):
         tail = max((upper.back(sx * x, 1.05, STAND_OFF + 0.012) for x in (0.07, 0.105, 0.14)), key=lambda c: c.y)
         tail.x = sx * 0.105
         p.add(ribbon([*path, tail], [*normals, Vector((0, 1, 0))], STRAP_WIDTH, 0.016), "secondary", bevel=0)
-        clip = min(c.y for row in bib[5:] for c in row)
+        clip = min(c.y for row in bib[4:] for c in row)
         p.add(lib.cube((0.085, 0.022, 0.06)), "amber", at=(sx * 0.135, clip - 0.005, 1.33), bevel=0)
     top = p.build("overall_bib", "Torso", arm, mat)
     borrow_skin(top, [jacket, trousers], rigid=0.16)
@@ -500,7 +496,6 @@ def press_lanyard(lib, parts, arm, mat):
     card.add(lib.cube((0.125, 0.006, 0.045)), "black", at=(0, y - 0.0075, 1.22), bevel=0)
     card.add(lib.cube((0.05, 0.006, 0.05)), "grey", at=(-0.03, y - 0.0075, 1.155), bevel=0)
     card.add(lib.cube((0.038, 0.006, 0.014)), "accent", at=(0.035, y - 0.0075, 1.17), bevel=0)
-    card.add(lib.cube((0.038, 0.006, 0.014)), "grey", at=(0.035, y - 0.0075, 1.14), bevel=0)
     return p, card
 
 
@@ -515,7 +510,7 @@ def bolo_tie(lib, parts, arm, mat):
         end = Vector((sx * 0.032, PART_FRONT + 0.004, 1.21))
         path = [slide + Vector((sx * 0.016, 0.004, -0.05)), end]  # from under the slide: on her it would cross it
         p.add(ribbon(path, [Vector((0, -1, 0))] * 2, 0.016, 0.014), "black", bevel=0)
-        p.add(lib.cyl(0.015, 0.009, 0.05, 6), "metal", at=(end.x, end.y, end.z - 0.024), rot=lib.rx(180), bevel=0)
+        p.add(lib.cyl(0.015, 0.009, 0.05, 4), "metal", at=(end.x, end.y, end.z - 0.024), rot=lib.rx(180), bevel=0)
     hard = lib.Piece()
     hexagon = [(0.052 * math.cos(a), slide.z + 0.062 * math.sin(a)) for a in (math.tau * i / 8 for i in range(8))]
     hard.add(plate(hexagon, slide.y - 0.012, 0.022), "metal", bevel=0)
@@ -603,7 +598,7 @@ def saddle_shoes(lib, parts, arm, mat):
     on = Surface(o)
     for side, sx in (("L", 1), ("R", -1)):
         laces = lib.Piece()
-        for y in (-0.095, -0.06, -0.025):
+        for y in (-0.085, -0.04):
             x = sx * 0.205
             hit = on.hit((x, y, 1.0), (0, 0, -1))
             laces.add(lib.cube((0.075, 0.014, 0.012)), "white", at=(x, y, hit.z + 0.003), rot=lib.rx(20), bevel=0)

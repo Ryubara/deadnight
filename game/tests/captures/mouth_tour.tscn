@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/captures/mouth_tour.gd" id="1"]
+
+[node name="MouthTour" type="Node"]
+script = ExtResource("1")

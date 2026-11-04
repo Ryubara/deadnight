@@ -13,7 +13,8 @@ const MODEL := DIR + "soldier_parts.glb"
 const ATLAS := DIR + "soldier_parts_atlas.png"
 ## Each part has a far level of detail, `<slot>__<part>__far` (#139): the near mesh shows up to
 ## this many metres from the camera and the far one beyond, by visibility ranges (the zombies'
-## distance, `ZombieModels.FAR_FROM`). Same material, so nothing changes colour at the swap.
+## distance, `ZombieModels.FAR_FROM`). Same material, so nothing changes colour at the swap. A part
+## with no far mesh (a mouth, too small to cut) shows at every distance.
 const FAR_SUFFIX := "__far"
 const FAR_FROM := 18.0
 
@@ -157,9 +158,14 @@ static func apply(model: Node, look: Dictionary) -> int:
 ## The triangles a dressed model shows past `FAR_FROM`.
 static func far_triangles(model: Node) -> int:
 	var tris := 0
-	for mi: MeshInstance3D in far_meshes(model).values():
+	var far := far_meshes(model)
+	for mi: MeshInstance3D in far.values():
 		if mi.visible:
 			tris += triangles(mi.mesh)
+	var near := part_meshes(model)
+	for mesh_name: String in near:
+		if not far.has(mesh_name) and (near[mesh_name] as MeshInstance3D).visible:
+			tris += triangles((near[mesh_name] as MeshInstance3D).mesh)
 	return tris
 
 

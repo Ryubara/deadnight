@@ -87,8 +87,8 @@ func test_the_neck_pieces_have_her_variant() -> void:
 		)
 
 
-## Every piece in the place of its slot's part in every preset, on both bodies, counted as Godot
-## draws it, near and far, with one draw call a visible part and one material.
+## Every piece in the place of its slot's part in every preset, on both bodies, with every mouth,
+## counted as Godot draws it, near and far, with one draw call a visible part and one material.
 func test_every_piece_in_every_preset_stays_within_the_budgets() -> void:
 	var cat := SoldierLook.catalog()
 	var model := SoldierLook.instantiate()
@@ -99,16 +99,19 @@ func test_every_piece_in_every_preset_stays_within_the_budgets() -> void:
 	for preset: Dictionary in SoldierLook.presets():
 		for key: StringName in PIECES:
 			for body in BODIES:
-				var look: Dictionary = preset.duplicate(true)
-				look.parts[String(key).get_slice("/", 0)] = String(key).get_slice("/", 1)
-				look.parts["body"] = String(body)
-				var tris := SoldierLook.apply(model, look)
-				var far := SoldierLook.far_triangles(model)
-				worst = maxi(worst, tris)
-				worst_far = maxi(worst_far, far)
-				if tris > int(cat.budget) or far > int(cat.far_budget):
-					fails.append("%s %s %s: %d, far %d" % [preset.id, key, body, tris, far])
-				if SoldierLook.visible_meshes(look).size() > 8:
-					fails.append("%s %s %s: over eight parts" % [preset.id, key, body])
+				for mouth: Dictionary in LookCatalog.options(&"mouth"):
+					var look: Dictionary = preset.duplicate(true)
+					look.parts[String(key).get_slice("/", 0)] = String(key).get_slice("/", 1)
+					look.parts["body"] = String(body)
+					look.parts["mouth"] = String(mouth["id"])
+					var tris := SoldierLook.apply(model, look)
+					var far := SoldierLook.far_triangles(model)
+					worst = maxi(worst, tris)
+					worst_far = maxi(worst_far, far)
+					var tag := "%s %s %s %s" % [preset.id, key, body, mouth["id"]]
+					if tris > int(cat.budget) or far > int(cat.far_budget):
+						fails.append("%s: %d, far %d" % [tag, tris, far])
+					if SoldierLook.visible_meshes(look).size() > 9:
+						fails.append("%s: over nine parts" % tag)
 	print("LADDER budgets: worst %d near, %d far" % [worst, worst_far])
 	assert_array(fails).is_empty()

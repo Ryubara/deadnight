@@ -4,7 +4,7 @@ extends RefCounted
 ## an exported build hides the `.tres` files behind `.remap` (as `WeaponCatalog` does).
 
 const DIR := "res://gameplay/weapons/status/defs/"
-const IDS: Array[StringName] = [&"frozen", &"chilled"]
+const IDS: Array[StringName] = [&"frozen", &"chilled", &"burning"]
 
 static var _cache: Dictionary[StringName, StatusDef] = {}
 

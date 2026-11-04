@@ -7,8 +7,9 @@ extends RefCounted
 ## PLAYER_LOOK  S->C  u8 type=9, u8 player_id, u8 seat, then the look: to everyone when a player's
 ##                    look is accepted, and to a new player for each player already in the lot
 ##
-## A look is 16 bytes (version 2: ten part slots, the character's last, and five colours), so a join
-## costs 17 bytes up and 19 bytes per player down.
+## A look is 17 bytes (version 3: eleven part slots, the mouth's last, and five colours), so a join
+## costs 18 bytes up and 20 bytes per player down. A look of version 2 (16 bytes, no mouth) still
+## decodes: `CharacterLook.from_bytes` gives it the first mouth.
 
 enum Type { LOOK = 8, PLAYER_LOOK = 9 }
 
@@ -31,14 +32,13 @@ static func player_look(player_id: int, seat: int, value: CharacterLook) -> Pack
 static func decode(data: PackedByteArray) -> Dictionary:
 	if data.is_empty():
 		return {}
-	var look_size := CharacterLook.wire_size()
 	match data[0]:
 		Type.LOOK:
-			if data.size() != 1 + look_size:
+			if not CharacterLook.fits_wire(data.size() - 1):
 				return {}
 			return {"type": Type.LOOK, "look": CharacterLook.from_bytes(data.slice(1))}
 		Type.PLAYER_LOOK:
-			if data.size() != 3 + look_size:
+			if not CharacterLook.fits_wire(data.size() - 3):
 				return {}
 			return {
 				"type": Type.PLAYER_LOOK,

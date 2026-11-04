@@ -66,9 +66,9 @@ learned:
   here too, and the controller only adds a clip a library lacks. `FILE_CLIPS` lists the 39 this file carries; they
   rebuilt sample for sample identical to the committed ones.
 - **Her looks moved the far ratio** (0.333 to 0.299) of every part: the ratio is now solved over his eight looks, and
-  every look of both is asserted against the far budget. Her face pieces are joined whole into her far heads (a
-  collapse cut the lashes to slivers that the glTF round trip dropped, so Godot counted fewer triangles than
-  `parts.json`).
+  every look of both is asserted against the far budget (every mouth too, since #1061: 0.269). Her face pieces are
+  joined whole into her far heads (a collapse cut the lashes to slivers that the glTF round trip dropped, so Godot
+  counted fewer triangles than `parts.json`).
 - **The first bob sat inside the collar** in the grenade throw (26 of its vertices, against 17 for his ponytail): its
   ends at z 1.66 were r 0.32, inside the collar's top (r 0.36 at z 1.68). Flared to r 0.40 at z 1.72: 13.
 - **A higher chest took the forearm of the sprint carries** (the shotgun carry laid it 14 mm deeper into her chest
@@ -176,6 +176,9 @@ What broke on the way:
   weights, from the sleeve only (`on_sleeve`), and the ray that seats it starts under the collar's flare.
 - **The ladder's looks would have recut every far mesh** (ratio 0.284 to 0.235): the ratio stays solved over the
   presets, and each new piece is asserted against the far budget instead.
+- **The mouths (#1088) took three pieces over the budget**: held with every mouth, the widest adds 80 triangles, and
+  Usher's jacket, the Overalls and the Saddle shoes went 6 to 57 over in Pit crew. They lost the back's two buttons,
+  a bib column and row, two strap stops and a pair of lace bars; nothing that sets how they sit.
 
 The arms (`test_the_ladders_clothes_keep_the_arms_out_of_the_body`, every clip at eight frames): the bib takes no arm
 past the tolerance on either body. One vertex of the left forearm goes 40 mm in at one frame of `Strafe_Left` in the

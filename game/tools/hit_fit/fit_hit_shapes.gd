@@ -42,6 +42,8 @@ const PARTS := {
 	ZombieMeshProbe.Piece.THIGH_R: 3,
 	ZombieMeshProbe.Piece.SHIN_R: 3,
 }
+## A climb moves the body a metre and more round its origin: this many times `PARTS` for its sets.
+const CLIMB_PARTS := 2
 ## The clips of each pose of a body; every look has the walker's poses but the crawler, which lies
 ## on the ground, and the headliner, which has clips of its own. `extra/` ones are from
 ## `ZombieRig.EXTRA_CLIPS_FILE`.
@@ -52,9 +54,13 @@ const WALKER_POSES := {
 	&"strike": ["Punch"],
 	&"stagger": ["HitReact"],
 	&"tear": ["extra/Tear_Boards"],
+	&"climb": ["extra/Climb_Sill"],
 }
 const CRAWLER_POSES := {
-	&"move": ["Crawl"], &"strike": ["extra/Crawl_Attack"], &"stagger": ["extra/Crawl_Stagger"]
+	&"move": ["Crawl"],
+	&"strike": ["extra/Crawl_Attack"],
+	&"stagger": ["extra/Crawl_Stagger"],
+	&"climb": ["extra/Crawl_Climb"],
 }
 const HEADLINER_POSES := {
 	&"move": ["Idle", "Boss_Walk"],
@@ -108,7 +114,8 @@ func _initialize() -> void:
 			var id := StringName("%s.%s" % [body, pose])
 			if not _only.is_empty() and not _only.has(String(id)):
 				continue
-			sets[id] = _fit(probe, poses[pose], unit, body == &"headliner")
+			var parts := CLIMB_PARTS if pose == ZombiePose.CLIMB else 1
+			sets[id] = _fit(probe, poses[pose], unit, body == &"headliner", parts)
 			if _check:
 				print(id, ": ", _stats(probe, poses[pose], sets[id], unit))
 		probe.free_model()
@@ -118,7 +125,9 @@ func _initialize() -> void:
 
 
 ## The shapes of one pose, in units of the look's height: `{shapes: [{zone, a, b, r}], bound}`.
-func _fit(probe: ZombieMeshProbe, clips: Array, unit: float, weak: bool) -> Dictionary:
+func _fit(
+	probe: ZombieMeshProbe, clips: Array, unit: float, weak: bool, parts_times: int = 1
+) -> Dictionary:
 	# One cloud per piece per sampled moment.
 	var moments := {}
 	for piece in ZombieMeshProbe.Piece.values():
@@ -138,7 +147,7 @@ func _fit(probe: ZombieMeshProbe, clips: Array, unit: float, weak: bool) -> Dict
 			zone = Hitbox.HEAD
 		elif piece == ZombieMeshProbe.Piece.TORSO:
 			zone = Hitbox.BODY
-		var parts: int = PARTS[piece]
+		var parts: int = PARTS[piece] * parts_times
 		if _parts_override > 0 and piece != ZombieMeshProbe.Piece.HEAD:
 			parts = _parts_override
 		for group in _cluster(moments[piece], parts):

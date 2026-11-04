@@ -5,13 +5,15 @@ Run with the pinned Blender, headless, from the repository root:
     blender -b --factory-startup -P tools/blender/render_soldier_heads.py -- \
         --model "Greaser=<previews>/greaser.glb" --model "Pit crew=<previews>/pit_crew.glb" \
         [--turns 0,35,90,180] [--pose Idle@0] [--target 1.38] [--distance 1.6] [--elevation 8] [--cell 360] \
-        [--small 24] --out <workspace>/scratch/deadnight/<branch>/heads.png
+        [--small 24] [--across 4] --out <workspace>/scratch/deadnight/<branch>/heads.png
 
 Each `--model` is Title=path.glb (build_soldier_parts.py --preview writes one per preset). The model stands at the
 game's scale (0.8) in a clip frame; a perspective camera looks at `--target` (metres above the floor) from
 `--distance` metres, `--elevation` degrees up, turned by each `--turns` angle (0 is the front). Back faces are culled
 (Workbench draws the inside of an open shell otherwise, which hid the see-through neck of #895). `--small N` adds a
-column per turn drawn at N pixels a head and scaled back up: the face at the night's distance on a phone.
+column per turn drawn at N pixels a head and scaled back up: the face at the night's distance on a phone. `--across N`
+puts N models side by side on each line of the sheet (each mouth on four faces, #1061), and `--small-distance` moves
+the camera back for the small column (the close one can then fill its cell).
 """
 
 import argparse
@@ -60,6 +62,8 @@ def main():
     ap.add_argument("--elevation", type=float, default=8.0)
     ap.add_argument("--cell", type=int, default=360)
     ap.add_argument("--small", type=int, default=0, help="also each turn at this many pixels, scaled back up")
+    ap.add_argument("--small-distance", type=float, default=0.0, help="the small column's camera, if not --distance")
+    ap.add_argument("--across", type=int, default=1, help="models side by side on a line of the sheet")
     ap.add_argument("--out", required=True, type=Path)
     args = ap.parse_args(argv)
     turns = [float(t) for t in args.turns.split(",")]
@@ -104,7 +108,8 @@ def main():
         row = [render(scene, cam, target, args.distance, args.elevation, t, args.cell, tmp) for t in turns]
         if args.small:
             for t in turns[:2]:
-                small = render(scene, cam, target, args.distance, args.elevation, t, args.small, tmp)
+                far = args.small_distance or args.distance
+                small = render(scene, cam, target, far, args.elevation, t, args.small, tmp)
                 k = math.ceil(args.cell / args.small)
                 big = np.repeat(np.repeat(small, k, axis=0), k, axis=1)[: args.cell, : args.cell]
                 row.append(big)
@@ -113,7 +118,8 @@ def main():
             bpy.data.objects.remove(o)
         for a in [a for a in bpy.data.actions if a not in acts]:
             bpy.data.actions.remove(a)
-    sheet = np.concatenate(rows[::-1], axis=0)
+    lines = [np.concatenate(rows[i : i + args.across], axis=1) for i in range(0, len(rows), args.across)]
+    sheet = np.concatenate(lines[::-1], axis=0)
     img = bpy.data.images.new("sheet", sheet.shape[1], sheet.shape[0], alpha=True)
     img.pixels = sheet.ravel()
     img.filepath_raw = str(args.out)

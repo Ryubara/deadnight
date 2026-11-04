@@ -107,3 +107,15 @@ func test_every_variant_plays_the_shared_library() -> void:
 func test_a_variant_name_picks_its_file() -> void:
 	assert_str(ZombieModels.scene(&"walker").resource_path).ends_with("zombie_walker.glb")
 	assert_str(ZombieModels.scene(&"brute").resource_path).ends_with("zombie_brute.glb")
+
+
+## The state machine is one resource for every walker's tree (a tree keeps its own playback): a
+## machine each cost 46 objects a body and took the night's object budget over its limit (#991).
+func test_walkers_share_one_state_machine_and_each_keeps_its_own_state() -> void:
+	var first := _view()
+	var second := _view()
+	assert_bool(first.tree.tree_root == second.tree.tree_root).is_true()
+	first.apply(_entry(ZombieBody.Mode.CHASE, 2.0), 0.033)
+	second.apply(_entry(ZombieBody.Mode.ATTACK), 0.033)
+	assert_str(_state(first)).is_equal(ZombieRig.STATE_MOVE)
+	assert_str(_state(second)).is_equal(ZombieRig.STATE_ATTACK)

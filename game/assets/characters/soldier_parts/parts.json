@@ -198,7 +198,7 @@
  },
  "budget": 6000,
  "far_budget": 2000,
- "far_ratio": 0.284,
+ "far_ratio": 0.269,
  "clips": [
   "Aim_Melee",
   "Aim_Pistol",
@@ -284,42 +284,42 @@
     "plain": {
      "label": "Clean-shaven",
      "mesh": "head__plain",
-     "tris": 824,
+     "tris": 764,
      "mesh_far": "head__plain__far",
-     "tris_far": 276,
+     "tris_far": 204,
      "female": {
       "mesh": "head__plain__female",
-      "tris": 896,
+      "tris": 836,
       "mesh_far": "head__plain__female__far",
-      "tris_far": 348
+      "tris_far": 276
      },
      "label_female": "Natural"
     },
     "stubble": {
      "label": "Stubble",
      "mesh": "head__stubble",
-     "tris": 922,
+     "tris": 862,
      "mesh_far": "head__stubble__far",
-     "tris_far": 304,
+     "tris_far": 230,
      "female": {
       "mesh": "head__stubble__female",
-      "tris": 968,
+      "tris": 908,
       "mesh_far": "head__stubble__female__far",
-      "tris_far": 420
+      "tris_far": 348
      },
      "label_female": "Freckles"
     },
     "beard": {
      "label": "Beard",
      "mesh": "head__beard",
-     "tris": 922,
+     "tris": 862,
      "mesh_far": "head__beard__far",
-     "tris_far": 304,
+     "tris_far": 230,
      "female": {
       "mesh": "head__beard__female",
-      "tris": 968,
+      "tris": 908,
       "mesh_far": "head__beard__female__far",
-      "tris_far": 420
+      "tris_far": 348
      },
      "label_female": "Rosy"
     }
@@ -349,7 +349,7 @@
      "mesh": "hair__pompadour",
      "tris": 406,
      "mesh_far": "hair__pompadour__far",
-     "tris_far": 90,
+     "tris_far": 84,
      "body": "male"
     },
     "flattop": {
@@ -365,14 +365,14 @@
      "mesh": "hair__ponytail",
      "tris": 278,
      "mesh_far": "hair__ponytail__far",
-     "tris_far": 54
+     "tris_far": 50
     },
     "bob": {
      "label": "Bob",
      "mesh": "hair__bob",
      "tris": 424,
      "mesh_far": "hair__bob__far",
-     "tris_far": 120,
+     "tris_far": 112,
      "body": "female"
     },
     "curls": {
@@ -380,7 +380,7 @@
      "mesh": "hair__curls",
      "tris": 448,
      "mesh_far": "hair__curls__far",
-     "tris_far": 102,
+     "tris_far": 96,
      "body": "female"
     },
     "bun": {
@@ -388,7 +388,7 @@
      "mesh": "hair__bun",
      "tris": 354,
      "mesh_far": "hair__bun__far",
-     "tris_far": 76,
+     "tris_far": 70,
      "body": "female"
     }
    }
@@ -408,7 +408,7 @@
      "mesh": "headwear__helmet",
      "tris": 1136,
      "mesh_far": "headwear__helmet__far",
-     "tris_far": 322,
+     "tris_far": 305,
      "hides_hair": true
     },
     "pillbox": {
@@ -438,7 +438,7 @@
      "mesh": "headwear__ranger",
      "tris": 292,
      "mesh_far": "headwear__ranger__far",
-     "tris_far": 82,
+     "tris_far": 78,
      "hides_hair": true
     },
     "visor": {
@@ -458,12 +458,12 @@
      "mesh": "torso__vest",
      "tris": 3117,
      "mesh_far": "torso__vest__far",
-     "tris_far": 837,
+     "tris_far": 790,
      "female": {
       "mesh": "torso__vest__female",
       "tris": 3117,
       "mesh_far": "torso__vest__female__far",
-      "tris_far": 834
+      "tris_far": 792
      }
     },
     "jacket": {
@@ -471,12 +471,12 @@
      "mesh": "torso__jacket",
      "tris": 2651,
      "mesh_far": "torso__jacket__far",
-     "tris_far": 696,
+     "tris_far": 659,
      "female": {
       "mesh": "torso__jacket__female",
       "tris": 2651,
       "mesh_far": "torso__jacket__female__far",
-      "tris_far": 700
+      "tris_far": 659
      }
     },
     "shirt": {
@@ -484,12 +484,12 @@
      "mesh": "torso__shirt",
      "tris": 2382,
      "mesh_far": "torso__shirt__far",
-     "tris_far": 626,
+     "tris_far": 593,
      "female": {
       "mesh": "torso__shirt__female",
       "tris": 2382,
       "mesh_far": "torso__shirt__female__far",
-      "tris_far": 625
+      "tris_far": 592
      }
     },
     "rolled": {
@@ -497,12 +497,12 @@
      "mesh": "torso__rolled",
      "tris": 2614,
      "mesh_far": "torso__rolled__far",
-     "tris_far": 691,
+     "tris_far": 651,
      "female": {
       "mesh": "torso__rolled__female",
       "tris": 2614,
       "mesh_far": "torso__rolled__female__far",
-      "tris_far": 692
+      "tris_far": 655
      }
     },
     "tank": {
@@ -510,12 +510,12 @@
      "mesh": "torso__tank",
      "tris": 2382,
      "mesh_far": "torso__tank__far",
-     "tris_far": 629,
+     "tris_far": 595,
      "female": {
       "mesh": "torso__tank__female",
       "tris": 2382,
       "mesh_far": "torso__tank__female__far",
-      "tris_far": 630
+      "tris_far": 597
      }
     },
     "letterman": {
@@ -523,25 +523,25 @@
      "mesh": "torso__letterman",
      "tris": 2707,
      "mesh_far": "torso__letterman__far",
-     "tris_far": 709,
+     "tris_far": 671,
      "female": {
       "mesh": "torso__letterman__female",
       "tris": 2707,
       "mesh_far": "torso__letterman__female__far",
-      "tris_far": 715
+      "tris_far": 673
      }
     },
     "usher": {
      "label": "Usher's jacket",
      "mesh": "torso__usher",
-     "tris": 3025,
+     "tris": 2961,
      "mesh_far": "torso__usher__far",
-     "tris_far": 786,
+     "tris_far": 723,
      "female": {
       "mesh": "torso__usher__female",
-      "tris": 3025,
+      "tris": 2961,
       "mesh_far": "torso__usher__female__far",
-      "tris_far": 786
+      "tris_far": 729
      }
     },
     "coveralls": {
@@ -549,13 +549,13 @@
      "mesh": "torso__coveralls",
      "tris": 3424,
      "mesh_far": "torso__coveralls__far",
-     "tris_far": 952,
+     "tris_far": 898,
      "hides_legs": true,
      "female": {
       "mesh": "torso__coveralls__female",
       "tris": 3424,
       "mesh_far": "torso__coveralls__female__far",
-      "tris_far": 960
+      "tris_far": 905
      }
     }
    }
@@ -568,12 +568,12 @@
      "mesh": "legs__trousers",
      "tris": 500,
      "mesh_far": "legs__trousers__far",
-     "tris_far": 141,
+     "tris_far": 134,
      "female": {
       "mesh": "legs__trousers__female",
       "tris": 500,
       "mesh_far": "legs__trousers__female__far",
-      "tris_far": 141
+      "tris_far": 133
      }
     },
     "cuffed": {
@@ -581,12 +581,12 @@
      "mesh": "legs__cuffed",
      "tris": 500,
      "mesh_far": "legs__cuffed__far",
-     "tris_far": 141,
+     "tris_far": 134,
      "female": {
       "mesh": "legs__cuffed__female",
       "tris": 500,
       "mesh_far": "legs__cuffed__female__far",
-      "tris_far": 141
+      "tris_far": 133
      }
     },
     "shorts": {
@@ -594,12 +594,12 @@
      "mesh": "legs__shorts",
      "tris": 500,
      "mesh_far": "legs__shorts__far",
-     "tris_far": 142,
+     "tris_far": 133,
      "female": {
       "mesh": "legs__shorts__female",
       "tris": 500,
       "mesh_far": "legs__shorts__female__far",
-      "tris_far": 142
+      "tris_far": 134
      }
     },
     "striped": {
@@ -607,25 +607,25 @@
      "mesh": "legs__striped",
      "tris": 628,
      "mesh_far": "legs__striped__far",
-     "tris_far": 177,
+     "tris_far": 167,
      "female": {
       "mesh": "legs__striped__female",
       "tris": 628,
       "mesh_far": "legs__striped__female__far",
-      "tris_far": 178
+      "tris_far": 167
      }
     },
     "overalls": {
      "label": "Overalls",
      "mesh": "legs__overalls",
-     "tris": 920,
+     "tris": 844,
      "mesh_far": "legs__overalls__far",
-     "tris_far": 256,
+     "tris_far": 217,
      "female": {
       "mesh": "legs__overalls__female",
-      "tris": 920,
+      "tris": 844,
       "mesh_far": "legs__overalls__female__far",
-      "tris_far": 256
+      "tris_far": 220
      }
     }
    }
@@ -638,28 +638,28 @@
      "mesh": "feet__boots",
      "tris": 702,
      "mesh_far": "feet__boots__far",
-     "tris_far": 199
+     "tris_far": 188
     },
     "sneakers": {
      "label": "Sneakers",
      "mesh": "feet__sneakers",
      "tris": 702,
      "mesh_far": "feet__sneakers__far",
-     "tris_far": 199
+     "tris_far": 188
     },
     "shoes": {
      "label": "Shoes",
      "mesh": "feet__shoes",
      "tris": 702,
      "mesh_far": "feet__shoes__far",
-     "tris_far": 199
+     "tris_far": 188
     },
     "saddle": {
      "label": "Saddle shoes",
      "mesh": "feet__saddle",
-     "tris": 1062,
+     "tris": 1038,
      "mesh_far": "feet__saddle__far",
-     "tris_far": 294
+     "tris_far": 274
     }
    }
   },
@@ -685,14 +685,14 @@
      "mesh": "eyewear__glasses",
      "tris": 436,
      "mesh_far": "eyewear__glasses__far",
-     "tris_far": 122
+     "tris_far": 116
     },
     "goggles": {
      "label": "Goggles",
      "mesh": "eyewear__goggles",
      "tris": 428,
      "mesh_far": "eyewear__goggles__far",
-     "tris_far": 120
+     "tris_far": 114
     },
     "cinema": {
      "label": "Cinema glasses",
@@ -730,27 +730,27 @@
     "lanyard": {
      "label": "Press lanyard",
      "mesh": "neck__lanyard",
-     "tris": 240,
+     "tris": 228,
      "mesh_far": "neck__lanyard__far",
-     "tris_far": 240,
+     "tris_far": 228,
      "female": {
       "mesh": "neck__lanyard__female",
-      "tris": 240,
+      "tris": 228,
       "mesh_far": "neck__lanyard__female__far",
-      "tris_far": 240
+      "tris_far": 228
      }
     },
     "bolo": {
      "label": "Bolo tie",
      "mesh": "neck__bolo",
-     "tris": 240,
+     "tris": 224,
      "mesh_far": "neck__bolo__far",
-     "tris_far": 240,
+     "tris_far": 224,
      "female": {
       "mesh": "neck__bolo__female",
-      "tris": 240,
+      "tris": 224,
       "mesh_far": "neck__bolo__female__far",
-      "tris_far": 240
+      "tris_far": 224
      }
     }
    }
@@ -792,6 +792,115 @@
      "tris_far": 0
     }
    }
+  },
+  "mouth": {
+   "default": "smile",
+   "parts": {
+    "smile": {
+     "label": "Smile",
+     "mesh": "mouth__smile",
+     "tris": 68,
+     "mesh_far": null,
+     "tris_far": 68,
+     "female": {
+      "mesh": "mouth__smile__female",
+      "tris": 66,
+      "mesh_far": null,
+      "tris_far": 66
+     }
+    },
+    "line": {
+     "label": "Calm",
+     "mesh": "mouth__line",
+     "tris": 68,
+     "mesh_far": null,
+     "tris_far": 68,
+     "female": {
+      "mesh": "mouth__line__female",
+      "tris": 68,
+      "mesh_far": null,
+      "tris_far": 68
+     }
+    },
+    "grin": {
+     "label": "Grin",
+     "mesh": "mouth__grin",
+     "tris": 74,
+     "mesh_far": null,
+     "tris_far": 74,
+     "female": {
+      "mesh": "mouth__grin__female",
+      "tris": 70,
+      "mesh_far": null,
+      "tris_far": 70
+     }
+    },
+    "open": {
+     "label": "Open",
+     "mesh": "mouth__open",
+     "tris": 96,
+     "mesh_far": null,
+     "tris_far": 96,
+     "female": {
+      "mesh": "mouth__open__female",
+      "tris": 96,
+      "mesh_far": null,
+      "tris_far": 96
+     }
+    },
+    "smirk": {
+     "label": "Smirk",
+     "mesh": "mouth__smirk",
+     "tris": 68,
+     "mesh_far": null,
+     "tris_far": 68,
+     "female": {
+      "mesh": "mouth__smirk__female",
+      "tris": 68,
+      "mesh_far": null,
+      "tris_far": 68
+     }
+    },
+    "oh": {
+     "label": "Surprised",
+     "mesh": "mouth__oh",
+     "tris": 72,
+     "mesh_far": null,
+     "tris_far": 72,
+     "female": {
+      "mesh": "mouth__oh__female",
+      "tris": 72,
+      "mesh_far": null,
+      "tris_far": 72
+     }
+    },
+    "frown": {
+     "label": "Frown",
+     "mesh": "mouth__frown",
+     "tris": 72,
+     "mesh_far": null,
+     "tris_far": 72,
+     "female": {
+      "mesh": "mouth__frown__female",
+      "tris": 72,
+      "mesh_far": null,
+      "tris_far": 72
+     }
+    },
+    "teeth": {
+     "label": "Teeth",
+     "mesh": "mouth__teeth",
+     "tris": 144,
+     "mesh_far": null,
+     "tris_far": 144,
+     "female": {
+      "mesh": "mouth__teeth__female",
+      "tris": 140,
+      "mesh_far": null,
+      "tris_far": 140
+     }
+    }
+   }
   }
  },
  "body": {
@@ -816,7 +925,8 @@
     "eyewear": "none",
     "neck": "none",
     "arm": "none",
-    "body": "male"
+    "body": "male",
+    "mouth": "smile"
    },
    "colours": {
     "skin": 1,
@@ -825,8 +935,8 @@
     "secondary": 9,
     "accent": 0
    },
-   "tris": 5083,
-   "tris_far": 1402
+   "tris": 5091,
+   "tris_far": 1337
   },
   {
    "id": "usher",
@@ -841,7 +951,8 @@
     "eyewear": "none",
     "neck": "bowtie",
     "arm": "none",
-    "body": "male"
+    "body": "male",
+    "mouth": "smile"
    },
    "colours": {
     "skin": 4,
@@ -850,8 +961,8 @@
     "secondary": 0,
     "accent": 11
    },
-   "tris": 5167,
-   "tris_far": 1710
+   "tris": 5175,
+   "tris_far": 1648
   },
   {
    "id": "mechanic",
@@ -866,7 +977,8 @@
     "eyewear": "goggles",
     "neck": "none",
     "arm": "none",
-    "body": "male"
+    "body": "male",
+    "mouth": "smile"
    },
    "colours": {
     "skin": 2,
@@ -875,8 +987,8 @@
     "secondary": 3,
     "accent": 6
    },
-   "tris": 5260,
-   "tris_far": 1549
+   "tris": 5268,
+   "tris_far": 1479
   },
   {
    "id": "lifeguard",
@@ -891,7 +1003,8 @@
     "eyewear": "sunglasses",
     "neck": "none",
     "arm": "none",
-    "body": "male"
+    "body": "male",
+    "mouth": "smile"
    },
    "colours": {
     "skin": 0,
@@ -900,8 +1013,8 @@
     "secondary": 6,
     "accent": 1
    },
-   "tris": 4672,
-   "tris_far": 1510
+   "tris": 4680,
+   "tris_far": 1452
   },
   {
    "id": "soda_jerk",
@@ -916,7 +1029,8 @@
     "eyewear": "none",
     "neck": "bowtie",
     "arm": "none",
-    "body": "male"
+    "body": "male",
+    "mouth": "smile"
    },
    "colours": {
     "skin": 3,
@@ -925,8 +1039,8 @@
     "secondary": 3,
     "accent": 15
    },
-   "tris": 4858,
-   "tris_far": 1468
+   "tris": 4866,
+   "tris_far": 1409
   },
   {
    "id": "ranger",
@@ -941,7 +1055,8 @@
     "eyewear": "none",
     "neck": "scarf",
     "arm": "none",
-    "body": "male"
+    "body": "male",
+    "mouth": "smile"
    },
    "colours": {
     "skin": 2,
@@ -950,8 +1065,8 @@
     "secondary": 12,
     "accent": 10
    },
-   "tris": 4950,
-   "tris_far": 1504
+   "tris": 4958,
+   "tris_far": 1443
   },
   {
    "id": "letterman",
@@ -966,7 +1081,8 @@
     "eyewear": "none",
     "neck": "none",
     "arm": "none",
-    "body": "male"
+    "body": "male",
+    "mouth": "smile"
    },
    "colours": {
     "skin": 5,
@@ -975,8 +1091,8 @@
     "secondary": 9,
     "accent": 1
    },
-   "tris": 4987,
-   "tris_far": 1579
+   "tris": 4995,
+   "tris_far": 1519
   },
   {
    "id": "projectionist",
@@ -991,7 +1107,8 @@
     "eyewear": "glasses",
     "neck": "none",
     "arm": "armband",
-    "body": "male"
+    "body": "male",
+    "mouth": "smile"
    },
    "colours": {
     "skin": 1,
@@ -1000,8 +1117,8 @@
     "secondary": 13,
     "accent": 6
    },
-   "tris": 5360,
-   "tris_far": 1643
+   "tris": 5368,
+   "tris_far": 1573
   },
   {
    "id": "carhop",
@@ -1016,7 +1133,8 @@
     "eyewear": "none",
     "neck": "bowtie",
     "arm": "none",
-    "body": "female"
+    "body": "female",
+    "mouth": "smile"
    },
    "colours": {
     "skin": 1,
@@ -1025,8 +1143,8 @@
     "secondary": 1,
     "accent": 6
    },
-   "tris": 5076,
-   "tris_far": 1605
+   "tris": 5082,
+   "tris_far": 1539
   },
   {
    "id": "usherette",
@@ -1041,7 +1159,8 @@
     "eyewear": "none",
     "neck": "none",
     "arm": "none",
-    "body": "female"
+    "body": "female",
+    "mouth": "smile"
    },
    "colours": {
     "skin": 4,
@@ -1050,8 +1169,8 @@
     "secondary": 0,
     "accent": 11
    },
-   "tris": 5509,
-   "tris_far": 1711
+   "tris": 5515,
+   "tris_far": 1636
   },
   {
    "id": "pit_crew",
@@ -1066,7 +1185,8 @@
     "eyewear": "goggles",
     "neck": "none",
     "arm": "none",
-    "body": "female"
+    "body": "female",
+    "mouth": "smile"
    },
    "colours": {
     "skin": 0,
@@ -1075,8 +1195,8 @@
     "secondary": 3,
     "accent": 10
    },
-   "tris": 5566,
-   "tris_far": 1648
+   "tris": 5572,
+   "tris_far": 1574
   },
   {
    "id": "pep_squad",
@@ -1091,7 +1211,8 @@
     "eyewear": "none",
     "neck": "none",
     "arm": "none",
-    "body": "female"
+    "body": "female",
+    "mouth": "smile"
    },
    "colours": {
     "skin": 5,
@@ -1100,8 +1221,8 @@
     "secondary": 1,
     "accent": 1
    },
-   "tris": 5155,
-   "tris_far": 1529
+   "tris": 5161,
+   "tris_far": 1458
   }
  ]
 }

@@ -3,7 +3,7 @@
 How a player dresses their character and how the others see it. The look itself (slots, parts, colour channels,
 presets) is defined in [Characters](characters.md); this page is the screen, the saved form,
 the wire form and the rules that keep teammates readable. Cosmetics only: nothing here changes a night
-([progression](progression.md#the-cast-and-the-marquee-cosmetic-identity)).
+([progression](progression.md#wardrobe-costumes-and-the-locks): the grid, `???` locks, costumes and mouths).
 
 ## The screen
 
@@ -13,7 +13,7 @@ right.
 | Control | What it does |
 | --- | --- |
 | Preset | One of the eight starting looks; reads **Custom** as soon as anything is changed by hand |
-| A selector per part slot | Face, hair style, headwear, top, trousers, footwear, eyewear, neckwear, armwear; left and right step through the parts |
+| A selector per part slot | Face, mouth, hair style, headwear, top, trousers, footwear, eyewear, neckwear, armwear; left and right step through the parts. The mouth's row sits under the face's though the slot is last on the wire (`LookCatalog.ROW_AFTER`), and every mouth is free (#1061) |
 | A strip per colour channel | Swatches: skin, hair, main, second and trim colour |
 | Randomize | A look made only of what the player has unlocked |
 | Save / Back | On its own screen, Save writes the look; Back (or Esc, gamepad B) leaves and drops unsaved changes, and the footer says which. In the main menu's Loadout tab there is no Save: the look and the showcase weapon are kept while the tab is open and written once when the player leaves it |
@@ -28,11 +28,13 @@ says how to get it: "Reach Billing level 10") but the choice stays on the last f
 | Form | Where | Shape |
 | --- | --- | --- |
 | Saved | `character/look` in the settings file, soon the platform profile | JSON of readable ids (`{"version":1,"parts":{"headwear":"helmet",...},"colours":{"skin":"peach",...}}`): a catalogue that grows never breaks a save |
-| On the wire | one packet per look | version byte, then one byte per part slot (its index) and per colour channel (its palette index): 15 bytes |
+| On the wire | one packet per look | version byte, then one byte per part slot (its index) and per colour channel (its palette index): 17 bytes |
 
 Whatever comes from outside is untrusted: a damaged save, a look of another version, an index out of range all become
 the first option of that slot (or the default look for a wrong version), and the server puts back anything the sender
-has not unlocked (`LookServer`, with the unlocks the platform backend will supply).
+has not unlocked (`LookServer`, with the unlocks the platform backend will supply). The wire is at version 3 (the
+`mouth` slot, #1061); a look of version 2 still reads (16 bytes, `CharacterLook.OLDEST_VERSION`, the first mouth), and a
+save from before the mouth has no `mouth` id and takes the first too.
 
 ## On the network
 
@@ -40,8 +42,8 @@ Two messages continue the numbering of the [own protocol](networking.md) (types 
 
 | Message | Direction | Fields |
 | --- | --- | --- |
-| `LOOK` (8) | client to server, once on join | the look (17 bytes with the type; 16 before the character, #678) |
-| `PLAYER_LOOK` (9) | server to everyone | player id, seat, the look (19 bytes with the type) |
+| `LOOK` (8) | client to server, once on join | the look (18 bytes with the type; 17 before the mouth, #1061) |
+| `PLAYER_LOOK` (9) | server to everyone | player id, seat, the look (20 bytes with the type) |
 
 On join the server gives the player the lowest free **seat** (0 to 7), tells everyone, and tells the newcomer who is
 already there; until the newcomer's own look arrives they wear the preset of their seat. Every client keeps a
@@ -80,7 +82,7 @@ animation tree and the weapon mount work as before; until a look arrives a body 
 ## The parts
 
 The choices are read from `parts.json`, the catalogue the Soldier parts build writes beside the model
-([Characters](characters.md)): nine part slots, five colour channels over three palettes, eight presets. The assembler
+([Characters](characters.md)): eleven part slots, five colour channels over three palettes, twelve presets. The assembler
 is `SoldierLook` (the parts' own loader) plus the seat armband, and the character stands in its `Idle` clip. The seat
 armband is a ring placed on the right upper arm from the skeleton's own bone directions, so it follows whatever the
 rig's axes are; the `arm: armband` part of the look is a separate, cosmetic armband on the left arm, tinted by the trim
