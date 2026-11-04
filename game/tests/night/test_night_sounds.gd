@@ -76,6 +76,13 @@ func test_the_night_starts_its_ambient_bed_and_the_score() -> void:
 		assert_bool(Audio.is_bed_running(id)).override_failure_message(id).is_true()
 
 
+func test_the_progression_cues_are_quieter_while_the_night_runs_and_not_after_it() -> void:
+	var night := await _start()
+	assert_bool(Audio.ui.in_night).is_true()
+	night.free()
+	assert_bool(Audio.ui.in_night).is_false()
+
+
 func test_the_projector_runs_in_the_booth_as_a_loop_in_the_world() -> void:
 	var night := await _start()
 	var anchor := night.view.sounds.get_node_or_null("Projector") as Node3D

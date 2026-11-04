@@ -29,7 +29,7 @@ they matter, and where each lands. Where this table differs from the earlier pla
 | 3 | **The climb scales upward**: "It shouldn't really be 9 minutes a level unless you're just averaging it out. It should scale upward like call of duty e.g. it takes longer to level up the higher you go. That way users can feel the first level up satisfaction early on" | [The curve](#the-curve), #1058 |
 | 4 | **300 or more kills a game** is the assumption (modifiers raise the count); the curve is measured at count multipliers 1, 2 and 5 | [The curve](#the-curve), research page |
 | 5 | **The game server awards XP, per kill, live**: "Game server is good. We'll see how much it stresses when we do it because XP is earned after every zombie kill and there can be hordes." A signed-in solo night stays on the player's machine, capped by the backend | [Who awards XP](#who-awards-xp-and-live-xp), #1059, #1075 |
-| 6 | **No offline XP**, **no rested XP**, **a first-game-of-the-day XP bonus**: yes; dailies pay XP. **Only accounts earn XP, because the server tracks it; a Guest account is one**: "only signed in accounts earn XP since we only track XP on the server. But even \"Guest\" accounts will be tracked on server." A night with no account at all earns nothing. Guest accounts expire after 7 days unless used again (kept in local storage, fine for the Discord Activity); keeping one across visits is a separate issue, and until it lands a returning guest is a new account | [Where XP comes from](#where-xp-comes-from), [Storage and trust](#storage-and-trust), #1058 |
+| 6 | **No offline XP**, **no rested XP**, **a first-game-of-the-day XP bonus**: yes; dailies pay XP. **Only accounts earn XP, because the server tracks it; a Guest account is one**: "only signed in accounts earn XP since we only track XP on the server. But even \"Guest\" accounts will be tracked on server." A night with no account at all earns nothing. Guest accounts expire after 7 days unless used again (kept in the game's own storage, fine for the Discord Activity); built in #1080, a returning guest within 7 days is the same account | [Where XP comes from](#where-xp-comes-from), [Storage and trust](#storage-and-trust), #1058 |
 | 7 | **No account currency** for now ("Disabled; XP based"). In-night points for buying stay | [In one paragraph](#in-one-paragraph) |
 | 8 | **All weapons and tonics free** from the first night. **A higher level has a slightly better kit**: "yeah the higher level player would ideally have a slightly better kit but that's a reward for them playing more." | [Rules](#rules-we-hold-ourselves-to), [Combat bonuses](#combat-bonuses), #1055 |
 | 9 | **Popups in real time**, as soon as they trigger, during play; XP and milestones credit live, not at a round's end. "Animations for this stuff need to be good" | [Popups, motion and sound](#popups-motion-and-sound), #1064 |
@@ -352,7 +352,8 @@ text.* The 15 new wearable pieces are art in waves (#1078): eight, then seven; t
 
 ## Maps
 
-`MapRegistry` lists the maps with a `shipped` flag; `unlock_level` is added to each map resource (#1067). The drive-in
+`MapRegistry` lists the maps with a `shipped` flag; `unlock_level` is on each map resource (built in #1067, see
+[Maps](maps.md#levels-open-maps)). The drive-in
 (first map) is level 1; **the back rooms (the second map) is level 10**. Reserved rows at 25 and 40 for maps three and
 four when they exist. The picker shows a locked card dark with "Level 10" in the same `???`-and-hover look as the
 wardrobe. **The host's level decides the lot** (decision 17): a lobby whose host is below a map's level does not offer
@@ -571,7 +572,6 @@ extraction (#1056).
 | --- | --- | --- |
 | Hands in pockets | Clear a round without firing a shot | line (`shot_fired` per round) |
 | Stingy | Reach round 6 without spending a point | line (points spent, per night) |
-| Nobody home | Let a round end with you having killed nothing in it | line (kills per round) |
 | Three for one | Three dead with one grenade | line (kills grouped by blast) |
 | Carpenter's rush | Mend three boards on one window within ten seconds | line (`board_repaired` times) |
 | Door to door | Open every way through before round 5 | line (doors by round) |
@@ -590,13 +590,14 @@ extraction (#1056).
 | Whole crew | Finish a round with everyone upright | line |
 | Pit crew | Mend a board a teammate is also mending | event |
 | Hold the line | Five revives in one night | line |
+| Nobody home | Let a round end with you having killed nothing in it | line (kills per round) |
 
 **Hidden** (shown as `???` with a riddle until done): *Intermission* (stand at the stand for a whole break: event),
 *The long way round* (reach round 8 without using the second door: event), *Dead on arrival* (die in round 1: line),
-*Standing room only* (a night with four on the lot and the same four at the end: line), *Final cut* (finish all ten
+*Standing room only* (a night with four on the lot and the same four at the end: line), *Final cut* (finish all eleven
 tier cards: derived).
 
-**Numbers:** 12 easy, 12 grind, 12 odd, 4 together, 5 hidden = 45 challenges. The existing 26 dailies, 12 orders and
+**Numbers:** 12 easy, 12 grind, 11 odd, 5 together, 5 hidden = 45 challenges. The existing 26 dailies, 12 orders and
 12 milestones stay, and **pay XP** (and a card for finishing a family of orders, or a poster set, below). The
 challenge tracker runs on the game server for online nights (#1076) so a finished challenge shows in the popup lane in
 real time and every client can hear its celebration.
@@ -764,12 +765,16 @@ base on rounds reached and points per round.
   64 KiB; a profile is a few kilobytes): slot `profile`, and slot `challenges` for the board. **No offline XP:** XP
   exists only for an account the server tracks, and **a Guest account is one** (the maintainer, 2026-11-04: "only
   signed in accounts earn XP since we only track XP on the server. But even \"Guest\" accounts will be tracked on
-  server"). A Guest account lives 7 days unless it is used again, normally found again through local storage; that is
-  kept for now because the game is mostly played as a Discord Activity, and how data survives outside Discord is for
-  later (a separate issue keeps a Guest across visits; until it lands a returning guest is a new account). A local file
-  is a cache and a retry queue for that account's own writes, never a second store, and **there is no merge of an
-  offline save**. A night with no account at all (the backend cannot be reached) earns nothing. A night never waits on
-  the backend: a failed write is sent again.
+  server"). A local file is a cache and a retry queue for that account's own writes, never a second store, and **there
+  is no merge of an offline save**. A night with no account at all (the backend cannot be reached) earns nothing. A
+  night never waits on the backend: a failed write is sent again.
+- **A Guest account lasts 7 days without a sign-in** (built, #1080). The backend signs a guest in with a long-lived
+  signed credential (`guestToken`) that the game keeps in its own storage (`user://guest_account.json`, the browser's
+  IndexedDB on the web); the same account, with its saves, comes back each time it is signed in to within 7 days of
+  the last sign-in, and each sign-in restarts the 7 days. An account idle for 7 days is deleted with its saves; a
+  Discord account never is. A forged or expired credential makes a new guest, never another's account. Clearing the
+  browser's data is a new guest. Moving a guest to Discord or another source is not built (the maintainer: "we'll talk
+  about this more down the line"). How: [Guest accounts](../research/platform-backend.md#guest-accounts).
 - **Writes are round-end reports, never per kill.** The game server posts each seat's XP at each round's end and at
   the night's end, keyed by match and round so a retry cannot double-pay; only a server the platform started may post
   one. A signed-in solo client writes its profile at round ends and the backend **caps** it: at most about 120 XP a
@@ -777,6 +782,11 @@ base on rounds reached and points per round.
   knows, a level that follows from raw XP (#1075).
 - **The first game of the day:** the day number (the dailies' own) comes with the write and is accepted once, within one
   day of the backend's date.
+- **Built (#1075):** the `profile` slot, the round report (`POST /internal/matches/:id/report`, keyed by match, kind,
+  round and account), the ledger and the clamp are in the platform backend; the details, the error names and what the
+  game server must send are in [Progression on the backend](../research/platform-backend.md#progression-the-profile-slot-round-reports-and-the-xp-clamp).
+  One decision there: the server posts XP **without** the two one-offs and claims them (`openingNight`, `bonusDay`); the
+  backend knows the profile and pays each once.
 - **What a level is seen by:** the ticket the backend mints carries `level`, `icon` and `xp`; never the client's word
   in the night.
 - **What would force more:** a leaderboard, any ranking, anything paid, or a reward a cheater would gain from (none

@@ -77,7 +77,7 @@ func _url() -> String:
 
 func _ticket(user: String, account: Dictionary, settings: Dictionary = {}) -> String:
 	return TicketMaker.make(
-		SECRET, SERVER_ID, MATCH, user, user.capitalize(), 60, settings, account
+		SECRET, SERVER_ID, MATCH, user, user.capitalize(), 60, settings, null, account
 	)
 
 

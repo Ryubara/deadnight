@@ -541,7 +541,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: spikes/backend
+          # The progression scripts too: test/progression.test.ts holds the backend's copy of the level curve equal to them.
+          sparse-checkout: |
+            spikes/backend
+            game/gameplay/progression
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24

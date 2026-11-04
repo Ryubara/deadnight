@@ -65,7 +65,15 @@ func _run() -> void:
 	settings.bots = 3
 	NightScreen.join_url = "ws://127.0.0.1:%d" % _server.listener.port()
 	NightScreen.join_ticket = TicketMaker.make(
-		SECRET, SERVER_ID, MATCH, "capture-1", "Ann", 600, settings.to_dict(), {"xp": START_XP}
+		SECRET,
+		SERVER_ID,
+		MATCH,
+		"capture-1",
+		"Ann",
+		600,
+		settings.to_dict(),
+		null,
+		{"xp": START_XP}
 	)
 	NightScreen.join_as_bot = true
 	NightScreen.join_map = "drive_in"

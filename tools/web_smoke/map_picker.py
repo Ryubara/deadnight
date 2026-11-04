@@ -146,6 +146,7 @@ def run_device(url: str, out: Path, label: str, device: str, problems: list[str]
         else:
             context = browser.new_context(viewport=DESKTOP)
         page = context.new_page()
+        smoke.give_level(page, 10)  # the second map is the back rooms, which a fresh player has not opened
         page.on(
             "pageerror",
             lambda e: None if any(t in str(e) for t in IGNORED) else problems.append(f"[{device}] {e}"),

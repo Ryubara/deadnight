@@ -83,6 +83,7 @@ func _run() -> void:
 		"Bench",
 		600,
 		settings.to_dict(),
+		null,
 		{"xp": START_XP}
 	)
 	_client = Night.new()

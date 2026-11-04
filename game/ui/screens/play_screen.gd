@@ -86,7 +86,9 @@ func rules_text() -> String:
 
 ## Opens the night under the panel's settings.
 func start() -> void:
-	NightScreen.match_settings = panel.settings()
+	# The level opens the map: a choice the level does not open (a map handed in, a level that fell)
+	# is the default map, whatever the panel holds.
+	NightScreen.match_settings = panel.settings().fit_host(panel.map_picker.level)
 	UIRouter.push(NIGHT_SCREEN, UITransition.Kind.IRIS)
 
 

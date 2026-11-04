@@ -1,5 +1,5 @@
 // Process entry: configuration from the environment, structured logs, health, graceful shutdown.
-import { buildApp } from "./app.ts";
+import { buildApp, sweepIdleGuests } from "./app.ts";
 import { loadConfig } from "./config.ts";
 import { LiveDiscord, OffDiscord, StubDiscord } from "./discord.ts";
 import { PgStore } from "./pg-store.ts";
@@ -22,7 +22,7 @@ const app = buildApp({
   registry: new GameServerRegistry(),
   logger: {
     level: config.logLevel,
-    redact: ["req.headers.authorization", "req.body.code", "res.body.token", "res.body.access_token"],
+    redact: ["req.headers.authorization", "req.body.code", "req.body.guestToken", "res.body.token", "res.body.access_token", "res.body.guestToken"],
   },
 });
 
@@ -39,3 +39,9 @@ process.on("SIGTERM", () => void shutdown("SIGTERM"));
 process.on("SIGINT", () => void shutdown("SIGINT"));
 
 await app.listen({ host: config.host, port: config.port });
+// The hourly sweep waits an hour for its first run, and a backend that is redeployed more often than that would never
+// reach it: delete the Guest accounts that went idle while it was down now.
+sweepIdleGuests(store, Date.now()).then(
+  (count) => app.log.info({ count }, "deleted idle guest accounts at start"),
+  (error: unknown) => app.log.error({ err: error }, "guest sweep failed at start"),
+);

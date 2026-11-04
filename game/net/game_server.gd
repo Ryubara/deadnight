@@ -244,6 +244,15 @@ func _route(transport_id: int, pending: Pending, data: PackedByteArray) -> void:
 			pending.routing = false
 			_refuse(transport_id, pending, NetWire.Refusal.FULL, "ROOMS")
 			return
+		if admitted.get("map_refused", "") != "":
+			_log(
+				"map_locked",
+				{
+					"match": match_id,
+					"map": admitted["map_refused"],
+					"host_level": admitted["host_level"]
+				}
+			)
 		room = await _open_room(match_id, admitted.get("settings"))
 	if not _pending.has(transport_id):
 		return
