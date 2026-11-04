@@ -60,6 +60,23 @@ func earned_at(level: int) -> Array:
 	return rows
 
 
+## The first level after `level` that gives something a player can be told about, as
+## `{level, label}` (the label names its first item, `label_of`); empty past the last one.
+func next_after(level: int) -> Dictionary:
+	for at in levels():
+		if at > level:
+			var rows := earned_at(at)
+			if not rows.is_empty():
+				return {"level": at, "label": label_of(rows[0])}
+	return {}
+
+
+## What a row gives, in words ("rolled_sleeves" is "rolled sleeves"; a map is named as one).
+static func label_of(row: Dictionary) -> String:
+	var words := String(row["item"]).replace("_", " ")
+	return "%s map" % words if row["slot"] == &"map" else words
+
+
 ## Every level that has a row.
 func levels() -> Array[int]:
 	var out: Array[int] = []

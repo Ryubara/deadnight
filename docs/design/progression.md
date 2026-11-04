@@ -340,10 +340,11 @@ to win the night; the edge is audited with a seeded bot night so it stays inside
   dark with `???` and hover instructions until the player owns every piece, lit after. Four costumes use starting
   pieces only, so a new player has a quick start. Equipping a costume sets the look; the player may then change any
   part they own.
-- The code already has the seam: `LookUnlocks` asks a gate `{"billing": n}`; it becomes `{"level": n}`, and the part and
-  palette gates (`PART_GATES`, `PALETTE_GATES`) are filled from `unlocks.json`. The saved look and the wire format are
-  unchanged (an index per part); a look wearing something the player does not own is repaired on load, and the server
-  drops it for a client that is not the owner.
+- **Built (#1065):** `LookUnlocks` asks a gate `{"level": n}`, and the part and palette gates are read from
+  `unlocks.json` (the same table, extended with a `part` key on each wearable's row; `LookCatalog.part_gates()`,
+  `palette_gates()`). The saved look and the wire format are unchanged (an index per part); a look wearing something
+  the player does not own is repaired on load, and the game server drops it for a player whose level it knows. The
+  grid, the silhouettes and the hover words are on [Customization](customization.md#the-screen).
 
 ![The wardrobe grid](../research/progression-grid.png)
 
@@ -625,6 +626,19 @@ nothing, and the report shows no XP. **Credits** (decision
 Grip: most boards mended", "Best Boy: most fuel cans", "Stunt Double: most times down") and a line of XP, chosen by
 rule from `NightTally`; solo gets a credit too.
 
+**Built (#1068).** The end board (`HudEndBoard`, the night report) has a ticket under the round line,
+`HudNightReport`: a line for each thing that paid (Rounds, Points, Upkeep, Headliners, Rescues, Challenges, Opening
+night, First game of the day; only those that paid), the night's total, the level (`LEVEL 2 TO 4` when the night
+crossed some) with its bar (what the account had in the level, then what the night added), what the crossed levels
+gave, and the next level that gives something to wear or play (levels whose art is not drawn yet are not promised, as
+in the popups). The report adds no number of its own: `ReportTracker` sums the `sources` of the `xp_gained` events
+the client hears (the game server's tally, or the local rules' in a signed-in solo night, a Guest account included),
+and `NightReport` cuts them into whole XP so that **the lines add up to the total exactly** (the XP a rounded-down
+line loses goes to the lines that lost most; a night over the cap ends in a negative "Night limit" line). A night
+nobody keeps (no account at all) is counted by the client with the same `XpRules.worth` and shown under the heading
+"your night, unsaved" with the XP it would have paid, no bar and "no account: this night was not saved". The
+players' rows are untouched by it (the icon and level beside a name are #1077's).
+
 ## Popups, motion and sound
 
 ![Popup storyboard](../research/progression-popups.png)
@@ -694,14 +708,27 @@ release ([#252](https://github.com/Ryubara/deadnight/issues/252)). The server ev
 
 ## The level over a head
 
-The HUD's ally marker (`HudMarkers`, drawn in screen space) shows a name above a triangle. It becomes **icon, name,
-level**, the icon from the 64 px atlas at 24 px, in the same marker so it keeps its place rules. **Shown by default**
-(decision 18); a setting hides every level on the viewer's own screen. The level and icon ride with the name: in the
-ticket the backend signs, then in the WELCOME's names and the `player_named` event. **Bots have no level** and keep
+The HUD's ally marker (`HudMarkers`, drawn in screen space) shows a name above a triangle. It becomes **icon, level,
+name**: the icon from the 64 px atlas at 24 px, the level right beside it, a little padding, then the name, in the
+same marker so it keeps its place rules. This is the maintainer's order ("icon, then level to the right of it, with a
+bit of padding to the right and it shows the players name"), and it is the same **everywhere** a level shows: over a
+head, in the bottom-left player boxes, on the scoreboard, in the night report and in the lobby's seat list. Two gaps
+decide it and live in one place, `LevelTag`: `ICON_GAP` (4) between the icon and the level, tight, and `NAME_GAP` (12)
+between the level and the name, visibly larger. A row with no level (a bot, a seat without one, the setting off) is
+the name alone, with no badge and no gap. In a list (the scoreboard, the report, the lobby, the boxes) a level has the
+room of two digits, so the names of the people start on one line and 55 is never cut; over a head the level takes its
+own width and the whole tag is centred as a bare name is. In the compact box the name ends in an ellipsis before the
+badge or the points are cut. **Shown by default**
+(decision 18); a setting hides every level on the viewer's own screen. The level comes from the server's XP tally, which
+every client hears (the WELCOME's `levels`, then `account_seated`, `level_up` and `account_left`); the icon is the
+level's own. **Bots have no level** and keep
 their usual difficulties (the earlier idea of a level near the lobby's average is dropped). A Guest account is an
 account and has a level like any other; only a bot has none.
-Also on the scoreboard, the lobby list and the night report. A name tag never shows a card or an emblem in the night.
-Build: #1077.
+Also on the scoreboard, the lobby list, the night report and the player boxes at the bottom left (calling cards
+beside the box come with #1070). A name tag never shows a card or an emblem in the night.
+Built in #1077: [how it travels and what it costs](../research/multiplayer.md#the-level-and-icon-beside-a-name-1077).
+The setting is **Player levels** (Settings, Accessibility). A level gained in a night reaches the tags by the
+`level_up` event the tally already sends (#1114), so a tag changes the moment the level does.
 
 ## Prestige
 

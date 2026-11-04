@@ -442,6 +442,8 @@ func _free_seat(player_id: int) -> void:
 		if server.xp.has_seat(player_id):
 			_collect([{"type": &"account_left", "player_id": player_id}])
 		server.xp.release(player_id)
+		# The seat has no account now (a bot has no level, and wears its cast look whole).
+		server.player_levels.erase(player_id)
 		var inherited := _bot_inherits(player_id)
 		if inherited.is_empty():
 			_collect(server.apply({"type": NightServer.LEAVE, "player_id": player_id}))
@@ -609,6 +611,9 @@ func register_account(player_id: int, user: String, account: Dictionary = {}) ->
 		return
 	var seated := server.xp.has_seat(player_id)
 	server.xp.register(player_id, user, int(account.get("xp", 0)), server.rules.round_number)
+	if server.xp.has_seat(player_id):
+		# What the seat may wear is held to the level the ticket's XP gives (#1065).
+		server.player_levels[player_id] = server.xp.levels()[player_id]
 	if server.xp.has_seat(player_id) and not seated:
 		# Everyone already here learns this seat's level (the joiner reads the others' in its WELCOME).
 		var level: int = server.xp.levels()[player_id]

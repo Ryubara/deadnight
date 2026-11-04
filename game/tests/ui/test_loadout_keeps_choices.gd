@@ -76,15 +76,17 @@ func _go_to(shell: MenuShell, id: MenuTab.Id) -> void:
 	assert_int(shell.tab).is_equal(id)
 
 
-## What a player does on the tab: a part by click and a colour by the strip.
+## What a player does on the tab: a face by a click on its cell and a skin colour by choosing it.
 func _pick_outfit(shell: MenuShell) -> void:
 	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
 	var slot := LookCatalog.choosable_part_slots()[0]
 	var colour := LookCatalog.colour_slots()[0]
-	await _click(panel.wardrobe.selector(slot))
+	var face := panel.wardrobe.cell(CustomizeScreen.PART_PREFIX + slot, 1)
+	panel.wardrobe.reveal(face)
+	await get_tree().process_frame
+	await _click(face)
 	var next_colour := (
-		(int(panel.wardrobe.look.colours[colour]) + 3)
-		% panel.wardrobe.strip(CustomizeScreen.COLOUR_PREFIX + colour).entries.size()
+		(int(panel.wardrobe.look.colours[colour]) + 3) % LookCatalog.palette(colour).size()
 	)
 	panel.wardrobe.choose(CustomizeScreen.COLOUR_PREFIX + colour, next_colour)
 
@@ -114,7 +116,7 @@ func test_the_character_survives_the_weapon_another_tab_and_a_restart() -> void:
 	var shell := await _open()
 	await _go_to(shell, MenuTab.Id.LOADOUT)
 	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
-	await _click(panel.wardrobe.body_selector())
+	await _click(panel.wardrobe.cell(CustomizeScreen.PART_PREFIX + "body", 1))
 	assert_str(String(panel.wardrobe.look.body())).is_equal("female")
 	var picked := panel.wardrobe.look.duplicate_look()
 	await _pick_weapon(shell)
@@ -126,7 +128,7 @@ func test_the_character_survives_the_weapon_another_tab_and_a_restart() -> void:
 	await _go_to(shell, MenuTab.Id.SHOP)
 	await _go_to(shell, MenuTab.Id.LOADOUT)
 	assert_str(String(panel.wardrobe.look.body())).is_equal("female")
-	assert_str(panel.wardrobe.body_selector().text()).is_equal("Female")
+	assert_bool(panel.wardrobe.cell(CustomizeScreen.PART_PREFIX + "body", 1).worn).is_true()
 	# As after a restart: the file read back from its path.
 	Settings.load_from_disk()
 	assert_str(String(LookStore.load_look().body())).is_equal("female")

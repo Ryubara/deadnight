@@ -66,6 +66,17 @@ const SWATCHES := {
 	&"lens_red": [14, 1],
 	&"lens_cyan": [15, 1],
 }
+## The level each opens at (`unlocks.json`, the design page's table).
+const LEVELS := {
+	&"torso/usher": 18,
+	&"torso/coveralls": 36,
+	&"legs/overalls": 31,
+	&"feet/saddle": 28,
+	&"eyewear/cinema": 24,
+	&"headwear/visor": 33,
+	&"neck/lanyard": 19,
+	&"neck/bolo": 34,
+}
 const BODIES: Array[StringName] = [&"male", &"female"]
 
 
@@ -124,15 +135,15 @@ func test_the_creature_mask_hides_the_hair_and_the_glasses() -> void:
 		assert_array(shown).contains(["hair__bun", "eyewear__goggles"])
 
 
-func test_every_piece_is_named_and_free_for_now() -> void:
+func test_every_piece_is_named_and_on_the_ladder_at_its_level() -> void:
 	for key: StringName in PIECES:
 		var slot := StringName(String(key).get_slice("/", 0))
 		var id := StringName(String(key).get_slice("/", 1))
 		assert_int(LookCatalog.option_index(slot, id)).is_greater(0)
 		var option := _option(slot, id)
 		assert_str(option["label"]).is_equal(PIECES[key])
-		# The ladder's locks come with the wardrobe grid (#1065), from `unlocks.json`.
-		assert_dict(option["gate"]).is_empty()
+		# The ladder's locks are the wardrobe grid's (#1065), from `unlocks.json`.
+		assert_dict(option["gate"]).is_equal({"level": LEVELS[key]})
 
 
 ## The art is drawn, so each piece's row says so: a player who reaches its level is told.
