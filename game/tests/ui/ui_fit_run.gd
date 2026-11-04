@@ -41,6 +41,7 @@ var phone := false
 ## The player's interface size (Settings, Accessibility): 0.8, 1 or 1.25.
 var ui_scale := 1.0
 var _holder: CanvasLayer
+var _asking: TogetherScreen
 var _saved_size := Vector2i.ZERO
 var _saved_scale := 1.0
 
@@ -249,7 +250,8 @@ func open(screen_name: String) -> Dictionary:
 		subject = await _open_quick_join(screen_name, screen_name == "quick join failed")
 	elif screen_name == "together name":
 		subject = await open_screen(TOGETHER, screen_name)
-		(subject["root"] as TogetherScreen)._ask_name()
+		_asking = subject["root"] as TogetherScreen
+		_asking._ask_name()
 		await frames()
 	else:
 		subject = await open_screen(SETTINGS, screen_name)
@@ -333,6 +335,10 @@ func screen_subject(screen: Control, label: String) -> Dictionary:
 
 ## Closes whatever a subject opened.
 func close() -> void:
+	# The name prompt waits for an answer; an answer lets it finish, so nothing waits for ever.
+	if is_instance_valid(_asking):
+		_asking.name_decided.emit()
+	_asking = null
 	if is_instance_valid(_holder):
 		_holder.free()
 	_holder = null
