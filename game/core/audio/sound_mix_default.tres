@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_tuning")
 group_limits = Dictionary[StringName, int]({
+&"arrival": 3,
 &"bed": 4,
 &"board": 4,
 &"breaker": 2,

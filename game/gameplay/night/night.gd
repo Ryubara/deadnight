@@ -29,6 +29,10 @@ signal ticked
 signal connection_lost
 signal connection_resumed
 signal connection_ended
+## This client's arrival by helicopter began (the screen is the show's, the HUD gives way), and
+## ended (the player has the night). `arrival` turns it on (#1057).
+signal arrival_started
+signal arrival_ended
 
 ## MANUAL makes no commands: the caller sends them through `link` (the tests do).
 enum Mode { HUMAN, AUTOPILOT, MANUAL }
@@ -102,6 +106,13 @@ var map_id := ""
 var touch_active := Callable()
 ## The touch player's aim help, once the night has begun (a human's night only).
 var assist: TouchAimAssist
+## Whether this client plays the arrival by helicopter when it comes into the night: a person's game
+## turns it on (`NightScreen`); a test, a capture and a bot leave it off. Only a human night plays
+## it,
+## and only under `ArrivalTuning` (`enabled`, `repeat`).
+var arrival := false
+## The show, while it plays.
+var arrival_show: ArrivalCutscene
 ## The HUD to feed, set before `start`: it hears the night from its first event.
 var hud: Hud
 ## The player's challenges, set before `start` by the screen a person plays on (bots, captures and
@@ -392,6 +403,8 @@ func _build_view(camera: Camera3D) -> void:
 ## The night ended: this client reads the server's intermission but plays no more (`NightEnding`).
 func _on_over(_round_reached: int) -> void:
 	running = false
+	if is_arriving():
+		arrival_show.skip_now()
 	NightEnding.begin(self)
 
 
@@ -452,7 +465,15 @@ func _go() -> void:
 	if mode == Mode.HUMAN:
 		_make_assist()
 	running = true
+	if NightArrival.due(self):
+		NightArrival.begin(self)
 	ready_to_play.emit()
+
+
+## Whether this client's arrival show is playing: the player's controls are the show's (the server
+## keeps them out of the night, `ArrivalPlay`), so no command asks for anything.
+func is_arriving() -> bool:
+	return arrival_show != null and not arrival_show.is_over()
 
 
 ## The touch player's aim help, over the picture of the night this client has.
@@ -467,6 +488,11 @@ func _make_assist() -> void:
 ## The look this client wears: the one a test or `--look` set, else the saved one.
 func _wanted_look() -> CharacterLook:
 	return own_look if own_look != null else LookStore.load_look()
+
+
+## The look this client wears, for the arrival show's Soldier.
+func worn_look() -> CharacterLook:
+	return _wanted_look()
 
 
 func _make_spectator() -> Camera3D:
@@ -739,6 +765,8 @@ func give_bot_order(order: StringName, bot_id := 0) -> Dictionary:
 
 func _human_command() -> NightCommand:
 	var command := _human.command(player(), state.player_id)
+	if is_arriving():
+		NightArrival.quiet(command)
 	if _human.ping_pressed(player()):
 		link.send(_ping_request(command))
 	return command

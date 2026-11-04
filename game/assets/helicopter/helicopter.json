@@ -1,0 +1,63 @@
+{
+ "budget": 1500,
+ "door": {
+  "sill_y": 0.999,
+  "top_y": 2.724,
+  "x": 1.22,
+  "z_from": -1.2,
+  "z_to": 1.2
+ },
+ "main_rotor_radius": 4.25,
+ "nodes_godot": {
+  "Body": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "MainRotor": [
+   0.0,
+   3.9,
+   0.0
+  ],
+  "RopeAnchor": [
+   1.42,
+   2.7,
+   0.0
+  ],
+  "Searchlight": [
+   0.0,
+   0.47,
+   -2.25
+  ],
+  "TailRotor": [
+   0.3,
+   3.0,
+   5.85
+  ]
+ },
+ "searchlight_minus_z_godot": [
+  0,
+  -1,
+  0
+ ],
+ "size_m": {
+  "all_at_rest_x_y_z_godot": [
+   8.5,
+   4.13,
+   10.07
+  ],
+  "body_x_y_z_godot": [
+   2.76,
+   3.9,
+   10.07
+  ]
+ },
+ "skid_outer_x": 1.22,
+ "tail_rotor_radius": 0.72,
+ "total_tris": 1264,
+ "tris": {
+  "Body": 1080,
+  "MainRotor": 116,
+  "TailRotor": 68
+ }
+}
