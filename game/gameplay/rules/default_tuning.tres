@@ -136,7 +136,7 @@ pool_weights = PackedFloat32Array()
 script = ExtResource("1_skww1")
 id = &"upgrade_weapon"
 kind = 7
-price = 1500
+price = 5000
 pool_weights = PackedFloat32Array()
 
 [sub_resource type="Resource" id="Resource_utxut"]
@@ -285,13 +285,13 @@ pool_weights = PackedFloat32Array()
 [sub_resource type="Resource" id="Resource_6sif2"]
 script = ExtResource("2_tud1d")
 start_points = 200
-hit = 4
-headshot_hit = 8
+hit = 5
+headshot_hit = 10
 max_paid_hits = 4
-kill = 60
-headshot_kill = 70
+kill = 55
+headshot_kill = 65
 melee_kill = 130
-repair = 12
+repair = 10
 repair_cap_per_round = 120
 round_bonus_base = 20
 round_bonus_per_round = 10
@@ -467,7 +467,7 @@ crawler_speed_fraction = 0.35
 
 [sub_resource type="Resource" id="Resource_barr1"]
 script = ExtResource("10_barr1")
-ids = Array[StringName]([&"nw", &"ne", &"w", &"e", &"n", &"n2"])
+ids = Array[StringName]([&"nw", &"ne", &"w", &"e", &"n", &"n2", &"mid_w", &"mid_e", &"yard_e1", &"yard_e2", &"yard_s", &"back_w1", &"back_w2", &"back_s", &"plaza_w", &"plaza_e"])
 boards = 5
 seconds_per_board = 1.2
 
@@ -607,7 +607,6 @@ burst_radius_multiplier = 1.27
 [sub_resource type="Resource" id="Resource_upgt1"]
 script = ExtResource("12_upgr1")
 profiles = Array[ExtResource("15_recut")]([SubResource("Resource_recut_pistol"), SubResource("Resource_recut_smg"), SubResource("Resource_recut_shotgun"), SubResource("Resource_recut_rifle"), SubResource("Resource_recut_flare_gun"), SubResource("Resource_recut_mp5"), SubResource("Resource_recut_ppsh"), SubResource("Resource_recut_m4a1"), SubResource("Resource_recut_m249"), SubResource("Resource_recut_fifty_cal"), SubResource("Resource_recut_pump_870"), SubResource("Resource_recut_dual_pistols"), SubResource("Resource_recut_ray_gun"), SubResource("Resource_recut_freeze_gun")])
-price_step = 1500
 name_prefix = "Re-Cut "
 
 [sub_resource type="Resource" id="Resource_perks1"]

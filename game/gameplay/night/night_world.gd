@@ -244,18 +244,26 @@ func _walkable(area: String) -> bool:
 		return true
 	var start := layout.start_spawns()[0].global_position
 	for marker in layout.spawn_markers(area):
-		var from := start
 		var to := marker.global_position
 		var id := StringName(marker.get_meta(&"barricade_id", ""))
 		if _barricades.has(id):
-			# A window's dead rise outside it and must walk in: from where they rise to the inside.
-			from = to
-			to = _barricades[id].standing_point(REPAIR_SPOT)
-		var way := NavigationServer3D.map_get_path(map(), from, to, true)
-		if way.is_empty() or _flat(way[way.size() - 1], to) >= NAV_REACHED:
+			# A breach's dead rise outside it and must walk in: from where they rise to the inside of
+			# the boards, and the map must walk from the field to that inside too (before a door's
+			# mesh is in, the area is an island of its own that the bay or apron is on, #849).
+			var inside := _barricades[id].standing_point(REPAIR_SPOT)
+			if not _reaches(to, inside):
+				return false
+			to = inside
+		if not _reaches(start, to):
 			return false
 	_walkable_areas[area] = true
 	return true
+
+
+## Whether the map walks from `from` to `to` (a path that ends within `NAV_REACHED` of it).
+func _reaches(from: Vector3, to: Vector3) -> bool:
+	var way := NavigationServer3D.map_get_path(map(), from, to, true)
+	return not way.is_empty() and _flat(way[way.size() - 1], to) < NAV_REACHED
 
 
 func _flat(a: Vector3, b: Vector3) -> float:
@@ -366,6 +374,7 @@ func add_body(spawn: Vector3, local_input: bool, drawn: bool = true) -> Player:
 	var body := PLAYER_SCENE.instantiate() as Player
 	body.local_input = local_input
 	body.capture_mouse = local_input
+	body.dead = DeadField.new()
 	if not drawn:
 		body.strip_model()
 	if not local_input:

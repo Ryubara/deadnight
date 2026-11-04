@@ -17,10 +17,6 @@ const BATTERY := &"battery"
 const TICKS_PER_SECOND := 60.0
 ## The value of a `metadata/flicker` that makes a group's lights burn dimmed and failing.
 const FAILING_BATTERY := &"failing_battery"
-## The step of the golden-ratio sequence that spreads each lamp's flicker out of step with the rest.
-const _SPREAD := 0.6180339887
-const _SLOT_PRIME := 7919.0
-const _LAMP_PRIME := 104729.0
 
 
 ## One lamp: its light, the circuit it hangs on and what it needs to be drawn.
@@ -157,23 +153,19 @@ func refresh(tick: int) -> void:
 
 
 ## How bright a lamp burns: 0 when its circuit is off or the tank is dry, 1 while the tank is
-## healthy, and between them a flicker that is a function of the tick and the lamp's number alone
-## (no clock, no random draw), so a recording and a test see the same lights.
+## healthy, and between them the tank's warning (`FailingBattery.brownout`): a sag and dips that
+## deepen as the tank empties, a function of the tick and the lamp's number alone (no clock, no
+## random draw), so a recording and a test see the same lights.
 static func brightness(on: bool, power_level: float, tick: int, index: int) -> float:
 	if not on or power_level <= 0.0:
 		return 0.0
-	if power_level >= 1.0:
-		return 1.0
-	var slot := float(floori(float(tick) / LightTuning.current().flicker_ticks))
-	var roll := fposmod((slot * _SLOT_PRIME + float(index) * _LAMP_PRIME) * _SPREAD, 1.0)
-	var sag := lerpf(LightTuning.current().sag_floor, 1.0, power_level)
-	return sag if roll < power_level else sag * LightTuning.current().dropout
+	return FailingBattery.brownout(float(tick) / TICKS_PER_SECOND, index, power_level)
 
 
 ## How bright a lamp of a failing battery burns (`FailingBattery`): 0 when its circuit is off or the
 ## tank is dry, else the battery's dimmed flicker, a function of the tick and the lamp's `slot`
-## alone. A low tank lowers it by the sag but never adds the brownout's quick flicker to it: the
-## back lot already flickers, and the two together would strobe.
+## alone. A low tank lowers it by the sag but does not add the brownout's dips to it: the back lot
+## already flickers, and the two together would be more events than the guidance allows.
 static func failing_brightness(on: bool, power_level: float, tick: int, slot: int) -> float:
 	if not on or power_level <= 0.0:
 		return 0.0

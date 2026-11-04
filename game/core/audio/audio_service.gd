@@ -46,8 +46,11 @@ const DEFERRED_MAX_MSEC := 6.0
 const ENGINE_MAX_DB := 3.0
 const POOL_3D := 32
 const POOL_2D := 12
-## Players for beds (looping ambience and score), which are outside the voice budget.
-const POOL_BEDS := 6
+## Players for beds (looping ambience and score), which are outside the voice budget. A night
+## holds up to seven (crickets, highway, score, wind, the world's bed and the small map's two) and
+## each takes two seconds to fade out after the night; the menu's two (`MenuAmbience`) start the
+## moment the menu is back, so they need a place while the night's beds are still going.
+const POOL_BEDS := 10
 ## A bed fades between this and its own level, at these rates (dB per second), so it comes in over
 ## about three seconds and goes out over about two.
 const BED_SILENT_DB := -60.0
@@ -111,6 +114,8 @@ var culled := 0
 ## Whether the deferred sounds wait, because the night's loading bar is up and every frame of it is
 ## already paid for (`NightWarmup`): the line is made once the bar is gone.
 var decode_held := false
+## The menu's sound rules; `play_ui` is its way in.
+var ui: UiSounds = UiSounds.new(self)
 
 ## While the player is in a menu the service loads the sounds a night uses, a slice of each frame
 ## (`start_background_preload`), so the night's loading screen has less to do.
@@ -272,15 +277,25 @@ func advance(delta: float) -> void:
 	_step_beds(delta)
 
 
-## Makes every gds_ui control and the router sound through the catalog's `ui_*` sounds.
+## Makes every gds_ui control, the menu's own controls and the router sound through the menu's
+## table (`UiSounds`, `UiSoundTable`).
 func install_ui_hook() -> void:
 	UIAudio.handler = play_ui
 
 
-func play_ui(cue: StringName) -> void:
-	var id: StringName = SoundCatalog.UI_CUES.get(cue, &"")
-	if id != &"":
-		play(id)
+## One cue of the `UIAudio` vocabulary from `source`: the table and its rules decide the sound.
+func play_ui(cue: StringName, source: Object = null) -> void:
+	ui.handle(cue, source)
+
+
+## The service's own clock in seconds (what `advance` moves), for rules that need a gap.
+func clock() -> float:
+	return _now
+
+
+## A random number from the service's generator (seedable), so a test or a capture repeats.
+func random_range(low: float, high: float) -> float:
+	return _rng.randf_range(low, high)
 
 
 ## Plays a round's sting when the rules say a round began or ended. Pass null to stop listening.
@@ -301,13 +316,13 @@ func seed_random(value: int) -> void:
 ## Starts a sound. With a Vector3 `position` it is a 3D sound; without one it plays flat. Returns
 ## the player it started on, or null when the sound was dropped (too far, over its limit, too
 ## soon, missing).
-func play(id: StringName, position: Variant = null, extra_db := 0.0) -> Node:
+func play(id: StringName, position: Variant = null, extra_db := 0.0, pitch_st := 0.0) -> Node:
 	var began := PerfProbe.begin()
 	var player: Node = null
 	if _may_start_now():
-		player = _start(id, position, extra_db)
+		player = _start(id, position, extra_db, pitch_st)
 	else:
-		_defer(id, position, extra_db)
+		_defer(id, position, extra_db, pitch_st)
 	PerfProbe.end(&"audio.play", began)
 	if PerfProbe.enabled:
 		PerfProbe.end(StringName("snd.%s" % id), began)
@@ -329,12 +344,22 @@ func _may_start_now() -> bool:
 	return true
 
 
-func _defer(id: StringName, position: Variant, extra_db: float) -> void:
+func _defer(id: StringName, position: Variant, extra_db: float, pitch_st := 0.0) -> void:
 	var def := SoundCatalog.get_def(id)
 	if def == null:
 		return
-	_deferred.append(
-		{"id": id, "position": position, "extra_db": extra_db, "at": _now, "priority": def.priority}
+	(
+		_deferred
+		. append(
+			{
+				"id": id,
+				"position": position,
+				"extra_db": extra_db,
+				"pitch_st": pitch_st,
+				"at": _now,
+				"priority": def.priority,
+			}
+		)
 	)
 	if _deferred.size() > DEFER_MAX:
 		var quietest := 0
@@ -363,10 +388,10 @@ func _start_deferred() -> void:
 	)
 	while not _deferred.is_empty() and _may_start_now():
 		var sound: Dictionary = _deferred.pop_front()
-		_start(sound["id"], sound["position"], sound["extra_db"])
+		_start(sound["id"], sound["position"], sound["extra_db"], sound.get("pitch_st", 0.0))
 
 
-func _start(id: StringName, position: Variant, extra_db: float) -> Node:
+func _start(id: StringName, position: Variant, extra_db: float, pitch_st := 0.0) -> Node:
 	var def := SoundCatalog.get_def(id)
 	if def == null:
 		_warn_once("unknown sound '%s'" % id)
@@ -375,6 +400,8 @@ func _start(id: StringName, position: Variant, extra_db: float) -> Node:
 	if stream == null:
 		return null
 	var pitch := _random_pitch(def)
+	if pitch_st != 0.0:
+		pitch *= exp(pitch_st / 12.0 * log(2.0))
 	var duration := stream.get_length() / pitch
 	if position is Vector3:
 		return _play_3d(def, stream, position, pitch, duration, extra_db)

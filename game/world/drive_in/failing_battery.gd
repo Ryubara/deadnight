@@ -19,6 +19,10 @@ extends RefCounted
 ## Threshold"), and the dips never reach black: the lights stay on (`visible`) the whole time, so a
 ## Compatibility mesh never changes its set of lights.
 ##
+## The same shape is the tank's warning (`brownout`): when the generator's tank is in its last
+## tenth, the lamps that follow it sag and dip in these events, the deeper the lower the tank, so
+## the flicker says "running out" without ever being a strobe.
+##
 ## A sign follows the flicker by following a lamp of the group (`LightFollower`, as `LotNeonSign`
 ## does): the level of the lamp it follows is this function's, scaled by its circuit and the tank.
 ## A node that is not a lamp asks `level` directly with the same `seconds` and a `lamp` number.
@@ -90,6 +94,23 @@ static func level(seconds: float, lamp: int, seed_value: int = -1) -> float:
 	)
 	var base := tuning.failing_base + tuning.failing_wander * wander
 	return base * (1.0 - dip(seconds, lamp, chosen) * (1.0 - tuning.failing_floor))
+
+
+## The share of its light a lamp of the generator gives while the tank is low (`power_level` from
+## 1, healthy, to 0, dry; 0 and below is out): the tank's sag, and the cycle's event on top of it,
+## deeper the lower the tank (the square root of how far it has fallen, so the warning shows from
+## the first drop). Healthy, 1. The same events as the failing battery, so no second holds more
+## than three flashes at any level of the tank.
+static func brownout(seconds: float, lamp: int, power_level: float, seed_value: int = -1) -> float:
+	if power_level <= 0.0:
+		return 0.0
+	if power_level >= 1.0:
+		return 1.0
+	var tuning := LightTuning.current()
+	var chosen := tuning.failing_seed if seed_value < 0 else seed_value
+	var sag := lerpf(tuning.sag_floor, 1.0, power_level)
+	var severity := sqrt(1.0 - power_level)
+	return sag * (1.0 - severity * dip(seconds, lamp, chosen) * (1.0 - tuning.failing_floor))
 
 
 ## How much of its dip the lamp is in at `seconds`: 0 steady, 1 at the floor.

@@ -82,7 +82,7 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("boxes", -10.7, 15.2, 90),
         ("pallet", -12.3, 13.4, 10),
         ("box", -12.2, 16.8, 35),
-        ("container_small", 10.7, 29.2, 90),
+        ("container_small", 8.9, 26.0, 90),
         ("planks", 12.6, 27.0, 60),
         # Along the fence by the road gate.
         ("cone", -3.0, 36.6, 0),
@@ -125,7 +125,7 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("crate", -15.3, 30.0, 0),
         ("crate", -15.3, 30.65, 5),
         ("crate", -14.65, 30.3, 350),
-        ("tires", -15.3, 33.0, 90),
+        ("tires", -15.3, 37.0, 90),  # off the bay wall (z 33), into its corner, #849
         ("barrel", 15.3, 25.0, 0),
         ("barrel", 15.3, 25.7, 0),
         ("gas_tank", 15.3, 31.6, 0),
@@ -138,7 +138,7 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         # South of the booth, either side of the road gate (x -3 to 3 stays clear).
         ("barrier", -8.0, 35.6, 0),
         ("barrier", 8.0, 35.6, 0),
-        ("pallet", -10.5, 33.8, 30),
+        ("pallet", -7.6, 33.6, 30),  # beside the south-west bay (x -16 to -9, z 33 to 38), not across its gap
         # Two piles in the court between the stand and the booth, and one by the west fence.
         ("crate", 9.8, 17.0, 0),
         ("crate", 10.45, 17.05, 10),
@@ -146,11 +146,11 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("barrel", -12.0, 11.0, 0),
         ("barrel", -11.4, 11.2, 0),
         ("boxes", -12.5, 25.0, 0),
-        ("pallet", 12.0, 33.4, 70),
-        ("box", 11.0, 34.8, 30),
+        ("pallet", 7.6, 33.6, 70),  # beside the south-east bay (x 9 to 16), not across its gap
+        ("box", 8.6, 31.6, 30),
         # The east pass's models: a pile of pipes by the west fence, a sign by the
         # road gate and loose papers over the court.
-        ("pipes", -12.0, 31.5, 0),
+        ("pipes", -15.1, 14.2, 90),  # up the fence from the south-west bay, off the container (no new step up, #849)
         ("sign", 4.2, 36.2, 200),
         ("papers", -3.0, 14.0, 0),
         ("papers_b", 5.0, 13.0, 40),
