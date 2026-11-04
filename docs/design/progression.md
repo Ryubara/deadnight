@@ -628,6 +628,19 @@ nothing, and the report shows no XP. **Credits** (decision
 Grip: most boards mended", "Best Boy: most fuel cans", "Stunt Double: most times down") and a line of XP, chosen by
 rule from `NightTally`; solo gets a credit too.
 
+**Built (#1068).** The end board (`HudEndBoard`, the night report) has a ticket under the round line,
+`HudNightReport`: a line for each thing that paid (Rounds, Points, Upkeep, Headliners, Rescues, Challenges, Opening
+night, First game of the day; only those that paid), the night's total, the level (`LEVEL 2 TO 4` when the night
+crossed some) with its bar (what the account had in the level, then what the night added), what the crossed levels
+gave, and the next level that gives something to wear or play (levels whose art is not drawn yet are not promised, as
+in the popups). The report adds no number of its own: `ReportTracker` sums the `sources` of the `xp_gained` events
+the client hears (the game server's tally, or the local rules' in a signed-in solo night, a Guest account included),
+and `NightReport` cuts them into whole XP so that **the lines add up to the total exactly** (the XP a rounded-down
+line loses goes to the lines that lost most; a night over the cap ends in a negative "Night limit" line). A night
+nobody keeps (no account at all) is counted by the client with the same `XpRules.worth` and shown under the heading
+"your night, unsaved" with the XP it would have paid, no bar and "no account: this night was not saved". The
+players' rows are untouched by it (the icon and level beside a name are #1077's).
+
 ## Popups, motion and sound
 
 ![Popup storyboard](../research/progression-popups.png)
