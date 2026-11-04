@@ -14,7 +14,7 @@ const BEFORE := {
 	&"eyewear": [&"none", &"sunglasses", &"glasses", &"goggles"],
 	&"neck": [&"none", &"scarf", &"bowtie"],
 }
-## Wave one, as the design page names them.
+## The ladder's pieces, as the design page names them.
 const PIECES := {
 	&"torso/usher": "Usher's jacket",
 	&"torso/coveralls": "Coveralls",
@@ -24,6 +24,28 @@ const PIECES := {
 	&"headwear/visor": "Projectionist's visor",
 	&"neck/lanyard": "Press lanyard",
 	&"neck/bolo": "Bolo tie",
+	&"feet/skates": "Roller skates",
+	&"legs/swing": "Swing skirt",
+	&"torso/creature": "Creature tee",
+	&"feet/rubber": "Rubber boots",
+	&"headwear/creature": "Creature mask",
+	&"neck/film": "Film-strip scarf",
+	&"torso/varsity": "Varsity gold",
+}
+## Each slot's order with wave one on the end: wave two only adds after it.
+const WAVE_ONE := {
+	&"headwear": [&"none", &"helmet", &"pillbox", &"ballcap", &"papercap", &"ranger", &"visor"],
+	&"torso":
+	[&"vest", &"jacket", &"shirt", &"rolled", &"tank", &"letterman", &"usher", &"coveralls"],
+	&"legs": [&"trousers", &"cuffed", &"shorts", &"striped", &"overalls"],
+	&"feet": [&"boots", &"sneakers", &"shoes", &"saddle"],
+	&"eyewear": [&"none", &"sunglasses", &"glasses", &"goggles", &"cinema"],
+	&"neck": [&"none", &"scarf", &"bowtie", &"lanyard", &"bolo"],
+}
+## Each fixed swatch of the atlas as it stood: a swatch that moved would repaint every part.
+const SWATCHES := {
+	&"lens_red": [14, 1],
+	&"lens_cyan": [15, 1],
 }
 const BODIES: Array[StringName] = [&"male", &"female"]
 
@@ -33,11 +55,54 @@ func _option(slot: StringName, id: StringName) -> Dictionary:
 
 
 func test_the_pieces_are_appended_after_every_part_that_was_there() -> void:
-	for slot: StringName in BEFORE:
-		var ids: Array = []
-		for option: Dictionary in LookCatalog.options(slot):
-			ids.append(option["id"])
-		assert_array(ids.slice(0, BEFORE[slot].size())).is_equal(BEFORE[slot])
+	for before: Dictionary in [BEFORE, WAVE_ONE]:
+		for slot: StringName in before:
+			var ids: Array = []
+			for option: Dictionary in LookCatalog.options(slot):
+				ids.append(option["id"])
+			assert_array(ids.slice(0, before[slot].size())).is_equal(before[slot])
+
+
+func test_the_swatches_stay_where_they_were_and_the_new_ones_are_after_them() -> void:
+	var cells: Dictionary = SoldierLook.catalog().atlas.cells
+	for swatch: StringName in SWATCHES:
+		assert_int(int(cells[swatch][0])).is_equal(SWATCHES[swatch][0])
+		assert_int(int(cells[swatch][1])).is_equal(SWATCHES[swatch][1])
+	for swatch: StringName in [&"gold", &"gold_shade", &"film"]:
+		assert_int(int(cells[swatch][1])).is_equal(2)
+
+
+## The film's frame is drawn into its swatch: sprocket holes on black, on the look's copy too.
+func test_the_atlas_holds_the_film_frame_whatever_the_colours() -> void:
+	var cat := SoldierLook.catalog()
+	var cell: Array = cat.atlas.cells[&"film"]
+	var px := int(cat.atlas.swatch_px)
+	var atlas := SoldierLook.atlas_image(CharacterLook.from_preset(3).colours)
+	var at := Vector2i(int(cell[0]) * px, int(cell[1]) * px)
+	assert_float(atlas.get_pixelv(at).v).is_less(0.2)
+	assert_float(atlas.get_pixelv(at + Vector2i(1, 1)).v).is_greater(0.8)
+
+
+func test_the_creature_mask_hides_the_hair_and_the_glasses() -> void:
+	for body in BODIES:
+		var look := CharacterLook.from_preset(10)
+		look.parts[&"body"] = body
+		look.parts[&"hair"] = &"bun"
+		look.parts[&"eyewear"] = &"goggles"
+		look.parts[&"headwear"] = &"creature"
+		var shown := SoldierLook.visible_meshes(look.to_soldier_look())
+		(
+			assert_bool(shown.any(func(mesh: String) -> bool: return mesh.begins_with("hair__")))
+			. is_false()
+		)
+		(
+			assert_bool(shown.any(func(mesh: String) -> bool: return mesh.begins_with("eyewear__")))
+			. is_false()
+		)
+		# The look keeps them: taking the mask off brings them back.
+		look.parts[&"headwear"] = &"none"
+		shown = SoldierLook.visible_meshes(look.to_soldier_look())
+		assert_array(shown).contains(["hair__bun", "eyewear__goggles"])
 
 
 func test_every_piece_is_named_and_free_for_now() -> void:
@@ -78,7 +143,7 @@ func test_the_coveralls_are_a_one_piece_and_hide_the_trousers() -> void:
 
 ## What hangs on the chest has her own variant: her chest stands out further than the card.
 func test_the_neck_pieces_have_her_variant() -> void:
-	for id: StringName in [&"lanyard", &"bolo"]:
+	for id: StringName in [&"lanyard", &"bolo", &"film"]:
 		var look := CharacterLook.from_preset(0)
 		look.parts[&"neck"] = id
 		look.parts[&"body"] = &"female"
