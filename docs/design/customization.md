@@ -129,4 +129,6 @@ in a browser ([web export](../research/web-export.md)). What a locked entry asks
 level, `available`, and a `label` for a piece with no model yet) and `colours` (palette, name, level). `available` says
 whether the art existed when the line was written: the catalogue goes by `parts.json` (a model there is a model), and a
 test fails for a line that says available with no model, for a model with no line, and for a piece with no icon. A new
-piece is a line in `unlocks.json`, an entry in `parts.json` and a drawing in `ItemIcons`.
+piece is a line in `unlocks.json`, an entry in `parts.json` and a drawing in `ItemIcons`. The seven pieces of wave two
+(#1078) are already lines with `available: false` and the ids the art should use: `feet/skates`, `legs/skirt`,
+`torso/creature`, `feet/rubber`, `headwear/creature`, `neck/filmstrip` and `torso/varsity`.
