@@ -22,6 +22,7 @@ const ITEM_NAMES := {
 	&"weapon_shotgun": "BOUGHT THE SHOTGUN",
 	&"weapon_rifle": "BOUGHT THE RIFLE",
 	&"crane_play": "PLAYED THE CRANE",
+	&"ammo_house_pistol": "BOUGHT AMMUNITION",
 	&"ammo_pistol": "BOUGHT AMMUNITION",
 	&"ammo_smg": "BOUGHT AMMUNITION",
 	&"ammo_shotgun": "BOUGHT AMMUNITION",

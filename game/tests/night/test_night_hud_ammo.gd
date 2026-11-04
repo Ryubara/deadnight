@@ -49,12 +49,12 @@ func test_ammo_bought_at_a_locker_shows_in_the_card_without_a_swap() -> void:
 	var made := await _start()
 	var night: Night = made["night"]
 	var hud: Hud = made["hud"]
-	_run_low(night, &"pistol")
+	_run_low(night, &"house_pistol")
 	assert_int(hud.state.ammo_reserve).is_equal(LOW)
 	_stand_at(night, &"", &"ammo")
 	assert_str(String(hud.state.prompt["kind"])).is_equal("buy_ammo")
 	_use(night)
-	var reserve := night.server.combat.state_of(1, &"pistol").reserve
+	var reserve := night.server.combat.state_of(1, &"house_pistol").reserve
 	assert_int(reserve).is_greater(LOW)
 	assert_int(hud.state.ammo_reserve).is_equal(reserve)
 	assert_str(hud.ammo.reserve_text).is_equal("/ %d" % reserve)
@@ -86,16 +86,18 @@ func test_ammo_for_the_weapon_put_away_reaches_the_equipment_slot() -> void:
 	night.server.rules.apply(RulesAction.buy(1, &"weapon_shotgun", -1, &"crowbar"))
 	NightFixture.run(night, 3)
 	_run_low(night, &"shotgun", 2)
-	_run_low(night, &"pistol")
+	_run_low(night, &"house_pistol")
 	var shotgun := night.server.combat.state_of(1, &"shotgun")
-	assert_str(hud.state.weapon_name).is_equal(WeaponCatalog.get_def(&"pistol").display_name)
+	assert_str(hud.state.weapon_name).is_equal(WeaponCatalog.get_def(&"house_pistol").display_name)
 	assert_int(hud.state.equipment_count).is_equal(shotgun.ammo + 2)
 	_stand_at(night, &"weapon_shotgun", &"wall")
 	_use(night)
 	assert_int(shotgun.reserve).is_greater(2)
 	assert_int(hud.state.equipment_count).is_equal(shotgun.ammo + shotgun.reserve)
 	# The card still shows the pistol in hand.
-	assert_int(hud.state.ammo_reserve).is_equal(night.server.combat.state_of(1, &"pistol").reserve)
+	assert_int(hud.state.ammo_reserve).is_equal(
+		night.server.combat.state_of(1, &"house_pistol").reserve
+	)
 	_finish(night, hud)
 
 
@@ -103,9 +105,9 @@ func test_rounds_added_with_no_event_of_their_own_show_on_the_next_frame() -> vo
 	var made := await _start()
 	var night: Night = made["night"]
 	var hud: Hud = made["hud"]
-	_run_low(night, &"pistol")
+	_run_low(night, &"house_pistol")
 	# A pickup or a power-up that changes the weapon and says nothing: the frame carries it.
-	night.server.combat.state_of(1, &"pistol").add_reserve(20)
+	night.server.combat.state_of(1, &"house_pistol").add_reserve(20)
 	# The server's next step builds the frame; the link delivers it on the tick after.
 	NightFixture.run(night, 2)
 	assert_int(hud.state.ammo_reserve).is_equal(LOW + 20)
@@ -116,9 +118,11 @@ func test_an_ammo_added_event_moves_the_card_the_moment_it_is_heard() -> void:
 	var made := await _start()
 	var night: Night = made["night"]
 	var hud: Hud = made["hud"]
-	_run_low(night, &"pistol")
+	_run_low(night, &"house_pistol")
 	# No frame in between: only the weapons' event.
-	night.state.apply_events(night.server.combat.apply(CombatAction.add_ammo(1, &"pistol", 12)))
+	night.state.apply_events(
+		night.server.combat.apply(CombatAction.add_ammo(1, &"house_pistol", 12))
+	)
 	assert_int(hud.state.ammo_reserve).is_equal(LOW + 12)
 	_finish(night, hud)
 
@@ -127,7 +131,7 @@ func test_another_players_ammo_leaves_your_card_alone() -> void:
 	var made := await _start()
 	var night: Night = made["night"]
 	var hud: Hud = made["hud"]
-	_run_low(night, &"pistol")
+	_run_low(night, &"house_pistol")
 	(
 		night
 		. state
@@ -136,7 +140,7 @@ func test_another_players_ammo_leaves_your_card_alone() -> void:
 				{
 					"type": &"ammo_added",
 					"player_id": 2,
-					"weapon_id": &"pistol",
+					"weapon_id": &"house_pistol",
 					"added": 30,
 					"ammo": 8,
 					"reserve": 90,
@@ -168,7 +172,7 @@ func test_the_card_is_the_latest_frame_on_every_tick_of_shots_a_reload_and_a_buy
 		seen_reloading = seen_reloading or hud.state.ammo_reloading
 	assert_bool(seen_reloading).is_true()
 	assert_bool(hud.state.ammo_reloading).is_false()
-	night.server.buy(1, &"ammo_pistol")
+	night.server.buy(1, &"ammo_house_pistol")
 	NightFixture.run(night, 2)
 	_assert_card_is_the_frame(night, hud)
 	assert_int(hud.state.ammo_reserve).is_equal(held.reserve)

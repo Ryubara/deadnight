@@ -6,7 +6,7 @@
 // clock, so tests move time by hand.
 import { randomBytes, randomUUID } from "node:crypto";
 import type { GameServerInfo } from "./servers.ts";
-import { type MatchSettings, parseSettings } from "./settings.ts";
+import { type MatchSettings, checkSettings } from "./settings.ts";
 
 export interface Member {
   userId: string;
@@ -58,10 +58,13 @@ export type LobbyError =
 
 export class LobbyFailure extends Error {
   readonly reason: LobbyError;
+  /** What the client can be told about the refusal beyond the reason (the setting it sent that is wrong). */
+  readonly detail: string | undefined;
 
-  constructor(reason: LobbyError) {
+  constructor(reason: LobbyError, detail?: string) {
     super(reason);
     this.reason = reason;
+    this.detail = detail;
   }
 }
 
@@ -300,9 +303,9 @@ export class LobbyService {
     const lobby = this.get(id);
     if (lobby.hostId !== userId) throw new LobbyFailure("not_host");
     if (lobby.state === "started") throw new LobbyFailure("already_started");
-    const chosen = parseSettings(settings);
-    if (chosen === null) throw new LobbyFailure("bad_settings");
-    lobby.settings = chosen;
+    const checked = checkSettings(settings);
+    if ("problem" in checked) throw new LobbyFailure("bad_settings", checked.problem);
+    lobby.settings = checked.settings;
     lobby.lastActiveAt = this.now();
     return lobby;
   }
@@ -316,8 +319,12 @@ export class LobbyService {
     if (lobby.hostId !== userId) throw new LobbyFailure("not_host");
     if (lobby.state === "started") throw new LobbyFailure("already_started");
     const given = settings !== undefined && settings !== null;
-    const chosen = given ? parseSettings(settings) : lobby.settings;
-    if (given && chosen === null) throw new LobbyFailure("bad_settings");
+    let chosen = lobby.settings;
+    if (given) {
+      const checked = checkSettings(settings);
+      if ("problem" in checked) throw new LobbyFailure("bad_settings", checked.problem);
+      chosen = checked.settings;
+    }
     const matchId = randomUUID();
     const server = this.hooks.allocate(matchId);
     if (!server) throw new LobbyFailure("no_server");
@@ -367,12 +374,39 @@ export class LobbyService {
     if (lobby) lobby.round = round;
   }
 
-  /** The match is over (the game server said so, or stopped listing it): its lobby goes. Unknown ids are ignored. */
-  matchEnded(matchId: string): void {
+  /**
+   * The match is over (the game server said so, or stopped listing it): its lobby goes. Unknown ids are ignored.
+   *
+   * A night that ran its end-of-night intermission out is `finished` instead (`present`: the users the game server had
+   * at that moment): the lobby opens again for the people who were there, with its code, its host (the next seat when
+   * the host is not among them), its Activity instance and the settings the host chose (map, bots, rules), ready for
+   * the host to start the next night. A member who is already in another open lobby is not put back in this one.
+   */
+  matchEnded(matchId: string, finished?: { present: string[] }): void {
     const lobbyId = this.byMatch.get(matchId);
     const lobby = lobbyId ? this.lobbies.get(lobbyId) : undefined;
-    if (lobby) this.remove(lobby);
-    else this.hooks.release(matchId);
+    if (!lobby) {
+      this.hooks.release(matchId);
+      return;
+    }
+    const back = finished ? lobby.members.filter((m) => finished.present.includes(m.userId) && !this.openLobbyOf.has(m.userId)) : [];
+    if (back.length === 0) {
+      this.remove(lobby);
+      return;
+    }
+    this.byMatch.delete(matchId);
+    this.hooks.release(matchId);
+    const now = this.now();
+    lobby.state = "open";
+    lobby.match = null;
+    lobby.players = null;
+    lobby.round = null;
+    lobby.startedAt = null;
+    lobby.members = back;
+    lobby.seen = new Map(back.map((m) => [m.userId, now]));
+    lobby.lastActiveAt = now;
+    if (!back.some((m) => m.userId === lobby.hostId)) lobby.hostId = back[0]!.userId;
+    for (const m of back) this.openLobbyOf.set(m.userId, lobby.id);
   }
 
   isMember(lobby: Lobby, userId: string): boolean {

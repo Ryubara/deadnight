@@ -414,6 +414,28 @@ id is the revolver's.
   plan's factor 1.75, longer than the revolver's 1.22, so it is held at **size factor 1.5** (`model_scale` 1.95):
   grip 1.17, guard 0.96, 0.39 m in the game, as the plan's 0.38.
 
+### House pistol (`house_pistol`, #898, the start weapon)
+
+A 9 mm double-action service pistol of the 1980s type, generic (no maker's marks; the in-game name is the drive-in's house
+gun, `House Pistol`). It replaces the revolver as every player's start and reads apart from both pistols that exist: the
+revolver (a long Grey frame and a cylinder) and the 1911 type of the dual pistols (`service_pistol`: a Black slide
+over a
+DarkGrey frame, Wood panels, a round guard).
+
+- **Layout:** muzzle -0.18 (bore z 0.045); a pale **Grey slide** with the large open cut over the barrel (a DarkGrey
+  barrel and a locking block show in the cut: the feature that reads at 40 px a metre), sights, a safety lever on the
+  rear and serrations as detail; a **Black frame** with a dust cover and a rail; a **squared trigger guard** with a hooked
+  lip, deep enough for the Soldier's finger (#460); a Black grip with Grey2 panel inlays raked 18 degrees back, a flared
+  foot and a lanyard ring. The grip, trigger and magazine sit where the service pistol's do (the hold and the grip
+  solve start from a pistol known to fit), so `Grip` is (0.032, 0, -0.058), up (-0.31, 0, 0.95), front (-1, 0, 0),
+  `Trigger` (-0.03, 0, -0.012), `Eject` (-0.07, 0.02, 0.065) at the cut's right edge.
+- **Nodes:** `Slide` (back +X 0.05 at the shot, pivot (0.04, 0, 0.0525)) and `Magazine` (drops along the grip, the
+  reload's part, pivot (0.035, 0, -0.10)). **Ammo glb:** the magazine.
+- **Built (#898):** `weapon_specs/house_pistol.py`, **904 / 316 tris** (budget 1,500 / 500), 40 parts, ammo 76; 0.275 x
+  0.057 x 0.211 m drawn. Held at the service pistol's size (`model_scale` 1.95, `size_factor` 1.75; `real_length` 0.235
+  keeps the rule's ratio for the raked grip's foot that the bounds include).
+- **Re-cut lights:** the slide's sides (the biggest Grey flats); the Black frame stays dark.
+
 ### Ray gun (`ray_gun`, #797)
 
 Our own design (no reference photos): a **projection pistol**, the drive-in's wonder weapon, a blue energy pistol

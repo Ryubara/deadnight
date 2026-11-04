@@ -52,6 +52,14 @@ const HOLD_LEAVE := 1.0
 const HOLD_RUN_FROM := 8.0
 ## The `ROAM` order: how near counts as at a place, for the legs.
 const ROAM_RADIUS := 1.0
+## The flank: seconds between two looks for its place, and the metres the people may move before it
+## is looked for again.
+const FLANK_REPLAN := 3.0
+const FLANK_MOVED := 3.0
+## Metres the walk to the flank's place may end short of it: the place is on the mesh, so the walk
+## reaches it, and one that ends further off is a patch the lot's ground does not join (the slab
+## beyond the fence).
+const FLANK_REACH_SHORT := 0.5
 
 ## The legs the bot walks on, set by the client: the brain asks them which places are blocked.
 var legs: BotLegs
@@ -87,6 +95,10 @@ var _roam: BotRoam
 var _holding := false
 ## Whether the order in force is `FOLLOW` and the anchor is a person (set each think).
 var _following := false
+## The flank's place, when it was chosen, and the centre of the people it was chosen for.
+var _flank_spot := Vector3.INF
+var _flank_at := -INF
+var _flank_centre := Vector3.INF
 ## Whether the bot has reached its place of the `HOLD` order and stands there.
 var _at_hold := false
 var _retreat: BotRetreat
@@ -287,25 +299,62 @@ func _take_role(beliefs: BotBeliefs, here: Vector3) -> Array[Dictionary]:
 	return humans
 
 
-## The flank: a choke to the side of the people's heading (8 to 14 m, at most 11.5 from them), held
-## and fought from while the people stand; while they walk the bot follows with the rest.
+## The flank: a choke to the side of the people's heading (8 to 10 m, at most 10 from them), held
+## and fought from while the people stand; while they walk the bot follows with the rest. The place
+## is ground the bot can walk to (`_flank_place`): with none, the bot follows with the rest.
 func _flank(
 	intent: BotIntent, beliefs: BotBeliefs, here: Vector3, humans: Array[Dictionary]
 ) -> bool:
 	if humans.is_empty() or BotRoles.speed_of(humans) > BotRoles.FLANK_STILL:
+		_flank_spot = Vector3.INF
 		return false
+	var now := beliefs.now
 	var centre := BotRoles.flank_centre(humans)
-	var spot := _stance.choke(here, centre, beliefs.now)
-	var place := BotRoles.within_limit(
-		spot if spot != Vector3.INF else _level.project(centre), humans
-	)
+	var choke := _stance.choke(here, centre, now)
+	# A place is kept (a bot that changes its mind walks back and forth between two) until the people
+	# move on, or it is marked blocked; with none, the look is repeated every `FLANK_REPLAN` seconds.
+	var due := false
+	if _flank_spot == Vector3.INF:
+		due = now - _flank_at >= FLANK_REPLAN
+	else:
+		due = _blocked(_flank_spot, now) or _flat(centre, _flank_centre) > FLANK_MOVED
+	if due:
+		_flank_at = now
+		_flank_centre = centre
+		_flank_spot = _flank_place(here, humans, choke, now)
+	if _flank_spot == Vector3.INF:
+		return false
 	intent.note = "flank"
-	if _flat(here, place) < HOLD_RADIUS * 1.5:
+	if _flat(here, _flank_spot) < HOLD_RADIUS * 1.5:
 		return true
-	intent.goal = place
+	intent.goal = _flank_spot
 	intent.goal_radius = HOLD_RADIUS * 1.5
 	intent.run = false
 	return true
+
+
+## The first place for the flank that the bot can walk to: the choke the walls offer, then the
+## places `BotRoles.flank_choices` names, each brought in to the limit from the people and put on
+## the walking mesh. A place the walk does not reach (behind a fence, past a prop the mesh runs
+## through, on the slab beyond the lot), or one marked blocked, is passed over. `Vector3.INF` for
+## none.
+func _flank_place(here: Vector3, humans: Array[Dictionary], choke: Vector3, now: float) -> Vector3:
+	var wanted: Array[Vector3] = []
+	if choke != Vector3.INF:
+		wanted.append(choke)
+	wanted.append_array(BotRoles.flank_choices(humans))
+	for place in wanted:
+		var spot := _level.project(BotRoles.within_limit(place, humans))
+		if _level.in_passage(spot) or _blocked(spot, now):
+			continue
+		if legs == null or legs.path.probe(here, spot, now, FLANK_REACH_SHORT):
+			return spot
+	return Vector3.INF
+
+
+## Whether the legs have marked `spot` as a place they cannot walk to.
+func _blocked(spot: Vector3, now: float) -> bool:
+	return legs != null and legs.path.is_blocked(spot, now)
 
 
 ## A person's "hold here": the bot nearest to the mark goes and stays by it while it stands.
@@ -748,7 +797,10 @@ func _throw(
 		or targets.is_empty()
 	):
 		return false
-	var throw := _grenadier.plan(here, targets, beliefs.grenades, now, kind == BotStance.Kind.LOW)
+	# A walking bot slides a few decimetres before it stands to throw: plan from where it stops.
+	var mine: Dictionary = beliefs.teammates.get(beliefs.me, {})
+	var stop := BotGrenadier.stop_point(here, mine.get("velocity", Vector3.ZERO))
+	var throw := _grenadier.plan(stop, targets, beliefs.grenades, now, kind == BotStance.Kind.LOW)
 	if throw == null:
 		return false
 	intent.throw_style = throw.style
