@@ -7,7 +7,7 @@ extends RefCounted
 ## nothing (`ProfileStore`).
 ##
 ## The one-off XP is claimed when the night's first round ends, so it pays for playing, never for
-## opening the game: the opening night once ever, the first game of the day once a local day (the
+## opening the game: the opening night once ever, the first game of the day once a day (UTC) (the
 ## day number the dailies use, `ChallengeClock`). A completed daily or order adds the XP its
 ## definition holds. Only a night a person plays gets one (the night makes it when the screen gives
 ## it a store); bots, captures, tests and online nights (the server awards those) have none.

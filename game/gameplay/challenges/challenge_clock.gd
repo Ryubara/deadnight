@@ -1,24 +1,25 @@
 class_name ChallengeClock
 extends RefCounted
 ## What day it is for the player, and how long until the next one. A day is a whole number
-## (days since 1970, in the player's own time), so the daily rotation is a function of that number
-## and a test sets any day it likes. The day turns at the player's local midnight; where the
-## platform cannot say the offset it is UTC's.
+## (days since 1970), so the daily rotation is a function of that number and a test sets any day
+## it likes. **The day is UTC's, for the player's machine and the game server alike** (#1124): a
+## board is one board, dealt and counted by the client and by the server, and two days that turn
+## at different times would make the server deal a new set over the evening's progress of a player
+## west of UTC. The backend's own date is UTC's too (`bonusDay`). `offset_seconds` is for a test
+## that wants another zone; the game never sets one.
 
 const DAY_SECONDS := 86400
 
-## Seconds the player's clock is ahead of UTC.
+## Seconds the clock is ahead of UTC: always 0 outside a test.
 var offset_seconds := 0
 
 var _now: Callable
 
 
-## The machine's clock and time zone.
+## The machine's clock, on UTC's day (the time zone of the machine is not used).
 static func system() -> ChallengeClock:
 	var clock := ChallengeClock.new()
 	clock._now = Time.get_unix_time_from_system
-	var zone: Dictionary = Time.get_time_zone_from_system()
-	clock.offset_seconds = int(zone.get("bias", 0)) * 60
 	return clock
 
 

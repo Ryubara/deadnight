@@ -69,7 +69,7 @@ func seed_ids(value: int) -> void:
 
 
 ## Credits a night's XP: `xp` whole XP, with the one-off `opening_night` the night claimed and the
-## local day whose first-game XP it holds (`bonus_day`, -1 when none). Returns false and changes
+## day (UTC) whose first-game XP it holds (`bonus_day`, -1 when none). Returns false and changes
 ## nothing for a night with no account.
 func credit(xp: int, opening_night: bool = false, bonus_day: int = Profile.NO_DAY) -> bool:
 	if not has_account():

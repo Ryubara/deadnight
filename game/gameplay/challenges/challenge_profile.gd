@@ -36,14 +36,37 @@ var recent_orders: Array[StringName] = []
 var lifetime: Dictionary = {}
 ## How many dailies and orders were ever finished: `{daily, order}`.
 var finished := {"daily": 0, "order": 0}
-## Counts saves, for the backend's optimistic concurrency later.
+## Counts saves on this machine.
 var revision := 0
+## The account this board is the cache of ("" for a board no account has claimed, a player who never
+## signed in), and the revision its `challenges` slot was at when this board was read or written
+## (-1 when not known). They are not `data`: the file's envelope keeps them (`ChallengeSave`), so an
+## account's board never goes to another account and a write names the revision it follows.
+var account := ""
+var account_revision := -1
 
 
 ## A fresh profile; `p_order_seed` picks which orders it is dealt (a small number).
 static func fresh(p_order_seed: int = 1) -> ChallengeProfile:
 	var profile := ChallengeProfile.new()
 	profile.order_seed = p_order_seed & SEED_MASK
+	return profile
+
+
+## The order seed of an account: the same account is dealt the same orders wherever its board is
+## first made (the game server's or a client's), two accounts are dealt different ones. FNV-1a of
+## the id, which Godot's own `hash()` is not promised to match from one version to the next.
+static func seed_of(account_id: String) -> int:
+	var value := 2166136261
+	for byte in account_id.to_utf8_buffer():
+		value = ((value ^ byte) * 16777619) & 0xffffffff
+	return maxi(value & SEED_MASK, 1)
+
+
+## A fresh board for `account_id`: dealt orders no other account is dealt (`seed_of`).
+static func fresh_for(account_id: String) -> ChallengeProfile:
+	var profile := fresh(seed_of(account_id))
+	profile.account = account_id
 	return profile
 
 

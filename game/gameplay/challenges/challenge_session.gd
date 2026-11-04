@@ -12,6 +12,10 @@ signal advanced(advance: Dictionary)
 
 var board: ChallengeBoard
 var tracker: ChallengeTracker
+## Writes the board to the account at each round's end (`ChallengeUplink`): set by a signed-in solo
+## night, whose rules run here. Held here, not only by the night's code, so that a Callable or a
+## request in flight never outlives it (`docs/godot/callables-and-coroutines.md`).
+var uplink: ChallengeUplink
 
 var _state: ClientState
 var _following := -1
@@ -43,8 +47,13 @@ func _on_event(event: Dictionary) -> void:
 	tracker.observe(event)
 	if event["type"] == &"round_ended" or event["type"] == &"game_over":
 		board.save()
+		if uplink != null:
+			# Not awaited: a night never waits on the backend.
+			uplink.send(board)
 
 
 ## Writes the board now (a night left before it ended).
 func flush() -> void:
 	board.save()
+	if uplink != null:
+		uplink.send(board)

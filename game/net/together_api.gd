@@ -425,12 +425,13 @@ func _remember(answer: Dictionary) -> void:
 		GuestAccount.save_credential(base_url, credential, guest_path)
 
 
-## The run has an account now: the player's profile is read from it (`ProfileUplink`), without
-## waiting, so a night never waits on the backend. An isolated API (a test's second player) has no
-## profile file to keep it in.
+## The run has an account now: the player's profile and challenge board are read from it
+## (`ProfileUplink`, `ChallengeUplink`), without waiting, so a night never waits on the backend.
+## An isolated API (a test's second player) has no files to keep them in.
 func _signed_in_now() -> void:
 	if not isolated:
 		ProfileUplink.sync_after_sign_in(self)
+		ChallengeUplink.sync_after_sign_in(self)
 
 
 func _has_session() -> bool:

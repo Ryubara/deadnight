@@ -4,6 +4,11 @@ extends RefCounted
 ## (`{revision, schemaVersion, data}`, docs/research/platform-backend.md#save-format): locally in
 ## `user://challenges.json` today, the backend's save slot later, the same JSON either way.
 ##
+## A signed-in player's file is also the cache of the account's board (`ChallengeUplink`): its
+## envelope then names the `account` it belongs to and the `accountRevision` the backend's slot was
+## at when it was read or written. They are kept beside `data`, not in it, so what the backend holds
+## is exactly the board.
+##
 ## `schemaVersion` says how to read `data`. This game reads every version it has ever written and
 ## writes the newest; a file from a newer game is left alone, never overwritten, so an old client
 ## cannot wipe progress. A damaged file is set aside as `.broken` and play starts fresh. Nothing
@@ -25,6 +30,9 @@ static func to_json(profile: ChallengeProfile) -> String:
 		"schemaVersion": SCHEMA_VERSION,
 		"data": profile.to_dict(),
 	}
+	if profile.account != "":
+		envelope["account"] = profile.account
+		envelope["accountRevision"] = profile.account_revision
 	return JSON.stringify(envelope, "\t")
 
 
@@ -45,6 +53,8 @@ static func from_json(text: String) -> Dictionary:
 		return {"profile": null, "problem": NEWER_VERSION}
 	var profile := ChallengeProfile.from_dict(_migrate(data, version))
 	profile.revision = maxi(0, int(envelope.get("revision", 0)))
+	profile.account = str(envelope.get("account", ""))
+	profile.account_revision = int(envelope.get("accountRevision", -1))
 	return {"profile": profile, "problem": NO_PROBLEM}
 
 

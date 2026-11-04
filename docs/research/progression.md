@@ -364,6 +364,36 @@ the game server follows it. Nothing is written per kill.
 - **Tests:** `game/tests/net/test_profile_uplink.gd` runs the real backend (`BackendFixture`, `npm ci` in
   `spikes/backend`); the browser run is `tools/web_smoke/solo_profile.py` (the autopilot with `signin=1`).
 
+### The challenge board, signed in (#1124)
+
+`ChallengeUplink` (`game/net/challenge_uplink.gd`) is the sign-in read and the solo night's write of the `challenges`
+slot. The design is in [the board, signed in](../design/progression.md#the-board-signed-in); what a maintainer or the
+next engineer needs:
+
+- **The file and the slot.** `ChallengeSave` writes `account` and `accountRevision` into the envelope of
+  `user://challenges.json` (`ChallengeProfile.account`, `account_revision`, not part of `data`); the backend's slot holds
+  `data` without the machine's own save counter. A write names the revision it follows, from the file for a board the
+  account owns, and reads first (`GET`, a 404 is revision 0) for one that no account has claimed yet.
+- **The answers.** 409 `revision_conflict`: `GET` again, write the same board on the new revision (four tries; nothing
+  merged). A slot in a layout newer than `ChallengeSave.SCHEMA_VERSION`: not written. A slot that already holds a board
+  when this machine's board never named the account (the sign-in read was missed): not written over. Another failure:
+  the board stays in the file and goes at the next round end.
+- **One at a time.** A round end while a write is out is folded into it (`_again`): the running write goes on to the
+  board as it is then. A board that has not changed since the last write is not sent again (the night's end right after
+  a round's).
+- **The menu follows the file.** The sign-in read lands after the menu is up, and a night writes the file under it.
+  `ChallengeBoard.watch_file()` (the main menu's board) reads the file again when the uplink replaces it
+  (`ChallengeBoard.file_replaced`), and `MainMenu` calls `reload()` when it is shown again and refreshes the panel on
+  `changed`. A night's board never watches: its tracker holds the profile.
+- **Not in an online night.** Only a night whose rules run here (`Night.start`, not `start_remote`) gets the uplink; the
+  game server writes the board of an online night (#1076) and a second writer would be two counters on one slot.
+- **Known gap.** A sign-in read that lands in the middle of a solo night replaces the file under the night's board; the
+  night's round-end saves put its own board back and the write is refused (the board names no account), so that night's
+  challenge progress stays on the machine. The read is made at start-up, seconds after the game opens.
+- **Tests:** `game/tests/net/test_challenge_uplink.gd` (the real backend through `BackendFixture`, and fakes for the
+  counts), two menu tests in `game/tests/ui/test_main_menu.gd`; the browser run is `tools/web_smoke/solo_profile.py`
+  (the slot, the file and the Challenges tab after a solo night).
+
 ### The horde, measured
 
 **Method.** `game/tools/bench/xp_horde_bench.tscn`: a four-player night on a real `GameServer` (tickets, a room, a

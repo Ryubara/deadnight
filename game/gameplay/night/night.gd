@@ -119,6 +119,9 @@ var hud: Hud
 ## tests leave it empty, so they never touch the save). The night counts into it as it plays.
 var challenge_board: ChallengeBoard
 var challenges: ChallengeSession
+## Writes the board to the account at round ends; set like the board, and used by a night that runs
+## here only (online the game server writes the board).
+var challenge_uplink: ChallengeUplink
 ## The player's profile file, set before `start` by the screen a person plays on (like the board).
 ## The night adds its XP to it as it plays, for a player with an account (a Guest one counts);
 ## online the server awards.
@@ -209,7 +212,7 @@ func start(
 	bot_orders.sender = link.send
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
-	_track_challenges()
+	_track_challenges(true)
 	_track_progress()
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks, world.layout.words())
@@ -378,10 +381,14 @@ func _last_frame(events: Array) -> Dictionary:
 	return {}
 
 
-## Counts the night into the player's challenges, when there is a board to count into.
-func _track_challenges() -> void:
+## Counts the night into the player's challenges, when there is a board to count into. `runs_here`:
+## the rules run in this process, so this night's board is written to the account (online it is the
+## server's).
+func _track_challenges(runs_here: bool = false) -> void:
 	if challenge_board != null:
 		challenges = ChallengeSession.new(challenge_board, rules_tuning)
+		if runs_here:
+			challenges.uplink = challenge_uplink
 		challenges.attach(state)
 		if hud != null:
 			_challenge_link = ChallengeHudLink.new(challenges, hud)
