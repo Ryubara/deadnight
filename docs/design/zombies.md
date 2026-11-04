@@ -154,6 +154,7 @@ the rig-sharing recipe as they are, "new" ones have to be made.
 | Crawler death | `Crawl_Death` | 0.83 s | **made** (#1000) | the arms give, the chest and head drop to the floor and it lies: [A crawler's every action](#a-crawlers-every-action) |
 | Death variants | `Death_Forward`, `Death_Crawl` | | **new** | three deaths keep a cleared wave from looking the same |
 | Barrier break-in | `Tear_Boards` | 1.21 s | **made** (#221) | reach, grab, strain, yank, at the fence's boards: [Tearing boards](#tearing-boards) |
+| Over a window's sill | `Climb_Sill`, `Crawl_Climb` | 1.83 s | **made** (#991) | hands on the sill, a leg over, a drop inside; a crawler pulls itself over and comes down head first: [Over the sill](#over-the-sill) |
 | Vault a counter or fence | `Jump`, `Jump_Idle`, `Jump_Land` | 0.33, 0.50, 0.33 s | kit | three parts for a vault over the snack-bar counter |
 | (not used) | `Wave`, `Yes`, `No` | 1.67 s | kit | left in the file, never played |
 
@@ -224,7 +225,7 @@ chose the state by mode and the body only for the move and the swing. The list o
 | Stagger | `stagger` (`HitReact`) | `crawl_stagger` (`Crawl_Stagger`) | 0.87 m |
 | Dying | `die` (`Death`) | `crawl_die` (`Crawl_Death`) | 0.85 m |
 | Tearing boards | `tear` (`Tear_Boards`) | never: a crawler goes under the boards (`ZombieSim._work_the_boards`) | |
-| Climbing a sill (#986, not merged when this was written) | `crawl` with a lean, for any look | the same | not measured here: check it when #986 lands |
+| Climbing a sill | `climb` (`Climb_Sill`) | `crawl_climb` (`Crawl_Climb`) | 1.93 m over the floor at the sill, under the opening's 2.2 m: [Over the sill](#over-the-sill) |
 
 `Crawl_Stagger` (10 frames, 0.42 s at 24 fps, the length of the type's `stagger_seconds` 0.4 s; full body, not looping):
 from the Crawl's first frame, both hands planted, the body is thrown back 0.24 m (kit scale) along the floor, the chest
@@ -254,6 +255,40 @@ fling and settle (25-29), back to the stance the next reach starts from.
 Checked in `game/tests/zombies/test_zombie_tear.gd`: the simulation, the wire format and the view run together step by
 step, and at every tear the clip is at its yank (the walker to the frame, the brute within one 30 Hz simulation step).
 The board's own flight is the fence's ([map](map.md)).
+
+### Over the sill
+
+Every barricade is a window (#915) and the simulation carries a zombie over it (`ZombieGate.lift_at`): up 0.9 m on a
+0.4 m ramp, along at the sill's height over the wall and 0.4 m to each side, down on a 0.4 m ramp, at its own pace
+(1.2 m/s for a walker, 6 m/s for the fastest). So a frame of `Climb_Sill` and `Crawl_Climb` (44 frames at 24 fps, full
+body, not looping) is **a place on that way, not a time**: the way up is frames 0 to 8 (`over`), the way along 8 to 36
+(`down`), the way down 36 to 44. The view reads the frame from where the snapshot has the zombie, so the simulation
+leads and the clip follows at any pace, and a zombie that stands in the window stands in the clip.
+
+| What | How |
+| --- | --- |
+| When it plays | the snapshot's climbing bit (`ZombieCodec.CLIMBING_BIT`) in `CHASE` or `STAGGER` (a flinch on the sill keeps the clip: the upright `HitReact` stood it in the wall); a swing at the sill is the swing, and the headliner keeps walking (no clip fits it through a window) |
+| In and out | the state machine blends from the gait into the clip and back over `ZombieRig.CLIMB_BLEND` (0.12 s) |
+| Which window | the client has the map, so `ZombieHorde` finds the window from the bit and the position (`NightWorld.gates`): nothing more goes on the wire |
+| The frame | `ZombieRig.climb_time(gate, position, way)`, behind a seek and a time scale of 0: only the seek moves the clip |
+| Which way | the side the climb began on: a zombie can leave a room by a window too |
+| Facing | the model turns square to the window over 0.2 s (`ZombieView._turn_to_window`), and back: the clip's hands are for a body that faces the wall |
+| The hit zones | a `climb` set per look, twice the shapes (the body moves over a metre round its origin); a bot aims at the middle of it, not 1.1 m over the lifted origin |
+
+**The poses are written in the window's space**, not the bones': `tools/blender/build_zombie_clips.py` keeps tables of
+places in game metres (depth from the wall's middle, height over the floor) for the pelvis, the hands and the feet, puts
+the origin where the simulation has it at each frame, takes it off the targets and solves the arms and legs on every
+frame, so a hand on the sill stays there while the origin moves under it. The thickest wall (0.56 m) is the one written;
+a thinner one (0.2 and 0.3 m on the second map) only brings the far face nearer. Every sill on both maps is 0.9 m, and
+a different one needs a new clip (`test_zombie_climb_clip.gd` reads the maps). `tools/blender/render_climb.py` draws a
+side-on sheet of both clips with the wall's section and prints what enters it.
+
+The sizes differ: a body drawn at height `h` of a walker's has every point at `h` times its height plus `(1 - h)` of the
+lift, so the brute's feet (1.18) sit a little low on the way up, where they are on the floor; on the sill the two agree.
+A crawler lies 1.2 m long and its toes trail into the inner face of the wall for the last frames, as its crawl has them.
+Checked in `game/tests/zombies/test_zombie_climb_clip.gd`: on all three walls, both ways, every look's feet stay out of
+the sill, a walker's meet the sill and the floor, the head passes under the lintel, and the clip is where the zombie is
+at any pace.
 
 ## Playback variety
 
