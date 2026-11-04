@@ -34,3 +34,17 @@ Name it (a setting's key, or the name a button already has in the lobby) and a p
 
 `lobby.py` (the host's rules) walks by the same names but needs a deployed backend and no CI job runs it: it was
 changed from its count of presses without a local run.
+
+## The probes are off in a player's page (#935)
+
+`window.deadnight` is read by the browser tests, not by the game, and the judder, view and pad probes read it over
+the JavaScript bridge in every frame (a property read, and a new `Array` for the pads). They are added only when the
+page asks (`WebProbe.asked`): `?probe` (or `?probe=flash`) in the address, `window.deadnight_probe` set before the game
+starts, or a profile run (`window.deadnight_bench`). A probe that reads `viewRows`, `frames`, `pad_count` or
+`pause_presses` opens its page through `smoke.probing(url)`; the pad probe lists the pads on
+`Input.joy_connection_changed`, not every frame. The snapshot (`WebProbe.snapshot`, four times a second) still runs in
+every page but writes only the keys that changed, so a page nobody reads gets about no bridge writes.
+
+`tools/web_smoke/bridge_calls.py` counts the bridge's traffic of the plain menu and a plain autopilot night (counting
+proxies for `create_object`, a wrapped `eval`) and fails the web job above `--max-per-second`; `--probe` shows the
+probes' own traffic. `heap_soak.py --plain` soaks the page a player opens. Numbers: `docs/research/web-heap.md`.
