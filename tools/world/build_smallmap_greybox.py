@@ -105,22 +105,22 @@ STAND = bg.DOOR_STAND_DISTANCE
 # one opening onto ground or a deck at its own floor's height, never over a drop or a stairwell): id, room, the wall's
 # axis and fixed coordinate, the centre along the wall, the inward direction (dx, dz), the floor height, the wall
 # thickness. The hall 2 (south, facing the drive-in, and east; its west wall is the shop wall with the outside stair
-# beyond it), the side room 3 (one a breach), upstairs 2, both in the half over the hall, onto the gallery and the terrace
-# the dead climb to. Never two windows of different halves on one deck: the dead's walking mesh would join the halves
-# outside by a shorter way than the opening between them, and a bot's way across would run out of one window and in by
-# the other, and stop at the boards.
+# beyond it), the side room 2 (the breach at its west end, a window at its north-east: a third in its south-west corner
+# shared the breach's corner and the Swift Rescue alcove's use zone, #994), upstairs 2, both in the half over the hall,
+# onto the gallery and the terrace the dead climb to. Never two windows of different halves on one deck: the dead's
+# walking mesh would join the halves outside by a shorter way than the opening between them, and a bot's way across
+# would run out of one window and in by the other, and stop at the boards.
 WINDOWS = [
     ("start_1", "start", "x", 14.65, 8.0, (0, -1), 0.0, GROUND_WALL),
     ("start_4", "start", "z", 16.15, 8.0, (-1, 0), 0.0, GROUND_WALL),
-    ("side_1", "side", "x", -0.15, -4.6, (0, -1), 0.0, GROUND_WALL),
-    ("side_2", "side", "x", -7.95, 14.3, (0, 1), 0.0, GROUND_WALL),
+    ("side_2", "side", "x", -7.95, 14.6, (0, 1), 0.0, GROUND_WALL),
     ("upper_a1", "upstairs", "z", -0.15, 1.6, (1, 0), STOREY, UPPER_WALL),
     ("upper_a2", "upstairs", "x", 4.6, 9.5, (0, -1), STOREY, UPPER_WALL),
 ]
 # The side room's third entry: a broken wall onto the shed, whose back door is gone (the dead come in from the yard).
 # The windows with a moon shaft (an additive card and its patch on the floor each; the others are plain).
-SHAFTS = {"start_1", "side_1", "upper_a1"}
-BREACH = ("side_breach", "side", "z", -6.15, -2.5, (1, 0), 0.0, GROUND_WALL)
+SHAFTS = {"start_1", "upper_a1"}
+BREACH = ("side_breach", "side", "z", -6.15, -2.0, (1, 0), 0.0, GROUND_WALL)
 BREACH_HEIGHT = 2.4
 SPAWN_OUT = 7.0  # metres outside a ground window (row 18: 5 to 15)
 # Where the dead rise when it is not 7 m straight out: the upper windows' in the alley by the outside stair's foot (they
@@ -169,14 +169,14 @@ BOARD_OUT = 0.05  # metres outside the wall's centre line, on the dead's side
 SPOT_IN = 1.35
 WALL_SPOTS = [
     # (name, shop id, room, wall face (x, z), into, floor)
-    ("PistolStart", "weapon_pistol", "start", (0.0, 11.0), (1, 0), 0.0),
+    ("PistolStart", "weapon_pistol", "start", (0.0, 13.2), (1, 0), 0.0),
     ("CrowbarStart", "weapon_crowbar", "start", (0.0, 6.0), (1, 0), 0.0),
     ("ShotgunSide", "weapon_shotgun", "side", (9.5, -0.3), (0, -1), 0.0),
-    ("SmgSide", "weapon_smg", "side", (3.6, -7.8), (0, 1), 0.0),
-    ("BatUpstairs", "weapon_baseball_bat", "upstairs", (16.05, 2.3), (-1, 0), STOREY),
+    ("SmgSide", "weapon_smg", "side", (3.3, -7.8), (0, 1), 0.0),
+    ("BatUpstairs", "weapon_baseball_bat", "upstairs", (9.7, -0.25), (0, -1), STOREY),
     ("FlareUpstairs", "weapon_flare_gun", "upstairs", (4.5, 4.5), (0, -1), STOREY),
-    ("AxeUpstairs", "weapon_fire_axe", "upstairs", (16.05, -6.6), (-1, 0), STOREY),
-    ("ShotgunUpstairs", "weapon_shotgun", "upstairs", (11.5, -7.85), (0, 1), STOREY),
+    ("AxeUpstairs", "weapon_fire_axe", "upstairs", (16.05, -7.35), (-1, 0), STOREY),
+    ("ShotgunUpstairs", "weapon_shotgun", "upstairs", (11.0, -7.85), (0, 1), STOREY),
 ]
 # The sniper cabinet: the rifle, at 1.5 P, in the upstairs half over the side room.
 CABINET = ("RifleCabinet", "weapon_rifle", "upstairs", (-6.05, -4.0), (1, 0), STOREY)
@@ -188,7 +188,7 @@ LOCKERS = [
     ("LockerStart", "start", (12.5, 14.5), (0, -1), 0.0),
     ("LockerSide", "side", (5.0, -0.3), (0, -1), 0.0),
     ("LockerUpstairs", "upstairs", (6.0, -0.25), (0, -1), STOREY),
-    ("LockerUpstairsA", "upstairs", (12.0, 4.5), (0, -1), STOREY),
+    ("LockerUpstairsA", "upstairs", (14.2, 4.5), (0, -1), STOREY),
 ]
 
 # --- Outside: not playable. The ground is at one level all round the building (#917: the same ground is seen from
@@ -684,7 +684,7 @@ def build() -> None:
     bg.wall("Start", "WallW", "z", -0.15, 0.0, 14.8, CEILING, MATS["wall"], thick=gw)
     bg.wall("Start", "WallS", "x", 14.65, -0.3, 16.3, CEILING, MATS["wall"], gaps_of("start_1"), gw)
     bg.wall("Start", "WallE", "z", 16.15, 0.0, 14.8, CEILING, MATS["wall"], gaps_of("start_4"), gw)
-    side_gaps = gaps_of("side_1") + [(DOOR_X, OPENING_MODULE, 0.0, MODULE_HEIGHT), rescue_gap]
+    side_gaps = [(DOOR_X, OPENING_MODULE, 0.0, MODULE_HEIGHT), rescue_gap]
     bg.wall("Side", "WallS", "x", -0.15, -6.3, 16.3, CEILING, MATS["wall"], side_gaps, gw)
     bg.wall("Side", "WallN", "x", -7.95, -6.3, 16.3, CEILING, MATS["wall"], gaps_of("side_2") + bay_gaps("BayLoad"), gw)
     bg.wall("Side", "WallE", "z", 16.15, -7.8, -0.3, CEILING, MATS["wall"], thick=gw)
@@ -768,7 +768,7 @@ def build() -> None:
     dress.lantern("Side", "LanternStairB", (stair_b[0] + 0.5, 0.0, stair_b[3] + 0.2), 0.0, "Lamp4")
     dress.decor_pendant("Side", "BoxLamp", (BOX_MARKER[0], 0.0, -7.0), "Lamp5")
     dress.decor_pendant("Side", "ShopLamp", (5.3, 0.0, -6.7), "Lamp5")
-    dress.decor_pendant("Start", "SodaLamp", (1.7, 0.0, 8.5), "Lamp1")
+    dress.decor_pendant("Start", "SodaLamp", (1.7, 0.0, 9.6), "Lamp1")
     dress.decor_pendant("UpperB", "ShopLampUp", (13.6, up, -6.4), "Lamp8")
     dress.chalk("Start", "ChalkWindows", "HOLD THE WINDOWS", (5.6, 1.75, stair_a[3] + 0.21), 0.0, 2.2, "Lamp3")
     dress.chalk("Side", "ChalkLight", "STAY IN THE LIGHT", (12.0, 1.75, -7.79), 0.0, 1.8, "Lamp5")

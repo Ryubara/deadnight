@@ -17,39 +17,10 @@ const HEADROOM := 1.7
 const ROOM := 0.4
 const SPOKES := 8
 const FLOOR_SLACK := 0.3
-
-## The second map's pairs that its rework (#917: one window a wall, the upper windows on a patio,
-## each perk in its own corridor) moves apart; nothing else may overlap, and each pair comes off
-## this list as the rework fixes it. The worst is the locker 1.45 m from the upper window
-## `upper_a2`, with the bat on the wall beside both.
-const SMALL_PENDING_917: Array[String] = [
-	"ammo (12.0, 3.4, 3.2) | breach upper_a2",
-	"ammo (5.0, 0.0, -1.6) | door door_stairs_start",
-	"ammo (6.0, 3.4, -1.6) | tonic_third_holster (8.6, 3.4, -1.7)",
-	"ammo (8.0, 0.0, 13.1) | breach start_1",
-	"ammo (8.0, 0.0, 13.1) | breach start_2",
-	"breach side_1 | breach side_2",
-	"breach side_1 | breach side_breach",
-	"breach side_2 | breach side_breach",
-	"breach start_2 | breach start_5",
-	"breach start_3 | breach start_4",
-	"breach start_4 | breach start_5",
-	"crane_play (10.5, 0.0, -5.9) | tonic_swift_rescue (7.6, 0.0, -6.3)",
-	"door door_side | breach start_3",
-	"door door_stairs_side | breach side_breach",
-	"tonic_double_shot (12.6, 3.4, -6.4) | breach upper_b2",
-	"tonic_double_shot (12.6, 3.4, -6.4) | tonic_reload_shock (15.4, 3.4, -6.4)",
-	"weapon_baseball_bat (14.7, 3.4, 2.3) | ammo (12.0, 3.4, 3.2)",
-	"weapon_baseball_bat (14.7, 3.4, 2.3) | breach upper_a2",
-	"weapon_crowbar (1.4, 0.0, 6.0) | tonic_hearty (1.7, 0.0, 8.5)",
-	"weapon_fire_axe (14.7, 3.4, -4.0) | tonic_double_shot (12.6, 3.4, -6.4)",
-	"weapon_fire_axe (14.7, 3.4, -4.0) | tonic_reload_shock (15.4, 3.4, -6.4)",
-	"weapon_flare_gun (1.3, 3.4, 2.3) | breach upper_a1",
-	"weapon_pistol (1.4, 0.0, 11.0) | tonic_hearty (1.7, 0.0, 8.5)",
-	"weapon_shotgun (5.0, 3.4, -6.5) | breach upper_b2",
-	"weapon_smg (5.5, 0.0, -6.4) | tonic_quick_load (2.9, 0.0, -6.3)",
-	"weapon_smg (5.5, 0.0, -6.4) | tonic_swift_rescue (7.6, 0.0, -6.3)",
-]
+## Metres behind the middle a spoke starts: a ray that starts on a wall's face does not hit it (the
+## walls are CSG, one-sided triangles), so a point of the grid on the face of a wall counted as
+## room for a body, and a locker's zone reached through the wall from it (#994).
+const FACE := 0.05
 
 var _night: SeatedNight
 var _space: PhysicsDirectSpaceState3D
@@ -89,7 +60,8 @@ func _ground(x: float, z: float, y: float) -> Vector3:
 	var middle := ground + Vector3(0.0, 0.6, 0.0)
 	for i in SPOKES:
 		var turn := TAU * float(i) / float(SPOKES)
-		if _wall(middle, middle + Vector3(sin(turn), 0.0, cos(turn)) * ROOM):
+		var spoke := Vector3(sin(turn), 0.0, cos(turn))
+		if _wall(middle - spoke * FACE, middle + spoke * ROOM):
 			return Vector3.INF
 	return ground
 
@@ -126,14 +98,12 @@ func _overlaps(zones: UseZones) -> Dictionary:
 	return found
 
 
-func _check(scene_path: String, pending: Array[String] = []) -> void:
+func _check(scene_path: String) -> void:
 	var zones := await _start(scene_path)
 	assert_int(zones.things().size()).is_greater(10)
 	var found := _overlaps(zones)
 	var lines: Array[String] = []
 	for pair: String in found:
-		if pending.has(pair):
-			continue
 		var entry: Dictionary = found[pair]
 		lines.append(
 			(
@@ -145,9 +115,6 @@ func _check(scene_path: String, pending: Array[String] = []) -> void:
 	if not lines.is_empty():
 		print("Overlapping use zones on %s:\n  %s" % [scene_path, "\n  ".join(lines)])
 	assert_array(lines).is_empty()
-	# A pair the map no longer has comes off the list, so the list only shrinks.
-	var gone := pending.filter(func(pair: String) -> bool: return not found.has(pair))
-	assert_array(gone).override_failure_message("Fixed, take off the list: %s" % [gone]).is_empty()
 
 
 func test_lot_use_zones_do_not_overlap() -> void:
@@ -155,4 +122,4 @@ func test_lot_use_zones_do_not_overlap() -> void:
 
 
 func test_small_map_use_zones_do_not_overlap() -> void:
-	await _check(SMALL, SMALL_PENDING_917)
+	await _check(SMALL)

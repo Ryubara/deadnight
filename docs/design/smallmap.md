@@ -24,7 +24,7 @@ Metres, x east, z south.
 | Room | Where (inside the walls) | What it is |
 | --- | --- | --- |
 | Start room | 16 x 14.5 m | the loading hall: a counter of 5 x 3.5 m on four pillars to run round, 2 windows (south, facing the drive-in's screen, and east), the players' start south of the counter facing the south window |
-| Side room | 22 x 7.5 m, along the hall's north side and 6 m past it to the west | the rewind room: a row of four pillars joined by film racks to run round, a window on its south (west of the hall) and north walls and a breach in the west end onto the shed |
+| Side room | 22 x 7.5 m, along the hall's north side and 6 m past it to the west | the rewind room: a row of four pillars joined by film racks to run round, a window on its north wall at the east end and a breach in the west end onto the shed |
 | Upstairs | over the side room (22 x 7.6 m) and over the hall's north strip (16 x 4.5 m) | two halves joined by an opening with no door; 2 windows, both over the hall (south onto the terrace, west onto the gallery the dead climb to by the outside stair) |
 
 The links: the door between the hall and the rewind room at the hall's north-east corner, and one stair in each
@@ -71,7 +71,7 @@ godot --headless --path game -s res://tests/world/smallmap/smallmap_report.gd
 | 12 | One ring, closed only by the third link | yes | exact | yes |
 | 13 | The ring's lap | 68.4 m | 48 to 72 m | yes |
 | 14 | Loop round the side room's rack row | 31.2 m | 25 to 36 m | yes |
-| 15 | Windows start / side (one a breach) / upstairs (over the hall), the maintainer's rule (#917) | 2 / 3 / 2 | exact | yes |
+| 15 | Windows start / side (one a breach) / upstairs (over the hall), the maintainer's rule (#917), the side room's south-west window dropped (#994) | 2 / 2 / 2 | exact | yes |
 | 16 | Directions to watch start / side / upstairs | 3 / 3 / 2 | exact | yes |
 | 17 | Players' start (the middle of the eight places) to the nearest window | 4.4 m | 4 to 7 m | yes |
 | 18 | A window's spawn outside it, on the yard (in by its own window, its room only) | 7.0 to 14.8 m | 5 to 15 m | yes |
@@ -143,7 +143,7 @@ the map names the lot (#697).
 
 ### The windows
 
-The seven entries (six windows and the breach) are `Barricade`s of five boards each (`Windows/Window_<id>/Boards`, the
+The six entries (five windows and the breach) are `Barricade`s of five boards each (`Windows/Window_<id>/Boards`, the
 rules' `BarricadeTuning.ids`), with the kit's 1.5 m boards (so a mended board swings about 0.75 m,
 `Barricade.board_half`, not the fence breaches' 2.05). The dead rise on the yard 7 to 15 m from a window, walk to its
 boards and tear them off one by one (1.2 s a board, as on the lot), then come in; an upper window's dead climb the
@@ -264,7 +264,6 @@ terrace; their dead rise in the alley by the stair's foot and climb it, in view 
 | --- | --- | --- | --- |
 | `start_1` | hall, south | the front yard, the gate and the drive-in's screen | the drive-in's side, straight across the yard |
 | `start_4` | hall, east | the east yard and the pole line | round the building's east side |
-| `side_1` | side room, south (west of the hall) | the notch between the shed and the hall, under the gallery | from the west yard |
 | `side_2` | side room, north | the back yard and its trees | from the dark behind the depot |
 | `side_breach` | side room, west | the shed, open to the yard | through the shed and the broken wall |
 | `upper_a1` | upstairs over the hall, west | the gallery | up the alley's outside stair and along the gallery |
@@ -278,6 +277,15 @@ bots walk too) would send a bot out of one window and in by the other, to stop a
 and a bot never reached the rifle cabinet or the Third Holster). The
 hall's west wall has no window: it is the shop wall inside and the outside stair outside.
 
+**The side room's south-west window, dropped (#994).** The side room had a third entry, `side_1`, in its south wall
+west of the hall, 2.8 m from the breach round the corner and 3.2 m from the Swift Rescue alcove beside it. A press
+reaches 2.5 m from a window and 1.5 m from a shop spot, and two use zones keep 0.5 m of floor between them
+([use reach](../research/use-reach.md#spacing-and-the-press-908)): the window needed 4.5 m to the alcove's spot and
+5.5 m to the breach, and the room's west end (6 m wide, with the side stair's foot in its north-west corner) has room
+for neither. Two openings in one corner were also one direction for the dead, not two. So the side room has one entry
+at each end: the breach at the west, `side_2` at the north-east; the alcove stays. The breach moved 0.5 m south (its
+middle at z -2.0) to keep the side stair's zone clear, still facing the shed's open back door.
+
 **Each perk in its own alcove.** The five coolers stood in pairs on three walls. Each now stands at the back of a bay
 2.4 m wide and 1.3 m deep out of an outside wall, open full height to the room, its spot at the bay's mouth, and no two
 on one wall; the bays read from outside as bays of the building (a bay of two floors on the north wall, solid below
@@ -290,14 +298,14 @@ one script. What each socket wears, and what moved to make it fit:
 
 | Socket | Wears | What moved |
 | --- | --- | --- |
-| Windows (7) | the kit's window module (`wall_window_zombie`, `_upper` upstairs); boards in the module's own slots on the room side | the wall's gap runs to the module's 2.8 m top (a `Lintel` body fills it); the sill, jambs and blocker are collision only |
+| Windows (6) | the kit's window module (`wall_window_zombie`, `_upper` upstairs); boards in the module's own slots on the room side | the wall's gap runs to the module's 2.8 m top (a `Lintel` body fills it); the sill, jambs and blocker are collision only |
 | The breach | a kit post each side of the gap, a beam across its top, walked-over rubble | the gap runs to 2.8 m as the windows' do; the dead's 1.6 m way is unchanged |
 | Door (hall to side room), upstairs opening | the kit's wide opening (`wall_opening_wide`), its own hidden jambs and lintel | the wall's gap is the module's 3 m wide; the clear opening is the 2.0 x 2.4 m it was |
 | The door's leaf, the stairs' blockers | `door_purchase` stretched to 2 m, `debris_blocker` stretched to the 2 m flight; each with a `DoorGlow` of the far room's lamp | the slab stays (hidden): the walking mesh and `LotDoors` are as they were |
 | The two flights | the kit's `stair_straight` stretched to 2.0 x 5.1 x 3.4 m over the greybox's hidden ramp (rails off, the flight has a wall each side) | none: the ramp is what is walked on |
 | Pillars, racks | the kit's pillar to 2.8 m with a block band above it; two shelf racks a bay, squat as their 1.2 m collision so the view over them stays open | the boxes are hidden collision now |
 | Lamps | `PendantLight` (`hang` 0.4 m: the kit's lamp hangs from 2.8 m, the ceiling is 3.2 m): one real light each (the `powered_light` group), a halo, a pool and a cone of haze | the 8 omni lamps at 2.9 m, range 8, are these lights at 2.45 m, range 5.5 |
-| Extra light | decor pendants (no light slot) over the box and each shop wall, wall lanterns at the three links, moon shafts in four windows, chalk messages in four places | none |
+| Extra light | decor pendants (no light slot) over the box and each shop wall, wall lanterns at the three links, moon shafts in two windows, chalk messages in four places | none |
 | Cabinet | the kit's `tall_cabinet` with the plaque on end in its recess | the cabinet's box is the fixture's |
 | Clutter | filing cabinets, chairs, tipped tables, a rubble cone, walked-over rubble, helmets, radios and lanterns (`Dressing`) | solid pieces stand against walls and in corners; the saved walking meshes are baked again |
 | Outside | the backdrop (`backdrop.tscn`); the yard is the backdrop's 62 x 54 m, frosted ground, its boundary a wire fence seen through (the boxes that stop the dead are hidden), turned so the drive-in is south (#917) | the yard grew from 50 x 56 m; the haze is 0.035 (the lot's 0.013 barely shows in a 6 m room) |
