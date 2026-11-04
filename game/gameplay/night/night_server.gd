@@ -327,7 +327,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	say_board.step(delta)
 	PerfProbe.end(&"server.boards", began)
 	began = PerfProbe.begin()
-	_throw_grenades(delta)
+	_throw_grenades(delta, target_list)
 	PerfProbe.end(&"server.grenades", began)
 	began = PerfProbe.begin()
 	if with_frame:
@@ -518,12 +518,12 @@ func _on_rules_event(event: Dictionary) -> void:
 ## One tick of every grenade: tells the grenade server where the players and the dead stand, turns
 ## each player's grenade buttons into cook and throw actions, and steps the fuses and the flights.
 ## The blasts are the rules' (`explosion`), the thrower's own share reaches their health.
-func _throw_grenades(delta: float) -> void:
+func _throw_grenades(delta: float, target_list: Array) -> void:
 	var standing: Array = []
 	for player_id in _bodies:
 		standing.append({"id": player_id, "pos": _bodies[player_id].global_position})
 	_grenade(GrenadeAction.players(standing))
-	_grenade(GrenadeAction.targets(_target_list()))
+	_grenade(GrenadeAction.targets(_still_standing(target_list)))
 	for player_id in _bodies:
 		_throw_of(player_id, delta)
 	_grenade(GrenadeAction.tick(delta))
@@ -659,6 +659,19 @@ func _target_list() -> Array:
 		if zombie.is_alive():
 			list.append(zombie.hit_target())
 	return list
+
+
+## The targets the step's combat was given, less the dead that fell since (a shot of this tick):
+## what `_target_list` would answer now. The grenades read a position, a yaw and a scale, which
+## nothing moves after the dead have walked, so the list is not built a second time (#906: 0.8 ms
+## a tick at 100 dead).
+func _still_standing(target_list: Array) -> Array:
+	var standing: Array = []
+	for target: Dictionary in target_list:
+		var zombie: ZombieBody = sim.zombies.get(target["id"])
+		if zombie != null and zombie.is_alive():
+			standing.append(target)
+	return standing
 
 
 func _act(player_id: int, delta: float) -> void:
