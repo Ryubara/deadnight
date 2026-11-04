@@ -90,10 +90,12 @@ Rules the greybox is built to:
 ## Shop spots
 
 Besides the doors, the lot sells at fixed spots: the markers of `ShopSpots` in the greybox, each with a `kind` and a
-`shop_id`, read by `NightWorld.shop_spots()`. A player in reach (3.2 m, `NightTuning.use_reach`) of one is offered what
-it sells on the prompt card and buys with `interact`, the same press as a door; a door in reach wins, then the nearest
-spot with something to sell. What a spot offers comes from the rules' tuning, so the price is never in the scene (the
-plaque only names the weapon).
+`shop_id`, read by `NightWorld.shop_spots()`. A player in reach (1.5 m from the marker, `NightTuning.spot_reach`) of
+one is offered what it sells on the prompt card and buys with `interact`, the same press as a door. No two things a
+player uses share ground: 0.5 m of floor between their reaches
+([the spacing rule](../research/use-reach.md#spacing-and-the-press-908)); where two still meet, the one looked at
+wins. What a spot offers comes from the rules' tuning, so the price is never in the scene (the plaque only names the
+weapon).
 
 | Spot | Where | Sells | Why there |
 | --- | --- | --- | --- |
@@ -366,14 +368,15 @@ Left to right: the night's start (the field and the yard lit), every circuit on,
 
 A circuit is switched at a post (`CircuitSwitch`, under `Switches`, one per switchable circuit; `mains` and `battery`
 have none). A post stands where its area's door is bought from, on the side the player arrives on, so a bought area
-is lit by walking to the wall beside the door, and clear of the door's slabs (a door in reach takes the prompt):
+is lit by walking to the wall beside the door, and 5.5 m or more from the door's slabs, so the two reaches never meet
+([spacing](../research/use-reach.md#spacing-and-the-press-908)):
 
 | Circuit | Post | Lights |
 | --- | --- | --- |
 | `screen_lot` | behind the players' spawns, in the avenue below the screen | the field (no door guards it) |
 | `concession` | the stand's front wall, 8.5 m east of its door, on the field side | the stand and the midway behind it |
-| `booth` | the booth's north wall, 4.6 m east of its door, on the midway side | the booth |
-| `back_lot` | the field's south fence, 4.5 m east of the back lot's gate | the back lot |
+| `booth` | the booth's north wall, 5.6 m east of its door, on the midway side | the booth |
+| `back_lot` | the field's south fence, 6 m east of the back lot's gate | the back lot |
 
 Using one (`use`, within `use_reach` of the post) sends `RulesAction.set_circuit` with the opposite of how the circuit
 stands; the rules answer with `circuit_changed` and the lamps, the post and the HUD follow. The HUD's card names the
@@ -498,7 +501,7 @@ it means on the ground.
 
 ### Where four stand to buy a door
 
-A door opens for everyone and the buyer's points pay for it. The prompt shows within 3.2 m (`use_reach`) of a slab, on
+A door opens for everyone and the buyer's points pay for it. The prompt shows within 2.5 m (`use_reach`) of a slab, on
 the side the player arrives from, and four capsules abreast need 2.8 m (2 x 0.35 m each), so they fit the 3 m doors with
 0.2 m to spare and the open ground in front holds them all in reach. Where each door is, from the greybox:
 

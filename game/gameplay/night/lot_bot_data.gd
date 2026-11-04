@@ -46,6 +46,7 @@ static func shop(world: NightWorld, tuning: RulesTuning) -> BotShop:
 		found.shopping.assign(overlay.bot_shopping)
 	var night_tuning := NightTuning.shipped()
 	found.use_reach = night_tuning.use_reach
+	found.spot_reach = night_tuning.spot_reach
 	found.fuel_reach = night_tuning.fuel_reach
 	found.lamp_reach = LightTuning.current().lamp_reach
 	for item in tuning.economy.items:

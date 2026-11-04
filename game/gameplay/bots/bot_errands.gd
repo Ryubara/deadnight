@@ -480,7 +480,7 @@ func _carry_out(intent: BotIntent, pick: BotEconomy.Buy, me: Dictionary, now: fl
 ## Whether the bot is where `pick` is to be bought when a person marked the place: any locker sells
 ## the same rounds, but a mark is an order for that one, so a bot at another locker walks on.
 func _at_marked(pick: BotEconomy.Buy, here: Vector3) -> bool:
-	return pick.why != BotEconomy.AMMO_PING or _flat(here, pick.stand) <= _shop.use_reach
+	return pick.why != BotEconomy.AMMO_PING or _flat(here, pick.stand) <= _shop.spot_reach
 
 
 ## Notes a stand the legs found no way to, so the plan looks elsewhere. True when it is one.

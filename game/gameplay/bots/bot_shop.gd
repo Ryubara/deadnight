@@ -17,8 +17,10 @@ var rounds: RoundTuning
 var boards := 1
 ## Grenades a pack holds (`ExplosiveTuning.max_grenades`).
 var max_grenades := 5
-## Metres a hand reaches to use a door, a spot, a breach or a breaker, and to buy a fuel can.
-var use_reach := 3.2
+## Metres a hand reaches to use a door, a breach or a breaker, a shop spot (from its marker), and
+## to buy a fuel can (`NightTuning`).
+var use_reach := 2.5
+var spot_reach := 1.5
 var fuel_reach := 2.0
 ## How far the dead must be (metres to the nearest) before an errand begins, and the share of a
 ## round's dead that, once only that many are left, makes a lull to shop in: the lot's numbers suit
