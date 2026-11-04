@@ -49,7 +49,9 @@ static func map_reaches(night: Night, point: Vector3) -> bool:
 ## Puts the first player on `point` (feet) and lets the night settle for a few ticks.
 static func stand_at(night: Night, point: Vector3) -> void:
 	night.player().teleport(point + Vector3(0.0, 0.1, 0.0))
-	run(night, 6)
+	# Long enough for the card to be read: a purchase that replaces a weapon takes a press made once
+	# its card has been up `replace_settle` (#908).
+	run(night, 6 + ceili(night.server.tuning.replace_settle * 60.0))
 
 
 ## The use button, once.

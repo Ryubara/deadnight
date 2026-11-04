@@ -310,3 +310,13 @@ from 1.4 m to 4.9 m before the fuse ended. Over the 24 nights: 95 blasts (4.0 a 
 health taken 0.0148 to 0.0018 a blast. The Rookie parity cell at x4 (24 nights, round cap 16, simulator median 5)
 beside the unchanged code: median 9 with a Kolmogorov distance of 0.56 before, median 9 and 0.42 after, so the doubled
 throws did not move the bots away from the model.
+
+## Blasts and gibs free themselves (#929)
+
+`BlastEffect` was never freed in the night (it was written for the range, where the scene is thrown away): 20 blasts
+and 100 blast kills left 120 nodes, +800 nodes, +20 lights, +660 meshes for good, and 530 us of `_process` a frame on
+this machine (600 hidden gibs, 120 empty `_process` calls). Now each part (fireball, ring, light, scorch, gibs) frees
+itself when it ends and the effect with the last one; the warm-up's samples are freed after their chunk. `_process` is
+off unless gibs fly (Godot turns it on at ready, so it is switched off in `_ready`, not `_init`).
+`tests/night/test_blast_frees.gd` plays 20 blasts and 100 blast kills in the real night, waits out the scorch and
+expects the same counts as before. Kit page: `docs/godot/one-shot-effects.md`.

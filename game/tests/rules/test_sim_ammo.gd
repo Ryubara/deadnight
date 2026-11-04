@@ -65,9 +65,12 @@ func test_the_best_armed_weapon_skips_what_is_dry_and_falls_back_to_the_quick_me
 		arms[id].reserve = 0
 	assert_str(SimWeapons.best_armed(arms, health)).is_equal("quick_melee")
 	assert_bool(SimWeapons.is_melee(&"quick_melee")).is_true()
-	# A melee weapon carried is better than the free blow, when it kills faster.
+	# A melee weapon carried is better than the free blow, when it kills faster. On round 1 the
+	# blow (50, one hit, 0.6 s) kills the walker faster than the axe's slower swing (#897); from
+	# round 3 the blow needs two and the axe still one.
 	arms[&"fire_axe"] = NightSim.SimArm.of(&"fire_axe")
-	assert_str(SimWeapons.best_armed(arms, health)).is_equal("fire_axe")
+	assert_str(SimWeapons.best_armed(arms, health)).is_equal("quick_melee")
+	assert_str(SimWeapons.best_armed(arms, RulesFixture.round_health(3))).is_equal("fire_axe")
 
 
 func test_reserves_stay_inside_their_limits_all_night() -> void:
