@@ -113,7 +113,10 @@ func test_a_guest_comes_back_to_its_account_with_the_credential_it_kept(
 
 	# It writes a save under this account.
 	var wrote: Dictionary = await first.call(
-		"_call", "PUT", "/saves/profile", {"revision": 0, "schemaVersion": 1, "data": {"xp": 120}}
+		"_call",
+		"PUT",
+		"/saves/challenges",
+		{"revision": 0, "schemaVersion": 1, "data": {"xp": 120}}
 	)
 	assert_bool(wrote["ok"]).is_true()
 
@@ -124,7 +127,7 @@ func test_a_guest_comes_back_to_its_account_with_the_credential_it_kept(
 	assert_bool(back["returning"]).is_true()
 	assert_str(second.my_id()).is_equal(account)
 	assert_str(back["user"]["name"]).is_equal("Ann")
-	var read: Dictionary = await second.call("_call", "GET", "/saves/profile")
+	var read: Dictionary = await second.call("_call", "GET", "/saves/challenges")
 	assert_bool(read["ok"]).is_true()
 	assert_int(int(read["data"]["xp"])).is_equal(120)
 	# The credential was renewed and kept.
