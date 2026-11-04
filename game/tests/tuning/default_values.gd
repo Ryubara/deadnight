@@ -299,6 +299,7 @@ const SHOT_FX_TUNING := {
 const SOUND_MIX := {
 	"group_limits":
 	{
+		&"arrival": 3,
 		&"ui": 4,
 		&"ui_hint": 1,
 		&"ui_moment": 1,
@@ -357,6 +358,9 @@ static func sounds() -> Dictionary:
 		# Sounds are made behind the loading bar unless their row says they wait for the night to run.
 		if not row.has("deferred"):
 			row["deferred"] = false
+		# A bank can keep its sounds out of the night's loading altogether (the helicopter drop's).
+		if not row.has("on_demand"):
+			row["on_demand"] = false
 	return table
 
 

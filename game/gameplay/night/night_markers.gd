@@ -72,7 +72,8 @@ func markers() -> Array[Dictionary]:
 		return out
 	var here := _state.position()
 	for id: int in _state.frame["players"]:
-		if id != _state.player_id:
+		# A player still in the helicopter of their arrival is nowhere in the lot yet (#1057).
+		if id != _state.player_id and not _state.frame["players"][id].get("dropping", false):
 			out.append(_ally(camera, id, here))
 	var marks: Dictionary = _state.frame.get("pings", {})
 	for id: int in marks:

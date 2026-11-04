@@ -17,6 +17,7 @@
 [ext_resource type="Script" path="res://gameplay/rules/upgrade_tuning.gd" id="12_upgr1"]
 [ext_resource type="Script" path="res://gameplay/rules/perk_tuning.gd" id="14_perks"]
 [ext_resource type="Script" path="res://gameplay/rules/recut_profile.gd" id="15_recut"]
+[ext_resource type="Script" path="res://gameplay/rules/arrival_tuning.gd" id="19_arrival"]
 [ext_resource type="Resource" path="res://gameplay/weapons/elements/defs/explosive.tres" id="16_expl"]
 [ext_resource type="Resource" path="res://gameplay/weapons/elements/defs/shock.tres" id="17_shock"]
 [ext_resource type="Resource" path="res://gameplay/weapons/elements/defs/ground_fire.tres" id="18_gfire"]
@@ -645,6 +646,29 @@ shock_push = 5.0
 shock_cooldown = 4.0
 lost_on_down = 2
 
+[sub_resource type="Resource" id="Resource_arrival1"]
+script = ExtResource("19_arrival")
+cap_seconds = 12.0
+grace_seconds = 1.5
+enabled = true
+night_seconds = 6.5
+late_seconds = 3.8
+skippable = true
+skip_after = 1.0
+repeat = 0
+fade_in_seconds = 0.6
+fade_out_seconds = 0.7
+hover_height = 14.0
+camera_height = 26.0
+camera_back = 24.0
+camera_fov = 50.0
+approach_distance = 70.0
+approach_share = 0.38
+lamp_angle = 24.0
+lamp_range = 26.0
+lamp_energy = 6.0
+rotor_rps = 5.5
+
 [resource]
 script = ExtResource("5_3ukcj")
 rounds = SubResource("Resource_1fk4k")
@@ -659,3 +683,4 @@ revive = SubResource("Resource_revive1")
 crane = SubResource("Resource_crane1")
 upgrade = SubResource("Resource_upgt1")
 perks = SubResource("Resource_perks1")
+arrival = SubResource("Resource_arrival1")

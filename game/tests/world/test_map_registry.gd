@@ -168,3 +168,56 @@ func test_the_backend_lists_the_maps_the_game_can_play() -> void:
 	assert_array(listed).is_equal(playable)
 	var default_found := RegEx.create_from_string('DEFAULT_MAP = "([^"]*)"').search(text)
 	assert_str(default_found.get_string(1)).is_equal(MapRegistry.DEFAULT)
+
+
+# --- Levels open maps (#1067) ---
+
+
+func test_the_drive_in_is_level_1_and_the_back_rooms_level_10() -> void:
+	assert_int(MapRegistry.find("drive_in").unlock_level).is_equal(1)
+	assert_int(MapRegistry.find("small_indoor").unlock_level).is_equal(10)
+	assert_str(MapRegistry.find("small_indoor").unlock_text()).is_equal("Level 10")
+	assert_str(MapRegistry.find("small_indoor").unlock_hint()).contains("level 10")
+	# The rungs kept for maps three and four climb past the second map.
+	assert_array(MapRegistry.RESERVED_UNLOCKS).is_equal([25, 40])
+
+
+func test_the_registry_gate_at_every_level() -> void:
+	for level in range(1, LevelCurve.MAX_LEVEL + 1):
+		assert_bool(MapRegistry.is_open("drive_in", level)).is_true()
+		var back_rooms_open := level >= 10
+		assert_bool(MapRegistry.is_open("small_indoor", level)).is_equal(back_rooms_open)
+		assert_str(MapRegistry.fit_host("small_indoor", level)).is_equal(
+			"small_indoor" if back_rooms_open else "drive_in"
+		)
+		assert_int(MapRegistry.open_at(level).size()).is_equal(2 if back_rooms_open else 1)
+	assert_bool(MapRegistry.is_open("nope", 55)).is_false()
+	assert_str(MapRegistry.fit_host("nope", 55)).is_equal("drive_in")
+
+
+func test_a_setting_naming_a_locked_map_falls_back_to_the_default_for_the_host() -> void:
+	var asked := MatchSettings.new()
+	asked.map = "small_indoor"
+	asked.bots = 3
+	asked.count_multiplier = 2.0
+	var low := asked.fit_host(9)
+	assert_str(low.map).is_equal("drive_in")
+	# Only the map changes: the host's other rules stand.
+	assert_int(low.bots).is_equal(3)
+	assert_float(low.count_multiplier).is_equal(2.0)
+	assert_str(asked.fit_host(10).map).is_equal("small_indoor")
+	# The settings it was called on are not touched.
+	assert_str(asked.map).is_equal("small_indoor")
+
+
+func test_a_map_of_a_higher_rung_opens_at_its_own_level() -> void:
+	var third := StubMaps.stub(true)
+	third.unlock_level = 25
+	var list: Array[MapInfo] = []
+	list.append_array(MapRegistry.all())
+	list.append(third)
+	MapRegistry.use(list)
+	assert_bool(MapRegistry.is_open(StubMaps.ID, 24)).is_false()
+	assert_bool(MapRegistry.is_open(StubMaps.ID, 25)).is_true()
+	assert_int(MapRegistry.open_at(24).size()).is_equal(2)
+	assert_int(MapRegistry.open_at(25).size()).is_equal(3)

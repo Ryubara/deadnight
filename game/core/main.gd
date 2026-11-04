@@ -31,6 +31,8 @@ func _ready() -> void:
 		_serve(args)
 		return
 	NightScreen.challenge_path = ChallengeSave.DEFAULT_PATH
+	if args.has("arrival") or args.has("noarrival"):
+		NightScreen.arrival_enabled = args.has("arrival") and not args.has("noarrival")
 	NightScreen.profile_path = ProfileSave.DEFAULT_PATH
 	if args.has("look"):
 		NightScreen.own_look = NightScreen.look_from_flag(args.get_string("look"))

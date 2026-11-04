@@ -38,6 +38,12 @@ const OPENING := "OPENING THE LOBBY"
 ## Whether the night warms up behind a loading screen before it starts. There is nothing to warm up
 ## without a renderer, so a headless run skips it.
 static var warm_up_enabled := DisplayServer.get_name() != "headless"
+## Whether a person's night opens with the helicopter drop (#1057, `ArrivalCutscene`). A headless
+## run
+## draws nothing, and a page that asks for the probes (`WebProbe.asked`: a probe drives the night
+## from
+## its first frame) skips it unless the page asks for it (`?arrival`).
+static var arrival_enabled := DisplayServer.get_name() != "headless" and not WebProbe.asked()
 
 ## The server to join (`ws://host:port`) the next time this screen opens; empty plays alone.
 static var join_url := ""
@@ -128,6 +134,7 @@ func _ready() -> void:
 	get_window().content_scale_factor = float(Settings.get_value(SettingsService.UI_SCALE))
 	night = Night.new()
 	night.warm_up = warm_up_enabled
+	night.arrival = arrival_enabled
 	night.touch_active = touch_active
 	night.own_look = own_look
 	if match_settings != null and join_url == "":
@@ -165,6 +172,8 @@ func _ready() -> void:
 	night.night_over.connect(_on_night_over)
 	night.night_closed.connect(_on_night_closed)
 	night.ready_to_play.connect(_watch_mouse)
+	night.arrival_started.connect(_on_arrival_started)
+	night.arrival_ended.connect(_on_arrival_ended)
 	if night.warm_up:
 		_loading = LoadingOverlay.new()
 		add_child(_loading)
@@ -189,6 +198,11 @@ func touch_active() -> bool:
 ## True while the settings page of the menu is open (a browser test reads it).
 func settings_open() -> bool:
 	return _settings != null
+
+
+## True while the HUD is on screen (the arrival's show hides it, #1057).
+func hud_shown() -> bool:
+	return _hud != null and _hud.visible
 
 
 ## True while the centre reticle is on screen (a browser test reads it, #517).
@@ -311,9 +325,27 @@ func _resume_night() -> void:
 ## (#517).
 func _hide_overlay() -> void:
 	_overlay.hide()
-	_hud.reticle.set_shown(true)
-	_hud.scoreboard_enabled = true
-	_touch.live = true
+	var playing := not night.is_arriving()
+	_hud.reticle.set_shown(playing)
+	_hud.scoreboard_enabled = playing
+	_touch.live = playing
+
+
+## The helicopter drop is on this screen: the HUD, the reticle and the touch layer give way to it.
+func _on_arrival_started() -> void:
+	_hud.hide()
+	_hud.reticle.set_shown(false)
+	_hud.scoreboard_enabled = false
+	_touch.live = false
+
+
+## The drop is over and the night is the player's.
+func _on_arrival_ended() -> void:
+	_hud.show()
+	if not _overlay.visible:
+		_hud.reticle.set_shown(true)
+		_hud.scoreboard_enabled = true
+		_touch.live = true
 
 
 func _on_connect_failed(reason: String) -> void:

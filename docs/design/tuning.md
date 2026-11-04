@@ -101,6 +101,7 @@ which is what the inspector shows with no "revert" arrow; the file wins when it 
 | `BarricadeTuning` | `barricades` | Boards per breach, seconds a zombie takes to tear one | the rules, the zombies |
 | `HealthTuning` | `health` | The health bar and how fast it mends | the rules |
 | `ReviveTuning` | `revive` | How long a downed player bleeds out, what a revive pays | the rules (`revive_play.gd`) |
+| `ArrivalTuning` | `arrival` | The helicopter drop of a player's arrival: how long it plays (opening a night, a late join), whether it skips and repeats, the camera and the lamp, and the server's shield (grace after landing, the cap) | the rules (`arrival_play.gd`), `ArrivalPlan`, `ArrivalCutscene` ([the arrival](arrival.md)) |
 | `UpgradeTuning` | `upgrade` | What a re-cut does to a weapon: the weapons it takes, the price step, the damage and magazine multipliers | the rules, `WeaponDef.upgraded`, the re-cut machine |
 | `CraneTuning` | `crane` | The prize crane's timing and its chance to break down | the rules (`crane_play.gd`), `crane_view.gd` |
 | `PlayerTuning` | `gameplay/player/player_tuning_default.tres` | How the player feels: speeds, acceleration, jump, crouch, step up, hip fire, camera framing and springs, shake, sprint sway (15 groups) | `Player.tuning` (the export on the `Player` node of `player.tscn`, `test_room.tscn`), remote avatars, the touch look and the camera probe |

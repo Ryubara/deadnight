@@ -9,7 +9,13 @@ const PLAY := "res://ui/screens/play_screen.tscn"
 const SECONDS := 2.0
 
 
+func before_test() -> void:
+	# The back rooms are level 10: this player has it.
+	PlayerLevel.use(10)
+
+
 func after_test() -> void:
+	PlayerLevel.reset()
 	await RouterFixture.clear(get_tree())
 	NightScreen.match_settings = null
 	await get_tree().process_frame

@@ -353,7 +353,8 @@ text.* The 15 new wearable pieces are art in waves (#1078): eight, then seven; t
 
 ## Maps
 
-`MapRegistry` lists the maps with a `shipped` flag; `unlock_level` is added to each map resource (#1067). The drive-in
+`MapRegistry` lists the maps with a `shipped` flag; `unlock_level` is on each map resource (built in #1067, see
+[Maps](maps.md#levels-open-maps)). The drive-in
 (first map) is level 1; **the back rooms (the second map) is level 10**. Reserved rows at 25 and 40 for maps three and
 four when they exist. The picker shows a locked card dark with "Level 10" in the same `???`-and-hover look as the
 wardrobe. **The host's level decides the lot** (decision 17): a lobby whose host is below a map's level does not offer
