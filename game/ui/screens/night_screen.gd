@@ -58,6 +58,8 @@ static var own_look: CharacterLook
 ## Where the player's challenges are kept; empty (tests, captures) counts nothing and writes
 ## nothing. The game's root sets it, so only the real game keeps a save.
 static var challenge_path := ""
+## The profile file a person's night adds its XP to ('' for tests and captures: no file is touched).
+static var profile_path := ""
 ## The lobby the night was entered from (a lobby screen, the Together screen, Quick join set them:
 ## `remember_lobby`) and the way to ask the backend about it; taken once, as `join_url` is. At the
 ## end of the night the player goes back to this lobby, which the backend opens again for them.
@@ -138,6 +140,8 @@ func _ready() -> void:
 	return_api = null
 	if challenge_path != "":
 		night.challenge_board = ChallengeBoard.open(challenge_path)
+	if profile_path != "":
+		night.profile_store = ProfileStore.open(profile_path, TogetherApi.signed_in)
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	add_child(_hud)
