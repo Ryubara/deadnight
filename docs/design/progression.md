@@ -692,13 +692,23 @@ are not licensed for commercial use.
 
 ## The level over a head
 
-The HUD's ally marker (`HudMarkers`, drawn in screen space) shows a name above a triangle. It becomes **icon, name,
-level**, the icon from the 64 px atlas at 24 px, in the same marker so it keeps its place rules. **Shown by default**
+The HUD's ally marker (`HudMarkers`, drawn in screen space) shows a name above a triangle. It becomes **icon, level,
+name**: the icon from the 64 px atlas at 24 px, the level right beside it, a little padding, then the name, in the
+same marker so it keeps its place rules. This is the maintainer's order ("icon, then level to the right of it, with a
+bit of padding to the right and it shows the players name"), and it is the same **everywhere** a level shows: over a
+head, in the bottom-left player boxes, on the scoreboard, in the night report and in the lobby's seat list. Two gaps
+decide it and live in one place, `LevelTag`: `ICON_GAP` (4) between the icon and the level, tight, and `NAME_GAP` (12)
+between the level and the name, visibly larger. A row with no level (a bot, a seat without one, the setting off) is
+the name alone, with no badge and no gap. In a list (the scoreboard, the report, the lobby, the boxes) a level has the
+room of two digits, so the names of the people start on one line and 55 is never cut; over a head the level takes its
+own width and the whole tag is centred as a bare name is. In the compact box the name ends in an ellipsis before the
+badge or the points are cut. **Shown by default**
 (decision 18); a setting hides every level on the viewer's own screen. The level and icon ride with the name: in the
 ticket the backend signs, then in the WELCOME's names and the `player_named` event. **Bots have no level** and keep
 their usual difficulties (the earlier idea of a level near the lobby's average is dropped). A Guest account is an
 account and has a level like any other; only a bot has none.
-Also on the scoreboard, the lobby list and the night report. A name tag never shows a card or an emblem in the night.
+Also on the scoreboard, the lobby list, the night report and the player boxes at the bottom left (calling cards
+beside the box come with #1070). A name tag never shows a card or an emblem in the night.
 Built in #1077: [how it travels and what it costs](../research/multiplayer.md#the-level-and-icon-beside-a-name-1077).
 The setting is **Player levels** (Settings, Accessibility). A level gained in a night reaches the tags through
 `NightHost.set_level` (the `player_leveled` event); the server's XP tally (#1059) calls it.

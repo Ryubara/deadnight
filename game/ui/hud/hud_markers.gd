@@ -26,16 +26,15 @@ const LABEL_SIZE := HudStyle.MIN_TEXT
 ## state holds a new float place nearly every frame, and the part is drawn when the picture would
 ## change by a quarter of a unit (a quarter of a pixel at 1080p), not when a float does (#948).
 const PLACE_STEPS := 4.0
-## A level tag: the icon, drawn from the 64 px atlas at this size, then the name, then the level,
-## with these gaps between (docs/design/progression.md#the-level-over-a-head).
-const TAG_ICON := 24.0
-const TAG_GAP := 6.0
 
 ## Where each marker is drawn on the last frame: {id: {"at": Vector2, "pinned": bool}}.
 var placed: Dictionary = {}
-## Where each ally's tag (icon, name, level and what follows) was drawn on the last frame, canvas
+## Where each ally's tag (icon, level, name and what follows) was drawn on the last frame, canvas
 ## units: {id: Rect2}. Every tag stays inside the screen.
 var tags: Dictionary = {}
+## The parts of a tag with a level, as laid out, for tests and captures (a tag with no level has
+## none): {id: {"icon": Rect2, "level": Rect2, "name": Rect2}}.
+var tag_parts: Dictionary = {}
 
 ## What the last draw was made from (`_key`).
 var _drawn_key: Array = []
@@ -114,6 +113,7 @@ func _draw() -> void:
 	_words.clear()
 	_icons.clear()
 	tags.clear()
+	tag_parts.clear()
 	for marker in state.markers:
 		var spot: Dictionary = placed.get(marker["id"], {})
 		if spot.is_empty():
@@ -255,10 +255,11 @@ func _draw_downed(font: Font, marker: Dictionary, at: Vector2) -> void:
 	_tag(font, marker, at + Vector2(0.0, -DOWNED_RADIUS - 10.0), colour, tail)
 
 
-## A teammate's tag, centred on `baseline_centre`: icon, name and level when the marker has a level
-## (0 for none: a bot, or the viewer turned levels off), else the name alone as it always was;
-## `tail` follows (the clock of a body on the ground). The whole tag is kept inside the screen like
-## any other text, and its place is told in `tags`.
+## A teammate's tag, centred on `baseline_centre`: the icon, the level right beside it and then the
+## name, in the order and with the gaps of `LevelTag`, when the marker has a level (0 for none: a
+## bot, or the viewer turned levels off), else the name alone as it always was, centred the same
+## way; `tail` follows the name (the clock of a body on the ground). The whole tag is kept inside
+## the screen like any other text, and its place is told in `tags` and `tag_parts`.
 func _tag(
 	font: Font, marker: Dictionary, baseline_centre: Vector2, colour: Color, tail: String
 ) -> void:
@@ -269,27 +270,28 @@ func _tag(
 		tags[marker["id"]] = _words_rect(font, who + tail, baseline_centre)
 		return
 	var level_text := str(level)
-	var tail_width := _width(font, tail) if tail != "" else 0.0
-	var name_width := _width(font, who)
+	var name_width := _width(font, who + tail)
 	var level_width := _width(font, level_text)
-	var total := TAG_ICON + TAG_GAP + name_width + TAG_GAP + level_width + tail_width
+	var total := LevelTag.taken(level_width) + name_width
 	var left := clampf(
 		baseline_centre.x - total * 0.5,
 		TEXT_MARGIN,
 		maxf(size.x - TEXT_MARGIN - total, TEXT_MARGIN)
 	)
-	var icon_top := baseline_centre.y - TAG_ICON * 0.5 - LABEL_SIZE * 0.3
-	var icon := Rect2(left, icon_top, TAG_ICON, TAG_ICON)
+	var icon_top := baseline_centre.y - LevelTag.ICON * 0.5 - LABEL_SIZE * 0.3
+	var icon := Rect2(left, icon_top, LevelTag.ICON, LevelTag.ICON)
 	_icons.append([icon, LevelIcons.region(int(marker.get("icon", level)))])
-	var x := left + TAG_ICON + TAG_GAP
-	_words.append([font, Vector2(x, baseline_centre.y), who, colour])
-	x += name_width + TAG_GAP
-	_words.append([font, Vector2(x, baseline_centre.y), level_text, tokens.ink])
-	x += level_width
-	if tail != "":
-		_words.append([font, Vector2(x, baseline_centre.y), tail, colour])
+	var level_at := icon.end.x + LevelTag.ICON_GAP
+	var name_at := level_at + level_width + LevelTag.NAME_GAP
+	_words.append([font, Vector2(level_at, baseline_centre.y), level_text, tokens.ink])
+	_words.append([font, Vector2(name_at, baseline_centre.y), who + tail, colour])
 	var top := minf(icon_top, baseline_centre.y - LABEL_SIZE)
-	tags[marker["id"]] = Rect2(left, top, total, maxf(TAG_ICON, LABEL_SIZE))
+	tags[marker["id"]] = Rect2(left, top, total, maxf(LevelTag.ICON, LABEL_SIZE))
+	tag_parts[marker["id"]] = {
+		"icon": icon,
+		"level": Rect2(level_at, baseline_centre.y - LABEL_SIZE, level_width, LABEL_SIZE),
+		"name": Rect2(name_at, baseline_centre.y - LABEL_SIZE, name_width, LABEL_SIZE),
+	}
 
 
 func _width(font: Font, text: String) -> float:

@@ -232,13 +232,12 @@ func _rebuild() -> void:
 	rows_text.clear()
 	row_ids.clear()
 	row_levels.clear()
-	var reserve := HudLevelCell.any(_members.values())
 	for id in ids.slice(0, NightHost.MAX_PLAYERS):
 		var cells := _cells(id)
 		row_ids.append(id)
 		row_levels.append(int(_members[id].get("level", 0)))
 		rows_text.append(cells)
-		_grid.add_child(_player_row(id, cells, height, reserve))
+		_grid.add_child(_player_row(id, cells, height))
 	_ticket.update_minimum_size()
 
 
@@ -274,7 +273,7 @@ func _width(cell: int) -> float:
 	return NAME_WIDTH if cell == 0 else float(COLUMNS[cell - 1]["width"])
 
 
-func _player_row(id: int, cells: Array[String], height: float, reserve := false) -> Control:
+func _player_row(id: int, cells: Array[String], height: float) -> Control:
 	var member: Dictionary = _members[id]
 	var wash := PanelContainer.new()
 	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -296,7 +295,8 @@ func _player_row(id: int, cells: Array[String], height: float, reserve := false)
 	chip_slot.add_child(chip)
 	row.add_child(chip_slot)
 	for i in cells.size():
-		var room := _width(i) - (HudLevelCell.taken(reserve) if i == 0 else 0.0)
+		var shown := Vector2i(int(member.get("level", 0)), int(member.get("icon", 0)))
+		var room := _width(i) - (HudLevelCell.taken(shown) if i == 0 else 0.0)
 		var label := HudStyle.clip(HudStyle.label("", HudStyle.MEDIUM, _tokens.ink, i > 0))
 		label.custom_minimum_size = Vector2(room, height)
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -305,8 +305,7 @@ func _player_row(id: int, cells: Array[String], height: float, reserve := false)
 		)
 		HudStyle.set_fitted(label, cells[i], HudStyle.MEDIUM, room - float(HudStyle.SM))
 		if i == 0:
-			var shown := Vector2i(int(member.get("level", 0)), int(member.get("icon", 0)))
-			row.add_child(HudLevelCell.wrap(label, shown, reserve, _tokens.ink_muted, height))
+			row.add_child(HudLevelCell.wrap(label, shown, _tokens.ink, height))
 		else:
 			row.add_child(label)
 	return wash

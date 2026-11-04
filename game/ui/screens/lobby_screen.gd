@@ -19,9 +19,6 @@ const NIGHT_SCREEN := "res://ui/screens/night_screen.tscn"
 const FIELD_WIDTH := 620.0
 const SEAT_NUMBER_WIDTH := 48.0
 const TAG_WIDTH := 96.0
-## The level icon before a name in the seat list, and the room the level number has after it.
-const SEAT_ICON := 24.0
-const SEAT_LEVEL_WIDTH := 44.0
 const LEAVE_WIDTH := 150.0
 ## How long the host's last change waits for another before it is sent (a slider drag is a stream).
 const RULES_DELAY := 0.35
@@ -365,7 +362,7 @@ func seat_levels() -> Array[int]:
 	var out: Array[int] = []
 	for row in _seat_rows:
 		var level := row["level"] as Label
-		out.append(int(level.text) if level.visible and level.text != "" else 0)
+		out.append(int(level.text) if (row["badge"] as Control).visible and level.text != "" else 0)
 	return out
 
 
@@ -643,13 +640,12 @@ func _show_seats() -> void:
 		_seat_rows.append(_make_seat_row())
 	# The bots take the highest seats, as the server seats them (`NightBots`).
 	var bot_from := max_players - bots_shown()
-	var room_for_icons := levels.any(func(held: Vector2i) -> bool: return held.x > 0)
 	for i in _seat_rows.size():
 		var row := _seat_rows[i]
 		(row["box"] as Control).visible = i < max_players
 		(row["number"] as Label).text = str(i + 1)
 		var held: Vector2i = levels[i] if i < levels.size() else Vector2i.ZERO
-		_show_level(row, held, room_for_icons)
+		_show_level(row, held)
 		if i >= names.size() and i >= bot_from and i < max_players:
 			(row["name"] as Label).text = NightBots.name_for(i + 1, bots_skill())
 			(row["name"] as Label).modulate.a = 1.0
@@ -667,17 +663,15 @@ func _show_seats() -> void:
 			(row["tag"] as Label).text = ""
 
 
-## The icon and the level of a seat's row: both blank for a bot or an open seat, and gone from every
-## row of a list where nobody has a level (the names then start where they always did).
-func _show_level(row: Dictionary, held: Vector2i, room: bool) -> void:
-	var icon := row["icon"] as TextureRect
+## The icon and the level of a seat's row, the badge before the name (`LevelTag`): gone for a bot,
+## an open seat or a seat without a level, and then the name starts right after the seat number.
+func _show_level(row: Dictionary, held: Vector2i) -> void:
+	var badge := row["badge"] as Control
+	badge.visible = held.x > 0
 	var level := row["level"] as Label
-	icon.visible = room
-	level.visible = room
-	icon.modulate.a = 1.0 if held.x > 0 else 0.0
-	if held.x > 0:
-		icon.texture = LevelIcons.texture(held.y)
 	level.text = str(held.x) if held.x > 0 else ""
+	if held.x > 0:
+		LevelTag.set_icon(row["icon"] as TextureRect, held.y)
 
 
 func _make_seat_row() -> Dictionary:
@@ -685,29 +679,48 @@ func _make_seat_row() -> Dictionary:
 	box.add_theme_constant_override(&"separation", _tokens.space_md)
 	var number := _label("", UILabel.Style.BODY)
 	number.custom_minimum_size.x = SEAT_NUMBER_WIDTH
-	var icon := TextureRect.new()
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.texture_filter = LevelIcons.FILTER
-	icon.custom_minimum_size = Vector2.ONE * SEAT_ICON
+	# The seat's player: badge (icon, level), then the name, with the gaps of `LevelTag`.
+	var who := HBoxContainer.new()
+	who.name = &"Who"
+	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	who.add_theme_constant_override(&"separation", int(LevelTag.NAME_GAP))
+	var badge := HBoxContainer.new()
+	badge.name = &"Badge"
+	badge.add_theme_constant_override(&"separation", int(LevelTag.ICON_GAP))
+	badge.visible = false
+	var icon := LevelTag.icon_rect(1)
+	icon.name = &"Icon"
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	icon.visible = false
+	var level := _label("", UILabel.Style.BODY)
+	level.name = &"Level"
+	level.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	var seat_name := _label("", UILabel.Style.BODY)
+	seat_name.name = &"Name"
 	seat_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	seat_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	var level := _label("", UILabel.Style.OVERLINE)
-	level.custom_minimum_size.x = SEAT_LEVEL_WIDTH
-	level.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	level.visible = false
 	var tag := _label("", UILabel.Style.OVERLINE)
 	tag.custom_minimum_size.x = TAG_WIDTH
+	badge.add_child(icon)
+	badge.add_child(level)
+	who.add_child(badge)
+	who.add_child(seat_name)
 	box.add_child(number)
-	box.add_child(icon)
-	box.add_child(seat_name)
-	box.add_child(level)
+	box.add_child(who)
 	box.add_child(tag)
 	_seats.add_child(box)
+	# Two digits of room, so the names of the people start on one line (a level of 55 is whole).
+	level.custom_minimum_size.x = LevelTag.level_room(
+		level.get_theme_font(&"font"), level.get_theme_font_size(&"font_size")
+	)
 	return {
-		"box": box, "number": number, "icon": icon, "name": seat_name, "level": level, "tag": tag
+		"box": box,
+		"number": number,
+		"who": who,
+		"badge": badge,
+		"icon": icon,
+		"name": seat_name,
+		"level": level,
+		"tag": tag
 	}
 
 

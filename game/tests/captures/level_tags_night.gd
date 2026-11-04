@@ -6,12 +6,12 @@ extends Node
 ##
 ##     gds godot -- --path game res://tests/captures/level_tags_night.tscn --resolution 1280x720
 ##         -- --out=<abs>/tags.png [--distance=5] [--yaw=0] [--shift=0] [--touch [--notch]]
-##         [--board] [--report] [--bot] [--off]
+##         [--board] [--report] [--bot] [--off] [--down]
 ##
 ## `--yaw` is the way the viewer faces, radians (0 is toward the concession stand), `--shift` moves
 ## the row to the right, metres. `--bot` makes the third ally a bot (it has no level). `--board`
 ## holds the scoreboard up and `--report` shows the night report. `--off` turns the setting that
-## shows levels off. `--touch` draws the phone layout.
+## shows levels off. `--down` knocks the second ally down. `--touch` draws the phone layout.
 
 const SECRET := "test-ticket-secret-of-32-characters!"
 const SERVER_ID := "gs-capture"
@@ -56,6 +56,10 @@ func _ready() -> void:
 		args.get_float("shift", 0.0),
 		args.has("bot")
 	)
+	if args.has("down"):
+		var ids: Array = room.server.rules.players.keys()
+		ids.sort()
+		room._collect(room.server.rules.apply(RulesAction.set_downed(ids[2], true)))
 	if args.has("board"):
 		Input.action_press(Hud.SCOREBOARD_ACTION)
 	if args.has("report"):

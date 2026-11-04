@@ -122,15 +122,12 @@ func refresh() -> void:
 	rows_text.clear()
 	row_ids.clear()
 	row_levels.clear()
-	var reserve := false
-	for id in ids.slice(0, MAX_ROWS):
-		row_levels.append(state.level_of(state.team[id]).x)
-		reserve = reserve or row_levels[-1] > 0
 	for id in ids.slice(0, MAX_ROWS):
 		var cells := _cells(id)
 		row_ids.append(id)
+		row_levels.append(state.level_of(state.team[id]).x)
 		rows_text.append(cells)
-		_grid.add_child(_player_row(id, cells, reserve))
+		_grid.add_child(_player_row(id, cells))
 	update_minimum_size()
 
 
@@ -191,7 +188,7 @@ func _heading_row() -> Control:
 	return row
 
 
-func _player_row(player_id: int, cells: Array[String], reserve := false) -> Control:
+func _player_row(player_id: int, cells: Array[String]) -> Control:
 	var member: Dictionary = state.team[player_id]
 	var local := player_id == state.local_player_id
 	var downed := bool(member["downed"])
@@ -224,7 +221,8 @@ func _player_row(player_id: int, cells: Array[String], reserve := false) -> Cont
 			var grades: Array[Color] = [tokens.ink, tokens.accent, tokens.danger]
 			var ping := int(member["ping"])
 			ink = tokens.ink_muted if ping < 0 else grades[ping_grade(ping)]
-		var room := widths[i] - (HudLevelCell.taken(reserve) if i == 0 else 0.0)
+		var shown := state.level_of(member)
+		var room := widths[i] - (HudLevelCell.taken(shown) if i == 0 else 0.0)
 		var label := HudStyle.clip(HudStyle.label("", HudStyle.MEDIUM, ink, i > 0))
 		label.custom_minimum_size = Vector2(room, ROW_HEIGHT)
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -233,11 +231,7 @@ func _player_row(player_id: int, cells: Array[String], reserve := false) -> Cont
 		)
 		HudStyle.set_fitted(label, cells[i], HudStyle.MEDIUM, room - float(HudStyle.SM))
 		if i == 0:
-			row.add_child(
-				HudLevelCell.wrap(
-					label, state.level_of(member), reserve, tokens.ink_muted, ROW_HEIGHT
-				)
-			)
+			row.add_child(HudLevelCell.wrap(label, shown, tokens.ink, ROW_HEIGHT))
 		else:
 			row.add_child(label)
 	return wash

@@ -431,11 +431,13 @@ one `player_named` that is 44 bytes longer (110 to 154) in a tick of its own.
 
 The HUD keeps the pair in `HudState.team` (`level`, `icon`), and `HudState.level_of(member)` is what every part reads:
 zero for a bot, a seat with none and every seat when the viewer turned **Player levels** off (Settings, Accessibility,
-`accessibility/show_levels`, on by default). The tag over a head is `HudMarkers._tag`: icon (24 px from the 64 px atlas),
-name, level, kept inside the screen like any other word, its rectangle in `HudMarkers.tags`; the scoreboard and the
-night report put the icon before the name and the level after it in the name column (`HudLevelCell`), and the lobby's
-seat list shows them from the backend's member list (`level`, `icon` on each member, from the profile as the ticket
-reads it).
+`accessibility/show_levels`, on by default). The order everywhere is **icon, level right beside it, a little padding,
+then the name** (the maintainer's correction on #1115), with the two gaps `LevelTag.ICON_GAP` and `LevelTag.NAME_GAP`
+shared by every place that shows it. The tag over a head is `HudMarkers._tag`: icon (24 px from the 64 px atlas),
+level, name, kept inside the screen like any other word, its rectangle in `HudMarkers.tags` and the parts in
+`HudMarkers.tag_parts`; the bottom-left boxes (`HudPlayerBox`, all three sizes), the scoreboard and the night report
+(`HudLevelCell`) and the lobby's seat list lay out the same badge; the lobby reads them from the backend's member list
+(`level`, `icon` on each member, from the profile as the ticket reads it). A row with no level is the name alone.
 
 ## Revives
 
