@@ -15,35 +15,48 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        copy: [1, 2, 3, 4]
+        copy: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
     steps:
+      - name: Which machine, only a runner that is not Azure goes on
+        id: who
+        run: |
+          vendor=$(cat /sys/devices/virtual/dmi/id/sys_vendor 2>/dev/null || true)
+          echo "vendor: $vendor"
+          if [ "$vendor" = "Microsoft Corporation" ]; then echo "go=false" >> "$GITHUB_OUTPUT"; else echo "go=true" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.who.outputs.go == 'true'
         with:
           path: repos/deadnight
           persist-credentials: false
           lfs: true
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.who.outputs.go == 'true'
         with:
           repository: Ryubara/gdstudio
           path: repos/gdstudio
           persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        if: steps.who.outputs.go == 'true'
       - uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        if: steps.who.outputs.go == 'true'
         with:
           path: cache/downloads
           key: tools-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
       - name: Make the workspace and fetch the pinned Godot and GdUnit4
+        if: steps.who.outputs.go == 'true'
         run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,gdunit4
       - name: Import the project
+        if: steps.who.outputs.go == 'true'
         run: |
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
           "$godot" --headless --path repos/deadnight/game --import > import.log 2>&1 || true
-      - name: Which machine
+      - name: The machine in detail
         run: |
           echo "vendor: $(cat /sys/devices/virtual/dmi/id/sys_vendor 2>/dev/null) / $(cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null)"
           echo "cpu: $(grep -m1 'model name' /proc/cpuinfo) cores: $(nproc)"
           mount | grep ' / ' || true
       - name: Each entry of shard 5 in a process of its own, then each suite of an entry that leaks
+        if: steps.who.outputs.go == 'true'
         run: |
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
           cd repos/deadnight/game
@@ -70,11 +83,20 @@ jobs:
             fi
           done
           echo "done"
+      - name: The whole shard in one process, as CI runs it
+        if: steps.who.outputs.go == 'true'
+        run: |
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          cd repos/deadnight/game
+          read -r -a folders < <(python3 ../tools/ci_test_shards.py --root . --shard 5)
+          timeout 1200 "$godot" --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd "${folders[@]}" -c --ignoreHeadlessMode --verbose > ../../../diag/whole.log 2>&1 || true
+          grep -E "ObjectDB instances were leaked" ../../../diag/whole.log | head -1 | sed "s#^#LEAK whole: #" || true
+          echo "whole done"
       - name: Keep the leak lists
-        if: always()
+        if: always() && steps.who.outputs.go == 'true'
         run: grep -h -E "leaked at exit|still in use|Leaked instance|Resource still in use" diag/*.log > diag/leaks.txt || true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
+        if: always() && steps.who.outputs.go == 'true'
         with:
           name: leak-diag-${{ matrix.copy }}
           path: diag/leaks.txt
