@@ -21,6 +21,9 @@ const CALIBRATE_EVERY := 5.0
 var rows: Array[Dictionary] = []
 ## Reads the zombies on the lot and the round: `() -> Dictionary` with `alive`, `round`.
 var night_state := Callable()
+## False for a long run (`labels=0`): a row without the labelled times is a fifth of the size, and
+## a half hour of rows is memory the run itself adds to what it is measuring.
+var keep_labels := true
 ## The milliseconds a fixed piece of GDScript takes on this machine now (`calibrate`): a budget in
 ## ratios of it holds on a slow runner and a busy machine, which a budget in milliseconds cannot.
 var calibration_ms := 0.0
@@ -90,7 +93,8 @@ func _process(delta: float) -> void:
 	var taken := PerfProbe.take()
 	for label: StringName in taken["usec"]:
 		_usec[label] = _usec.get(label, 0) + taken["usec"][label]
-		(_per_frame.get_or_add(label, []) as Array).append(float(taken["usec"][label]) / 1000.0)
+		if keep_labels:
+			(_per_frame.get_or_add(label, []) as Array).append(float(taken["usec"][label]) / 1000.0)
 	for label: StringName in taken["counts"]:
 		_counts[label] = _counts.get(label, 0) + taken["counts"][label]
 	_calibrate_clock += delta
@@ -162,24 +166,39 @@ func _row() -> Dictionary:
 		"audio_culled": Audio.culled,
 	}
 	row.merge(scene)
-	var labels := {}
+	if keep_labels:
+		row["labels_ms"] = _label_means(frames)
+		row["labels_median_ms"] = _label_medians()
+		row["counts"] = _count_totals()
+	row["frame_median_ms"] = snappedf(sorted[sorted.size() / 2], 0.01)
+	return row
+
+
+func _label_means(frames: int) -> Dictionary:
+	var means := {}
+	for label: StringName in _usec:
+		means[String(label)] = snappedf(float(_usec[label]) / 1000.0 / frames, 0.001)
+	return means
+
+
+## The median frame of the window for each label. Frames the label did not run in count as 0, so a
+## median is of all the frames.
+func _label_medians() -> Dictionary:
 	var medians := {}
 	for label: StringName in _usec:
-		labels[String(label)] = snappedf(float(_usec[label]) / 1000.0 / frames, 0.001)
-		# Frames the label did not run in count as 0, so a median is of all the frames.
 		var seen: Array = _per_frame[label]
 		seen.sort()
 		var zeros := _window_frames.size() - seen.size()
 		var middle := _window_frames.size() / 2
 		medians[String(label)] = snappedf(0.0 if middle < zeros else seen[middle - zeros], 0.001)
-	row["labels_ms"] = labels
-	row["labels_median_ms"] = medians
-	row["frame_median_ms"] = snappedf(sorted[sorted.size() / 2], 0.01)
+	return medians
+
+
+func _count_totals() -> Dictionary:
 	var counts := {}
 	for label: StringName in _counts:
 		counts[String(label)] = _counts[label]
-	row["counts"] = counts
-	return row
+	return counts
 
 
 ## What the tree holds that costs by its number: lights shining, particles emitting, decals, sounds

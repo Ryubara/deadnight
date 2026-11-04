@@ -23,6 +23,7 @@ extends Node
 ##   `ceiling=desktop` the bots say they are not browsers, so the desktop's 120 dead may stand (they
 ##                count as browsers otherwise: the ceiling is 40)
 ##   `frames=0`   keep no row per frame (a long run's memory is what it measures)
+##   `labels=0`   with `sample=1`, rows without the labelled times and counts (a long run)
 ##   `sample=1`   a `PerfSampler` row each second (monitors, counts, labelled times) in the report
 ##   `map=ID`     the map of the night (`MapRegistry`: `drive_in`, `small_indoor`; default the lot)
 ##   `seconds=S`  stop after S seconds of night whatever round it is (default 600)
@@ -99,6 +100,7 @@ func _process(delta: float) -> void:
 		if _args.get_int("sample") == 1:
 			_sampler = PerfSampler.new()
 			_sampler.night_state = _state_of_night
+			_sampler.keep_labels = _args.get_int("labels", 1) != 0
 			add_child(_sampler)
 	if not _jumped:
 		_jumped = true
