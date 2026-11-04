@@ -15,7 +15,8 @@ extends RefCounted
 ## walking and shooting). The look server answers a join and a look with `look_packet` events
 ## (`LOOK_PACKET`). `step(delta)` runs one fixed tick and returns the events for every client: the
 ## rules events (a zombie's blow is a `blow` action, answered by the rules' `player_hurt`), the
-## weapons events (`CombatServer`), `player_damaged` (the blow as the world saw it: `from`, where it
+## weapons events (`CombatServer`), `zombie_shattered` (a frozen zombie the rules killed: where it
+## stood, for the pieces), `player_damaged` (the blow as the world saw it: `from`, where it
 ## came from, and the zombie's id, type and `knockback`: metres the blow throws the player, recorded
 ## for the player's own motion to apply), and last a `frame`. A frame carries the whole picture a
 ## client or a HUD draws from. Frame fields: tick, phase, round, remaining, fuel, circuits ({id:
@@ -69,6 +70,8 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"projectile_spawned",
 	&"projectile_burst",
 	&"lure_started",
+	&"status_applied",
+	&"status_ended",
 	&"element_burst",
 	&"element_arc",
 	&"fire_patch_started",
@@ -91,6 +94,8 @@ const GRENADE_EVENTS: Array[StringName] = [
 ]
 ## The grenade the night throws.
 const GRENADE_DEF := "res://gameplay/grenades/defs/frag.tres"
+## Metres over a player's feet at which their own burst is measured to (the chest).
+const SELF_SPLASH_LIFT := 1.0
 ## A held trigger meets these every tick; they are not news.
 const QUIET_REJECTIONS: Array[StringName] = [&"cooldown", &"reloading"]
 ## The frame names where a player looks up or down in steps of this many radians (3 degrees): a
@@ -132,6 +137,10 @@ var _silent: Dictionary[int, int] = {}
 ## The `seq` of the command each player's last step used.
 var _acked: Dictionary[int, int] = {}
 var _bodies: Dictionary[int, Player] = {}
+## Which start marker each player came in on (`NightWorld.player_spawn`): where they are put back.
+var _slots: Dictionary[int, int] = {}
+## Seconds each player has been outside the playable space (`_return_strays`).
+var _out_for: Dictionary[int, float] = {}
 var _shot_seq: Dictionary[int, int] = {}
 var _hand_wait: Dictionary[int, float] = {}
 ## The breach each player's held `use` is repairing (`&""`: none): from a press at a breach until
@@ -192,6 +201,7 @@ func _init(
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
 	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
+	director.zombie_shattered.connect(_announce)
 	world.bind(rules)
 	rules.event_emitted.connect(_on_rules_event)
 	crowd.bind(rules, sim)
@@ -293,6 +303,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	tick_count += 1
 	var began := PerfProbe.begin()
 	_move_players()
+	_return_strays(delta)
 	PerfProbe.end(&"server.move", began)
 	if tick_count % SPAWN_RETRY_TICKS == 0:
 		director.spawn_points = world.spawn_points()
@@ -333,7 +344,8 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 func _join(player_id: int, local: bool, bot := false) -> void:
 	if _bodies.has(player_id):
 		return
-	_bodies[player_id] = world.add_body(world.player_spawn(_bodies.size()), local, drawn_bodies)
+	_slots[player_id] = _bodies.size()
+	_bodies[player_id] = world.add_body(world.player_spawn(_slots[player_id]), local, drawn_bodies)
 	crowd.join(player_id, OS.has_feature("web") if local else true)
 	looks.join(player_id)
 	_shot_seq[player_id] = 0
@@ -353,6 +365,8 @@ func _leave(player_id: int) -> void:
 	if _bodies.has(player_id):
 		_bodies[player_id].queue_free()
 		_bodies.erase(player_id)
+		_slots.erase(player_id)
+		_out_for.erase(player_id)
 		crowd.leave(player_id)
 		_pending.erase(player_id)
 		_silent.erase(player_id)
@@ -407,6 +421,26 @@ func _move_players() -> void:
 			command.motion.jump = false
 			command.motion.melee = false
 			command.motion.swap_shoulder = false
+
+
+## The server's rule for a player who has left the playable space (a hop past a fence, a physics
+## glitch, a desync): after `NightTuning.out_of_bounds_seconds` outside, the body is put back on the
+## start marker it came in on, at rest. A state change only the server makes; clients follow it as
+## they follow any move of the server's (`Reconciler` for the player's own body, the next frame for
+## the others). The rules' state is not touched: a player on the ground is still on the ground, with
+## the bleed-out running, and a player standing is still standing.
+func _return_strays(delta: float) -> void:
+	if world.bounds == null:
+		return
+	for player_id in _bodies:
+		var body := _bodies[player_id]
+		if not world.bounds.is_out(body.global_position):
+			_out_for.erase(player_id)
+			continue
+		_out_for[player_id] = _out_for.get(player_id, 0.0) + delta
+		if _out_for[player_id] >= tuning.out_of_bounds_seconds:
+			_out_for.erase(player_id)
+			body.teleport(world.player_spawn(_slots.get(player_id, 0)))
 
 
 ## What a command that was not renewed becomes: standing still with the trigger released, looking
@@ -606,9 +640,33 @@ func _combat(action: Dictionary) -> void:
 			continue
 		if event["type"] == &"lure_started":
 			sim.add_lure(event["lure_id"], event["point"], event["radius"], event["seconds"])
+		if event["type"] == &"projectile_burst":
+			_hurt_the_shooter(event)
+		if event["type"] == &"status_applied" or event["type"] == &"status_ended":
+			sim.set_status(event["target_id"], event["wire"], event["halts"], event["speed_scale"])
 		_outbox.append(event)
 		if event["type"] == &"reload_started":
 			_shock(event["shooter_id"])
+
+
+## A burst of a weapon that hurts its shooter (`WeaponDef.self_splash_share`, the ray gun's 25%):
+## the shooter takes that share of the splash at their own distance from the burst. A teammate
+## takes nothing, as a grenade's rule. The re-cut copy in hand is the one that is measured.
+func _hurt_the_shooter(burst: Dictionary) -> void:
+	var shooter: int = burst["shooter_id"]
+	var state := combat.state_of(shooter, burst["weapon_id"])
+	if state == null or state.def.self_splash_share <= 0.0 or not _bodies.has(shooter):
+		return
+	var at := _bodies[shooter].global_position + Vector3(0.0, SELF_SPLASH_LIFT, 0.0)
+	var damage := DamageModel.splash(state.def, at.distance_to(burst["point"]))
+	if damage > 0.0:
+		_blast_player(
+			shooter,
+			damage * state.def.self_splash_share,
+			burst["point"],
+			burst["weapon_id"],
+			shooter,
+		)
 
 
 ## The shock perk (`ShockPlay`): a reload gives off a shock round the player.

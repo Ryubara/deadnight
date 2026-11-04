@@ -32,6 +32,11 @@ const FUEL_BUY_BELOW := 35.0
 const REPLACE_GAIN := WeaponWorth.REPLACE_GAIN
 ## Seconds per tick while the shopper waits at the crane in a break.
 const CRANE_STEP := 0.25
+## Prizes the simulator does not play (#788): the freeze is not modelled, and the ray gun's blast on
+## a crowd and its dear rounds are, but its hurt to its shooter is not, so a shopper that won one
+## would be worth more than it is. They are out of the crane's pool here, so the gate stays the
+## eight weapons' until the wonder weapons are modelled.
+const UNMODELLED: Array[StringName] = [&"weapon_ray_gun", &"weapon_freeze_gun"]
 ## Seconds to put a dry weapon away and take another.
 const SWAP_SECONDS := 0.6
 ## A dry player with points to spend runs to a locker: the walk there, the purchase and the walk
@@ -82,6 +87,7 @@ func _init(
 	p_tuning: RulesTuning, p_skill: SimSkill, players: int, seed_value: int, p_step: float
 ) -> void:
 	step = p_step
+	_leave_out_the_unmodelled(p_tuning)
 	rules = GameRules.new(p_tuning, seed_value)
 	_rng.seed = seed_value ^ 0x51A7
 	skill = p_skill.jittered(_rng, NIGHT_SPREAD)
@@ -101,6 +107,22 @@ func _init(
 
 ## Plays until everyone is down or `max_rounds` rounds have been cleared. Returns the night's
 ## record.
+## Takes the prizes of `UNMODELLED` out of the crane's pool and weights of `tuning` (a copy the
+## caller owns, as every simulated night's is).
+static func _leave_out_the_unmodelled(tuning: RulesTuning) -> void:
+	var item := tuning.economy.item(&"crane_play")
+	if item == null:
+		return
+	var pool: Array[StringName] = []
+	var weights := PackedFloat32Array()
+	for i in item.pool.size():
+		if not UNMODELLED.has(item.pool[i]):
+			pool.append(item.pool[i])
+			weights.append(item.pool_weights[i])
+	item.pool = pool
+	item.pool_weights = weights
+
+
 func run(max_rounds: int) -> Dictionary:
 	_handle(rules.apply(RulesAction.start()))
 	while not _over:

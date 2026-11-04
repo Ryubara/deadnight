@@ -29,6 +29,7 @@ group_limits = Dictionary[StringName, int]({
 &"till": 2,
 &"ui": 4,
 &"ui_hint": 1,
+&"ui_moment": 1,
 &"wind": 3,
 &"yard": 2,
 &"zombie_boss": 2,

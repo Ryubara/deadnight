@@ -46,6 +46,8 @@ const WEAPONS := {
 	"fifty_cal": "rule: BotMotor fires it like the pistol (the shot pierces the line of the dead)",
 	"pump_870": "rule: BotMotor fires it like the pistol; BotArsenal reloads it shell by shell",
 	"dual_pistols": "rule: BotMotor fires it like the pistol (the hands alternate on the server)",
+	"ray_gun": "rule: BotMotor fires it like the pistol (the bolt's splash forgives the aim)",
+	"freeze_gun": "rule: BotMotor fires it like the pistol; a frozen zombie is shot once",
 }
 ## `PingBoard.KINDS`: what a bot does about each mark a person puts up.
 const PINGS := {

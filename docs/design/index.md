@@ -24,7 +24,7 @@ A downed player can be revived until the round ends.
 | Concession stand | early | the prize crane (random weapons), soda-fountain tonics (perks) |
 | Generator yard | early | the generator and the fuel; the safest ground, and the most to lose |
 | Projection booth | mid | the projector's beam; the re-cut (weapon upgrades) |
-| Back lot | mid to late | dark, wrecks and long lanes |
+| Back lot | mid to late | dim, its lights failing, wrecks and long lanes |
 | The ticket plaza (the road door) | late | the lot's last door: a closed court with its own perk machine |
 
 The order, prices and layout are in [the lot](map.md); which map a night is played on, and the picker, in [maps](maps.md).

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="StatusDef" format=3]
+
+[ext_resource type="Script" path="res://gameplay/weapons/status/status_def.gd" id="1_status"]
+
+[resource]
+script = ExtResource("1_status")
+id = &"chilled"
+wire = 2
+priority = 5
+halts = false
+speed_scale = 0.4
+shatters = false
+boss_status = &""
+tint = Color(0.7, 0.9, 1, 0.3)

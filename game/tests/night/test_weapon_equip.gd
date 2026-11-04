@@ -26,6 +26,8 @@ const EXPECTED := {
 	&"fifty_cal": [&"Rifle", "res://assets/weapons/fifty_cal/fifty_cal.glb"],
 	&"pump_870": [&"Shotgun", "res://assets/weapons/pump_870/pump_870.glb"],
 	&"dual_pistols": [&"Dual", "res://assets/weapons/service_pistol/service_pistol.glb"],
+	&"ray_gun": [&"Pistol", "res://assets/weapons/ray_gun/ray_gun.glb"],
+	&"freeze_gun": [&"Rifle", "res://assets/weapons/freeze_gun/freeze_gun.glb"],
 }
 ## A weapon drawn with another's model until its own lands: it may share that model, and is taken
 ## off this list with its own glb. None now: all six of #793 have theirs.

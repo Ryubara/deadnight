@@ -75,6 +75,21 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 ## Damage at the burst centre; it slides linearly to `splash_min_fraction` at the radius.
 @export_range(0.0, 500.0, 1.0, "or_greater") var splash_damage: float = 0.0
 @export_range(0.0, 1.0) var splash_min_fraction: float = 0.25
+## The share of its own splash a burst hurts the shooter with (the ray gun's 25%, so a close shot
+## is a choice); a teammate takes nothing, as a grenade's rule. 0 is none.
+@export_range(0.0, 1.0) var self_splash_share: float = 0.0
+
+## The bolt's own colours (`ProjectileView`, the burst); a colour with no alpha is the flare's.
+@export var bolt_core_colour: Color = Color(0.0, 0.0, 0.0, 0.0)
+@export var bolt_halo_colour: Color = Color(0.0, 0.0, 0.0, 0.0)
+
+@export_group("Status")
+## The status effect (`StatusCatalog`) every zombie this weapon hits takes (a projectile's: every
+## zombie in its burst's `splash_radius`), for `status_seconds`; empty for none. It is put on
+## after the damage, to a zombie that is still alive, so the hit that
+## freezes is never the hit that shatters.
+@export var status: StringName = &""
+@export_range(0.0, 60.0, 0.1, "or_greater", "suffix:s") var status_seconds: float = 0.0
 
 @export_group("Element")
 ## What a hit does besides its damage (`ElementDef`): none as shipped; a re-cut weapon may carry one
@@ -127,6 +142,14 @@ func upgraded(spec: UpgradeTuning) -> WeaponDef:
 ## The damage multiplier of a hit zone; a zone the weapon does not list counts one.
 func zone_multiplier(zone: StringName) -> float:
 	return zone_multipliers.get(zone, 1.0)
+
+
+func has_status() -> bool:
+	return status != &"" and status_seconds > 0.0
+
+
+func has_bolt_colours() -> bool:
+	return bolt_core_colour.a > 0.0 and bolt_halo_colour.a > 0.0
 
 
 ## Seconds one round of a by-round reload takes (`reload_by_round`).

@@ -4,7 +4,7 @@ extends Node3D
 ## `--seed=N`, `--zombies=N` (the cap the rules are given), `--bench` (print frame times and quit),
 ## `--empty` (no zombies at all, to measure the empty lot), `--frames=N` (bench length).
 
-const GREYBOX := preload("res://world/drive_in_greybox.tscn")
+const GREYBOX := "res://world/drive_in_greybox.tscn"
 const PLAYER_SPEED := 5.0
 ## Waypoints player 1 runs between (metres), then stands at the last.
 const ROUTE: Array[Vector3] = [
@@ -37,7 +37,7 @@ var _args := {}
 
 func _ready() -> void:
 	_args = _parse_args()
-	var greybox := GREYBOX.instantiate()
+	var greybox := (load(GREYBOX) as PackedScene).instantiate()
 	add_child(greybox)
 	await get_tree().physics_frame
 	await get_tree().physics_frame

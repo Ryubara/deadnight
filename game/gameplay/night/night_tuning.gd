@@ -13,6 +13,12 @@ const SHIPPED_PATH := "res://gameplay/night/night_tuning_default.tres"
 ## into the dead). Half a second at the 60 Hz step.
 @export_range(1, 600, 1, "suffix:steps") var command_ticks: int = 30
 
+@export_group("Bounds")
+## Seconds a player may stand outside the playable space (`PlayBounds`) before the server puts them
+## back at the start. Long enough that a hop over an edge is not a trip to the start, short enough
+## that nobody waits out a night on the far slab.
+@export_range(0.1, 5.0, 0.05, "suffix:s") var out_of_bounds_seconds: float = 0.5
+
 @export_group("Hands")
 ## Metres from the player's feet to a door slab (or a board) that it can be used from.
 @export_range(0.5, 10.0, 0.05, "suffix:m") var use_reach: float = 3.2

@@ -132,9 +132,12 @@ const NIGHT_SOUND_TUNING := {
 ## The constants of `LotLamps`, `NightLight` and the lot's fixtures.
 const LIGHT_TUNING := {
 	"lamp_reach": 6.0,
-	"flicker_ticks": 5,
 	"sag_floor": 0.35,
-	"dropout": 0.12,
+	"failing_base": 0.6,
+	"failing_wander": 0.08,
+	"failing_floor": 0.12,
+	"failing_cycle": 3.6,
+	"failing_seed": 851,
 	"ease_seconds": 12.0,
 	"darkest_ambient": 0.35,
 	"darkest_moon": 0.5,
@@ -289,6 +292,7 @@ const SOUND_MIX := {
 	{
 		&"ui": 4,
 		&"ui_hint": 1,
+		&"ui_moment": 1,
 		&"challenge": 1,
 		&"gun": 12,
 		&"reload": 4,

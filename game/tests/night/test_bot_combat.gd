@@ -184,9 +184,10 @@ func test_the_lens_is_where_the_hit_zones_put_it_and_is_seen_only_from_the_front
 
 
 ## Hits on the headliner by zone, from a pinned bot with a rifle that shoots it as it comes.
-func _boss_shoot(weak_rate: float) -> Dictionary:
+func _boss_shoot(weak_rate: float, off_the_lens := false) -> Dictionary:
 	var profile := BotProfile.veteran()
 	profile.weak_spot_rate = weak_rate
+	profile.aims_off_weak_spot = off_the_lens
 	profile.retreat_margin = 0.0
 	profile.boss_keep = 0.0
 	profile.follows = false
@@ -232,6 +233,16 @@ func test_the_headliner_is_shot_in_the_lens_at_the_profiles_rate() -> void:
 	assert_float(_share(never, &"weak")).is_less(0.4)
 	assert_float(_share(always, &"weak")).is_greater(0.6)
 	assert_float(_share(always, &"weak")).is_greater(_share(never, &"weak") + 0.3)
+
+
+func test_a_bot_that_aims_off_the_lens_hits_it_only_when_it_means_to() -> void:
+	var hips := await _boss_shoot(0.0, true)
+	# In the soak a bot standing before the boss hit the lens in 6 of 10 hits aimed at the chest
+	# (the lamp counts when the ray passes it, `Hitbox.WEAK_SLACK`); aimed at the hips, in 3 of 10.
+	assert_int(hips.size()).is_greater(1)
+	assert_float(_share(hips, &"weak")).is_less(0.3)
+	assert_bool(BotProfile.rookie().aims_off_weak_spot).is_true()
+	assert_bool(BotProfile.regular().aims_off_weak_spot).is_false()
 
 
 static func _share(zones: Dictionary, zone: StringName) -> float:

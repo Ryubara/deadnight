@@ -34,6 +34,7 @@ const SIZE_EXCEPTIONS := {
 	&"pistol": 1.75,
 	&"house_pistol": 1.75,
 	&"flare_gun": 1.7,
+	&"ray_gun": 1.75,
 	&"dual_pistols": 1.75,
 	&"fifty_cal": 0.93,
 }

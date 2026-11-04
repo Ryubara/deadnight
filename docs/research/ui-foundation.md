@@ -235,7 +235,9 @@ is: it draws the four face buttons only, in the HUD's face. What the addon versi
 - **A rebinding is not announced.** The `InputMap` has no change signal, so a screen that rebinds calls `refresh()`.
 - **Hints hide under a finger** (`UIInputMode.touch`), as the `UIInputMode` comment always said they would.
 - **Sounds:** the cues (`hover`, `focus`, `press`, `back`, `push`, `pop`, `tick`) were wired to real sounds in #87; the
-  catalog and the night's sounds were not touched here.
+  catalog and the night's sounds were not touched here. #894 gave the vocabulary a source (`UIAudio.play(cue, source)`)
+  and more cues (`select`, `on`, `off`, `tab`, `confirm`, `refuse`, `sign`), and the game a table of what each kind of
+  control plays ([the menu's sounds](menu-sfx.md)).
 - **Tests and capture:** `game/tests/ui/test_ui_glyph.gd` (captions per kind of binding and family, follows the device
   and the family, a rebound key, an unbound action, held sink, the change signal, pad names, the hint under a finger);
   `game/tests/captures/gds_glyphs_tour.tscn` shows the sheet and the live hint line as the device changes (keyboard,
