@@ -615,6 +615,8 @@ func _work_the_boards(zombie: ZombieBody, delta: float, events: Array[Dictionary
 	zombie.move_speed = zombie.velocity.length()
 	if depth < stop - tuning.board_slack:
 		return
+	if _slide_to_the_opening(zombie, gate, delta):
+		return
 	if zombie.mode == ZombieBody.Mode.CHASE:
 		zombie.enter(ZombieBody.Mode.ATTACK)
 	if zombie.mode != ZombieBody.Mode.ATTACK:
@@ -632,6 +634,22 @@ func _work_the_boards(zombie: ZombieBody, delta: float, events: Array[Dictionary
 	if zombie.tear_progress >= board_seconds:
 		zombie.tear_progress -= board_seconds
 		events.append({"type": &"zombie_tore", "zombie_id": zombie.id, "gate_id": zombie.gate_id})
+
+
+## A zombie at the boards but beside the opening (in front of a jamb, or out toward the gap's end)
+## works its way along the wall to the front of it, at its own pace, and does not tear from there:
+## a person inside has the jamb between them and it, and #950's round waited 190 s on one (#997).
+## Whether it is beside the opening (and so slid and did not tear).
+func _slide_to_the_opening(zombie: ZombieBody, gate: ZombieGate, delta: float) -> bool:
+	var aside := gate.aside_of(zombie.position)
+	if aside == 0.0:
+		return false
+	if zombie.mode == ZombieBody.Mode.CHASE or zombie.mode == ZombieBody.Mode.ATTACK:
+		var pace := minf(_ground_speed(zombie), absf(aside) / delta)
+		var inward_part := gate.inward * zombie.velocity.dot(gate.inward)
+		zombie.velocity = inward_part - gate.inward.cross(Vector3.UP) * signf(aside) * pace
+	zombie.move_speed = zombie.velocity.length()
+	return true
 
 
 ## The gate this zombie is in front of: its own while it is within that gap's width, otherwise the

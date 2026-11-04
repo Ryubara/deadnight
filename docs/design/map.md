@@ -335,6 +335,17 @@ second map's windows at floor level ("zombies would just phase through the wall"
 simulation with no body of its own. The lift is exact and starts a body's width before the ledge, and a zombie in the
 wall's thickness is kept between the jambs (`ZombieGate.keep_in_opening`).
 
+**The dead tear from in front of the opening** ([#997](https://github.com/Ryubara/deadnight/issues/997)). A gate's line
+is as wide as the gap with a body's slack, wider than the clear opening between the jambs, so a dead that came up to the
+gap's end stood in front of a jamb and tore from there: a person inside had the jamb between them and it, mended
+instead, and the boards stood at five for 190 s while the round waited (#950's soak). A dead at the boards now tears
+only when its middle is within the clear opening less 0.1 m (`ZombieGate.tear_room`, `aside_of`); beside it, it slides
+along the wall to the front of it at its own pace (`ZombieSim._slide_to_the_opening`) and queues there. The crowd's
+push can still move one aside for a moment, and it does not tear until it is back.
+`test_dead_tear_in_the_opening.gd` sends six dead at the boards of every window and breach of both maps and, on every
+tick one is tearing, asks whether a shot from inside reaches it (five places to stand, at its chest and its head,
+through the world's solids and the fitted hit zones of the tearing pose).
+
 The dead come in at six gaps in the field's fence, 4 m wide: two in the west fence, two in the east, two in the north
 (`Field/BreachNW`, `NE`, `W`, `E`, `N`, `N2`, the ids in the rules' tuning). Outside each gap is a walled apron 8 m
 deep and 12 m wide, closed on three sides (nobody walks off the map through a torn fence), where the dead appear out
