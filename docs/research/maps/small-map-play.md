@@ -46,13 +46,13 @@ map.
 | Four bots, every link sold first, seed 1 | 10 | round 10 cleared at 9:19, stopped | all three, before the night | 12 of 12 | 17 | 8 |
 | Four bots, every link sold first, seed 2 | 10 | round 10 cleared at 9:32, stopped | all three, before the night | 12 of 12 | 18 | 11 |
 
-All twelve windows were torn in every night that opened the upstairs (every one of these), and the first link was bought
-in round 1. The most dead at once never passed 24 (17 to 20 with four). The long runs take 15 s (one bot) to two minutes
-(four) of wall time for 8 to 10 game minutes; they are not deterministic to the last bit (the bodies are physics), so
-the table is a spread, not a number. Round 10 was reached in all seven nights and cleared in three. (The table was
-played again for #764, when the dead's swing check stopped ending on the player's own body: before it, round 10 was
-reached in all seven and cleared in five, and a lone bot cleared it twice in three nights. The map is harder now, the
-same way it is on the lot, and no number needed retuning.)
+All twelve windows (the layout before #917) were torn in every night that opened the upstairs (every one of these), and
+the first link was bought in round 1. The most dead at once never passed 24 (17 to 20 with four). The long runs take 15
+s (one bot) to two minutes (four) of wall time for 8 to 10 game minutes; they are not deterministic to the last bit (the
+bodies are physics), so the table is a spread, not a number. Round 10 was reached in all seven nights and cleared in
+three. (The table was played again for #764, when the dead's swing check stopped ending on the player's own body: before
+it, round 10 was reached in all seven and cleared in five, and a lone bot cleared it twice in three nights. The map is
+harder now, the same way it is on the lot, and no number needed retuning.)
 
 The balance simulator's numbers for the map (`tools/balance/run_report.py --map small_indoor --nights 200 --brief`, the
 shared round table with the map's overlay, its bots' shopping list; the simulator knows prices and counts, not

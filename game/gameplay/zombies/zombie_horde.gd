@@ -27,6 +27,10 @@ var _views: Dictionary[int, ZombieView] = {}
 ## kill).
 var _parked: Dictionary[StringName, Array] = {}
 var _emerge_seconds: float = 0.0
+## The bytes the views follow now, and the seconds of the snapshots since that held the same.
+var _applied := false
+var _applied_bytes := PackedByteArray()
+var _unspent := 0.0
 ## Seconds each look's wind-up lasts, for the looks whose attack is timed to it (the boss's).
 var _telegraphs: Dictionary[StringName, float] = {}
 ## Seconds one board takes each look's type, for the tear clip (`ZombieView.setup`).
@@ -97,11 +101,24 @@ func publish(delta: float) -> void:
 
 ## The client side: the views follow one snapshot's bytes and nothing else. `delta` is the time
 ## since the previous snapshot.
-func apply_snapshot(bytes: PackedByteArray, delta: float) -> void:
+##
+## The dead move at the simulation's 30 Hz and a snapshot comes at 60 Hz, so every other one holds
+## the bytes of the last: nothing in a view could differ, and the loop over the crowd is not run.
+## The time of the skipped snapshots is kept and given to the next one, which walks the views to
+## their new place over the ticks since the last (`ZombieView._move_to`). Returns whether the
+## crowd was applied (false when the bytes were the last ones).
+func apply_snapshot(bytes: PackedByteArray, delta: float) -> bool:
 	last_snapshot_bytes = bytes.size()
+	if _applied and bytes == _applied_bytes:
+		_unspent += delta
+		return false
+	_applied = true
+	_applied_bytes = bytes
+	delta += _unspent
+	_unspent = 0.0
 	var seen: Dictionary[int, bool] = {}
 	var began := PerfProbe.begin()
-	var entries := ZombieCodec.decode(bytes)
+	var entries := ZombieCodec.decode_shared(bytes)
 	PerfProbe.end(&"horde.decode", began)
 	for entry in entries:
 		var zombie_id: int = entry["id"]
@@ -115,6 +132,7 @@ func apply_snapshot(bytes: PackedByteArray, delta: float) -> void:
 	for zombie_id in _views.keys():
 		if not seen.has(zombie_id):
 			_remove_view(zombie_id)
+	return true
 
 
 ## Makes `counts[look]` bodies of each look ahead of the night and parks them, so its first zombies

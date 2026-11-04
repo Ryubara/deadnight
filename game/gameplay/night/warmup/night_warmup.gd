@@ -642,6 +642,9 @@ func _replay_effects() -> void:
 		blast.play(at + Vector3(3.0, -1.0, -2.0), load(def_path) as GrenadeDef)
 		blast.gibs(at, Vector3.UP, 1)
 		await _chunk()
+		# Drawn once, the programs are built: the sample goes before the night starts.
+		if is_instance_valid(blast):
+			blast.queue_free()
 	# The shock perk's shader, alone in frames of its own (a new shader's first draw builds a few GL
 	# programs at once, docs/research/first-use-hitches.md), held still at its brightest.
 	(
