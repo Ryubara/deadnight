@@ -241,7 +241,7 @@ def main() -> int:
     if not url.startswith(("http://", "https://")):
         local, web_port = smoke.serve(Path(url))
         url = f"http://127.0.0.1:{web_port}/index.html"
-    url += ("&" if "?" in url else "?") + "dev"
+    url += ("&" if "?" in url else "?") + "dev&probe"
     try:
         with sync_playwright() as p:
             if args.gpu:

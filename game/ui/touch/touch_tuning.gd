@@ -40,7 +40,8 @@ const SHIPPED_PATH := "res://ui/touch/touch_tuning_default.tres"
 @export_group("Buttons")
 ## A press lasts at least this long, so a quick tap is still seen by the next physics tick.
 @export_range(0.0, 0.5, 0.01, "suffix:s") var min_hold := 0.09
-## How often the safe area is read again (the notch and the browser's bars move).
+## How often the safe area is read again (the notch and the browser's bars move), while the
+## controls are wanted: a page for a mouse never reads it, a read being a script run in the page.
 @export_range(0.05, 5.0, 0.05, "suffix:s") var inset_period := 0.5
 ## The buzz of a press on a phone.
 @export_range(0, 100, 1, "suffix:ms") var haptic_ms := 12
