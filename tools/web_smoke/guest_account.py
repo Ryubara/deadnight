@@ -45,7 +45,8 @@ import smoke
 LOCAL_PORT = 8087
 CREDENTIAL_FILE = "/userfs/godot/app_userdata/Deadnight/guest_account.json"
 NAME = "Ann"
-SAVE = {"xp": 120, "opening_night": True}
+# A profile the backend takes (it reads the `profile` slot: every field, and XP no faster than a person earns it).
+SAVE = {"xp": 50, "equipped": {}, "done": [], "opening_night": True, "bonus_day": -1}
 # The browser refuses a pointer lock that is not asked for inside a click or key press; the flow under test goes on.
 IGNORED = ("A user gesture is required to request Pointer Lock",)
 

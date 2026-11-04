@@ -192,6 +192,78 @@ priority = 10
 cooldown = 40.0
 chance = 1.0
 
+[sub_resource type="Resource" id="Resource_tier_up"]
+resource_name = "tier_up"
+script = ExtResource("2_moment")
+event = &"tier_up"
+takes = 3
+priority = 64
+cooldown = 3.0
+chance = 1.0
+
+[sub_resource type="Resource" id="Resource_level_up"]
+resource_name = "level_up"
+script = ExtResource("2_moment")
+event = &"level_up"
+takes = 3
+priority = 63
+cooldown = 3.0
+chance = 1.0
+
+[sub_resource type="Resource" id="Resource_challenge_done"]
+resource_name = "challenge_done"
+script = ExtResource("2_moment")
+event = &"challenge_done"
+takes = 3
+priority = 63
+cooldown = 2.0
+chance = 1.0
+
+[sub_resource type="Resource" id="Resource_unlock"]
+resource_name = "unlock"
+script = ExtResource("2_moment")
+event = &"unlock"
+takes = 3
+priority = 62
+cooldown = 8.0
+chance = 1.0
+
+[sub_resource type="Resource" id="Resource_poster_set"]
+resource_name = "poster_set"
+script = ExtResource("2_moment")
+event = &"poster_set"
+takes = 3
+priority = 62
+cooldown = 8.0
+chance = 1.0
+
+[sub_resource type="Resource" id="Resource_first_game"]
+resource_name = "first_game"
+script = ExtResource("2_moment")
+event = &"first_game"
+takes = 3
+priority = 62
+cooldown = 30.0
+chance = 1.0
+
+[sub_resource type="Resource" id="Resource_card"]
+resource_name = "card"
+script = ExtResource("2_moment")
+event = &"card"
+takes = 3
+priority = 61
+cooldown = 8.0
+chance = 1.0
+
+[sub_resource type="Resource" id="Resource_emblem"]
+resource_name = "emblem"
+script = ExtResource("2_moment")
+event = &"emblem"
+takes = 3
+priority = 61
+cooldown = 8.0
+chance = 1.0
+
 [resource]
 script = ExtResource("1_table")
-moments = Array[ExtResource("2_moment")]([SubResource("Resource_downed"), SubResource("Resource_hurt"), SubResource("Resource_boss_arrive"), SubResource("Resource_boss_dead"), SubResource("Resource_close_call"), SubResource("Resource_teammate_down"), SubResource("Resource_revived"), SubResource("Resource_streak"), SubResource("Resource_dry"), SubResource("Resource_power_low"), SubResource("Resource_round_start"), SubResource("Resource_grenade"), SubResource("Resource_reload"), SubResource("Resource_low_ammo"), SubResource("Resource_round_clear"), SubResource("Resource_power_on"), SubResource("Resource_buy_big"), SubResource("Resource_buy_weapon"), SubResource("Resource_door"), SubResource("Resource_kill"), SubResource("Resource_idle")])
+moments = Array[ExtResource("2_moment")]([SubResource("Resource_downed"), SubResource("Resource_hurt"), SubResource("Resource_boss_arrive"), SubResource("Resource_boss_dead"), SubResource("Resource_close_call"), SubResource("Resource_teammate_down"), SubResource("Resource_revived"), SubResource("Resource_tier_up"), SubResource("Resource_level_up"), SubResource("Resource_challenge_done"), SubResource("Resource_unlock"), SubResource("Resource_poster_set"), SubResource("Resource_first_game"), SubResource("Resource_card"), SubResource("Resource_emblem"), SubResource("Resource_streak"), SubResource("Resource_dry"), SubResource("Resource_power_low"), SubResource("Resource_round_start"), SubResource("Resource_grenade"), SubResource("Resource_reload"), SubResource("Resource_low_ammo"), SubResource("Resource_round_clear"), SubResource("Resource_power_on"), SubResource("Resource_buy_big"), SubResource("Resource_buy_weapon"), SubResource("Resource_door"), SubResource("Resource_kill"), SubResource("Resource_idle")])
