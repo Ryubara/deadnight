@@ -236,7 +236,8 @@ Two rules keep the last dead from holding a round open, whatever stops the peopl
 - **The siege.** A dead that has pulled at one window's boards for 30 s (`ZombieSim.SIEGE_SECONDS`) without getting
   through, because a hand puts them back as fast as it tears them, bursts them: every board that stands comes off and it
   walks in. A hit on it starts the count over.
-- **The rescue.** With only the marked few left (`mark_last`) and nothing happening to them for 45 s
-  (`ZombieDirector.RESCUE_AFTER`: no blow struck, no damage done, no kill), each rises again at the spawn point
-  nearest the people that is 25 m or more from them and not at the breach it stood at, and walks in as a new one
-  does. The dead that are being fought are never moved.
+- **The rescue.** With only the marked few left (`mark_last`) and nothing happening to them for 30 s
+  (`ZombieDirector.RESCUE_AFTER`: no blow struck, no damage done, no kill), a dead that has no way to anyone (the
+  walking mesh leaves its path 3 m or more short: a pocket) rises again at the spawn point nearest the people that is
+  25 m or more from them (the farthest on a map with none that far) and not at the breach it stood at, and walks in
+  as a new one does. A dead that has a way is coming, however slowly, and is never moved.

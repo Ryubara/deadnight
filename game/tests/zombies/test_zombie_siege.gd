@@ -63,6 +63,15 @@ func test_boards_mended_as_fast_as_they_are_torn_burst_after_the_siege() -> void
 	)
 
 
+func test_the_dead_one_is_through_for_good_though_a_hand_puts_a_board_back_at_once() -> void:
+	var sim := _sim()
+	var zombie := _gated(sim, 1)
+	_run(sim, ZombieSim.SIEGE_SECONDS + 1.0, 1.0)
+	assert_str(zombie.gate_id).is_equal("")
+	_run(sim, 6.0, 1.0)
+	assert_float(zombie.position.x).is_greater(1.0)
+
+
 func test_a_dead_that_tears_the_boards_down_in_good_time_never_bursts_them() -> void:
 	var sim := _sim()
 	_gated(sim, 1)

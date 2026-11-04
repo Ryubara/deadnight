@@ -5,6 +5,8 @@ extends GdUnitTestSuite
 ## edge of it.
 
 const FAR := Vector3(0.0, 0.0, -40.0)
+## The gap a path leaves to its target when the mesh has no way there (a pocket).
+const NO_WAY := 10.0
 
 var _rules: GameRules
 var _sim: ZombieSim
@@ -50,6 +52,7 @@ func _leave(keep: int) -> Array[ZombieBody]:
 		if zombie.is_alive():
 			zombie.enter(ZombieBody.Mode.CHASE)
 			zombie.position = FAR
+			zombie.path_gap = NO_WAY
 			_sim.set_status(zombie.id, 1, true, 0.0)
 			left.append(zombie)
 	return left
@@ -73,6 +76,26 @@ func test_a_hit_on_one_of_them_puts_the_wait_off() -> void:
 	_director.take_hit(left[0].id, &"body", 1.0, 1)
 	_run(ZombieDirector.RESCUE_AFTER - 5.0)
 	assert_int(_director.rescued).is_equal(0)
+
+
+func test_a_dead_with_a_way_to_its_target_is_left_where_it_is() -> void:
+	# A headliner after a person with an empty gun: slow, but coming.
+	var left := _leave(1)
+	left[0].path_gap = 0.5
+	_run(ZombieDirector.RESCUE_AFTER * 2.0)
+	assert_int(_director.rescued).is_equal(0)
+	assert_vector(left[0].position).is_equal(FAR)
+
+
+func test_a_map_with_no_spawn_point_far_from_the_people_takes_the_farthest() -> void:
+	var near_points: Array[Vector3] = [Vector3(12, 0, 0), Vector3(-9, 0, 0), Vector3(0, 0, 6)]
+	_director.spawn_points = near_points
+	var left := _leave(1)
+	_run(ZombieDirector.RESCUE_AFTER + 5.0)
+	assert_int(_director.rescued).is_equal(1)
+	assert_float(Vector2(left[0].position.x, left[0].position.z).length()).is_equal_approx(
+		12.0, 1.0
+	)
 
 
 func test_a_round_with_more_than_the_marked_few_left_is_not_rescued() -> void:

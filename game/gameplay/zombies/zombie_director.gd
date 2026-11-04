@@ -17,7 +17,7 @@ signal zombie_shattered(event: Dictionary)
 ## Seconds a round stands down to its last dead with nothing happening to them before they are
 ## walked to the people, how far from every person the point they rise on is at the least, and how
 ## many of the nearest points the stragglers are spread over.
-const RESCUE_AFTER := 45.0
+const RESCUE_AFTER := 30.0
 const RESCUE_RANGE := 25.0
 const RESCUE_SPREAD := 3
 
@@ -106,11 +106,14 @@ func _relocate(zombie_id: int) -> void:
 
 ## The rescue of a round that will not end: with only the last few dead left (the ones the screen
 ## outlines) and nothing happening to them for `RESCUE_AFTER` seconds, no blow struck, no damage
-## done, no kill, they are not being fought wherever they stand (pulling at boards that are put
-## back, shuffling at the edge of the walking mesh, in a pocket of it). Each goes to the spawn point
-## nearest the people that is `RESCUE_RANGE` metres or more from them, away from the breach it was
-## stuck at, and rises there as a new one: the dead walk to the people. The soak found rounds that
-## stood on one such dead for minutes (#950).
+## done, no kill, a dead that has no way to its target (the walking mesh gives it a path that stops
+## `ZombieSim.STRAND_GAP` or more short: a pocket of the mesh, where the strand watch does not look
+## when the map is small enough that someone is always within 12 m) goes to the spawn point nearest
+## the people that is `RESCUE_RANGE` metres or more from them (the farthest one when the map has
+## none that far), away from the breach it was stuck at, and rises there as a new one: the dead
+## walk to the people. A dead that has a way is coming, however slowly (a headliner after a person
+## with an empty gun), and is left where it is. The soak found rounds that stood on one such dead
+## for minutes (#950).
 func _watch_the_tail(delta: float, targets: Dictionary) -> void:
 	var left := rules.zombies_remaining()
 	if (
@@ -130,6 +133,8 @@ func _watch_the_tail(delta: float, targets: Dictionary) -> void:
 	for zombie: ZombieBody in sim.zombies.values():
 		if zombie.mode == ZombieBody.Mode.DYING or zombie.mode == ZombieBody.Mode.EMERGING:
 			continue
+		if zombie.path_gap < ZombieSim.STRAND_GAP:
+			continue
 		var point := _rescue_point(zombie, targets, nth)
 		if point == Vector3.INF:
 			continue
@@ -140,7 +145,7 @@ func _watch_the_tail(delta: float, targets: Dictionary) -> void:
 
 ## The spawn point to walk a straggler in from: of those `RESCUE_RANGE` or more from every person
 ## and not at the breach it stood at, the `nth` nearest to the nearest person (so two stragglers do
-## not rise on the same point), or `Vector3.INF` for none.
+## not rise on the same point); with none that far, the `nth` farthest; `Vector3.INF` for no point.
 func _rescue_point(zombie: ZombieBody, targets: Dictionary, nth: int) -> Vector3:
 	var scored: Array[Dictionary] = []
 	for point in spawn_points:
@@ -149,12 +154,15 @@ func _rescue_point(zombie: ZombieBody, targets: Dictionary, nth: int) -> Vector3
 		var nearest := INF
 		for at: Vector3 in targets.values():
 			nearest = minf(nearest, Vector2(at.x - point.x, at.z - point.z).length())
-		if nearest >= RESCUE_RANGE:
-			scored.append({"point": point, "apart": nearest})
+		scored.append({"point": point, "apart": nearest})
 	if scored.is_empty():
 		return Vector3.INF
 	scored.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["apart"] < b["apart"])
-	return scored[nth % mini(scored.size(), RESCUE_SPREAD)]["point"]
+	var far := scored.filter(func(row: Dictionary) -> bool: return row["apart"] >= RESCUE_RANGE)
+	if far.is_empty():
+		scored.reverse()
+		return scored[nth % mini(scored.size(), RESCUE_SPREAD)]["point"]
+	return far[nth % mini(far.size(), RESCUE_SPREAD)]["point"]
 
 
 func _on_rules_event(event: Dictionary) -> void:

@@ -416,13 +416,16 @@ gate at 150 s) and the longest round (`round_longest`). Two causes, neither a bo
 
 | Found | What it was | Fix | Proof |
 | --- | --- | --- | --- |
-| Small map, `small_indoor` seed 16 round 3: one dead for 147 s (the nights then went on to 188 s and 198 s) | A walker at the left jamb of window `upper_b2`, 1.0 m from the gap's middle, ATTACK, tearing a board in 1.2 s; the person stood at the same jamb on the inside and put one back every 1.0 s (the autopilot mends when it has nothing to shoot, and the jamb is between them: `sight` 0.4 m). `board_torn` and `board_repaired` rose together, 11 apart, boards at 5 | `ZombieSim` counts the seconds a zombie tears at one gate without getting through (`siege_seconds`); at `SIEGE_SECONDS` (30) it says `zombie_burst` and `ZombieDirector` tears every board that stands (`ZombieRulesPort.tear_all`). A hit on it starts the count over | `test_zombie_siege.gd`; `test_round_tail.gd` (seated night, the person and the dead where the soak found them: stalls on `main`, ends in 30 to 40 s with the fix) |
+| Small map, `small_indoor` seed 16 round 3: one dead for 147 s (the nights then went on to 188 s and 198 s); the window was `upper_b2`, which #964 has since taken away | A walker at the left jamb of window `upper_b2`, 1.0 m from the gap's middle, ATTACK, tearing a board in 1.2 s; the person stood at the same jamb on the inside and put one back every 1.0 s (the autopilot mends when it has nothing to shoot, and the jamb is between them: `sight` 0.4 m). `board_torn` and `board_repaired` rose together, 11 apart, boards at 5 | `ZombieSim` counts the seconds a zombie tears at one gate without getting through (`siege_seconds`); at `SIEGE_SECONDS` (30) it says `zombie_burst`, `ZombieDirector` tears every board that stands (`ZombieRulesPort.tear_all`) and the zombie has no gate any more, so a board put back at once does not shut it out again. A hit on it starts the count over | `test_zombie_siege.gd`; `test_round_tail.gd` (seated night on the second map: a person holding the use button behind the jamb of `side_2`, a dead in front of it; on `main` the boards stand at 5 for the 75 s it runs, with the fix the round ends inside that limit) |
 | Lot, seed 4 round 4: six dead for seven minutes (the rounds ran on to the 3-minute stop) | The person hugged two parked cars (`Row1/Car03`, `Car04`), 7 m from the six. The target is off the mesh, `map_get_path` snaps it to the nearest mesh point, and that flips from one side of the car to the other as the person moves a metre: west route 10 m, east route 29 m, `path` of 6 to 11 points one second and 20 to 23 the next. Every repath (0.25 s) turned them round; they walked up and down at full speed, never stranded (the gap was under 1.2 m) | `ZombieSim._keeps_its_route`: a new route 6 m longer than what is left of the old one is not taken while the old one still ends within 3.5 m of the target and there is more than 1 m of it left to walk | `test_zombie_route.gd` |
-| The net | Anything else that stops the last dead being fought: a pocket, a jamb, a roost | With the marked few left (`mark_last`) and no blow struck, no damage done and no kill for 45 s (`ZombieDirector.RESCUE_AFTER`), each of them rises at the spawn point nearest the people that is 25 m or more from them and not at the breach it stood at (`ZombieDirector._watch_the_tail`; `director.rescued` counts them) | `test_zombie_rescue.gd` (the wait, a hit putting it off, more than the marked few left, a break) |
+| The net | Anything else that stops the last dead being fought: a pocket, a jamb, a roost | With the marked few left (`mark_last`) and no blow struck, no damage done and no kill for 30 s (`ZombieDirector.RESCUE_AFTER`), a dead whose path stops 3 m or more short of its target rises at the spawn point nearest the people that is 25 m or more from them (the farthest when none is) and not at the breach it stood at (`ZombieDirector._watch_the_tail`; `director.rescued` counts them). One with a way is left alone (the first version did not look: a headliner slowly following a person is coming, and moving it would only lengthen the round) | `test_zombie_rescue.gd` (the wait, a hit putting it off, a dead with a way, a map with no far point, more than the marked few left, a break) |
 
-Where the person stood in the soak, (8.2, 3.5, -7.4), is not where the first version of the seated test put it (the
-window's repair spot, 9.0): the autopilot there shot the dead at once and the test passed on `main` too. A test of a stall
-takes its coordinates from the log.
+The first version of the seated test put the autopilot at the window's repair spot: it shot the dead at once and the test
+passed on `main` too. At the soak's own coordinates, (8.2, 3.5, -7.4), it stood pressed against the jamb for the whole
+stall, so the test now holds the use button itself, in front of the jamb, and does not depend on the autopilot. After
+the second map's windows were reworked (#964) `upper_b2` no longer exists, so the test takes its window from the map
+(`side_2`: the gate's middle, 1.0 m along the wall for the dead and the person) and was run on `main` again to see it
+stall. A test of a stall takes its coordinates from the log and is run on `main` after every merge of the map.
 
 Soak, before and after (regular bots and a person stand-in, three bots, `--stall-minutes=6`, seeds 11 to 18 and 21 to
 28 on each map, the commit before the change against this one with only the soak's own instruments on both; a night
@@ -439,6 +442,20 @@ three dead or fewer left:
 | Veteran bots, small map, after (seeds 31, 32) | 2 | 63 s / 61 s | 36 s / 26 s | 0 | 0 |
 | Veteran bots, lot, before (seeds 31, 32, and a third night of 31) | 3 | 348 s / 117 s | 55 s / 44 s | 0 | 1 |
 | Veteran bots, lot, after (seeds 31, 32) | 2 | 360 s / 270 s | 96 s / 76 s | 0 | 1 |
+
+These sets ran with the first version of the burst, in which the boards came off and the zombie kept its gate; the seated
+test showed a hand that puts one board back at once could hold it again, so the zombie now leaves its gate when it
+bursts.
+
+After merging main (the second map's windows reworked, #964) four more nights on each map (seeds 41 to 44) ran on the
+final code but for the rescue's first version: the lot's longest round was 141 s and longest tail 68 s; the small map's
+tails were 22, 33 and 23 s and one of **201 s** (seed 41, round 5, and it repeats by seed): a walker standing at (1.5,
+-6.5) for three minutes with a path of one or two points that ended 3 to 13 m short of whoever it chased (a pocket), while
+two headliners were fought. The strand watch did not catch it, because a map this small has someone within 12 m of
+every dead (`STRAND_FAR`), and the rescue did not either: it wanted a spawn point 25 m or more from every person and the
+small map has none. The rescue now leaves a dead with a way alone (a headliner after a person is coming), takes the
+farthest point when none is 25 m away, and waits 30 s; the same night then stood **95 s** on its
+last three (30 s of waiting, the walk in, the fight). The strand watch's blindness near people is left open.
 
 The veteran small-map night before the change stood 320 s on its last three dead in round 6 (its tail lines were not
 printed, so its cause is not read; it is the kind the siege and the rescue are for). The one stopped veteran night after

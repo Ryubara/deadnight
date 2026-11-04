@@ -50,7 +50,8 @@ const STRAND_SECONDS := 12.0
 
 ## A zombie that has pulled at one breach's boards this many seconds without getting through (a
 ## player puts them back as fast as it tears them, out of the line of fire past a jamb) bursts
-## them: the sim says `zombie_burst` and the director tears the rest. One dead held at a window
+## them: the sim says `zombie_burst`, the director tears the rest, and the zombie is through (it
+## has no gate any more, so a board put back at once does not hold it). One dead held at a window
 ## for ever kept a round going for minutes with its last dead standing (#950).
 const SIEGE_SECONDS := 30.0
 
@@ -520,8 +521,12 @@ func _work_the_boards(zombie: ZombieBody, delta: float, events: Array[Dictionary
 	zombie.tearing = true
 	zombie.siege_seconds += delta
 	if zombie.siege_seconds >= SIEGE_SECONDS:
-		zombie.siege_seconds = 0.0
+		# Through for good: a hand that puts a board back at once does not shut it out again.
 		events.append({"type": &"zombie_burst", "zombie_id": zombie.id, "gate_id": zombie.gate_id})
+		zombie.siege_seconds = 0.0
+		zombie.tear_progress = 0.0
+		zombie.gate_id = &""
+		return
 	zombie.tear_progress += delta * zombie.profile.barrier_speed
 	if zombie.tear_progress >= board_seconds:
 		zombie.tear_progress -= board_seconds
