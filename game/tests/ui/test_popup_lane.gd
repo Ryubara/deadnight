@@ -154,12 +154,19 @@ func test_a_level_card_reads_icon_then_level_then_padding_then_the_words() -> vo
 
 
 func test_a_level_card_punches_holes_toward_the_next_unlock() -> void:
-	# Level 15 gives teal and the next row with art is level 16: one level away, seven holes.
-	assert_int(PopupLadder.next_unlock(15)["level"]).is_equal(16)
-	assert_int(PopupLadder.punched(15)).is_equal(7)
-	# Level 17 gives pink, then levels 18 and 19 give nothing yet: level 20 is three away.
-	assert_int(PopupLadder.next_unlock(17)["level"]).is_equal(20)
-	assert_int(PopupLadder.punched(17)).is_equal(5)
+	# A table of the test's own (the shipped ladder fills in as items get art): the next row with
+	# art after level 15 is 16 (one away, seven holes), after 17 it is 20 (three away, five holes).
+	var table := LadderUnlocks.from_text(
+		(
+			'[{"level": 16, "slot": "top", "item": "a", "available": true},'
+			+ ' {"level": 18, "slot": "top", "item": "b", "available": false},'
+			+ ' {"level": 20, "slot": "top", "item": "c", "available": true}]'
+		)
+	)
+	assert_int(PopupLadder.next_unlock(15, table)["level"]).is_equal(16)
+	assert_int(PopupLadder.punched(15, table)).is_equal(7)
+	assert_int(PopupLadder.next_unlock(17, table)["level"]).is_equal(20)
+	assert_int(PopupLadder.punched(17, table)).is_equal(5)
 	# Far from the next row no hole is punched, and on the last level all are.
 	assert_int(PopupLadder.punched(1, LadderUnlocks.from_text("[]"))).is_equal(PopupLadder.HOLES)
 	var far := LadderUnlocks.from_text(
@@ -168,10 +175,11 @@ func test_a_level_card_punches_holes_toward_the_next_unlock() -> void:
 	assert_int(PopupLadder.punched(2, far)).is_equal(0)
 	assert_int(PopupLadder.punched(55)).is_equal(PopupLadder.HOLES)
 	assert_dict(PopupLadder.next_unlock(55)).is_empty()
+	# The card shows the count the ladder gives, whatever the shipped table holds.
 	await _make(Vector2(1920, 1080))
 	_hud.state.apply_event(_level(17))
 	_run(0.5)
-	assert_int(_hud.popups.cards()[0].punched()).is_equal(5)
+	assert_int(_hud.popups.cards()[0].punched()).is_equal(PopupLadder.punched(17))
 
 
 func test_an_unlock_card_says_what_it_is_and_its_name() -> void:
