@@ -849,12 +849,16 @@ fraction of the price, rounded to a point); the penalty for being down (a tenth,
 blast kill and the re-cut step were already multiples of 5.
 
 Rounding the tuning's 4 and 8 to 5 and 10 adds a quarter to every non-lethal hit, and a brute's or headliner's many
-paid hits (8 and 20 of them, times 2.5 and 6) make hits a good part of what they pay: the same seeded nights (60
-per cell, seed 4000) earned 20% more points and the average solo median went from 13 to 15 rounds (the gate allows
-8 to 14), so the kills pay 55 and 65 instead of 60 and 70 (melee stays 130). Cells before and after, mean round
-(median): weak solo 5.68 (5) to 5.45 (5); average solo 11.75 (13) to 11.72 (13); average 2 / 4 / 8 players 14.43 /
-16.00 / 17.77 (15 / 16 / 18) to 14.55 / 16.17 / 17.72 (15 / 16 / 18); strong solo 17.28 (18) to 16.88 (18). The
-cells of 60 nights are noisy by a few tenths of a round: judged on the median and the shape, as the gate does.
+paid hits (8 and 20 of them, times 2.5 and 6) make hits a good part of what they pay: on the same seeded nights (60
+per cell, seed 4000, the `main` before the flat re-cut, #937) the average solo player earned 21,292 points a night
+instead of 17,807 and the median went from 13 to 15 rounds (the gate allows 8 to 14). So the kills pay 55 and 65
+instead of 60 and 70 (melee stays 130): that put the nights back within noise of `main` (mean round and median, `main`
+then here: weak solo 5.68 (5) then 5.45 (5); average solo 11.75 (13) then 11.72 (13); average 2 / 4 / 8 players 14.43 /
+16.00 / 17.77 (15 / 16 / 18) then 14.55 / 16.17 / 17.72 (15 / 16 / 18); strong solo 17.28 (18) then 16.88 (18)).
+Measured again after merging the flat re-cut: `main` 5.62 (5), 10.88 (11), 13.43 / 15.13 / 16.70 (14 / 16 / 17), 15.58
+(17); here 5.37 (5), 11.05 (11), 13.47 / 15.02 / 16.58 (14 / 16 / 17), 15.15 (16). The cells of 60 nights move by a
+few tenths of a round with any change that shifts a purchase by a moment, so the pay is judged on the median and the
+shape, as the gate does.
 
 ## Open questions
 
