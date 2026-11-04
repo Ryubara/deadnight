@@ -32,6 +32,25 @@ const PIECES := {
 	&"neck/film": "Film-strip scarf",
 	&"torso/varsity": "Varsity gold",
 }
+## Each piece's row on the ladder (`unlocks.json`): [level, the row's item]. The table names a piece
+## its own way: a row is the design page's, a part id the catalogue's.
+const RUNGS := {
+	&"torso/usher": [18, &"ushers_jacket"],
+	&"neck/lanyard": [19, &"press_lanyard"],
+	&"eyewear/cinema": [24, &"cinema_glasses"],
+	&"feet/saddle": [28, &"saddle_shoes"],
+	&"legs/overalls": [31, &"overalls"],
+	&"headwear/visor": [33, &"projectionists_visor"],
+	&"neck/bolo": [34, &"bolo_tie"],
+	&"torso/coveralls": [36, &"coveralls"],
+	&"feet/skates": [38, &"roller_skates"],
+	&"legs/swing": [40, &"swing_skirt"],
+	&"torso/creature": [44, &"creature_tee"],
+	&"feet/rubber": [46, &"rubber_boots"],
+	&"headwear/creature": [48, &"creature_mask"],
+	&"neck/film": [50, &"film_strip_scarf"],
+	&"torso/varsity": [52, &"varsity_gold"],
+}
 ## Each slot's order with wave one on the end: wave two only adds after it.
 const WAVE_ONE := {
 	&"headwear": [&"none", &"helmet", &"pillbox", &"ballcap", &"papercap", &"ranger", &"visor"],
@@ -114,6 +133,18 @@ func test_every_piece_is_named_and_free_for_now() -> void:
 		assert_str(option["label"]).is_equal(PIECES[key])
 		# The ladder's locks come with the wardrobe grid (#1065), from `unlocks.json`.
 		assert_dict(option["gate"]).is_empty()
+
+
+## The art is drawn, so each piece's row says so: a player who reaches its level is told.
+func test_every_piece_is_earned_at_its_level() -> void:
+	assert_int(RUNGS.size()).is_equal(PIECES.size())
+	var table := LadderUnlocks.shipped()
+	for key: StringName in PIECES:
+		var rung: Array = RUNGS[key]
+		var earned: Array = table.earned_at(rung[0]).map(
+			func(row: Dictionary) -> StringName: return row["item"]
+		)
+		assert_array(earned).contains([rung[1]])
 
 
 func test_a_look_with_a_piece_keeps_it_over_the_wire() -> void:

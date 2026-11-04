@@ -584,7 +584,7 @@
      "mesh": "torso__creature",
      "tris": 2618,
      "mesh_far": "torso__creature__far",
-     "tris_far": 644,
+     "tris_far": 649,
      "female": {
       "mesh": "torso__creature__female",
       "tris": 2618,
@@ -602,7 +602,7 @@
       "mesh": "torso__varsity__female",
       "tris": 2967,
       "mesh_far": "torso__varsity__female__far",
-      "tris_far": 743
+      "tris_far": 744
      }
     }
    }

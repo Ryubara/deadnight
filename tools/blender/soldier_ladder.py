@@ -153,10 +153,11 @@ def panel(rows, depth):
                 bm.faces.new((grid[r][c], grid[r][c + 1], grid[r + 1][c + 1], grid[r + 1][c]))
         rim = grid[0] + [row[-1] for row in grid[1:]] + grid[-1][-2::-1] + [row[0] for row in grid[-2:0:-1]]
         back = [bm.verts.new(v.co + Vector((0, depth, 0))) for v in rim]
-        centre = sum((v.co for v in rim), Vector()) / len(rim) + Vector((0, depth / 2, 0))
+        # The rim runs counter-clockwise from the front, so this winding faces out everywhere. Turned away from the
+        # rim's middle instead, the top of a curved sheet came out inside out (the mask's mouth).
         for i in range(len(rim)):
             j = (i + 1) % len(rim)
-            _face(bm, [rim[i], rim[j], back[j], back[i]], centre)
+            bm.faces.new((rim[i], back[i], back[j], rim[j]))
 
     return make
 
@@ -626,10 +627,10 @@ def saddle_shoes(lib, parts, arm, mat):
 # --- wave two --------------------------------------------------------------------------------------------------------
 
 
-def tube(rows, open_end=False):
+def tube(rows, inside=False):
     """A closed tube: `wrap` with an end on each side, for what a limb or a neck goes through. The limb comes out of
-    the end, so nothing has to reach the limb's own surface, and a bare leg that is thinner shows no gap. `open_end`
-    leaves the last row open."""
+    the end, so nothing has to reach the limb's own surface, and a bare leg that is thinner shows no gap. `inside`
+    is for a tube seen from within: the last row stays open and the first end faces in, as the rest of it does."""
 
     def make(bm):
         grid = [[bm.verts.new(p) for p in row] for row in rows]
@@ -639,8 +640,11 @@ def tube(rows, open_end=False):
                 j = (i + 1) % n
                 bm.faces.new((grid[r][i], grid[r][j], grid[r + 1][j], grid[r + 1][i]))
         centre = sum((v.co for row in grid for v in row), Vector()) / (n * len(grid))
-        _face(bm, grid[0], centre)
-        if not open_end:
+        if inside:
+            first = sum((v.co for v in grid[0]), Vector()) / n
+            _face(bm, grid[0], first + (first - centre))
+        else:
+            _face(bm, grid[0], centre)
             _face(bm, grid[-1], centre)
 
     return make
@@ -859,7 +863,7 @@ def swing_skirt(lib, parts, arm, mat):
     p.add(wrap([trim, mid, rows[0]]), "secondary", bevel=0)
     p.add(wrap([hem, trim]), "accent", bevel=0)
     # The inside, on the same turn: going down it the faces look at the axis. Its top is closed.
-    p.add(tube([roof, inner, hem], open_end=True), "secondary_shade", bevel=0)
+    p.add(tube([roof, inner, hem], inside=True), "secondary_shade", bevel=0)
     skirt = p.build("skirt", "Hips", arm, mat)
     borrow_skin(skirt, worn_on)  # as the waist: its top ring on the bare Hips bone parted from the waist in any pose
     _skin_to_thighs(skirt)
@@ -976,7 +980,7 @@ def varsity_gold(lib, parts, arm, mat):
     cut_sleeve(o, lib, VARSITY_STRIPES, "white")
     p = lib.Piece()
     # Above her chest's fullest line: on it the star's points fell between the jacket's vertices and sank.
-    p.add(seated_star(0.125, 1.335, 0.07, lambda x, z: on.front(x, z, 0.012), Vector((0, 0.03, 0))), "primary", bevel=0)
+    p.add(seated_star(0.125, 1.335, 0.07, lambda x, z: on.front(x, z, 0.024), Vector((0, 0.04, 0))), "primary", bevel=0)
     p.add(seated_star(0.0, 1.235, 0.15, lambda x, z: on.back(x, z, 0.012), Vector((0, -0.03, 0))), "primary", bevel=0)
     bits = p.build("varsity_bits", "Torso", arm, mat)
     borrow_skin(bits, [o])
