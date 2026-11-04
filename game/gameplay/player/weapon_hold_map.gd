@@ -20,6 +20,8 @@ const CLASS_OF := {
 	&"fifty_cal": &"Rifle",
 	&"pump_870": &"Shotgun",
 	&"dual_pistols": &"Dual",
+	&"ray_gun": &"Pistol",
+	&"freeze_gun": &"Rifle",
 }
 const MELEE_CLASS := &"Melee"
 
