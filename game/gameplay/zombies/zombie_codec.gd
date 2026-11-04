@@ -26,6 +26,11 @@ const ENTRY_BYTES := 13
 const SPEED_STEP := 0.05
 const TEARING_BIT := 0x80
 
+## The newest snapshot decoded, and its entries (`decode`): the dead of one tick are read by every
+## client of the process (the person, the bots, the horde), and one tick's bytes are one list.
+static var _last_bytes := PackedByteArray()
+static var _last_entries: Array[Dictionary] = []
+
 
 static func encode(zombies: Dictionary[int, ZombieBody]) -> PackedByteArray:
 	var bytes := PackedByteArray()
@@ -48,7 +53,19 @@ static func encode(zombies: Dictionary[int, ZombieBody]) -> PackedByteArray:
 
 ## The entries, in the form of `ZombieBody.view_entry()`. A packet that is too short for what
 ## it says gives an empty list: it is dropped, not guessed at.
+##
+## The same bytes again give the same list (the caller must not change it): a night with three
+## bots decoded one tick's 100 dead five times, 1.9 ms of a 8.5 ms tick (#906).
 static func decode(bytes: PackedByteArray) -> Array[Dictionary]:
+	if bytes.size() > HEADER_BYTES and bytes == _last_bytes:
+		return _last_entries
+	var entries := _decode(bytes)
+	_last_bytes = bytes
+	_last_entries = entries
+	return entries
+
+
+static func _decode(bytes: PackedByteArray) -> Array[Dictionary]:
 	var entries: Array[Dictionary] = []
 	if bytes.size() < HEADER_BYTES:
 		return entries

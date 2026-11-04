@@ -325,7 +325,11 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	_outbox.append_array(ping_board.step(delta))
 	bot_orders.step(delta)
 	say_board.step(delta)
+	PerfProbe.end(&"server.boards", began)
+	began = PerfProbe.begin()
 	_throw_grenades(delta)
+	PerfProbe.end(&"server.grenades", began)
+	began = PerfProbe.begin()
 	if with_frame:
 		_outbox.append(_frame())
 	PerfProbe.end(&"server.frame", began)

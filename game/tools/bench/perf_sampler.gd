@@ -29,6 +29,9 @@ var _window_physics := 0.0
 var _window_nav := 0.0
 var _window_time := 0.0
 var _usec: Dictionary = {}
+## Label -> the milliseconds of each frame of the window, for the median (a frame that the
+## machine took the processor away from does not move a median the way it moves a mean).
+var _per_frame: Dictionary = {}
 var _counts: Dictionary = {}
 var _clock := 0.0
 var _started_msec := 0
@@ -84,6 +87,7 @@ func _process(delta: float) -> void:
 	var taken := PerfProbe.take()
 	for label: StringName in taken["usec"]:
 		_usec[label] = _usec.get(label, 0) + taken["usec"][label]
+		(_per_frame.get_or_add(label, []) as Array).append(float(taken["usec"][label]) / 1000.0)
 	for label: StringName in taken["counts"]:
 		_counts[label] = _counts.get(label, 0) + taken["counts"][label]
 	_clock += delta
@@ -100,6 +104,7 @@ func _reset_window() -> void:
 	_window_nav = 0.0
 	_window_time = 0.0
 	_usec = {}
+	_per_frame = {}
 	_counts = {}
 
 
@@ -110,7 +115,11 @@ func _row() -> Dictionary:
 	sorted.sort()
 	var state: Dictionary = night_state.call() if night_state.is_valid() else {}
 	var tree := get_tree()
+	var walked := Time.get_ticks_usec()
 	var scene := _scene_counts(tree.root)
+	# What one walk of every node costs, a stand-in for what the editor's Remote scene tree asks of
+	# a running game each time it refreshes.
+	scene["tree_walk_ms"] = snappedf(float(Time.get_ticks_usec() - walked) / 1000.0, 0.01)
 	var row := {
 		"t": snappedf(float(Time.get_ticks_msec() - _started_msec) / 1000.0, 0.1),
 		"round": int(state.get("round", 0)),
@@ -147,9 +156,18 @@ func _row() -> Dictionary:
 	}
 	row.merge(scene)
 	var labels := {}
+	var medians := {}
 	for label: StringName in _usec:
 		labels[String(label)] = snappedf(float(_usec[label]) / 1000.0 / frames, 0.001)
+		# Frames the label did not run in count as 0, so a median is of all the frames.
+		var seen: Array = _per_frame[label]
+		seen.sort()
+		var zeros := _window_frames.size() - seen.size()
+		var middle := _window_frames.size() / 2
+		medians[String(label)] = snappedf(0.0 if middle < zeros else seen[middle - zeros], 0.001)
 	row["labels_ms"] = labels
+	row["labels_median_ms"] = medians
+	row["frame_median_ms"] = snappedf(sorted[sorted.size() / 2], 0.01)
 	var counts := {}
 	for label: StringName in _counts:
 		counts[String(label)] = _counts[label]
