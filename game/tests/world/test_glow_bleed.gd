@@ -28,14 +28,9 @@ const LEAKS := {
 		"ShopProps/ReCut/Glow":
 		[0.28, "the booth's east wall is one box over both storeys, like the lower lamp's"],
 	},
-	"res://world/smallmap/smallmap_greybox.tscn":
-	{
-		"UpperA/Lamp6/Light":
-		[
-			0.26,
-			"one slab is the upper hall's floor and the roof terrace past its south wall",
-		],
-	},
+	# The upper hall's lamp lit the roof terrace through the one slab under both until #917 cut the
+	# terrace into its own slab, outdoors.
+	"res://world/smallmap/smallmap_greybox.tscn": {},
 }
 ## What the room layers take from a lamp that it could see: `"lamp|surface"` and why it is let go. A
 ## lamp that loses a surface not listed here is darkening a room it lights; the test fails on it and
@@ -52,11 +47,21 @@ const LOST := {
 	},
 	"res://world/smallmap/smallmap_greybox.tscn":
 	{
-		"Start/Lamp3/Light|UpperB/WallS0":
+		"Start/Lamp3/Light|UpperB/WallS2":
 		"up the stairwell onto the next hall's wall base, above a slab",
 		"Start/Lamp3/Light|Ceilings/SideSlabS":
 		"up the stairwell onto the next hall's floor, a room's glow in another room",
-		"UpperA/Lamp6/Light|Side/WallS4": "the wall below, seen through the slab: it was a leak",
+		"UpperA/Lamp6/Light|Side/WallS3": "the wall below, seen through the slab: it was a leak",
+		"Start/Lamp1/Light|Roof/ParapetS":
+		"the terrace's railing, over the hall's roof: it would be a leak",
+		"Start/Lamp1/Light|Roof/ParapetW":
+		"the terrace's railing, over the hall's roof: it would be a leak",
+		"Start/Lamp2/Light|Roof/ParapetS":
+		"the terrace's railing, over the hall's roof: it would be a leak",
+		"Start/Lamp2/Light|Roof/ParapetE":
+		"the terrace's railing, over the hall's roof: it would be a leak",
+		"ShopProps/Soda/Glow|Roof/ParapetW":
+		"the terrace's railing, over the hall's roof: it would be a leak",
 		"UpperA/Lamp6/Light|Ceilings/SideSlabS":
 		"the next hall's floor, seen through its own walls: it was a leak",
 	},

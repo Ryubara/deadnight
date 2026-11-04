@@ -53,6 +53,7 @@
 
 [sub_resource type="ShaderMaterial" id="night_sky_material"]
 shader = ExtResource("night_sky")
+shader_parameter/screen_glow_direction = Vector3(0, 0, 1)
 shader_parameter/moon_direction = Vector3(0.3011, 0.6222, -0.7226)
 shader_parameter/zenith_color = Color(0.020, 0.039, 0.122, 1)
 shader_parameter/mid_color = Color(0.043, 0.086, 0.212, 1)
@@ -264,10 +265,10 @@ material = ExtResource("smallmap_wall_upper")
 [node name="Ceilings" type="Node3D" parent="."]
 
 [node name="StartSlabS" type="CSGBox3D" parent="Ceilings"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 3.300, 8.400)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 3.300, 3.350)
 layers = 10
 use_collision = true
-size = Vector3(16.6, 0.2, 12.8)
+size = Vector3(16.6, 0.2, 2.7)
 material = ExtResource("smallmap_floor_upper")
 metadata/surface = "wood"
 
@@ -284,6 +285,14 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.200, 
 layers = 10
 use_collision = true
 size = Vector3(8.2, 0.2, 2)
+material = ExtResource("smallmap_floor_upper")
+metadata/surface = "wood"
+
+[node name="Terrace" type="CSGBox3D" parent="Ceilings"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 3.300, 9.750)
+layers = 34
+use_collision = true
+size = Vector3(16.6, 0.2, 10.1)
 material = ExtResource("smallmap_floor_upper")
 metadata/surface = "wood"
 
@@ -328,15 +337,15 @@ size = Vector3(0.3, 3.2, 14.8)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS0" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.350, 1.600, 14.650)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.350, 1.600, 14.650)
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(3.3, 3.2, 0.3)
+size = Vector3(7.3, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS1" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, 3.000, 14.650)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 3.000, 14.650)
 layers = 2
 use_collision = true
 collision_layer = 3
@@ -344,54 +353,22 @@ size = Vector3(2, 0.4, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS2" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 1.600, 14.650)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.650, 1.600, 14.650)
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(6, 3.2, 0.3)
-material = ExtResource("smallmap_wall_ground")
-
-[node name="WallS3" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.000, 3.000, 14.650)
-layers = 2
-use_collision = true
-collision_layer = 3
-size = Vector3(2, 0.4, 0.3)
-material = ExtResource("smallmap_wall_ground")
-
-[node name="WallS4" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.650, 1.600, 14.650)
-layers = 2
-use_collision = true
-collision_layer = 3
-size = Vector3(3.3, 3.2, 0.3)
+size = Vector3(7.3, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallE0" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 1.600, 1.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 1.600, 3.500)
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 3.2, 3)
+size = Vector3(0.3, 3.2, 7)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallE1" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 3.000, 4.000)
-layers = 2
-use_collision = true
-collision_layer = 3
-size = Vector3(0.3, 0.4, 2)
-material = ExtResource("smallmap_wall_ground")
-
-[node name="WallE2" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 1.600, 6.000)
-layers = 2
-use_collision = true
-collision_layer = 3
-size = Vector3(0.3, 3.2, 2)
-material = ExtResource("smallmap_wall_ground")
-
-[node name="WallE3" type="CSGBox3D" parent="Start"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 3.000, 8.000)
 layers = 2
 use_collision = true
@@ -399,28 +376,12 @@ collision_layer = 3
 size = Vector3(0.3, 0.4, 2)
 material = ExtResource("smallmap_wall_ground")
 
-[node name="WallE4" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 1.600, 10.000)
+[node name="WallE2" type="CSGBox3D" parent="Start"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 1.600, 11.900)
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 3.2, 2)
-material = ExtResource("smallmap_wall_ground")
-
-[node name="WallE5" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 3.000, 12.000)
-layers = 2
-use_collision = true
-collision_layer = 3
-size = Vector3(0.3, 0.4, 2)
-material = ExtResource("smallmap_wall_ground")
-
-[node name="WallE6" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 1.600, 13.900)
-layers = 2
-use_collision = true
-collision_layer = 3
-size = Vector3(0.3, 3.2, 1.8)
+size = Vector3(0.3, 3.2, 5.8)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS0" type="CSGBox3D" parent="Side"]
@@ -448,22 +409,14 @@ size = Vector3(1, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS3" type="CSGBox3D" parent="Side"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.600, 3.000, -0.150)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.100, 1.600, -0.150)
 layers = 6
 use_collision = true
 collision_layer = 3
-size = Vector3(2, 0.4, 0.3)
+size = Vector3(12.8, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS4" type="CSGBox3D" parent="Side"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.950, 1.600, -0.150)
-layers = 6
-use_collision = true
-collision_layer = 3
-size = Vector3(13.1, 3.2, 0.3)
-material = ExtResource("smallmap_wall_ground")
-
-[node name="WallS5" type="CSGBox3D" parent="Side"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.000, 3.000, -0.150)
 layers = 6
 use_collision = true
@@ -471,7 +424,7 @@ collision_layer = 3
 size = Vector3(3, 0.4, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
-[node name="WallS6" type="CSGBox3D" parent="Side"]
+[node name="WallS5" type="CSGBox3D" parent="Side"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 15.900, 1.600, -0.150)
 layers = 6
 use_collision = true
@@ -480,11 +433,35 @@ size = Vector3(0.8, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallN0" type="CSGBox3D" parent="Side"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.000, 1.600, -7.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.300, 1.600, -7.950)
 layers = 4
 use_collision = true
 collision_layer = 3
-size = Vector3(22.6, 3.2, 0.3)
+size = Vector3(12, 3.2, 0.3)
+material = ExtResource("smallmap_wall_ground")
+
+[node name="WallN1" type="CSGBox3D" parent="Side"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 10.700, 1.600, -7.950)
+layers = 4
+use_collision = true
+collision_layer = 3
+size = Vector3(5.2, 3.2, 0.3)
+material = ExtResource("smallmap_wall_ground")
+
+[node name="WallN2" type="CSGBox3D" parent="Side"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.300, 3.000, -7.950)
+layers = 4
+use_collision = true
+collision_layer = 3
+size = Vector3(2, 0.4, 0.3)
+material = ExtResource("smallmap_wall_ground")
+
+[node name="WallN3" type="CSGBox3D" parent="Side"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 15.800, 1.600, -7.950)
+layers = 4
+use_collision = true
+collision_layer = 3
+size = Vector3(1, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallE0" type="CSGBox3D" parent="Side"]
@@ -705,15 +682,15 @@ size = Vector3(0.5, 0.4, 0.5)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS0" type="CSGBox3D" parent="UpperA"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.375, 5.000, 4.600)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.125, 5.000, 4.600)
 layers = 8
 use_collision = true
 collision_layer = 3
-size = Vector3(3.25, 3.2, 0.2)
+size = Vector3(8.75, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallS1" type="CSGBox3D" parent="UpperA"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, 6.400, 4.600)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 9.500, 6.400, 4.600)
 layers = 8
 use_collision = true
 collision_layer = 3
@@ -721,35 +698,35 @@ size = Vector3(2, 0.4, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallS2" type="CSGBox3D" parent="UpperA"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 5.000, 4.600)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 13.375, 5.000, 4.600)
 layers = 8
 use_collision = true
 collision_layer = 3
-size = Vector3(6, 3.2, 0.2)
-material = ExtResource("smallmap_wall_upper")
-
-[node name="WallS3" type="CSGBox3D" parent="UpperA"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.000, 6.400, 4.600)
-layers = 8
-use_collision = true
-collision_layer = 3
-size = Vector3(2, 0.4, 0.2)
-material = ExtResource("smallmap_wall_upper")
-
-[node name="WallS4" type="CSGBox3D" parent="UpperA"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.625, 5.000, 4.600)
-layers = 8
-use_collision = true
-collision_layer = 3
-size = Vector3(3.25, 3.2, 0.2)
+size = Vector3(5.75, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallW0" type="CSGBox3D" parent="UpperA"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.150, 5.000, 2.225)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.150, 5.000, 0.275)
 layers = 8
 use_collision = true
 collision_layer = 3
-size = Vector3(0.2, 3.2, 4.55)
+size = Vector3(0.2, 3.2, 0.65)
+material = ExtResource("smallmap_wall_upper")
+
+[node name="WallW1" type="CSGBox3D" parent="UpperA"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.150, 6.400, 1.600)
+layers = 8
+use_collision = true
+collision_layer = 3
+size = Vector3(0.2, 0.4, 2)
+material = ExtResource("smallmap_wall_upper")
+
+[node name="WallW2" type="CSGBox3D" parent="UpperA"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.150, 5.000, 3.550)
+layers = 8
+use_collision = true
+collision_layer = 3
+size = Vector3(0.2, 3.2, 1.9)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallE0" type="CSGBox3D" parent="UpperA"]
@@ -785,43 +762,27 @@ size = Vector3(2.75, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallN0" type="CSGBox3D" parent="UpperB"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.125, 5.000, -7.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.025, 5.000, -7.950)
 layers = 16
 use_collision = true
 collision_layer = 3
-size = Vector3(4.25, 3.2, 0.2)
+size = Vector3(0.45, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallN1" type="CSGBox3D" parent="UpperB"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.000, 6.400, -7.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.150, 5.000, -7.950)
 layers = 16
 use_collision = true
 collision_layer = 3
-size = Vector3(2, 0.4, 0.2)
+size = Vector3(9.1, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallN2" type="CSGBox3D" parent="UpperB"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, 5.000, -7.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.175, 5.000, -7.950)
 layers = 16
 use_collision = true
 collision_layer = 3
-size = Vector3(8, 3.2, 0.2)
-material = ExtResource("smallmap_wall_upper")
-
-[node name="WallN3" type="CSGBox3D" parent="UpperB"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 9.000, 6.400, -7.950)
-layers = 16
-use_collision = true
-collision_layer = 3
-size = Vector3(2, 0.4, 0.2)
-material = ExtResource("smallmap_wall_upper")
-
-[node name="WallN4" type="CSGBox3D" parent="UpperB"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 13.125, 5.000, -7.950)
-layers = 16
-use_collision = true
-collision_layer = 3
-size = Vector3(6.25, 3.2, 0.2)
+size = Vector3(8.15, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallW0" type="CSGBox3D" parent="UpperB"]
@@ -833,11 +794,19 @@ size = Vector3(0.2, 3.2, 7.6)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallE0" type="CSGBox3D" parent="UpperB"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 5.000, -4.050)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 5.000, -6.525)
 layers = 16
 use_collision = true
 collision_layer = 3
-size = Vector3(0.2, 3.2, 7.6)
+size = Vector3(0.2, 3.2, 2.65)
+material = ExtResource("smallmap_wall_upper")
+
+[node name="WallE1" type="CSGBox3D" parent="UpperB"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 5.000, -1.525)
+layers = 16
+use_collision = true
+collision_layer = 3
+size = Vector3(0.2, 3.2, 2.55)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="Roof" type="Node3D" parent="."]
@@ -850,27 +819,27 @@ size = Vector3(22.5, 0.2, 12.75)
 material = ExtResource("smallmap_ceiling")
 
 [node name="ParapetS" type="CSGBox3D" parent="Roof"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 3.700, 14.650)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 3.950, 14.650)
 layers = 32
 use_collision = true
 collision_layer = 3
-size = Vector3(16.6, 0.6, 0.3)
+size = Vector3(16.6, 1.1, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="ParapetW" type="CSGBox3D" parent="Roof"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.150, 3.700, 9.600)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.150, 3.950, 11.700)
 layers = 32
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 0.6, 9.8)
+size = Vector3(0.3, 1.1, 5.6)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="ParapetE" type="CSGBox3D" parent="Roof"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 3.700, 9.600)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 3.950, 9.600)
 layers = 32
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 0.6, 9.8)
+size = Vector3(0.3, 1.1, 9.8)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="Windows" type="Node3D" parent="."]
@@ -878,7 +847,7 @@ material = ExtResource("smallmap_wall_ground")
 [node name="ZombieSpawns" type="Node3D" parent="."]
 
 [node name="Window_start_1" type="Node3D" parent="Windows"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 4.000, 0.000, 14.650)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 8.000, 0.000, 14.650)
 metadata/barricade_id = "start_1"
 metadata/room = "start"
 metadata/kind = "window"
@@ -956,166 +925,8 @@ transform = Transform3D(0.9962, 0.0872, 0, -0.0872, 0.9962, 0, 0, 0, 1, -0.03, 1
 transform = Transform3D(0.9986, -0.0523, 0, 0.0523, 0.9986, 0, 0, 0, 1, 0.03, 2.03, 0.215)
 
 [node name="Spawn_start_1" type="Marker3D" parent="ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, 0.000, 21.650)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 0.000, 21.650)
 metadata/barricade_id = "start_1"
-metadata/room = "start"
-
-[node name="Window_start_2" type="Node3D" parent="Windows"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 12.000, 0.000, 14.650)
-metadata/barricade_id = "start_2"
-metadata/room = "start"
-metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.3)
-
-[node name="Lintel" type="StaticBody3D" parent="Windows/Window_start_2"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_2/Lintel"]
-shape = SubResource("shape_2x0p6x0p3")
-
-[node name="JambL" type="StaticBody3D" parent="Windows/Window_start_2"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.800, 1.100, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_2/JambL"]
-shape = SubResource("shape_0p4x2p2x0p34")
-
-[node name="JambR" type="StaticBody3D" parent="Windows/Window_start_2"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.800, 1.100, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_2/JambR"]
-shape = SubResource("shape_0p4x2p2x0p34")
-
-[node name="Sill" type="StaticBody3D" parent="Windows/Window_start_2"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_2/Sill"]
-shape = SubResource("shape_1p2x0p9x0p34")
-
-[node name="Blocker" type="StaticBody3D" parent="Windows/Window_start_2"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.550, 0.000)
-collision_layer = 2
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_2/Blocker"]
-shape = SubResource("shape_1p2x1p3x0p3")
-
-[node name="Model" parent="Windows/Window_start_2" instance=ExtResource("md_wall_window_zombie")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.000, 0.000, 0.000)
-
-[node name="Boards" type="Node3D" parent="Windows/Window_start_2"]
-script = ExtResource("barricade")
-metadata/barricade_id = "start_2"
-metadata/board_half = 0.75
-
-[node name="Board1" parent="Windows/Window_start_2/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.215)
-
-[node name="Board2" parent="Windows/Window_start_2/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9986, 0.0523, 0, -0.0523, 0.9986, 0, 0, 0, 1, -0.03, 1.31, 0.215)
-
-[node name="Board3" parent="Windows/Window_start_2/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9994, -0.0349, 0, 0.0349, 0.9994, 0, 0, 0, 1, 0.03, 1.55, 0.215)
-
-[node name="Board4" parent="Windows/Window_start_2/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9962, 0.0872, 0, -0.0872, 0.9962, 0, 0, 0, 1, -0.03, 1.79, 0.215)
-
-[node name="Board5" parent="Windows/Window_start_2/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9986, -0.0523, 0, 0.0523, 0.9986, 0, 0, 0, 1, 0.03, 2.03, 0.215)
-
-[node name="Spawn_start_2" type="Marker3D" parent="ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.000, 0.000, 21.650)
-metadata/barricade_id = "start_2"
-metadata/room = "start"
-
-[node name="Window_start_3" type="Node3D" parent="Windows"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 16.150, 0.000, 4.000)
-metadata/barricade_id = "start_3"
-metadata/room = "start"
-metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.3)
-
-[node name="Lintel" type="StaticBody3D" parent="Windows/Window_start_3"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_3/Lintel"]
-shape = SubResource("shape_2x0p6x0p3")
-
-[node name="JambL" type="StaticBody3D" parent="Windows/Window_start_3"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.800, 1.100, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_3/JambL"]
-shape = SubResource("shape_0p4x2p2x0p34")
-
-[node name="JambR" type="StaticBody3D" parent="Windows/Window_start_3"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.800, 1.100, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_3/JambR"]
-shape = SubResource("shape_0p4x2p2x0p34")
-
-[node name="Sill" type="StaticBody3D" parent="Windows/Window_start_3"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_3/Sill"]
-shape = SubResource("shape_1p2x0p9x0p34")
-
-[node name="Blocker" type="StaticBody3D" parent="Windows/Window_start_3"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.550, 0.000)
-collision_layer = 2
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_3/Blocker"]
-shape = SubResource("shape_1p2x1p3x0p3")
-
-[node name="Model" parent="Windows/Window_start_3" instance=ExtResource("md_wall_window_zombie")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.000, 0.000, 0.000)
-
-[node name="Shaft" parent="Windows/Window_start_3" instance=ExtResource("lt_moon_shaft")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.000, 0.000, 0.000)
-yaw = 47.9
-wall_face = 0.15
-rails = 5
-bars = 0
-light_path = NodePath("../../../Lighting/Moon")
-
-[node name="Boards" type="Node3D" parent="Windows/Window_start_3"]
-script = ExtResource("barricade")
-metadata/barricade_id = "start_3"
-metadata/board_half = 0.75
-
-[node name="Board1" parent="Windows/Window_start_3/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.215)
-
-[node name="Board2" parent="Windows/Window_start_3/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9986, 0.0523, 0, -0.0523, 0.9986, 0, 0, 0, 1, -0.03, 1.31, 0.215)
-
-[node name="Board3" parent="Windows/Window_start_3/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9994, -0.0349, 0, 0.0349, 0.9994, 0, 0, 0, 1, 0.03, 1.55, 0.215)
-
-[node name="Board4" parent="Windows/Window_start_3/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9962, 0.0872, 0, -0.0872, 0.9962, 0, 0, 0, 1, -0.03, 1.79, 0.215)
-
-[node name="Board5" parent="Windows/Window_start_3/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9986, -0.0523, 0, 0.0523, 0.9986, 0, 0, 0, 1, 0.03, 2.03, 0.215)
-
-[node name="Spawn_start_3" type="Marker3D" parent="ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 23.150, 0.000, 4.000)
-metadata/barricade_id = "start_3"
 metadata/room = "start"
 
 [node name="Window_start_4" type="Node3D" parent="Windows"]
@@ -1191,89 +1002,6 @@ transform = Transform3D(0.9986, -0.0523, 0, 0.0523, 0.9986, 0, 0, 0, 1, 0.03, 2.
 [node name="Spawn_start_4" type="Marker3D" parent="ZombieSpawns"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 23.150, 0.000, 8.000)
 metadata/barricade_id = "start_4"
-metadata/room = "start"
-
-[node name="Window_start_5" type="Node3D" parent="Windows"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 16.150, 0.000, 12.000)
-metadata/barricade_id = "start_5"
-metadata/room = "start"
-metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.3)
-
-[node name="Lintel" type="StaticBody3D" parent="Windows/Window_start_5"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_5/Lintel"]
-shape = SubResource("shape_2x0p6x0p3")
-
-[node name="JambL" type="StaticBody3D" parent="Windows/Window_start_5"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.800, 1.100, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_5/JambL"]
-shape = SubResource("shape_0p4x2p2x0p34")
-
-[node name="JambR" type="StaticBody3D" parent="Windows/Window_start_5"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.800, 1.100, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_5/JambR"]
-shape = SubResource("shape_0p4x2p2x0p34")
-
-[node name="Sill" type="StaticBody3D" parent="Windows/Window_start_5"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_5/Sill"]
-shape = SubResource("shape_1p2x0p9x0p34")
-
-[node name="Blocker" type="StaticBody3D" parent="Windows/Window_start_5"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.550, 0.000)
-collision_layer = 2
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_start_5/Blocker"]
-shape = SubResource("shape_1p2x1p3x0p3")
-
-[node name="Model" parent="Windows/Window_start_5" instance=ExtResource("md_wall_window_zombie")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.000, 0.000, 0.000)
-
-[node name="Shaft" parent="Windows/Window_start_5" instance=ExtResource("lt_moon_shaft")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.000, 0.000, 0.000)
-yaw = 47.9
-wall_face = 0.15
-rails = 5
-bars = 0
-light_path = NodePath("../../../Lighting/Moon")
-
-[node name="Boards" type="Node3D" parent="Windows/Window_start_5"]
-script = ExtResource("barricade")
-metadata/barricade_id = "start_5"
-metadata/board_half = 0.75
-
-[node name="Board1" parent="Windows/Window_start_5/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.215)
-
-[node name="Board2" parent="Windows/Window_start_5/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9986, 0.0523, 0, -0.0523, 0.9986, 0, 0, 0, 1, -0.03, 1.31, 0.215)
-
-[node name="Board3" parent="Windows/Window_start_5/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9994, -0.0349, 0, 0.0349, 0.9994, 0, 0, 0, 1, 0.03, 1.55, 0.215)
-
-[node name="Board4" parent="Windows/Window_start_5/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9962, 0.0872, 0, -0.0872, 0.9962, 0, 0, 0, 1, -0.03, 1.79, 0.215)
-
-[node name="Board5" parent="Windows/Window_start_5/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9986, -0.0523, 0, 0.0523, 0.9986, 0, 0, 0, 1, 0.03, 2.03, 0.215)
-
-[node name="Spawn_start_5" type="Marker3D" parent="ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 23.150, 0.000, 12.000)
-metadata/barricade_id = "start_5"
 metadata/room = "start"
 
 [node name="Window_side_1" type="Node3D" parent="Windows"]
@@ -1360,7 +1088,7 @@ metadata/barricade_id = "side_1"
 metadata/room = "side"
 
 [node name="Window_side_2" type="Node3D" parent="Windows"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -1.600, 0.000, -0.150)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.300, 0.000, -7.950)
 metadata/barricade_id = "side_2"
 metadata/room = "side"
 metadata/kind = "window"
@@ -1430,12 +1158,12 @@ transform = Transform3D(0.9962, 0.0872, 0, -0.0872, 0.9962, 0, 0, 0, 1, -0.03, 1
 transform = Transform3D(0.9986, -0.0523, 0, 0.0523, 0.9986, 0, 0, 0, 1, 0.03, 2.03, 0.215)
 
 [node name="Spawn_side_2" type="Marker3D" parent="ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.600, 0.000, 6.850)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.300, 0.000, -14.950)
 metadata/barricade_id = "side_2"
 metadata/room = "side"
 
 [node name="Window_upper_a1" type="Node3D" parent="Windows"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 4.000, 3.400, 4.600)
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -0.150, 3.400, 1.600)
 metadata/barricade_id = "upper_a1"
 metadata/room = "upstairs"
 metadata/kind = "window"
@@ -1486,7 +1214,7 @@ transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 
 
 [node name="Shaft" parent="Windows/Window_upper_a1" instance=ExtResource("lt_moon_shaft")]
 transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.000, 0.000, 0.000)
-yaw = 15.7
+yaw = -47.9
 wall_face = 0.1
 rails = 5
 bars = 0
@@ -1513,12 +1241,12 @@ transform = Transform3D(0.9962, 0.0872, 0, -0.0872, 0.9962, 0, 0, 0, 1, -0.03, 1
 transform = Transform3D(0.9986, -0.0523, 0, 0.0523, 0.9986, 0, 0, 0, 1, 0.03, 2.03, 0.165)
 
 [node name="Spawn_upper_a1" type="Marker3D" parent="ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, 3.400, 11.600)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -5.500, 0.000, 14.000)
 metadata/barricade_id = "upper_a1"
 metadata/room = "upstairs"
 
 [node name="Window_upper_a2" type="Node3D" parent="Windows"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 12.000, 3.400, 4.600)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 9.500, 3.400, 4.600)
 metadata/barricade_id = "upper_a2"
 metadata/room = "upstairs"
 metadata/kind = "window"
@@ -1588,166 +1316,8 @@ transform = Transform3D(0.9962, 0.0872, 0, -0.0872, 0.9962, 0, 0, 0, 1, -0.03, 1
 transform = Transform3D(0.9986, -0.0523, 0, 0.0523, 0.9986, 0, 0, 0, 1, 0.03, 2.03, 0.165)
 
 [node name="Spawn_upper_a2" type="Marker3D" parent="ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.000, 3.400, 11.600)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.000, 0.000, 15.000)
 metadata/barricade_id = "upper_a2"
-metadata/room = "upstairs"
-
-[node name="Window_upper_b1" type="Node3D" parent="Windows"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.000, 3.400, -7.950)
-metadata/barricade_id = "upper_b1"
-metadata/room = "upstairs"
-metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.2)
-
-[node name="Lintel" type="StaticBody3D" parent="Windows/Window_upper_b1"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_upper_b1/Lintel"]
-shape = SubResource("shape_2x0p6x0p2")
-
-[node name="JambL" type="StaticBody3D" parent="Windows/Window_upper_b1"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.800, 1.100, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_upper_b1/JambL"]
-shape = SubResource("shape_0p4x2p2x0p24")
-
-[node name="JambR" type="StaticBody3D" parent="Windows/Window_upper_b1"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.800, 1.100, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_upper_b1/JambR"]
-shape = SubResource("shape_0p4x2p2x0p24")
-
-[node name="Sill" type="StaticBody3D" parent="Windows/Window_upper_b1"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_upper_b1/Sill"]
-shape = SubResource("shape_1p2x0p9x0p24")
-
-[node name="Blocker" type="StaticBody3D" parent="Windows/Window_upper_b1"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.550, 0.000)
-collision_layer = 2
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_upper_b1/Blocker"]
-shape = SubResource("shape_1p2x1p3x0p2")
-
-[node name="Model" parent="Windows/Window_upper_b1" instance=ExtResource("md_wall_window_zombie_upper")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.000, 0.000, 0.000)
-
-[node name="Shaft" parent="Windows/Window_upper_b1" instance=ExtResource("lt_moon_shaft")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.000, 0.000, 0.000)
-yaw = -15.7
-wall_face = 0.1
-rails = 5
-bars = 0
-light_path = NodePath("../../../Lighting/Moon")
-
-[node name="Boards" type="Node3D" parent="Windows/Window_upper_b1"]
-script = ExtResource("barricade")
-metadata/barricade_id = "upper_b1"
-metadata/board_half = 0.75
-
-[node name="Board1" parent="Windows/Window_upper_b1/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.165)
-
-[node name="Board2" parent="Windows/Window_upper_b1/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9986, 0.0523, 0, -0.0523, 0.9986, 0, 0, 0, 1, -0.03, 1.31, 0.165)
-
-[node name="Board3" parent="Windows/Window_upper_b1/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9994, -0.0349, 0, 0.0349, 0.9994, 0, 0, 0, 1, 0.03, 1.55, 0.165)
-
-[node name="Board4" parent="Windows/Window_upper_b1/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9962, 0.0872, 0, -0.0872, 0.9962, 0, 0, 0, 1, -0.03, 1.79, 0.165)
-
-[node name="Board5" parent="Windows/Window_upper_b1/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9986, -0.0523, 0, 0.0523, 0.9986, 0, 0, 0, 1, 0.03, 2.03, 0.165)
-
-[node name="Spawn_upper_b1" type="Marker3D" parent="ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.000, 3.400, -14.950)
-metadata/barricade_id = "upper_b1"
-metadata/room = "upstairs"
-
-[node name="Window_upper_b2" type="Node3D" parent="Windows"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 9.000, 3.400, -7.950)
-metadata/barricade_id = "upper_b2"
-metadata/room = "upstairs"
-metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.2)
-
-[node name="Lintel" type="StaticBody3D" parent="Windows/Window_upper_b2"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_upper_b2/Lintel"]
-shape = SubResource("shape_2x0p6x0p2")
-
-[node name="JambL" type="StaticBody3D" parent="Windows/Window_upper_b2"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.800, 1.100, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_upper_b2/JambL"]
-shape = SubResource("shape_0p4x2p2x0p24")
-
-[node name="JambR" type="StaticBody3D" parent="Windows/Window_upper_b2"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.800, 1.100, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_upper_b2/JambR"]
-shape = SubResource("shape_0p4x2p2x0p24")
-
-[node name="Sill" type="StaticBody3D" parent="Windows/Window_upper_b2"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
-collision_layer = 3
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_upper_b2/Sill"]
-shape = SubResource("shape_1p2x0p9x0p24")
-
-[node name="Blocker" type="StaticBody3D" parent="Windows/Window_upper_b2"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.550, 0.000)
-collision_layer = 2
-collision_mask = 0
-
-[node name="Shape" type="CollisionShape3D" parent="Windows/Window_upper_b2/Blocker"]
-shape = SubResource("shape_1p2x1p3x0p2")
-
-[node name="Model" parent="Windows/Window_upper_b2" instance=ExtResource("md_wall_window_zombie_upper")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.000, 0.000, 0.000)
-
-[node name="Boards" type="Node3D" parent="Windows/Window_upper_b2"]
-script = ExtResource("barricade")
-metadata/barricade_id = "upper_b2"
-metadata/board_half = 0.75
-
-[node name="Board1" parent="Windows/Window_upper_b2/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.165)
-
-[node name="Board2" parent="Windows/Window_upper_b2/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9986, 0.0523, 0, -0.0523, 0.9986, 0, 0, 0, 1, -0.03, 1.31, 0.165)
-
-[node name="Board3" parent="Windows/Window_upper_b2/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9994, -0.0349, 0, 0.0349, 0.9994, 0, 0, 0, 1, 0.03, 1.55, 0.165)
-
-[node name="Board4" parent="Windows/Window_upper_b2/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9962, 0.0872, 0, -0.0872, 0.9962, 0, 0, 0, 1, -0.03, 1.79, 0.165)
-
-[node name="Board5" parent="Windows/Window_upper_b2/Boards" instance=ExtResource("board")]
-transform = Transform3D(0.9986, -0.0523, 0, 0.0523, 0.9986, 0, 0, 0, 1, 0.03, 2.03, 0.165)
-
-[node name="Spawn_upper_b2" type="Marker3D" parent="ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 9.000, 3.400, -14.950)
-metadata/barricade_id = "upper_b2"
 metadata/room = "upstairs"
 
 [node name="Window_side_breach" type="Node3D" parent="Windows"]
@@ -1834,7 +1404,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.220, -0.050)
 
 [node name="Spawn_side_breach" type="Marker3D" parent="ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -12.150, 0.000, -2.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.600, 0.000, -2.500)
 metadata/barricade_id = "side_breach"
 metadata/room = "side"
 
@@ -1974,9 +1544,9 @@ width = 2.2
 light_path = NodePath("../Lamp3/Light")
 
 [node name="ChalkLight" parent="Side" instance=ExtResource("lt_chalk_message")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 13.400, 1.750, -7.790)
+transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 12.000, 1.750, -7.790)
 message = 1
-width = 2
+width = 1.8
 light_path = NodePath("../Lamp5/Light")
 
 [node name="ChalkBreach" parent="Side" instance=ExtResource("lt_chalk_message")]
@@ -2093,17 +1663,36 @@ use_collision = true
 size = Vector3(24.7, 0.4, 22.9)
 material = ExtResource("frost_ground")
 
-[node name="GroundNotch" type="CSGBox3D" parent="Outside"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.300, -0.200, 7.400)
-layers = 32
+[node name="GroundN" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, -0.200, -18.300)
 use_collision = true
-size = Vector3(6, 0.4, 14.8)
+size = Vector3(62, 0.4, 17.4)
 material = ExtResource("frost_ground")
 
-[node name="Bank" type="CSGBox3D" parent="Outside"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, -17.550)
+[node name="GroundNWest" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.400, -0.200, -8.850)
 use_collision = true
-size = Vector3(62, 3.8, 18.9)
+size = Vector3(11.8, 0.4, 1.5)
+material = ExtResource("frost_ground")
+
+[node name="GroundNEast" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.300, -0.200, -8.850)
+use_collision = true
+size = Vector3(8, 0.4, 1.5)
+material = ExtResource("frost_ground")
+
+[node name="GroundNotch" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.550, -0.200, 7.400)
+layers = 32
+use_collision = true
+size = Vector3(3.5, 0.4, 14.8)
+material = ExtResource("frost_ground")
+
+[node name="GroundNotchE" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.550, -0.200, 8.175)
+layers = 32
+use_collision = true
+size = Vector3(2.5, 0.4, 13.25)
 material = ExtResource("frost_ground")
 
 [node name="FenceS" type="CSGBox3D" parent="Outside"]
@@ -2115,34 +1704,59 @@ size = Vector3(62, 3, 0.4)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="FenceW" type="CSGBox3D" parent="Outside"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -30.800, 1.500, 9.450)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -30.800, 1.500, 0.000)
 visible = false
 use_collision = true
 collision_layer = 3
-size = Vector3(0.4, 3, 35.1)
+size = Vector3(0.4, 3, 54)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="FenceE" type="CSGBox3D" parent="Outside"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 30.800, 1.500, 9.450)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 30.800, 1.500, 0.000)
 visible = false
 use_collision = true
 collision_layer = 3
-size = Vector3(0.4, 3, 35.1)
+size = Vector3(0.4, 3, 54)
 material = ExtResource("smallmap_wall_ground")
 
-[node name="FenceSplit" type="CSGBox3D" parent="Outside"]
+[node name="FenceN" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, -26.800)
+visible = false
+use_collision = true
+collision_layer = 3
+size = Vector3(62, 3, 0.4)
+material = ExtResource("smallmap_wall_ground")
+
+[node name="AlleyE" type="CSGBox3D" parent="Outside"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.300, 1.500, 20.700)
+layers = 32
 use_collision = true
 collision_layer = 3
 size = Vector3(0.4, 3, 11.8)
 material = ExtResource("smallmap_wall_ground")
 
-[node name="BankRim" type="CSGBox3D" parent="Outside"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4.900, -26.800)
-visible = false
+[node name="AlleyW" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.400, 1.500, 17.200)
+layers = 32
 use_collision = true
 collision_layer = 3
-size = Vector3(62, 3, 0.4)
+size = Vector3(0.2, 3, 18.8)
+material = ExtResource("smallmap_wall_ground")
+
+[node name="AlleyN" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.400, 1.500, 7.900)
+layers = 32
+use_collision = true
+collision_layer = 3
+size = Vector3(6.2, 3, 0.2)
+material = ExtResource("smallmap_wall_ground")
+
+[node name="YardWallE" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 23.450, 1.500, -8.250)
+layers = 32
+use_collision = true
+collision_layer = 3
+size = Vector3(14.3, 3, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="PocketN" type="CSGBox3D" parent="Outside"]
@@ -2160,10 +1774,17 @@ size = Vector3(7.5, 3, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="PocketW" type="CSGBox3D" parent="Outside"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -13.950, 1.500, -2.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -13.950, 1.500, -4.500)
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 3, 5.6)
+size = Vector3(0.3, 3, 1.6)
+material = ExtResource("smallmap_wall_ground")
+
+[node name="PocketWS" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -13.950, 1.500, -0.500)
+use_collision = true
+collision_layer = 3
+size = Vector3(0.3, 3, 1.6)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="PocketRoof" type="CSGBox3D" parent="Outside"]
@@ -2172,8 +1793,255 @@ use_collision = true
 size = Vector3(7.8, 0.2, 5.6)
 material = ExtResource("smallmap_ceiling")
 
+[node name="OutStairRamp" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1, 0, 0, 0, 0.8321, -0.5547, 0, 0.5547, 0.8321, -1.550, 1.575, 11.367)
+layers = 32
+use_collision = true
+size = Vector3(2.5, 0.3, 6.12944)
+material = ExtResource("booth_prop")
+metadata/surface = "wood"
+
+[node name="OutStairRail" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1, 0, 0, 0, 0.8321, -0.5547, 0, 0.5547, 0.8321, -2.725, 2.158, 11.755)
+layers = 32
+use_collision = true
+collision_layer = 3
+size = Vector3(0.15, 1.1, 6.12944)
+material = ExtResource("booth_prop")
+metadata/surface = "wood"
+
+[node name="OutStairFlight" parent="Outside" instance=ExtResource("md_stair_straight")]
+transform = Transform3D(1.7857, 0.0000, 0.0000, 0.0000, 1.1333, 0.0000, 0.0000, 0.0000, 1.1333, -1.550, 0.000, 11.450)
+
+[node name="GalleryDeckN" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.550, 3.300, 0.775)
+layers = 36
+use_collision = true
+size = Vector3(2.5, 0.2, 1.55)
+material = ExtResource("smallmap_floor_upper")
+metadata/surface = "wood"
+
+[node name="GalleryDeckS" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.550, 3.300, 5.225)
+layers = 32
+use_collision = true
+size = Vector3(2.5, 0.2, 7.35)
+material = ExtResource("smallmap_floor_upper")
+metadata/surface = "wood"
+
+[node name="GalleryRail" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -2.725, 3.950, 4.450)
+layers = 32
+use_collision = true
+collision_layer = 3
+size = Vector3(0.15, 1.1, 8.9)
+material = ExtResource("booth_prop")
+
+[node name="GalleryPost1" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -2.700, 1.600, 4.600)
+layers = 32
+use_collision = true
+collision_layer = 3
+size = Vector3(0.2, 3.2, 0.2)
+material = ExtResource("booth_prop")
+
+[node name="GalleryPost2" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -2.700, 1.600, 8.800)
+layers = 32
+use_collision = true
+collision_layer = 3
+size = Vector3(0.2, 3.2, 0.2)
+material = ExtResource("booth_prop")
+
+[node name="BayLoadFloor" type="CSGBox3D" parent="Side"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.900, -0.200, -8.850)
+layers = 4
+use_collision = true
+size = Vector3(2.8, 0.4, 1.5)
+material = ExtResource("smallmap_floor_ground")
+
+[node name="BayLoadSideA" type="CSGBox3D" parent="Side"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.600, 1.600, -8.775)
+layers = 4
+use_collision = true
+collision_layer = 3
+size = Vector3(0.2, 3.2, 1.65)
+material = ExtResource("smallmap_wall_ground")
+
+[node name="BayLoadSideB" type="CSGBox3D" parent="Side"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.200, 1.600, -8.775)
+layers = 4
+use_collision = true
+collision_layer = 3
+size = Vector3(0.2, 3.2, 1.65)
+material = ExtResource("smallmap_wall_ground")
+
+[node name="BayLoadBack" type="CSGBox3D" parent="Side"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.900, 1.600, -9.500)
+layers = 4
+use_collision = true
+collision_layer = 3
+size = Vector3(2.8, 3.2, 0.2)
+material = ExtResource("smallmap_wall_ground")
+
+[node name="BayLoadSideA" type="CSGBox3D" parent="UpperB"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.600, 5.000, -8.775)
+layers = 16
+use_collision = true
+collision_layer = 3
+size = Vector3(0.2, 3.2, 1.65)
+material = ExtResource("smallmap_wall_upper")
+
+[node name="BayLoadSideB" type="CSGBox3D" parent="UpperB"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.200, 5.000, -8.775)
+layers = 16
+use_collision = true
+collision_layer = 3
+size = Vector3(0.2, 3.2, 1.65)
+material = ExtResource("smallmap_wall_upper")
+
+[node name="BayLoadBack" type="CSGBox3D" parent="UpperB"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.900, 5.000, -9.500)
+layers = 16
+use_collision = true
+collision_layer = 3
+size = Vector3(2.8, 3.2, 0.2)
+material = ExtResource("smallmap_wall_upper")
+
+[node name="BayLoadSlab" type="CSGBox3D" parent="Ceilings"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.900, 3.300, -8.850)
+layers = 20
+use_collision = true
+size = Vector3(2.8, 0.2, 1.5)
+material = ExtResource("smallmap_floor_upper")
+metadata/surface = "wood"
+
+[node name="BayLoadRoof" type="CSGBox3D" parent="Roof"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.900, 6.700, -8.775)
+layers = 24
+use_collision = true
+size = Vector3(2.8, 0.2, 1.65)
+material = ExtResource("smallmap_ceiling")
+
+[node name="BayHolsterSideSolid" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.600, 1.400, -8.850)
+layers = 32
+use_collision = true
+collision_layer = 3
+size = Vector3(2.8, 3.6, 1.5)
+material = ExtResource("smallmap_wall_ground")
+
+[node name="BayHolsterSideA" type="CSGBox3D" parent="UpperB"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -5.900, 5.000, -8.775)
+layers = 16
+use_collision = true
+collision_layer = 3
+size = Vector3(0.2, 3.2, 1.65)
+material = ExtResource("smallmap_wall_upper")
+
+[node name="BayHolsterSideB" type="CSGBox3D" parent="UpperB"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.300, 5.000, -8.775)
+layers = 16
+use_collision = true
+collision_layer = 3
+size = Vector3(0.2, 3.2, 1.65)
+material = ExtResource("smallmap_wall_upper")
+
+[node name="BayHolsterBack" type="CSGBox3D" parent="UpperB"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.600, 5.000, -9.500)
+layers = 16
+use_collision = true
+collision_layer = 3
+size = Vector3(2.8, 3.2, 0.2)
+material = ExtResource("smallmap_wall_upper")
+
+[node name="BayHolsterSlab" type="CSGBox3D" parent="Ceilings"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.600, 3.300, -8.850)
+layers = 20
+use_collision = true
+size = Vector3(2.8, 0.2, 1.5)
+material = ExtResource("smallmap_floor_upper")
+metadata/surface = "wood"
+
+[node name="BayHolsterRoof" type="CSGBox3D" parent="Roof"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.600, 6.700, -8.775)
+layers = 24
+use_collision = true
+size = Vector3(2.8, 0.2, 1.65)
+material = ExtResource("smallmap_ceiling")
+
+[node name="BayShockSideSolid" type="CSGBox3D" parent="Outside"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 17.050, 1.400, -4.000)
+layers = 32
+use_collision = true
+collision_layer = 3
+size = Vector3(1.5, 3.6, 2.8)
+material = ExtResource("smallmap_wall_ground")
+
+[node name="BayShockSideA" type="CSGBox3D" parent="UpperB"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.975, 5.000, -5.300)
+layers = 16
+use_collision = true
+collision_layer = 3
+size = Vector3(1.65, 3.2, 0.2)
+material = ExtResource("smallmap_wall_upper")
+
+[node name="BayShockSideB" type="CSGBox3D" parent="UpperB"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.975, 5.000, -2.700)
+layers = 16
+use_collision = true
+collision_layer = 3
+size = Vector3(1.65, 3.2, 0.2)
+material = ExtResource("smallmap_wall_upper")
+
+[node name="BayShockBack" type="CSGBox3D" parent="UpperB"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 17.700, 5.000, -4.000)
+layers = 16
+use_collision = true
+collision_layer = 3
+size = Vector3(0.2, 3.2, 2.8)
+material = ExtResource("smallmap_wall_upper")
+
+[node name="BayShockSlab" type="CSGBox3D" parent="Ceilings"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 17.050, 3.300, -4.000)
+layers = 20
+use_collision = true
+size = Vector3(1.5, 0.2, 2.8)
+material = ExtResource("smallmap_floor_upper")
+metadata/surface = "wood"
+
+[node name="BayShockRoof" type="CSGBox3D" parent="Roof"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.975, 6.700, -4.000)
+layers = 24
+use_collision = true
+size = Vector3(1.65, 0.2, 2.8)
+material = ExtResource("smallmap_ceiling")
+
+[node name="BayRescueFloor" type="CSGBox3D" parent="Side"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.550, -0.200, 0.775)
+layers = 4
+use_collision = true
+size = Vector3(2.5, 0.4, 1.55)
+material = ExtResource("smallmap_floor_ground")
+
+[node name="BayRescueSideA" type="CSGBox3D" parent="Side"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -2.700, 1.600, 0.775)
+layers = 4
+use_collision = true
+collision_layer = 3
+size = Vector3(0.2, 3.2, 1.55)
+material = ExtResource("smallmap_wall_ground")
+
+[node name="BayRescueBack" type="CSGBox3D" parent="Side"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.450, 1.600, 1.450)
+layers = 4
+use_collision = true
+collision_layer = 3
+size = Vector3(2.3, 3.2, 0.2)
+material = ExtResource("smallmap_wall_ground")
+
 [node name="Backdrop" parent="Outside" instance=ExtResource("backdrop")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.000, 0.000, 0.000)
+transform = Transform3D(-1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, -0.0000, 0.0000, -1.0000, 0.000, 0.000, 0.000)
 
 [node name="ShopSpots" type="Node3D" parent="."]
 
@@ -2220,12 +2088,12 @@ metadata/shop_id = "weapon_crowbar"
 metadata/room = "start"
 
 [node name="ShotgunSidePlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.940, 1.600, -6.000)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 9.500, 1.600, -0.360)
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
 [node name="ShotgunSideSign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.860, 1.600, -6.000)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 9.500, 1.600, -0.440)
 pixel_size = 0.006
 text = "SHOTGUN"
 font_size = 60
@@ -2234,18 +2102,18 @@ modulate = Color(0.1, 0.07, 0.02, 1)
 outline_modulate = Color(1, 0.9, 0.6, 1)
 
 [node name="SpotShotgunSide" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 14.650, 0.000, -6.000)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 9.500, 0.000, -1.650)
 metadata/kind = "wall"
 metadata/shop_id = "weapon_shotgun"
 metadata/room = "side"
 
 [node name="SmgSidePlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.500, 1.600, -7.740)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.600, 1.600, -7.740)
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
 [node name="SmgSideSign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.500, 1.600, -7.660)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.600, 1.600, -7.660)
 pixel_size = 0.006
 text = "TOMMY GUN"
 font_size = 46
@@ -2254,7 +2122,7 @@ modulate = Color(0.1, 0.07, 0.02, 1)
 outline_modulate = Color(1, 0.9, 0.6, 1)
 
 [node name="SpotSmgSide" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.500, 0.000, -6.450)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.600, 0.000, -6.450)
 metadata/kind = "wall"
 metadata/shop_id = "weapon_smg"
 metadata/room = "side"
@@ -2280,12 +2148,12 @@ metadata/shop_id = "weapon_baseball_bat"
 metadata/room = "upstairs"
 
 [node name="FlareUpstairsPlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 0.010, 5.000, 2.300)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 4.500, 5.000, 4.440)
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
 [node name="FlareUpstairsSign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 0.090, 5.000, 2.300)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 4.500, 5.000, 4.360)
 pixel_size = 0.006
 text = "FLARE GUN"
 font_size = 46
@@ -2294,18 +2162,18 @@ modulate = Color(0.1, 0.07, 0.02, 1)
 outline_modulate = Color(1, 0.9, 0.6, 1)
 
 [node name="SpotFlareUpstairs" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 1.300, 3.400, 2.300)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 4.500, 3.400, 3.150)
 metadata/kind = "wall"
 metadata/shop_id = "weapon_flare_gun"
 metadata/room = "upstairs"
 
 [node name="AxeUpstairsPlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.990, 5.000, -4.000)
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.990, 5.000, -1.300)
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
 [node name="AxeUpstairsSign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.910, 5.000, -4.000)
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.910, 5.000, -1.300)
 pixel_size = 0.006
 text = "FIRE AXE"
 font_size = 52
@@ -2314,18 +2182,18 @@ modulate = Color(0.1, 0.07, 0.02, 1)
 outline_modulate = Color(1, 0.9, 0.6, 1)
 
 [node name="SpotAxeUpstairs" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 14.700, 3.400, -4.000)
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 14.700, 3.400, -1.300)
 metadata/kind = "wall"
 metadata/shop_id = "weapon_fire_axe"
 metadata/room = "upstairs"
 
 [node name="ShotgunUpstairsPlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.000, 5.000, -7.790)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.500, 5.000, -7.790)
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
 [node name="ShotgunUpstairsSign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.000, 5.000, -7.710)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.500, 5.000, -7.710)
 pixel_size = 0.006
 text = "SHOTGUN"
 font_size = 60
@@ -2334,7 +2202,7 @@ modulate = Color(0.1, 0.07, 0.02, 1)
 outline_modulate = Color(1, 0.9, 0.6, 1)
 
 [node name="SpotShotgunUpstairs" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.000, 3.400, -6.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.500, 3.400, -6.500)
 metadata/kind = "wall"
 metadata/shop_id = "weapon_shotgun"
 metadata/room = "upstairs"
@@ -2373,7 +2241,7 @@ metadata/crane_spot = 0
 metadata/room = "side"
 
 [node name="LockerStart" type="StaticBody3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 0.500, 14.300)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.500, 0.500, 14.300)
 collision_layer = 1
 collision_mask = 0
 
@@ -2384,12 +2252,12 @@ shape = SubResource("shape_1p2x1x0p4")
 mesh = SubResource("mesh_1p2x1x0p4_ammo_crate")
 
 [node name="LockerStartBand" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 8.000, 0.820, 14.300)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 12.500, 0.820, 14.300)
 size = Vector3(1.24, 0.18, 0.44)
 material = ExtResource("ammo_band")
 
 [node name="LockerStartSign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 8.000, 0.500, 14.080)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 12.500, 0.500, 14.080)
 pixel_size = 0.006
 text = "AMMO"
 font_size = 60
@@ -2398,7 +2266,7 @@ modulate = Color(0.1, 0.07, 0.02, 1)
 outline_modulate = Color(1, 0.9, 0.6, 1)
 
 [node name="SpotLockerStart" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 8.000, 0.000, 13.150)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 12.500, 0.000, 13.150)
 metadata/kind = "ammo"
 metadata/shop_id = ""
 metadata/room = "start"
@@ -2514,35 +2382,35 @@ metadata/shop_id = "tonic_hearty"
 metadata/room = "start"
 
 [node name="PerkLoad" parent="ShopProps" instance=ExtResource("mc_perk_machine")]
-transform = Transform3D(0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 2.940, 0.000, -7.415)
+transform = Transform3D(0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 6.900, 0.000, -8.600)
 perk = &"quick_load"
 
 [node name="PerkLoadBlock" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.940, 0.900, -7.415)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.900, 0.900, -8.600)
 visible = false
 use_collision = true
 size = Vector3(1.28, 1.8, 0.77)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="SpotPerkLoad" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.940, 0.000, -6.315)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.900, 0.000, -7.500)
 metadata/kind = "perk"
 metadata/shop_id = "tonic_quick_load"
 metadata/room = "side"
 
 [node name="PerkRescue" parent="ShopProps" instance=ExtResource("mc_perk_machine")]
-transform = Transform3D(0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 7.600, 0.000, -7.415)
+transform = Transform3D(-0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 0.0000, -0.0000, 0.0000, -0.8500, -1.450, 0.000, 0.700)
 perk = &"swift_rescue"
 
 [node name="PerkRescueBlock" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 7.600, 0.900, -7.415)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.450, 0.900, 0.700)
 visible = false
 use_collision = true
 size = Vector3(1.28, 1.8, 0.77)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="SpotPerkRescue" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 7.600, 0.000, -6.315)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -1.450, 0.000, -0.400)
 metadata/kind = "perk"
 metadata/shop_id = "tonic_swift_rescue"
 metadata/room = "side"
@@ -2565,52 +2433,52 @@ metadata/shop_id = "upgrade_weapon"
 metadata/room = "upstairs"
 
 [node name="PerkHolster" parent="ShopProps" instance=ExtResource("mc_perk_machine")]
-transform = Transform3D(-0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 0.0000, -0.0000, 0.0000, -0.8500, 8.600, 3.400, -0.635)
+transform = Transform3D(0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 0.0000, 0.0000, 0.0000, 0.8500, -4.600, 3.400, -8.600)
 perk = &"third_holster"
 
 [node name="PerkHolsterBlock" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.600, 4.300, -0.635)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.600, 4.300, -8.600)
 visible = false
 use_collision = true
 size = Vector3(1.28, 1.8, 0.77)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="SpotPerkHolster" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 8.600, 3.400, -1.735)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.600, 3.400, -7.500)
 metadata/kind = "perk"
 metadata/shop_id = "tonic_third_holster"
 metadata/room = "upstairs"
 
 [node name="PerkShot" parent="ShopProps" instance=ExtResource("mc_perk_machine")]
-transform = Transform3D(0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 12.600, 3.400, -7.465)
+transform = Transform3D(0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 6.900, 3.400, -8.600)
 perk = &"double_shot"
 
 [node name="PerkShotBlock" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.600, 4.300, -7.465)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.900, 4.300, -8.600)
 visible = false
 use_collision = true
 size = Vector3(1.28, 1.8, 0.77)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="SpotPerkShot" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.600, 3.400, -6.365)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.900, 3.400, -7.500)
 metadata/kind = "perk"
 metadata/shop_id = "tonic_double_shot"
 metadata/room = "upstairs"
 
 [node name="PerkShock" parent="ShopProps" instance=ExtResource("mc_perk_machine")]
-transform = Transform3D(0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 0.0000, 0.0000, 0.0000, 0.8500, 15.410, 3.400, -7.465)
+transform = Transform3D(0.0000, 0.0000, -0.8500, 0.0000, 0.8500, 0.0000, 0.8500, 0.0000, 0.0000, 17.000, 3.400, -4.000)
 perk = &"reload_shock"
 
 [node name="PerkShockBlock" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 15.410, 4.300, -7.465)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 17.000, 4.300, -4.000)
 visible = false
 use_collision = true
-size = Vector3(1.28, 1.8, 0.77)
+size = Vector3(0.77, 1.8, 1.28)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="SpotPerkShock" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 15.410, 3.400, -6.365)
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.900, 3.400, -4.000)
 metadata/kind = "perk"
 metadata/shop_id = "tonic_reload_shock"
 metadata/room = "upstairs"
@@ -2663,7 +2531,7 @@ transform = Transform3D(-1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, -0.0000
 transform = Transform3D(-0.9397, 0.0000, 0.3420, 0.0000, 1.0000, 0.0000, -0.3420, 0.0000, -0.9397, 3.000, 0.000, -0.900)
 
 [node name="RubbleCone1" parent="Dressing" instance=ExtResource("fx_rubble_cone")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, -13.000, 0.000, -4.200)
+transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, -9.000, 0.000, -4.300)
 
 [node name="RubbleA4" parent="Dressing" instance=ExtResource("md_rubble_a")]
 transform = Transform3D(0.0000, 0.0000, 1.0000, 0.0000, 1.0000, 0.0000, -1.0000, 0.0000, 0.0000, -5.400, 0.000, -4.200)
@@ -2678,10 +2546,7 @@ transform = Transform3D(0.5000, 0.0000, -0.8660, 0.0000, 1.0000, 0.0000, 0.8660,
 transform = Transform3D(-0.5000, 0.0000, 0.8660, 0.0000, 1.0000, 0.0000, -0.8660, 0.0000, -0.5000, 12.400, 0.000, -2.300)
 
 [node name="TableTipped2" parent="Dressing" instance=ExtResource("fx_table_tipped")]
-transform = Transform3D(-1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, -0.0000, 0.0000, -1.0000, 8.000, 3.400, 4.100)
-
-[node name="Chair3" parent="Dressing" instance=ExtResource("fx_chair")]
-transform = Transform3D(-0.9063, 0.0000, -0.4226, 0.0000, 1.0000, 0.0000, 0.4226, 0.0000, -0.9063, 6.400, 3.400, 4.000)
+transform = Transform3D(-0.0000, 0.0000, -1.0000, 0.0000, 1.0000, 0.0000, 1.0000, 0.0000, -0.0000, 15.300, 3.400, 3.900)
 
 [node name="FilingCabinet5" parent="Dressing" instance=ExtResource("fx_filing_cabinet")]
 transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 14.400, 3.400, 0.250)
@@ -2690,19 +2555,16 @@ transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 
 transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 15.000, 3.400, 0.250)
 
 [node name="ShelfRack1" parent="Dressing" instance=ExtResource("fx_shelf_rack")]
-transform = Transform3D(0.0000, 0.0000, 1.0000, 0.0000, 1.0000, 0.0000, -1.0000, 0.0000, 0.0000, -5.800, 3.400, -6.700)
-
-[node name="ShelfRack2" parent="Dressing" instance=ExtResource("fx_shelf_rack")]
 transform = Transform3D(0.0000, 0.0000, 1.0000, 0.0000, 1.0000, 0.0000, -1.0000, 0.0000, 0.0000, -5.800, 3.400, -1.300)
 
 [node name="RubbleA6" parent="Dressing" instance=ExtResource("md_rubble_a")]
-transform = Transform3D(0.9659, 0.0000, 0.2588, 0.0000, 1.0000, 0.0000, -0.2588, 0.0000, 0.9659, 4.200, 3.400, 4.100)
+transform = Transform3D(0.9659, 0.0000, 0.2588, 0.0000, 1.0000, 0.0000, -0.2588, 0.0000, 0.9659, 1.000, 3.400, 1.600)
 
 [node name="RubbleB4" parent="Dressing" instance=ExtResource("md_rubble_b")]
-transform = Transform3D(-0.9397, 0.0000, 0.3420, 0.0000, 1.0000, 0.0000, -0.3420, 0.0000, -0.9397, 12.200, 3.400, 4.000)
+transform = Transform3D(-0.9397, 0.0000, 0.3420, 0.0000, 1.0000, 0.0000, -0.3420, 0.0000, -0.9397, 10.200, 3.400, 3.800)
 
 [node name="RubbleA7" parent="Dressing" instance=ExtResource("md_rubble_a")]
-transform = Transform3D(0.3420, 0.0000, 0.9397, 0.0000, 1.0000, 0.0000, -0.9397, 0.0000, 0.3420, -1.000, 3.400, -7.400)
+transform = Transform3D(0.3420, 0.0000, 0.9397, 0.0000, 1.0000, 0.0000, -0.9397, 0.0000, 0.3420, -3.000, 3.400, -2.600)
 
 [node name="RubbleB5" parent="Dressing" instance=ExtResource("md_rubble_b")]
 transform = Transform3D(-0.7660, 0.0000, -0.6428, 0.0000, 1.0000, 0.0000, 0.6428, 0.0000, -0.7660, 9.000, 3.400, -7.400)

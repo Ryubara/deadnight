@@ -259,8 +259,16 @@ def chalk(room: str, name: str, message: str, at, yaw: float, width: float, foll
 
 def outside() -> None:
     """The backdrop (the yard's wire fence, bare trees, the pole lines and the drive-in in the distance): never walked and
-    never collided with, so it is one instance at the building's origin."""
-    place("Outside", "Backdrop", ext("PackedScene", "res://world/smallmap/backdrop.tscn", "backdrop"), (0, 0, 0))
+    never collided with, so it is one instance at the building's origin. It is turned half a circle, so the drive-in
+    (north in the backdrop's own frame) lies south of the building, in front of the hall's south window (#917)."""
+    place("Outside", "Backdrop", ext("PackedScene", "res://world/smallmap/backdrop.tscn", "backdrop"), (0, 0, 0), 180.0)
+
+
+def outside_stair_model(centre, run: float, width: float, rise: float) -> None:
+    """The kit's straight flight drawn over the outside stair's hidden ramp, climbing north, its rails on (one side is
+    open to the yard)."""
+    scale = (width / 1.4, rise / 3.0, run / 4.5)
+    place("Outside", "OutStairFlight", model("stair_straight"), centre, 0.0, scale)
 
 
 # --- The machines the lot has ----------------------------------------------------------------------------------------------
@@ -270,8 +278,8 @@ PERK_SCALE = (
 )
 # name, the machine's scene, its look (perks), the shop item and kind of its spot, room, floor, where it stands (its middle),
 # yaw (its front is +Z before the turn), the hidden block (its size along x and z in the world, and its height) and how far in front of its middle the
-# spot is. Against a wall, flush with it; the room is the machine's: soda in the hall, two perks on the side room's shop
-# wall, the re-cut bench and three more perks upstairs (the dearest, on the farthest walls).
+# spot is. The soda against the hall's west wall; each perk cooler at the back of its own alcove (#917: never two side by
+# side), two in the side room and three upstairs (the dearest, farthest from the start); the re-cut bench upstairs.
 MACHINES = [
     ("Soda", "soda_fountain", None, "tonic_hearty", "perk", "start", 0.0, (0.5, 8.5), 90, (1.0, 2.4, 1.6), 1.2),
     (
@@ -282,7 +290,7 @@ MACHINES = [
         "perk",
         "side",
         0.0,
-        (2.94, -7.415),
+        (6.9, -8.6),
         0,
         (1.28, 0.77, 1.8),
         1.1,
@@ -295,8 +303,8 @@ MACHINES = [
         "perk",
         "side",
         0.0,
-        (7.6, -7.415),
-        0,
+        (-1.45, 0.7),
+        180,
         (1.28, 0.77, 1.8),
         1.1,
     ),
@@ -321,8 +329,8 @@ MACHINES = [
         "perk",
         "upstairs",
         3.4,
-        (8.6, -0.635),
-        180,
+        (-4.6, -8.6),
+        0,
         (1.28, 0.77, 1.8),
         1.1,
     ),
@@ -334,7 +342,7 @@ MACHINES = [
         "perk",
         "upstairs",
         3.4,
-        (12.6, -7.465),
+        (6.9, -8.6),
         0,
         (1.28, 0.77, 1.8),
         1.1,
@@ -347,9 +355,9 @@ MACHINES = [
         "perk",
         "upstairs",
         3.4,
-        (15.41, -7.465),
-        0,
-        (1.28, 0.77, 1.8),
+        (17.0, -4.0),
+        -90,
+        (0.77, 1.28, 1.8),
         1.1,
     ),
 ]
@@ -426,21 +434,19 @@ CLUTTER = [
     ("solid", "filing_cabinet", (1.0, 0.0, -0.6), 180),
     ("solid", "filing_cabinet", (1.6, 0.0, -0.6), 180),
     ("solid", "chair", (3.0, 0.0, -0.9), 160),
-    ("solid", "rubble_cone", (-13.0, 0.0, -4.2), 0),
+    ("solid", "rubble_cone", (-9.0, 0.0, -4.3), 0),
     ("walk", "rubble_a", (-5.4, 0.0, -4.2), 90),
     ("walk", "rubble_b", (-5.0, 0.0, -3.9), 10),
     ("walk", "rubble_a", (14.8, 0.0, -2.6), 300),
     ("walk", "helmet", (12.4, 0.0, -2.3), 120),
-    # upstairs: a tipped table and chairs behind the hall's windows, cabinets, racks by the cabinet, chunks by the windows
-    ("solid", "table_tipped", (8.0, 3.4, 4.1), 180),
-    ("solid", "chair", (6.4, 3.4, 4.0), 205),
+    # upstairs: a tipped table by the bat, cabinets, a rack by the cabinet, chunks inside the windows
+    ("solid", "table_tipped", (15.3, 3.4, 3.9), 270),
     ("solid", "filing_cabinet", (14.4, 3.4, 0.25), 0),
     ("solid", "filing_cabinet", (15.0, 3.4, 0.25), 0),
-    ("solid", "shelf_rack", (-5.8, 3.4, -6.7), 90),
     ("solid", "shelf_rack", (-5.8, 3.4, -1.3), 90),
-    ("walk", "rubble_a", (4.2, 3.4, 4.1), 15),
-    ("walk", "rubble_b", (12.2, 3.4, 4.0), 160),
-    ("walk", "rubble_a", (-1.0, 3.4, -7.4), 70),
+    ("walk", "rubble_a", (1.0, 3.4, 1.6), 15),
+    ("walk", "rubble_b", (10.2, 3.4, 3.8), 160),
+    ("walk", "rubble_a", (-3.0, 3.4, -2.6), 70),
     ("walk", "rubble_b", (9.0, 3.4, -7.4), 220),
     ("walk", "helmet", (14.0, 3.4, -3.0), 80),
     ("walk", "radio", (2.9, 3.4, -0.5), 200),
