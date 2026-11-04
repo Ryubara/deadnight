@@ -674,8 +674,10 @@ already makes a voice from a server event, and a teammate's level up is heard by
 combat chatter but not urgent lines (hurt, downed, a boss, a warning). **Made (#1063, 2026-11-04)**: 24 takes in each
 voice on the free tier, at the maintainer's word ("go ahead and get them going, I'll get the package with commercial
 rights in a moment"); they are **not licensed for commercial use** and are regenerated under the commercial plan before
-release ([#252](https://github.com/Ryubara/deadnight/issues/252)). The server events are wired to them when #1059 lands
-([research](../research/audio.md#the-progression-voice-lines-1063)).
+release ([#252](https://github.com/Ryubara/deadnight/issues/252)). The server's `level_up`, `tier_up` and
+`unlock_earned` are wired to them for every client; `challenge_done` waits for the challenge tracker (#1076)
+([research](../research/audio.md#the-progression-voice-lines-1063),
+[sound design](audio.md#the-soldiers-voices)).
 
 ## Level icons
 
