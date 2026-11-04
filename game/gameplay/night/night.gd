@@ -124,6 +124,8 @@ var challenges: ChallengeSession
 ## online the server awards.
 var profile_store: ProfileStore
 var progress: ProgressSession
+## What the night report shows (`ReportTracker`), made with the client state.
+var report: ReportTracker
 ## Sends the profile's queued writes to the account; null keeps them on this machine until a night
 ## has one. (A Callable does not keep its object alive: the night holds the uplink.)
 var profile_uplink: ProfileUplink
@@ -210,6 +212,7 @@ func start(
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
 	_track_challenges()
+	report = ReportTracker.follow(state, NightTally.fuel_items_of(rules_tuning))
 	_track_progress()
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks, world.layout.words())
@@ -258,6 +261,7 @@ func start_remote(
 	bot_orders.sender = link.send
 	state = ClientState.new()
 	_track_challenges()
+	report = ReportTracker.follow(state, NightTally.fuel_items_of(rules_tuning))
 	var failure := {"reason": ""}
 	var welcome := {}
 	online.welcomed.connect(func(snapshot: Dictionary) -> void: welcome["snapshot"] = snapshot)
