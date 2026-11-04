@@ -14,6 +14,7 @@ const PLAY_SCREEN := "res://ui/screens/play_screen.tscn"
 const JOIN_SCREEN := "res://ui/screens/together_screen.tscn"
 const SETTINGS_SCREEN := "res://ui/screens/settings_screen.tscn"
 const CREDITS_SCREEN := "res://ui/screens/credits_screen.tscn"
+const CARDS_SCREEN := "res://ui/screens/cards_screen.tscn"
 ## The route of each ask a panel can make. Play together opens the Play together screen. Quick
 ## join has no route: it joins from the menu (`QuickJoinOverlay`) and reaches a screen only by its
 ## fallback, a night of the player's own (#526).
@@ -22,6 +23,7 @@ const ROUTES := {
 	&"together": [JOIN_SCREEN, UITransition.Kind.SLIDE],
 	&"settings": [SETTINGS_SCREEN, UITransition.Kind.SLIDE],
 	&"credits": [CREDITS_SCREEN, UITransition.Kind.BURN],
+	&"cards": [CARDS_SCREEN, UITransition.Kind.SLIDE],
 }
 
 ## Builds the challenge board the menu reads (a test or a capture sets its own).

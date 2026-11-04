@@ -149,3 +149,59 @@ func test_a_garbled_field_falls_back_to_its_start() -> void:
 	assert_bool(profile.done.is_empty()).is_true()
 	assert_bool(profile.opening_night).is_false()
 	assert_int(profile.bonus_day).is_equal(Profile.NO_DAY)
+
+
+# --- The calling card and the emblem a player chose (#1070) ---
+
+
+func test_a_choice_is_on_the_profile_at_once_and_queued_for_the_backend() -> void:
+	var store := _store("equip")
+	assert_bool(store.equip(&"card", &"dead_eye")).is_true()
+	assert_bool(store.equip(&"emblem", &"walk_in")).is_true()
+	assert_str(store.profile.chosen(&"card")).is_equal("dead_eye")
+	assert_str(store.profile.chosen(&"emblem")).is_equal("walk_in")
+	assert_int(store.queue.size()).is_equal(2)
+	assert_dict(store.queue[0]["equipped"]).is_equal({"card": "dead_eye"})
+	# The file keeps both the choice and the writes still to send.
+	var again := ProfileStore.open(store.path)
+	assert_str(again.profile.chosen(&"card")).is_equal("dead_eye")
+	assert_int(again.queue.size()).is_equal(2)
+	# The same choice again changes nothing and queues nothing.
+	assert_bool(store.equip(&"card", &"dead_eye")).is_false()
+	assert_int(store.queue.size()).is_equal(2)
+
+
+func test_a_player_with_no_account_chooses_nothing() -> void:
+	var store := _store("equip_none", false)
+	assert_bool(store.equip(&"card", &"dead_eye")).is_false()
+	assert_str(store.profile.chosen(&"card")).is_equal("")
+	assert_bool(store.queue.is_empty()).is_true()
+
+
+func test_taking_a_piece_off_is_a_choice_too_and_the_latest_choice_wins_when_writes_merge() -> void:
+	var store := _store("equip_merge")
+	store.equip(&"card", &"dead_eye")
+	store.equip(&"card", &"ironwork")
+	store.equip(&"emblem", &"walk_in")
+	store.equip(&"emblem", &"")
+	assert_str(store.profile.chosen(&"emblem")).is_equal("")
+	store.coalesce()
+	assert_int(store.queue.size()).is_equal(1)
+	assert_dict(store.queue[0]["equipped"]).is_equal({"card": "ironwork", "emblem": ""})
+	# Put on a fresh profile the merged write ends in the same state as the choices made one by one.
+	var fresh := Profile.new()
+	fresh.apply_write(store.queue[0])
+	assert_str(fresh.chosen(&"card")).is_equal("ironwork")
+	assert_str(fresh.chosen(&"emblem")).is_equal("")
+
+
+func test_a_choice_survives_the_accounts_own_profile_being_read_at_sign_in() -> void:
+	var store := _store("equip_adopt")
+	store.equip(&"card", &"dead_eye")
+	# The backend still holds the older choice: what is queued goes on top of it.
+	store.adopt(
+		{"revision": 3, "schema_version": 1, "data": {"xp": 500, "equipped": {"card": "ironwork"}}},
+		"acct"
+	)
+	assert_int(store.profile.xp).is_equal(500)
+	assert_str(store.profile.chosen(&"card")).is_equal("dead_eye")

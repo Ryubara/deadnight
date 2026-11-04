@@ -12,6 +12,9 @@ extends RefCounted
 ## - Three orders are open at a time, no timer. A finished order is replaced when the night is
 ##   settled; a player may swap one for another at any time, free, losing only its own progress.
 ## - Milestones are ladders over lifetime totals; the rung reached is derived, never stored.
+## - Feats are lasting goals, each done once (`feats`: id -> progress); finishing one gives a
+##   calling card or an emblem (`ChallengeDef.grants`). A feat over several stats is as far as the
+##   lowest of them.
 ## - `apply` advances everything the stat touches and answers what moved, for the prompt.
 
 const SCHEMA_VERSION := 1
@@ -34,6 +37,9 @@ var order_draws := 0
 var recent_orders: Array[StringName] = []
 ## Lifetime totals by stat (a best stat holds the most reached).
 var lifetime: Dictionary = {}
+## Progress of each feat the player has begun: id -> count (a feat over several stats keeps the
+## lowest of them).
+var feats: Dictionary = {}
 ## How many dailies and orders were ever finished: `{daily, order}`.
 var finished := {"daily": 0, "order": 0}
 ## Counts saves, for the backend's optimistic concurrency later.
@@ -166,7 +172,34 @@ func apply(
 		for def in catalog.of_family(ChallengeDef.Family.MILESTONE):
 			if def.stat == stat:
 				_climb(def, before, after, moved)
+	for def in catalog.of_family(ChallengeDef.Family.FEAT):
+		if def.counts(stat):
+			_advance_feat(def, value, delta, moved)
 	return moved
+
+
+## A feat moved by the stat that just changed (the lifetime totals already hold it).
+func _advance_feat(def: ChallengeDef, value: int, delta: int, moved: Array[Dictionary]) -> void:
+	var before := int(feats.get(def.id, 0))
+	if before >= def.target:
+		return
+	var after := before
+	if not def.stats.is_empty():
+		after = def.target
+		for each in def.stats:
+			after = mini(after, int(lifetime.get(each, 0)))
+	elif def.mode == ChallengeDef.Mode.TOTAL:
+		after = before + delta
+	else:
+		after = maxi(before, value)
+	if after <= before:
+		return
+	feats[def.id] = after
+	# A feat says nothing on the way (the ladders and orders beside it do): only that it is done.
+	if after >= def.target:
+		var entry := _advance_entry(def, before, after)
+		entry["checkpoint"] = 100
+		moved.append(entry)
 
 
 func _advance(
@@ -191,23 +224,23 @@ func _advance(
 	if done:
 		var kind := "daily" if def.family == ChallengeDef.Family.DAILY else "order"
 		finished[kind] = int(finished[kind]) + 1
-	(
-		moved
-		. append(
-			{
-				"id": def.id,
-				"family": def.family,
-				"text": def.words(),
-				"before": before,
-				"after": mini(after, def.target),
-				"target": def.target,
-				"checkpoint": checkpoint_crossed(before, after, def.target),
-				"completed": done,
-				"rung": 0,
-				"rungs": 0,
-			}
-		)
-	)
+	moved.append(_advance_entry(def, before, after))
+
+
+## What `apply` answers for a daily, an order or a feat that moved from `before` to `after`.
+func _advance_entry(def: ChallengeDef, before: int, after: int) -> Dictionary:
+	return {
+		"id": def.id,
+		"family": def.family,
+		"text": def.words(),
+		"before": before,
+		"after": mini(after, def.target),
+		"target": def.target,
+		"checkpoint": checkpoint_crossed(before, after, def.target),
+		"completed": after >= def.target,
+		"rung": 0,
+		"rungs": 0,
+	}
 
 
 func _climb(def: ChallengeDef, before: int, after: int, moved: Array[Dictionary]) -> void:
@@ -255,6 +288,7 @@ func to_dict() -> Dictionary:
 		"order_draws": order_draws,
 		"recent_orders": recent_orders.map(func(id: StringName) -> String: return String(id)),
 		"lifetime": _strings(lifetime),
+		"feats": _strings(feats),
 		"finished": finished.duplicate(),
 		"revision": revision,
 	}
@@ -292,6 +326,10 @@ static func from_dict(data: Dictionary) -> ChallengeProfile:
 	if totals is Dictionary:
 		for stat: Variant in totals:
 			profile.lifetime[StringName(str(stat))] = maxi(0, int(totals[stat]))
+	var begun: Variant = data.get("feats")
+	if begun is Dictionary:
+		for id: Variant in begun:
+			profile.feats[StringName(str(id))] = maxi(0, int(begun[id]))
 	var done: Variant = data.get("finished")
 	if done is Dictionary:
 		profile.finished["daily"] = maxi(0, int(done.get("daily", 0)))

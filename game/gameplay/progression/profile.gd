@@ -4,8 +4,9 @@ extends RefCounted
 ## and the tier are `LevelCurve`'s, so a retune needs no migration). Plain data that round-trips
 ## through `to_dict` / `from_dict`; the envelope it travels in is `ProfileSave`.
 ##
-## `equipped` is what the player wears and shows (the wardrobe's issue fills it), `done` the
-## challenge ids ever finished (the calling cards read it), `opening_night` whether the one-off
+## `equipped` is what the player wears and shows to others: the calling card and the emblem they
+## chose (`card`, `emblem`: piece ids, absent for none), `done` the challenge ids ever finished
+## (what a challenge gave them is read from it, `PlateCatalog`), `opening_night` whether the one-off
 ## first-night XP was paid, `bonus_day` the local day number the first-game-of-the-day XP was last
 ## paid for (-1: never). XP past level 55 is kept; nothing is awarded for it yet (#1055).
 
@@ -28,7 +29,8 @@ func add_xp(amount: int) -> void:
 	xp += maxi(amount, 0)
 
 
-## Adds a queued write (`ProfileStore`: `{xp, opening_night, bonus_day, done}`, every key optional):
+## Adds a queued write (`ProfileStore`: `{xp, opening_night, bonus_day, done, equipped}`, every key
+## optional; `equipped` holds the choices that changed, an empty id taking one away):
 ## what the backend is sent, and what the cached profile takes, so the two agree.
 func apply_write(write: Dictionary) -> void:
 	add_xp(int(write.get("xp", 0)))
@@ -40,11 +42,28 @@ func apply_write(write: Dictionary) -> void:
 	if finished is Array:
 		for id: Variant in finished:
 			mark_done(StringName(str(id)))
+	var chosen: Variant = write.get("equipped", {})
+	if chosen is Dictionary:
+		for kind: Variant in chosen:
+			choose(StringName(str(kind)), StringName(str(chosen[kind])))
 
 
 ## Whether the day's first-game XP is still owed for local day `day`.
 func bonus_due(day: int) -> bool:
 	return bonus_day != day
+
+
+## The piece of `kind` (`card`, `emblem`) the player chose, `&""` for none.
+func chosen(kind: StringName) -> StringName:
+	return StringName(str(equipped.get(String(kind), "")))
+
+
+## Chooses a piece to wear (an empty id takes the choice away).
+func choose(kind: StringName, id: StringName) -> void:
+	if id == &"":
+		equipped.erase(String(kind))
+	else:
+		equipped[String(kind)] = String(id)
 
 
 ## Notes a finished challenge once.

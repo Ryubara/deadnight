@@ -74,7 +74,14 @@ func next_after(level: int) -> Dictionary:
 ## What a row gives, in words ("rolled_sleeves" is "rolled sleeves"; a map is named as one).
 static func label_of(row: Dictionary) -> String:
 	var words := String(row["item"]).replace("_", " ")
-	return "%s map" % words if row["slot"] == &"map" else words
+	match row["slot"]:
+		&"map":
+			return "%s map" % words
+		&"tier_card":
+			return "%s card" % words
+		&"tier_emblem", &"emblem":
+			return "%s emblem" % words
+	return words
 
 
 ## Every level that has a row.

@@ -143,8 +143,13 @@ func test_a_level_crossed_is_told_once_with_what_it_gives() -> void:
 	var up := _of(XpAward.LEVEL_UP, said)[0]
 	assert_int(up["level"]).is_equal(2)
 	assert_int(up["total"]).is_equal(102)
-	# Level 2 gives the plate's cards and an emblem whose art is not drawn: no unlock is told.
-	assert_int(_of(XpAward.UNLOCK, said).size()).is_equal(0)
+	# Level 2 opens the calling cards with the first emblem: both are told, no tier opens.
+	(
+		assert_array(
+			_of(XpAward.UNLOCK, said).map(func(e: Dictionary) -> StringName: return e["item"])
+		)
+		. is_equal([&"calling_cards", &"admit_one"])
+	)
 	assert_int(_of(XpAward.TIER_UP, said).size()).is_equal(0)
 	# Nothing more is said while the level holds.
 	_rules.apply(RulesAction.grant_points(1, 100))
@@ -183,11 +188,22 @@ func test_several_levels_in_one_tick_are_each_told_in_order() -> void:
 		func(event: Dictionary) -> int: return event["level"]
 	)
 	assert_array(levels).is_equal([2, 3, 4, 5])
-	# The items of levels 3, 4 and 5 that have art: Cherry, Rolled sleeves and Tan.
+	# The items of levels 2 to 5: the calling cards and the first emblem, Cherry, Rolled sleeves and
+	# Tan, and the first tier's card and emblem at level 5.
 	var items: Array = _of(XpAward.UNLOCK, said).map(
 		func(event: Dictionary) -> StringName: return event["item"]
 	)
-	assert_array(items).is_equal([&"cherry", &"rolled_sleeves", &"tan"])
+	assert_array(items).is_equal(
+		[
+			&"calling_cards",
+			&"admit_one",
+			&"cherry",
+			&"rolled_sleeves",
+			&"tan",
+			&"doors_open",
+			&"doors_open"
+		]
+	)
 
 
 func test_a_seat_with_no_account_earns_nothing_and_a_bot_has_no_level() -> void:

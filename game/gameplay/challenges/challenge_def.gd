@@ -6,9 +6,14 @@ extends RefCounted
 ## `mode` is how the stat counts toward the target: TOTAL adds up across nights, ONE_NIGHT is the
 ## most a single night reached ("Reach round 8 in one night"). A milestone has `steps` (a ladder of
 ## targets, each reached in turn) instead of one `target`; its target is the next step.
-## `reward` is a placeholder: nothing pays out yet, the numbers are the design's first guess.
+## `reward` is the XP a finished challenge pays (`xp`).
+##
+## A FEAT is a lasting goal that is done once and gives something to show (`grants`): the calling
+## cards and emblems of the plate (`PlateCatalog`). `grants` lists what a challenge gives, each
+## `card:<id>`, `emblem:<id>` or `frame:<id>`. A feat may be counted over several stats (`stats`):
+## it is done when the lowest of them reaches the target ("250 kills with every weapon").
 
-enum Family { DAILY, ORDER, MILESTONE }
+enum Family { DAILY, ORDER, MILESTONE, FEAT }
 enum Mode { TOTAL, ONE_NIGHT }
 enum Tier { SHORT, MEDIUM, LONG }
 
@@ -27,6 +32,10 @@ var group: StringName = &""
 ## Orders: which pillar of the night the goal belongs to (night, light, craft).
 var pillar: StringName = &""
 var reward: Dictionary = {}
+## What finishing gives to wear: `card:<id>`, `emblem:<id>`, `frame:<id>`.
+var grants: Array[StringName] = []
+## A feat over several stats: the lowest of them is its progress (`stat` is the first).
+var stats: Array[StringName] = []
 
 
 ## The definition a data record describes.
@@ -43,11 +52,22 @@ static func from_dict(record: Dictionary, p_family: Family) -> ChallengeDef:
 	def.group = StringName(record.get("group", ""))
 	def.pillar = StringName(record.get("pillar", ""))
 	def.reward = record.get("reward", {})
+	for grant: Variant in record.get("grants", []):
+		def.grants.append(StringName(str(grant)))
+	for each: Variant in record.get("stats", []):
+		def.stats.append(StringName(str(each)))
+	if def.stat == &"" and not def.stats.is_empty():
+		def.stat = def.stats[0]
 	return def
 
 
 func is_ladder() -> bool:
 	return not steps.is_empty()
+
+
+## Whether a change of `changed` (a stat) can move this challenge.
+func counts(changed: StringName) -> bool:
+	return changed == stat or stats.has(changed)
 
 
 ## The words for `at` (a target; a ladder's is its next step): `{n}` is the number.
@@ -76,4 +96,22 @@ func problems(weapon_ids: Array[StringName], type_ids: Array[StringName]) -> Arr
 		found.append("%s: only a milestone has steps" % id)
 	if family == Family.DAILY and group == &"":
 		found.append("%s: a daily needs a group" % id)
+	for each in stats:
+		if not ChallengeStats.is_known(each, weapon_ids, type_ids):
+			found.append("%s: unknown stat '%s'" % [id, each])
+	if not stats.is_empty() and (family != Family.FEAT or mode != Mode.TOTAL):
+		found.append("%s: only a feat counted in total goes over several stats" % id)
+	for grant in grants:
+		if not _is_grant(String(grant)):
+			found.append("%s: grant '%s' is not card:<id>, emblem:<id> or frame:<id>" % [id, grant])
 	return found
+
+
+static func _is_grant(grant: String) -> bool:
+	var parts := grant.split(":")
+	return (
+		parts.size() == 2
+		and parts[0] in ["card", "emblem", "frame"]
+		and not (parts[1] as String).is_empty()
+		and (parts[1] as String) == (parts[1] as String).to_snake_case()
+	)

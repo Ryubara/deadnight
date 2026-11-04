@@ -215,3 +215,21 @@ func test_closing_the_menu_on_the_loadout_tab_saves_what_was_picked() -> void:
 	Settings.load_from_disk()
 	assert_bool(LookStore.load_look().equals(picked)).is_true()
 	assert_str(String(MenuHero.saved_weapon())).is_equal(String(weapon))
+
+
+func test_the_plate_row_says_what_is_worn_and_asks_the_menu_for_the_cards_screen() -> void:
+	var path := "user://loadout_plate_profile.json"
+	var profile := Profile.new()
+	profile.xp = LevelCurve.xp_for(10)
+	profile.done = [&"f_dead_eye"]
+	profile.equipped = {"card": "dead_eye", "emblem": "cartoon"}
+	ProfileSave.write(profile, [], 1, path)
+	MenuProfile.profile_path = path
+	var shell := await _open()
+	await _go_to(shell, MenuTab.Id.LOADOUT)
+	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
+	assert_str(panel.plate_text()).is_equal("Dead Eye + Cartoon")
+	await _click(panel.plate_button())
+	assert_array(_actions).contains([&"cards"])
+	MenuProfile.profile_path = ProfileSave.DEFAULT_PATH
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))

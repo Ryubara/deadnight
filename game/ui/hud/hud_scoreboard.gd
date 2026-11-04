@@ -203,6 +203,7 @@ func _player_row(player_id: int, cells: Array[String]) -> Control:
 	row.add_theme_constant_override(&"separation", 0)
 	row.custom_minimum_size.y = ROW_HEIGHT
 	wash.add_child(row)
+	PlateRow.card_behind(wash, state.plate_of(member)["card"], ROW_HEIGHT, tokens.bg)
 	var chip_slot := CenterContainer.new()
 	chip_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip_slot.custom_minimum_size.x = CHIP.x + float(HudStyle.MD)
@@ -222,7 +223,10 @@ func _player_row(player_id: int, cells: Array[String]) -> Control:
 			var ping := int(member["ping"])
 			ink = tokens.ink_muted if ping < 0 else grades[ping_grade(ping)]
 		var shown := state.level_of(member)
-		var room := widths[i] - (HudLevelCell.taken(shown) if i == 0 else 0.0)
+		var plate := state.plate_of(member)
+		var room := (
+			widths[i] - (HudLevelCell.taken(shown, plate["emblem"], ROW_HEIGHT) if i == 0 else 0.0)
+		)
 		var label := HudStyle.clip(HudStyle.label("", HudStyle.MEDIUM, ink, i > 0))
 		label.custom_minimum_size = Vector2(room, ROW_HEIGHT)
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -231,7 +235,7 @@ func _player_row(player_id: int, cells: Array[String]) -> Control:
 		)
 		HudStyle.set_fitted(label, cells[i], HudStyle.MEDIUM, room - float(HudStyle.SM))
 		if i == 0:
-			row.add_child(HudLevelCell.wrap(label, shown, tokens.ink, ROW_HEIGHT))
+			row.add_child(HudLevelCell.wrap(label, shown, tokens.ink, ROW_HEIGHT, plate["emblem"]))
 		else:
 			row.add_child(label)
 	return wash

@@ -76,7 +76,14 @@ func refresh() -> void:
 		var box := _boxes[player_id]
 		_column.move_child(box, i)
 		var local := player_id == state.local_player_id
-		box.show_player(player_id, member, local, ids.size() > COMPACT_FROM, state.level_of(member))
+		box.show_player(
+			player_id,
+			member,
+			local,
+			ids.size() > COMPACT_FROM,
+			state.level_of(member),
+			state.plate_of(member)
+		)
 		(
 			shown
 			. append(

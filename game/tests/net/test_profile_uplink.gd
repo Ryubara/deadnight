@@ -246,6 +246,26 @@ func test_a_write_goes_on_the_accounts_own_latest_never_on_a_file(
 	assert_str(store.account).is_equal(api.my_id())
 
 
+func test_a_chosen_card_and_emblem_reach_the_accounts_profile_and_nothing_else_moves(
+	_do_skip := BackendFixture.why_not() != "", _skip_reason := NEEDS
+) -> void:
+	await _start_backend()
+	var api := await _guest("Cy")
+	var seed_profile := Profile.new().to_dict()
+	seed_profile["done"] = ["f_dead_eye"]
+	assert_bool((await api.write_save(ProfileUplink.SLOT, 0, 1, seed_profile))["ok"]).is_true()
+	var store := _store("equip_up")
+	assert_bool(store.equip(&"card", &"dead_eye")).is_true()
+	assert_bool(store.equip(&"emblem", &"walk_in")).is_true()
+	var uplink := ProfileUplink.new(api, store)
+	assert_int(await store.flush(uplink.send, true)).is_equal(1)
+	var held := await _held(api)
+	assert_dict(held["data"]["equipped"]).is_equal({"card": "dead_eye", "emblem": "walk_in"})
+	# The finished challenges the account had are as they were, and the choice added no XP.
+	assert_int(int(held["data"]["xp"])).is_equal(0)
+	assert_array(held["data"]["done"]).is_equal(["f_dead_eye"])
+
+
 func test_a_stale_revision_is_read_again_and_sent_on_the_new_latest(
 	_do_skip := BackendFixture.why_not() != "", _skip_reason := NEEDS
 ) -> void:
