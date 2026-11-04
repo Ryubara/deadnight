@@ -33,10 +33,11 @@ JOB_LIMIT_SECONDS = 15 * 60
 WARN_SHARE = 0.60
 FAIL_SHARE = 0.80
 # The `web` job's `timeout-minutes` (ci_test_shards.py --self-test holds the two equal). Annotated past 30 minutes, which
-# was the limit when a slow install cancelled the job; failed past 36, four minutes before the cancel.
+# was the limit when a slow install cancelled the job; failed past 38, two minutes before the cancel (the slowest `main`
+# run, 1,704 s, plus the 471 s install of #1111 is 36 minutes: annotated, still green).
 WEB_JOB_LIMIT_SECONDS = 40 * 60
 WEB_WARN_SHARE = 0.75
-WEB_FAIL_SHARE = 0.90
+WEB_FAIL_SHARE = 0.95
 # An install step (system packages, browser) past this is named in the annotation. Warm it takes 5 to 30 s, cold 13 to
 # 153 s on `main`, 471 s on the slow mirror.
 WEB_SLOW_STEP_SECONDS = 180
@@ -203,7 +204,7 @@ def self_test() -> None:
     report, code, annotation = check_web(steps, WEB_JOB_LIMIT_SECONDS * 0.5)
     assert code == 0 and annotation.startswith("::warning") and "playwright install" in annotation, annotation
     assert check_web(steps[:1], WEB_JOB_LIMIT_SECONDS * 0.8)[2].startswith("::warning title=web job is getting slow")
-    report, code, annotation = check_web(steps, WEB_JOB_LIMIT_SECONDS * 0.95)
+    report, code, annotation = check_web(steps, WEB_JOB_LIMIT_SECONDS * 0.97)
     assert code == 1 and annotation.startswith("::error") and "'playwright install" in annotation, annotation
     assert check_web([], 60)[1] == 0
     with tempfile.TemporaryDirectory() as tmp:

@@ -282,7 +282,7 @@ jobs:
     # The job takes 1,100 to 1,700 s on a `main` run, nearly all of it the probes below, and was cancelled at 30 minutes
     # when the browser's install took 471 s on a slow mirror (#1111). So: the install is cached (apt packages and the
     # browser, below), each install step has a limit of its own that names it when it fails, the job has 40 minutes, and
-    # the last step (tools/ci_shard_time.py web) annotates a job past 30 and fails one past 36, with the install times
+    # the last step (tools/ci_shard_time.py web) annotates a job past 30 and fails one past 38, with the install times
     # in the summary (docs/research/ci-time.md, "The web job").
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -419,7 +419,7 @@ jobs:
             uv run --with playwright=="$PLAYWRIGHT_VERSION" --with cryptography python repos/deadnight/tools/web_smoke/activity.py repos/deadnight/build/web - "smoke/discord-share-$mode" --embed plain --share --real-bridge --local-backend --host-mode "$mode"
           done
       - name: Hold the job to its share of the job's limit
-        # Warns past 75 % of the 40 minutes (the old limit) and fails past 90 %; names a slow install step either way.
+        # Warns past 75 % of the 40 minutes (the old limit) and fails past 95 %; names a slow install step either way.
         if: always()
         run: |
           python3 repos/deadnight/tools/ci_shard_time.py web --elapsed "$(( $(date +%s) - WEB_CLOCK ))" \
