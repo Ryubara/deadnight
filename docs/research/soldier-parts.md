@@ -126,3 +126,40 @@ arm through a bow tie. Those are clip faults, recorded per clip in `tests/charac
 fails a clip that gets deeper than recorded and any new one; #939 is to bring them down. The menu's long-gun holds keep
 a long sleeve's right forearm 30-39 mm into the chest (recorded, at most 4 cm); her rolled sleeves (the maintainer's
 look) are clean with every weapon.
+
+## The arm's length (#978)
+
+The maintainer saw the female Soldier's arms as too long ("maybe double check it for males as well"). Measured
+(`tools/blender/measure_arms.py`, kit metres; `game/tests/art/measure_arms.tscn` for the menu's holds, game metres):
+
+- Nothing stretched an arm. The parts skeleton is the kit's bone for bone (the Soldier, Hazmat and Enemy share the
+  joints), no clip of any Soldier file keys a position or a scale on an arm or hand bone (only `Shoulder.L/R`, 19 mm
+  at most in Punch), and in every hold of the menu the upper arm and forearm are 0.310 and 0.352, as at rest: the
+  hand IK only turns bones.
+- Hers was not longer than his: every look of both characters wore the kit Soldier's arm, upper arm 0.388, forearm
+  0.440, hand 0.384, 1.212 in all, 0.547 of the 2.216 height (the kit's span is 1.23 times its height), the forearm
+  longer than the upper arm; standing, the fingertips hung at 0.165 of the height, below the knees, 0.45 under the
+  crotch. It read longest on her: her body is his with the waist 13 % narrower and his shoulders, arms and hands, and
+  two of her four presets wear bare-armed tops whose skin is pushed 25 mm in, a thin skin-coloured arm from the
+  sleeve to a fingertip at the knee.
+- The long guns were held at that arm's full reach: the left arm used 0.90-0.98 of its length on the fore-ends at the
+  low ready (and fell 8-13 mm short of the M249's, the PPSh's and the pump's at 40 degrees down).
+
+What changed: the forearm is 0.80 of the kit's (0.352; the arm 1.124, 0.507 of the height; the fingertips at 0.198,
+at the knee), the long guns' stance 10 degrees more, and the weapon slides back along its barrel when the fore-end is
+still out of reach ([How a gun is held](../design/weapon-hold.md#how-a-gun-is-held)). Tried first at run time
+(`measure_arms.tscn -- --forearm=0.88 --stance=10 --pitch=-0.7`, the skeleton's rest shortened in the probe): a
+forearm of 0.88 needed 10 degrees of stance at the low ready, 0.80 needed 20, or 10 and the slide; looking down
+57 degrees, no stance short of 50 degrees more reached without the slide.
+
+What broke on the way:
+
+- The bare tops' wrists opened and their cuff rings came back as bracelets: the parts build picks the cuff and the
+  wrist seam by their place along the kit's arm (`|x|` 0.74-0.95 at rest), and the seam had moved 7 cm in. The places
+  are now written in the kit's numbers and read through `soldier_arms.along` (`test_soldier_watertight.gd` failed
+  first, 24 combinations).
+- The sprint carry's left hand spun 77-86 degrees in one tick of the puppet's sprint start: the carries' left wrist was
+  turned 175-180 degrees off its turn in the gun hold, and the tree's blend between the two takes either way round
+  near half a turn; main's 178 had been on the lucky side. Each carry now rolls its left forearm (one roll for the
+  loop, 45-60 degrees) so the wrist stays within 150 degrees (`CARRY_WRIST_MAX` in `tools/blender/soldier_clips.py`);
+  `test_sprint_start_blend.gd` failed first.

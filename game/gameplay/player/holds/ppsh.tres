@@ -15,4 +15,4 @@ support = Vector3(-0.33, 0, 0)
 muzzle = Vector3(-0.5, 0.04, 0)
 butt = Vector3(0.361, 0, 0)
 pitch_offset_deg = 0.0
-stance_turn_deg = 30.0
+stance_turn_deg = 40.0
