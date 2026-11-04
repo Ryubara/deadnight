@@ -153,7 +153,7 @@ Each is a choice (marked **Choice**): include, change or drop.
 
 - **Weapon skins** (camos) come from per-class **feats** (kills, headshots, a night without a re-cut, an extraction),
   in the three-tier shape the genre uses (a common set, a special set, a mastery set), with **rarity** from the
-  research in [#1053](https://github.com/Ryubara/deadnight/issues/1053). They are the long game and they stay through a
+  research in [Cosmetic rarity](cosmetic-rarity.md). They are the long game and they stay through a
   prestige, because a feat earned them. Prestige adds exclusive skins (below).
 - **Character costumes** stay as in [the progression plan](progression.md): level-gated pieces are part of what resets.
 
@@ -400,7 +400,7 @@ mattering after five to seven), so the tenth prestige is as costly as the first.
 - **Exclusive items, leaning on extraction.** Each prestige has two kinds: items **given at the reset** (the mark, the
   card, the emblem, the frame) and an **exclusive earned on that climb by winning a night** (an extraction, from
   [#1056](https://github.com/Ryubara/deadnight/issues/1056)): a weapon skin, a costume piece, in the rarity tiers
-  [#1053](https://github.com/Ryubara/deadnight/issues/1053) is researching. The second kind makes a prestige more
+  [Cosmetic rarity](cosmetic-rarity.md) describes. The second kind makes a prestige more
   than a longer grind: the player must win, once, on the climb, to finish the set. **Choice** 8: and whether prestige
   itself should *need* one extraction at level 55 (a final exam; I would not, because a team that has not got extraction
   working yet should not be locked out).
