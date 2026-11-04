@@ -48,7 +48,7 @@ func _init() -> void:
 	body.add_child(_title)
 	body.add_child(_subtitle)
 	custom_minimum_size.x = WIDTH
-	_subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	(_subtitle as HudLabel).wrap_words(TextServer.AUTOWRAP_WORD_SMART)
 	visible = false
 
 
@@ -178,7 +178,9 @@ func _apply() -> void:
 
 
 func _draw() -> void:
-	super()
+	# The card and its bulbs are one command (`HudShapes`).
+	var shapes := HudShapes.new()
+	HudStyle.add_ticket(shapes, Rect2(Vector2.ZERO, size), accent, lit)
 	var count := int(size.x / BULB_GAP)
 	var phase := 0 if UIMotion.reduced else int(_clock * CHASE)
 	for row in [8.0, size.y - 8.0]:
@@ -186,5 +188,6 @@ func _draw() -> void:
 			var lit := (i + phase) % 3 == 0
 			var at := Vector2((i + 0.5) * size.x / float(count), row)
 			if lit:
-				draw_circle(at, BULB_RADIUS * 2.2, Color(tokens.accent, 0.2))
-			draw_circle(at, BULB_RADIUS, tokens.accent_bright if lit else tokens.outline)
+				shapes.circle(at, BULB_RADIUS * 2.2, Color(tokens.accent, 0.2))
+			shapes.circle(at, BULB_RADIUS, tokens.accent_bright if lit else tokens.outline)
+	shapes.flush(self)

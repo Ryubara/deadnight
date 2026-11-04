@@ -12,6 +12,9 @@ extends RefCounted
 ##   `cull=D`   every mesh of the lot stops drawing D metres from the camera
 ##   `cullsmall=D` the same, only for meshes under 2 m across
 ##   `ui=0`     hide the HUD and the touch layer
+##   `hudcost=1` once `hudalive` dead (default 60) stand: the HUD's redraws a second and its draw
+##              calls (`HudCostProbe.run_night`, printed as `HUDCOST_NIGHT`); `hudsecs=S` (10),
+##              `hudquit=1` ends the run after it
 ##   `hints=0`  the touch hints ("DRAG TO MOVE") are marked used, as for a player who has played: an
 ##              autopilot never touches, so they would stay up and animate for the whole run (#834)
 ## It changes nothing the rules or the physics see.
@@ -62,3 +65,7 @@ static func apply(args: NetArgs, night: Night, screen: Control) -> void:
 		for node in screen.get_tree().root.find_children("*", "TouchHints", true, false):
 			for id in TouchHints.ORDER:
 				(node as TouchHints).mark_used(id)
+	if args.get_int("hudcost") == 1:
+		var probe := HudCostProbe.new()
+		screen.add_child(probe)
+		probe.run_night(args, night, screen)

@@ -55,7 +55,7 @@ func _init() -> void:
 		add_child(node)
 	for label in [_name, _number]:
 		# Dark ink on the seat's colour needs no outline or shadow.
-		(label as Label).add_theme_color_override(&"font_outline_color", Color.TRANSPARENT)
+		(label as HudLabel).halo_size = 0
 		(label as Label).add_theme_color_override(&"font_shadow_color", Color.TRANSPARENT)
 	resized.connect(_layout)
 
@@ -190,7 +190,10 @@ func _draw() -> void:
 	var shadow := PackedVector2Array()
 	for point in outline:
 		shadow.append(point + shade)
-	draw_colored_polygon(shadow, _tokens.shadow)
-	draw_rect(Rect2(shade, Vector2.ONE * box.size.y), _tokens.shadow)
-	draw_colored_polygon(outline, fill())
-	draw_rect(Rect2(Vector2.ZERO, Vector2.ONE * box.size.y), fill())
+	# One command for the four shapes (`HudShapes`).
+	var shapes := HudShapes.new()
+	shapes.polygon(shadow, _tokens.shadow)
+	shapes.rect(Rect2(shade, Vector2.ONE * box.size.y), _tokens.shadow)
+	shapes.polygon(outline, fill())
+	shapes.rect(Rect2(Vector2.ZERO, Vector2.ONE * box.size.y), fill())
+	shapes.flush(self)
