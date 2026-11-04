@@ -21,7 +21,7 @@ func before_test() -> void:
 func test_every_breach_starts_whole() -> void:
 	for id in _rules.tuning.barricades.ids:
 		assert_int(_rules.barricades.boards_of(id)).is_equal(_boards)
-	assert_int(_rules.tuning.barricades.ids.size()).is_equal(6)
+	assert_int(_rules.tuning.barricades.ids.size()).is_equal(16)
 
 
 func test_a_torn_board_is_announced_and_counted() -> void:
@@ -123,13 +123,19 @@ func test_the_boards_ride_the_snapshot() -> void:
 
 func test_a_snapshot_with_bad_boards_is_malformed_and_changes_nothing() -> void:
 	var good := _rules.to_dict()
-	for bad: Dictionary in [
-		{&"nw": _boards + 1, &"ne": 1, &"w": 1, &"e": 1, &"n": 1, &"n2": 1},
-		{&"nw": -1, &"ne": 1, &"w": 1, &"e": 1, &"n": 1, &"n2": 1},
-		{&"nw": 1, &"ne": 1, &"w": 1, &"e": 1, &"n": 1},
-		{&"nw": 1, &"ne": 1, &"w": 1, &"e": 1, &"n": 1, &"n2": 1, &"extra": 1},
-		{&"nw": "5", &"ne": 1, &"w": 1, &"e": 1, &"n": 1, &"n2": 1},
-	]:
+	var whole := {}
+	whole.merge(good["barricades"])
+	var too_many := whole.duplicate()
+	too_many[&"nw"] = _boards + 1
+	var negative := whole.duplicate()
+	negative[&"nw"] = -1
+	var missing := whole.duplicate()
+	missing.erase(&"n2")
+	var extra := whole.duplicate()
+	extra[&"extra"] = 1
+	var wrong_type := whole.duplicate()
+	wrong_type[&"nw"] = "5"
+	for bad: Dictionary in [too_many, negative, missing, extra, wrong_type]:
 		var snapshot := good.duplicate(true)
 		snapshot["barricades"] = bad
 		var target := GameRules.new(RulesFixture.tuning(), 1234)

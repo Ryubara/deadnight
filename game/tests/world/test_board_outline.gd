@@ -9,7 +9,7 @@ const SMALL := "res://world/smallmap/smallmap_greybox.tscn"
 const BOARDS := 5
 ## The second map's windows and its breach, and the drive-in's fence breaches.
 const SMALL_ENTRIES := 7  # six windows and the breach (#917)
-const LOT_ENTRIES := 6
+const LOT_ENTRIES := 16
 ## The drawn face sits this near the board's own front face (m).
 const NEAR := 0.02
 

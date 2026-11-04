@@ -68,7 +68,7 @@ func test_a_blast_pays_by_the_type_like_a_bullet() -> void:
 	brute.apply(
 		RulesAction.explosion(1, [{"zombie_id": brute_id, "damage": 1.0, "leg_damage": 0.0}])
 	)
-	assert_int(brute.points_of(1) - before).is_equal(roundi(_t.economy.hit * multiplier))
+	assert_int(brute.points_of(1) - before).is_equal(PointSteps.award(_t.economy.hit * multiplier))
 	before = brute.points_of(1)
 	brute.apply(
 		RulesAction.explosion(
@@ -77,7 +77,7 @@ func test_a_blast_pays_by_the_type_like_a_bullet() -> void:
 	)
 	# The only zombie of the round: its death also pays the round bonus.
 	var kill_pay := brute.points_of(1) - before - _t.economy.round_bonus(brute.round_number)
-	assert_int(kill_pay).is_equal(roundi(_t.explosives.explosion_kill * multiplier))
+	assert_int(kill_pay).is_equal(PointSteps.award(_t.explosives.explosion_kill * multiplier))
 
 
 func test_a_blast_on_a_walker_still_pays_the_flat_amounts() -> void:
@@ -98,7 +98,9 @@ func test_blast_hits_on_a_boss_pay_up_to_its_own_limit() -> void:
 		boss.apply(
 			RulesAction.explosion(1, [{"zombie_id": boss_id, "damage": 1.0, "leg_damage": 0.0}])
 		)
-	var per_hit := roundi(_t.economy.hit * _t.roster.type_of(&"headliner").points_multiplier)
+	var per_hit := PointSteps.award(
+		_t.economy.hit * _t.roster.type_of(&"headliner").points_multiplier
+	)
 	assert_int(boss.points_of(1) - before).is_equal(10 * per_hit)
 
 
