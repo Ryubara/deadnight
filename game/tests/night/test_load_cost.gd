@@ -12,6 +12,12 @@ const LIT_SHADER_BUDGET := 8
 ## 152 s with the weapons' and the voices' banks deferred; the cut of #509 had 166 s. A new weapon's
 ## sounds go in a bank with `deferred = true` (`docs/research/web-export.md`, "Loading a night").
 const WARM_DECODE_BUDGET_S := 170.0
+## Frames the warm-up draws behind the loading bar (`NightWarmup.shots`; 96 measured). A browser
+## spends a frame's time on every one (0.1 to 0.5 s in a software renderer), so the number is the
+## load's length in a unit no runner moves; the web smoke's seconds
+## (`tools/web_smoke/night_load_baseline.json`) vary by a factor of three and cannot see less than a
+## doubling. A step that draws more raises this on purpose, with the measurement of what it adds.
+const WARM_FRAME_BUDGET := 100
 
 
 func _warmed_night() -> Night:
@@ -35,6 +41,17 @@ func _lit_standard_kinds(night: Night) -> Array[String]:
 				kinds.append(material)
 	kinds.sort()
 	return kinds
+
+
+func test_the_warm_up_draws_few_frames() -> void:
+	var night := await _warmed_night()
+	var message := "the warm-up drew %d frames (budget %d): a step that draws more adds that many"
+	message += " frames, at 0.1 to 0.5 s each in a browser, to every night's loading"
+	message = message % [night.warmup.shots, WARM_FRAME_BUDGET]
+	assert_int(night.warmup.shots).override_failure_message(message).is_less_equal(
+		WARM_FRAME_BUDGET
+	)
+	night.queue_free()
 
 
 func test_the_night_draws_few_lit_shaders() -> void:

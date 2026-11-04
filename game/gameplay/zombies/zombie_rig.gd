@@ -64,11 +64,18 @@ const TEAR_YANK_SECONDS := 22.0 / 24.0
 const TEAR_SECONDS := 29.0 / 24.0
 ## The fastest dead's gait (#278), from the same file: the move state's last blend point.
 const SPRINT_CLIP := &"Sprint"
+## The crawler's own attack (`tools/blender/build_zombie_clips.py`, Deadnight #971): it coils on its
+## arms, throws itself forward along the floor and grabs at the ankles, and never leaves the crawl's
+## height. `CRAWL_HIT_SECONDS` is the moment the grab lands (frame 13 of 30 at 24 fps, `clips.json`
+## beside the file): the view plays the clip at the pace that puts it on the type's telegraph.
+const CRAWL_ATTACK_CLIP := &"Crawl_Attack"
+const CRAWL_HIT_SECONDS := 13.0 / 24.0
 
 const STATE_MOVE := &"move"
 const STATE_ROAR := &"roar"
 const STATE_CRAWL := &"crawl"
 const STATE_ATTACK := &"attack"
+const STATE_CRAWL_ATTACK := &"crawl_attack"
 const STATE_STAGGER := &"stagger"
 const STATE_DIE := &"die"
 const STATE_TEAR := &"tear"
@@ -79,6 +86,7 @@ const TEAR_SCALE_PARAMETER := &"parameters/tear/scale/scale"
 const BLEND_PARAMETER := &"parameters/move/space/blend_position"
 const MOVE_RATE_PARAMETER := &"parameters/move/scale/scale"
 const CRAWL_RATE_PARAMETER := &"parameters/crawl/scale/scale"
+const CRAWL_ATTACK_SCALE_PARAMETER := &"parameters/crawl_attack/scale/scale"
 const PLAYBACK_PARAMETER := &"parameters/playback"
 ## The attack state of the boss is a clip behind a time scale: this is the scale's parameter.
 const BOSS_ATTACK_SCALE_PARAMETER := &"parameters/attack/scale/scale"
@@ -215,9 +223,11 @@ static func _build_library(
 		var animation := player.get_animation(clip).duplicate(true) as Animation
 		animation.loop_mode = Animation.LOOP_LINEAR if clip in looping else Animation.LOOP_NONE
 		library.add_animation(clip, animation)
-	for extra in [TEAR_CLIP, SPRINT_CLIP]:
+	for extra in [TEAR_CLIP, SPRINT_CLIP, CRAWL_ATTACK_CLIP]:
 		var animation := _extra_clip(extra)
-		animation.loop_mode = Animation.LOOP_LINEAR
+		animation.loop_mode = (
+			Animation.LOOP_NONE if extra == CRAWL_ATTACK_CLIP else Animation.LOOP_LINEAR
+		)
 		library.add_animation(extra, animation)
 	return library
 
@@ -245,6 +255,7 @@ static func _build_state_machine() -> AnimationNodeStateMachine:
 	machine.add_node(STATE_MOVE, _scaled(move, &"space"))
 	machine.add_node(STATE_CRAWL, _scaled(_clip_node(&"Crawl"), &"clip"))
 	machine.add_node(STATE_ATTACK, _clip_node(&"Punch"))
+	machine.add_node(STATE_CRAWL_ATTACK, _scaled(_clip_node(CRAWL_ATTACK_CLIP), &"clip"))
 	machine.add_node(STATE_STAGGER, _clip_node(&"HitReact"))
 	machine.add_node(STATE_DIE, _clip_node(&"Death"))
 	machine.add_node(STATE_TEAR, _tear_node(LIBRARY))

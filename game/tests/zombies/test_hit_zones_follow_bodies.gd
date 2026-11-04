@@ -115,8 +115,12 @@ func test_every_shot_that_touches_a_crawler_registers_in_every_crawl_frame() -> 
 
 func test_a_crawler_is_hit_in_the_poses_it_takes_when_it_strikes_and_staggers() -> void:
 	var probe := ZombieMeshProbe.make(self, &"crawler")
+	probe.use_extra_clips()
 	for case: Array in [
-		[ZombieBody.Mode.ATTACK, &"Punch", 0.35],
+		[ZombieBody.Mode.ATTACK, &"extra/Crawl_Attack", 0.1],
+		[ZombieBody.Mode.ATTACK, &"extra/Crawl_Attack", 0.3],
+		[ZombieBody.Mode.ATTACK, &"extra/Crawl_Attack", 0.54],
+		[ZombieBody.Mode.ATTACK, &"extra/Crawl_Attack", 0.8],
 		[ZombieBody.Mode.STAGGER, &"HitReact", 0.25],
 	]:
 		var body := _body(&"crawler", case[0])

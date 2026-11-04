@@ -5,6 +5,7 @@ extends RefCounted
 
 const DIR := "res://gameplay/weapons/defs/"
 const IDS: Array[StringName] = [
+	&"house_pistol",
 	&"pistol",
 	&"smg",
 	&"shotgun",
@@ -25,7 +26,7 @@ const IDS: Array[StringName] = [
 ]
 
 ## The weapon every player starts the night with.
-const START_WEAPON := &"pistol"
+const START_WEAPON := &"house_pistol"
 
 ## The blow every player has on its own button (#411): a knife-like swing with whatever is in hand.
 ## It is a definition like the others (`defs/quick_melee.tres`, the server's sweep and cooldown) but

@@ -241,7 +241,7 @@ def build(arm):
             # Lever rifle: tip the gun right and down, left hand feeds rounds at the loading gate (three times),
             # back to aim. The lever cycle is the last stroke.
             tipped = offset(hold, Torso=(8, -10, -12), UpperArm_R=(0, 0, 10), Head=(14, 0, 0))
-            feed_out = offset(tipped, UpperArm_L=(-15, 0, 0))  # hand back at the cartridge belt
+            feed_out = offset(tipped, UpperArm_L=RELOAD_BELT)  # hand back at the cartridge belt
             feed_in = offset(tipped, UpperArm_L=(40, 0, 0))  # hand up at the loading gate
             keys = [(0, hold), (8, tipped)]
             f = 8
@@ -255,7 +255,7 @@ def build(arm):
             # Double shotgun: break open (muzzle down), left hand drops shells at the belt and back to the breech,
             # snap shut (muzzle up), back to aim.
             opened = offset(hold, Torso=(18, -8, -6), UpperArm_R=(0, 0, 12), Head=(20, 0, 0))
-            belt = offset(opened, UpperArm_L=(-15, 0, 0))
+            belt = offset(opened, UpperArm_L=RELOAD_BELT)
             breech = offset(opened, UpperArm_L=(40, 0, 0))
             keys = [(0, hold), (8, opened), (16, belt), (24, breech), (28, breech),
                     (34, offset(hold, Torso=(-4, 0, 0))), (40, hold)]  # fmt: skip
@@ -273,7 +273,7 @@ def build(arm):
     write(arm, "Fire_Pistol", [(0, pistol), (2, kicked), (6, pistol)], up, "upper", False, "Pistol",
           {"muzzle": 0, "can_fire_again": 6})  # fmt: skip
     low = offset(pistol, Torso=(10, 0, 0), UpperArm_R=(0, -20, 0), Head=(10, 0, 0))
-    belt = offset(low, UpperArm_L=(-15, 0, 0))
+    belt = offset(low, UpperArm_L=RELOAD_BELT)
     at_gun = offset(low, UpperArm_L=(40, 0, 0))
     write(arm, "Reload_Pistol", [(0, pistol), (6, low), (14, belt), (22, at_gun), (28, pistol)], up, "upper", False,
           "Pistol", {"mag_out": 6, "mag_in": 22, "can_fire_again": 28})  # fmt: skip
@@ -283,9 +283,13 @@ def build(arm):
     ready = offset(aim, UpperArm_R=(-10, 0, 0))
     write(arm, "Aim_Melee", [(0, ready), (24, offset(ready, Abdomen=(1.5, 1, 0))), (48, ready)], up, "upper", True,
           "Melee")  # fmt: skip
-    windup = offset(ready, UpperArm_R=(55, 0, 0), LowerArm_R=(0, 0, 30), Torso=(-8, 15, 0))
-    strike = offset(ready, UpperArm_R=(-25, 0, 0), LowerArm_R=(0, 0, -20), Torso=(18, -12, 0))
-    follow = offset(ready, UpperArm_R=(-35, 0, 0), LowerArm_R=(0, 0, -25), Torso=(22, -18, 0))
+    # The bat up beside the head, not through it, and the free hand up with the chest as it pitches (as the quick
+    # strikes, #939).
+    lift = [tuple(v * share for v in STRIKE_LEFT) for share in STRIKE_LEFT_SHARE]
+    windup = offset(ready, UpperArm_R=(55, -STRIKE_WINDUP_OUT, 0), LowerArm_R=(0, 0, 30), Torso=(-8, 15, 0),
+                    UpperArm_L=lift[0])  # fmt: skip
+    strike = offset(ready, UpperArm_R=(-25, 0, 0), LowerArm_R=(0, 0, -20), Torso=(18, -12, 0), UpperArm_L=lift[1])
+    follow = offset(ready, UpperArm_R=(-35, 0, 0), LowerArm_R=(0, 0, -25), Torso=(22, -18, 0), UpperArm_L=lift[2])
     keys = [(0, ready), (6, windup), (10, strike), (13, follow), (22, ready)]
     write(arm, "Swing_Melee", keys, up, "upper", False, "Melee", {"whoosh": 6, "hit_start": 9, "hit_end": 12,
                                                                    "can_swing_again": 22})  # fmt: skip
@@ -308,29 +312,47 @@ def build(arm):
     return CLIPS
 
 
+# The left hand back at the belt for rounds or a magazine in the reloads (UpperArm.L, local degrees: X raises it, Y-
+# swings it forward). Straight back (-15, 0, 0) it went into the thigh with the chest pitched over the open gun (83 mm,
+# #939; the pistol 39 mm). The night reloads through ReloadMotion and never plays these clips; they stay in the files.
+RELOAD_BELT = (5, -15, 0)
+
+
 # The quick melee (#411): one blow for every weapon, a short club-like bash with whatever is in the hands. The motion
 # is the same for each class; `arm` is how much of it the right arm does on its own (a gun in two hands is mostly
 # the spine, which carries both hands and the weapon, so the left hand stays on the fore-end; one hand holds a
 # pistol, a bat or an axe and swings freely). 13 frames, under the quick melee's cooldown (0.6 s).
 STRIKE = {"Rifle": 0.45, "Shotgun": 0.45, "Pistol": 0.9, "Melee": 1.0}
 STRIKE_EVENTS = {"whoosh": 3, "hit": 6, "can_strike_again": 13}
+# The free left arm through the blow (#939): the chest pitches 19 degrees forward and the hanging left hand went into
+# the left knee (78 mm). It comes up and forward with the chest instead, a share of this at each key (windup, blow,
+# follow): UpperArm.L X raises the hand, Y- swings it forward.
+STRIKE_LEFT = (20, -12, 0)
+STRIKE_LEFT_SHARE = (0.3, 0.8, 1.0)
+# The windup's right arm swung out to his right by this (UpperArm.R Y-, degrees, times the class's share): raised
+# straight up, the pistol arm's forearm passed through the side of the head (74 mm).
+STRIKE_WINDUP_OUT = 25
 
 
 def strikes(arm, bases, up):
     """Strike_Rifle, Strike_Shotgun, Strike_Pistol and Strike_Melee, each from its class's aim pose."""
     for cls, base in bases.items():
         k = STRIKE[cls]
-        windup = offset(
-            base, UpperArm_R=(35 * k, 0, 0), LowerArm_R=(0, 0, 25 * k), Torso=(-8, 14, 0), Abdomen=(-2, 6, 0)
-        )
-        strike = offset(
-            base, UpperArm_R=(-15 * k, 0, 0), LowerArm_R=(0, 0, -15 * k), Torso=(15, -11, 0), Abdomen=(5, -5, 0)
-        )
-        follow = offset(
-            base, UpperArm_R=(-22 * k, 0, 0), LowerArm_R=(0, 0, -18 * k), Torso=(19, -15, 0), Abdomen=(6, -7, 0)
-        )
+        windup, strike, follow = strike_keys(base, k)
         keys = [(0, base), (3, windup), (6, strike), (8, follow), (13, base)]
         write(arm, f"Strike_{cls}", keys, up, "upper", False, cls, dict(STRIKE_EVENTS))  # fmt: skip
+
+
+def strike_keys(base, k, left=True):
+    """The windup, the blow and the follow-through of a quick strike from `base`, the right arm doing `k` of it."""
+    lift = [tuple(v * share for v in STRIKE_LEFT) if left else (0, 0, 0) for share in STRIKE_LEFT_SHARE]
+    windup = offset(base, UpperArm_R=(35 * k, -STRIKE_WINDUP_OUT * k, 0), LowerArm_R=(0, 0, 25 * k),
+                    Torso=(-8, 14, 0), Abdomen=(-2, 6, 0), UpperArm_L=lift[0])  # fmt: skip
+    blow = offset(base, UpperArm_R=(-15 * k, 0, 0), LowerArm_R=(0, 0, -15 * k), Torso=(15, -11, 0),
+                  Abdomen=(5, -5, 0), UpperArm_L=lift[1])  # fmt: skip
+    follow = offset(base, UpperArm_R=(-22 * k, 0, 0), LowerArm_R=(0, 0, -18 * k), Torso=(19, -15, 0),
+                    Abdomen=(6, -7, 0), UpperArm_L=lift[2])  # fmt: skip
+    return windup, blow, follow
 
 
 # The grenade is held on the same bone as every weapon, so the projectile leaves from there at `release`.
@@ -380,6 +402,11 @@ def grenade(arm, up, idle, idle_mid, aim):
     write(arm, "Grenade_Toss", keys, up, "upper", False, "Grenade", {"release": 10, "done": 22})
 
 
+# The raised fist swung out to his right by this (UpperArm.R Y-, degrees): straight up, the forearm passed through the
+# side of the head (#939).
+REPAIR_RAISE_OUT = 25
+
+
 def repair(arm, up, aim):
     """Repair_Board (Deadnight #221): the Soldier puts a board back across a breach of the fence. Upper body only, so
     the legs keep their locomotion; one loop is one board, 24 frames (1.0 s), the night's `repair_interval`: the
@@ -395,7 +422,9 @@ def repair(arm, up, aim):
     hold = offset(aim, Abdomen=(4, 0, 0), UpperArm_L=(15, -75, 0))
     struck = offset(hold, Torso=(5, 0, -3), UpperArm_R=(-6, 0, 0), Head=(4, 0, 0))
     lifted = offset(hold, UpperArm_R=(25, 0, 0), LowerArm_R=(0, 0, 14))
-    raised = offset(hold, Torso=(-5, 0, 5), UpperArm_R=(52, 0, 0), LowerArm_R=(0, 0, 26), Head=(-3, 0, 0))
+    raised = offset(
+        hold, Torso=(-5, 0, 5), UpperArm_R=(52, -REPAIR_RAISE_OUT, 0), LowerArm_R=(0, 0, 26), Head=(-3, 0, 0)
+    )
     keys = [(0, lifted), (3, struck), (6, struck), (10, lifted), (15, raised), (18, struck), (21, struck),
             (24, lifted)]  # fmt: skip
     write(arm, "Repair_Board", keys, up, "upper", True, "Repair", {"hammer": [3, 18], "board_set": 18})
@@ -506,6 +535,8 @@ DOWNED_CRAWL_SPEED = 0.45  # m/s in the game: the planted heel's sweep (#505 may
 DOWNED_CRAWL_FRAMES = 32  # one pull of each heel
 REVIVE_FRAMES = 24  # one loop, two presses
 REVIVE_HANDS = (-0.66, 0.36)  # the hands ahead (y) and up (z) at the top of a press, kit metres; 0.07 lower pressed
+REVIVE_SPREAD = 0.26  # each hand this far from the middle (x), kit metres: closer, the big hands met (#939)
+REVIVE_ELBOW = (1.0, 0.4, -0.2)  # the left elbow's bend, world (the right's mirrored)
 
 
 def world_axis(arm, axis):
@@ -600,11 +631,23 @@ DOWNED_LEAN = 12  # degrees about world Y, on to his left side (+X)
 # The whole body turned about the vertical (the head to his left, the feet to his right), so the shoulder camera behind
 # him does not look along the body over the helmet: the legs show past it.
 DOWNED_TURN = -20
-DOWNED_KNEES = {"Foot.L": (0.2, 0.0, 1.0), "Foot.R": (-0.3, 0.0, 1.0)}  # up, and a little out
-DOWNED_ELBOW = ((0.38, 0.12, 0.18), (0.3, 0.8, -0.5))  # left hand from the hips (x, y) and up (z); elbow pole
-DOWNED_WOUND = (-0.05, 0.08, 0.2)  # right hand: to his right, up the spine and out of the belly, from Abdomen
-DOWNED_WOUND_POLE = (-1.0, 0.3, -0.3)
+# Up, the right one out: bent straight up, the drawn-up right thigh met the right forearm (88 mm, #939).
+DOWNED_KNEES = {"Foot.L": (0.2, 0.0, 1.0), "Foot.R": (-1.6, 0.0, 1.0)}
+# The left hand from the hips (x, y) and up (z), and the elbow's bend. 0.06 nearer the hips (x 0.38), it lay in the fold
+# of the left thigh (56 mm on the kit body, #939).
+DOWNED_ELBOW = ((0.44, 0.12, 0.18), (0.3, 0.8, -0.5))
+# The right forearm rests over the drawn-up right knee: the wrist this far from the knee joint (world metres at kit
+# scale: up, and a little to his right), the elbow bent toward DOWNED_REST_POLE. The hand was pressed on the belly
+# (#504), but sitting up with the knees drawn in the belly is a fold between the trunk and the thighs, and every place
+# on it put the hand or the forearm into one of them (49-102 mm over 18 places tried, #939).
+DOWNED_REST = (-0.04, 0.0, 0.18)
+DOWNED_REST_POLE = (-1.0, 0.5, 0.0)
 DOWNED_FEET = {"Foot.L": (0.2, -0.8, 0.05), "Foot.R": (-0.22, -0.55, 0.06)}  # from the hips; the right knee up
+DOWNED_CRAWL_KNEES = DOWNED_KNEES  # the knees' bend while the heels pull
+# While he crawls both elbows push on the ground, the right one the left's mirror with the right heel: the right hand
+# kept on the belly (#504) was in the way of the left knee each time it came up (130 mm into the shin, #939). Each hand
+# this much further out (x, kit metres) than the downed left hand, clear of the thighs.
+DOWNED_CRAWL_OUT = 0.08
 
 
 def at_hips(arm, pose, x, y, z):
@@ -614,14 +657,9 @@ def at_hips(arm, pose, x, y, z):
     return Vector((c.x + v.x, c.y + v.y, z))
 
 
-def belly(arm, pose):
-    """The front of the belly (world): from Abdomen, along the spine and out of the chest's front."""
-    root, neck = head_at(arm, pose, "Abdomen"), head_at(arm, pose, "Neck")
-    spine = (neck - root).normalized()
-    ahead = Vector((0, -1, 0))
-    front = (ahead - spine * ahead.dot(spine)).normalized()
-    x, along, out = DOWNED_WOUND
-    return root + Vector((x, 0, 0)) + spine * along + front * out
+def over_knee(arm, pose):
+    """Where the right wrist rests over the right knee (world)."""
+    return head_at(arm, pose, "LowerLeg.R") + Vector(DOWNED_REST)
 
 
 def downed_base(arm, acts, shape):
@@ -638,10 +676,17 @@ def downed_base(arm, acts, shape):
     return pose
 
 
-def downed_arms(arm, pose, elbow=None):
+def downed_arms(arm, pose, elbow=None, right=None):
+    """The left hand pushing on the ground at `elbow` ((x, y, z) from the hips, pole), and the right forearm over the
+    right knee, or with `right` on the ground too (the same, x mirrored)."""
     (x, y, z), pole = elbow or DOWNED_ELBOW
     reach(arm, pose, "UpperArm.L", "LowerArm.L", "Index1.L", at_hips(arm, pose, x, y, z), pole)
-    reach(arm, pose, "UpperArm.R", "LowerArm.R", "Index1.R", belly(arm, pose), DOWNED_WOUND_POLE)
+    if right is None:
+        reach(arm, pose, "UpperArm.R", "LowerArm.R", "Index1.R", over_knee(arm, pose), DOWNED_REST_POLE)
+    else:
+        (x, y, z), pole = right
+        reach(arm, pose, "UpperArm.R", "LowerArm.R", "Index1.R", at_hips(arm, pose, -x, y, z),
+              (-pole[0], pole[1], pole[2]))  # fmt: skip
     return pose
 
 
@@ -651,8 +696,8 @@ def revive(arm, acts):
     `--clips Downed_Idle,Revive_` (game/assets/characters/soldier/revive/) and `--clips Downed_Crawl`
     (game/assets/characters/soldier/crawl/, kept apart so it can be dropped if downed players do not move, #505).
 
-    Downed_Idle reads from the shoulder camera and from above: sitting up on the left hand, the right hand on the
-    wound, the right knee drawn up, the head turning to look for help; where the old `Downed` (Death's last frame) lay
+    Downed_Idle reads from the shoulder camera and from above: sitting up on the left hand, the right forearm over the
+    drawn-up right knee, the head turning to look for help; where the old `Downed` (Death's last frame) lay
     flat with the head away from the camera, a helmet and two boots seen from behind.
     """
     every = [b.name for b in arm.pose.bones if b.name not in FINGERS]
@@ -679,6 +724,15 @@ def revive(arm, acts):
     half = n // 2
     sweep = DOWNED_CRAWL_SPEED / GAME_SCALE / FPS * half  # kit metres a planted heel travels
     lift = 0.06
+    (ex, ey, ez), pole = DOWNED_ELBOW
+    push = sweep * 0.5
+
+    def pushing(t):
+        """Each elbow pushes with its own heel: planted, it slides back with the ground; then it is lifted."""
+        dy = push * t / half if t <= half else push * (1 - (t - half) / half)
+        dz = 0.0 if t <= half else 0.06 * math.sin(math.pi * (t - half) / half)
+        return (ex + DOWNED_CRAWL_OUT, ey + dy, ez + dz), pole
+
     keys = []
     for f in range(n + 1):
         p = copy(sit)
@@ -697,13 +751,8 @@ def revive(arm, acts):
                 y = reach_y + sweep * (1 - s)
                 z = 0.05 + lift * math.sin(math.pi * s)
             feet[foot] = at_hips(arm, p, x, y, z)
-        legs(arm, p, shape, feet, DOWNED_KNEES)
-        tl = (f + half) % n  # the left elbow pushes with the left heel: planted, it slides back with the ground
-        (ex, ey, ez), pole = DOWNED_ELBOW
-        push = sweep * 0.5
-        dy = push * tl / half if tl <= half else push * (1 - (tl - half) / half)
-        dz = 0.0 if tl <= half else 0.06 * math.sin(math.pi * (tl - half) / half)
-        downed_arms(arm, p, elbow=((ex, ey + dy, ez + dz), pole))
+        legs(arm, p, shape, feet, DOWNED_CRAWL_KNEES)
+        downed_arms(arm, p, elbow=pushing((f + half) % n), right=pushing(f % n))
         keys.append((f, p))
     events = {"pull_right": 0, "pull_left": half}
     write(arm, "Downed_Crawl", keys, every, "full", True, events=events, skip=FINGERS)
@@ -725,8 +774,16 @@ def revive(arm, acts):
 
     def hands(p, down):
         z = REVIVE_HANDS[1] - down
-        reach(arm, p, "UpperArm.L", "LowerArm.L", "Index1.L", (0.09, REVIVE_HANDS[0], z), (1.0, 0.4, -0.2))
-        reach(arm, p, "UpperArm.R", "LowerArm.R", "Index1.R", (-0.09, REVIVE_HANDS[0], z), (-1.0, 0.4, -0.2))
+        reach(arm, p, "UpperArm.L", "LowerArm.L", "Index1.L", (REVIVE_SPREAD, REVIVE_HANDS[0], z), REVIVE_ELBOW)
+        reach(
+            arm,
+            p,
+            "UpperArm.R",
+            "LowerArm.R",
+            "Index1.R",
+            (-REVIVE_SPREAD, REVIVE_HANDS[0], z),
+            (-REVIVE_ELBOW[0], REVIVE_ELBOW[1], REVIVE_ELBOW[2]),
+        )
         return p
 
     up_pose = hands(copy(kneel), 0.0)
@@ -786,6 +843,10 @@ SPRINT_CARRY = {
     "pump_870": {"grip": (0.1, -0.33, -0.03), "muzzle": (0.85, -0.52, 0.4), "top": (-0.3, 0.2, 1.0),
                  "swing": 7.0, "dip": 5.0, "hold": "pump_870", "class": "Shotgun"},
 }  # fmt: skip
+# Every carry's grip moved by this from where SPRINT_CARRY puts it (metres at kit scale, the chest's axes: x to his left,
+# y back, z up): at the grips above, the forearm reaching across to the grip lay in the jacket's front (the left one
+# 73 mm, the right 47 mm, #939).
+SPRINT_SHIFT = (-0.09, -0.14, 0.0)
 # The carries of single models, after the class ones (named Sprint_<model>).
 SPRINT_MODELS = tuple(k for k, c in SPRINT_CARRY.items() if "class" in c)
 # The game's data the carries are built against (the hold and grip files).
@@ -976,7 +1037,7 @@ def sprint_carries(arm, acts, aim, up):
             # the grip.
             turn_by = swing @ follow
             want = Matrix.Rotation(math.radians(dip), 3, side) @ turn_by @ _frame(c["muzzle"], c["top"])
-            grip = waist + turn_by @ Vector(c["grip"])
+            grip = waist + turn_by @ (Vector(c["grip"]) + Vector(SPRINT_SHIFT))
             # The right hand on the grip: turned so the weapon points where `want` says, its bone where the grip's
             # hold then puts it.
             hand = want @ gun_aim.inverted() @ hand_aim
@@ -1059,6 +1120,14 @@ def sprint_carries(arm, acts, aim, up):
 # the IK is blended from. 6 clips in their own file, built with
 #   --clips Aim_Dual,Fire_Dual,Equip_Dual,Unequip_Dual,Strike_Dual,Sprint_Dual
 DUAL_ARM = ("Shoulder", "UpperArm", "LowerArm", "Index1")
+# The right pistol's hand where the night's hand IK holds it (Index1.R, world metres at kit scale; the Soldier faces -Y,
+# his right is -X), read in Godot from WeaponHandsIK with holds/dual_pistols.tres: out wide of the body, a little below
+# the shoulder, the elbow out and down (`DUAL_ELBOW`, the bend's world direction). Every dual clip is built from it, the
+# left arm its mirror. The Pistol pose mirrored (#789) put both hands on the body's middle line, one through the other
+# (Strike_Dual 142 mm, Equip_Dual 108 mm, #939); the IK hid it while aiming, but equip and the quick melee play the
+# clip's own arms.
+DUAL_HAND = (-0.62, -0.42, 1.23)
+DUAL_ELBOW = (-1.0, 0.3, -0.7)
 
 
 def mirror_arm(pose):
@@ -1091,27 +1160,35 @@ def shifted(keys, n, shift):
     return out
 
 
+def dual_arm(arm, pistol):
+    """The Pistol pose with the right arm reaching the IK's dual hold (`DUAL_HAND`), the hand turned in the world as the
+    Pistol pose turns it (the gun pointing ahead)."""
+    _pose_arm(arm, pistol)
+    turn = _world(arm, "Index1.R")[0]
+    right = copy(pistol)
+    reach(arm, right, "UpperArm.R", "LowerArm.R", "Index1.R", DUAL_HAND, DUAL_ELBOW)
+    _pose_arm(arm, right)
+    _set_world_rot(arm, "Index1.R", turn)
+    return _read_pose(arm, right)
+
+
 def dual(arm, up, idle, idle_mid, pistol):
-    """Aim_Dual, Fire_Dual, Equip_Dual, Unequip_Dual, Strike_Dual and Sprint_Dual from the Pistol poses."""
+    """Aim_Dual, Fire_Dual, Equip_Dual, Unequip_Dual, Strike_Dual and Sprint_Dual from the Pistol poses, the arms
+    where the IK holds the two pistols (`dual_arm`)."""
     gap = check_mirror(arm, pistol)
     assert gap < 0.002, f"the rig is not a mirror: the hands end {gap:.4f} m from each other's reflection"
-    base = mirror_arm(pistol)
-    write(arm, "Aim_Dual", [(0, base), (24, mirror_arm(offset(pistol, Abdomen=(1, 1, 0)))), (48, base)], up, "upper",
+    right = dual_arm(arm, pistol)
+    base = mirror_arm(right)
+    write(arm, "Aim_Dual", [(0, base), (24, mirror_arm(offset(right, Abdomen=(1, 1, 0)))), (48, base)], up, "upper",
           True, "Dual")  # fmt: skip
-    kicked = mirror_arm(offset(pistol, LowerArm_R=(0, 0, 15), Torso=(-3, 0, 0)))
+    kicked = mirror_arm(offset(right, LowerArm_R=(0, 0, 15), Torso=(-3, 0, 0)))
     write(arm, "Fire_Dual", [(0, base), (2, kicked), (6, base)], up, "upper", False, "Dual",
           {"muzzle": 0, "can_fire_again": 6})  # fmt: skip
     write(arm, "Equip_Dual", [(0, idle), (4, blend(idle, base, 0.45)), (10, base)], up, "upper", False, "Dual",
           {"weapon_visible": 2, "ready": 10})  # fmt: skip
     write(arm, "Unequip_Dual", [(0, base), (6, blend(base, idle_mid, 0.55)), (10, idle_mid)], up, "upper", False,
           "Dual", {"weapon_hidden": 8})  # fmt: skip
-    k = STRIKE["Pistol"]
-    windup = offset(pistol, UpperArm_R=(35 * k, 0, 0), LowerArm_R=(0, 0, 25 * k), Torso=(-8, 14, 0), Abdomen=(-2, 6, 0))
-    blow = offset(
-        pistol, UpperArm_R=(-15 * k, 0, 0), LowerArm_R=(0, 0, -15 * k), Torso=(15, -11, 0), Abdomen=(5, -5, 0)
-    )
-    follow = offset(pistol, UpperArm_R=(-22 * k, 0, 0), LowerArm_R=(0, 0, -18 * k), Torso=(19, -15, 0),
-                    Abdomen=(6, -7, 0))  # fmt: skip
+    windup, blow, follow = strike_keys(right, STRIKE["Pistol"], left=False)
     keys = [(0, base), (3, mirror_arm(windup)), (6, mirror_arm(blow)), (8, mirror_arm(follow)), (13, base)]
     write(arm, "Strike_Dual", keys, up, "upper", False, "Dual", dict(STRIKE_EVENTS))
     # The sprint: Sprint_Pistol's gun arm on the right, and on the left the same arm mirrored half a stride on, so

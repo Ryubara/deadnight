@@ -22,17 +22,18 @@ func test_damage_slides_to_the_floor_at_the_falloff_end_and_stays_there() -> voi
 	)
 
 
-func test_a_pistol_headshot_at_close_range_kills_a_round_one_zombie() -> void:
-	var pistol := WeaponsFixture.def(&"pistol")
-	var round_one_health := 60.0
-	assert_float(DamageModel.damage(pistol, 5.0, Hitbox.HEAD)).is_greater_equal(round_one_health)
-	assert_float(DamageModel.damage(pistol, 5.0, Hitbox.BODY)).is_less(round_one_health)
+func test_a_rifle_headshot_at_close_range_kills_a_round_one_zombie() -> void:
+	# The revolver's did too (24 x 2.5 = 60 over round one's 50) until #898; the start weapons
+	# take several shots now (`test_starter_pistol.gd`).
+	var rifle := WeaponsFixture.def(&"rifle")
+	var round_one_health := RulesFixture.round_health(1)
+	assert_float(DamageModel.damage(rifle, 5.0, Hitbox.HEAD)).is_greater_equal(round_one_health)
 
 
 func test_zones_scale_the_damage() -> void:
 	var pistol := WeaponsFixture.def(&"pistol")
 	var body := DamageModel.damage(pistol, 1.0, Hitbox.BODY)
-	assert_float(DamageModel.damage(pistol, 1.0, Hitbox.HEAD)).is_equal_approx(body * 2.5, 0.001)
+	assert_float(DamageModel.damage(pistol, 1.0, Hitbox.HEAD)).is_equal_approx(body * 1.75, 0.001)
 	assert_float(DamageModel.damage(pistol, 1.0, Hitbox.LIMB)).is_equal_approx(body * 0.6, 0.001)
 
 

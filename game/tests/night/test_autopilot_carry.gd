@@ -31,12 +31,12 @@ func _wall(weapon: StringName) -> Dictionary:
 
 
 func test_a_free_hand_takes_any_weapon() -> void:
-	_carry(&"pistol", [&"pistol"])
+	_carry(&"house_pistol", [&"house_pistol"])
 	assert_bool(_pilot._wants(_wall(&"shotgun"))).is_true()
 
 
 func test_full_hands_take_a_weapon_worth_one_and_a_half_times_the_one_in_hand() -> void:
-	_carry(&"pistol", [&"pistol", &"crowbar"])
+	_carry(&"house_pistol", [&"house_pistol", &"crowbar"])
 	assert_bool(_pilot._wants(_wall(&"shotgun"))).is_true()
 
 
@@ -47,19 +47,19 @@ func test_full_hands_do_not_swap_a_weapon_for_one_of_much_the_same_worth() -> vo
 
 
 func test_a_weapon_already_carried_is_not_taken() -> void:
-	_carry(&"pistol", [&"pistol", &"shotgun"])
+	_carry(&"house_pistol", [&"house_pistol", &"shotgun"])
 	assert_bool(_pilot._wants(_wall(&"shotgun"))).is_false()
 
 
 func test_it_plays_the_crane_only_when_some_prize_beats_the_weapon_in_hand() -> void:
-	_carry(&"pistol", [&"pistol", &"crowbar"])
+	_carry(&"house_pistol", [&"house_pistol", &"crowbar"])
 	assert_bool(_pilot._wants({"kind": &"crane", "id": &"crane_play", "price": 550})).is_true()
 	# Holding the best of the pool, nothing in it is worth the play.
-	_pilot.crane_pool.assign([&"weapon_pistol", &"weapon_crowbar"])
+	_pilot.crane_pool.assign([&"weapon_house_pistol", &"weapon_crowbar"])
 	assert_bool(_pilot._wants({"kind": &"crane", "id": &"crane_play", "price": 550})).is_false()
 
 
 func test_it_leaves_a_prize_that_is_worse_than_the_weapon_it_would_replace() -> void:
 	_carry(&"shotgun", [&"shotgun", &"crowbar"])
-	assert_bool(_pilot._worth_taking(&"pistol")).is_false()
+	assert_bool(_pilot._worth_taking(&"house_pistol")).is_false()
 	assert_bool(_pilot._worth_taking(&"smg")).is_false()

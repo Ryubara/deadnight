@@ -9,8 +9,11 @@ const NIGHTS := 60
 const SEED := 4000
 ## How many rounds further the re-cut and the tonic must carry the good and the many nights. It
 ## was a whole round at 1,500 and a step; at 5,000 flat (#909) the average nights of 4 and 8 players
-## gain 0.95 and 1.0, because the re-cut comes later.
-const CLIMB_CARRIED := 0.5
+## gain 0.95 and 1.0, because the re-cut comes later. 0.3 since the House Pistol start (#898): the
+## strong solo night gains 0.38 (14.08 with, 13.70 without; 60 nights a cell reads a mean to about
+## 0.3 either way) because the opening is slower and the re-cut comes later still; the two party
+## cells still gain more than 0.5.
+const CLIMB_CARRIED := 0.3
 const CELLS := [
 	["weak", 1],
 	["average", 1],
