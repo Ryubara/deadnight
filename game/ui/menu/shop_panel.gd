@@ -1,7 +1,8 @@
 class_name ShopPanel
 extends MenuPanel
 ## The Shop tab: the prize counter. The look catalogue's gated colours are real entries (what
-## they ask for is `LookUnlocks.describe`); the categories the design lists are placeholders,
+## they ask for is `LookUnlocks.describe`; the three cloth channels share one palette, so the
+## main colour's stand for them); the categories the design lists are placeholders,
 ## marked "coming", because the stub economy does not exist yet (docs/design/progression.md). A
 ## press buys nothing: the client only shows, the server will award.
 
@@ -46,16 +47,19 @@ func width(compact: bool) -> float:
 func entries() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var unlocks := LookUnlocks.new()
-	unlocks.billing_level = context.profile.level()
-	for key: String in LookCatalog.PALETTE_GATES:
+	unlocks.level = context.profile.level()
+	var gates := LookCatalog.palette_gates()
+	for key: String in gates:
 		var parts := key.split("/")
 		var channel := StringName(parts[0])
+		if channel != &"primary":
+			continue
 		var index := int(parts[1])
 		var palette := LookCatalog.palette(channel)
 		if index >= palette.size():
 			continue
 		var entry: Dictionary = palette[index]
-		var gate: Dictionary = LookCatalog.PALETTE_GATES[key]
+		var gate: Dictionary = gates[key]
 		(
 			out
 			. append(
@@ -74,10 +78,8 @@ func entries() -> Array[Dictionary]:
 
 ## What a gate asks for, in a few words.
 static func _asks(gate: Dictionary) -> String:
-	if gate.has("billing"):
-		return "Billing %d" % int(gate["billing"])
-	if gate.has("stubs"):
-		return "%s stubs" % MenuNav.grouped(int(gate["stubs"]))
+	if gate.has("level"):
+		return "Level %d" % int(gate["level"])
 	return "An order"
 
 

@@ -7,9 +7,13 @@ const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
 const WARDROBE := "res://ui/screens/customize_screen.tscn"
 const TEST_PATH := "user://night_look_test.cfg"
+## The profile the look is repaired by: the top of the ladder, so the looks here are worn whole (the
+## lock is `test_look_unlocks`'s).
+const PROFILE_PATH := "user://night_look_test_profile.json"
 const OTHER_ID := 2
 
 var _saved_path: String
+var _profile_path_before: String
 
 
 func before_test() -> void:
@@ -17,9 +21,16 @@ func before_test() -> void:
 	_saved_path = Settings.path
 	Settings.path = TEST_PATH
 	Settings.reset_defaults()
+	var profile := Profile.new()
+	profile.xp = LevelCurve.xp_for(LevelCurve.MAX_LEVEL)
+	ProfileSave.write(profile, [], 1, PROFILE_PATH)
+	_profile_path_before = LookUnlocks.profile_path
+	LookUnlocks.profile_path = PROFILE_PATH
 
 
 func after_test() -> void:
+	LookUnlocks.profile_path = _profile_path_before
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_PATH))
 	await RouterFixture.clear(get_tree())
 	Settings.reset_defaults()
 	Settings.save()

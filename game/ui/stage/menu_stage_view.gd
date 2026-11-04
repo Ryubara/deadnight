@@ -33,6 +33,8 @@ var stage := MenuStage.new()
 var governor := StageGovernor.new()
 ## A test or a capture steps the stage itself with `advance`.
 var manual := false
+## What the soldier on the stage may wear (the account's level); the profile file's when unset.
+var unlocks: LookUnlocks = null
 var level := StageGovernor.Level.LIVE
 ## A mode that overrides the setting for this view (a run's own choice); -1 follows the setting.
 var forced_mode := -1
@@ -88,7 +90,7 @@ func _ready() -> void:
 	Settings.changed.connect(_on_setting)
 	_mode = _wanted_mode()
 	stage.build()
-	stage.show_look(LookStore.load_look(), MenuHero.saved_weapon())
+	stage.show_look(LookStore.load_look(unlocks), MenuHero.saved_weapon())
 	_follow_motion(UIMotion.reduced)
 	_follow_size()
 	_apply_mode()
@@ -134,7 +136,7 @@ func show_tab(tab: MenuTab.Id) -> void:
 
 ## Dresses the soldier again from the save (the wardrobe saved a new look, or a weapon was chosen).
 func reload_look() -> void:
-	stage.show_look(LookStore.load_look(), MenuHero.saved_weapon())
+	stage.show_look(LookStore.load_look(unlocks), MenuHero.saved_weapon())
 	refresh()
 
 

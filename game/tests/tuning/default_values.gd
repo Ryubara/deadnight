@@ -114,6 +114,7 @@ const NIGHT_SOUND_TUNING := {
 	"interrupt_priority": 80,
 	"cut_margin": 25,
 	"urgent_priority": 65,
+	"cheer_window": 0.25,
 	"remember_takes": 3,
 	"streak_kills": 4,
 	"streak_window": 6.0,

@@ -134,6 +134,10 @@ static var _shipped: NightSoundTuning = null
 ## From this priority up a line cuts a progression cheer (a level up, a challenge done ...) that is
 ## speaking: the cheers rank above the chatter but give way to the urgent lines.
 @export_range(0, 200, 1) var urgent_priority := 65
+## A server's progression events for one player (a level, its tier, what it unlocks) arrive within a
+## tick of each other: the soldier waits this long for them all and says the one that fits best,
+## once, not a chorus.
+@export_range(0.0, 2.0, 0.05, "suffix:s") var cheer_window := 0.25
 ## How many of a moment's last takes it will not play again.
 @export_range(0, 8, 1) var remember_takes := 3
 

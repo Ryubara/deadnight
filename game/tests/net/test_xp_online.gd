@@ -313,6 +313,37 @@ func test_a_guest_account_earns_like_any_other() -> void:
 	assert_int(guest.state.levels[guest.state.player_id]).is_equal(1)
 
 
+func test_the_server_holds_a_seats_look_to_the_level_its_ticket_gives() -> void:
+	await _start()
+	var low := await _client("ann", LevelCurve.xp_for(5))
+	var high := await _client("cy", LevelCurve.xp_for(30))
+	var server := _room().server
+	assert_int(server.player_levels[low.state.player_id]).is_equal(5)
+	assert_int(server.player_levels[high.state.player_id]).is_equal(30)
+	# A look wearing the level-26 letter jacket and the level-42 gold: the level-5 seat is put back
+	# to the vest and black, the level-30 seat keeps the jacket (gold is above it too).
+	var greedy := CharacterLook.from_preset(3)
+	greedy.parts[&"torso"] = &"letterman"
+	greedy.colours[&"primary"] = 11
+	for night in [low, high]:
+		(
+			server
+			. apply(
+				{
+					"type": NightServer.LOOK,
+					"player_id": night.state.player_id,
+					"packet": LookWire.look(greedy),
+				}
+			)
+		)
+	var seen_low: CharacterLook = server.looks.looks[low.state.player_id]
+	var seen_high: CharacterLook = server.looks.looks[high.state.player_id]
+	assert_str(String(seen_low.parts[&"torso"])).is_equal("vest")
+	assert_int(seen_low.colours[&"primary"]).is_equal(0)
+	assert_str(String(seen_high.parts[&"torso"])).is_equal("letterman")
+	assert_int(seen_high.colours[&"primary"]).is_equal(0)
+
+
 func test_a_report_the_backend_did_not_take_is_sent_again_the_same_until_it_is() -> void:
 	await _start()
 	var answers: Array[int] = [503, 0, 200]

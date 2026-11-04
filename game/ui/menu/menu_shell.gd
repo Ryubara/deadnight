@@ -58,6 +58,7 @@ func _ready() -> void:
 	view = MenuStageView.new()
 	view.manual = manual_stage
 	context.stage = view
+	view.unlocks = LookUnlocks.at_level(context.profile.level())
 	add_child(view)
 	_build_scrims()
 	_turn_pad = _TurnPad.new(self)
@@ -157,6 +158,8 @@ func commit() -> void:
 ## Shows a fresh profile (the plate and the panels that read it).
 func set_profile(profile: MenuProfile) -> void:
 	context.profile = profile
+	view.unlocks = LookUnlocks.at_level(profile.level())
+	view.reload_look()
 	plate.show_profile(profile)
 	refresh_panels()
 

@@ -42,6 +42,10 @@ func _ready() -> void:
 	add_child(WebClipboard.new())  # copy and paste inside a Discord Activity's frame (#516)
 	_add_overlays()
 	await get_tree().process_frame
+	if not args.has("instance_id"):
+		# A returning Guest signs in in the background, so a Solo night earns XP (#1122); the menu
+		# does not wait for it.
+		StartupSignIn.begin(self)
 	if KillBench.requested():
 		add_child(KillBench.new())
 		return

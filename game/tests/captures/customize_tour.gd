@@ -1,6 +1,6 @@
 extends Node
-## Scripted capture of the customization screen: rest, a preset, keyboard and gamepad moves along a
-## strip, a locked option, a random look and a save. Run it with Movie Maker
+## Scripted capture of the customization screen: rest, a preset, keyboard and gamepad moves through
+## the grid, a locked item, a random look and a save. Run it with Movie Maker
 ## (`--write-movie out.png --fixed-fps 10 --quit-after 220`). Settings go to a throwaway file.
 
 const SCREEN := "res://ui/screens/customize_screen.tscn"
@@ -29,21 +29,26 @@ func _run() -> void:
 	await _beat("preset-usher", 0.8)
 	_press(&"ui_right")
 	await _beat("preset-mechanic", 0.8)
-	# Headwear, then along the main colour strip as a gamepad would.
-	_screen.selector(&"headwear").grab_focus()
-	_pad(JOY_BUTTON_DPAD_RIGHT)
+	# Headwear, then along the main colours as a gamepad would.
+	_screen.show_tab(&"headwear")
+	await _beat("headwear-tab", 0.6)
+	_screen.cell_of(&"headwear", &"ballcap").grab_focus()
+	_pad(JOY_BUTTON_A)
 	await _beat("headwear", 0.8)
-	_screen.choose("colour:primary", 8)
-	_screen.strip("colour:primary").grab_focus()
+	_screen.show_tab(&"colours")
+	_screen.cell("colour:primary", 8).grab_focus()
 	for i in 2:
 		_pad(JOY_BUTTON_DPAD_RIGHT)
 		await _beat("primary-%d" % i, 0.5)
-	# The next swatch is locked: the cursor lands on it, the choice stays.
-	_pad(JOY_BUTTON_DPAD_RIGHT)
-	await _beat("locked", 1.0)
-	_pad(JOY_BUTTON_DPAD_LEFT)
-	_screen.strip("colour:skin").grab_focus()
-	_pad(JOY_BUTTON_DPAD_RIGHT)
+	# A locked swatch: the focus lands on it, the detail line says how to get it, the choice stays.
+	var locked := _screen.first_locked_cell()
+	if locked != null:
+		locked.grab_focus()
+		_pad(JOY_BUTTON_A)
+		await _beat("locked", 1.0)
+	_screen.show_tab(&"body")
+	_screen.cell("colour:skin", 2).grab_focus()
+	_pad(JOY_BUTTON_A)
 	await _beat("skin", 0.6)
 	_screen.randomize()
 	await _beat("random", 1.0)

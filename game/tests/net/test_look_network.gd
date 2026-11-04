@@ -119,7 +119,8 @@ func test_seats_are_the_lowest_free_and_kept_while_others_leave() -> void:
 
 
 func test_the_server_replaces_a_look_that_is_broken_or_wears_something_locked() -> void:
-	var hub := LoopbackHub.new()
+	# A level 1 account: the starting wardrobe.
+	var hub := LoopbackHub.new(func(_id: int) -> LookUnlocks: return LookUnlocks.new())
 	var a := hub.connect_client()
 	var b := hub.connect_client()
 	# A look of another version arrives as the default look.
@@ -132,7 +133,9 @@ func test_the_server_replaces_a_look_that_is_broken_or_wears_something_locked() 
 	hub.send_look(b, greedy)
 	hub.pump()
 	var seen := (hub.clients[a] as LookRegistry).resolved()
-	assert_bool((seen[a] as CharacterLook).equals(CharacterLook.new())).is_true()
+	# ...and, put into the wardrobe a level 1 account has, it is the plain look.
+	var plain := CharacterLook.new().without_locked(LookUnlocks.new())
+	assert_bool((seen[a] as CharacterLook).equals(plain)).is_true()
 	assert_int((seen[b] as CharacterLook).colours[&"primary"]).is_equal(0)
 	assert_int((seen[b] as CharacterLook).colours[&"skin"]).is_equal(greedy.colours[&"skin"])
 
