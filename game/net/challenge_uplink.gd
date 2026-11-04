@@ -45,7 +45,20 @@ static func sync_after_sign_in(signed: TogetherApi) -> void:
 	var parent := signed.owner_node()
 	var own := signed.detached(parent.get_tree().root if parent.is_inside_tree() else parent)
 	var answer := await own.read_save(SLOT)
-	if answer["ok"] and adopt(answer, own.my_id(), sync_path):
+	if not answer["ok"]:
+		return
+	var before: ChallengeProfile = ChallengeSave.read(sync_path)["profile"]
+	if adopt(answer, own.my_id(), sync_path):
+		# Told before the menu's board reads the file: it settles the orders that are done.
+		var after: ChallengeProfile = ChallengeSave.read(sync_path)["profile"]
+		var finished := ProgressNews.challenges_after_read(
+			own.my_id(),
+			before,
+			after,
+			ChallengeCatalog.load_default(),
+			ChallengeClock.system().day()
+		)
+		MenuPopups.announce(finished)
 		ChallengeBoard.file_replaced(sync_path)
 
 

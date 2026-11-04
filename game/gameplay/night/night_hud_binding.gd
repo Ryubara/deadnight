@@ -126,6 +126,9 @@ func _on_look(_player_id: int, looks: LookRegistry) -> void:
 
 
 func _on_event(event: Dictionary) -> void:
+	if event["type"] == &"level_up" and int(event["player_id"]) == _state.player_id:
+		# The lane shows it now: the menu must not show it again (`ProgressSeen`).
+		ProgressSeen.note_level(int(event["level"]))
 	match event["type"]:
 		&"frame":
 			_on_frame()

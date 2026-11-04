@@ -18,6 +18,9 @@ var lane := PopupLane.new()
 
 var _link: PopupLink
 var _night_up := false
+## What was announced while a night was up: it shows when the night's screen is gone (the night's
+## own HUD does not tell what the menu learned, and a night does not tell it twice).
+var _held: Array = []
 
 
 func _enter_tree() -> void:
@@ -41,9 +44,12 @@ func _ready() -> void:
 
 
 ## Shows the progression events of `events` (the server's `level_up`, `tier_up`, `unlock_earned`,
-## a finished `challenge_advanced`) as cards, unless a night is up.
+## a finished `challenge_advanced`) as cards. While a night is up they wait for it to be gone.
 static func announce(events: Array) -> void:
-	if instance == null or not is_instance_valid(instance) or instance._night_up:
+	if events.is_empty() or instance == null or not is_instance_valid(instance):
+		return
+	if instance._night_up:
+		instance._held.append_array(events)
 		return
 	for event: Dictionary in events:
 		instance.lane.on_event(event)
@@ -56,6 +62,10 @@ static func set_night(up: bool) -> void:
 	instance._night_up = up
 	if up:
 		instance.lane.clear()
+		return
+	var waiting := instance._held
+	instance._held = []
+	announce(waiting)
 
 
 func _fit() -> void:

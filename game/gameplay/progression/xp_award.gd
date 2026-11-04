@@ -297,44 +297,45 @@ func _tell(seat: Seat, out: Array[Dictionary]) -> void:
 
 ## A seat reached `seat.level`: its card, the tier if it opens one, and what it unlocks.
 func _cross(seat: Seat, out: Array[Dictionary]) -> void:
-	(
-		out
-		. append(
-			{
-				"type": LEVEL_UP,
-				"player_id": seat.player_id,
-				"level": seat.level,
-				"total": seat.start_xp + seat.meter.xp(),
-			}
-		)
-	)
-	var tier := LevelCurve.tier_of(seat.level)
-	if tier > LevelCurve.tier_of(seat.level - 1):
+	out.append_array(crossing(seat.player_id, seat.level, seat.start_xp + seat.meter.xp(), unlocks))
+
+
+## The events of reaching `level` with `total` raw XP: the level's, the tier's when it opens one and
+## one for each item it unlocks that a player can be told about. The night tells these live and the
+## menu tells them when it learns of a level later (`ProgressNews`), so the cards are the same.
+static func crossing(
+	player_id: int, level: int, total: int, table: LadderUnlocks
+) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	out.append({"type": LEVEL_UP, "player_id": player_id, "level": level, "total": total})
+	var tier := LevelCurve.tier_of(level)
+	if tier > LevelCurve.tier_of(level - 1):
 		(
 			out
 			. append(
 				{
 					"type": TIER_UP,
-					"player_id": seat.player_id,
+					"player_id": player_id,
 					"tier": tier,
 					"tier_name": LevelCurve.TIER_NAMES[tier],
-					"level": seat.level,
+					"level": level,
 				}
 			)
 		)
-	for row: Dictionary in unlocks.earned_at(seat.level):
+	for row: Dictionary in table.earned_at(level):
 		(
 			out
 			. append(
 				{
 					"type": UNLOCK,
-					"player_id": seat.player_id,
-					"level": seat.level,
+					"player_id": player_id,
+					"level": level,
 					"slot": row["slot"],
 					"item": row["item"],
 				}
 			)
 		)
+	return out
 
 
 ## One seat's night.

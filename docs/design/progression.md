@@ -740,6 +740,9 @@ menus (`MenuPopups`); how it works, and what the tests measure, is
 - **A finished challenge** is a card of the lane (so the prompt on the left edge says only the steps) unless the player
   turned the cards off: then the prompt says the finish as before.
 - **Setting:** `Level-up popups` in Settings, Accessibility: All, Big ones only (level, tier, challenge), Off.
+- **In the menu (#1130):** the lane also shows what the account earned while this machine was away (a level, a
+  finished challenge, read at sign-in) and never what the night already showed
+  ([the research page](../research/popup-lane.md#what-tells-the-menus-lane-1130)).
 
 ## Voice lines
 
