@@ -847,6 +847,9 @@ SPRINT_CARRY = {
 # y back, z up): at the grips above, the forearm reaching across to the grip lay in the jacket's front (the left one
 # 73 mm, the right 47 mm, #939).
 SPRINT_SHIFT = (-0.09, -0.14, 0.0)
+# How far out the carry's right elbow is bent, times the IK's (#978): with the shorter forearm the right upper arm lay
+# nearer the chest, and the seat's armband on it sank 8 mm deeper in Sprint_Rifle.
+SPRINT_RIGHT_OUT = 2.0
 # The carries of single models, after the class ones (named Sprint_<model>).
 SPRINT_MODELS = tuple(k for k, c in SPRINT_CARRY.items() if "class" in c)
 # The game's data the carries are built against (the hold and grip files).
@@ -1092,7 +1095,7 @@ def sprint_carries(arm, acts, aim, up):
             out = (right_shoulder - left_shoulder).normalized() * 0.45
             goal = grip - hand @ weapon.translation
             miss["R"] = max(miss["R"], _reach(arm, ("UpperArm.R", "LowerArm.R", "Index1.R"), goal,
-                                              out + Vector((0, 0, -1))))  # fmt: skip
+                                              out * SPRINT_RIGHT_OUT + Vector((0, 0, -1))))  # fmt: skip
             _set_world_rot(arm, "Index1.R", hand)
             grips.append(turn_by.inverted() @ (grip - waist))
             # The left hand on the fore-end where the grip puts it on the weapon the game draws, turned to hold it

@@ -150,11 +150,20 @@ The maintainer saw the female Soldier's arms as too long ("maybe double check it
   low ready (and fell 8-13 mm short of the M249's, the PPSh's and the pump's at 40 degrees down).
 
 What changed: the forearm is 0.80 of the kit's (0.352; the arm 1.124, 0.507 of the height; the fingertips at 0.198,
-at the knee), the long guns' stance 10 degrees more, and the weapon slides back along its barrel when the fore-end is
-still out of reach ([How a gun is held](../design/weapon-hold.md#how-a-gun-is-held)). Tried first at run time
-(`measure_arms.tscn -- --forearm=0.88 --stance=10 --pitch=-0.7`, the skeleton's rest shortened in the probe): a
-forearm of 0.88 needed 10 degrees of stance at the low ready, 0.80 needed 20, or 10 and the slide; looking down
-57 degrees, no stance short of 50 degrees more reached without the slide.
+at the knee), a two-handed hold's elbows bend further out, and the weapon slides back along its barrel when the
+fore-end is out of the left arm's reach ([How a gun is held](../design/weapon-hold.md#how-a-gun-is-held)). Tried
+first at run time (`measure_arms.tscn -- --forearm=0.88 --stance=10 --pitch=-0.7`, the skeleton's rest shortened in
+the probe): a forearm of 0.88 needed 10 degrees of stance at the low ready, 0.80 needed 20 (or 10 and the slide);
+looking down 57 degrees no stance reached without the slide. More stance put the seat's armband 2-3 cm deeper into
+the chest when firing the pump and the M249 (night probe, 66-83 mm against 45-49), so the stances stayed as they
+were and the slide does it.
+
+In the night (`clip_arms_tour.tscn -- --measure`, worst per beat, mm, his jacket / her rolled sleeves), against #939's
+build of the same clips with the kit's forearm: reload left 120 / 120 (123 / 129), reload right 90 / 90 (90 / 90),
+fire right 45 / 53 (60 / 57), aim and hold right none / none (40 and 37 / none), fire armbands none / 40 (48 / 45),
+sprint armbands 41 / 45 (56 / 66), sprint arms none / none (32 and 38 / none), reload armbands none / none (74 / 71),
+crawl's blend-in right hand 74 / 65 (65 / 67); one vertex at 30-31 in the grenade's cook and her pistol strike (30 is
+the tolerance).
 
 What broke on the way:
 
@@ -167,3 +176,5 @@ What broke on the way:
   near half a turn; main's 178 had been on the lucky side. Each carry now rolls its left forearm (one roll for the
   loop, 45-60 degrees) so the wrist stays within 150 degrees (`CARRY_WRIST_MAX` in `tools/blender/soldier_clips.py`);
   `test_sprint_start_blend.gd` failed first.
+- The seat's armband on the right upper arm sank 8 mm deeper in her Sprint_Rifle (`test_soldier_clip_fit.gd`: 44 mm,
+  recorded 36): the carry's right elbow now bends out twice as far as the IK's (`SPRINT_RIGHT_OUT`).
