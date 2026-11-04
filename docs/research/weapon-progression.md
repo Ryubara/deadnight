@@ -349,12 +349,17 @@ class (from 150 solo nights; the box's draw decides the mix, which is a model of
 | --- | --- | --- | --- |
 | Level and XP | Level to 1, XP to 0 | Lifetime stats (kills, nights, best round, extractions) in the ledger | A star on the level icon for each prestige; a prestige card and emblem |
 | Kit | The eleven skill picks; the attachments and re-cut finishes earned by weapon use (class kills go back to 0) | Nothing of the kit except a Keepsake | One Keepsake per prestige (one item kept, below) |
-| Wardrobe | Every piece and cloth colour the ladder gave (26 pieces, 10 colours), the four level plate frames; back to two of each and the free colours | The free character, face, hair; any item kept by a Keepsake; anything earned by a challenge or a night won | The prestige colour set and a prestige-only costume piece |
+| Wardrobe | Every piece and cloth colour the ladder gave (26 pieces, 10 colours), the four level plate frames; back to two of each, a costume's **Default** look and the player's own colour choice on it (the maintainer's answer on costume colours) | The free character, face, hair; any item kept by a Keepsake; anything earned by a challenge or a night won | The prestige colour set and a prestige-only costume piece |
 | Maps | Nothing (see below) | Every map already unlocked | |
 | Cards and emblems | Nothing | Every calling card and emblem, including the tier ones (they record that the level was reached once) | One of each per prestige |
 | Weapon skins | Nothing | Every skin a feat earned | An exclusive skin per prestige, earned on the climb by extracting |
 | Challenges | Dailies and orders in progress; level-based ones | Lifetime counters and finished ones, "beat this map" frames | |
 | Weapons and tonics | Nothing: free to all | | |
+
+Prestige is a property of the account, **a Guest account included**: a Guest earns XP like any other (the maintainer,
+2026-11-04), so it can reach level 55 and prestige. A Guest account lasts 7 days between visits, so a prestige on a
+Guest that is not signed in again is lost with the account: the prestige screen should say so, and the progression plan
+should offer to sign in before a prestige.
 
 The reset line is the one the genre draws: **what the ladder gave goes, what a feat earned stays**. Everything on the
 left was bought with time; everything in the middle was earned by doing something, so taking it back would be the
@@ -363,16 +368,13 @@ back either.
 
 ### Maps and level-locked cosmetics, specifically
 
-- **Maps stay unlocked.** At the 8-hour pace the second map (level 10) comes after about 21 minutes for a Regular
-  (a level 10 in the curve below), so re-locking it costs 21 minutes and a friend's night, not a flex: the **host's**
-  level decides the lot (answer 5 of the maintainer's progression decisions), so a prestiged host at level 3 could not
-  host the back rooms for his
-  friends. The Deep Rock promotion is the precedent (unlocks stay, the level resets, content opens), and map access is
-  the
-  one thing here whose absence only annoys. **Option B** (re-lock to level 10): possible, cheap to build, and I would
-  not. **Option C** (re-lock and let the Keepsake save a map): the same cost with a worse choice. **Choice** 5.
-- **With the 8-hour pace the back rooms at level 10 is now 21 minutes in.** The previous plan put it at 1.2 hours;
-  I would move the unlock to level 20 (about 70 minutes) to keep the same feel. **Choice** 6.
+- **Maps stay unlocked.** At the 8-hour pace the second map (level 10, which the maintainer confirmed is not too
+  early) comes after 24 to 32 minutes for a Regular or a Veteran (level 10 in the curve below), so re-locking it costs
+  that half hour and a friend's night, not a flex: the **host's** level decides the lot (answer 5 of the maintainer's
+  progression decisions), so a prestiged host at level 3 could not host the back rooms for his friends. The Deep Rock
+  promotion is the precedent (unlocks stay, the level resets, content opens), and map access is the one thing here
+  whose absence only annoys. **Option B** (re-lock to level 10): possible, cheap to build, and I would not. **Option
+  C** (re-lock and let the Keepsake save a map): the same cost with a worse choice. **Choice** 5.
 - **Level-locked cosmetics reset**, except: the Keepsake, anything a challenge or an extraction gave, the free set. The
   plate frames from levels (29, 37, 50, 55) reset; the "beat this map" frames (answer 10: exclusive ones from
   challenges) stay, because a night won earned them.
@@ -401,7 +403,7 @@ mattering after five to seven), so the tenth prestige is as costly as the first.
   card, the emblem, the frame) and an **exclusive earned on that climb by winning a night** (an extraction, from
   [#1056](https://github.com/Ryubara/deadnight/issues/1056)): a weapon skin, a costume piece, in the rarity tiers
   [Cosmetic rarity](cosmetic-rarity.md) describes. The second kind makes a prestige more
-  than a longer grind: the player must win, once, on the climb, to finish the set. **Choice** 8: and whether prestige
+  than a longer grind: the player must win, once, on the climb, to finish the set. **Choice** 7: and whether prestige
   itself should *need* one extraction at level 55 (a final exam; I would not, because a team that has not got extraction
   working yet should not be locked out).
 - **No combat power.** The prestige kit is the level-55 kit; nothing from the prestige adds to it. If the maintainer
@@ -412,10 +414,10 @@ mattering after five to seven), so the tenth prestige is as costly as the first.
 
 A prestiged player has lost **the kit for a while and the outfit for a while**:
 
-- The kit comes back along the climb: a pick at every fifth level (half the picks at level 25, about 1.8 hours for a
-  Regular; seven of eleven at level 40, about 4.4 hours) and the attachments as class kills pass 150, 600 and 1,500.
+- The kit comes back along the climb: a pick at every fifth level (half the picks at level 25, about 2 hours for a
+  Regular; seven of eleven at level 40, about 4.7 hours) and the attachments as class kills pass 150, 600 and 1,500.
   The *power* gap against a player who did not prestige is therefore **at most the whole budget at the first night
-  (about 5 percent of a Regular's rounds), half of it after two hours, and gone by hour 8**. If the loss must
+  (about 5 percent of a Regular's rounds), half of it after two hours, and gone by level 55, hour 8.5**. If the loss must
   *hurt in play*, it will not; it is a few percent for a few hours.
 - What does hurt is the **identity**: back to two of each, level 1 over the head, a star beside it, the outfit that took
   8 hours dark again. That is what the maintainer's word "flex" asks for: the loss is *seen*, and the star says it was
@@ -429,52 +431,56 @@ A prestiged player has lost **the kit for a while and the outfit for a while**:
 
 ### The 8-hour curve
 
-The XP curve of [the progression page](progression.md) is 53,250 XP for 22 to 32 hours. At 8 hours it is a third of
-that, **and it climbs**: the maintainer's *"it takes longer to level up the higher you go ... first level up
-satisfaction early on"*. The cost to leave a level, per tier of five (the last tier has four levels; **17,465 XP** in
-all), with the opening-night bonus lowered to 100 so the first night is not seven level-ups at once:
+The XP curve is the one built for [#1058](https://github.com/Ryubara/deadnight/issues/1058) (the design page's
+[curve](../design/progression.md#the-curve), 18,010 XP to level 55; an earlier draft of this page used a 17,465 XP
+table, now replaced). It is a third of the first plan's 53,250 XP, **and it climbs**: the maintainer's *"it takes longer
+to level up the higher you go ... first level up satisfaction early on"*. The cost to leave a level, per tier of five
+(the last tier has four levels), with the opening night's 50 XP credited once:
 
 | Tier | Levels | XP to leave each | | Tier | Levels | XP to leave each |
 | --- | --- | ---: | --- | --- | --- | ---: |
-| Doors Open | 1-5 | 80 | | Main Feature | 31-35 | 435 |
-| Cartoon | 6-10 | 115 | | Late Show | 36-40 | 495 |
-| Newsreel | 11-15 | 160 | | Midnight Show | 41-45 | 550 |
-| Intermission | 16-20 | 205 | | Headliner | 46-50 | 610 |
-| Trailers | 21-25 | 265 | | Last Reel | 51-54 | 610 |
-| Second Feature | 26-30 | 320 | | | | |
+| Doors Open | 1-5 | 85 | | Main Feature | 31-35 | 390 |
+| Cartoon | 6-10 | 135 | | Late Show | 36-40 | 440 |
+| Newsreel | 11-15 | 185 | | Midnight Show | 41-45 | 490 |
+| Intermission | 16-20 | 235 | | Headliner | 46-50 | 540 |
+| Trailers | 21-25 | 290 | | Last Reel | 51-54 | 590 |
+| Second Feature | 26-30 | 340 | | | | |
 
-The first level costs a Regular **2.3 minutes** and the last **17**. Time to each level from the same simulator cells
-as the progression page (XP per night and minutes per night from `model.py`; nights only: boards, doors, fuel and
+The first level costs a Regular about **a minute** (85 XP less the opening night's 50) and the last **17**. Time to
+each level from the simulator cells of the progression research page (150 nights a cell; the CI-sized read in
+[the XP curve page](xp-curve.md) gives 8.7 h to level 55 for the Regular, 7.8 for the Veteran and 9.8 to 10.3 for four
+Regulars) (XP per night and minutes per night from `model.py`; nights only: boards, doors, fuel and
 the dailies add about 15 percent, so each time is an upper bound):
 
 | Level | XP to reach it | Regular, solo | Regulars, four | Veteran, solo | Rookie, solo |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2 | 80 | 0 min | 0 min | 0 min | 0 min |
-| 5 | 320 | 6 min | 8 min | 6 min | 8 min |
-| 10 | 860 | 21 min | 26 min | 20 min | 28 min |
-| 15 | 1,615 | 43 min | 52 min | 39 min | 57 min |
-| 20 | 2,595 | 70 min | 86 min | 65 min | 93 min |
-| 25 | 3,860 | 106 min | 2.2 h | 97 min | 2.3 h |
-| 30 | 5,405 | 2.5 h | 3.1 h | 2.3 h | 3.3 h |
-| 40 | 9,365 | 4.4 h | 5.3 h | 4.0 h | 5.8 h |
-| 50 | 14,475 | 6.8 h | 8.3 h | 6.2 h | 9.0 h |
-| 55 | 17,465 | 8.2 h | 10.0 h | 7.5 h | 10.8 h |
+| 2 | 85 | 1 min | 1 min | 1 min | 1 min |
+| 5 | 340 | 8 min | 10 min | 8 min | 11 min |
+| 10 | 965 | 26 min | 32 min | 24 min | 34 min |
+| 15 | 1,840 | 51 min | 62 min | 46 min | 67 min |
+| 20 | 2,965 | 82 min | 101 min | 76 min | 109 min |
+| 25 | 4,360 | 2.0 h | 2.5 h | 112 min | 2.7 h |
+| 30 | 6,010 | 2.8 h | 3.4 h | 2.6 h | 3.7 h |
+| 40 | 10,060 | 4.7 h | 5.8 h | 4.3 h | 6.2 h |
+| 50 | 15,110 | 7.1 h | 8.7 h | 6.5 h | 9.4 h |
+| 55 | 18,010 | 8.5 h | 10.3 h | 7.8 h | 11.2 h |
 
 ### What a player does with the hours
 
 | Hours | What the player does | What the systems give |
 | --- | --- | --- |
 | 0 to 0.5 | First nights; levels 1 to 10; the first skill picks (5 and 10); starter class slot 1 | The popups come within minutes; the second map (or its new level) |
-| 0.5 to 8 | The climb: a pick every 5 levels, the favourite classes' three slots, the wardrobe, level 55 | The kit grows to its budget; every cosmetic of the ladder; first extractions as [#1056](https://github.com/Ryubara/deadnight/issues/1056) lands |
-| 8 to 20 | Prestige 1 (optional) or stay: the classes the box rarely draws (tens of hours), 45 challenges and the poster sets, extraction on the other maps, skin feats | Skins and cards; the choice of prestige or not |
-| 20 to 80 | Prestiges 2 to 10: each one a climb with a **different kit** (the picks are re-chosen, the Keepsake changes the start), one win to finish each exclusive set | A star per prestige; ten exclusive sets; the +25 percent XP bonus after five |
-| After 80 | Master mark; the stars go on without a reset; skins and the ledger | Nothing more is gated |
+| 0.5 to 8.5 | The climb: a pick every 5 levels, the favourite classes' three slots, the wardrobe, level 55 | The kit grows to its budget; every cosmetic of the ladder; first extractions as [#1056](https://github.com/Ryubara/deadnight/issues/1056) lands |
+| 8.5 to 20 | Prestige 1 (optional) or stay: the classes the box rarely draws (tens of hours), 45 challenges and the poster sets, extraction on the other maps, skin feats | Skins and cards; the choice of prestige or not |
+| 20 to 85 | Prestiges 2 to 10: each one a climb with a **different kit** (the picks are re-chosen, the Keepsake changes the start), one win to finish each exclusive set | A star per prestige; ten exclusive sets; the +25 percent XP bonus after five |
+| After 85 | Master mark; the stars go on without a reset; skins and the ledger | Nothing more is gated |
 
 ![Hours to each prestige](weapon-progression-hours.png)
 
-The loop is **ten climbs** (the figure: no bonus, prestige 10 at 82 hours for an average solo player; with +5 percent a
-prestige at most +25 percent, **70 hours**). That is the 8-to-80 the maintainer asked for, and it is arithmetic on the
-curve, not a promise: whether players *want* a second climb depends on the second climb being different. The levers
+The loop is **ten climbs** (the figure: no bonus, prestige 10 at 85 hours for an average solo player, ten climbs of
+8.5 h; with +5 percent a prestige at most +25 percent, **73 hours**). That is the 8-to-80 range the maintainer asked
+for, a little over at the no-bonus end, and it is arithmetic on the curve, not a promise: whether players *want* a
+second climb depends on the second climb being different. The levers
 that make it so are the re-chosen picks, the Keepsake, the exclusives that need a win, and the extraction itself
 (a new way to end a night). The Roblox glossary's warning (summary) is the risk: prestige hurts retention when the
 second run feels like the first.
@@ -489,15 +495,13 @@ Each is mine to recommend and his to decide.
 | 2 | Keepsake | One item per prestige, at most five held. Or none (a harsher, cleaner reset) |
 | 3 | The host's switch | A match setting **Loadouts: On or Standard** (kit off for the whole lobby), default On |
 | 4 | How slight | The level-55 kit and a prestige cap of the 1.5x kit; the guard test holds them. A bigger kit is possible and the tables say what it costs |
-| 5 | Maps on a reset | **Stay unlocked.** Or re-lock until level 10 (21 minutes), or until level 10 with a Keepsake |
-| 6 | Back rooms at level 10 or 20 | **20** at the 8-hour pace (about 70 minutes) |
-| 7 | Skills: pairs or a tree | **A pair at every fifth level**, swappable. Or a tree |
-| 8 | Prestige exclusives | One earned by an extraction on the climb; prestige itself does not need one |
-| 9 | XP bonus | +5 percent a prestige, at most +25 percent |
-| 10 | Attachments by class kills | **By class**, a quarter share to the other classes. Or by weapon (starves the rare guns), or by account level (the maintainer's "play more" but not "use the weapon") |
-| 11 | Gun modifiers | The re-cut finish, **second wave**, after attachments and skills |
-| 12 | Attachment art | Parts on the three sockets the models already have, shared across weapons ([cost](#what-it-costs-to-build)) |
-| 13 | Opening-night bonus | 100 XP at the 8-hour pace (it was 300 at 22 to 32 hours) |
+| 5 | Maps on a reset | **Stay unlocked.** Or re-lock until level 10 (24 to 32 minutes), or until level 10 with a Keepsake |
+| 6 | Skills: pairs or a tree | **A pair at every fifth level**, swappable. Or a tree |
+| 7 | Prestige exclusives | One earned by an extraction on the climb; prestige itself does not need one |
+| 8 | XP bonus | +5 percent a prestige, at most +25 percent |
+| 9 | Attachments by class kills | **By class**, a quarter share to the other classes. Or by weapon (starves the rare guns), or by account level (the maintainer's "play more" but not "use the weapon") |
+| 10 | Gun modifiers | The re-cut finish, **second wave**, after attachments and skills |
+| 11 | Attachment art | Parts on the three sockets the models already have, shared across weapons ([cost](#what-it-costs-to-build)) |
 
 ## What it costs to build
 
