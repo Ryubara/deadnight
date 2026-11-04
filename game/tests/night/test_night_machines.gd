@@ -3,6 +3,9 @@
 # through the same `use` that buys a door, with the server deciding and every client seeing it.
 extends GdUnitTestSuite
 
+## What a re-cut costs, every time (#909).
+const RECUT_PRICE := 5000
+
 
 func _start() -> Night:
 	var night := await NightFixture.start(self, Night.Mode.MANUAL)
@@ -59,6 +62,43 @@ func test_a_press_re_cuts_the_weapon_charges_and_fills_it() -> void:
 	# The frame says so too, and the next prompt says it is done.
 	assert_int(night.state.me()["arms"][&"pistol"][2]).is_equal(1)
 	assert_str(String(night.state.me()["prompt"]["kind"])).is_equal("recut_done")
+	night.queue_free()
+
+
+func test_the_bench_asks_5000_for_the_first_the_second_and_the_third_weapon() -> void:
+	# #909: the price did not grow with the weapons re-cut (1500, 3000, 4500 before).
+	var night := await _start()
+	night.server.rules.apply(RulesAction.grant_points(1, 20000))
+	_stand_at(night, _spot(night, &"upgrade"))
+	var held: Array[StringName] = [&"pistol", &"smg", &"shotgun"]
+	for weapon in held:
+		night.server.combat.apply(CombatAction.give_weapon(1, weapon))
+		var prompt := _stand_at(night, _spot(night, &"upgrade"))
+		assert_str(String(prompt["kind"])).is_equal("recut")
+		assert_int(prompt["price"]).is_equal(RECUT_PRICE)
+		var before := night.state.points()
+		_use(night)
+		assert_int(before - night.state.points()).is_equal(RECUT_PRICE)
+		assert_int(night.server.combat.state_of(1, weapon).tier()).is_equal(1)
+	night.queue_free()
+
+
+func test_a_second_press_on_a_re_cut_weapon_is_refused_with_the_rule_and_costs_nothing() -> void:
+	var night := await _start()
+	_stand_at(night, _spot(night, &"upgrade"))
+	_use(night)
+	var prompt: Dictionary = night.state.me()["prompt"]
+	assert_str(String(prompt["kind"])).is_equal("recut_done")
+	var before := night.state.points()
+	_use(night)
+	_use(night)
+	assert_int(night.state.points()).is_equal(before)
+	assert_int(night.server.combat.state_of(1, &"pistol").tier()).is_equal(1)
+	# The rules refuse it too, for a client that asks anyway.
+	var events := night.server.buy(1, &"upgrade_weapon")
+	assert_int(RulesFixture.first(events, &"purchase_denied")["result"]).is_equal(
+		GameRules.BuyResult.ALREADY_OWNED
+	)
 	night.queue_free()
 
 
