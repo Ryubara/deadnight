@@ -12,6 +12,16 @@ const WEARABLE_SLOTS: Array[StringName] = [
 ]
 const FREE_SLOTS: Array[StringName] = [&"head", &"hair", &"body", &"mouth", &"arm"]
 const STARTING_COLOURS := ["black", "cream", "grey", "olive", "red", "blue"]
+## The table's names for the wardrobe's slots, and the catalogue's.
+const ROW_SLOTS := {
+	"top": &"torso",
+	"headwear": &"headwear",
+	"trousers": &"legs",
+	"shoes": &"feet",
+	"eyewear": &"eyewear",
+	"neck": &"neck",
+}
+
 const PROFILE_PATH := "user://look_unlocks_test_profile.json"
 
 var _profile_path_before: String
@@ -181,6 +191,51 @@ func test_what_the_art_has_and_what_the_ladder_promises_agree() -> void:
 			assert_bool(LookCatalog.option_index(slot, waiting["id"]) >= 0).is_false()
 			assert_str(waiting["label"]).is_not_empty()
 			assert_int(LookUnlocks.level_of(waiting["gate"])).is_greater(1)
+
+
+func test_every_wearable_and_colour_row_names_a_real_part_of_the_catalogue() -> void:
+	var json := JSON.new()
+	assert_int(json.parse(FileAccess.get_file_as_string(LADDER_PATH))).is_equal(OK)
+	var cloth := LookCatalog.palette(&"primary")
+	var named := 0
+	for row: Dictionary in json.data:
+		if row["slot"] == "colour":
+			var found := cloth.any(
+				func(c: Dictionary) -> bool: return String(c["id"]) == String(row["item"])
+			)
+			(
+				assert_bool(found)
+				. override_failure_message("no cloth colour %s" % row["item"])
+				. is_true()
+			)
+			continue
+		if not ROW_SLOTS.has(row["slot"]):
+			continue
+		# A wearable's row carries `part`, "<catalogue slot>/<id>", and the slot agrees with it.
+		(
+			assert_bool(row.has("part"))
+			. override_failure_message("%s has no part" % row["item"])
+			. is_true()
+		)
+		var slot := StringName(String(row["part"]).get_slice("/", 0))
+		var id := StringName(String(row["part"]).get_slice("/", 1))
+		assert_str(String(slot)).is_equal(String(ROW_SLOTS[row["slot"]]))
+		var drawn := LookCatalog.option_index(slot, id) >= 0
+		var waiting := LookCatalog.pending(slot).any(
+			func(o: Dictionary) -> bool: return o["id"] == id
+		)
+		(
+			assert_bool(drawn or waiting)
+			. override_failure_message(
+				"%s names %s, which the catalogue does not have" % [row["item"], row["part"]]
+			)
+			. is_true()
+		)
+		# `available` is true exactly for a part the catalogue has a model of: a drawn piece is paid
+		# by its level (the popups and the night report name it), a waiting one is not yet.
+		assert_bool(row["available"]).is_equal(drawn)
+		named += 1
+	assert_int(named).is_equal(26)
 
 
 func test_every_wearable_the_ladder_names_has_an_icon() -> void:
