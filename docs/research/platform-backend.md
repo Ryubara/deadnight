@@ -52,6 +52,8 @@ image):
   progress. Format rules: [Save format](#save-format). The `profile` slot has more rules: [Progression](#progression-the-profile-slot-round-reports-and-the-xp-clamp).
 - `POST /internal/matches/:id/report` (shared secret): a game server's XP for each seat at a round's end or the night's
   end, paid once ([Progression](#progression-the-profile-slot-round-reports-and-the-xp-clamp)).
+  `GET /internal/users/:userId/saves/challenges` (shared secret): the seat's challenge board, which the game server
+  follows ([the board](#progression-the-profile-slot-round-reports-and-the-xp-clamp)).
 - `POST /internal/servers/heartbeat` (shared secret): a game server announces itself, its capacity and the ids of the
   matches it is running. `POST /internal/matches/:id/end` (shared secret): a match is over, its slot is free. A night
   that ran its end-of-night intermission out sends `{finished: true, present: [user ids still in the room]}` and its
@@ -252,7 +254,8 @@ end and at the night's end, or in one write of a solo client's profile at a roun
 
 **The slot.** `PUT/GET /saves/profile` is the one slot the backend reads. The profile is the game's `Profile.to_dict`:
 `{xp, equipped, done, opening_night, bonus_day}` (schema 1, the version both game slots use, so `SAVE_SCHEMA_VERSIONS`
-needed no new entry; the `challenges` slot stays an ordinary save the backend does not read). Raw XP only: the level,
+needed no new entry; the `challenges` slot stays an ordinary save the backend does not read, but a game server reads
+it and writes it, [below](#the-challenge-board-a-game-server-follows)). Raw XP only: the level,
 the icon and the next reward are derived (`levelOf` is a copy of `LevelCurve`, held equal by a test that reads the
 GDScript). A write must read (422 `invalid_profile` names the field) and take nothing away (422 `profile_regressed`:
 XP, the opening night, the day number or a finished challenge). A **Guest account** has a profile slot and earns like any
@@ -304,6 +307,25 @@ level 1. The stub game server passes them on in its welcome.
 What the game server must send, and when: [the game server's tally](../design/progression.md#who-awards-xp-and-live-xp)
 (#1059) posts one report a seat at each round's end (`kind: round`, `round: n`) and one at the night's end (`kind:
 night`, `round: n`), retries a post until it is answered, and keeps unsent reports while the backend is down.
+
+### The challenge board a game server follows
+
+The game server runs the challenge tracker for the seats that hold an account (#1076, [the design](../design/progression.md#the-save)),
+so it needs the account's board when the seat sits down and has to put it back. A player's session token is the only
+way into `/saves/:slot`, so the server has its own two doors, both with the game-server secret:
+
+- **Read: `GET /internal/users/:userId/saves/challenges`** answers the slot's envelope (`{revision, schemaVersion, data}`),
+  or 404 `{"error": "not_found"}` for an account with none (the server starts a fresh board; **only that body** means
+  "none": a 404 from a backend from before the route has Fastify's own body, and the server then follows no board
+  rather than start one that a report would write over the real one). Only this slot: the profile's XP rides the ticket.
+  The server asks once, when the seat sits down, with a 3 s timeout, and the night does not wait for the answer; a seat
+  whose board did not come is not followed and never written.
+- **Write: a seat's `board`** in the round report (`{schemaVersion, data}`, the slot's envelope without a revision).
+  The backend replaces the stored board with it (reading the revision itself and writing on top of whatever the
+  player's own client wrote since). The board is a snapshot, so a report applied again (`duplicate`) writes it again,
+  which is how a board lost with the first try gets through. A board that is refused (an unknown `schemaVersion`, or over
+  64 KiB) is answered `board: "refused"` on that seat and **never takes the XP with it**. `done` (the challenge ids
+  finished since the last report) goes to the profile's list as before. A report may weigh up to 1 MiB.
 
 ## The lobby before the night
 

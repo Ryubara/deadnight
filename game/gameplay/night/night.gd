@@ -254,7 +254,7 @@ func start_remote(
 	link = online
 	bot_orders.sender = link.send
 	state = ClientState.new()
-	_track_challenges()
+	_track_challenges(true)
 	var failure := {"reason": ""}
 	var welcome := {}
 	online.welcomed.connect(func(snapshot: Dictionary) -> void: welcome["snapshot"] = snapshot)
@@ -375,11 +375,12 @@ func _last_frame(events: Array) -> Dictionary:
 	return {}
 
 
-## Counts the night into the player's challenges, when there is a board to count into.
-func _track_challenges() -> void:
+## Counts the night into the player's challenges, when there is a board to count into. `online`:
+## a game server follows the account's board and tells the prompt (`ChallengeSession`).
+func _track_challenges(online: bool = false) -> void:
 	if challenge_board != null:
 		challenges = ChallengeSession.new(challenge_board, rules_tuning)
-		challenges.attach(state)
+		challenges.attach(state, online)
 		if hud != null:
 			_challenge_link = ChallengeHudLink.new(challenges, hud)
 

@@ -408,29 +408,28 @@ Natural play, the desktop's 120 dead:
 
 **Reading.**
 
-- **The tick does not move.** The room's mean tick is 4.45 ms without the award and 4.56 ms with it, and the seeds' ranges
-  overlap (4.38 to 4.53 and 4.47 to 4.63); the p99 and the worst tick differ by more between two seeds of one arm than
-  between the arms. The award's own time is 5 microseconds a tick on average (0.03 % of the 16.7 ms tick), a kill about
-  16 microseconds, and the worst tick it can make is the burst: 120 kills at once cost about 0.8 ms, under 5 % of a tick.
-  Costs add per kill, so 50 kills a second would be 0.8 ms of every tick.
-- **The horde the bots make is small, so the burst is the number that bounds it.** The bots kill 1.7 a second on average
-  and 9 to 13 in their best second; the synthetic arm (20 kills a second asked of the rules) is held to 4.6 a second by
-  how fast the dead spawn at x5, and kills them as they appear. Four people with automatic weapons can kill faster for a
-  second, but everything above is linear in kills and a grenade is the burst.
-- **The events are about 5 % of what a client takes.** 5.4 `xp_gained` a second a client hears on average (4 seats, each
-  told at most once a tick; 14 to 16 in the peak second), 1.1 KB/s, with a peak second of 2.7 to 3.1 KB/s, against 23 KB/s
-  of everything else in the mean second (32 to 34 KB/s at the peak). The desktop's 120 dead are the same.
-- **The window does not earn its lag.** A 2-tick window (what a client could not tell apart: the tick goes out every
-  other step) and the issue's 0.25 s window change the events a second from 5.4 to 5.4 and 5.3 with the bots, and from 4.7
-  to 3.8 in the synthetic arm: nothing worth a quarter second of delay on a popup that should be real time. The award
-  keeps one event per seat per tick, and `XpAward.window_ticks` is the knob if a real horde ever asks for it.
-- **The client** applies an event in under a microsecond; the bench's own 20 microseconds a client event is its handler
-  measuring byte sizes. What the popups cost is #1064's to measure.
-- **The backend** is written once a night in the 120 seconds of one round (the night's report when the client leaves),
-  never per kill: 210 kills made 1 write. Where rounds end, the writes are the rounds plus one: the synthetic arm from
-  round 3 for 150 seconds, three seeds, ended 4 rounds, made 520 kills and **5 writes** each.
-  (The "No award" columns' one write is an empty night report the bench made before a report with no seat was
-  dropped; it is not sent now.)
+- **The tick does not move.** The room's mean tick with the tracker (4.53 ms) is inside the spread of the runs without
+  it (4.65 to 5.07; the machine's noise is larger than the tracker). The tracker's own time is 16 microseconds a tick,
+  0.1 % of the 16.7 ms tick, and the CI budget case (round 12 at 3x, every seat an account, the desktop's crowd) holds
+  it as `server.challenges` at 0.0047 times the calibration loop against a limit of 0.012.
+- **The burst is the number to watch.** A kill is 58 microseconds, about 4 times the XP award's 16, because every stat
+  change (a kill makes five to eight: the kill, the head, the weapon, the type, the points of the hits and the kill)
+  walks the seat's three open dailies and three open orders. 120 kills in a tick cost 4.4 ms, over five times the XP
+  award's 0.8 and about a quarter of a tick, once, and only when the dead fall together (a grenade); the room's worst
+  tick in natural play is already 30 to 55 ms. The knob if a real horde ever asks: index the open challenges of a
+  profile by stat so a change with no challenge on it is one lookup (a kill's `kills:type` and `kills:weapon` changes
+  mostly have none).
+- **The events are about half a percent of what a client takes.** 0.35 a second on average, 9 in the peak second (a round
+  ending finishes several at once), 119 bytes a second against 23 KB/s (peak second 3 KB/s), and only quarter marks are
+  told, never a kill. The XP events, by comparison, are 5 %.
+- **The backend** is read once for each account when its seat sits down (four reads, a test counts them) and written
+  with the round's report, never per kill: 1 write in the 120 s of one round, 3 where two rounds ended. A report with
+  four boards weighs 3.3 KB, 0.9 KB a board; a long-played board is bigger (every weapon and kind of dead is a stat), and
+  the backend holds one to 64 KiB.
+- **What was not measured.** A board that has been played for weeks (hundreds of lifetime stats) was not: the profile's
+  work is the same three dailies and three orders, so its cost is the same per change, but its JSON grows with the stats
+  it counts and is sent whole each round. 8 seats in one room (the limit) was not run either; the cost is linear in
+  seats that hold an account.
 
 ## Sources, and what we could not read
 

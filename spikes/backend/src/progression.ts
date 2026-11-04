@@ -8,11 +8,16 @@
 //  - a signed-in solo client writes its profile (`soloWrite`), and the backend caps how fast the XP may rise.
 // A Guest account is an account: both ways are the same for it. There is no offline XP and no merge of an offline
 // save, so a stale write (409) is read again and sent again on the account's own latest.
-import { SaveRejected } from "./saves.ts";
+import { checkSave, MAX_SAVE_BYTES, SaveRejected } from "./saves.ts";
 import { type LedgerEntry, DuplicateLedger, RevisionConflict, type Save, type Store } from "./store.ts";
 
-/** The slot the profile is saved in; the game's `challenges` slot is an ordinary save the backend does not read. */
+/** The slot the profile is saved in. */
 export const PROFILE_SLOT = "profile";
+/**
+ * The slot of the player's challenge board: an ordinary save the backend does not read. A game server reads it when a
+ * seat sits down (`ProgressService.boardOf`) and writes it back in a round report (`SeatReport.board`).
+ */
+export const CHALLENGES_SLOT = "challenges";
 
 /** XP to leave each level of a tier of five, tier by tier (`LevelCurve.TIER_COSTS`). */
 export const TIER_COSTS: readonly number[] = [85, 135, 185, 235, 290, 340, 390, 440, 490, 540, 590];
@@ -176,6 +181,13 @@ export interface SeatReport {
   bonusDay?: number;
   /** Challenge ids finished since the last report. */
   done?: string[];
+  /**
+   * The seat's challenge board as the game server's tracker holds it, the envelope the `challenges` slot takes
+   * (`{schemaVersion, data}`; the backend sets the revision). It replaces the stored board (the server read the stored
+   * one when the seat sat down and counted on top of it) and never blocks the XP: a board that is refused is
+   * reported as `refused` and the XP is paid all the same.
+   */
+  board?: { schemaVersion: number; data: Record<string, unknown> };
   /** What the round did, by line (rounds, points, boards, ...), kept in the ledger for support and tuning. */
   lines?: Record<string, number>;
 }
@@ -191,6 +203,8 @@ export interface SeatResult {
   /** The profile's raw XP and level after the report (0 and 0 for an unknown user). */
   xp: number;
   level: number;
+  /** Only when the seat's report held a board: `saved`, or `refused` (it did not read, or was too big). */
+  board?: "saved" | "refused";
 }
 
 /** Attempts at a read-modify-write of a profile that a client or another report keeps moving. */
@@ -208,6 +222,11 @@ export class ProgressService {
   /** The level an account has reached (1 for one with no profile): what a host's level is, for the map gate. */
   async levelFor(userId: string): Promise<number> {
     return levelOf(profileOf(await this.store.getSave(userId, PROFILE_SLOT)).xp);
+  }
+
+  /** The stored challenge board of an account (the envelope), or null when it has none: what a game server follows. */
+  async boardOf(userId: string): Promise<Save | null> {
+    return this.store.getSave(userId, CHALLENGES_SLOT);
   }
 
   /** The claims a ticket carries for a seat: never the client's word. */
@@ -263,12 +282,14 @@ export class ProgressService {
   private async applySeat(matchId: string, kind: ReportKind, round: number, seat: SeatReport): Promise<SeatResult> {
     const { userId } = seat;
     const user = await this.store.getUser(userId);
-    if (!user) return { userId, status: "unknown_user", credited: 0, openingNight: false, firstGameOfTheDay: false, xp: 0, level: 0 };
+    if (!user) {
+      return { userId, status: "unknown_user", credited: 0, openingNight: false, firstGameOfTheDay: false, xp: 0, level: 0 };
+    }
     for (let attempt = 0; attempt < WRITE_ATTEMPTS; attempt++) {
       const saved = await this.store.getSave(userId, PROFILE_SLOT);
       const profile = profileOf(saved);
       const earlier = await this.store.getLedgerEntry(userId, matchId, kind, round);
-      if (earlier) return this.result(userId, "duplicate", earlier.xp, profile, earlier.reason);
+      if (earlier) return this.result(userId, "duplicate", earlier.xp, profile, earlier.reason, await this.keepBoard(userId, seat));
       const nowMs = this.now();
       const openingNight = seat.openingNight === true && !profile.opening_night;
       const firstGame =
@@ -287,7 +308,7 @@ export class ProgressService {
       const ledger: LedgerEntry = { userId, matchId, kind, round, xp: credited, reason, at: nowMs };
       try {
         const written = await this.store.putSave(userId, PROFILE_SLOT, { schemaVersion: 1, data: next }, saved?.revision ?? 0, ledger);
-        return this.result(userId, "paid", credited, profileOf(written), reason);
+        return this.result(userId, "paid", credited, profileOf(written), reason, await this.keepBoard(userId, seat));
       } catch (error) {
         if (error instanceof DuplicateLedger) continue; // read again: the next pass sees the entry and says `duplicate`
         if (error instanceof RevisionConflict) continue; // the client (or another report) wrote first: add on top of theirs
@@ -297,7 +318,41 @@ export class ProgressService {
     throw new RevisionConflict(0);
   }
 
-  private result(userId: string, status: "paid" | "duplicate", credited: number, profile: ProfileData, reason: Record<string, unknown>): SeatResult {
+  /**
+   * Stores the board a seat reported over the challenges slot. A report applied again writes it again (a board is a
+   * snapshot, and a retry is how a board the first attempt lost gets through), and a board that is refused never
+   * takes the XP with it.
+   */
+  private async keepBoard(userId: string, seat: SeatReport): Promise<SeatResult["board"]> {
+    const board = seat.board;
+    if (!board) return undefined;
+    try {
+      checkSave(board.schemaVersion, board.data);
+    } catch (error) {
+      if (error instanceof SaveRejected) return "refused";
+      throw error;
+    }
+    if (Buffer.byteLength(JSON.stringify(board.data)) > MAX_SAVE_BYTES) return "refused";
+    for (let attempt = 0; attempt < WRITE_ATTEMPTS; attempt++) {
+      const saved = await this.store.getSave(userId, CHALLENGES_SLOT);
+      try {
+        await this.store.putSave(userId, CHALLENGES_SLOT, { schemaVersion: board.schemaVersion, data: board.data }, saved?.revision ?? 0);
+        return "saved";
+      } catch (error) {
+        if (!(error instanceof RevisionConflict)) throw error; // the player's own client wrote first: read again, write on top
+      }
+    }
+    return "refused";
+  }
+
+  private result(
+    userId: string,
+    status: "paid" | "duplicate",
+    credited: number,
+    profile: ProfileData,
+    reason: Record<string, unknown>,
+    board: SeatResult["board"],
+  ): SeatResult {
     return {
       userId,
       status,
@@ -306,6 +361,7 @@ export class ProgressService {
       firstGameOfTheDay: reason.firstGameOfTheDay === true,
       xp: profile.xp,
       level: levelOf(profile.xp),
+      ...(board ? { board } : {}),
     };
   }
 }

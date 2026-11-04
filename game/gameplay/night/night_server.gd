@@ -150,6 +150,10 @@ var crowd := CrowdCeiling.new()
 ## client as events (`XpAward`). Whoever knows a seat's account registers it; a night with none pays
 ## nothing.
 var xp: XpAward
+## The challenge boards of those seats, followed as the rules decide and told to every client as
+## events (`ChallengeAward`). Whoever knows a seat's board hands it over; a seat without one is not
+## followed.
+var challenges: ChallengeAward
 
 ## The dead stop the bodies (#914). `dead_tuning` is the one table, `_dead_ring` where the dead
 ## stood at the last ticks (in the centimetres a frame carries), `_dead_fields` the field each body
@@ -229,6 +233,7 @@ func _init(
 	ping_board.gap = tuning.ping_gap
 	rules = GameRules.new(p_rules_tuning, p_seed, p_settings)
 	xp = XpAward.new(NightTally.fuel_items_of(rules.tuning))
+	challenges = ChallengeAward.new(xp, NightTally.fuel_items_of(rules.tuning))
 	_probe = WorldProbe.new(world.get_world_3d().direct_space_state)
 	combat = CombatServer.new(WeaponCatalog.all(), rules, _probe.callable(), p_seed)
 	_cast = WorldCast.new(world.get_world_3d().direct_space_state)
@@ -299,6 +304,7 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 				from_id if from_id > 0 else action.get("player_id", 1),
 				NightCommand.from_dict(action)
 			)
+	_outbox.append_array(challenges.take_events())
 	return _outbox
 
 
@@ -398,10 +404,14 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	bot_orders.step(delta)
 	say_board.step(delta)
 	_throw_grenades(delta)
-	# What the seats earned this tick, told once each, before the frame that closes the list.
+	# What the seats finished and earned this tick, told once each (the challenges first: their XP is
+	# in the tick's `xp_gained`), before the frame that closes the list.
+	_outbox.append_array(challenges.take_events())
 	_outbox.append_array(xp.end_tick())
 	if with_frame:
-		_outbox.append(_frame())
+		var frame := _frame()
+		_outbox.append(frame)
+		challenges.observe(frame)
 	PerfProbe.end(&"server.frame", began)
 	return _outbox
 
@@ -674,6 +684,7 @@ func _position_of_zombie(zombie_id: int) -> Vector3:
 func _on_rules_event(event: Dictionary) -> void:
 	_outbox.append(event)
 	xp.observe(event)
+	challenges.observe(event)
 	match event["type"]:
 		&"game_over":
 			# The clock starts with the event, so the frame of this very step carries it.
@@ -820,6 +831,8 @@ func _combat(action: Dictionary) -> void:
 		if event["type"] == &"status_applied" or event["type"] == &"status_ended":
 			sim.set_status(event["target_id"], event["wire"], event["halts"], event["speed_scale"])
 		_outbox.append(event)
+		# The weapon in a player's hand is what a kill is credited to (`kills:weapon:<id>`).
+		challenges.observe(event)
 		if event["type"] == &"reload_started":
 			_shock(event["shooter_id"])
 
