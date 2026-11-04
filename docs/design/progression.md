@@ -782,6 +782,11 @@ base on rounds reached and points per round.
   knows, a level that follows from raw XP (#1075).
 - **The first game of the day:** the day number (the dailies' own) comes with the write and is accepted once, within one
   day of the backend's date.
+- **Built (#1075):** the `profile` slot, the round report (`POST /internal/matches/:id/report`, keyed by match, kind,
+  round and account), the ledger and the clamp are in the platform backend; the details, the error names and what the
+  game server must send are in [Progression on the backend](../research/platform-backend.md#progression-the-profile-slot-round-reports-and-the-xp-clamp).
+  One decision there: the server posts XP **without** the two one-offs and claims them (`openingNight`, `bonusDay`); the
+  backend knows the profile and pays each once.
 - **What a level is seen by:** the ticket the backend mints carries `level`, `icon` and `xp`; never the client's word
   in the night.
 - **What would force more:** a leaderboard, any ranking, anything paid, or a reward a cheater would gain from (none
