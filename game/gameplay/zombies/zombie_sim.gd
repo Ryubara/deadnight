@@ -32,7 +32,7 @@ const NAV_LIFT := 0.35
 const SWING_HEIGHT := 1.3
 ## Metres past the longest swing within which the way to a target is looked at.
 const SWING_SLACK := 0.5
-## A zombie is a climber (the snapshot's bit, the crawl clip) once a window's sill has lifted it
+## A zombie is a climber (the snapshot's bit, the climb clip) once a window's sill has lifted it
 ## this far off the floor (m).
 const CLIMB_DRAWN_FROM := 0.1
 ## Metres of walking a step up or down one storey counts for when a zombie picks its target: a

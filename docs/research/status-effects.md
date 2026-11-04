@@ -34,3 +34,13 @@ What the freeze gun and the ray gun (#788) taught us about putting a state on a 
 - **A capture needs a clear lane**: the lot is full of cars that block a shoulder camera's shot and hide a zombie.
   `tests/captures/wonder_weapons.gd` finds an open strip by dropping rays on a grid, then aims the view at the middle
   zombie.
+- **A burning is a status plus a ticker the server owns** (#820): the board keeps the seconds (`burning`, wire 3, no
+  halt, no slow), `CombatServer._burns` keeps whose it is and when the next hit falls, and the hit is an ordinary
+  `_hurt`, so pay and kills are the rules'. Run the burn ticks **before** `statuses.step`, or the last tick of a 3 s
+  burn lands after the status is gone and the total is 75, not 90. Never tick a frozen zombie (any hit shatters it).
+- **"Not stacking" came free from the board**: `apply` keeps the longer time, so a second hit restarts it; one
+  `element_burn` per hit lets the client restart its one flame (`ElementFx.restart`) instead of drawing two.
+- **A flame on a pooled view must not outlive it**: the views are parked and reused, so the flames look the view up
+  by zombie id every frame and free themselves when it is gone or dying, not when their seconds are up.
+- **The plan's "one-bolt band by round" had no meaning once the freeze went by kind**: its re-cut is the bolts a kind
+  needs (`freeze_bolts_less`), read in `_put_status`; a bloom wider is `burst_radius_multiplier`.

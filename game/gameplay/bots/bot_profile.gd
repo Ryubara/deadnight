@@ -121,6 +121,10 @@ const REACTION_FLOOR := 0.20
 @export_range(0.0, 20.0, 0.5, "suffix:m") var boss_keep: float = 6.0
 ## How much risk a revive may take, 0 (none) to 1 (any); used from phase 5.
 @export_range(0.0, 1.0, 0.05) var revive_eagerness: float = 0.5
+## Whether the last bot up kites the dead (a wide retreat margin) while a teammate is down and
+## the revive is not safe, as a person would. The simulator's players never do: the one left
+## stands where it is, so a slow headliner reaches it. A level that is to meet the model's does not.
+@export var kites_when_last: bool = true
 ## Brain failures (a thought that comes back empty or broken) after which the brain is switched off
 ## and the motor goes on alone.
 @export_range(1, 10, 1) var brain_failure_limit: int = 1
@@ -183,6 +187,10 @@ static func rookie() -> BotProfile:
 	profile.think_hz = 5
 	profile.retreat_margin = 0.0
 	profile.revive_eagerness = 0.25
+	# The simulator's weak players never kite: the one left stands where it is and the headliner
+	# reaches it. A Rookie that kited passed the first boss night in 14 of 16 two-bot nights
+	# against the model's 27%.
+	profile.kites_when_last = false
 	profile.ammo_floor_mags = 2
 	profile.ammo_topoff = 0.5
 	profile.prepared_mags = 6

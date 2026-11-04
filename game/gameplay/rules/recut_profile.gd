@@ -25,6 +25,11 @@ extends Resource
 ## A weapon whose burst puts a status on the dead (the freeze gun): its burst radius is multiplied
 ## by this.
 @export_range(1.0, 3.0, 0.01, "suffix:x") var burst_radius_multiplier: float = 1.0
+## A weapon whose hit freezes a tough kind only after several bolts (`ZombieType.freeze_bolts`, the
+## freeze gun): the kind needs this many bolts fewer once re-cut, never fewer than one. The bolts
+## are by kind, not by round, so this is the "one-bolt band" of the plan (#785) made wider: a
+## brute freezes on the second bolt instead of the third.
+@export_range(0, 5, 1) var freeze_bolts_less: int = 0
 
 @export_group("Element")
 ## The element the re-cut weapon carries, or none: only the weakest guns get one.
@@ -52,6 +57,10 @@ func card_line(plain: WeaponDef) -> String:
 		parts.append("FIRES SLOWER")
 	elif fire_interval > 0.0 and fire_interval < plain.fire_interval:
 		parts.append("FIRES FASTER")
+	if burst_radius_multiplier > 1.0:
+		parts.append("WIDER FROST BLOOM")
+	if freeze_bolts_less > 0:
+		parts.append("FREEZES TOUGH ONES SOONER")
 	if element != null:
 		parts.append(element.display_name.to_upper())
 	return ", ".join(parts)

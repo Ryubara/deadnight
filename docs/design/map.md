@@ -331,10 +331,10 @@ players cannot go through it whatever the boards do: a players-only blocker (the
 fills the opening, and the sill, jambs and header are solid. The dead climb in over the sill: the navigation mesh still
 runs through the gap at the ground (the sill, jambs, header and blocker are bodies the baker never reads, not CSG), and
 the simulation is the link across it: a zombie with the boards down is lifted to the sill's height over the wall and
-set down inside, at its own pace (`ZombieGate.sill`, `lift_at`), and drawn scrambling in (the crawl
-clip and a lean, `ZombieView`; the snapshot's bit 6, `ZombieCodec.CLIMBING_BIT`). A new barricade gets this from the
-generators (`breach()` in `tools/world/build_greybox.py`); `test_barricade_windows.gd` walks every barricade of both
-maps and fails on one that a player can walk in under, or through, or that the dead cannot get in, and
+set down inside, at its own pace (`ZombieGate.sill`, `lift_at`), and drawn climbing in (its clip,
+[over the sill](zombies.md#over-the-sill); the snapshot's bit 6, `ZombieCodec.CLIMBING_BIT`). A new barricade gets
+this from the generators (`breach()` in `tools/world/build_greybox.py`); `test_barricade_windows.gd` walks every
+barricade of both maps and fails on one that a player can walk in under, or through, or that the dead cannot get in, and
 `test_dead_cross_every_barricade.gd` sends a zombie through each (three starting sides, a stroll and a sprint) and asks
 its body, at every step, whether it stands in the wall or the frame: before it, the dead walked through the sills of the
 second map's windows at floor level ("zombies would just phase through the wall"), because a zombie is a point in the

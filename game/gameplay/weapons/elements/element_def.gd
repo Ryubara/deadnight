@@ -43,6 +43,24 @@ extends Resource
 @export_range(0.0, 500.0, 1.0, "or_greater", "suffix:/s") var ground_dps: float = 0.0
 @export_range(0.05, 5.0, 0.05, "suffix:s") var tick_seconds: float = 0.5
 
+@export_group("Burn")
+## Every zombie a hit reaches is set burning (`burn_status`, a `StatusDef`) for `burn_seconds`, and
+## takes `burn_dps` a second while it burns, in a hit every `burn_tick_seconds`. Not stacking: a new
+## hit restarts the seconds, it does not add a second fire. 0 is no burn.
+@export_range(0.0, 500.0, 1.0, "or_greater", "suffix:/s") var burn_dps: float = 0.0
+@export_range(0.0, 60.0, 0.1, "or_greater", "suffix:s") var burn_seconds: float = 0.0
+@export_range(0.05, 5.0, 0.05, "suffix:s") var burn_tick_seconds: float = 0.5
+@export var burn_status: StringName = &"burning"
+
+
+func has_burn() -> bool:
+	return burn_dps > 0.0 and burn_seconds > 0.0
+
+
+## The damage a zombie takes from one burn, the fire running its whole time.
+func burn_total() -> float:
+	return burn_dps * burn_seconds
+
 
 func has_blast() -> bool:
 	return blast_radius > 0.0 and blast_fraction > 0.0
@@ -64,6 +82,13 @@ func card_line() -> String:
 	if has_arc():
 		parts.append(
 			"EVERY HIT ARCS TO %d MORE WITHIN %s M" % [arc_targets, String.num(arc_radius, 1)]
+		)
+	if has_burn():
+		parts.append(
+			(
+				"A HIT SETS THEM BURNING, %s A SECOND FOR %s S"
+				% [String.num(burn_dps, 0), String.num(burn_seconds, 0)]
+			)
 		)
 	if has_ground():
 		parts.append(
