@@ -30,7 +30,7 @@ func _health_left(zombie_id: int) -> float:
 
 func test_a_body_hit_pays_a_little_and_takes_health_off() -> void:
 	var events := _hit(RulesAction.ZONE_BODY, 20.0)
-	assert_int(_rules.points_of(1)).is_equal(204)
+	assert_int(_rules.points_of(1)).is_equal(205)
 	assert_float(_health_left(_zombie)).is_equal(_first_health - 20.0)
 	assert_str(events[0]["type"]).is_equal("zombie_damaged")
 	assert_float(events[0]["health"]).is_equal(_first_health - 20.0)
@@ -40,7 +40,7 @@ func test_a_body_hit_pays_a_little_and_takes_health_off() -> void:
 
 func test_a_headshot_hit_pays_double() -> void:
 	_hit(RulesAction.ZONE_HEAD, 20.0)
-	assert_int(_rules.points_of(1)).is_equal(208)
+	assert_int(_rules.points_of(1)).is_equal(210)
 
 
 func test_the_hit_that_empties_the_health_is_the_kill() -> void:
@@ -51,19 +51,19 @@ func test_the_hit_that_empties_the_health_is_the_kill() -> void:
 	assert_int(_log.count(&"zombie_removed")).is_equal(1)
 	assert_str(events.back()["type"]).is_equal("zombie_removed")
 	assert_str(events.back()["cause"]).is_equal("killed")
-	# Two body hits at 4, then the kill at 60 (not a third hit's 4 as well).
-	assert_int(_rules.points_of(1)).is_equal(200 + 4 + 4 + 60)
+	# Two body hits at 5, then the kill at 55 (not a third hit's 5 as well).
+	assert_int(_rules.points_of(1)).is_equal(200 + 5 + 5 + 55)
 
 
 func test_kills_pay_by_how_they_were_made() -> void:
 	RulesFixture.run(_rules, 10.0)
 	var ids := _log.spawned_ids()
 	RulesFixture.kill(_rules, 1, ids[0])
-	assert_int(_rules.points_of(1)).is_equal(200 + 60)
+	assert_int(_rules.points_of(1)).is_equal(200 + 55)
 	RulesFixture.kill(_rules, 1, ids[1], RulesAction.ZONE_HEAD)
-	assert_int(_rules.points_of(1)).is_equal(260 + 70)
+	assert_int(_rules.points_of(1)).is_equal(255 + 65)
 	RulesFixture.kill(_rules, 1, ids[2], RulesAction.ZONE_BODY, true)
-	assert_int(_rules.points_of(1)).is_equal(330 + 130)
+	assert_int(_rules.points_of(1)).is_equal(320 + 130)
 
 
 func test_the_kill_is_credited_and_counted() -> void:
@@ -82,7 +82,7 @@ func test_overkill_pays_one_kill_and_damages_only_what_was_left() -> void:
 	var events := RulesFixture.kill(_rules, 1, _zombie)
 	assert_float(events[0]["damage"]).is_equal(_first_health)
 	assert_float(events[0]["health"]).is_equal(0.0)
-	assert_int(_rules.points_of(1)).is_equal(260)
+	assert_int(_rules.points_of(1)).is_equal(255)
 
 
 func test_a_zombie_pays_once_however_many_times_it_is_reported() -> void:
@@ -90,7 +90,7 @@ func test_a_zombie_pays_once_however_many_times_it_is_reported() -> void:
 	var again := RulesFixture.kill(_rules, 1, _zombie)
 	RulesFixture.kill(_rules, 2, _zombie)
 	_hit(RulesAction.ZONE_BODY, 20.0)
-	assert_int(_rules.points_of(1)).is_equal(260)
+	assert_int(_rules.points_of(1)).is_equal(255)
 	assert_int(_rules.points_of(2)).is_equal(200)
 	assert_str(again[0]["reason"]).is_equal("unknown_zombie")
 	assert_int(_log.count(&"zombie_removed")).is_equal(1)
@@ -99,18 +99,18 @@ func test_a_zombie_pays_once_however_many_times_it_is_reported() -> void:
 func test_farming_one_zombie_with_many_small_hits_pays_a_bounded_purse() -> void:
 	for _i in 1000:
 		_hit(RulesAction.ZONE_HEAD, 0.01)
-	# Four paid hits at 8, then nothing; the zombie is still alive.
-	assert_int(_rules.points_of(1)).is_equal(200 + 4 * 8)
+	# Four paid hits at 10, then nothing; the zombie is still alive.
+	assert_int(_rules.points_of(1)).is_equal(200 + 4 * 10)
 	assert_float(_health_left(_zombie)).is_between(_first_health - 11.0, _first_health - 9.0)
 	RulesFixture.kill(_rules, 1, _zombie, RulesAction.ZONE_HEAD)
-	assert_int(_rules.points_of(1)).is_equal(200 + 4 * 8 + 70)
+	assert_int(_rules.points_of(1)).is_equal(200 + 4 * 10 + 65)
 
 
 func test_farming_with_real_damage_ends_at_the_kill() -> void:
 	for _i in 1000:
 		_hit(RulesAction.ZONE_HEAD, 20.0)
 	# Hits of 20 against 60 health: two paid hits, then the kill; the rest hit a dead zombie.
-	assert_int(_rules.points_of(1)).is_equal(200 + 2 * 8 + 70)
+	assert_int(_rules.points_of(1)).is_equal(200 + 2 * 10 + 65)
 	assert_int(_log.count(&"zombie_removed")).is_equal(1)
 
 

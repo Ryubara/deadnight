@@ -1,0 +1,174 @@
+{
+ "0": {
+  "Aim_Dual": {
+   "left arm": 0.053,
+   "right arm": 0.053
+  },
+  "Downed_Crawl": {
+   "right arm": 0.13
+  },
+  "Downed_Idle": {
+   "right arm": 0.089
+  },
+  "Equip_Dual": {
+   "left arm": 0.107,
+   "right arm": 0.105
+  },
+  "Fire_Dual": {
+   "left arm": 0.086,
+   "right arm": 0.1
+  },
+  "Reload_Rifle": {
+   "left arm": 0.053
+  },
+  "Reload_Shotgun": {
+   "left arm": 0.083
+  },
+  "Repair_Board": {
+   "right arm": 0.056
+  },
+  "Revive_Kneel": {
+   "left arm": 0.104,
+   "right arm": 0.099
+  },
+  "Sprint_m4a1": {
+   "left arm": 0.073
+  },
+  "Sprint_mp5": {
+   "left arm": 0.073
+  },
+  "Sprint_ppsh": {
+   "left arm": 0.073
+  },
+  "Sprint_tommy_gun": {
+   "left arm": 0.073
+  },
+  "Strike_Dual": {
+   "left arm": 0.12,
+   "right arm": 0.142
+  },
+  "Strike_Melee": {
+   "left arm": 0.078
+  },
+  "Strike_Pistol": {
+   "left arm": 0.078
+  },
+  "Strike_Rifle": {
+   "left arm": 0.078
+  },
+  "Strike_Shotgun": {
+   "left arm": 0.078
+  },
+  "Swing_Melee": {
+   "left arm": 0.065
+  },
+  "Unequip_Dual": {
+   "left arm": 0.108,
+   "right arm": 0.104
+  }
+ },
+ "10": {
+  "Aim_Dual": {
+   "left arm": 0.06,
+   "right arm": 0.052
+  },
+  "Downed_Crawl": {
+   "armbands": 0.032,
+   "right arm": 0.115
+  },
+  "Downed_Idle": {
+   "right arm": 0.078
+  },
+  "Equip_Dual": {
+   "left arm": 0.087,
+   "right arm": 0.102
+  },
+  "Fire_Dual": {
+   "left arm": 0.086,
+   "right arm": 0.086
+  },
+  "Reload_Rifle": {
+   "left arm": 0.047
+  },
+  "Reload_Shotgun": {
+   "left arm": 0.082
+  },
+  "Revive_Kneel": {
+   "left arm": 0.104,
+   "right arm": 0.104
+  },
+  "Sprint_Rifle": {
+   "armbands": 0.035,
+   "right arm": 0.047
+  },
+  "Sprint_fifty_cal": {
+   "right arm": 0.039
+  },
+  "Sprint_m249": {
+   "right arm": 0.039
+  },
+  "Sprint_m4a1": {
+   "left arm": 0.052,
+   "right arm": 0.04
+  },
+  "Sprint_mp5": {
+   "left arm": 0.052,
+   "right arm": 0.04
+  },
+  "Sprint_ppsh": {
+   "left arm": 0.052,
+   "right arm": 0.04
+  },
+  "Sprint_tommy_gun": {
+   "left arm": 0.052,
+   "right arm": 0.04
+  },
+  "Strike_Dual": {
+   "left arm": 0.12,
+   "right arm": 0.126
+  },
+  "Strike_Melee": {
+   "left arm": 0.078
+  },
+  "Strike_Pistol": {
+   "left arm": 0.078
+  },
+  "Strike_Rifle": {
+   "left arm": 0.078
+  },
+  "Strike_Shotgun": {
+   "left arm": 0.078
+  },
+  "Swing_Melee": {
+   "armbands": 0.047,
+   "left arm": 0.065
+  },
+  "Unequip_Dual": {
+   "left arm": 0.088,
+   "right arm": 0.101
+  }
+ },
+ "menu 0": {
+  "fifty_cal": {
+   "right arm": 0.037
+  },
+  "freeze_gun": {
+   "right arm": 0.036
+  },
+  "m249": {
+   "right arm": 0.036
+  },
+  "m4a1": {
+   "right arm": 0.03
+  },
+  "mp5": {
+   "right arm": 0.039
+  },
+  "pump_870": {
+   "right arm": 0.035
+  },
+  "smg": {
+   "right arm": 0.036
+  }
+ }
+}

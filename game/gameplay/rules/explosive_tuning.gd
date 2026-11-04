@@ -14,7 +14,7 @@ extends Resource
 
 @export_group("Points")
 ## The blast that kills pays this, not the gun kill: a grenade clears crowds, so it pays less each.
-@export_range(0, 1000, 1, "or_greater", "suffix:pts") var explosion_kill: int = 40
+@export_range(0, 1000, 5, "or_greater", "suffix:pts") var explosion_kill: int = 40
 
 @export_group("Crippling")
 ## Blast damage that landed on the legs, as a fraction of the zombie's full health, past which the
