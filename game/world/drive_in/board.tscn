@@ -6,10 +6,10 @@ roughness = 1.0
 
 [sub_resource type="BoxMesh" id="Plank"]
 material = SubResource("Wood")
-size = Vector3(4.1, 0.45, 0.14)
+size = Vector3(4.1, 0.27, 0.14)
 
 [sub_resource type="BoxShape3D" id="PlankShape"]
-size = Vector3(4.1, 0.45, 0.14)
+size = Vector3(4.1, 0.27, 0.14)
 
 [node name="Board" type="StaticBody3D"]
 collision_layer = 2

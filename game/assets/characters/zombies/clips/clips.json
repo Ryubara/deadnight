@@ -13,6 +13,40 @@
     "end": 29
    }
   },
+  "Crawl_Attack": {
+   "loop": false,
+   "frames": 30,
+   "seconds": 1.25,
+   "events": {
+    "gather": 0,
+    "coil": 8,
+    "strike": 13,
+    "grab": 16,
+    "end": 30
+   }
+  },
+  "Crawl_Stagger": {
+   "loop": false,
+   "frames": 10,
+   "seconds": 0.417,
+   "events": {
+    "hit": 0,
+    "recoil": 3,
+    "recover": 7,
+    "end": 10
+   }
+  },
+  "Crawl_Death": {
+   "loop": false,
+   "frames": 20,
+   "seconds": 0.833,
+   "events": {
+    "buckle": 4,
+    "drop": 9,
+    "settle": 15,
+    "end": 20
+   }
+  },
   "Sprint": {
    "loop": true,
    "frames": 16,

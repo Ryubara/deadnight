@@ -36,7 +36,7 @@ func test_the_bot_plays_rounds_earns_and_spends() -> void:
 	night.ticks_per_frame = TICKS_PER_FRAME
 	var state := night.state
 	# The pistol starts with nothing in reserve: the bot has to find rounds, as it will in round three.
-	night.server.combat.state_of(1, &"pistol").reserve = 0
+	night.server.combat.state_of(1, &"house_pistol").reserve = 0
 	night.ticked.connect(func() -> void: _watch_prompt(hud))
 	state.event_received.connect(func(event: Dictionary) -> void: _watch_purchase(hud, event))
 	state.event_received.connect(
@@ -55,9 +55,9 @@ func test_the_bot_plays_rounds_earns_and_spends() -> void:
 	assert_int(state.points_spent).is_greater_equal(CHEAP_DOOR)
 	assert_int(state.doors_bought).is_greater_equal(1)
 	assert_bool(night.server.rules.is_door_open(&"door_concession")).is_true()
-	assert_int(state.bought.get(&"ammo_pistol", 0)).is_greater_equal(1)
+	assert_int(state.bought.get(&"ammo_house_pistol", 0)).is_greater_equal(1)
 	assert_int(state.bought.get(&"weapon_shotgun", 0)).is_equal(1)
-	assert_array(_weapons_fired).contains([&"pistol", &"shotgun"])
+	assert_array(_weapons_fired).contains([&"house_pistol", &"shotgun"])
 	_assert_the_hud_shows_the_night(hud, night)
 	_assert_the_door_was_offered_then_bought(hud)
 	night.queue_free()

@@ -311,6 +311,40 @@ health taken 0.0148 to 0.0018 a blast. The Rookie parity cell at x4 (24 nights, 
 beside the unchanged code: median 9 with a Kolmogorov distance of 0.56 before, median 9 and 0.42 after, so the doubled
 throws did not move the bots away from the model.
 
+## The grenade that hit a post at the bot's feet (#1019)
+
+`test_bot_grenade_soak.gd` failed on main in CI on seed 11 (0.830 of the thrower's health on one push, 0.255 on
+another; seeds 12 and 13 clean). It is not one change on main: the night is not repeatable to the blast (two runs of
+the same code in one process part by a millionth of a metre at tick 90, and every run plays another count of blasts),
+and #872 had already seen the tail it is, "the grenade hit a wall 0.7 m from the thrower" (0.195, one of its 24
+nights). A probe in the soak's night (every throw: where the bot stood at the order and where the grenade left the
+hand, the order's view and the grenade's, the bounces; 20 nights) found it twice: the bounce was the drive-in's lamp
+post (`Lamp3`, a 0.1 m cylinder) 0.7 m in front of the thrower; the lob of 60 to 70 degrees went up into it and fell at
+the bot's feet (0.41 and 0.15 of its health).
+
+Two causes, both in the check made at the order:
+
+1. **The bot is not where it was when it ordered.** It orders a throw while it walks (a follow, a chase), brakes in a
+   fifth of a second and slides 0.3 to 1 m before it stands (the probe: 4 to 7 m/s at the order, 0 after 10 ticks, the
+   grenade leaving the hand 40 to 60 ticks after the order). The arc was checked, and the landing planned, from the
+   spot of the order. Now the throw is planned from `BotGrenadier.stop_point` (the bot's speed times `STOP_SECONDS`).
+2. **The check is a thin line.** The arc is six chords of one ray each, and the thrown grenade is a ray too, but from a
+   hand a few decimetres off the planned one, so a post or a wall corner a hand's breadth from the line is missed by
+   the check and hit by the grenade. Within reach of a blast that would hurt the bot (`SAFE_FROM_SELF` and the throw
+   margin) the lines every `ARC_SPREAD_STEP` (0.15 m) out to `ARC_SPREAD` (0.3 m) either side of every chord must be
+   clear as well. A wider spacing slips by a post: 0.3 m alone let one through.
+
+Tests: `test_bot_grenadier.gd` (a post 0.25 m and one 0.14 m off the line stop the throw, one a metre off does not, a
+post past the reach of the blast does not, the stop point), the soak on seeds 11 to 13 and the probe below.
+
+| Nights, 120 s, 3 bots following a person | Blasts | Touched the thrower at all | Over 10% of its health | Worst share |
+| --- | --- | --- | --- | --- |
+| Before (20 nights, seeds 11 to 30) | 151 | 33 | 2 (0.147, 0.409) | 0.409 |
+| Stop point and 0.3 m strips (24 nights, seeds 11 to 34) | 181 | 38 | 1 (0.401: a post between two strips) | 0.401 |
+| Strips every 0.15 m to 0.3 m (the same 24 nights) | 185 | 34 | 0 | 0.007 |
+
+The scripted night still throws at tick 228. The committed soak on seeds 11 to 13: worst 0.000, 0.001, 0.000.
+
 ## Blasts and gibs free themselves (#929)
 
 `BlastEffect` was never freed in the night (it was written for the range, where the scene is thrown away): 20 blasts
@@ -320,3 +354,20 @@ itself when it ends and the effect with the last one; the warm-up's samples are 
 off unless gibs fly (Godot turns it on at ready, so it is switched off in `_ready`, not `_init`).
 `tests/night/test_blast_frees.gd` plays 20 blasts and 100 blast kills in the real night, waits out the scorch and
 expects the same counts as before. Kit page: `docs/godot/one-shot-effects.md`.
+
+## The trail is one multimesh (#936)
+
+`GrenadeView._drop_trail_dot` made a 64 x 32 `SphereMesh` (4,224 triangles), a material, a node and a tween for every
+dot, about 30 a second with 27 alive: in a 3 s flight 166 objects at the peak, 27 draw calls, over 100,000 triangles
+of dots. Now `GrenadeTrail` (`world/grenade_range/grenade_trail.gd`) is one `MultiMeshInstance3D` made with the first
+dot: a ring of 32 dots (the cap; a full ring takes over the oldest) over one shared 12 x 6 sphere (168 triangles) and
+one shared material, the fade carried by each instance's colour alpha (`vertex_color_use_as_albedo`), written into the
+multimesh as one `PackedFloat32Array` a step (16 floats an instance: the 3 x 4 transform, then the colour). Dots age by
+the step the view is given, not by a tween, so a fixed-step run fades them the same way; the node hides itself when the
+last dot is gone. The shared mesh and material are held by the class for the process's life (a material that is freed
+takes its shader with it) and drawn once in the warm-up (`NightWarmup`), so the first throw of a night builds no
+program. Shadows are off for the dots (an alpha-blended unshaded dot is not worth a shadow draw).
+`tests/world/test_grenade_trail.gd` flies 12 throws and expects the same objects, resources, nodes and orphans, and no
+node added in a flight; `test_a_grenades_trail_draws_nothing_the_warm_up_did_not` in `test_night_warmup.gd` covers the
+first throw. An assertion is an object of its own, so a test that counts objects reads the monitor before it asserts.
+`tests/captures/grenade_trail.tscn` films a throw with the camera beside it, for before and after.

@@ -6,7 +6,7 @@ import { type DiscordClient, DiscordUnavailable } from "./discord.ts";
 import { RateLimit } from "./limits.ts";
 import { type Lobby, LobbyFailure, type LobbyLimits, LobbyService, MAX_PLAYERS } from "./lobbies.ts";
 import { chooseName } from "./names.ts";
-import { DEFAULT_MAP } from "./settings.ts";
+import { DEFAULT_MAP, SETTINGS_KEYS } from "./settings.ts";
 import { GameServerRegistry } from "./servers.ts";
 import { checkSave, SaveRejected } from "./saves.ts";
 import { RevisionConflict, type Store } from "./store.ts";
@@ -135,8 +135,14 @@ export function buildApp(deps: Deps): FastifyInstance {
     if (!token || !sameSecret(token, config.gameServerSecret)) return reply.code(401).send({ error: "unauthorized" });
   };
 
-  app.setErrorHandler((error, _request, reply) => {
-    if (error instanceof LobbyFailure) return reply.code(LOBBY_STATUS[error.reason] ?? 400).send({ error: error.reason });
+  app.setErrorHandler((error, request, reply) => {
+    if (error instanceof LobbyFailure) {
+      // A refusal that names the setting is logged too, so a host whose choice is refused is found in the log.
+      if (error.detail !== undefined) request.log.warn({ reason: error.reason, detail: error.detail }, "lobby request refused");
+      return reply
+        .code(LOBBY_STATUS[error.reason] ?? 400)
+        .send(error.detail === undefined ? { error: error.reason } : { error: error.reason, detail: error.detail });
+    }
     if (error instanceof SaveRejected) return reply.code(422).send({ error: error.reason, ...error.detail });
     if (error instanceof RevisionConflict) return reply.code(409).send({ error: "revision_conflict", revision: error.currentRevision });
     const status = (error as { statusCode?: number }).statusCode ?? 500;
@@ -145,7 +151,9 @@ export function buildApp(deps: Deps): FastifyInstance {
   });
 
   // ---- operations
-  app.get("/health", async () => ({ status: "ok" }));
+  // `settingsKeys` are the match settings this build takes: the deploy checks them against the game's, so a backend
+  // that is behind the client is found before a host's choices are lost to it (Deadnight #944).
+  app.get("/health", async () => ({ status: "ok", settingsKeys: SETTINGS_KEYS }));
   app.get("/ready", async (_request, reply) => {
     try {
       await store.ping();
@@ -432,15 +440,26 @@ export function buildApp(deps: Deps): FastifyInstance {
     },
   );
 
-  // The game server says a match is over: its slot is free and its lobby goes. Idempotent.
-  app.post<{ Params: { matchId: string } }>(
+  // The game server says a match is over: its slot is free and its lobby goes. A night that ran its end-of-night
+  // intermission out says `finished` with the users still there, and its lobby opens again for them. Idempotent.
+  app.post<{ Params: { matchId: string }; Body: { finished?: boolean; present?: string[] } | null }>(
     "/internal/matches/:matchId/end",
     {
       onRequest: requireGameServer,
-      schema: { params: { type: "object", properties: { matchId: { type: "string", minLength: 1, maxLength: 64 } } } },
+      schema: {
+        params: { type: "object", properties: { matchId: { type: "string", minLength: 1, maxLength: 64 } } },
+        body: {
+          type: ["object", "null"],
+          properties: {
+            finished: { type: "boolean" },
+            present: { type: "array", maxItems: 64, items: { type: "string", minLength: 1, maxLength: 64 } },
+          },
+        },
+      },
     },
     async (request, reply) => {
-      lobbies.matchEnded(request.params.matchId);
+      const body = request.body;
+      lobbies.matchEnded(request.params.matchId, body?.finished ? { present: body.present ?? [] } : undefined);
       return reply.code(204).send();
     },
   );

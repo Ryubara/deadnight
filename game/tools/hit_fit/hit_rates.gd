@@ -14,7 +14,8 @@ const SHOOTER := Vector3(0.0, 1.55, 6.0)
 ## Body, mode, clip, times and (when it runs) speed of each row of the first table.
 const ROWS := [
 	[&"crawler", ZombieBody.Mode.CHASE, &"Crawl", CRAWL_TIMES],
-	[&"crawler", ZombieBody.Mode.ATTACK, &"Punch", [0.35]],
+	[&"crawler", ZombieBody.Mode.ATTACK, &"extra/Crawl_Attack", [0.1, 0.3, 0.54, 0.8]],
+	[&"crawler", ZombieBody.Mode.STAGGER, &"extra/Crawl_Stagger", [0.1, 0.25]],
 	[&"walker", ZombieBody.Mode.CHASE, &"Idle", [0.5]],
 	[&"walker", ZombieBody.Mode.CHASE, &"Walk", [0.0, 0.67]],
 	[&"walker", ZombieBody.Mode.CHASE, &"Run", [0.17, 0.5], 3.5],
@@ -69,6 +70,7 @@ func _shooter(target: Dictionary) -> Callable:
 func _row(row: Array) -> void:
 	var look: StringName = row[0]
 	var probe := ZombieMeshProbe.make(root, look)
+	probe.use_extra_clips()
 	var body := _body(look, row[1], row[4] if row.size() > 4 else 0.0)
 	var target := _target(body)
 	var touched := 0

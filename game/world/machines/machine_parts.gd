@@ -8,6 +8,7 @@ extends RefCounted
 ## The weapon model drawn for each catalogue id (the revolver is `pistol`). The crowbar is never
 ## drawn on a machine.
 const WEAPON_MODELS := {
+	&"house_pistol": "res://assets/weapons/house_pistol/house_pistol.glb",
 	&"pistol": "res://assets/weapons/revolver/revolver.glb",
 	&"smg": "res://assets/weapons/tommy_gun/tommy_gun.glb",
 	&"shotgun": "res://assets/weapons/double_shotgun/double_shotgun.glb",

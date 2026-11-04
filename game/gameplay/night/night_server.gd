@@ -52,6 +52,11 @@ const SAY := &"say"
 const RESYNC := &"resync"
 ## A client's look, as `LookWire.look` bytes: `look` {player_id, packet}.
 const LOOK := &"look"
+## The seconds of the intermission after the night ends, counted by the server (the maintainer
+## asked for about fifteen), and the event that says they are over: `night_closed`, once. Every
+## client leaves for its lobby at it (`docs/design/end-of-night.md`).
+const END_SECONDS := 15.0
+const NIGHT_CLOSED := &"night_closed"
 ## The look server's answer to one client: `look_packet` {to, packet (`LookWire.player_look`)}.
 const LOOK_PACKET := &"look_packet"
 ## The weapons events worth sending on (the rules events ride the rules signal; the weapons
@@ -121,6 +126,8 @@ var tuning: NightTuning:
 			_revive.tuning = value
 			_ping_judge.tuning = value
 var tick_count := 0
+## The seconds of the intermission once the night is over (a test sets it shorter).
+var end_seconds := END_SECONDS
 ## The marks the players have put up.
 var ping_board := PingBoard.new()
 var bot_orders := BotOrders.new()
@@ -175,6 +182,12 @@ var _spot_at := Vector3.ZERO
 var _ping_judge: PingJudge
 var _order_judge: OrderJudge
 var _outbox: Array[Dictionary] = []
+## Seconds of the intermission left; -1 until the night is over. At 0 the night is closed.
+var _over_left := -1.0
+var _closed := false
+var _holds_ended := false
+## Player id -> the rounds they stood at the end of (`round_ended`'s `standing`), for the board.
+var _rounds_up: Dictionary[int, int] = {}
 var _probe: WorldProbe
 ## Whether a hand reaches what a prompt offers without a wall between (#831).
 var _sight: UseSight
@@ -184,6 +197,12 @@ var _cast: WorldCast
 var _throwers: Dictionary[int, GrenadeThrower] = {}
 ## The shock perk's waits (`ShockPlay`).
 var _shocks := ShockPlay.new()
+## The target list and the frame's zombie bytes, each with the `ZombieSim.revision` it was built
+## at (-1: none yet).
+var _targets: Array = []
+var _targets_at := -1
+var _bytes := PackedByteArray()
+var _bytes_at := -1
 
 
 func _init(
@@ -248,6 +267,7 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			_leave(action["player_id"])
 		SEAT_PERSON, RulesAction.SEAT_BOT:
 			rules.apply({"type": action["type"], "player_id": action["player_id"]})
+			_platform_of_seat(action["player_id"], action["type"] == SEAT_PERSON)
 		START_NIGHT:
 			rules.apply(RulesAction.start())
 		LOOK:
@@ -331,6 +351,8 @@ func health_of(player_id: int) -> float:
 func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	_outbox = []
 	tick_count += 1
+	if rules.phase == GameRules.Phase.OVER:
+		return _step_over(delta, with_frame)
 	var began := PerfProbe.begin()
 	_move_players(delta)
 	_return_strays(delta)
@@ -349,7 +371,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	var target_list := _target_list()
 	PerfProbe.end(&"server.target_list", began)
 	began = PerfProbe.begin()
-	_combat(CombatAction.targets(target_list))
+	_combat(CombatAction.targets(target_list, sim.revision))
 	_combat(CombatAction.tick(delta))
 	PerfProbe.end(&"server.combat", began)
 	began = PerfProbe.begin()
@@ -369,6 +391,30 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	return _outbox
 
 
+## One tick of the intermission: the night stands still where it ended (the bodies, the dead, the
+## rules and the weapons take no step) and only the clock runs. At 0 it says `night_closed` once.
+func _step_over(delta: float, with_frame: bool) -> Array[Dictionary]:
+	if _over_left < 0.0:
+		_over_left = end_seconds
+	if not _holds_ended:
+		# The step that would stop a downed reviver's hold (`_act`) does not run once the night is
+		# frozen, and the game over is made by the last of them going down: end the holds here.
+		_holds_ended = true
+		_revive.end_all(&"down")
+	_over_left = maxf(_over_left - delta, 0.0)
+	if _over_left <= 0.0 and not _closed:
+		_closed = true
+		_outbox.append({"type": NIGHT_CLOSED})
+	if with_frame:
+		_outbox.append(_frame())
+	return _outbox
+
+
+## Whether the night is over and its intermission has run out.
+func closed() -> bool:
+	return _closed
+
+
 # --- Players ---
 
 
@@ -376,10 +422,13 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 	if _bodies.has(player_id):
 		return
 	_slots[player_id] = _bodies.size()
-	_bodies[player_id] = world.add_body(world.player_spawn(_slots[player_id]), local, drawn_bodies)
+	_bodies[player_id] = world.add_body(
+		world.player_spawn(_slots[player_id]), local, drawn_bodies, bot or not drawn_bodies
+	)
 	_dead_fields[player_id] = DeadField.new(dead_tuning)
 	_bodies[player_id].dead = _dead_fields[player_id]
-	crowd.join(player_id, OS.has_feature("web") if local else true)
+	if not bot:
+		crowd.join(player_id, OS.has_feature("web") if local else true)
 	looks.join(player_id)
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
@@ -392,6 +441,18 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 	# What the rules say the player starts with, the firearm last so it is the one in hand.
 	for shop_id in rules.players[player_id].weapons:
 		_combat(CombatAction.give_weapon(player_id, WeaponCatalog.catalog_id(shop_id)))
+
+
+## A seat changed hands: a bot has no screen, so it counts for nothing in the crowd's ceiling (the
+## ceiling follows the people's platforms, `CrowdCeiling`); a person who takes a bot's seat counts
+## as a browser until its client says what it is, like any remote person that joins.
+func _platform_of_seat(player_id: int, person: bool) -> void:
+	if not _bodies.has(player_id):
+		return
+	if person:
+		crowd.join(player_id, true)
+	else:
+		crowd.leave(player_id)
 
 
 func _leave(player_id: int) -> void:
@@ -574,6 +635,12 @@ func _position_of_zombie(zombie_id: int) -> Vector3:
 func _on_rules_event(event: Dictionary) -> void:
 	_outbox.append(event)
 	match event["type"]:
+		&"game_over":
+			# The clock starts with the event, so the frame of this very step carries it.
+			_over_left = end_seconds
+		&"round_ended":
+			for id: int in event.get("standing", []):
+				_rounds_up[id] = _rounds_up.get(id, 0) + 1
 		&"player_hurt":
 			_repairing[event["player_id"]] = &""
 		&"purchase_made":
@@ -593,7 +660,7 @@ func _throw_grenades(delta: float) -> void:
 	for player_id in _bodies:
 		standing.append({"id": player_id, "pos": _bodies[player_id].global_position})
 	_grenade(GrenadeAction.players(standing))
-	_grenade(GrenadeAction.targets(_target_list()))
+	_grenade(GrenadeAction.targets(_target_list(), sim.revision))
 	for player_id in _bodies:
 		_throw_of(player_id, delta)
 	_grenade(GrenadeAction.tick(delta))
@@ -747,12 +814,20 @@ func _shock(player_id: int) -> void:
 		_outbox.append(burst)
 
 
+## Where every standing zombie is, one `hit_target` each. Built once for each `ZombieSim.revision`:
+## the dead change when the sim steps (30 Hz, every second tick) and when a hit, a blast or a
+## spawn touches one, not on every tick, and a second ask in a tick (the grenades') is the first's
+## answer unless a shot killed something in between. The list is shared, nobody writes to it.
 func _target_list() -> Array:
-	var list: Array = []
+	if _targets_at == sim.revision:
+		return _targets
+	_targets_at = sim.revision
+	_targets = []
+	PerfProbe.count(&"server.targets_built")
 	for zombie: ZombieBody in sim.zombies.values():
 		if zombie.is_alive():
-			list.append(zombie.hit_target())
-	return list
+			_targets.append(zombie.hit_target())
+	return _targets
 
 
 func _act(player_id: int, delta: float) -> void:
@@ -1123,6 +1198,8 @@ func _frame() -> Dictionary:
 			"revive": _revive.progress(player_id),
 			"reviver": _revive.holder_of(player_id),
 			"kills": rules.kills_of(player_id),
+			"headshots": rules.headshots_of(player_id),
+			"rounds": _rounds_up.get(player_id, 0),
 			"downs": rules.downs_of(player_id),
 			"revives": rules.revives_of(player_id),
 			"dead": rules.is_dead(player_id),
@@ -1143,6 +1220,9 @@ func _frame() -> Dictionary:
 		"round": rules.round_number,
 		"remaining": rules.zombies_remaining(),
 		"clock": floori(rules.night_time),
+		# Whole seconds of the intermission left (-1 while the night is on): the clock every client
+		# counts the end by.
+		"over_left": ceili(_over_left) if _over_left >= 0.0 else -1,
 		"fuel": rules.generator.fuel,
 		"circuits": rules.generator.circuits.duplicate(),
 		"doors": rules.doors_open.duplicate(),
@@ -1155,11 +1235,17 @@ func _frame() -> Dictionary:
 	}
 
 
+## The frame's zombie bytes: encoded once for each `ZombieSim.revision`, so the ticks between two
+## steps (a host with bots builds the frame on every one) carry the last bytes again.
 func _encode_zombies() -> PackedByteArray:
+	if _bytes_at == sim.revision:
+		return _bytes
 	var began := PerfProbe.begin()
-	var bytes := ZombieCodec.encode(sim.zombies)
+	_bytes = ZombieCodec.encode(sim.zombies)
+	PerfProbe.count(&"server.zombies_encoded")
+	_bytes_at = sim.revision
 	PerfProbe.end(&"server.encode", began)
-	return bytes
+	return _bytes
 
 
 ## The crane for the picture: where it stands, which stage it is in, whose play it is, the prize
