@@ -46,8 +46,14 @@ No client message carries one and the protocol stays 15:
 
 The lobby lists what a member **chose** (`card`, `emblem` on each member, from the profile the backend already reads
 for the level); the night holds it to what they own, so a hand-edited profile shows a card in the lobby and none in
-the night. `challenge_done` from the server tracker (#1129) is the online source for a finished challenge; until it
-lands the client learns a finish from its own tracker (solo) and from the profile read at sign-in.
+the night.
+
+**Where a finish comes from.** A feat is a challenge like the others, so both trackers finish it: the client's
+(`ProgressSession` marks `done` on the profile, solo) and the game server's (`ChallengeAward`, #1129: a `challenge_done`
+event to every client and the id in the round report, which the backend writes to the profile's `done`). Nothing here
+copies either. The equip screen reads the account's profile again when it opens (`ProfileUplink.read`), so a night with
+friends shows its finishes there. A live "you earned a card" popup from `challenge_done` is not built (the event
+carries the reward's XP, not the grants).
 
 ## The box (the maintainer's question)
 
@@ -68,10 +74,9 @@ two ids and writes nothing when they are equal. Per join: a card builds about 60
 box's shape is `Geometry2D.intersect_polygons`). On the wire: two keys on one `account_seated` a join, and at most
 256 short strings in a ticket. The HUD is one pass of the box's own `_draw` plus two small children.
 
-## What waits, and what is not here
+## What is not here
 
-- #1129 (the server's challenge tracker) and #1128 (the board's read and write) are open: the feats ride the same
-  `ChallengeProfile.apply` they use, so they finish there too, but the client does not yet learn an online finish live.
+- A live popup for a card or emblem earned (see above) and the client marking an online finish at once on its file.
 - A local night (solo) never tells the HUD its player's level (no event seats the local account), so the player's own box
   shows no level and no card there; that needs `night.gd`, which is at the line limit.
 - The hidden challenges and the odd ones that need events the night does not count (#1074), poster sets (#1073) and

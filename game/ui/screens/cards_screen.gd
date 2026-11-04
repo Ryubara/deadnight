@@ -89,6 +89,20 @@ func _ready() -> void:
 	)
 	_rebuild()
 	initial_focus = get_path_to(back_button)
+	_read_account()
+
+
+## A signed-in player's profile is read again from the account when the screen opens: a night with
+## friends is awarded by the game server, so the challenges it finished are the account's, not yet
+## the file's. The screen shows what is on file first and the account's the moment it arrives.
+func _read_account() -> void:
+	if not TogetherApi.signed_in() or params.has("account"):
+		return
+	var uplink := ProfileUplink.new(TogetherApi.new(self, TogetherScreen.backend_url()), store)
+	if await uplink.read() and is_inside_tree():
+		_done = store.profile.done.duplicate()
+		_note.text = ""
+		_rebuild()
 
 
 ## Every tile (cards then emblems), for tests.

@@ -9,9 +9,11 @@ extends GdUnitTestSuite
 const SECRET := "test-ticket-secret-of-32-characters!"
 const SERVER_ID := "gs-test"
 const MATCH := "match-voice"
-## Raw XP one point of score short of level 2 and of level 6, the first of the second tier (85 XP a
-## level up to level 6), which also gives the usher's cap.
-const BELOW_LEVEL_2 := 84
+## The level a plain level up is crossed at: it gives nothing to wear (level 2 opens the calling
+## cards, which is an unlock's cheer and not a plain level's).
+const PLAIN_LEVEL := 23
+## Raw XP one point of score short of level 6, the first of the second tier (85 XP a level up to
+## level 6), which also gives the usher's cap.
 const BELOW_LEVEL_6 := 424
 const CLIENTS := 4
 ## The day the challenge clock stands on (any day: the quick catalogue's dailies are fixed by it).
@@ -124,9 +126,9 @@ func _every_client_said(moment: StringName) -> bool:
 
 
 func test_every_client_plays_the_line_of_a_teammates_level_up() -> void:
-	await _four(BELOW_LEVEL_2)
+	await _four(LevelCurve.xp_for(PLAIN_LEVEL) - 1)
 	assert_int(_nights.size()).is_equal(CLIENTS)
-	# Ann's point of score is her second level; the server tells all four clients.
+	# Ann's point of score is her next level; the server tells all four clients.
 	_room().server.rules.apply(RulesAction.grant_points(1, 100))
 	assert_bool(await _until(func() -> bool: return _every_client_said(&"level_up"))).is_true()
 	for listener in _lines:
