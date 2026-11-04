@@ -153,7 +153,7 @@ func test_a_pack_climbs_the_first_stair() -> void:
 
 
 func test_a_pack_climbs_the_second_stair() -> void:
-	var pack := await _small_pack("Spawn_side_1", Vector3(5.0, 3.4, -4.0), false)
+	var pack := await _small_pack("Spawn_side_breach", Vector3(5.0, 3.4, -4.0), false)
 	print(pack.summary("small map stair B (after)"))
 	assert_int(pack.reached()).is_equal(PACK)
 	assert_float(pack.longest_stuck).is_less(2.0)
@@ -190,7 +190,7 @@ func test_a_pack_climbs_the_first_stair_in_the_second_maps_night() -> void:
 
 
 func test_a_pack_climbs_the_second_stair_in_the_second_maps_night() -> void:
-	var pack := await _small_night_pack("Spawn_side_1", Vector3(5.0, 3.4, -4.0))
+	var pack := await _small_night_pack("Spawn_side_breach", Vector3(5.0, 3.4, -4.0))
 	print(pack.summary("small map night, stair B (after)"))
 	assert_int(pack.reached()).is_equal(PACK)
 	assert_float(pack.longest_stuck).is_less(2.0)

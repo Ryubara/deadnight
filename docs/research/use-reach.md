@@ -103,10 +103,15 @@ each other and from the wall weapons, a locker 1.45 m from a window.
 **The test.** `game/tests/world/test_use_zone_spacing.gd` walks a 0.25 m grid of standing ground round every
 interactable of both maps, each zone grown by half the gap, and fails on a point inside two. The lot passes after three
 moves in `tools/world/build_greybox.py`: the booth's post to 5.6 m east of the door (was 4.6), the back lot's post to
-6 m east of the gate (was 4.5), the rifle 0.5 m further west. The second map's 26 remaining pairs are all places its
-rework moves ([#917](https://github.com/Ryubara/deadnight/issues/917): one window a wall, the upper windows on a patio,
-each perk in its own corridor): they are listed in the test, which fails on any other pair and on a listed pair that no
-longer overlaps, so the list only shrinks. `game/tests/night/test_use_guard.gd` presses through the real night: a tap
+6 m east of the gate (was 4.5), the rifle 0.5 m further west. The second map's 26 remaining pairs were listed in the
+test for its rework ([#917](https://github.com/Ryubara/deadnight/issues/917)), which moved 19 of them apart; the fix of
+main after it moved four more, and [#994](https://github.com/Ryubara/deadnight/issues/994) the rest: the side room's
+south-west window went (it stood 2.8 m from the breach and 3.2 m from the Swift Rescue alcove, in a corner with room for
+neither), the breach 0.5 m south, the soda 1.1 m and the pistol 2.2 m south along the hall's west wall, the upper locker
+to the east end of its wall and the bat to the upper side room's south wall. The test has no list now: any pair on
+either map fails it. A point of the grid that fell on a wall's face counted as room for a body (a ray that starts on a
+face does not hit it), and through the wall it put the side room's locker in reach of the hall's stair link; the spokes
+now start 5 cm behind the point. `game/tests/night/test_use_guard.gd` presses through the real night: a tap
 after a board, at the shotgun, buys nothing until the grace is over; a press edge during a held repair at a weapon buys
 nothing; a replacing gun is kept on a press the moment its card shows and bought once it has been read; a gun with a
 hand free is one press.

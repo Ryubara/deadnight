@@ -174,6 +174,22 @@ func test_the_letters_flicker_and_hold_still_with_reduced_motion() -> void:
 	assert_int(lights.size()).is_equal(1)
 
 
+# The bulbs are polygons the Compatibility renderer builds into buffers of their own, and the web
+# page keeps their ids for good: the board is drawn when the chase steps on, not every frame (#883).
+func test_the_marquee_is_redrawn_when_the_bulbs_step_not_every_frame() -> void:
+	var fx := HudFixture.make(_host)
+	_to_break_before(fx, 5)
+	await get_tree().process_frame
+	var draws := [0]
+	fx.hud.marquee.draw.connect(func() -> void: draws[0] += 1)
+	for _i in 60:
+		fx.hud.marquee.advance(1.0 / 60.0)
+		await get_tree().process_frame
+	# A second of frames, and the marquee also moves itself on in real time: some steps of the chase
+	# and a few of the engine's own, never one for each of the sixty frames.
+	assert_int(draws[0]).is_between(1, 20)
+
+
 # --- A late joiner ---
 
 
