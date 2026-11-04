@@ -255,6 +255,8 @@ var _current := -1
 
 func _ready() -> void:
 	super._ready()
+	# The screen is the source of its tab sound; the strip's buttons only hint.
+	UiSounds.tag(self, &"tab_bar")
 	_build()
 	_sync_all()
 	select_tab(0, false)
@@ -268,14 +270,14 @@ func select_tab(index: int, animate := true) -> void:
 	# Hiding a page drops the focus of a control on it, and nothing would give it back. Focus on
 	# the tab strip follows the selected tab.
 	var refocus := _has_focus_in_page(_current) or _tab_buttons.any(_has_focus)
+	if animate and _current >= 0:
+		UiSounds.tab(self, 1 if target > _current else -1)
 	_current = target
 	for i in _pages.size():
 		_pages[i].visible = i == target
 		_tab_buttons[i].variant = (
 			UIButton.Variant.PRIMARY if i == target else UIButton.Variant.GHOST
 		)
-	if animate:
-		UIAudio.play(&"press")
 	var rows: Array[Control] = []
 	for row in _pages[target].get_children():
 		if row.visible:
@@ -355,6 +357,7 @@ func _build_tabs() -> HBoxContainer:
 		var button := UIButton.new()
 		button.text = TABS[i]["title"]
 		button.variant = UIButton.Variant.GHOST
+		UiSounds.tag(button, &"tab")
 		button.pressed.connect(select_tab.bind(i))
 		strip.add_child(button)
 		_tab_buttons.append(button)

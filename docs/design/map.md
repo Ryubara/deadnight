@@ -93,7 +93,7 @@ Besides the doors, the lot sells at fixed spots: the markers of `ShopSpots` in t
 `shop_id`, read by `NightWorld.shop_spots()`. A player in reach (3.2 m, `NightTuning.use_reach`) of one is offered what
 it sells on the prompt card and buys with `interact`, the same press as a door; a door in reach wins, then the nearest
 spot with something to sell. What a spot offers comes from the rules' tuning, so the price is never in the scene (the
-plaque only names the weapon).
+plaque shows the weapon's silhouette, never its name: [wall silhouettes](../research/wall-silhouettes.md)).
 
 | Spot | Where | Sells | Why there |
 | --- | --- | --- | --- |
@@ -138,8 +138,9 @@ m north so the fountain's spot is farther than a reach from it.
 
 A locker never sells the crowbar anything (it never runs dry). The tests (`test_shop_spots.gd`) hold every spot to a
 real shop item, to the lot, and farther than a reach from every door slab and from every spot of another kind, so one
-press never means two things. The lockers are a green crate with a yellow band, the wall weapons an amber plaque, all
-lit by their own colour so they read in the dark (captures in the pull request).
+press never means two things. The lockers are a green crate with a yellow band, the wall weapons an amber plaque with
+the weapon's own silhouette on it in dark brown (no weapon text from a distance; the prompt card gives the name and
+the price from reach), all lit by their own colour so they read in the dark (captures in the pull request).
 
 ## The ticket plaza
 
@@ -358,10 +359,11 @@ The rules decide, the lamps follow. The zombies' lit pace asks `GeneratorState` 
 `LotLamps.lit_at`: a lamp within 6 m whose circuit is on and whose tank has fuel), never a light node, so a server
 that draws nothing agrees with every client. The client's `LotLamps` mirrors `circuit_changed`, `fuel_empty`,
 `fuel_restored` and each frame's `fuel`: a circuit that goes off hides its lights and darkens its posts' bulbs; in the
-tank's last tenth (`brownout_fraction`) the lights sag and drop out in a flicker that is a function of the frame's
-tick and the lamp's number (no clock, no random draw), so a recording and a test see the same lights; at an empty tank
-they go out. Only the screen's glow outlasts the generator, at 30% (`afterglow`), and it lights no ground for the
-dead. The flicker is only the picture: the lit pace stays whole until the tank is empty.
+tank's last tenth (`brownout_fraction`) the lights sag and dip in the slow events of `FailingBattery.brownout` (a sag,
+a stutter, a dropout, one at most every 3.6 s, deeper the lower the tank, never more than three flashes a second), a
+function of the frame's tick and the lamp's number (no clock, no random draw), so a recording and a test see the same
+lights; at an empty tank they go out. Only the screen's glow outlasts the generator, at 30% (`afterglow`), and it
+lights no ground for the dead. The flicker is only the picture: the lit pace stays whole until the tank is empty.
 
 ![The lot from above: the start, every circuit on, a dry tank](map-circuits.png)
 
