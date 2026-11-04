@@ -49,7 +49,9 @@ image):
 - `POST /lobbies/:id/ticket` returns `{address: {url, activityPath}, ticket}` for the caller's seat. The ticket names
   the game server it is for (`serverId`) and has a unique id (`jti`); see [the ticket](#the-game-server-ticket).
 - `PUT/GET /saves/:slot`: a save is `{revision, schemaVersion, data}`; a stale `revision` is a 409 instead of lost
-  progress. Format rules: [Save format](#save-format).
+  progress. Format rules: [Save format](#save-format). The `profile` slot has more rules: [Progression](#progression-the-profile-slot-round-reports-and-the-xp-clamp).
+- `POST /internal/matches/:id/report` (shared secret): a game server's XP for each seat at a round's end or the night's
+  end, paid once ([Progression](#progression-the-profile-slot-round-reports-and-the-xp-clamp)).
 - `POST /internal/servers/heartbeat` (shared secret): a game server announces itself, its capacity and the ids of the
   matches it is running. `POST /internal/matches/:id/end` (shared secret): a match is over, its slot is free. A night
   that ran its end-of-night intermission out sends `{finished: true, present: [user ids still in the room]}` and its
@@ -202,6 +204,68 @@ slot is empty). Both validate the slot (`[a-z0-9_-]`, 1 to 32 characters).
   opaque base64 string of `var_to_bytes` (the rules snapshot's `to_wire()` is exactly that, see
   [rounds](../design/rounds.md)). Strings come back unchanged, tested through the API and against Postgres. Floats
   below 2^53 and integers up to 2^53 - 1 are ordinary JSON numbers.
+
+## Progression: the profile slot, round reports and the XP clamp
+
+Design: [Storage and trust](../design/progression.md#storage-and-trust). Code: `spikes/backend/src/progression.ts`;
+tests: `test/progression.test.ts` (memory store, real sockets with the stub game server, and Postgres when
+`TEST_DATABASE_URL` is set). **The backend is never written per kill**: XP reaches it in one post per seat at a round's
+end and at the night's end, or in one write of a solo client's profile at a round's end.
+
+**The slot.** `PUT/GET /saves/profile` is the one slot the backend reads. The profile is the game's `Profile.to_dict`:
+`{xp, equipped, done, opening_night, bonus_day}` (schema 1, the version both game slots use, so `SAVE_SCHEMA_VERSIONS`
+needed no new entry; the `challenges` slot stays an ordinary save the backend does not read). Raw XP only: the level,
+the icon and the next reward are derived (`levelOf` is a copy of `LevelCurve`, held equal by a test that reads the
+GDScript). A write must read (422 `invalid_profile` names the field) and take nothing away (422 `profile_regressed`:
+XP, the opening night, the day number or a finished challenge). A **Guest account** has a profile slot and earns like any
+other account; nothing in the code tells them apart.
+
+**The solo client's write and the clamp.** A write may add at most **120 XP for each minute of wall clock since the
+account's last XP write** (the session's start for the first one), counting at most an hour, so the long-run rate is
+120 a minute however long the silence (a strong four-player night is about 35 a minute, so this is three times that;
+retune with the telemetry). The one-offs this write claims widen it by exactly their XP: 50 for the opening night, 100
+for the first game of the day. More is 422 `implausible_progress` with `added` and `allowed`; a refused write is
+acceptable later, because the allowance grows with the clock. The **first game of the day** is the profile's
+`bonus_day`: the day number (days since 1970, the dailies' own) is accepted once, only forward, and only within one day
+of the backend's own UTC date (422 `implausible_day`). **No offline XP, no merge:** a stale revision is 409; the client
+reads the account's own latest and sends its change again on top. Equipping something adds no XP, writes no ledger line
+and does not restart the clock.
+
+**The game server's round report.** `POST /internal/matches/:matchId/report` with the game-server secret (a client
+cannot post XP for an online night; the secret is what "a server the platform started" means here):
+
+```json
+{ "kind": "round", "round": 3, "seats": [
+  { "userId": "<account id>", "xp": 140, "openingNight": true, "bonusDay": 20761,
+    "done": ["daily_kills"], "lines": { "points": 12000, "boards": 6 } } ] }
+```
+
+- `kind` is `round` (a round ended) or `night` (the night ended); `xp` is whole XP earned since the seat's last report,
+  0 to 1,500, without the two one-offs. `openingNight` and `bonusDay` are claims: the backend knows the profile, so it
+  pays the 50 and the 100 itself, once. `bonusDay` is the day number of that round's end (the client's own local day if
+  the server has it, else UTC's). `done` are challenge ids finished; `lines` are what the round did, kept in the ledger.
+- **Idempotency.** The key is (match, kind, round, account). A second post with the same key pays nothing and answers
+  `duplicate` with the first amount, per seat, so a report that failed halfway is posted again whole and pays only what
+  was missing. The ledger line and the profile write are one transaction in Postgres.
+- **The cap.** One account is paid at most **1,500 XP in a match** (`XpRules.NIGHT_CAP`), every report together; a
+  report past it is cut to what is left (the answer's `credited` says). The report adds on top of the account's own
+  latest profile, so a client write in between only makes the client's next write a 409.
+- The answer is `{seats: [{userId, status, credited, openingNight, firstGameOfTheDay, xp, level}]}`; `status` is `paid`,
+  `duplicate` or `unknown_user` (an account that is gone, a Guest past its 7 days; the other seats are still paid).
+
+**The ledger** (`ledger` table, `Store.putSave(..., ledger)`): append only, one line for each report seat and each solo
+write that added XP, `(user, match, kind, round, xp, reason, at)`; its primary key is the idempotency key, a solo line
+has the empty match and its new revision as the round. The balance is the profile's `xp`; the ledger says why. The
+design's `night_log` (the history screen) and `match_report` (signed per-match facts) are not built: nothing reads them
+yet, and the ledger holds the same facts.
+
+**The ticket** carries `level`, `icon` (`level_NN`, a file of `game/assets/ui/levels/`) and `xp`, read from the stored
+profile when the ticket is minted, never from the client; an account with no profile, or one that does not read, is
+level 1. The stub game server passes them on in its welcome.
+
+What the game server must send, and when: [the game server's tally](../design/progression.md#who-awards-xp-and-live-xp)
+(#1059) posts one report a seat at each round's end (`kind: round`, `round: n`) and one at the night's end (`kind:
+night`, `round: n`), retries a post until it is answered, and keeps unsent reports while the backend is down.
 
 ## The lobby before the night
 
