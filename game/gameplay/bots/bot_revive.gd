@@ -263,7 +263,7 @@ func prefer(targets: Array[Dictionary], beliefs: BotBeliefs, here: Vector3, curr
 
 ## The retreat margin (metres) the brain keeps while this bot survives, or 0 for none.
 func kite_margin() -> float:
-	return KITE_MARGIN if mode == Mode.SURVIVE else 0.0
+	return KITE_MARGIN if mode == Mode.SURVIVE and _profile.kites_when_last else 0.0
 
 
 # --- Deciding ---
