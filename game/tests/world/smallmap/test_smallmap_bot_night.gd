@@ -15,6 +15,12 @@ const FOUR_SECONDS := 150.0
 ## Game seconds in which four bots on the shut map have bought every link (round 4 at the latest).
 const FOUR_LINKS_SECONDS := 210.0
 const FRAME_EVERY := 30
+## A night that has shown everything its test asks for runs on this many game seconds more (the
+## cap on the dead alive is read to the end) and stops: the asked-for things are events, and an
+## event that has happened stays happened. With the full 330 s the solo bot has shown them all by
+## 130 s on the four seeds (round 4 at 123 to 128 s, the weapon at 75 to 127 s), and the three links
+## of the team by 60 s.
+const GRACE_SECONDS := 30.0
 
 var _seated: SeatedNight
 var _links: Array[StringName] = []
@@ -32,7 +38,10 @@ func after_test() -> void:
 		_seated = null
 
 
-func _play(bots: int, seconds: float, open_all: bool, seed_value := 3) -> void:
+## Plays `seconds` of game time, or until `done` (when given) has been true for `grace` seconds.
+func _play(
+	bots: int, seconds: float, open_all: bool, seed_value := 3, done := Callable(), grace := 0.0
+) -> void:
 	_links.clear()
 	_tears.clear()
 	_buys.clear()
@@ -53,9 +62,15 @@ func _play(bots: int, seconds: float, open_all: bool, seed_value := 3) -> void:
 	_seated.on_event = _on_event
 	_seated.start_round()
 	var ticks := int(seconds * 60.0)
+	var done_at := -1
 	for tick in ticks:
 		_seated.tick()
 		_most_alive = maxi(_most_alive, _seated.server.sim.standing_count())
+		if done.is_valid():
+			if done_at < 0 and done.call():
+				done_at = tick
+			if done_at >= 0 and tick - done_at >= int(grace * 60.0):
+				break
 		if tick % FRAME_EVERY == 0:
 			await get_tree().physics_frame
 
@@ -80,7 +95,7 @@ func test_a_bot_alone_buys_a_link_and_a_weapon_holds_the_windows_and_reaches_rou
 	seed_value: int, test_parameters := [[1], [3], [4], [7]]
 ) -> void:
 	assert_object(test_parameters).is_not_null()
-	await _play(1, SOLO_SECONDS, false, seed_value)
+	await _play(1, SOLO_SECONDS, false, seed_value, _solo_has_shown_it, GRACE_SECONDS)
 	var rules := _seated.server.rules
 	(
 		assert_int(_rounds_started)
@@ -96,6 +111,18 @@ func test_a_bot_alone_buys_a_link_and_a_weapon_holds_the_windows_and_reaches_rou
 			weapons += 1
 	assert_int(weapons).override_failure_message("bought %s" % [_buys]).is_greater_equal(1)
 	assert_int(_most_alive).is_less_equal(24)
+
+
+## Whether the solo night has shown everything its test asks for: round 4 begun, the first link
+## bought, four windows torn and a weapon bought.
+func _solo_has_shown_it() -> bool:
+	if _rounds_started < 4 or not _links.has(&"door_side") or _tears.size() < 4:
+		return false
+	for id: StringName in _buys:
+		var kind := _seated.server.rules.tuning.economy.item(id).kind
+		if kind == ShopItem.Kind.WEAPON or kind == ShopItem.Kind.CRANE:
+			return true
+	return false
 
 
 func test_four_bots_on_the_whole_map_hold_it_for_several_rounds() -> void:
@@ -115,7 +142,7 @@ func test_four_bots_buy_all_three_links_together_in_the_first_rounds() -> void:
 	# The team rule (`bot_team_links`): the door's rotation and the one-errand turn left the
 	# second stair unbought for the whole night; now the nearest free bot buys each link in the
 	# first lulls.
-	await _play(4, FOUR_LINKS_SECONDS, false)
+	await _play(4, FOUR_LINKS_SECONDS, false, 3, func() -> bool: return _link_rounds.size() == 3)
 	assert_int(_link_rounds.size()).override_failure_message("links %s" % [_link_rounds]).is_equal(
 		3
 	)

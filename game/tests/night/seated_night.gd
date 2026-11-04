@@ -90,7 +90,12 @@ static func start(
 	)
 	# Bots do errands (shopping, boards, the generator) only when the level gives them the shop.
 	LotBotData.fill(night.level, night.world, night.server.rules.tuning if shopping else null)
-	# The bodies are indexed by the physics server on its next step.
+	# The bodies are indexed by the physics server on its next step, and `physics_frame` is emitted
+	# before that step runs: after one await a hand-ticked body is still outside the index and its
+	# `move_and_slide` costs ten times what it does once indexed (0.24 ms against 0.02 ms for a body
+	# standing still; a tick of four players 3.7 ms against 1.6 ms). The second await returns after the
+	# step. The night plays the same (the bands' counts of shots, hits and blows are the same).
+	await parent.get_tree().physics_frame
 	await parent.get_tree().physics_frame
 	return night
 
@@ -149,6 +154,33 @@ func start_round() -> void:
 func settle(frames: int) -> void:
 	for _i in frames:
 		await world.get_tree().physics_frame
+
+
+## Lets the engine take physics frames until the navigation map has taken in the areas the doors
+## bought (the lot's own answer: `NightWorld.spawn_points` lists an area's markers once the map
+## walks to them), at most `max_frames`; true when it has. A saved mesh reaches the map over 8 to 12
+## frames that move with the machine's load, so a count of frames is a guess in both directions
+## (60 is a second of real time; 12 failed one run in three): this waits for the answer.
+func settle_doors(max_frames := 900) -> bool:
+	for _i in max_frames:
+		if _doors_are_walkable():
+			return true
+		await world.get_tree().physics_frame
+	return false
+
+
+func _doors_are_walkable() -> bool:
+	var walkable := world.spawn_points()
+	for area in world.open_areas():
+		var markers := world.layout.spawn_markers(area)
+		if markers.is_empty() or world.layout.start_areas().has(area):
+			continue
+		var taken_in := false
+		for marker in markers:
+			taken_in = taken_in or walkable.has(marker.global_position)
+		if not taken_in:
+			return false
+	return true
 
 
 ## One tick of the night: the server steps, the stand-ins and the bots hear it, decide and send.
