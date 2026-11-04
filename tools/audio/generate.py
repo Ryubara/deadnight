@@ -30,6 +30,7 @@ import gun_recipes_2
 import map_recipes
 import menu_recipes
 import night_recipes
+import progress_recipes
 import recipes
 import step_recipes
 import ui_recipes
@@ -52,6 +53,7 @@ REGISTRY: list[Entry] = [
     *energy_recipes.REGISTRY,
     *drink_recipes.REGISTRY,
     *ui_recipes.REGISTRY,
+    *progress_recipes.REGISTRY,
 ]
 
 
