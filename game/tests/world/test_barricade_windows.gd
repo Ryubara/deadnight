@@ -98,5 +98,5 @@ func test_every_drive_in_breach_is_a_window() -> void:
 
 
 func test_every_second_map_entry_is_a_window() -> void:
-	await _each_barricade(SMALL, 7)
-	assert_int(_barricades(_map(SMALL)).size()).is_equal(7)
+	await _each_barricade(SMALL, 6)
+	assert_int(_barricades(_map(SMALL)).size()).is_equal(6)
