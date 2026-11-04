@@ -2,7 +2,8 @@ class_name CrowdCeiling
 extends RefCounted
 ## The most zombies a night stands at once, from the weakest client in it: a browser stands fewer
 ## than a desktop (`RoundTuning.ceiling_for`). A remote client counts as a browser until it says it
-## is not, so a client that never says (an older build) gets the safe number. An operator's cap
+## is not, so a client that never says (an older build) gets the safe number. A bot has no screen:
+## it is never joined here, so it counts for nothing (#946). An operator's cap
 ## (`limit`, `MAX_ALIVE` on a game server) holds whatever the players are on. Bound to the night's
 ## rules and zombie sim, it sets their cap and hard cap, one number, whenever anything changes.
 

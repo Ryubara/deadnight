@@ -41,14 +41,11 @@ func test_the_card_at_the_bench_names_the_weapon_the_price_and_what_it_gives() -
 	_stand_at(night, &"upgrade")
 	var prompt := hud.state.prompt
 	assert_str(String(prompt["kind"])).is_equal("buy_recut")
-	assert_str(prompt["label"]).is_equal("Re-cut: Revolver")
+	assert_str(prompt["label"]).is_equal("Re-cut: House Pistol")
 	assert_int(prompt["cost"]).is_equal(night.server.rules.price_of(&"upgrade_weapon", 1))
-	var cut := night.server.rules.tuning.upgrade.profile_of(&"pistol")
+	var cut := night.server.rules.tuning.upgrade.profile_of(&"house_pistol")
 	assert_str(prompt["detail"]).is_equal(
-		(
-			"DAMAGE x%s, ROUNDS x%s, FIRES SLOWER, EXPLOSIVE ROUNDS"
-			% [cut.damage_multiplier, cut.magazine_multiplier]
-		)
+		"DAMAGE x%s, ROUNDS x%s" % [cut.damage_multiplier, cut.magazine_multiplier]
 	)
 	_finish(night, hud)
 
@@ -72,11 +69,11 @@ func test_the_ammo_card_takes_the_new_name_and_the_bigger_magazine() -> void:
 	var made := await _start()
 	var night: Night = made["night"]
 	var hud: Hud = made["hud"]
-	var plain := WeaponCatalog.get_def(&"pistol")
+	var plain := WeaponCatalog.get_def(&"house_pistol")
 	assert_str(hud.state.weapon_name).is_equal(plain.display_name)
 	_stand_at(night, &"upgrade")
 	_use(night)
-	var state := night.server.combat.state_of(1, &"pistol")
+	var state := night.server.combat.state_of(1, &"house_pistol")
 	assert_str(hud.state.weapon_name).is_equal("Re-Cut " + plain.display_name)
 	assert_int(hud.state.ammo_reserve).is_equal(state.def.reserve_max)
 	assert_int(hud.state.ammo_magazine).is_equal(state.def.magazine_size)
@@ -92,9 +89,9 @@ func test_a_hud_that_joins_late_names_the_re_cut_weapon_from_the_frame() -> void
 	_use(night)
 	var late := HudState.new()
 	late.local_player_id = 1
-	late.weapon_names[&"pistol"] = "Revolver"
+	late.weapon_names[&"house_pistol"] = "House Pistol"
 	HudLoadout.sync(night.state.me(), late)
-	assert_str(HudLoadout.name_of(&"pistol", late)).is_equal("Re-Cut Revolver")
+	assert_str(HudLoadout.name_of(&"house_pistol", late)).is_equal("Re-Cut House Pistol")
 	_finish(night, hud)
 
 

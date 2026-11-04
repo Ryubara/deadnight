@@ -240,6 +240,7 @@ places, the quick-load cooler 1.2 m from a place behind the wall, the upstairs s
 | | The lot | The second map | Verdict |
 | --- | --- | --- | --- |
 | How the dead come in | six breaches in the field; bare points elsewhere (C) | twelve windows, each with boards, a sill, a shaft | the second map's is the one to follow |
+| Shape of an entry | six breaches: a 4 m gap with a 0.9 m sill, jambs and a header, and a players-only blocker (#915; before, a full-height gap that read as a door) | twelve windows, the breach included (a 0.9 m sill, #915) | the same: every barricade is a window, checked by `test_barricade_windows.gd` |
 | Light | a generator, six circuits, lamps that cost fuel, pools of light; dark is a mechanic | eight pendants on an always-on circuit; no dark, no generator | by design ([the map's page](../design/smallmap.md#what-the-map-leaves-out)); the second map has no gradient from lit to dark, so its rooms are judged on readability, and they pass |
 | Kit and scale | Toon props and greybox walls, 2.4 to 3.0 m fences | the second map's own kit, 3.2 m ceilings | consistent: both read as 1958 brick; plaques, machines and prompt text are the same |
 | Reach assumed | 1.1 m (jump) in the test and the page | 1.1 m in the formula and the counter | measured 1.25 m (J) |

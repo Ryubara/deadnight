@@ -185,6 +185,13 @@ def stats(deltas: list[float]) -> dict:
     }
 
 
+def probing(url: str) -> str:
+    """`url` with `probe` in its query: the page then adds the probes that cross the JavaScript bridge in every frame
+    (judder, view and pad: `WebProbe.asked`, game/core/web_probe.gd). A player's page has none of them, so a probe that
+    reads `viewRows`, `frames`, `pad_count` or `pause_presses` opens its page through this (#935)."""
+    return f"{url}{'&' if '?' in url else '?'}probe"
+
+
 def probe(page: Page) -> dict:
     return page.evaluate(PROBE_JS) or {}
 

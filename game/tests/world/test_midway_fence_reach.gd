@@ -256,12 +256,33 @@ func _run_hop(from: Vector3, yaw: float, sprint: bool, jump_tick: int) -> Vector
 	command.sprint = false
 	command.jump = false
 	for tick in SETTLE_TICKS:
+		var before := _rest_of(state)
 		PlayerSimulation.simulate(_body, state, command, _tuning, delta)
+		# At rest on the floor a tick changes nothing, and so does every tick after it: the
+		# command is the same, the world is still, and the state is all the simulation carries.
+		if state.on_floor and _rest_of(state) == before:
+			break
 	if not state.on_floor:
 		return Vector3.INF
 	if state.position.distance_to(from) < NO_MOVE and absf(state.position.y - from.y) < PERCH:
 		return Vector3.INF
 	return state.position
+
+
+## What a body at rest keeps from one tick to the next (the trigger's age only counts up, and no
+## hop pulls the trigger).
+func _rest_of(state: PlayerMotionState) -> Array:
+	return [
+		state.position,
+		state.velocity,
+		state.facing,
+		state.crouching,
+		state.sprinting,
+		state.coyote,
+		state.jump_buffer,
+		state.step_travelled,
+		state.step_settle,
+	]
 
 
 func _floor_under(at: Vector3) -> float:

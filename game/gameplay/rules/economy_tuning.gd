@@ -9,7 +9,7 @@ extends Resource
 ## What a player carries at the start, as shop ids, the firearm last so it is the one in hand.
 ## They count as carried: a third weapon replaces the one in hand, and the replaced one is a prize
 ## or a purchase again (`WeaponCarry`).
-@export var start_weapons: Array[StringName] = [&"weapon_pistol"]
+@export var start_weapons: Array[StringName] = [&"weapon_house_pistol"]
 ## A hit that does not kill.
 @export_range(0, 100, 5, "or_greater", "suffix:pts") var hit: int = 5
 ## A hit to the head that does not kill.

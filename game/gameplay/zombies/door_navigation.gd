@@ -13,6 +13,12 @@ extends Node
 ##
 ## A bake already running is not interrupted: doors opened meanwhile are caught by one more bake
 ## when it lands, so the mesh always ends up matching the last door, however fast they are bought.
+##
+## The mesh goes in as two regions (`NavmeshSplit`, `NavLayers`): the mesh but for the polygons
+## across a barricade, which everyone's paths use, and those polygons, which only the dead's do. A
+## person is stopped by the boards the dead's mesh runs through, and a bot given the whole mesh
+## walked into them (#995).
+##
 ## The server does this; clients draw zombies from bytes and need no mesh.
 
 ## A new mesh is in the region (the map takes it over the next few physics ticks).
@@ -26,6 +32,8 @@ var saved: LotNavmeshes = LotNavmeshes.shared()
 
 var _lot: Node3D
 var _region: NavigationRegion3D
+var _gaps: NavigationRegion3D
+var _strips: Array[NavmeshSplit.Strip] = []
 var _baking := false
 var _stale := false
 
@@ -35,13 +43,19 @@ var _stale := false
 func setup(lot: Node3D, doors: LotDoors) -> void:
 	_lot = lot
 	_region = NavigationRegion3D.new()
-	_region.navigation_mesh = _saved_mesh()
-	if _region.navigation_mesh == null:
+	_region.navigation_layers = NavLayers.WALK
+	_gaps = NavigationRegion3D.new()
+	_gaps.navigation_layers = NavLayers.GAP
+	lot.add_child(_region)
+	lot.add_child(_gaps)
+	_strips = NavmeshSplit.strips_of(lot, _region.global_transform)
+	var first := _saved_mesh()
+	if first == null:
 		if saved != null:
 			push_warning("no saved navigation mesh for the lot as it stands: baking one")
-		_region.navigation_mesh = NavmeshBaker.bake(lot)
+		first = NavmeshBaker.bake(lot)
+	_install(first)
 	bake_count = 1
-	lot.add_child(_region)
 	doors.door_opened.connect(_on_door_opened)
 
 
@@ -55,13 +69,20 @@ func _saved_mesh() -> NavigationMesh:
 	return null if saved == null else saved.mesh_for(_lot)
 
 
+## Puts `navmesh` in the two regions, cut at the barricades.
+func _install(navmesh: NavigationMesh) -> void:
+	var halves := NavmeshSplit.split(navmesh, _strips)
+	_region.navigation_mesh = halves[0]
+	_gaps.navigation_mesh = halves[1]
+
+
 func _on_door_opened(_door_id: StringName) -> void:
 	if _baking:
 		_stale = true
 		return
 	var ready := _saved_mesh()
 	if ready != null:
-		_region.navigation_mesh = ready
+		_install(ready)
 		bake_count += 1
 		baked.emit()
 		return
@@ -73,7 +94,7 @@ func _on_baked(navmesh: NavigationMesh) -> void:
 	_baking = false
 	if not is_instance_valid(_region):
 		return
-	_region.navigation_mesh = navmesh
+	_install(navmesh)
 	bake_count += 1
 	baked.emit()
 	if _stale:

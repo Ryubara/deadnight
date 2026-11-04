@@ -75,15 +75,20 @@ Rules the greybox is built to:
   (`PLAZA_WALL_H`): the junk stacked against them reaches 1.71 m and a 3.0 m wall was one container and a corner away
   ([#845](https://github.com/Ryubara/deadnight/issues/845); `test_plaza_escape.gd` runs the old hops and a sweep of
   hops from the plaza's floor, and pins the margin of 0.5 m over the reach above the tallest prop at each wall).
-  `test_drive_in_jump_reach.gd` bakes the walking mesh with the jump as its climb for each door still closed (and
-  what needs it), finds the platforms a player can reach, checks that no closed slab, closed area's wall, field
-  fence or perimeter wall has its top within a jump of one, and runs the real player body (`PlayerSimulation`,
-  sprinting and jumping) from the middle and edges of every car roof near a perimeter wall. Before the change the
-  body cleared the north fence from a roof (feet at 2.70 m over a 2.40 m top). `test_midway_fence_reach.gd` runs
-  the real body from the ground beside the midway's fences, up to three hops deep, with none, the concession,
-  the concession and the booth, and every door but the road's sold, and fails on a standing place inside a closed
-  area or on top of a wall; it also replays the old hops. (The walking-mesh test above still reads the jump, 1.1
-  m; the map review's [#848](https://github.com/Ryubara/deadnight/issues/848) moves it to 1.25 m.)
+  The reach is one number, `CameraProbe.BODY_REACH` (1.25 m), pinned by `tests/player/test_jump_reach.gd` and
+  read by every test below. `test_drive_in_jump_reach.gd` bakes the walking mesh with 1.25 m as its climb for each
+  door still closed (and what needs it), finds the platforms a player can reach, checks that no closed slab, closed
+  area's wall, field fence or perimeter wall has its top within 1.25 m of one, and runs the real player body
+  (`PlayerSimulation`, sprinting and jumping) from the middle and edges of every car roof near a perimeter wall.
+  Before the change the body cleared the north fence from a roof (feet at 2.70 m over a 2.40 m top).
+  `test_drive_in_escape_sweep.gd` runs the real body at every prop beside the walls
+  ([#848](https://github.com/Ryubara/deadnight/issues/848)): it stands it on every top of 1.25 m or less within
+  6 m of a perimeter wall, a closed door's slab or a closed area's wall, and on the floor beside every taller top,
+  sprints and jumps at whatever is solid ahead (every 45 degrees, three jump moments and a walking jump), and
+  chains the hops three deep, for each of the nine sets of doors the shop can sell; it fails on a standing place
+  beyond the map, inside a closed area or 2 m and more over the floor (on a wall). It ran red on the lot with the
+  midway's old fence put back. `test_midway_fence_reach.gd` and `test_plaza_escape.gd` keep the old hops of
+  #846 and #845 and a finer sweep of their own stretch.
 - Zombies spawn only in open areas, and always in the field. Every spawn point is behind a boarded breach, in the
   field's fence, in an outer wall of the yard, the back lot or the plaza, or in a bay of the midway (#849, below).
 - Every purchased area adds at least one loop, so buying a door always buys somewhere to run.
@@ -113,8 +118,9 @@ weapon's silhouette, never its name: [wall silhouettes](../research/wall-silhoue
 | Third Holster machine (the plaza's) | the middle of the plaza's south wall, at `(0, 57.2)`, facing the gate, spot at `(0, 56.0)` | `tonic_third_holster`: a third weapon ([the perks](perks.md)) | the last door's own machine (2,000), at the far end of the court from its gate: the dearest perk behind the dearest door |
 | Ammunition lockers (5) | the avenue (field), the stand (its north-east corner), the midway, the yard, the back lot | rounds for the weapon in hand, as many as fit | one in the open from the start, one more in each area that opens, so a fight is never a long walk from rounds |
 
-The wall spots sell only the weaker guns ([the wall tier](weapons.md#the-wall-tier), #858): the lot's two are the
-double-barrel and the rifle, the best a wall sells, and the guns above the tier come only from the prize crane.
+The wall spots sell only the weaker guns ([the wall tier](weapons.md#the-wall-tier), #858) and no melee weapon (#910):
+the lot's two are the double-barrel and the rifle, the best a wall sells, and the guns above the tier and the melee
+weapons come only from the prize crane.
 
 ### The crane's places
 
@@ -284,7 +290,7 @@ the lamps are the warm pools in it ([night environment](../research/night-enviro
 | Midway | 1,104 m² | 487 m² (44%) | two dim lamps and the booth's front light, and the field's posts at its north end; the alleys dark |
 | Booth | 120 m² | 110 m² (92%) | two lights, and the projector beam (the brightest thing on the map) |
 | Generator yard | 1,932 m² | 463 m² (24%) | four work lamps and the generator's glow, the generator set in its cage (its day tank, stack and running light show over the walls): lit while the tank has fuel, and the most to lose |
-| Back lot | 1,932 m² | 580 m² (30%) | five lamp posts and the neon sign, dimmed and failing like a dying battery ([below](#the-back-lots-failing-lights)); dark until its breaker is thrown |
+| Back lot | 1,932 m² | 578 m² (30%) | five lamp posts and the neon sign, dimmed and failing like a dying battery ([below](#the-back-lots-failing-lights)); dark until its breaker is thrown |
 | Ticket plaza | 640 m² | 274 m² (43%) | the ticket kiosk, and a wreck's headlights (127 m², the only ground lit with the tank dry) |
 
 "Lit" is the rules' word, not the eye's: ground within 6 m (`LightTuning.lamp_reach`) of a lamp whose circuit is on,
@@ -315,6 +321,36 @@ while the circuit is on and the tank has fuel; the simulator confirms the pace b
 ([rounds](rounds.md#the-first-6-m-on-lit-ground-850)).
 
 ## The fence's breaches
+
+**Every barricade is a window, never a door** ([#915](https://github.com/Ryubara/deadnight/issues/915): "every single
+barricade should be a window, not a "door" -- it gives the players this false idea that they can walk through it").
+A gap that reaches the ground says "walk here", and a barricade is a thing to hold, not a way through. So each breach
+is an opening with a 0.9 m sill under it (the second map's waist-high sill, under the 1.1 m jump so a player does not
+take it for a wall), a jamb each side and a header above, the five boards filling the 1.5 m between 0.9 and 2.4 m. The
+players cannot go through it whatever the boards do: a players-only blocker (the boards' physics layer, so shots pass)
+fills the opening, and the sill, jambs and header are solid. The dead climb in over the sill: the navigation mesh still
+runs through the gap at the ground (the sill, jambs, header and blocker are bodies the baker never reads, not CSG), and
+the simulation is the link across it: a zombie with the boards down is lifted to the sill's height over the wall and
+set down inside, at its own pace (`ZombieGate.sill`, `lift_at`), and drawn scrambling in (the crawl
+clip and a lean, `ZombieView`; the snapshot's bit 6, `ZombieCodec.CLIMBING_BIT`). A new barricade gets this from the
+generators (`breach()` in `tools/world/build_greybox.py`); `test_barricade_windows.gd` walks every barricade of both
+maps and fails on one that a player can walk in under, or through, or that the dead cannot get in, and
+`test_dead_cross_every_barricade.gd` sends a zombie through each (three starting sides, a stroll and a sprint) and asks
+its body, at every step, whether it stands in the wall or the frame: before it, the dead walked through the sills of the
+second map's windows at floor level ("zombies would just phase through the wall"), because a zombie is a point in the
+simulation with no body of its own. The lift is exact and starts a body's width before the ledge, and a zombie in the
+wall's thickness is kept between the jambs (`ZombieGate.keep_in_opening`).
+
+**The dead tear from in front of the opening** ([#997](https://github.com/Ryubara/deadnight/issues/997)). A gate's line
+is as wide as the gap with a body's slack, wider than the clear opening between the jambs, so a dead that came up to the
+gap's end stood in front of a jamb and tore from there: a person inside had the jamb between them and it, mended
+instead, and the boards stood at five for 190 s while the round waited (#950's soak). A dead at the boards now tears
+only when its middle is within the clear opening less 0.1 m (`ZombieGate.tear_room`, `aside_of`); beside it, it slides
+along the wall to the front of it at its own pace (`ZombieSim._slide_to_the_opening`) and queues there. The crowd's
+push can still move one aside for a moment, and it does not tear until it is back.
+`test_dead_tear_in_the_opening.gd` sends six dead at the boards of every window and breach of both maps and, on every
+tick one is tearing, asks whether a shot from inside reaches it (five places to stand, at its chest and its head,
+through the world's solids and the fitted hit zones of the tearing pose).
 
 The dead come in at six gaps in the field's fence, 4 m wide: two in the west fence, two in the east, two in the north
 (`Field/BreachNW`, `NE`, `W`, `E`, `N`, `N2`, the ids in the rules' tuning). Outside each gap is a walled apron 8 m
@@ -354,7 +390,8 @@ boards follow the rules' `board_torn` and `board_repaired`, one at a time from t
 bottom, and while they stand they are solid for players and nothing else: they sit on their own physics layer, so
 shots, grenades and the camera pass them (a zombie at the boards can be shot), and they are not part of the
 navigation mesh, which keeps the gap open, so the dead's way in is a path and what holds them is the simulation. A
-player puts boards back from the field side only, within reach of the middle of the gap.
+player puts boards back from the field side only, within reach of the middle of the gap. The boards are 0.27 m tall
+(planks, 0.3 m apart) so five fill the window's opening.
 
 What is solid changes the moment the rules say so; only the drawing moves, with one Tween a board and nothing per frame
 (`test_barricade_motion.gd` steps them by hand, `tests/captures/board_motion.tscn` films them):
@@ -412,7 +449,7 @@ is lit by walking to the wall beside the door, and 5.5 m or more from the door's
 | `screen_lot` | behind the players' spawns, in the avenue below the screen | the field (no door guards it) |
 | `concession` | the stand's front wall, 8.5 m east of its door, on the field side | the stand and the midway behind it |
 | `booth` | the booth's north wall, 5.6 m east of its door, on the midway side | the booth |
-| `back_lot` | the field's south fence, 6 m east of the back lot's gate | the back lot |
+| `back_lot` | the field's south fence, 6 m west of the back lot's gate (east of it, 4 m behind a 1.0 m kerb wall, the 1.5 m post was a step over the 2.4 m fence, #848) | the back lot |
 
 Using one (`use`, within `use_reach` of the post) sends `RulesAction.set_circuit` with the opposite of how the circuit
 stands; the rules answer with `circuit_changed` and the lamps, the post and the HUD follow. The HUD's card names the
@@ -487,7 +524,7 @@ go dark when the tank runs dry. A player choosing what to give up wants the grou
 | `screen_lot` | the field's posts and the screen's glow | 1,900 m² of the field, 113 in the midway, 43 elsewhere | 3.6 / 6.7 | 571 m² |
 | `concession` | the stand, the midway's two lamps | 217 m² in the stand, 206 m² in the midway, 69 m² outside them | 3.0 / 5.6 | 164 m² |
 | `booth` | the booth and the projector beam | 110 m² in the booth, 168 m² in the midway | 4.8 / 9.0 | 58 m² |
-| `back_lot` | the back lot's posts and the neon sign, the ticket kiosk | 549 m² in the back lot, 116 m² in the plaza, 103 m² through its walls (the field, the midway) | 4.2 / 7.9 | 183 m² |
+| `back_lot` | the back lot's posts and the neon sign, the ticket kiosk | 547 m² in the back lot, 116 m² in the plaza, 103 m² through its walls (the field, the midway) | 4.2 / 7.9 | 183 m² |
 | `mains` | the yard's four work lamps and the generator's glow | 447 m² of the yard | none: the idle draw (1.8 / 3.4) | |
 | `battery` | the wreck's headlights | 127 m² of the plaza | none: not the generator's | |
 
@@ -645,7 +682,8 @@ zombies](../research/zombies.md#the-meshes-are-baked-ahead-of-time-335)); a test
 - the areas and that the doors' prices and prerequisites equal the shop's (`test_drive_in_greybox.gd`);
 - reachability: a navigation mesh baked per set of sold doors, each area reached only through its door
   (`test_drive_in_opening_order.gd`, with a negative control), and that an agent as wide as the shoulder camera still
-  reaches every area; the doors themselves (`test_lot_doors.gd`); jumps (`test_drive_in_jump_reach.gd`); and the
+  reaches every area; the doors themselves (`test_lot_doors.gd`); the body's climb (`test_drive_in_jump_reach.gd`,
+  `test_drive_in_escape_sweep.gd`); and the
   affordability column above (`test_door_affordability.gd`);
 - the lamps: each on a known circuit, ground lit only by a circuit that is on and a tank with fuel, the flicker
   (`test_lot_lamps.gd`, and in a whole night with the dead's speed, `tests/night/test_night_lamps.gd`);
@@ -715,7 +753,7 @@ second with a stumbling recovery, one event at most every 3.6 s and never out. I
 (`FailingBattery`), so a recording and a test see the same lights, and it is only the picture: the ground is lit for the
 rules while the circuit is on. It is not a strobe: the most any second holds is three flashes of one lamp and two of the
 lot (the common photosensitivity guidance), and the lights never switch off. The back lot's price and role stay as the
-table above has them: 580 m² lit (30%), a circuit that costs 4.2 a minute at round 1, a door bought in the dark. The
+table above has them: 578 m² lit (30%), a circuit that costs 4.2 a minute at round 1, a door bought in the dark. The
 plaza's kiosk and marquee, on the same circuit, burn steady. How it is built, measured and followed by a sign:
 [the failing battery](../research/failing-battery.md).
 

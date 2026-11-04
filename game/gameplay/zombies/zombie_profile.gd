@@ -13,6 +13,9 @@ var look: StringName = ZombieModels.DEFAULT
 var damage: float = 0.0
 ## Metres a landed blow throws the player back.
 var knockback: float = 0.0
+## Metres from its feet at which it starts a swing, when the type has its own (a crawler grabs from
+## the floor); 0 is the tuning's (`reach_in`).
+var reach: float = 0.0
 ## Seconds from the start of a swing to the blow: the walker's ordinary windup, or the type's
 ## telegraph when it has one.
 var windup: float = 0.0
@@ -50,6 +53,9 @@ static func from_event(event: Dictionary, tuning: ZombieTuning) -> ZombieProfile
 	profile.look = event.get("look", profile.type)
 	profile.damage = event.get("damage", profile.damage)
 	profile.knockback = event.get("knockback", 0.0)
+	var own_reach: float = event.get("reach", 0.0)
+	if own_reach > 0.0:
+		profile.reach = own_reach
 	profile.barrier_speed = event.get("barrier_speed", 1.0)
 	profile.hit_chance = event.get("hit_chance", 1.0)
 	var telegraph: float = event.get("telegraph_seconds", 0.0)
@@ -72,6 +78,7 @@ static func from_type(type: ZombieType, look: StringName, tuning: ZombieTuning) 
 			"damage": type.damage,
 			"knockback": type.knockback,
 			"telegraph_seconds": type.telegraph_seconds,
+			"reach": type.reach,
 			"barrier_speed": type.barrier_speed,
 			"hit_chance": type.hit_chance,
 			"boss": type.boss,
@@ -80,6 +87,11 @@ static func from_type(type: ZombieType, look: StringName, tuning: ZombieTuning) 
 	)
 	profile.weak = type.weak_multiplier > 1.0
 	return profile
+
+
+## Metres from its feet at which it starts a swing: its own, or the tuning's.
+func reach_in(tuning: ZombieTuning) -> float:
+	return reach if reach > 0.0 else tuning.reach
 
 
 ## The size of its hit zones against the walker's: how tall its model stands and, upright, its hit

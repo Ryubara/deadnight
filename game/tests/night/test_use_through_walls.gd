@@ -94,18 +94,10 @@ const AUDIT_SMALL: Array[Vector3] = [
 	Vector3(-0.85, 0.0, 13.0),
 	Vector3(1.35, 0.0, 13.2),
 	Vector3(-0.85, 0.0, 12.5),
-	Vector3(1.35, 0.0, 6.0),
-	Vector3(-0.85, 0.0, 5.8),
-	Vector3(1.35, 0.0, 6.0),
-	Vector3(-0.85, 0.0, 5.3),
 	Vector3(14.65, 0.0, -6.0),
 	Vector3(16.95, 0.0, -6.2),
 	Vector3(14.65, 0.0, -6.0),
 	Vector3(16.95, 0.0, -6.7),
-	Vector3(9.7, 3.4, -1.6),
-	Vector3(9.5, 3.4, 0.7),
-	Vector3(9.7, 3.4, -1.6),
-	Vector3(9.0, 3.4, 0.7),
 	Vector3(1.3, 3.4, 2.3),
 	Vector3(1.1, 3.4, 5.1),
 	Vector3(1.3, 3.4, 2.3),
@@ -686,7 +678,9 @@ func _walk_audit(scene_path: String, audit: Array[Vector3]) -> void:
 			if _press(point) and _fingerprint() != before:
 				problems.append("%s: a press changed the night at %s" % [thing["name"], point])
 	_report(problems)
-	assert_int(checked).is_greater(audit.size() / 4)
+	# Two in five of the pairs (a fifth of the entries) have a spot with a wall in the way: the
+	# walk ran. The second map's list lost the crowbar's and the bat's pairs with their spots (#910).
+	assert_int(checked).is_greater(audit.size() / 5)
 
 
 func test_the_lot_gives_nothing_at_the_places_the_ray_audit_found_behind_a_wall() -> void:

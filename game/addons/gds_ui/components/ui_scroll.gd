@@ -97,6 +97,12 @@ static func margins(scroll: ScrollContainer) -> Vector2:
 	return scroll.get_theme_stylebox(&"panel").get_minimum_size()
 
 
+## The width a scroll area takes from its content: the room at both sides and the bar's track. A
+## column that must fit a given width is that width less this.
+static func side_room(scroll: ScrollContainer) -> float:
+	return UIScroll.margins(scroll).x + scroll.get_v_scroll_bar().get_combined_minimum_size().x
+
+
 ## Whether there is more content above the visible part.
 func has_more_above() -> bool:
 	return scroll_vertical > 0

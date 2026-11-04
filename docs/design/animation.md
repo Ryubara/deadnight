@@ -162,7 +162,7 @@ gets its grip by placing three empties and running the solver, never by tuning n
 | `Trigger` | guns: the middle of the trigger's front face, where the finger's pad presses | +Y the press (backward) |
 | `Support` | two-handed guns: the left hand's handle (fore-end, vertical foregrip) | +Z toward the left index finger (the muzzle, on a fore-end); +Y the way its fingers point (to the gun's right on a fore-end held from below, forward on a vertical grip) |
 
-**The solver** (`game/tests/art/solve_grips.gd`, with `GripSolver` and `HandContact`) works in the hand bone's space
+**The solver** (`game/tools/art/solve_grips.gd`, with `GripSolver` and `HandContact`) works in the hand bone's space
 (`Index1`), so its result holds in every pose:
 
 1. The hand's handle line: across the knuckles (pinky to index) at the middle finger; the straight fingers' direction
@@ -323,18 +323,22 @@ crawl is gone: the controller adds it only when its file is there.
 | Downed_Crawl | full | loop, at ground speed | 32 (1.33 s) | 0.45 m/s | pull_right 0, pull_left 16 |
 | Revive_Kneel | full | loop while the hold lasts | 24 (1.0 s) | - | press 6, 18 |
 
-- **Downed_Idle** reclines on the left elbow, the chest 30 degrees off the ground. The right hand holds the belly, the
-  right knee is drawn up, and the head looks left on one breath and right on the next. It sits with the hips over the
-  player's place, and the whole body is turned 20 degrees about the vertical (head to his left, feet to his right).
-  That turn is what makes it read from the shoulder camera behind him: lying straight, the camera looks along the body
-  and sees the helmet. Unlike the old `Downed` (Death's last frame: flat on the back, the head 1.3 m behind the
-  player's place, a helmet and two boots from behind), it reads from the side and from above too. Nothing goes below
-  the ground (the lowest skin is the shin, at -2 mm).
+- **Downed_Idle** reclines on the left elbow, the chest 30 degrees off the ground. The right knee is drawn up and falls
+  out to his right, the right forearm rests over it, and the head looks left on one breath and right on the next. The
+  right hand held the belly until #939: sitting up with the knees in, the belly is a fold between the trunk and the
+  thighs, and the hand or forearm went into one of them wherever it pressed (49-102 mm over 18 places). It sits with the
+  hips over the player's place, and the whole body is turned 20 degrees about the vertical (head to his left, feet to
+  his right). That turn is what makes it read from the shoulder camera behind him: lying straight, the camera looks
+  along the body and sees the helmet. Unlike the old `Downed` (Death's last frame: flat on the back, the head 1.3 m
+  behind the player's place, a helmet and two boots from behind), it reads from the side and from above too. Nothing
+  goes below the ground (the lowest skin is the shin, at -2 mm).
 - **Downed_Crawl** is the same recline. The heels dig in ahead and pull him forward, one then the other: a planted heel
-  sweeps back at 0.45 m/s in the game (measured off the clip, `ground_speed` in its `clips.json`), and the left elbow
-  pushes with the left heel. The controller plays it at ground speed over 0.45 (0.5 to 1.6), fully in by 40 % of it.
+  sweeps back at 0.45 m/s in the game (measured off the clip, `ground_speed` in its `clips.json`), and each elbow
+  pushes with its own heel, 8 cm wider than the downed left hand (a hand kept on the belly was in the way of the left
+  knee, 130 mm into the shin). The controller plays it at ground speed over 0.45 (0.5 to 1.6), fully in by 40 % of it.
 - **Revive_Kneel** is down on the right knee, the toes curled under, the left foot flat ahead. The back is upright and
-  the arms reach out and down: the hands press 0.53 m ahead of him and 0.29 m up, and 6 cm lower on each `press`.
+  the arms reach out and down: the hands press 0.53 m ahead of him and 0.29 m up, 0.42 m apart (0.14 apart, the big
+  hands went through each other, #939), and 6 cm lower on each `press`.
   Upright on purpose: leaned over his hands, the Soldier's big head met the teammate's. He presses the belly (where the
   downed hand holds the wound), not the chest, for the same reason.
 - **No finger is keyed.** The hands keep the skeleton's rest fist, and `HandGripPose` (#507) is free to close them on
@@ -504,7 +508,7 @@ them to the library and `strike()` plays the class's (`play_action(&"Strike")`).
   sheets do); the captures are the player's own camera, `game/tests/captures/quick_melee_tour.tscn`.
 
 ```sh
-blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Strike_ --out game/assets/characters/soldier/strike/soldier_strike.glb
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Strike_Rifle,Strike_Shotgun,Strike_Pistol,Strike_Melee --out game/assets/characters/soldier/strike/soldier_strike.glb
 blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Strike --view side --out <scratch>/strike     --weapon Rifle=game/assets/weapons/lever_rifle/lever_rifle.glb=Shotgun=0.71     --weapon Shotgun=game/assets/weapons/double_shotgun/double_shotgun.glb=Shotgun=0.82     --weapon Pistol=game/assets/weapons/revolver/revolver.glb=Pistol=1.76     --weapon Melee=game/assets/weapons/baseball_bat/baseball_bat.glb=Shovel=0.86=-90,0,0
 ```
 
@@ -588,6 +592,12 @@ Soldier's library when the tree is built.
   long guns' clips are built through the grip files: when a grip is solved again (`solve_grips.gd`), rebuild the
   Sprint file (not needed after `--fingers`, which keeps the `hold`) and check the hands with `test_hand_grips.gd`,
   which measures both hands on every weapon's skin in the sprint too.
+- **On the shorter forearm (#978).** The left wrist of every long gun's carry was 175-180 degrees off its turn in the
+  gun hold, and near half a turn the tree's blend between the two takes either way round: the puppet's left hand spun
+  77-86 degrees in one tick of the sprint start. Each carry rolls its left forearm about its own axis, one roll for the
+  loop (45-60 degrees; `left forearm roll` in the `SPRINT` line), the least that keeps the wrist within 150 degrees
+  (`CARRY_WRIST_MAX`); the hand's world turn and place do not change. The right elbow is bent out twice as far as the
+  IK's (`SPRINT_RIGHT_OUT`), or the seat's armband on the right upper arm sank 8 mm deeper into the chest.
 - **Checked:** `game/tests/player/test_sprint_carry.gd` (the clips are on Run's cycle; the carry plays only sprinting
   on the ground, holds in the air and never starts there; its phase matches Run to 0.002 s; it catches up after a
   landing without jumping; aim, a hip shot, a reload and a swing take it out within 0.15 s; the first shot's `muzzle`
@@ -612,21 +622,25 @@ cover what the arms do around them, in their own file (`game/assets/characters/s
 | Strike_Dual | once | 13 | whoosh 3, hit 6, can_strike_again 13 (the [quick melee](#quick-melee): both pistols come down together) |
 | Sprint_Dual | loop | 17 | - (Run's cycle, see [Sprint carry](#sprint-carry)) |
 
-**Made by mirroring.** The kit rig is an exact mirror: each left bone's local rotation is the right one's with `y` and `z`
-negated (the Blender build asserts the left hand ends within 2 mm of the right's reflection, and prints 0.0). Every
-Dual clip is the matching Pistol clip's poses with `Shoulder`, `UpperArm`, `LowerArm` and `Index1` of the left side set
-to the right side's, flipped by that rule (`mirror_arm`, `dual` in `tools/blender/soldier_clips.py`); the chest, which both
-arms hang from, keeps its own twist. The sprint's left arm is the right's, half a stride on (`shifted`), so the two arms
-pump against each other as a runner's do. `Fire_Dual` is one kick on both arms for the clip's pose only: which gun kicks
-is the IK's, per shot (`WeaponHandsIK.recoil` and `recoil_left`, from the shot's `hand`).
+**Made by mirroring, from the IK's hold.** The kit rig is an exact mirror: each left bone's local rotation is the right
+one's with `y` and `z` negated (the Blender build asserts the left hand ends within 2 mm of the right's reflection, and
+prints 0.0). Every Dual clip starts from the Pistol pose with the right arm solved to where the night's hand IK holds
+the right pistol (`DUAL_HAND`: x -0.62, y -0.42, z 1.23 at kit scale, read in Godot; the elbow out and down), the hand
+turned as the Pistol pose turns it, and `Shoulder`, `UpperArm`, `LowerArm` and `Index1` of the left side set to the
+right side's, flipped by that rule (`dual_arm`, `mirror_arm`, `dual` in `tools/blender/soldier_clips.py`); the chest,
+which both arms hang from, keeps its own twist. The Pistol pose mirrored as it was (#789) put both hands on the body's
+middle line, one through the other: the IK hid it while aiming, but the equip and the quick melee play the clip's own
+arms (Strike_Dual 142 mm, Equip_Dual 108 mm, #939). The sprint's left arm is the right's, half a stride on (`shifted`),
+so the two arms pump against each other as a runner's do. `Fire_Dual` is one kick on both arms for the clip's pose only:
+which gun kicks is the IK's, per shot (`WeaponHandsIK.recoil` and `recoil_left`, from the shot's `hand`).
 
 ```sh
 blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Aim_Dual,Fire_Dual,Equip_Dual,Unequip_Dual,Strike_Dual,Sprint_Dual     --out game/assets/characters/soldier/dual/soldier_dual.glb
 gds godot -- --path game res://tests/captures/dual_pistols_tour.tscn --write-movie <abs>/f.png --fixed-fps 30     --quit-after 285 [-- --view=side|front|rear|top]     # hold, aim, fire, reload, sprint, sprint into the aim, the blow
 ```
 
-Rebuilding the Strike file with `--clips Strike_` also writes `Strike_Dual` into it; the library takes the first copy it
-meets, so the two are the same clip.
+The Strike and Sprint files are built with their clips by name: `--clips Strike_` or `Sprint_` would write
+`Strike_Dual` or `Sprint_Dual` into them too.
 
 ## How the clips are made
 
@@ -642,7 +656,7 @@ lying and kneeling move the bones too far from the standing axes the offsets wer
 
 ```sh
 blender -b --factory-startup -P tools/blender/build_soldier.py -- \
-    --soldier <bundle>/models/PpLF4rt4ah.glb --out game/assets/characters/soldier/soldier.glb
+    --soldier <bundle>/models/PpLF4rt4ah.glb --clips main --out game/assets/characters/soldier/soldier.glb
 blender -b --factory-startup -P tools/blender/render_clips.py -- \
     --soldier <bundle>/models/PpLF4rt4ah.glb --out <scratch>/clips        # contact sheets, one per class
 godot --headless --path game --import
@@ -671,7 +685,7 @@ gds godot -- --path game res://tests/captures/revive_poses.tscn --quit-after 360
 # The sprint carry clips, their own file (prints SPRINT: each clip's frames and how far each hand missed the weapon);
 # one stride of each over Run with the game's weapons held through their grips (Sprint; SprintBefore is Aim_<Class>
 # over Run); the tour from the shoulder camera, and with `-- --side` from his right:
-blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Sprint_ --out game/assets/characters/soldier/sprint/soldier_sprint.glb
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Sprint_Rifle,Sprint_Shotgun,Sprint_Pistol,Sprint_Melee,Sprint_tommy_gun,Sprint_ppsh,Sprint_mp5,Sprint_m4a1,Sprint_m249,Sprint_fifty_cal,Sprint_pump_870 --out game/assets/characters/soldier/sprint/soldier_sprint.glb
 blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Sprint,SprintBefore --view back --out <scratch>/sprint     --grip Rifle=game/assets/weapons/lever_rifle/lever_rifle.glb=rifle     --grip Shotgun=game/assets/weapons/double_shotgun/double_shotgun.glb=shotgun     --grip tommy_gun=game/assets/weapons/tommy_gun/tommy_gun.glb=smg     --weapon Pistol=game/assets/weapons/revolver/revolver.glb=Pistol=1.76     --weapon Melee=game/assets/weapons/baseball_bat/baseball_bat.glb=Shovel=0.86=-90,0,0
 gds godot -- --path game res://tests/captures/sprint_carry_tour.tscn --write-movie <abs>/f.png --fixed-fps 30 --quit-after 700
 gds godot -- --path game res://tests/captures/sprint_carry_tour.tscn --write-movie <abs>/f.png --fixed-fps 30 --quit-after 700 -- --side

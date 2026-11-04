@@ -150,7 +150,7 @@ func test_with_every_link_sold_the_map_leads_from_each_window_to_the_hall() -> v
 	var gates := _seated.world.spawn_gates()
 	assert_int(gates.size()).is_equal(WINDOWS)
 	for point: Vector3 in gates:
-		var way := NavigationServer3D.map_get_path(map, point, hall, true)
+		var way := NavigationServer3D.map_get_path(map, point, hall, true, NavLayers.DEAD)
 		var end := way[way.size() - 1] if not way.is_empty() else point
 		(
 			assert_float(Vector2(end.x - hall.x, end.z - hall.z).length())
@@ -205,6 +205,13 @@ func test_the_dead_come_in_through_every_window_to_the_room_it_opens_into() -> v
 				came_from[zombie.id] = zombie.gate_id
 			elif came_from.has(zombie.id):
 				var id: StringName = came_from[zombie.id]
+				# Over the sill and down the far side (#915): the floor is read where it is flat again.
+				var sill := _seated.world.barricade(id)
+				var flat_from := (
+					sill.thickness * 0.5 + ZombieGate.BODY_CLEARANCE + ZombieGate.CLIMB_RAMP
+				)
+				if sill.depth_of(zombie.position) < flat_from:
+					continue
 				if not through.has(id):
 					through[id] = zombie.position
 				# In, and put down at the door, so the next ones can rise (the cap is 24).
@@ -302,7 +309,7 @@ func test_an_upper_windows_dead_climb_to_it_from_the_yard() -> void:
 		)
 		var outside := barricade.centre() - barricade.inward() * ASIDE
 		outside.y = barricade.global_position.y
-		var way := NavigationServer3D.map_get_path(map, point, outside, true)
+		var way := NavigationServer3D.map_get_path(map, point, outside, true, NavLayers.DEAD)
 		var end := way[way.size() - 1] if not way.is_empty() else point
 		(
 			assert_float(end.distance_to(outside))

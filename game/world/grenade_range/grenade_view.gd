@@ -16,9 +16,8 @@ const LAMP_RANGE := 3.0
 ## Seconds between blinks at the start of the fuse and at the end.
 const BLINK_SLOW := 0.5
 const BLINK_FAST := 0.07
+## A dot is left every this many steps (the dots' own look is in `GrenadeTrail`).
 const TRAIL_EVERY := 2
-const TRAIL_SECONDS := 0.9
-const TRAIL_COLOUR := Color(1.0, 0.85, 0.4)
 
 ## The artist's grenade, when there is one. Null shows the placeholder.
 @export var model: PackedScene
@@ -36,6 +35,7 @@ var _lamp_material: StandardMaterial3D
 var _light: OmniLight3D
 var _blink_clock := 0.0
 var _trail_steps := 0
+var _trail: GrenadeTrail
 
 
 func _ready() -> void:
@@ -51,6 +51,8 @@ func _ready() -> void:
 func follow(delta: float) -> void:
 	position = state.position
 	_trail_steps += 1
+	if _trail != null:
+		_trail.advance(delta)
 	if trail and _trail_steps % TRAIL_EVERY == 0 and not state.at_rest:
 		_drop_trail_dot()
 	var progress := 1.0 - clampf(state.fuse_left / state.def.fuse, 0.0, 1.0)
@@ -108,20 +110,9 @@ static func _material(colour: Color) -> StandardMaterial3D:
 	return material
 
 
+## Leaves a dot where the grenade is, in the view's own `GrenadeTrail` (made with the first dot).
 func _drop_trail_dot() -> void:
-	var dot := SphereMesh.new()
-	dot.radius = 0.05
-	dot.height = 0.1
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.albedo_color = TRAIL_COLOUR
-	dot.material = material
-	var instance := MeshInstance3D.new()
-	instance.mesh = dot
-	instance.top_level = true
-	add_child(instance)
-	instance.global_position = state.position
-	var tween := create_tween()
-	tween.tween_property(material, "albedo_color:a", 0.0, TRAIL_SECONDS)
-	tween.tween_callback(instance.queue_free)
+	if _trail == null:
+		_trail = GrenadeTrail.new()
+		add_child(_trail)
+	_trail.drop(state.position)

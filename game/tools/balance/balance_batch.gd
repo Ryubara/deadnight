@@ -14,6 +14,7 @@ const SPIKE_FLOOR := 0.05
 ## way to ask what a weapon is worth. `assist`, above 0, is a touch player with the aim assist at
 ## that strength (`SimSkill.with_touch_assist`); the gate's own cells leave it at 0.
 ## `skill_numbers` ({"head_rate": 0.7}) replaces numbers of the level to try them out.
+## `settings` are the night's match settings (the perk limit); null is the usual rules.
 ## Runs `nights` nights with seeds `seed_start`, `seed_start + 1`, ... and returns the cell.
 ## `reached[r]` is how many nights started round r; `died_in[r]` how many ended in it; the other
 ## per-round lists are sums over the nights that reached the round (divide by `reached`).
@@ -27,7 +28,8 @@ static func run_cell(
 	max_rounds: int = DEFAULT_MAX_ROUNDS,
 	shopping: Array = [],
 	assist: float = 0.0,
-	skill_numbers: Dictionary = {}
+	skill_numbers: Dictionary = {},
+	settings: MatchSettings = null
 ) -> Dictionary:
 	var cell := {
 		"skill": skill_id,
@@ -62,7 +64,7 @@ static func run_cell(
 		# An experiment: the player buys these, in this order, instead of their usual list.
 		skill.shopping.assign(shopping)
 	for n in nights:
-		var sim := NightSim.new(tuning, skill, players, seed_start + n, step)
+		var sim := NightSim.new(tuning, skill, players, seed_start + n, step, settings)
 		_add(cell, sim.run(max_rounds), sim.rules)
 	return cell
 

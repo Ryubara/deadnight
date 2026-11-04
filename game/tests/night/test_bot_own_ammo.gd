@@ -56,17 +56,19 @@ func _night(open: bool, profile: BotProfile = null) -> SeatedNight:
 	var night := await NightFixture.seat(self, 2, tuning, SEED, true)
 	night.human(PERSON)
 	night.seat(BOT, profile if profile != null else BotProfile.regular(), SEED + BOT)
-	await night.settle(SETTLE_FRAMES)
 	if open:
 		night.open_door(DOOR)
-		await night.settle(SETTLE_FRAMES)
+		# The door's mesh reaches the map over 8 to 12 physics frames, which move with the load:
+		# wait for the map's answer (60 frames is a second of real time in each of 13 nights).
+		var taken_in := await night.settle_doors()
+		assert_bool(taken_in).override_failure_message("the map never took the door in").is_true()
 	night.server.rules.players[BOT].points = POINTS
 	_place(night, PERSON, OUTSIDE)
 	_place(night, BOT, OUTSIDE + Vector3(3.0, 0.0, -2.0))
 	_bought.clear()
 	_said.clear()
 	night.on_event = func(event: Dictionary) -> void:
-		if event["type"] == &"purchase_made" and event["item_id"] == &"ammo_pistol":
+		if event["type"] == &"purchase_made" and event["item_id"] == &"ammo_house_pistol":
 			_bought.append(_where(night, BOT))
 		elif event["type"] == &"bot_say" and event["player_id"] == BOT:
 			_said.append(event["line"])
@@ -83,7 +85,7 @@ func _where(night: SeatedNight, id: int) -> Vector3:
 
 
 func _pistol(night: SeatedNight) -> Object:
-	return night.server.combat.state_of(BOT, &"pistol")
+	return night.server.combat.state_of(BOT, &"house_pistol")
 
 
 func _short(night: SeatedNight, reserve: int, magazine := 10) -> void:

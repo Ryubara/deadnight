@@ -16,6 +16,8 @@ const BAD := "bad ticket"
 const WRONG_SERVER := "ticket is for another server"
 const USED := "ticket already used"
 const BAD_SETTINGS := "ticket carries rules this server does not take"
+## Followed by the keys: the host chose a setting this build of the game server has not heard of.
+const UNKNOWN_SETTING := "ticket carries a setting this server does not know"
 
 var _secret: PackedByteArray
 var _server_id: String
@@ -48,10 +50,10 @@ func admit(ticket: String, now: int) -> Dictionary:
 		return {"ok": false, "reason": BAD}
 	var settings: MatchSettings = null
 	if claims.has("settings"):
-		var held: Variant = claims["settings"]
-		settings = MatchSettings.from_json(held)
-		if settings == null:
-			return {"ok": false, "reason": BAD_SETTINGS}
+		var why := _settings_problem(claims["settings"])
+		if why != "":
+			return {"ok": false, "reason": why}
+		settings = MatchSettings.from_json(claims["settings"])
 	for known: String in _used.keys():
 		if _used[known] <= now:
 			_used.erase(known)
@@ -65,6 +67,17 @@ func admit(ticket: String, now: int) -> Dictionary:
 		"match": claims["matchId"],
 		"settings": settings,
 	}
+
+
+## Why the `settings` claim of a ticket is refused ("" when the game takes it). A key this build
+## does not know is a setting the host chose that the night would not have: refused by name, never
+## started without it (Deadnight #944).
+func _settings_problem(held: Variant) -> String:
+	if typeof(held) == TYPE_DICTIONARY:
+		var unknown := MatchSettings.unknown_keys(held)
+		if not unknown.is_empty():
+			return "%s: %s" % [UNKNOWN_SETTING, ", ".join(unknown)]
+	return "" if MatchSettings.from_json(held) != null else BAD_SETTINGS
 
 
 ## The payload of a correctly signed, unexpired ticket, or `{}`: the header is the one the backend

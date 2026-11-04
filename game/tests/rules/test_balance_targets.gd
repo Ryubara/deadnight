@@ -9,8 +9,11 @@ const NIGHTS := 60
 const SEED := 4000
 ## How many rounds further the re-cut and the tonic must carry the good and the many nights. It
 ## was a whole round at 1,500 and a step; at 5,000 flat (#909) the average nights of 4 and 8 players
-## gain 0.95 and 1.0, because the re-cut comes later.
-const CLIMB_CARRIED := 0.5
+## gain 0.95 and 1.0, because the re-cut comes later. 0.3 since the House Pistol start (#898): the
+## strong solo night gains 0.38 (14.08 with, 13.70 without; 60 nights a cell reads a mean to about
+## 0.3 either way) because the opening is slower and the re-cut comes later still; the two party
+## cells still gain more than 0.5.
+const CLIMB_CARRIED := 0.3
 const CELLS := [
 	["weak", 1],
 	["average", 1],
@@ -19,6 +22,18 @@ const CELLS := [
 	["average", 8],
 	["strong", 1],
 ]
+
+## The cells a test that only needs to see the gate fail (or a climb carried) runs, not all six.
+## A night costs about what its players cost, so the 8 and 4 player cells are most of a batch (at 20
+## nights: 9.1 s and 4.1 s of the 18.6 s of the six cells; the solo and duo cells 0.4 to 2.0 s).
+## The small cells miss their ranges by whole rounds when the game drifts, which is all a "the gate
+## can fail" test needs to see (at 20 nights the harsh game's solo median is 6 against 8 to 14).
+const SOLO_CELLS := [["average", 1], ["average", 2]]
+const WEAK_AND_SOLO_CELLS := [["weak", 1], ["average", 1]]
+## The cells the inert-upgrade test reads: the 4 player night and the strong solo night, where the
+## upgrade carries the least of the climb (0.53 and 0.80 rounds against the 0.3 asked). The 8 player
+## night carries 1.70, the most of the three, and costs half as much again as the other two.
+const CLIMB_CELLS := [["average", 4], ["strong", 1]]
 
 ## The shipped tuning's cells, run once for the suite: the tests that read it share them.
 var _shipped: Dictionary = {}
@@ -31,24 +46,34 @@ func before() -> void:
 ## Runs every cell of the gate, one per worker thread. The cells share nothing: each has its own
 ## copy of the tuning and its own seeded nights, and the weapon cache is filled before the threads
 ## start, so the result is the same as running them one after another (a test below says so).
-func _batch(tuning: RulesTuning, nights: int = NIGHTS) -> Dictionary:
+func _batch(tuning: RulesTuning, nights: int = NIGHTS, specs: Array = CELLS) -> Dictionary:
 	SimWeapons.warm()
 	var tunings: Array[RulesTuning] = []
-	for _i in CELLS.size():
+	for _i in specs.size():
 		tunings.append(tuning.duplicate(true) as RulesTuning)
 	var results: Array[Dictionary] = []
-	results.resize(CELLS.size())
+	results.resize(specs.size())
 	var run := func(index: int) -> void:
-		var spec: Array = CELLS[index]
+		var spec: Array = specs[index]
 		results[index] = BalanceBatch.run_cell(
 			tunings[index], StringName(spec[0]), spec[1], nights, SEED
 		)
-	var task := WorkerThreadPool.add_group_task(run, CELLS.size(), -1, true, "balance gate cells")
+	var task := WorkerThreadPool.add_group_task(run, specs.size(), -1, true, "balance gate cells")
 	WorkerThreadPool.wait_for_group_task_completion(task)
 	var cells := {}
-	for index in CELLS.size():
-		cells["%s:%d" % CELLS[index]] = results[index]
+	for index in specs.size():
+		cells["%s:%d" % specs[index]] = results[index]
 	return cells
+
+
+## What the gate says about the cells of `specs` only (the ones it was not given are not misses of
+## the tuning): a "the gate can fail" test reads these.
+func _misses_in(tuning: RulesTuning, nights: int, specs: Array) -> PackedStringArray:
+	var said := PackedStringArray()
+	for miss in BalanceTargets.check(_batch(tuning, nights, specs)):
+		if not miss.begins_with("no cell "):
+			said.append(miss)
+	return said
 
 
 func test_the_shipped_tuning_meets_every_balance_target() -> void:
@@ -90,15 +115,14 @@ func test_the_gate_fails_when_the_tuning_drifts() -> void:
 	var harsh := RulesFixture.tuning()
 	harsh.rounds.health_growth = 1.25
 	harsh.rounds.health_knee_round = 2
-	var misses := BalanceTargets.check(_batch(harsh, 20))
-	assert_array(misses).is_not_empty()
+	assert_array(_misses_in(harsh, 20, SOLO_CELLS)).is_not_empty()
 	var easy := RulesFixture.tuning()
 	easy.rounds.health_base = 6.0
 	easy.rounds.health_step = 1.0
 	easy.rounds.count_base = 2.0
 	easy.rounds.count_linear = 0.3
 	easy.rounds.count_quadratic = 0.0
-	assert_array(BalanceTargets.check(_batch(easy, 20))).is_not_empty()
+	assert_array(_misses_in(easy, 20, WEAK_AND_SOLO_CELLS)).is_not_empty()
 
 
 func test_zombie_health_climbs_faster_than_it_used_to_because_weapons_can_be_re_cut() -> void:
@@ -123,8 +147,8 @@ func test_the_same_climb_goes_less_far_when_the_re_cut_and_the_tonic_do_nothing(
 		profile.element = null
 	inert.economy.item(&"upgrade_weapon").price = 1
 	inert.economy.item(&"tonic_hearty").health_bonus = 0.0
-	var without := _batch(inert)
-	for key in ["average:4", "average:8", "strong:1"]:
+	var without := _batch(inert, NIGHTS, CLIMB_CELLS)
+	for key in ["average:4", "strong:1"]:
 		var shipped_mean := BalanceBatch.mean_round(_shipped[key])
 		var inert_mean := BalanceBatch.mean_round(without[key])
 		(
@@ -145,7 +169,7 @@ func test_the_gate_fails_when_ammunition_is_out_of_reach() -> void:
 	for item in broke.economy.items:
 		if item.kind == ShopItem.Kind.AMMO:
 			item.price = 1_000_000
-	var misses := BalanceTargets.check(_batch(broke, 20))
+	var misses := _misses_in(broke, 20, SOLO_CELLS)
 	assert_array(misses).is_not_empty()
 	var said := ", ".join(misses)
 	assert_bool(said.contains("ammunition")).override_failure_message(said).is_true()

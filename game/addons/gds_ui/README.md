@@ -9,7 +9,7 @@ behind it, with the measurements, are in the game's `docs/research/ui-foundation
 | Folder | What |
 | --- | --- |
 | `tokens/` | `UITokens` (the resource), `UIThemeBuilder` (tokens to `Theme`) |
-| `components/` | `UIScreen`, `UIButton`, `UILabel`, `UIPanel`, `UIRow`, `UISlider`, `UIToggle`, `UIOptionSelector`, `UICheckBox`, `UILineEdit`, `UIScroll`, `UIItemList` |
+| `components/` | `UIScreen`, `UIButton`, `UILabel`, `UIPanel`, `UIRow`, `UISlider`, `UIToggle`, `UIOptionSelector`, `UICheckBox`, `UILineEdit`, `UIScroll`, `UIFitScroll`, `UIItemList` |
 | `router/` | `UIRouter` (the autoload) and the transitions: fade, slide, film burn, iris |
 | `shaders/` | `film_burn`, `projector_iris`, and the shared hash include |
 | `motion/`, `core/` | `UIMotion` (tweens, reduced motion), `UISpring`, `UIAudio`, `UIInputMode`, `UIFocusRing` |

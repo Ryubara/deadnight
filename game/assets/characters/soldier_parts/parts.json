@@ -443,12 +443,12 @@
      "mesh": "torso__vest",
      "tris": 3117,
      "mesh_far": "torso__vest__far",
-     "tris_far": 835,
+     "tris_far": 837,
      "female": {
       "mesh": "torso__vest__female",
       "tris": 3117,
       "mesh_far": "torso__vest__female__far",
-      "tris_far": 838
+      "tris_far": 834
      }
     },
     "jacket": {
@@ -456,7 +456,7 @@
      "mesh": "torso__jacket",
      "tris": 2651,
      "mesh_far": "torso__jacket__far",
-     "tris_far": 701,
+     "tris_far": 696,
      "female": {
       "mesh": "torso__jacket__female",
       "tris": 2651,
@@ -469,12 +469,12 @@
      "mesh": "torso__shirt",
      "tris": 2382,
      "mesh_far": "torso__shirt__far",
-     "tris_far": 625,
+     "tris_far": 626,
      "female": {
       "mesh": "torso__shirt__female",
       "tris": 2382,
       "mesh_far": "torso__shirt__female__far",
-      "tris_far": 626
+      "tris_far": 625
      }
     },
     "rolled": {
@@ -513,7 +513,7 @@
       "mesh": "torso__letterman__female",
       "tris": 2707,
       "mesh_far": "torso__letterman__female__far",
-      "tris_far": 710
+      "tris_far": 715
      }
     }
    }
@@ -731,7 +731,7 @@
     "accent": 0
    },
    "tris": 5083,
-   "tris_far": 1407
+   "tris_far": 1402
   },
   {
    "id": "usher",
@@ -756,7 +756,7 @@
     "accent": 11
    },
    "tris": 5167,
-   "tris_far": 1715
+   "tris_far": 1710
   },
   {
    "id": "mechanic",
@@ -831,7 +831,7 @@
     "accent": 15
    },
    "tris": 4858,
-   "tris_far": 1467
+   "tris_far": 1468
   },
   {
    "id": "ranger",
@@ -856,7 +856,7 @@
     "accent": 10
    },
    "tris": 4950,
-   "tris_far": 1503
+   "tris_far": 1504
   },
   {
    "id": "letterman",
@@ -931,7 +931,7 @@
     "accent": 6
    },
    "tris": 5076,
-   "tris_far": 1606
+   "tris_far": 1605
   },
   {
    "id": "usherette",
@@ -1006,7 +1006,7 @@
     "accent": 1
    },
    "tris": 5155,
-   "tris_far": 1524
+   "tris_far": 1529
   }
  ]
 }

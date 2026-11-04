@@ -25,6 +25,10 @@ signal body_hidden_changed(hidden: bool)
 ## Every player's body is in this group; the camera looks through all of them.
 const BODY_GROUP := &"player_bodies"
 
+## The physics bodies of every player in the tree, which every rig's sweeps pass through: kept as
+## bodies enter and leave (`setup`), not found again in the group in every drawn frame of every rig.
+static var _body_rids: Array[RID] = []
+
 ## Yaw in radians; the player's body follows this while aiming.
 var yaw := 0.0
 ## Pitch in radians; positive looks up.
@@ -78,6 +82,7 @@ var _steering := false
 var _steer_yaw := 0.0
 var _steer_pitch := 0.0
 var _steer_velocity := Vector2.ZERO
+var _resting := false
 
 @onready var _camera: Camera3D = $Camera3D
 
@@ -93,8 +98,39 @@ func setup(target: CharacterBody3D, tuning: PlayerTuning) -> void:
 	# the engine's physics interpolation would blend that a second time and lag it.
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	target.add_to_group(BODY_GROUP)
+	_remember_body(target)
+	var entered := _remember_body.bind(target)
+	if not target.tree_entered.is_connected(entered):
+		target.tree_entered.connect(entered)
+		target.tree_exiting.connect(_forget_body.bind(target))
 	_side.snap(side)
 	snap_to(target.global_position)
+
+
+func _ready() -> void:
+	# The engine turns `_process` on when a node is ready, whatever was asked before.
+	set_process(not _resting)
+
+
+## Stops running the rig: it is no longer eased and swept in every drawn frame, which is for a view
+## someone looks through. For a body no one looks through (a bot's, a remote player's on the
+## server): `aim_along` tells it the aim, and it is never placed again. `resume` runs it again.
+func rest() -> void:
+	_resting = true
+	set_process(false)
+
+
+## Runs the rig again from where the body is (a body that becomes the view): the springs start at
+## rest there, as after a teleport.
+func resume() -> void:
+	_resting = false
+	set_process(true)
+	if _target != null:
+		snap_to(_target.global_position)
+
+
+func is_resting() -> bool:
+	return _resting
 
 
 ## The body is at `position` after a physics tick. Call once per tick.
@@ -145,7 +181,8 @@ func nudge(yaw_delta: float, pitch_delta: float) -> void:
 	)
 
 
-## Mouse motion in pixels.
+## Mouse motion in screen pixels (`InputEventMouseMotion.screen_relative`, not the stretched
+## `relative`): the same hand turns the view the same at every window size.
 func look_mouse(relative: Vector2) -> void:
 	var scale_factor := _tuning.mouse_radians_per_pixel * sensitivity * _look_scale()
 	apply_look(relative.x * scale_factor, relative.y * scale_factor)
@@ -224,7 +261,7 @@ func aim_transform() -> Transform3D:
 	return _aim_transform
 
 
-## For a rig that is not run (the drawn copy of another machine's player, `Player.make_puppet`): the
+## For a rig that is not run (`rest`: the drawn copy of another machine's player, a bot's body): the
 ## view it would aim along, from `origin`, turned `view_yaw` and `view_pitch`. The weapon's pose
 ## reads it as it reads a run rig's.
 func aim_along(origin: Vector3, view_yaw: float, view_pitch: float) -> void:
@@ -250,7 +287,7 @@ func pivot_position() -> Vector3:
 
 
 func _process(delta: float) -> void:
-	if _tuning != null:
+	if _tuning != null and not _resting:
 		step(delta, Engine.get_physics_interpolation_fraction())
 
 
@@ -289,13 +326,19 @@ func _steer_view(delta: float) -> void:
 	_steer_velocity = Vector2(yaw_step.y, pitch_step.y)
 
 
-## The bodies of every player, which the camera sweeps through.
+## The bodies of every player, which the camera sweeps through. Shared: read, never changed.
 func _bodies() -> Array[RID]:
-	var bodies: Array[RID] = []
-	for node in get_tree().get_nodes_in_group(BODY_GROUP):
-		if node is CollisionObject3D:
-			bodies.append((node as CollisionObject3D).get_rid())
-	return bodies
+	return _body_rids
+
+
+static func _remember_body(body: CollisionObject3D) -> void:
+	var rid := body.get_rid()
+	if not _body_rids.has(rid):
+		_body_rids.append(rid)
+
+
+static func _forget_body(body: CollisionObject3D) -> void:
+	_body_rids.erase(body.get_rid())
 
 
 ## Height of the pivot over the feet now: lower while the body crouches, lower still down by the

@@ -1,5 +1,6 @@
 # The wall tier (#858, docs/design/weapons.md "The wall tier"): a wall spot sells only the weaker
-# guns, on every map; the stronger ones come only from the box (the prize crane). Each test holds
+# guns, on every map, and no melee weapon at all (#910); the stronger ones and the melee weapons
+# come only from the box (the prize crane) or the start kit. Each test holds
 # both maps to it: the lot's markers and the second map's markers, the weapons each map's tuning
 # prices, the bots' shopping lists, and the box's pool.
 extends GdUnitTestSuite
@@ -84,6 +85,42 @@ func test_every_weapon_either_map_prices_for_a_wall_is_within_the_tier() -> void
 				)
 
 
+func test_no_wall_spot_of_either_map_sells_a_melee_weapon() -> void:
+	var melee := 0
+	for pair: Array in [["the lot", _lot_spots], ["the second map", _small_spots]]:
+		for spot in _walls(pair[1]):
+			var def := WeaponCatalog.get_def(WeaponCatalog.catalog_id(spot["shop_id"]))
+			(
+				assert_bool(def.is_melee())
+				. override_failure_message(
+					"%s sells %s (melee) on a wall" % [pair[0], spot["shop_id"]]
+				)
+				. is_false()
+			)
+			melee += 1 if def.is_melee() else 0
+	assert_int(melee).is_equal(0)
+
+
+func test_every_melee_weapon_of_the_catalogue_is_box_only_whatever_its_definition_says() -> void:
+	var found := 0
+	for id in WeaponCatalog.IDS:
+		if WeaponCatalog.get_def(id).is_melee():
+			found += 1
+			assert_bool(WallTier.wall_may_sell(id)).override_failure_message(String(id)).is_false()
+			assert_int(WallTier.tier_of(WeaponCatalog.SHOP_PREFIX + String(id))).is_equal(
+				WallTier.BOX
+			)
+	# The crowbar, the bat and the axe.
+	assert_int(found).is_equal(3)
+	# The rule is the weapon's kind, not a number someone can set: a definition that says hand
+	# (restored at once) is still above the wall.
+	var crowbar := WeaponCatalog.get_def(&"crowbar")
+	var kept := crowbar.wall_tier
+	crowbar.wall_tier = WallTier.HAND
+	assert_int(WallTier.tier_of(&"weapon_crowbar")).is_equal(WallTier.BOX)
+	crowbar.wall_tier = kept
+
+
 func test_the_pump_the_mp5_and_the_m4a1_have_no_wall_on_either_map() -> void:
 	for spots in [_lot_spots, _small_spots]:
 		for spot in _walls(spots):
@@ -95,12 +132,19 @@ func test_the_pump_the_mp5_and_the_m4a1_have_no_wall_on_either_map() -> void:
 			assert_object((rules as RulesTuning).economy.item(id)).is_null()
 
 
-func test_the_tier_table_names_real_weapons_and_the_start_weapon_is_a_wall_one() -> void:
-	for id in WallTier.TIERS:
-		assert_array(WeaponCatalog.IDS).override_failure_message(String(id)).contains([id])
+func test_every_weapon_has_a_tier_on_its_definition_and_the_start_weapon_is_a_wall_one() -> void:
+	for id in WeaponCatalog.IDS:
+		var tier := WeaponCatalog.get_def(id).wall_tier
+		(
+			assert_bool(tier >= WallTier.HAND and tier <= WallTier.BOX)
+			. override_failure_message(String(id))
+			. is_true()
+		)
+		assert_int(WallTier.tier_of(id)).is_equal(tier)
 	assert_bool(WallTier.wall_may_sell(WeaponCatalog.START_WEAPON)).is_true()
 	assert_int(WallTier.tier_of(&"weapon_rifle")).is_equal(WallTier.LONG)
-	# A gun the table does not name is above the wall.
+	assert_int(WallTier.tier_of(&"weapon_flare_gun")).is_equal(WallTier.HAND)
+	# A gun the catalogue does not know is above the wall.
 	assert_int(WallTier.tier_of(&"made_up_gun")).is_equal(WallTier.BOX)
 
 

@@ -133,6 +133,30 @@ instance_count = 28
 mesh = ExtResource("speaker_mesh")
 buffer = PackedFloat32Array(0.9848, 0, 0.1736, -11.0298, 0, 1, 0, 0, -0.1736, 0, 0.9848, -50.0551, 0.7628, 0, 0.6466, -8.5438, 0, 1, 0, 0, -0.6466, 0, 0.7628, -44.7582, 0.3327, 0, 0.943, -3.7258, 0, 1, 0, 0, -0.943, 0, 0.3327, -41.4379, -0.6579, 0, 0.7531, 7.3684, 0, 1, 0, 0, -0.7531, 0, -0.6579, -43.5652, -0.9479, 0, 0.3186, 10.6165, 0, 1, 0, 0, -0.3186, 0, -0.9479, -48.4322, 0.7628, 0, 0.6466, -13.8837, 0, 1, 0, 0, -0.6466, 0, 0.7628, -40.2321, 0.3327, 0, 0.943, -6.0544, 0, 1, 0, 0, -0.943, 0, 0.3327, -34.8365, -0.3575, 0, 0.9339, 6.5074, 0, 1, 0, 0, -0.9339, 0, -0.3575, -35.0031, -0.6579, 0, 0.7531, 11.9737, 0, 1, 0, 0, -0.7531, 0, -0.6579, -38.2934, 0.9848, 0, 0.1736, -24.8172, 0, 1, 0, 0, -0.1736, 0, 0.9848, -47.6241, 0.5675, 0, 0.8234, -14.2998, 0, 1, 0, 0, -0.8234, 0, 0.5675, -31.2501, 0.3327, 0, 0.943, -8.383, 0, 1, 0, 0, -0.943, 0, 0.3327, -28.2352, -0.1883, 0, 0.9821, 4.7457, 0, 1, 0, 0, -0.9821, 0, -0.1883, -27.2509, -0.9816, 0, 0.1909, 24.7367, 0, 1, 0, 0, -0.1909, 0, -0.9816, -47.1898, 0.9848, 0, 0.1736, -31.7108, 0, 1, 0, 0, -0.1736, 0, 0.9848, -46.4085, 0.7628, 0, 0.6466, -24.5634, 0, 1, 0, 0, -0.6466, 0, 0.7628, -31.1798, 0.1273, 0, 0.9919, -4.1005, 0, 1, 0, 0, -0.9919, 0, 0.1273, -20.0622, -0.3902, 0, 0.9207, 12.5653, 0, 1, 0, 0, -0.9207, 0, -0.3902, -22.3529, -0.8013, 0, 0.5983, 25.8016, 0, 1, 0, 0, -0.5983, 0, -0.8013, -32.7356, 0.9848, 0, 0.1736, -38.6045, 0, 1, 0, 0, -0.1736, 0, 0.9848, -45.193, 0.8644, 0, 0.5029, -33.883, 0, 1, 0, 0, -0.5029, 0, 0.8644, -32.2876, 0.7628, 0, 0.6466, -29.9033, 0, 1, 0, 0, -0.6466, 0, 0.7628, -26.6537, 0.6377, 0, 0.7703, -24.9976, 0, 1, 0, 0, -0.7703, 0, 0.6377, -21.8047, 0.3327, 0, 0.943, -13.0402, 0, 1, 0, 0, -0.943, 0, 0.3327, -15.0325, -0.1012, 0, 0.9949, 3.9663, 0, 1, 0, 0, -0.9949, 0, -0.1012, -13.0012, -0.274, 0, 0.9617, 10.7407, 0, 1, 0, 0, -0.9617, 0, -0.274, -14.3002, -0.4383, 0, 0.8988, 17.1824, 0, 1, 0, 0, -0.8988, 0, -0.4383, -16.7664, -0.7216, 0, 0.6923, 28.2869, 0, 1, 0, 0, -0.6923, 0, -0.7216, -24.8616)
 
+[sub_resource type="BoxShape3D" id="solid_shape_4x0p9x0p56"]
+size = Vector3(4, 0.9, 0.56)
+
+[sub_resource type="BoxMesh" id="solid_mesh_4x0p9x0p56_field_struct"]
+material = ExtResource("field_struct")
+size = Vector3(4, 0.9, 0.56)
+
+[sub_resource type="BoxShape3D" id="solid_shape_4x0p6x0p56"]
+size = Vector3(4, 0.6, 0.56)
+
+[sub_resource type="BoxMesh" id="solid_mesh_4x0p6x0p56_field_struct"]
+material = ExtResource("field_struct")
+size = Vector3(4, 0.6, 0.56)
+
+[sub_resource type="BoxShape3D" id="solid_shape_0p2x1p5x0p56"]
+size = Vector3(0.2, 1.5, 0.56)
+
+[sub_resource type="BoxMesh" id="solid_mesh_0p2x1p5x0p56_field_struct"]
+material = ExtResource("field_struct")
+size = Vector3(0.2, 1.5, 0.56)
+
+[sub_resource type="BoxShape3D" id="solid_shape_4x2p1x0p4"]
+size = Vector3(4, 2.1, 0.4)
+
 [sub_resource type="BoxMesh" id="ParkingLines_mesh"]
 material = ExtResource("line_paint")
 size = Vector3(0.12, 0.02, 5)
@@ -142,6 +166,9 @@ transform_format = 1
 instance_count = 101
 mesh = SubResource("ParkingLines_mesh")
 buffer = PackedFloat32Array(0.0424, 0, -0.9991, -13.987, 0, 1, 0, 0.012, 0.9991, 0, 0.0424, -51.407, 0.3019, 0, -0.9533, -13.347, 0, 1, 0, 0.012, 0.9533, 0, 0.3019, -47.774, 0.5404, 0, -0.8414, -11.779, 0, 1, 0, 0.012, 0.8414, 0, 0.5404, -44.434, 0.7415, 0, -0.6710, -9.394, 0, 1, 0, 0.012, 0.6710, 0, 0.7415, -41.620, 0.8910, 0, -0.4540, -6.356, 0, 1, 0, 0.012, 0.4540, 0, 0.8910, -39.526, 0.9787, 0, -0.2055, -2.877, 0, 1, 0, 0.012, 0.2055, 0, 0.9787, -38.299, 0.9487, 0, 0.3161, 4.425, 0, 1, 0, 0.012, -0.3161, 0, 0.9487, -38.718, 0.8332, 0, 0.5529, 7.741, 0, 1, 0, 0.012, -0.5529, 0, 0.8332, -40.335, 0.6599, 0, 0.7514, 10.519, 0, 1, 0, 0.012, -0.7514, 0, 0.6599, -42.762, 0.4407, 0, 0.8977, 12.567, 0, 1, 0, 0.012, -0.8977, 0, 0.4407, -45.831, 0.1909, 0, 0.9816, 13.743, 0, 1, 0, 0.012, -0.9816, 0, 0.1909, -49.328, 0.2596, 0, -0.9657, -20.280, 0, 1, 0, 0.012, 0.9657, 0, 0.2596, -46.548, 0.4249, 0, -0.9053, -19.010, 0, 1, 0, 0.012, 0.9053, 0, 0.4249, -43.078, 0.5770, 0, -0.8168, -17.152, 0, 1, 0, 0.012, 0.8168, 0, 0.5770, -39.884, 0.7112, 0, -0.7030, -14.763, 0, 1, 0, 0.012, 0.7030, 0, 0.7112, -37.065, 0.8234, 0, -0.5675, -11.916, 0, 1, 0, 0.012, 0.5675, 0, 0.8234, -34.708, 0.9101, 0, -0.4143, -8.701, 0, 1, 0, 0.012, 0.4143, 0, 0.9101, -32.887, 0.9687, 0, -0.2484, -5.216, 0, 1, 0, 0.012, 0.2484, 0, 0.9687, -31.658, 0.9949, 0, 0.1012, 2.125, 0, 1, 0, 0.012, -0.1012, 0, 0.9949, -31.108, 0.9617, 0, 0.2740, 5.754, 0, 1, 0, 0.012, -0.2740, 0, 0.9617, -31.804, 0.8988, 0, 0.4383, 9.205, 0, 1, 0, 0.012, -0.4383, 0, 0.8988, -33.125, 0.8081, 0, 0.5891, 12.371, 0, 1, 0, 0.012, -0.5891, 0, 0.8081, -35.031, 0.6923, 0, 0.7216, 15.154, 0, 1, 0, 0.012, -0.7216, 0, 0.6923, -37.462, 0.5551, 0, 0.8318, 17.467, 0, 1, 0, 0.012, -0.8318, 0, 0.5551, -40.343, 0.4007, 0, 0.9162, 19.240, 0, 1, 0, 0.012, -0.9162, 0, 0.4007, -43.585, 0.2339, 0, 0.9723, 20.417, 0, 1, 0, 0.012, -0.9723, 0, 0.2339, -47.088, 0.1082, 0, -0.9941, -27.835, 0, 1, 0, 0.012, 0.9941, 0, 0.1082, -48.969, 0.2383, 0, -0.9712, -27.193, 0, 1, 0, 0.012, 0.9712, 0, 0.2383, -45.328, 0.3642, 0, -0.9313, -26.077, 0, 1, 0, 0.012, 0.9313, 0, 0.3642, -41.803, 0.4837, 0, -0.8752, -24.506, 0, 1, 0, 0.012, 0.8752, 0, 0.4837, -38.456, 0.6955, 0, -0.7185, -20.118, 0, 1, 0, 0.012, 0.7185, 0, 0.6955, -32.525, 0.7841, 0, -0.6206, -17.376, 0, 1, 0, 0.012, 0.6206, 0, 0.7841, -30.044, 0.8591, 0, -0.5118, -14.332, 0, 1, 0, 0.012, 0.5118, 0, 0.8591, -27.946, 0.9190, 0, -0.3942, -11.037, 0, 1, 0, 0.012, 0.3942, 0, 0.9190, -26.267, 0.9630, 0, -0.2697, -7.551, 0, 1, 0, 0.012, 0.2697, 0, 0.9630, -25.037, 0.9901, 0, -0.1404, -3.932, 0, 1, 0, 0.012, 0.1404, 0, 0.9901, -24.278, 0.9924, 0, 0.1231, 3.446, 0, 1, 0, 0.012, -0.1231, 0, 0.9924, -24.213, 0.9675, 0, 0.2528, 7.077, 0, 1, 0, 0.012, -0.2528, 0, 0.9675, -24.909, 0.9258, 0, 0.3780, 10.585, 0, 1, 0, 0.012, -0.3780, 0, 0.9258, -26.078, 0.8679, 0, 0.4967, 13.908, 0, 1, 0, 0.012, -0.4967, 0, 0.8679, -27.698, 0.7949, 0, 0.6067, 16.989, 0, 1, 0, 0.012, -0.6067, 0, 0.7949, -29.743, 0.7080, 0, 0.7062, 19.773, 0, 1, 0, 0.012, -0.7062, 0, 0.7080, -32.175, 0.4990, 0, 0.8666, 24.265, 0, 1, 0, 0.012, -0.8666, 0, 0.4990, -38.029, 0.3804, 0, 0.9248, 25.895, 0, 1, 0, 0.012, -0.9248, 0, 0.3804, -41.348, 0.2553, 0, 0.9669, 27.072, 0, 1, 0, 0.012, -0.9669, 0, 0.2553, -44.852, 0.1257, 0, 0.9921, 27.778, 0, 1, 0, 0.012, -0.9921, 0, 0.1257, -48.482, 0.1214, 0, -0.9926, -34.741, 0, 1, 0, 0.012, 0.9926, 0, 0.1214, -47.752, 0.2254, 0, -0.9743, -34.099, 0, 1, 0, 0.012, 0.9743, 0, 0.2254, -44.110, 0.3270, 0, -0.9450, -33.076, 0, 1, 0, 0.012, 0.9450, 0, 0.3270, -40.556, 0.4249, 0, -0.9053, -31.684, 0, 1, 0, 0.012, 0.9053, 0, 0.4249, -37.130, 0.5180, 0, -0.8554, -29.938, 0, 1, 0, 0.012, 0.8554, 0, 0.5180, -33.869, 0.6054, 0, -0.7959, -27.858, 0, 1, 0, 0.012, 0.7959, 0, 0.6054, -30.812, 0.6860, 0, -0.7276, -25.466, 0, 1, 0, 0.012, 0.7276, 0, 0.6860, -27.990, 0.8234, 0, -0.5675, -19.861, 0, 1, 0, 0.012, 0.5675, 0, 0.8234, -23.181, 0.8787, 0, -0.4774, -16.709, 0, 1, 0, 0.012, 0.4774, 0, 0.8787, -21.246, 0.9242, 0, -0.3820, -13.371, 0, 1, 0, 0.012, 0.3820, 0, 0.9242, -19.655, 0.9593, 0, -0.2824, -9.883, 0, 1, 0, 0.012, 0.2824, 0, 0.9593, -18.424, 0.9837, 0, -0.1796, -6.285, 0, 1, 0, 0.012, 0.1796, 0, 0.9837, -17.569, 0.9972, 0, -0.0748, -2.617, 0, 1, 0, 0.012, 0.0748, 0, 0.9972, -17.098, 0.9907, 0, 0.1362, 4.766, 0, 1, 0, 0.012, -0.1362, 0, 0.9907, -17.326, 0.9708, 0, 0.2399, 8.398, 0, 1, 0, 0.012, -0.2399, 0, 0.9708, -18.022, 0.9400, 0, 0.3410, 11.936, 0, 1, 0, 0.012, -0.3410, 0, 0.9400, -19.098, 0.8988, 0, 0.4383, 15.341, 0, 1, 0, 0.012, -0.4383, 0, 0.8988, -20.541, 0.8475, 0, 0.5307, 18.575, 0, 1, 0, 0.012, -0.5307, 0, 0.8475, -22.336, 0.7173, 0, 0.6968, 24.387, 0, 1, 0, 0.012, -0.6968, 0, 0.7173, -26.895, 0.6398, 0, 0.7686, 26.900, 0, 1, 0, 0.012, -0.7686, 0, 0.6398, -29.608, 0.5551, 0, 0.8318, 29.112, 0, 1, 0, 0.012, -0.8318, 0, 0.5551, -32.571, 0.4642, 0, 0.8857, 31.000, 0, 1, 0, 0.012, -0.8857, 0, 0.4642, -35.752, 0.3682, 0, 0.9298, 32.541, 0, 1, 0, 0.012, -0.9298, 0, 0.3682, -39.113, 0.2680, 0, 0.9634, 33.719, 0, 1, 0, 0.012, -0.9634, 0, 0.2680, -42.619, 0.1649, 0, 0.9863, 34.521, 0, 1, 0, 0.012, -0.9863, 0, 0.1649, -46.229, 0.1301, 0, -0.9915, -41.643, 0, 1, 0, 0.012, 0.9915, 0, 0.1301, -46.535, 0.2168, 0, -0.9762, -41.001, 0, 1, 0, 0.012, 0.9762, 0, 0.2168, -42.893, 0.3019, 0, -0.9533, -40.040, 0, 1, 0, 0.012, 0.9533, 0, 0.3019, -39.321, 0.3846, 0, -0.9231, -38.770, 0, 1, 0, 0.012, 0.9231, 0, 0.3846, -35.847, 0.4643, 0, -0.8857, -37.198, 0, 1, 0, 0.012, 0.8857, 0, 0.4643, -32.499, 0.5404, 0, -0.8414, -35.338, 0, 1, 0, 0.012, 0.8414, 0, 0.5404, -29.301, 0.6124, 0, -0.7906, -33.204, 0, 1, 0, 0.012, 0.7906, 0, 0.6124, -26.280, 0.6796, 0, -0.7336, -30.812, 0, 1, 0, 0.012, 0.7336, 0, 0.6796, -23.459, 0.7415, 0, -0.6710, -28.182, 0, 1, 0, 0.012, 0.6710, 0, 0.7415, -20.859, 0.7976, 0, -0.6032, -25.333, 0, 1, 0, 0.012, 0.6032, 0, 0.7976, -18.500, 0.8910, 0, -0.4540, -19.069, 0, 1, 0, 0.012, 0.4540, 0, 0.8910, -14.578, 0.9275, 0, -0.3739, -15.702, 0, 1, 0, 0.012, 0.3739, 0, 0.9275, -13.046, 0.9568, 0, -0.2908, -12.214, 0, 1, 0, 0.012, 0.2908, 0, 0.9568, -11.815, 0.9787, 0, -0.2055, -8.631, 0, 1, 0, 0.012, 0.2055, 0, 0.9787, -10.896, 0.9929, 0, -0.1186, -4.981, 0, 1, 0, 0.012, 0.1186, 0, 0.9929, -10.296, 0.9984, 0, 0.0573, 2.406, 0, 1, 0, 0.012, -0.0573, 0, 0.9984, -10.069, 0.9894, 0, 0.1449, 6.085, 0, 1, 0, 0.012, -0.1449, 0, 0.9894, -10.443, 0.9729, 0, 0.2314, 9.718, 0, 1, 0, 0.012, -0.2314, 0, 0.9729, -11.140, 0.9487, 0, 0.3161, 13.275, 0, 1, 0, 0.012, -0.3161, 0, 0.9487, -12.153, 0.9172, 0, 0.3983, 16.730, 0, 1, 0, 0.012, -0.3983, 0, 0.9172, -13.476, 0.8786, 0, 0.4775, 20.054, 0, 1, 0, 0.012, -0.4775, 0, 0.8786, -15.097, 0.7813, 0, 0.6241, 26.212, 0, 1, 0, 0.012, -0.6241, 0, 0.7813, -19.183, 0.7234, 0, 0.6904, 28.998, 0, 1, 0, 0.012, -0.6904, 0, 0.7234, -21.617, 0.6599, 0, 0.7514, 31.558, 0, 1, 0, 0.012, -0.7514, 0, 0.6599, -24.286, 0.5912, 0, 0.8065, 33.874, 0, 1, 0, 0.012, -0.8065, 0, 0.5912, -27.170, 0.5179, 0, 0.8554, 35.928, 0, 1, 0, 0.012, -0.8554, 0, 0.5179, -30.247, 0.4407, 0, 0.8977, 37.702, 0, 1, 0, 0.012, -0.8977, 0, 0.4407, -33.492, 0.3600, 0, 0.9330, 39.184, 0, 1, 0, 0.012, -0.9330, 0, 0.3600, -36.881, 0.2765, 0, 0.9610, 40.363, 0, 1, 0, 0.012, -0.9610, 0, 0.2765, -40.387, 0.1909, 0, 0.9816, 41.228, 0, 1, 0, 0.012, -0.9816, 0, 0.1909, -43.983)
+
+[sub_resource type="BoxShape3D" id="solid_shape_4x1p5x0p4"]
+size = Vector3(4, 1.5, 0.4)
 
 [node name="DriveInGreybox" type="Node3D"]
 
@@ -417,21 +444,79 @@ material = ExtResource("field_fence")
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, -46.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "nw"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 
 [node name="Board1" parent="Field/BreachNW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Field/BreachNW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Field/BreachNW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Field/BreachNW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Field/BreachNW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameNW" type="Node3D" parent="Field"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, -46.000)
+
+[node name="Sill" type="StaticBody3D" parent="Field/FrameNW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNW/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNW/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Field/FrameNW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNW/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNW/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Field/FrameNW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNW/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNW/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Field/FrameNW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNW/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNW/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Field/FrameNW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNW/Blocker"]
+shape = SubResource("solid_shape_4x2p1x0p4")
 
 [node name="ApronNW" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, -0.200, -46.000)
@@ -461,21 +546,79 @@ material = ExtResource("field_fence")
 transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, -46.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "ne"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 
 [node name="Board1" parent="Field/BreachNE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Field/BreachNE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Field/BreachNE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Field/BreachNE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Field/BreachNE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameNE" type="Node3D" parent="Field"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, -46.000)
+
+[node name="Sill" type="StaticBody3D" parent="Field/FrameNE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNE/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNE/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Field/FrameNE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNE/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNE/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Field/FrameNE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNE/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNE/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Field/FrameNE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNE/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNE/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Field/FrameNE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNE/Blocker"]
+shape = SubResource("solid_shape_4x2p1x0p4")
 
 [node name="ApronNE" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, -0.200, -46.000)
@@ -505,21 +648,79 @@ material = ExtResource("field_fence")
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, -22.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "w"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 
 [node name="Board1" parent="Field/BreachW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Field/BreachW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Field/BreachW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Field/BreachW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Field/BreachW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameW" type="Node3D" parent="Field"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, -22.000)
+
+[node name="Sill" type="StaticBody3D" parent="Field/FrameW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameW/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameW/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Field/FrameW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameW/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameW/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Field/FrameW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameW/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameW/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Field/FrameW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameW/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameW/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Field/FrameW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameW/Blocker"]
+shape = SubResource("solid_shape_4x2p1x0p4")
 
 [node name="ApronW" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, -0.200, -22.000)
@@ -549,21 +750,79 @@ material = ExtResource("field_fence")
 transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, -22.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "e"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 
 [node name="Board1" parent="Field/BreachE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Field/BreachE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Field/BreachE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Field/BreachE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Field/BreachE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameE" type="Node3D" parent="Field"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, -22.000)
+
+[node name="Sill" type="StaticBody3D" parent="Field/FrameE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameE/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameE/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Field/FrameE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameE/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameE/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Field/FrameE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameE/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameE/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Field/FrameE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameE/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameE/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Field/FrameE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameE/Blocker"]
+shape = SubResource("solid_shape_4x2p1x0p4")
 
 [node name="ApronE" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, -0.200, -22.000)
@@ -593,21 +852,79 @@ material = ExtResource("field_fence")
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, 0.000, -52.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "n"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 
 [node name="Board1" parent="Field/BreachN" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Field/BreachN" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Field/BreachN" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Field/BreachN" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Field/BreachN" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameN" type="Node3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, 0.000, -52.000)
+
+[node name="Sill" type="StaticBody3D" parent="Field/FrameN"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Field/FrameN"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Field/FrameN"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Field/FrameN"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Field/FrameN"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN/Blocker"]
+shape = SubResource("solid_shape_4x2p1x0p4")
 
 [node name="ApronN" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, -0.200, -56.000)
@@ -637,21 +954,79 @@ material = ExtResource("field_fence")
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 0.000, -52.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "n2"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 
 [node name="Board1" parent="Field/BreachN2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Field/BreachN2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Field/BreachN2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Field/BreachN2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Field/BreachN2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameN2" type="Node3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 0.000, -52.000)
+
+[node name="Sill" type="StaticBody3D" parent="Field/FrameN2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN2/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN2/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Field/FrameN2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN2/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN2/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Field/FrameN2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN2/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN2/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Field/FrameN2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN2/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN2/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Field/FrameN2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN2/Blocker"]
+shape = SubResource("solid_shape_4x2p1x0p4")
 
 [node name="ApronN2" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, -0.200, -56.000)
@@ -1614,22 +1989,80 @@ material = ExtResource("midway_wall")
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -12.500, 0.000, 33.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "mid_w"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 metadata/board_view_end = 45
 
 [node name="Board1" parent="Midway/BreachPocketWGap" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Midway/BreachPocketWGap" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Midway/BreachPocketWGap" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Midway/BreachPocketWGap" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Midway/BreachPocketWGap" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FramePocketWGap" type="Node3D" parent="Midway"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -12.500, 0.000, 33.000)
+
+[node name="Sill" type="StaticBody3D" parent="Midway/FramePocketWGap"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Midway/FramePocketWGap/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Midway/FramePocketWGap/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Midway/FramePocketWGap"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Midway/FramePocketWGap/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Midway/FramePocketWGap/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Midway/FramePocketWGap"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Midway/FramePocketWGap/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Midway/FramePocketWGap/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Midway/FramePocketWGap"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Midway/FramePocketWGap/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Midway/FramePocketWGap/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Midway/FramePocketWGap"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Midway/FramePocketWGap/Blocker"]
+shape = SubResource("solid_shape_4x2p1x0p4")
 
 [node name="SpawnW" type="Marker3D" parent="Midway/ZombieSpawns"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -12.500, 0.000, 36.500)
@@ -1653,22 +2086,80 @@ material = ExtResource("midway_wall")
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 12.500, 0.000, 33.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "mid_e"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 metadata/board_view_end = 45
 
 [node name="Board1" parent="Midway/BreachPocketEGap" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Midway/BreachPocketEGap" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Midway/BreachPocketEGap" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Midway/BreachPocketEGap" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Midway/BreachPocketEGap" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FramePocketEGap" type="Node3D" parent="Midway"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 12.500, 0.000, 33.000)
+
+[node name="Sill" type="StaticBody3D" parent="Midway/FramePocketEGap"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Midway/FramePocketEGap/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Midway/FramePocketEGap/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Midway/FramePocketEGap"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Midway/FramePocketEGap/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Midway/FramePocketEGap/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Midway/FramePocketEGap"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Midway/FramePocketEGap/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Midway/FramePocketEGap/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Midway/FramePocketEGap"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Midway/FramePocketEGap/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Midway/FramePocketEGap/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Midway/FramePocketEGap"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Midway/FramePocketEGap/Blocker"]
+shape = SubResource("solid_shape_4x2p1x0p4")
 
 [node name="SpawnE" type="Marker3D" parent="Midway/ZombieSpawns"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.500, 0.000, 36.500)
@@ -2016,22 +2507,80 @@ halo_energy = 1.2
 transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, 6.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "yard_e1"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 metadata/board_view_end = 45
 
 [node name="Board1" parent="GeneratorYard/BreachYardE1" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="GeneratorYard/BreachYardE1" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="GeneratorYard/BreachYardE1" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="GeneratorYard/BreachYardE1" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="GeneratorYard/BreachYardE1" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameYardE1" type="Node3D" parent="GeneratorYard"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, 6.000)
+
+[node name="Sill" type="StaticBody3D" parent="GeneratorYard/FrameYardE1"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="GeneratorYard/FrameYardE1/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="GeneratorYard/FrameYardE1/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="GeneratorYard/FrameYardE1"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="GeneratorYard/FrameYardE1/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="GeneratorYard/FrameYardE1/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="GeneratorYard/FrameYardE1"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="GeneratorYard/FrameYardE1/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="GeneratorYard/FrameYardE1/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="GeneratorYard/FrameYardE1"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="GeneratorYard/FrameYardE1/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="GeneratorYard/FrameYardE1/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="GeneratorYard/FrameYardE1"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="GeneratorYard/FrameYardE1/Blocker"]
+shape = SubResource("solid_shape_4x2p1x0p4")
 
 [node name="ApronYardE1" type="CSGBox3D" parent="GeneratorYard"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, -0.200, 6.000)
@@ -2069,22 +2618,80 @@ metadata/barricade_id = "yard_e1"
 transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, 30.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "yard_e2"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 metadata/board_view_end = 45
 
 [node name="Board1" parent="GeneratorYard/BreachYardE2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="GeneratorYard/BreachYardE2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="GeneratorYard/BreachYardE2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="GeneratorYard/BreachYardE2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="GeneratorYard/BreachYardE2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameYardE2" type="Node3D" parent="GeneratorYard"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, 30.000)
+
+[node name="Sill" type="StaticBody3D" parent="GeneratorYard/FrameYardE2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="GeneratorYard/FrameYardE2/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="GeneratorYard/FrameYardE2/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="GeneratorYard/FrameYardE2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="GeneratorYard/FrameYardE2/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="GeneratorYard/FrameYardE2/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="GeneratorYard/FrameYardE2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="GeneratorYard/FrameYardE2/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="GeneratorYard/FrameYardE2/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="GeneratorYard/FrameYardE2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="GeneratorYard/FrameYardE2/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="GeneratorYard/FrameYardE2/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="GeneratorYard/FrameYardE2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="GeneratorYard/FrameYardE2/Blocker"]
+shape = SubResource("solid_shape_4x2p1x0p4")
 
 [node name="ApronYardE2" type="CSGBox3D" parent="GeneratorYard"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, -0.200, 30.000)
@@ -2122,22 +2729,69 @@ metadata/barricade_id = "yard_e2"
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 36.000, 0.000, 38.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "yard_s"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 metadata/board_view_end = 45
 
 [node name="Board1" parent="GeneratorYard/BreachYardS" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="GeneratorYard/BreachYardS" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="GeneratorYard/BreachYardS" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="GeneratorYard/BreachYardS" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="GeneratorYard/BreachYardS" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameYardS" type="Node3D" parent="GeneratorYard"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 36.000, 0.000, 38.000)
+
+[node name="Sill" type="StaticBody3D" parent="GeneratorYard/FrameYardS"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="GeneratorYard/FrameYardS/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="GeneratorYard/FrameYardS/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="GeneratorYard/FrameYardS"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="GeneratorYard/FrameYardS/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="GeneratorYard/FrameYardS/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="GeneratorYard/FrameYardS"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="GeneratorYard/FrameYardS/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="GeneratorYard/FrameYardS/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="GeneratorYard/FrameYardS"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="GeneratorYard/FrameYardS/Blocker"]
+shape = SubResource("solid_shape_4x1p5x0p4")
 
 [node name="ApronYardS" type="CSGBox3D" parent="GeneratorYard"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, -0.200, 42.000)
@@ -2309,7 +2963,7 @@ material = ExtResource("backlot_prop")
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -47.000, 2.100, 35.500)
 use_collision = true
 size = Vector3(6, 4.2, 0.6)
-material = ExtResource("neon")
+material = ExtResource("backlot_wall")
 
 [node name="Lamps" type="Node3D" parent="BackLot"]
 metadata/circuit = "back_lot"
@@ -2342,11 +2996,13 @@ away = Vector3(-0.7071, 0, -0.7071)
 pool_half = 3.62
 aim_tilt = 47.0
 
-[node name="NeonSign" type="OmniLight3D" parent="BackLot/Lamps" groups=["powered_light"]]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -47.000, 3.500, 33.500)
-light_color = Color(1.000, 0.227, 0.290, 1)
-light_energy = 1.8
-omni_range = 12
+[node name="NeonSign" parent="BackLot/Lamps" instance=ExtResource("neon_sign")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -47.000, 2.900, 35.140)
+text = "OVERFLOW"
+neon_color = Color(1, 0.36, 0.2, 1)
+halo_front_only = true
+lights_ground = true
+light_angle = 60.0
 
 [node name="ZombieSpawns" type="Node3D" parent="BackLot"]
 
@@ -2354,22 +3010,80 @@ omni_range = 12
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, 10.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "back_w1"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 metadata/board_view_end = 45
 
 [node name="Board1" parent="BackLot/BreachBackW1" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="BackLot/BreachBackW1" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="BackLot/BreachBackW1" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="BackLot/BreachBackW1" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="BackLot/BreachBackW1" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameBackW1" type="Node3D" parent="BackLot"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, 10.000)
+
+[node name="Sill" type="StaticBody3D" parent="BackLot/FrameBackW1"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="BackLot/FrameBackW1/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="BackLot/FrameBackW1/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="BackLot/FrameBackW1"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="BackLot/FrameBackW1/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="BackLot/FrameBackW1/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="BackLot/FrameBackW1"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="BackLot/FrameBackW1/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="BackLot/FrameBackW1/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="BackLot/FrameBackW1"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="BackLot/FrameBackW1/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="BackLot/FrameBackW1/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="BackLot/FrameBackW1"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="BackLot/FrameBackW1/Blocker"]
+shape = SubResource("solid_shape_4x2p1x0p4")
 
 [node name="ApronBackW1" type="CSGBox3D" parent="BackLot"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, -0.200, 10.000)
@@ -2407,22 +3121,80 @@ metadata/barricade_id = "back_w1"
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, 34.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "back_w2"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 metadata/board_view_end = 45
 
 [node name="Board1" parent="BackLot/BreachBackW2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="BackLot/BreachBackW2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="BackLot/BreachBackW2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="BackLot/BreachBackW2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="BackLot/BreachBackW2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameBackW2" type="Node3D" parent="BackLot"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, 34.000)
+
+[node name="Sill" type="StaticBody3D" parent="BackLot/FrameBackW2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="BackLot/FrameBackW2/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="BackLot/FrameBackW2/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="BackLot/FrameBackW2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="BackLot/FrameBackW2/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="BackLot/FrameBackW2/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="BackLot/FrameBackW2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="BackLot/FrameBackW2/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="BackLot/FrameBackW2/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="BackLot/FrameBackW2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="BackLot/FrameBackW2/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="BackLot/FrameBackW2/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="BackLot/FrameBackW2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="BackLot/FrameBackW2/Blocker"]
+shape = SubResource("solid_shape_4x2p1x0p4")
 
 [node name="ApronBackW2" type="CSGBox3D" parent="BackLot"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, -0.200, 34.000)
@@ -2460,22 +3232,69 @@ metadata/barricade_id = "back_w2"
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -36.000, 0.000, 38.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "back_s"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 metadata/board_view_end = 45
 
 [node name="Board1" parent="BackLot/BreachBackS" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="BackLot/BreachBackS" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="BackLot/BreachBackS" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="BackLot/BreachBackS" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="BackLot/BreachBackS" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameBackS" type="Node3D" parent="BackLot"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -36.000, 0.000, 38.000)
+
+[node name="Sill" type="StaticBody3D" parent="BackLot/FrameBackS"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="BackLot/FrameBackS/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="BackLot/FrameBackS/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="BackLot/FrameBackS"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="BackLot/FrameBackS/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="BackLot/FrameBackS/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="BackLot/FrameBackS"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="BackLot/FrameBackS/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="BackLot/FrameBackS/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="BackLot/FrameBackS"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="BackLot/FrameBackS/Blocker"]
+shape = SubResource("solid_shape_4x1p5x0p4")
 
 [node name="ApronBackS" type="CSGBox3D" parent="BackLot"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, -0.200, 42.000)
@@ -2681,22 +3500,80 @@ spot_angle = 28
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -16.000, 0.000, 49.500)
 script = ExtResource("barricade")
 metadata/barricade_id = "plaza_w"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 metadata/board_view_end = 45
 
 [node name="Board1" parent="Road/BreachPlazaW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Road/BreachPlazaW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Road/BreachPlazaW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Road/BreachPlazaW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Road/BreachPlazaW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FramePlazaW" type="Node3D" parent="Road"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -16.000, 0.000, 49.500)
+
+[node name="Sill" type="StaticBody3D" parent="Road/FramePlazaW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Road/FramePlazaW/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Road/FramePlazaW/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Road/FramePlazaW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Road/FramePlazaW/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Road/FramePlazaW/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Road/FramePlazaW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Road/FramePlazaW/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Road/FramePlazaW/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Road/FramePlazaW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Road/FramePlazaW/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Road/FramePlazaW/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Road/FramePlazaW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Road/FramePlazaW/Blocker"]
+shape = SubResource("solid_shape_4x2p1x0p4")
 
 [node name="ApronPlazaW" type="CSGBox3D" parent="Road"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -20.000, -0.200, 49.500)
@@ -2738,22 +3615,80 @@ metadata/barricade_id = "plaza_w"
 transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 16.000, 0.000, 49.500)
 script = ExtResource("barricade")
 metadata/barricade_id = "plaza_e"
+metadata/sill = 0.9
+metadata/thickness = 0.56
+metadata/clear_half = 1.8
 metadata/board_view_end = 45
 
 [node name="Board1" parent="Road/BreachPlazaE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Road/BreachPlazaE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Road/BreachPlazaE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Road/BreachPlazaE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Road/BreachPlazaE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FramePlazaE" type="Node3D" parent="Road"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 16.000, 0.000, 49.500)
+
+[node name="Sill" type="StaticBody3D" parent="Road/FramePlazaE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Road/FramePlazaE/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Road/FramePlazaE/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Road/FramePlazaE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Road/FramePlazaE/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Road/FramePlazaE/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Road/FramePlazaE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Road/FramePlazaE/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Road/FramePlazaE/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Road/FramePlazaE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Road/FramePlazaE/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Road/FramePlazaE/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Road/FramePlazaE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Road/FramePlazaE/Blocker"]
+shape = SubResource("solid_shape_4x2p1x0p4")
 
 [node name="ApronPlazaE" type="CSGBox3D" parent="Road"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 20.000, -0.200, 49.500)
@@ -4555,7 +5490,7 @@ metadata/circuit = "booth"
 metadata/door = "door_booth"
 
 [node name="Switch_back_lot" parent="Switches" instance=ExtResource("switch")]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -34.000, 0.000, -4.600)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -46.000, 0.000, -4.600)
 metadata/circuit = "back_lot"
 metadata/door = "door_back_lot"
 

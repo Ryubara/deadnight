@@ -49,7 +49,11 @@ const HIT_TOLERANCE := 0.12
 ## follow the bodies, #694, where the chibi head is half the figure and a shot aimed at the chest
 ## lands on it most of the time). The staged far fight reads them the same on every map: head share
 ## 0.64 / 0.72 / 0.90 and hit rate 0.41 / 0.64 / 0.76 for the three levels, each inside its band.
-const HEAD_TOLERANCE := 0.1
+## Raised from 0.1 for the House Pistol (#898): it takes three to eight shots to kill a walker, so
+## the bot fires far more shots at one it has already hit and its aim settles on the head (the
+## Veteran's share read 0.88 with the revolver and 0.95 with the pistol, the band's edge); the three
+## levels stay in the same order (0.69, 0.81, 0.95).
+const HEAD_TOLERANCE := 0.12
 ## The dodge is what a bot's feet do against the dead that reach it, and it is read with the
 ## trigger up (the near fight): the dead pile up round a bot that does not kill them, so this is
 ## lower than `SimSkill`'s dodge, which is the chance of a plain blow missing a player who also

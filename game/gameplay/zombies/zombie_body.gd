@@ -33,6 +33,9 @@ var repath_left: float = 0.0
 ## far from the target (`ZombieSim.STRAND_SECONDS`).
 var path_gap: float = 0.0
 var stranded_for: float = 0.0
+## Seconds it has been pulling at the boards of one breach without getting through (a player puts
+## them back as fast as it tears them): `ZombieSim.SIEGE_SECONDS`.
+var siege_seconds: float = 0.0
 var retarget_left: float = 0.0
 ## Seconds a blast holds it in its stagger (longer than the profile's own), while STAGGER lasts.
 var stun_seconds: float = 0.0
@@ -49,6 +52,10 @@ var lure_id: int = 0
 var tear_progress: float = 0.0
 ## True while it stands at its boards working one loose this tick (a client plays the tear clip).
 var tearing: bool = false
+## How far the sill of a window lifts it above the floor it walks on now (`ZombieGate.lift_at`).
+var lift: float = 0.0
+## True while it climbs over a window's sill (`ZombieGate`): a client draws it scrambling.
+var climbing: bool = false
 ## The status effect it is drawn under, as the wire id of a `StatusDef` (0 for none); the snapshot
 ## carries it. `ZombieSim.set_status` sets it with what the status does.
 var status: int = 0
@@ -99,5 +106,6 @@ func view_entry() -> Dictionary:
 		"speed": move_speed,
 		"look": look(),
 		"tearing": tearing,
+		"climbing": climbing and is_alive(),
 		"status": status,
 	}

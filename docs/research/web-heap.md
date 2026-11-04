@@ -111,3 +111,43 @@ stops a command at 900 s: 12 minutes with the load is the longest one run.
 A frame still makes about 8 ids on the best page (5 fences, 2 buffers, a vertex array), which is 4 MB a minute at 100
 frames a second and a third of that at a phone's 30. A flat heap needs the renderer to stop creating them (a newer
 engine, or a custom template whose id tables are not padded), which is a maintainer's decision about the pinned tool.
+
+## The probes in a player's page (#935)
+
+The publishers were not the heap's cause, but they were still in every player's page: the judder, view and pad probes
+read `window.deadnight` over the bridge in every frame (the pad probe also made an `Array`), and the snapshot wrote about
+65 properties four times a second whether or not anyone read them. They are now added only when the page asks (`?probe`,
+`WebProbe.asked`) and the snapshot writes only what changed.
+
+`tools/web_smoke/bridge_calls.py` counts the bridge's traffic (software GL, 15 s windows, the plain page, no `?probe`):
+
+| | menu | night (autopilot) |
+| --- | --- | --- |
+| before | 430 a second (3 119 reads, 3 249 writes, 145 evals in 15 s) | 141 a second |
+| after | 9 a second (145 evals, no reads, no writes) | 4 a second |
+
+What is left are `eval`s: `GamepadProbe.in_frame` (about 5 a second, from the snapshot and the controller hint; it was
+meant to be asked once and is not, found here, not fixed) and `WebClipboard.read` (4 a second, the snapshot). Heap
+after a forced collection, four minutes of an autopilot night on a desktop page (`heap_soak.py --plain`): 23.2 to
+38.3 MB before (4.3 MB a minute), 23.9 to 38.2 MB after (4.0): unchanged, as #834 found.
+
+## The marquee and the damage frame (#934)
+
+The special-round marquee (`HudMarquee`) redrew every frame while it showed: 15 bulbs a row, two rows, plus the ticket's
+two polygons and outline, 33 polygon commands a redraw. `HudDamage` redrew every frame while health was low or an arc
+showed. Counted with the engine's `draw` signal on a real clock at 60 frames a second (the capture scene
+`game/tests/captures/hud_marquee_redraw.tscn`, the break before round 5):
+
+| Part | Before, draws a second | After |
+| --- | --- | --- |
+| Marquee | 60 | 3 (the bulbs' chase) |
+| Damage frame, health 20 of 100 (a pulse) | 60 | 6 to 9 |
+| An arc's life (1.3 s) | every frame, about 78 | 32 |
+
+The marquee's letters flicker through their label's `modulate`, which the board does not redraw for, so the flicker is
+not a reason to redraw. The five pictures a run saves are pixel-identical before and after for the marquee, and within
+4 of 255 levels for the damage frame (its strength is drawn in steps of 8 levels). Not measured in the browser: a break
+is about 15 s and a night has a special round every few rounds, so there is no minute with the marquee up to soak; the
+polygons per redraw, with the 2.9 buffers and 1.9 vertex arrays a polygon cost in the touch controls, put the
+unfixed marquee at about 160 WebGL objects a frame (some 37 MB a minute while it shows, 3 MB a break at 60 frames a
+second) and the fixed one at a twentieth of that.

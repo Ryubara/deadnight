@@ -84,11 +84,16 @@ var _over: bool = false
 
 
 func _init(
-	p_tuning: RulesTuning, p_skill: SimSkill, players: int, seed_value: int, p_step: float
+	p_tuning: RulesTuning,
+	p_skill: SimSkill,
+	players: int,
+	seed_value: int,
+	p_step: float,
+	p_settings: MatchSettings = null
 ) -> void:
 	step = p_step
 	_leave_out_the_unmodelled(p_tuning)
-	rules = GameRules.new(p_tuning, seed_value)
+	rules = GameRules.new(p_tuning, seed_value, p_settings)
 	_rng.seed = seed_value ^ 0x51A7
 	skill = p_skill.jittered(_rng, NIGHT_SPREAD)
 	_set_lights()
@@ -118,7 +123,7 @@ static func _leave_out_the_unmodelled(tuning: RulesTuning) -> void:
 	for i in item.pool.size():
 		if not UNMODELLED.has(item.pool[i]):
 			pool.append(item.pool[i])
-			weights.append(item.pool_weights[i])
+			weights.append(item.weight_of(item.pool[i]))
 	item.pool = pool
 	item.pool_weights = weights
 
@@ -842,7 +847,10 @@ func _can_ever_buy(player: SimPlayer, item_id: StringName) -> bool:
 		return _crane_can_pay_off(player)
 	if _is_weapon_item(item_id):
 		return _worth_taking(player, item_id) and not rules.players[player.id].weapons.has(item_id)
-	return not rules.players[player.id].tonics.has(item_id)
+	var tonics := rules.players[player.id].tonics
+	return (
+		not tonics.has(item_id) and tonics.size() < rules.settings.tonic_limit(rules.tuning.economy)
+	)
 
 
 ## Spins the crane out in the break (the shopper stands at the glass, so the weapon is taken the
@@ -876,7 +884,7 @@ class SimPlayer:
 	var downed: bool = false
 	## Bled out: down until the round ends.
 	var dead: bool = false
-	var weapon: StringName = &"pistol"
+	var weapon: StringName = &"house_pistol"
 	## Every weapon carried (catalogue id to its magazine and reserve).
 	var arms: Dictionary[StringName, SimArm] = {}
 	## The blow every player has whatever they carry.

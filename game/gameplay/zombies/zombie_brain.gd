@@ -7,6 +7,10 @@ extends RefCounted
 ##
 ## EMERGING -> CHASE <-> ATTACK, STAGGER from a hit (CHASE or ATTACK), DYING from the rules.
 
+## What a step answers when no blow landed: one empty dictionary for every zombie of every step (the
+## answer is only read; a caller that adds to a strike makes its own).
+const NO_STRIKE := {}
+
 
 ## Advances `zombie` by `delta`. `target_pos` is where its target stands (ignored without one);
 ## `waypoint` the next point on the way there; `move_speed` its speed on the ground it stands on.
@@ -26,7 +30,7 @@ static func step(
 ) -> Dictionary:
 	zombie.mode_time += delta
 	zombie.velocity = Vector3.ZERO
-	var strike := {}
+	var strike := NO_STRIKE
 	match zombie.mode:
 		ZombieBody.Mode.EMERGING:
 			if zombie.mode_time >= zombie.profile.emerge:
@@ -93,7 +97,10 @@ static func _chase(
 ) -> void:
 	if not has_target:
 		return
-	if same_level and _flat_distance(zombie.position, target_pos) <= tuning.reach:
+	if (
+		same_level
+		and _flat_distance(zombie.position, target_pos) <= zombie.profile.reach_in(tuning)
+	):
 		zombie.enter(ZombieBody.Mode.ATTACK)
 		return
 	var to_waypoint := waypoint - zombie.position
@@ -111,7 +118,7 @@ static func _attack(
 	target_pos: Vector3,
 	same_level: bool
 ) -> Dictionary:
-	var strike := {}
+	var strike := NO_STRIKE
 	var profile := zombie.profile
 	if has_target:
 		var to_target := target_pos - zombie.position
@@ -119,7 +126,7 @@ static func _attack(
 		_turn_toward(zombie, to_target, tuning.turn_rate * delta)
 		if not zombie.struck and zombie.mode_time >= profile.windup:
 			zombie.struck = true
-			if same_level and to_target.length() <= tuning.reach + tuning.strike_slack:
+			if same_level and to_target.length() <= profile.reach_in(tuning) + tuning.strike_slack:
 				strike = {
 					"zombie_id": zombie.id,
 					"target_id": zombie.target_id,
