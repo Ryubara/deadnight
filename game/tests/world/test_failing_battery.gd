@@ -260,13 +260,20 @@ func test_the_signs_tubes_keep_the_flash_budget_with_their_buzz() -> void:
 	var tubes := sign_node.get_node("Frame/Tubes") as MeshInstance3D
 	var material := tubes.material_override as StandardMaterial3D
 	var full := LightTuning.current().neon_tube_energy
-	var seen := PackedFloat32Array()
-	for tick in int(SECONDS * RATE):
-		_lamps.refresh(tick)
-		sign_node.advance(1.0 / RATE)
-		seen.append(material.emission_energy_multiplier / full)
-	assert_float(_min_of(seen)).is_greater(0.0)
-	assert_int(most_flashes_in_a_second(seen)).is_less_equal(MOST_FLASHES_A_SECOND)
+	# A full tank, and the tank's brownout (the last tenth: the lamp's sag, never a second flicker).
+	for share: float in [1.0, 0.07, 0.04, 0.015]:
+		_lamps.fuel = _fuel.capacity * share
+		var seen := PackedFloat32Array()
+		for tick in int((SECONDS if share == 1.0 else 300.0) * RATE):
+			_lamps.refresh(tick)
+			sign_node.advance(1.0 / RATE)
+			seen.append(material.emission_energy_multiplier / full)
+		assert_float(_min_of(seen)).override_failure_message("tank %s" % share).is_greater(0.0)
+		(
+			assert_int(most_flashes_in_a_second(seen))
+			. override_failure_message("tank %s" % share)
+			. is_less_equal(MOST_FLASHES_A_SECOND)
+		)
 
 
 func test_the_sign_is_dark_with_its_circuit_off_and_burns_with_it_on() -> void:
