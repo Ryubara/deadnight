@@ -10,11 +10,12 @@ extends GdUnitTestSuite
 const SPACING := 0.1
 ## The share of rays that touch the mesh that register, per body: the headliner's spiked crown and
 ## big hands are the thinnest of its mesh.
-const ANY := {&"walker": 0.94, &"crawler": 0.95, &"headliner": 0.9}
+const ANY := {&"walker": 0.94, &"crawler": 0.95, &"headliner": 0.9, &"climber": 0.94}
 ## The share of rays that touch the head that register at all, and as the head's zone: a hand in
-## front of the face, a crawler's reaching past it, takes some of them.
-const HEAD_ANY := {&"walker": 0.93, &"crawler": 0.93, &"headliner": 0.9}
-const HEAD_OWN := {&"walker": 0.8, &"crawler": 0.7, &"headliner": 0.35}
+## front of the face, a crawler's reaching past it, a climber's on their way to the sill, take some
+## of them.
+const HEAD_ANY := {&"walker": 0.93, &"crawler": 0.93, &"headliner": 0.9, &"climber": 0.93}
+const HEAD_OWN := {&"walker": 0.8, &"crawler": 0.7, &"headliner": 0.35, &"climber": 0.65}
 ## The most registered shots that may miss the mesh: zones follow the bones, they are not a box.
 const OFF_THE_MESH := 0.65
 ## Crawl moments (seconds into the 1.67 s cycle) shot at.
@@ -146,6 +147,37 @@ func test_every_shot_that_touches_a_walker_registers_walking_running_striking_an
 		var body := _body(&"walker", case[0], case[1], case[4] if case.size() > 4 else 0.0)
 		_check(_grid(probe, body, case[2], case[3]), &"walker", "walker %s" % case[2])
 	probe.free_model()
+
+
+func test_a_body_going_over_a_sill_is_hit_where_the_clip_has_it() -> void:
+	for case: Array in [[&"walker", &"extra/Climb_Sill"], [&"crawler", &"extra/Crawl_Climb"]]:
+		var probe := ZombieMeshProbe.make(self, case[0])
+		probe.use_extra_clips()
+		var body := _body(case[0], ZombieBody.Mode.CHASE)
+		body.climbing = true
+		assert_str(String(body.hit_target()["pose"])).is_equal("%s.climb" % case[0])
+		for time: float in [0.3, 0.7, 0.95, 1.3, 1.6]:
+			_check(_grid(probe, body, case[1], time), &"climber", "%s at %.2f s" % [case[1], time])
+		probe.free_model()
+
+
+func test_the_aim_at_a_climbing_body_is_on_it() -> void:
+	for look: StringName in ZombieModels.VARIANTS:
+		if ZombieModels.is_boss(look):
+			continue
+		var id := ZombiePose.hit_set(look, ZombieBody.Mode.CHASE, false, 0.0, true)
+		for zone: StringName in [Hitbox.BODY, Hitbox.HEAD]:
+			var aim := ZombiePose.aim_offset(look, ZombieBody.Mode.CHASE, 0.0, zone, true)
+			var nearest := INF
+			for shape: Dictionary in Hitbox.fitted(id)["shapes"]:
+				var along := Geometry3D.get_closest_point_to_segment(aim, shape["a"], shape["b"])
+				nearest = minf(nearest, along.distance_to(aim) - float(shape["r"]))
+			assert_float(nearest).override_failure_message("%s %s" % [id, zone]).is_less(0.0)
+
+
+func test_a_swing_at_the_sill_keeps_the_swings_set() -> void:
+	var id := ZombiePose.hit_set(&"walker", ZombieBody.Mode.ATTACK, false, 0.0, true)
+	assert_str(String(id)).is_equal("walker.strike")
 
 
 func test_the_other_looks_are_hit_on_their_own_bodies_too() -> void:

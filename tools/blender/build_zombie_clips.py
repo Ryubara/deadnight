@@ -75,6 +75,86 @@ CRAWL_STAGGER = "Crawl_Stagger"
 CRAWL_STAGGER_EVENTS = {"hit": 0, "recoil": 3, "recover": 7, "end": 10}
 CRAWL_DEATH = "Crawl_Death"
 CRAWL_DEATH_EVENTS = {"buckle": 4, "drop": 9, "settle": 15, "end": 20}
+# Climb_Sill and Crawl_Climb (Deadnight #991): the dead going over a window's sill, for a body that stands and for one
+# that crawls. The simulation carries the zombie's origin along a lift (`ZombieGate.lift_at`): up on a ramp, along at
+# the sill's height over the wall and its body's clearance, down on a ramp; the clip's frames are places on that way,
+# not times, and the view seeks them from where the snapshot says the zombie is, so the clip is right at any pace
+# (docs/design/zombies.md, "Over the sill"). So a pose here is written in the window's own space, game metres at a
+# walker's size: `depth` from the wall's middle (positive into the room), height over the floor, `side` to the body's
+# left. Every frame puts the origin on its place of the lift and takes it off the targets: the hands and the feet stay
+# where they were put on the sill and the floor, whatever the lift does under them. The thickest wall is the one
+# written (the field's 0.56 m frame): a thinner one only brings the far face nearer, and leaves more room.
+CLIMB = "Climb_Sill"
+CRAWL_CLIMB = "Crawl_Climb"
+# Every window on both maps (test_zombie_climb_clip.gd reads them); a sill of another height needs a new clip.
+SILL = 0.9
+WALL = 0.56
+HELD = WALL / 2 + 0.4  # ZombieGate.BODY_CLEARANCE: the lift is the whole sill out to here on each side
+RAMP = 0.4  # ZombieGate.CLIMB_RAMP
+CLIMB_RISE, CLIMB_OVER, CLIMB_FRAMES = 8, 36, 44  # the frames that end the way up and the way along, and the last
+CLIMB_EVENTS = {"rise": 0, "over": CLIMB_RISE, "down": CLIMB_OVER, "end": CLIMB_FRAMES}
+STANCE = 0.03  # a planted foot's bone over the ground (Idle's, at a walker's size)
+GRIP = 0.96  # the knuckles' height on the sill
+# The way of a body that stands, in the window's space. `pelvis` (depth, height) moves on through its keys; `lean` is the
+# whole body's pitch forward (Body), `bend` the spine's (Abdomen and Torso each) and `look` the neck and head coming back
+# up to look ahead; hands and feet (depth, height, side) stop at their keys, holding between two keys that are the same.
+CLIMB_POSE = {
+    "pelvis": [(0, (-1.267, 0.50)), (4, (-1.04, 0.45)), (8, (-0.84, 0.52)), (13, (-0.60, 0.84)), (18, (-0.30, 1.14)),
+               (24, (0.02, 1.24)), (29, (0.24, 1.16)), (33, (0.46, 0.92)), (37, (0.62, 0.58)), (40, (0.72, 0.42)),
+               (44, (0.893, 0.50))],
+    "lean": [(0, 0), (4, 6), (8, 10), (13, 22), (18, 36), (24, 42), (29, 38), (33, 28), (37, 18), (40, 14), (44, 0)],
+    "bend": [(0, 0), (4, 4), (8, 6), (13, 12), (18, 18), (24, 16), (29, 14), (33, 12), (37, 10), (40, 10), (44, 0)],
+    "look": [(0, 0), (4, -14), (8, -26), (13, -32), (18, -32), (29, -28), (37, -14), (44, 0)],
+    "foot_L": [(0, (-1.22, STANCE, 0.19)), (2, (-1.22, STANCE, 0.19)), (7, (-0.68, STANCE, 0.19)),
+               (9, (-0.68, STANCE, 0.19)), (12, (-0.62, 0.45, 0.24)), (15, (-0.52, 1.04, 0.26)),
+               (18, (-0.16, 0.95, 0.24)), (21, (-0.16, 0.95, 0.24)), (25, (0.14, 0.95, 0.24)),
+               (27, (0.16, 0.95, 0.24)), (29, (0.46, 0.98, 0.22)), (31, (0.56, 0.72, 0.2)), (33, (0.62, 0.42, 0.2)),
+               (37, (0.66, STANCE, 0.19)),
+               (40, (0.66, STANCE, 0.19)), (44, (0.96, STANCE, 0.19))],
+    "foot_R": [(0, (-1.34, STANCE, -0.19)), (4, (-1.34, STANCE, -0.19)), (9, (-0.90, STANCE, -0.19)),
+               (10, (-0.90, STANCE, -0.19)), (14, (-0.58, 0.40, -0.2)), (18, (-0.56, 0.70, -0.22)),
+               (21, (-0.46, 1.04, -0.24)), (24, (-0.12, 0.95, -0.24)), (29, (-0.12, 0.95, -0.24)),
+               (32, (0.20, 0.95, -0.22)), (35, (0.40, 0.97, -0.2)), (37, (0.50, 0.60, -0.2)),
+               (39, (0.58, STANCE, -0.19)),
+               (41, (0.58, STANCE, -0.19)), (44, (0.82, STANCE, -0.19))],
+    "hand_L": [(0, (-0.734, 0.78, 0.39)), (6, (-0.22, GRIP, 0.27)), (15, (-0.22, GRIP, 0.27)), (19, (0.10, GRIP, 0.27)),
+               (24, (0.10, GRIP, 0.27)), (26, (0.22, GRIP, 0.27)), (29, (0.22, GRIP, 0.27)), (31, (0.44, 1.02, 0.3)), (33, (0.72, 0.68, 0.33)),
+               (38, (1.0, 0.62, 0.37)), (44, (1.426, 0.78, 0.39))],
+    "hand_R": [(0, (-0.734, 0.8, -0.43)), (7, (-0.22, GRIP, -0.27)), (18, (-0.22, GRIP, -0.27)), (22, (0.12, GRIP, -0.27)),
+               (26, (0.12, GRIP, -0.27)), (28, (0.22, GRIP, -0.27)), (30, (0.22, GRIP, -0.27)),
+               (32, (0.44, 1.02, -0.3)), (34, (0.72, 0.66, -0.35)), (39, (1.0, 0.62, -0.39)), (44, (1.426, 0.8, -0.43))],
+}  # fmt: skip
+# The way of a body that crawls: from the Crawl's first frame the chest rears up the wall, the hands take the sill and
+# pull, the belly goes over it with the legs dragging after it, and it comes down head first onto its hands, back to
+# the Crawl's first frame. `lean` is the chest's pitch against the crawl's (negative rears up).
+CRAWL_CLIMB_POSE = {
+    "pelvis": [(0, (-1.25, 0.19)), (4, (-1.10, 0.24)), (8, (-0.82, 0.42)), (13, (-0.60, 0.74)), (18, (-0.30, 1.13)),
+               (24, (0.02, 1.25)), (29, (0.25, 1.19)), (33, (0.48, 0.96)), (37, (0.68, 0.55)), (40, (0.80, 0.33)),
+               (44, (0.91, 0.19))],
+    "lean": [(0, 0), (4, -28), (8, -40), (13, -40), (18, -18), (24, 8), (29, 28), (33, 38), (37, 30), (40, 14), (44, 0)],
+    "bend": [(0, 0), (8, -8), (18, 0), (29, 8), (37, 6), (44, 0)],
+    "look": [(0, 0), (8, 10), (18, 4), (29, -18), (37, -14), (44, 0)],
+    "foot_L": [(0, (-1.51, 0.18, 0.19)), (6, (-1.51, 0.18, 0.19)), (13, (-0.86, 0.25, 0.2)), (18, (-0.62, 0.72, 0.2)),
+               (24, (-0.36, 1.1, 0.2)), (29, (-0.10, 1.14, 0.2)), (33, (0.12, 1.14, 0.2)), (37, (0.46, 1.12, 0.2)),
+               (40, (0.66, 0.66, 0.2)), (44, (0.72, 0.18, 0.19))],
+    "foot_R": [(0, (-1.84, 0.16, -0.28)), (5, (-1.84, 0.16, -0.28)), (8, (-1.4, 0.16, -0.26)), (13, (-0.95, 0.4, -0.24)),
+               (18, (-0.70, 0.70, -0.22)), (24, (-0.42, 1.1, -0.22)), (29, (-0.18, 1.14, -0.22)),
+               (33, (0.02, 1.14, -0.22)), (37, (0.40, 1.12, -0.22)), (40, (0.62, 0.66, -0.24)), (44, (0.66, 0.16, -0.28))],
+    "hand_L": [(0, (-0.69, 0.015, 0.32)), (3, (-0.69, 0.015, 0.32)), (6, (-0.36, 1.08, 0.3)), (8, (-0.22, GRIP, 0.27)), (16, (-0.22, GRIP, 0.27)),
+               (20, (0.20, GRIP, 0.27)), (25, (0.20, GRIP, 0.27)), (28, (0.50, 1.02, 0.3)), (30, (0.66, 0.40, 0.32)), (33, (0.78, 0.015, 0.32)),
+               (38, (0.78, 0.015, 0.32)), (44, (1.47, 0.015, 0.32))],
+    "hand_R": [(0, (-0.69, 0.015, -0.36)), (5, (-0.69, 0.015, -0.36)), (8, (-0.36, 1.08, -0.3)), (10, (-0.22, GRIP, -0.27)),
+               (18, (-0.22, GRIP, -0.27)), (23, (0.20, GRIP, -0.27)), (27, (0.20, GRIP, -0.27)), (30, (0.50, 1.02, -0.3)),
+               (33, (0.72, 0.40, -0.34)), (36, (1.0, 0.015, -0.36)), (40, (1.0, 0.015, -0.36)),
+               (44, (1.47, 0.015, -0.36))],
+}  # fmt: skip
+# Armature space (X left, Y down, Z back: the file's world turned): the knees go up and out, the elbows out and back; a
+# hand on the sill lies flat, its fingers forward and a little down. A crawler's legs hang: their knees point down.
+CLIMB_POLES = {"Foot.L": Vector((0.8, -0.3, -1.0)), "Foot.R": Vector((-0.8, -0.3, -1.0)),
+               "L": Vector((1.0, 0.2, 0.6)), "R": Vector((-1.0, 0.2, 0.6))}  # fmt: skip
+CRAWL_CLIMB_POLES = {"Foot.L": Vector((0.5, 1.0, 0.0)), "Foot.R": Vector((-0.5, 1.0, 0.0)),
+                     "L": Vector((1.0, 0.2, 0.6)), "R": Vector((-1.0, 0.2, 0.6))}  # fmt: skip
+CLIMB_FLAT = Vector((0.0, 0.15, -1.0)).normalized()
 GAIT_SCALE = 1.3  # the walker's size in the game (ZombieModels): the speeds below are at that size
 REACH_USE = 0.97  # the furthest a foot may be from the hip, of the thigh and shin together (a knee never locks)
 LEGS = (("UpperLeg.L", "LowerLeg.L", "Foot.L"), ("UpperLeg.R", "LowerLeg.R", "Foot.R"))
@@ -147,23 +227,22 @@ def leg_shape(arm, run_poses):
     return shape
 
 
-def solve_leg(arm, pose, upper, lower, foot, shape):
-    """Turn `upper` and `lower` so the ankle meets the Foot bone (a two-bone solve in the plane of the kit's knee). A
-    foot out of the leg's reach is pulled back along the line to the hip until it is in reach (`REACH_USE` of the
-    leg), so the boot never stretches away from the shin. Returns how far it was pulled (kit metres)."""
-    apply_pose(arm, pose)
+def two_bones(arm, pose, upper, lower, goal, shape, pole=None):
+    """Turn `upper` and `lower` so the end of the limb (`shape["ankle"]`, in the lower bone's frame) reaches `goal`, in
+    the armature's space, in the plane of the kit's joint or toward `pole`, a direction in the armature's space. A goal
+    out of reach is pulled back along the line to the limb's root until it is in reach (`REACH_USE` of the limb).
+    Returns how far it was pulled (kit metres) and the point it was pulled to. `pose` is on the bones already."""
     pu, pl = arm.pose.bones[upper], arm.pose.bones[lower]
-    hip, knee, target = pu.head.copy(), pl.head.copy(), arm.pose.bones[foot].head.copy()
+    hip, knee = pu.head.copy(), pl.head.copy()
     l1, ankle = shape["thigh"], shape["ankle"]
     l2 = ankle.length
-    to = target - hip
+    to = goal - hip
     reach = (l1 + l2) * REACH_USE
     miss = max(0.0, to.length - reach)
     dist = min(to.length, reach)
     d = to.normalized()
-    if miss:
-        pose[foot]["loc"] = arm.data.bones[foot].matrix_local.inverted() @ (hip + d * dist)  # Root holds still
-    bend = (knee - hip) - d * (knee - hip).dot(d)  # the kit knee's side of the hip-foot line
+    side = (knee - hip) if pole is None else pole  # the kit knee's side of the hip-foot line, or the one asked for
+    bend = side - d * side.dot(d)
     bend.normalize()
     a = (l1 * l1 - l2 * l2 + dist * dist) / (2 * dist)
     new_knee = hip + d * a + bend * math.sqrt(max(l1 * l1 - a * a, 0.0))
@@ -178,6 +257,17 @@ def solve_leg(arm, pose, upper, lower, foot, shape):
     rest_l = (bu.matrix_local.inverted() @ bl.matrix_local).to_3x3()
     pose[upper]["rot"] = ((pu.parent.matrix.to_3x3() @ rest_u).inverted() @ mu_new).to_quaternion()
     pose[lower]["rot"] = ((mu_new @ rest_l).inverted() @ ml_new).to_quaternion()
+    return miss, hip + d * dist
+
+
+def solve_leg(arm, pose, upper, lower, foot, shape, pole=None):
+    """Turn `upper` and `lower` so the ankle meets the Foot bone (`two_bones`). A foot out of the leg's reach is pulled
+    back along the line to the hip, so the boot never stretches away from the shin. Returns how far it was pulled (kit
+    metres)."""
+    apply_pose(arm, pose)
+    miss, reached = two_bones(arm, pose, upper, lower, arm.pose.bones[foot].head.copy(), shape, pole)
+    if miss:
+        pose[foot]["loc"] = arm.data.bones[foot].matrix_local.inverted() @ reached  # Root holds still
     return miss
 
 
@@ -391,6 +481,129 @@ def crawl_death(arm, acts, every):
     sc.write(arm, CRAWL_DEATH, keys, every, "full", False, events=dict(f))
 
 
+def climb_origin(frame):
+    """Where the simulation has the zombie's origin at a frame of the climb, in the window's space: (depth, lift)
+    (`ZombieGate.lift_at` for the thickest wall; the frames are even along each part of the way)."""
+
+    def ease(t):
+        return t * t * (3 - 2 * t)
+
+    if frame <= CLIMB_RISE:
+        k = frame / CLIMB_RISE
+        return -HELD - RAMP * (1 - k), SILL * ease(k)
+    if frame <= CLIMB_OVER:
+        return -HELD + 2 * HELD * (frame - CLIMB_RISE) / (CLIMB_OVER - CLIMB_RISE), SILL
+    k = (frame - CLIMB_OVER) / (CLIMB_FRAMES - CLIMB_OVER)
+    return HELD + RAMP * k, SILL * (1 - ease(k))
+
+
+def window_point(frame, depth, height, side=0.0):
+    """A place in the window's space as the file's world has it at `frame` (kit metres, the origin at the file's)."""
+    at, lift = climb_origin(frame)
+    return Vector((side, -(depth - at), height - lift)) / GAIT_SCALE
+
+
+def along(keys, frame, moving=False):
+    """The value of a track of (frame, value) keys at `frame`: stopping at each key, or `moving` on through them (a
+    cubic with the slope of the neighbouring keys)."""
+    keys = [(t, Vector(v) if isinstance(v, tuple) else Vector((v, 0.0))) for t, v in keys]
+    if frame <= keys[0][0]:
+        return keys[0][1]
+    for i in range(len(keys) - 1):
+        (t0, v0), (t1, v1) = keys[i], keys[i + 1]
+        if frame > t1:
+            continue
+        u, span = (frame - t0) / (t1 - t0), t1 - t0
+        if not moving:
+            return v0.lerp(v1, u * u * (3 - 2 * u))
+        m0 = (v1 - keys[i - 1][1]) / (t1 - keys[i - 1][0]) * span if i > 0 else v0 * 0
+        m1 = (keys[i + 2][1] - v0) / (keys[i + 2][0] - t0) * span if i + 2 < len(keys) else v0 * 0
+        return ((2 * u**3 - 3 * u**2 + 1) * v0 + (u**3 - 2 * u**2 + u) * m0
+                + (-2 * u**3 + 3 * u**2) * v1 + (u**3 - u**2) * m1)  # fmt: skip
+    return keys[-1][1]
+
+
+def pelvis_at(arm, pose):
+    """The middle of the hip joints in the file's world."""
+    apply_pose(arm, pose)
+    left, right = arm.pose.bones["UpperLeg.L"].head, arm.pose.bones["UpperLeg.R"].head
+    return arm.matrix_world @ ((left + right) / 2)
+
+
+def place_pelvis(arm, pose, target):
+    """Move the Body bone so the pelvis is at `target`, the file's world (its pitch has moved it: two passes)."""
+    rest = arm.data.bones["Body"].matrix_local.to_3x3().inverted() @ arm.matrix_world.to_3x3().inverted()
+    for _ in range(2):
+        pose["Body"]["loc"] = pose["Body"]["loc"] + rest @ (target - pelvis_at(arm, pose))
+
+
+def solve_arm(arm, pose, side, target, pole):
+    """Turn the arm so the knuckles (Index1) are at `target`, the file's world, the elbow toward `pole` (a direction in
+    the armature's space): the legs' two-bone solve with the knuckles as the ankle. Returns the miss, kit metres."""
+    apply_pose(arm, pose)
+    upper, lower = arm.pose.bones[f"UpperArm.{side}"], arm.pose.bones[f"LowerArm.{side}"]
+    knuckle = arm.pose.bones[f"Index1.{side}"].head
+    shape = {"thigh": (lower.head - upper.head).length,
+             "ankle": lower.matrix.to_3x3().inverted() @ (knuckle - lower.head)}  # fmt: skip
+    goal = arm.matrix_world.inverted() @ target
+    return two_bones(arm, pose, upper.name, lower.name, goal, shape, pole)[0]
+
+
+def lay_fingers(arm, pose, side, flat):
+    """Turn the fingers of a hand so that each lies along `flat`, a direction in the armature's space (the kit's curled
+    fingers and hanging thumb would go through a sill the knuckles rest on)."""
+    apply_pose(arm, pose)
+    for finger in ("Index", "Middle", "Pinky", "Thumb"):
+        pb = arm.pose.bones[f"{finger}1.{side}"]
+        now = arm.pose.bones[f"{finger}2.{side}"].head - pb.head
+        turned = now.rotation_difference(flat).to_matrix() @ pb.matrix.to_3x3()
+        bone = arm.data.bones[pb.name]
+        rest = (bone.parent.matrix_local.inverted() @ bone.matrix_local).to_3x3()
+        pose[pb.name]["rot"] = ((pb.parent.matrix.to_3x3() @ rest).inverted() @ turned).to_quaternion()
+
+
+def climb_frames(arm, base, shape, table, offsets, poles):
+    """The poses of a way over the sill from a table of the window's space (see CLIMB_POSE). `offsets(frame)` turns the
+    body and `poles` says where the elbows and knees point. Returns keys and the worst misses of a hand and of a foot
+    (metres at a walker's size)."""
+    keys, hand_miss, foot_miss = [], 0.0, 0.0
+    mw = arm.matrix_world
+    for frame in range(CLIMB_FRAMES + 1):
+        pose = sc.offset(base, **offsets(frame))
+        place_pelvis(arm, pose, window_point(frame, *along(table["pelvis"], frame, moving=True)))
+        for side, (upper, lower, foot) in zip(("L", "R"), LEGS, strict=True):
+            depth, height, left = along(table[f"foot_{side}"], frame)
+            at = window_point(frame, depth, height, left)
+            pose[foot] = {
+                "rot": base[foot]["rot"].copy(),
+                "loc": (mw @ arm.data.bones[foot].matrix_local).inverted() @ at,
+            }
+            foot_miss = max(foot_miss, solve_leg(arm, pose, upper, lower, foot, shape[lower], poles[foot]))
+        for side in ("L", "R"):
+            depth, height, left = along(table[f"hand_{side}"], frame)
+            hand_miss = max(
+                hand_miss, solve_arm(arm, pose, side, window_point(frame, depth, height, left), poles[side])
+            )
+            if abs(height - GRIP) < 0.02 or height < 0.05:  # on the sill or on the floor
+                lay_fingers(arm, pose, side, CLIMB_FLAT)
+        keys.append((frame, pose))
+    return keys, hand_miss * GAIT_SCALE, foot_miss * GAIT_SCALE
+
+
+def climb_clip(arm, name, base, shape, table, poles, every):
+    """A way over the sill from its table: the body's pitch from `lean`, `bend` (each of Abdomen and Torso) and `look`
+    (half each to the neck and head), on top of `base`."""
+
+    def offsets(frame):
+        lean, bend, look = [along(table[k], frame, moving=True).x for k in ("lean", "bend", "look")]
+        return {"Body": (lean, 0, 0), "Abdomen": (bend, 0, 0), "Torso": (bend, 0, 0),
+                "Neck": (look * 0.5, 0, 0), "Head": (look * 0.5, 0, 0)}  # fmt: skip
+
+    keys, hands, feet = climb_frames(arm, base, shape, table, offsets, poles)
+    print("CLIMB_REACH", name, "hands", round(hands, 3), "feet", round(feet, 3))
+    sc.write(arm, name, keys, every, "full", False, events=dict(CLIMB_EVENTS))
+
+
 def measure_gait(arm, action, scale=GAIT_SCALE, hz=60, planted=0.2, settle=0.5, seconds=5.0):
     """The ground speed (m/s at `scale`) a clip's planted feet cover at its authored rate, as the game's test measures
     it (game/tests/zombies/test_zombie_gait.gd, docs/research/zombie-gait.md): from `settle` seconds in, `seconds`
@@ -456,6 +669,9 @@ def build(arm, probe=False):
     crawl_stagger(arm, acts, every)
     crawl_death(arm, acts, every)
     miss, shape = sprint(arm, acts["Run"], every)
+    climb_clip(arm, CLIMB, idle, shape, CLIMB_POSE, CLIMB_POLES, every)
+    crawl = filled(arm, sc.sample(acts["Crawl"], 0))
+    climb_clip(arm, CRAWL_CLIMB, crawl, shape, CRAWL_CLIMB_POSE, CRAWL_CLIMB_POLES, every)
     print("SPRINT_LEGS", {k: (round(v["thigh"], 3), round(v["ankle"].length, 3), round(v["ankle_spread"], 4))
                           for k, v in shape.items()}, "reach miss", round(miss, 4))  # fmt: skip
     for clip in ("Walk", "Run", SPRINT):
@@ -474,7 +690,7 @@ def build(arm, probe=False):
                 n += 1
         sc.write(arm, "Probe", keys, every, "full", False)
         sc.CLIPS.pop("Probe")
-    return [TEAR, SPRINT, CRAWL_ATTACK, CRAWL_STAGGER, CRAWL_DEATH, *(["Probe"] if probe else [])]
+    return [TEAR, SPRINT, CRAWL_ATTACK, CRAWL_STAGGER, CRAWL_DEATH, CLIMB, CRAWL_CLIMB, *(["Probe"] if probe else [])]
 
 
 def add_tracks(arm, names):

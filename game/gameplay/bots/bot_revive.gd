@@ -750,7 +750,8 @@ func _dead_by_id(beliefs: BotBeliefs) -> Dictionary:
 			"pos": beliefs.guess(contact, _profile.memory_seconds),
 			"yaw": float(contact.get("yaw", 0.0)),
 			"scale": ZombieModels.height_of(look),
-			"pose": ZombiePose.hit_set(look, contact["mode"]),
+			"pose":
+			ZombiePose.hit_set(look, contact["mode"], false, 0.0, contact.get("climbing", false)),
 		}
 	return found
 
