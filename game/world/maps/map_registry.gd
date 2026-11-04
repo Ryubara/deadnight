@@ -15,6 +15,10 @@ const PATHS: Array[String] = [
 	"res://world/maps/small_indoor.tres",
 ]
 
+## The levels kept for the third and fourth maps when they exist (a map is a `.tres` with its own
+## `unlock_level`; these are the rungs the design page holds for them, docs/design/maps.md).
+const RESERVED_UNLOCKS: Array[int] = [25, 40]
+
 static var _maps: Array[MapInfo] = []
 
 
@@ -47,6 +51,28 @@ static func find(id: String) -> MapInfo:
 static func is_playable(id: String) -> bool:
 	var info := find(id)
 	return info != null and info.is_playable()
+
+
+## Whether `id` is a map a night can be played on that an account of `level` may choose for a night
+## it hosts: it is playable and the level opens it.
+static func is_open(id: String, level: int) -> bool:
+	var info := find(id)
+	return info != null and info.is_playable() and info.is_open_at(level)
+
+
+## The maps a host of `level` is offered, in the picker's order.
+static func open_at(level: int) -> Array[MapInfo]:
+	var out: Array[MapInfo] = []
+	for info in playable():
+		if info.is_open_at(level):
+			out.append(info)
+	return out
+
+
+## `id` when a host of `level` may choose it, else the default map's id: a lobby whose host is below
+## a map's level does not offer it (the maintainer, 2026-11-04: "Host's level decides the map").
+static func fit_host(id: String, level: int) -> String:
+	return id if is_open(id, level) else DEFAULT
 
 
 ## The map called `id`; the default map for an id nobody knows (a night never fails to load).

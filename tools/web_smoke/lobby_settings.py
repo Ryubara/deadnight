@@ -100,6 +100,7 @@ def main() -> int:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True, args=smoke.SOFTWARE_GL)
             page = browser.new_context(viewport=smoke.VIEWPORT).new_page()
+            smoke.give_level(page, 10)  # the host chooses the back rooms, which are level 10
             page.on(
                 "pageerror",
                 lambda e: None if any(t in str(e) for t in IGNORED) else problems.append(f"[pageerror] {e}"),

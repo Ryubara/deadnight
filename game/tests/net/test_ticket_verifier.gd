@@ -176,3 +176,60 @@ func test_a_ticket_whose_rules_this_server_does_not_take_is_refused_and_not_spen
 		var answer := verifier.admit(ticket, now)
 		assert_bool(answer["ok"]).is_false()
 		assert_str(answer["reason"]).is_equal(TicketVerifier.BAD_SETTINGS)
+
+
+# --- The host's level decides the map (#1067) ---
+
+
+func _hosted(user: String, map_id: String, host_level: Variant) -> Dictionary:
+	var chosen := {
+		"count_multiplier": 2.0, "max_alive": 12, "break_seconds": 0.0, "map": map_id, "bots": 2
+	}
+	var ticket := TicketMaker.make(SECRET, "gs-test", "m", user, user, 60, chosen, host_level)
+	return _verifier().admit(ticket, int(Time.get_unix_time_from_system()))
+
+
+func test_a_host_below_level_10_gets_the_lot_when_the_ticket_names_the_back_rooms() -> void:
+	var result := _hosted("ann", "small_indoor", 9)
+	assert_bool(result["ok"]).is_true()
+	assert_str((result["settings"] as MatchSettings).map).is_equal("drive_in")
+	assert_str(result["map_refused"]).is_equal("small_indoor")
+	assert_int(result["host_level"]).is_equal(9)
+	# The host's other rules stand.
+	assert_int((result["settings"] as MatchSettings).bots).is_equal(2)
+	assert_float((result["settings"] as MatchSettings).count_multiplier).is_equal(2.0)
+
+
+func test_a_host_of_level_10_or_more_keeps_the_back_rooms() -> void:
+	for level in [10, 11, 55, 900]:
+		var result := _hosted("bo%d" % level, "small_indoor", level)
+		assert_str((result["settings"] as MatchSettings).map).is_equal("small_indoor")
+		assert_str(result["map_refused"]).is_empty()
+	# JSON gives numbers as floats.
+	assert_str((_hosted("cy", "small_indoor", 12.0)["settings"] as MatchSettings).map).is_equal(
+		"small_indoor"
+	)
+
+
+func test_a_ticket_that_does_not_say_the_hosts_level_leaves_the_map_alone() -> void:
+	# A backend from before levels: nothing to check the map against.
+	var result := _hosted("di", "small_indoor", null)
+	assert_int(result["host_level"]).is_equal(TicketVerifier.NO_LEVEL)
+	assert_str((result["settings"] as MatchSettings).map).is_equal("small_indoor")
+
+
+func test_a_damaged_level_claim_opens_nothing() -> void:
+	for claim in [0, -4, 2.5, "ten", true, [10]]:
+		var result := _hosted("ed", "small_indoor", claim)
+		assert_int(result["host_level"]).is_equal(1)
+		assert_str((result["settings"] as MatchSettings).map).is_equal("drive_in")
+
+
+func test_the_lot_needs_no_level_and_a_ticket_without_rules_is_unaffected() -> void:
+	var on_lot := _hosted("fy", "drive_in", 1)
+	assert_str((on_lot["settings"] as MatchSettings).map).is_equal("drive_in")
+	assert_str(on_lot["map_refused"]).is_empty()
+	var plain := TicketMaker.make(SECRET, "gs-test", "m", "gi", "Gi", 60, {}, 1)
+	var admitted := _verifier().admit(plain, int(Time.get_unix_time_from_system()))
+	assert_bool(admitted["ok"]).is_true()
+	assert_object(admitted["settings"]).is_null()

@@ -1,3 +1,4 @@
+# gdlint:disable=max-public-methods
 # The map picker (#624), driven the way a player drives it: the keyboard, a gamepad and a finger
 # move the focus over the cards and choose, a card for a map that is not built yet can be read but
 # chooses nothing, and the settings panel hands the choice out with the other rules. A stub second
@@ -13,6 +14,7 @@ var _blocked: Array[String] = []
 
 func before_test() -> void:
 	StubMaps.install_picker_set()
+	PlayerLevel.use(1)
 	UIInputMode.reset()
 	_heard.clear()
 	_blocked.clear()
@@ -20,6 +22,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	StubMaps.remove()
+	PlayerLevel.reset()
 	UIInputMode.reset()
 
 
@@ -313,6 +316,7 @@ func test_the_compact_panel_fits_a_phone_held_sideways() -> void:
 
 func test_the_second_map_card_is_open_and_the_keyboard_chooses_it() -> void:
 	StubMaps.remove()
+	PlayerLevel.use(10)
 	var picker := await _picker()
 	var card := picker.card_for("small_indoor")
 	assert_bool(card.is_locked()).is_false()
@@ -329,6 +333,7 @@ func test_the_second_map_card_is_open_and_the_keyboard_chooses_it() -> void:
 
 func test_the_panel_hands_the_second_map_out_and_shows_it_back() -> void:
 	StubMaps.remove()
+	PlayerLevel.use(10)
 	var holder := Control.new()
 	add_child(holder)
 	var panel := MatchSettingsPanel.new()
@@ -343,3 +348,151 @@ func test_the_panel_hands_the_second_map_out_and_shows_it_back() -> void:
 	panel.set_settings(given)
 	assert_str(panel.map_picker.selected_id).is_equal("small_indoor")
 	holder.free()
+
+
+# --- The back rooms are level 10 (#1067) ---
+
+
+func _card_centre(card: MapCard) -> Vector2:
+	return card.get_global_rect().get_center()
+
+
+func _click(card: MapCard) -> void:
+	var at := _card_centre(card)
+	for pressed in [true, false]:
+		var click := InputEventMouseButton.new()
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.pressed = pressed
+		click.position = at
+		click.global_position = at
+		get_viewport().push_input(click, true)
+		await get_tree().process_frame
+
+
+func test_below_level_10_the_back_rooms_are_a_hidden_card_that_chooses_nothing() -> void:
+	StubMaps.remove()
+	PlayerLevel.use(9)
+	var picker := await _picker()
+	var card := picker.card_for("small_indoor")
+	assert_bool(card.is_level_locked()).is_true()
+	assert_bool(card.is_hidden()).is_true()
+	assert_bool(card.is_locked()).is_false()
+	assert_bool(card.blocks()).is_true()
+	# The wardrobe's look: `???` for the name, and what unlocks it for a screen reader and the
+	# pointer; the real name is not given away.
+	assert_str(card.accessibility_name).is_equal(
+		"Locked map, Reach level 10 to host a night on this map."
+	)
+	assert_str(card.tooltip_text).is_equal("Reach level 10 to host a night on this map.")
+	assert_str(card.accessibility_name).not_contains("back rooms")
+	assert_str(card.ui_sound_role()).is_equal(&"map_card_locked")
+	assert_str(picker.card_for("drive_in").ui_sound_role()).is_equal(&"map_card")
+	assert_str(picker.card_for("drive_in").tooltip_text).is_empty()
+
+
+func test_the_keyboard_reads_the_hidden_card_and_enter_on_it_is_refused() -> void:
+	StubMaps.remove()
+	PlayerLevel.use(1)
+	var picker := await _picker()
+	picker.card_for("drive_in").grab_focus()
+	await _key(KEY_DOWN)
+	assert_str(_focused(picker)).is_equal("small_indoor")
+	await _key(KEY_ENTER)
+	assert_str(picker.selected_id).is_equal("drive_in")
+	assert_array(_heard).is_empty()
+	assert_array(_blocked).is_equal(["small_indoor"])
+	await _pad(JOY_BUTTON_A)
+	assert_array(_blocked).is_equal(["small_indoor", "small_indoor"])
+	assert_str(picker.selected_id).is_equal("drive_in")
+
+
+func test_a_click_and_a_tap_on_the_hidden_card_choose_nothing_and_the_refusal_is_heard() -> void:
+	StubMaps.remove()
+	PlayerLevel.use(5)
+	var picker := await _picker()
+	var card := picker.card_for("small_indoor")
+	await _click(card)
+	assert_str(picker.selected_id).is_equal("drive_in")
+	assert_array(_blocked).is_equal(["small_indoor"])
+	UIInputMode.touch = true
+	await _tap(card)
+	assert_array(_blocked).is_equal(["small_indoor", "small_indoor"])
+	assert_array(_heard).is_empty()
+	assert_bool(card.selected).is_false()
+	# The press is refused with the sound ladder's refusal (the role the card plays as).
+	assert_str(card.ui_sound_role()).is_equal(&"map_card_locked")
+	assert_bool(UiSoundTable.has_role(&"map_card_locked")).is_true()
+
+
+func test_level_10_opens_the_card_and_the_level_can_rise_while_the_picker_is_open() -> void:
+	StubMaps.remove()
+	PlayerLevel.use(9)
+	var picker := await _picker()
+	var card := picker.card_for("small_indoor")
+	assert_bool(card.blocks()).is_true()
+	picker.level = 10
+	assert_bool(card.blocks()).is_false()
+	assert_bool(card.is_hidden()).is_false()
+	assert_str(card.accessibility_name).is_equal("The back rooms, 600 m² · 1 to 8 players")
+	assert_str(card.tooltip_text).is_empty()
+	card.pressed.emit()
+	assert_str(picker.selected_id).is_equal("small_indoor")
+	# If the level fell (another account signed in), a host cannot sit on the map any more.
+	picker.level = 3
+	assert_str(picker.selected_id).is_equal("drive_in")
+	assert_bool(card.selected).is_false()
+
+
+func test_a_guest_below_level_10_sees_the_hosts_back_rooms_by_name() -> void:
+	StubMaps.remove()
+	PlayerLevel.use(2)
+	var picker := await _picker()
+	picker.set_selected("small_indoor")
+	picker.set_editable(false)
+	var card := picker.card_for("small_indoor")
+	# The lobby's map is shown, not hidden, and stays the lobby's: a guest plays a hosted night
+	# there as a visitor.
+	assert_str(picker.selected_id).is_equal("small_indoor")
+	assert_bool(card.is_level_locked()).is_true()
+	assert_bool(card.is_hidden()).is_false()
+	assert_str(card.accessibility_name).is_equal(
+		"The back rooms, 600 m² · 1 to 8 players, selected"
+	)
+	# If that guest becomes the host (the host left), the picker takes the choice only if the level
+	# opens it.
+	picker.set_editable(true)
+	assert_str(picker.selected_id).is_equal("drive_in")
+
+
+func test_the_panel_never_hands_out_a_map_the_level_does_not_open() -> void:
+	StubMaps.remove()
+	PlayerLevel.use(4)
+	var holder := Control.new()
+	add_child(holder)
+	var panel := MatchSettingsPanel.new()
+	holder.add_child(panel)
+	await get_tree().process_frame
+	panel.map_picker.card_for("small_indoor").pressed.emit()
+	assert_str(panel.settings().map).is_equal("drive_in")
+	# Handed settings that name it (a lobby the last host left), the editable panel falls back when
+	# it takes the choice; Solo's Start fits the choice to the level in any case.
+	var given := MatchSettings.new()
+	given.map = "small_indoor"
+	panel.set_settings(given)
+	panel.set_editable(true)
+	assert_str(panel.settings().map).is_equal("drive_in")
+	assert_str(panel.settings().fit_host(panel.map_picker.level).map).is_equal("drive_in")
+	holder.free()
+
+
+func test_the_picker_at_level_1_and_10_on_the_phone_form() -> void:
+	StubMaps.remove()
+	PlayerLevel.use(1)
+	var picker := await _picker()
+	picker.set_compact(true)
+	await get_tree().process_frame
+	var card := picker.card_for("small_indoor")
+	assert_bool(card.blocks()).is_true()
+	assert_float(card.custom_minimum_size.y).is_greater_equal(MenuLook.TAP_TARGET)
+	picker.level = 10
+	assert_bool(card.blocks()).is_false()
