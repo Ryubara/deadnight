@@ -15,7 +15,7 @@ const GLIDE_MAX_JUMP := 4.0
 ## (hands over the sill, then the legs), and leans forward by this angle (degrees) about its feet,
 ## reaching in over the ledge; the lean eases in and out over `CLIMB_EASE_SECONDS`.
 const CLIMB_RATE := 1.3
-const CLIMB_LEAN := 28.0
+const CLIMB_LEAN := 12.0
 const CLIMB_EASE_SECONDS := 0.2
 
 var zombie_id: int = 0

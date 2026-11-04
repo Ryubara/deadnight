@@ -443,6 +443,7 @@ script = ExtResource("barricade")
 metadata/barricade_id = "nw"
 metadata/sill = 0.9
 metadata/thickness = 0.56
+metadata/clear_half = 1.8
 
 [node name="Board1" parent="Field/BreachNW" instance=ExtResource("board")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
@@ -544,6 +545,7 @@ script = ExtResource("barricade")
 metadata/barricade_id = "ne"
 metadata/sill = 0.9
 metadata/thickness = 0.56
+metadata/clear_half = 1.8
 
 [node name="Board1" parent="Field/BreachNE" instance=ExtResource("board")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
@@ -645,6 +647,7 @@ script = ExtResource("barricade")
 metadata/barricade_id = "w"
 metadata/sill = 0.9
 metadata/thickness = 0.56
+metadata/clear_half = 1.8
 
 [node name="Board1" parent="Field/BreachW" instance=ExtResource("board")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
@@ -746,6 +749,7 @@ script = ExtResource("barricade")
 metadata/barricade_id = "e"
 metadata/sill = 0.9
 metadata/thickness = 0.56
+metadata/clear_half = 1.8
 
 [node name="Board1" parent="Field/BreachE" instance=ExtResource("board")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
@@ -847,6 +851,7 @@ script = ExtResource("barricade")
 metadata/barricade_id = "n"
 metadata/sill = 0.9
 metadata/thickness = 0.56
+metadata/clear_half = 1.8
 
 [node name="Board1" parent="Field/BreachN" instance=ExtResource("board")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
@@ -948,6 +953,7 @@ script = ExtResource("barricade")
 metadata/barricade_id = "n2"
 metadata/sill = 0.9
 metadata/thickness = 0.56
+metadata/clear_half = 1.8
 
 [node name="Board1" parent="Field/BreachN2" instance=ExtResource("board")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)

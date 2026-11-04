@@ -333,11 +333,11 @@ size = Vector3(0.3, 3.2, 14.8)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS0" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.350, 1.600, 14.650)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.475, 1.600, 14.650)
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(3.3, 3.2, 0.3)
+size = Vector3(3.55, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS1" type="CSGBox3D" parent="Start"]
@@ -345,7 +345,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, 3
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(2, 0.4, 0.3)
+size = Vector3(1.5, 0.4, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS2" type="CSGBox3D" parent="Start"]
@@ -353,7 +353,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 1
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(6, 3.2, 0.3)
+size = Vector3(6.5, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS3" type="CSGBox3D" parent="Start"]
@@ -361,23 +361,23 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.000, 
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(2, 0.4, 0.3)
+size = Vector3(1.5, 0.4, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS4" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.650, 1.600, 14.650)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.525, 1.600, 14.650)
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(3.3, 3.2, 0.3)
+size = Vector3(3.55, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallE0" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 1.600, 1.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 1.600, 1.625)
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 3.2, 3)
+size = Vector3(0.3, 3.2, 3.25)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallE1" type="CSGBox3D" parent="Start"]
@@ -385,7 +385,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 0.4, 2)
+size = Vector3(0.3, 0.4, 1.5)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallE2" type="CSGBox3D" parent="Start"]
@@ -393,7 +393,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 3.2, 2)
+size = Vector3(0.3, 3.2, 2.5)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallE3" type="CSGBox3D" parent="Start"]
@@ -401,7 +401,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 0.4, 2)
+size = Vector3(0.3, 0.4, 1.5)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallE4" type="CSGBox3D" parent="Start"]
@@ -409,7 +409,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 3.2, 2)
+size = Vector3(0.3, 3.2, 2.5)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallE5" type="CSGBox3D" parent="Start"]
@@ -417,23 +417,23 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 0.4, 2)
+size = Vector3(0.3, 0.4, 1.5)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallE6" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 1.600, 13.900)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.150, 1.600, 13.775)
 layers = 2
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 3.2, 1.8)
+size = Vector3(0.3, 3.2, 2.05)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS0" type="CSGBox3D" parent="Side"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -5.950, 1.600, -0.150)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -5.825, 1.600, -0.150)
 layers = 6
 use_collision = true
 collision_layer = 3
-size = Vector3(0.7, 3.2, 0.3)
+size = Vector3(0.95, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS1" type="CSGBox3D" parent="Side"]
@@ -441,7 +441,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.600, 
 layers = 6
 use_collision = true
 collision_layer = 3
-size = Vector3(2, 0.4, 0.3)
+size = Vector3(1.5, 0.4, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS2" type="CSGBox3D" parent="Side"]
@@ -449,7 +449,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.100, 
 layers = 6
 use_collision = true
 collision_layer = 3
-size = Vector3(1, 3.2, 0.3)
+size = Vector3(1.5, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS3" type="CSGBox3D" parent="Side"]
@@ -457,15 +457,15 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.600, 
 layers = 6
 use_collision = true
 collision_layer = 3
-size = Vector3(2, 0.4, 0.3)
+size = Vector3(1.5, 0.4, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS4" type="CSGBox3D" parent="Side"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.950, 1.600, -0.150)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.825, 1.600, -0.150)
 layers = 6
 use_collision = true
 collision_layer = 3
-size = Vector3(13.1, 3.2, 0.3)
+size = Vector3(13.35, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS5" type="CSGBox3D" parent="Side"]
@@ -501,11 +501,11 @@ size = Vector3(0.3, 3.2, 7.5)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallW0" type="CSGBox3D" parent="Side"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.150, 1.600, -5.800)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.150, 1.600, -5.675)
 layers = 4
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 3.2, 4.6)
+size = Vector3(0.3, 3.2, 4.85)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallW1" type="CSGBox3D" parent="Side"]
@@ -513,15 +513,15 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.150, 
 layers = 4
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 0.4, 2)
+size = Vector3(0.3, 0.4, 1.5)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallW2" type="CSGBox3D" parent="Side"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.150, 1.600, -0.900)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.150, 1.600, -1.025)
 layers = 4
 use_collision = true
 collision_layer = 3
-size = Vector3(0.3, 3.2, 1.2)
+size = Vector3(0.3, 3.2, 1.45)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="DispatchCounter" type="CSGBox3D" parent="Start"]
@@ -710,11 +710,11 @@ size = Vector3(0.5, 0.4, 0.5)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallS0" type="CSGBox3D" parent="UpperA"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.375, 5.000, 4.600)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.500, 5.000, 4.600)
 layers = 8
 use_collision = true
 collision_layer = 3
-size = Vector3(3.25, 3.2, 0.2)
+size = Vector3(3.5, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallS1" type="CSGBox3D" parent="UpperA"]
@@ -722,7 +722,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, 6
 layers = 8
 use_collision = true
 collision_layer = 3
-size = Vector3(2, 0.4, 0.2)
+size = Vector3(1.5, 0.4, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallS2" type="CSGBox3D" parent="UpperA"]
@@ -730,7 +730,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 5
 layers = 8
 use_collision = true
 collision_layer = 3
-size = Vector3(6, 3.2, 0.2)
+size = Vector3(6.5, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallS3" type="CSGBox3D" parent="UpperA"]
@@ -738,15 +738,15 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.000, 
 layers = 8
 use_collision = true
 collision_layer = 3
-size = Vector3(2, 0.4, 0.2)
+size = Vector3(1.5, 0.4, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallS4" type="CSGBox3D" parent="UpperA"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.625, 5.000, 4.600)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.500, 5.000, 4.600)
 layers = 8
 use_collision = true
 collision_layer = 3
-size = Vector3(3.25, 3.2, 0.2)
+size = Vector3(3.5, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallW0" type="CSGBox3D" parent="UpperA"]
@@ -790,11 +790,11 @@ size = Vector3(2.75, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallN0" type="CSGBox3D" parent="UpperB"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.125, 5.000, -7.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.000, 5.000, -7.950)
 layers = 16
 use_collision = true
 collision_layer = 3
-size = Vector3(4.25, 3.2, 0.2)
+size = Vector3(4.5, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallN1" type="CSGBox3D" parent="UpperB"]
@@ -802,7 +802,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.000, 
 layers = 16
 use_collision = true
 collision_layer = 3
-size = Vector3(2, 0.4, 0.2)
+size = Vector3(1.5, 0.4, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallN2" type="CSGBox3D" parent="UpperB"]
@@ -810,7 +810,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, 5
 layers = 16
 use_collision = true
 collision_layer = 3
-size = Vector3(8, 3.2, 0.2)
+size = Vector3(8.5, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallN3" type="CSGBox3D" parent="UpperB"]
@@ -818,15 +818,15 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 9.000, 6
 layers = 16
 use_collision = true
 collision_layer = 3
-size = Vector3(2, 0.4, 0.2)
+size = Vector3(1.5, 0.4, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallN4" type="CSGBox3D" parent="UpperB"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 13.125, 5.000, -7.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 13.000, 5.000, -7.950)
 layers = 16
 use_collision = true
 collision_layer = 3
-size = Vector3(6.25, 3.2, 0.2)
+size = Vector3(6.5, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallW0" type="CSGBox3D" parent="UpperB"]
@@ -887,7 +887,7 @@ transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 4.000,
 metadata/barricade_id = "start_1"
 metadata/room = "start"
 metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.3)
+metadata/gap = Vector3(1.5, 2.2, 0.3)
 
 [node name="Lintel" type="StaticBody3D" parent="Windows/Window_start_1"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
@@ -946,7 +946,8 @@ metadata/barricade_id = "start_1"
 metadata/board_half = 0.75
 metadata/sill = 0.9
 metadata/thickness = 0.3
-metadata/gap_half = 1
+metadata/gap_half = 0.75
+metadata/clear_half = 0.6
 
 [node name="Board1" parent="Windows/Window_start_1/Boards" instance=ExtResource("board")]
 transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.215)
@@ -973,7 +974,7 @@ transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 12.000
 metadata/barricade_id = "start_2"
 metadata/room = "start"
 metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.3)
+metadata/gap = Vector3(1.5, 2.2, 0.3)
 
 [node name="Lintel" type="StaticBody3D" parent="Windows/Window_start_2"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
@@ -1024,7 +1025,8 @@ metadata/barricade_id = "start_2"
 metadata/board_half = 0.75
 metadata/sill = 0.9
 metadata/thickness = 0.3
-metadata/gap_half = 1
+metadata/gap_half = 0.75
+metadata/clear_half = 0.6
 
 [node name="Board1" parent="Windows/Window_start_2/Boards" instance=ExtResource("board")]
 transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.215)
@@ -1051,7 +1053,7 @@ transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 16.150, 
 metadata/barricade_id = "start_3"
 metadata/room = "start"
 metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.3)
+metadata/gap = Vector3(1.5, 2.2, 0.3)
 
 [node name="Lintel" type="StaticBody3D" parent="Windows/Window_start_3"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
@@ -1110,7 +1112,8 @@ metadata/barricade_id = "start_3"
 metadata/board_half = 0.75
 metadata/sill = 0.9
 metadata/thickness = 0.3
-metadata/gap_half = 1
+metadata/gap_half = 0.75
+metadata/clear_half = 0.6
 
 [node name="Board1" parent="Windows/Window_start_3/Boards" instance=ExtResource("board")]
 transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.215)
@@ -1137,7 +1140,7 @@ transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 16.150, 
 metadata/barricade_id = "start_4"
 metadata/room = "start"
 metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.3)
+metadata/gap = Vector3(1.5, 2.2, 0.3)
 
 [node name="Lintel" type="StaticBody3D" parent="Windows/Window_start_4"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
@@ -1188,7 +1191,8 @@ metadata/barricade_id = "start_4"
 metadata/board_half = 0.75
 metadata/sill = 0.9
 metadata/thickness = 0.3
-metadata/gap_half = 1
+metadata/gap_half = 0.75
+metadata/clear_half = 0.6
 
 [node name="Board1" parent="Windows/Window_start_4/Boards" instance=ExtResource("board")]
 transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.215)
@@ -1215,7 +1219,7 @@ transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 16.150, 
 metadata/barricade_id = "start_5"
 metadata/room = "start"
 metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.3)
+metadata/gap = Vector3(1.5, 2.2, 0.3)
 
 [node name="Lintel" type="StaticBody3D" parent="Windows/Window_start_5"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
@@ -1274,7 +1278,8 @@ metadata/barricade_id = "start_5"
 metadata/board_half = 0.75
 metadata/sill = 0.9
 metadata/thickness = 0.3
-metadata/gap_half = 1
+metadata/gap_half = 0.75
+metadata/clear_half = 0.6
 
 [node name="Board1" parent="Windows/Window_start_5/Boards" instance=ExtResource("board")]
 transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.215)
@@ -1301,7 +1306,7 @@ transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -4.600
 metadata/barricade_id = "side_1"
 metadata/room = "side"
 metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.3)
+metadata/gap = Vector3(1.5, 2.2, 0.3)
 
 [node name="Lintel" type="StaticBody3D" parent="Windows/Window_side_1"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
@@ -1360,7 +1365,8 @@ metadata/barricade_id = "side_1"
 metadata/board_half = 0.75
 metadata/sill = 0.9
 metadata/thickness = 0.3
-metadata/gap_half = 1
+metadata/gap_half = 0.75
+metadata/clear_half = 0.6
 
 [node name="Board1" parent="Windows/Window_side_1/Boards" instance=ExtResource("board")]
 transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.215)
@@ -1387,7 +1393,7 @@ transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -1.600
 metadata/barricade_id = "side_2"
 metadata/room = "side"
 metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.3)
+metadata/gap = Vector3(1.5, 2.2, 0.3)
 
 [node name="Lintel" type="StaticBody3D" parent="Windows/Window_side_2"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
@@ -1438,7 +1444,8 @@ metadata/barricade_id = "side_2"
 metadata/board_half = 0.75
 metadata/sill = 0.9
 metadata/thickness = 0.3
-metadata/gap_half = 1
+metadata/gap_half = 0.75
+metadata/clear_half = 0.6
 
 [node name="Board1" parent="Windows/Window_side_2/Boards" instance=ExtResource("board")]
 transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.215)
@@ -1465,7 +1472,7 @@ transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 4.000,
 metadata/barricade_id = "upper_a1"
 metadata/room = "upstairs"
 metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.2)
+metadata/gap = Vector3(1.5, 2.2, 0.2)
 
 [node name="Lintel" type="StaticBody3D" parent="Windows/Window_upper_a1"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
@@ -1524,7 +1531,8 @@ metadata/barricade_id = "upper_a1"
 metadata/board_half = 0.75
 metadata/sill = 0.9
 metadata/thickness = 0.2
-metadata/gap_half = 1
+metadata/gap_half = 0.75
+metadata/clear_half = 0.6
 
 [node name="Board1" parent="Windows/Window_upper_a1/Boards" instance=ExtResource("board")]
 transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.165)
@@ -1551,7 +1559,7 @@ transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 12.000
 metadata/barricade_id = "upper_a2"
 metadata/room = "upstairs"
 metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.2)
+metadata/gap = Vector3(1.5, 2.2, 0.2)
 
 [node name="Lintel" type="StaticBody3D" parent="Windows/Window_upper_a2"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
@@ -1602,7 +1610,8 @@ metadata/barricade_id = "upper_a2"
 metadata/board_half = 0.75
 metadata/sill = 0.9
 metadata/thickness = 0.2
-metadata/gap_half = 1
+metadata/gap_half = 0.75
+metadata/clear_half = 0.6
 
 [node name="Board1" parent="Windows/Window_upper_a2/Boards" instance=ExtResource("board")]
 transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.165)
@@ -1629,7 +1638,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.000, 
 metadata/barricade_id = "upper_b1"
 metadata/room = "upstairs"
 metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.2)
+metadata/gap = Vector3(1.5, 2.2, 0.2)
 
 [node name="Lintel" type="StaticBody3D" parent="Windows/Window_upper_b1"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
@@ -1688,7 +1697,8 @@ metadata/barricade_id = "upper_b1"
 metadata/board_half = 0.75
 metadata/sill = 0.9
 metadata/thickness = 0.2
-metadata/gap_half = 1
+metadata/gap_half = 0.75
+metadata/clear_half = 0.6
 
 [node name="Board1" parent="Windows/Window_upper_b1/Boards" instance=ExtResource("board")]
 transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.165)
@@ -1715,7 +1725,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 9.000, 3
 metadata/barricade_id = "upper_b2"
 metadata/room = "upstairs"
 metadata/kind = "window"
-metadata/gap = Vector3(2, 2.2, 0.2)
+metadata/gap = Vector3(1.5, 2.2, 0.2)
 
 [node name="Lintel" type="StaticBody3D" parent="Windows/Window_upper_b2"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
@@ -1766,7 +1776,8 @@ metadata/barricade_id = "upper_b2"
 metadata/board_half = 0.75
 metadata/sill = 0.9
 metadata/thickness = 0.2
-metadata/gap_half = 1
+metadata/gap_half = 0.75
+metadata/clear_half = 0.6
 
 [node name="Board1" parent="Windows/Window_upper_b2/Boards" instance=ExtResource("board")]
 transform = Transform3D(0.9976, -0.0698, 0, 0.0698, 0.9976, 0, 0, 0, 1, 0.03, 1.07, 0.165)
@@ -1793,7 +1804,7 @@ transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -6.150, 
 metadata/barricade_id = "side_breach"
 metadata/room = "side"
 metadata/kind = "breach"
-metadata/gap = Vector3(2, 2.2, 0.3)
+metadata/gap = Vector3(1.5, 2.2, 0.3)
 
 [node name="Lintel" type="StaticBody3D" parent="Windows/Window_side_breach"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.500, 0.000)
@@ -1868,7 +1879,8 @@ metadata/barricade_id = "side_breach"
 metadata/board_half = 0.75
 metadata/sill = 0.9
 metadata/thickness = 0.3
-metadata/gap_half = 1
+metadata/gap_half = 0.75
+metadata/clear_half = 0.8
 
 [node name="Board1" parent="Windows/Window_side_breach/Boards" instance=ExtResource("board")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.030, -0.050)

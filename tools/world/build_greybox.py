@@ -768,6 +768,7 @@ def breach(field: str, tag: str, bx: float, bz: float) -> None:
         # The window the boards stand in: the sill the dead climb over and the wall's thickness (`ZombieGate`).
         "metadata/sill": f"{BREACH_SILL:g}",
         "metadata/thickness": f"{FRAME_THICK:g}",
+        "metadata/clear_half": f"{BREACH_WIDTH / 2 - JAMB_WIDTH:g}",
     }
     node(f"Breach{tag}", "Node3D", field, props)
     for i in range(BOARDS):

@@ -325,7 +325,12 @@ the simulation is the link across it: a zombie with the boards down is lifted to
 set down inside, at its own pace (`ZombieGate.sill`, `lift_at`), and drawn scrambling in (the crawl
 clip and a lean, `ZombieView`; the snapshot's bit 6, `ZombieCodec.CLIMBING_BIT`). A new barricade gets this from the
 generators (`breach()` in `tools/world/build_greybox.py`); `test_barricade_windows.gd` walks every barricade of both
-maps and fails on one that a player can walk in under, or through, or that the dead cannot get in.
+maps and fails on one that a player can walk in under, or through, or that the dead cannot get in, and
+`test_dead_cross_every_barricade.gd` sends a zombie through each (three starting sides, a stroll and a sprint) and asks
+its body, at every step, whether it stands in the wall or the frame: before it, the dead walked through the sills of the
+second map's windows at floor level ("zombies would just phase through the wall"), because a zombie is a point in the
+simulation with no body of its own. The lift is exact and starts a body's width before the ledge, and a zombie in the
+wall's thickness is kept between the jambs (`ZombieGate.keep_in_opening`).
 
 The dead come in at six gaps in the field's fence, 4 m wide: two in the west fence, two in the east, two in the north
 (`Field/BreachNW`, `NE`, `W`, `E`, `N`, `N2`, the ids in the rules' tuning). Outside each gap is a walled apron 8 m

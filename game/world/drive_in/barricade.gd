@@ -61,6 +61,8 @@ var sill := 0.0
 var thickness := 0.4
 ## Half the width of the opening (`metadata/gap_half`; the boards' half length unless said).
 var opening_half := BOARD_HALF
+## Half the width that is clear between the jambs (`metadata/clear_half`, `INF` when not said).
+var clear_half := INF
 
 var _boards: Array[StaticBody3D] = []
 var _up: int = 0
@@ -86,6 +88,7 @@ func _ready() -> void:
 	sill = float(get_meta(&"sill", 0.0))
 	thickness = float(get_meta(&"thickness", thickness))
 	opening_half = float(get_meta(&"gap_half", board_half))
+	clear_half = float(get_meta(&"clear_half", INF))
 	for child in get_children():
 		if child is StaticBody3D:
 			_boards.append(child)

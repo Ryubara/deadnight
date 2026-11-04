@@ -32,6 +32,9 @@ const NAV_LIFT := 0.35
 const SWING_HEIGHT := 1.3
 ## Metres past the longest swing within which the way to a target is looked at.
 const SWING_SLACK := 0.5
+## A zombie is a climber (the snapshot's bit, the crawl clip) once a window's sill has lifted it
+## this far off the floor (m).
+const CLIMB_DRAWN_FROM := 0.1
 ## Metres of walking a step up or down one storey counts for when a zombie picks its target: a
 ## player on another floor is as far as this many metres of floor for each metre of height.
 const STOREY_WEIGHT := 3.0
@@ -269,6 +272,7 @@ func _step(targets: Dictionary) -> Array[Dictionary]:
 	PerfProbe.end(&"sim.separate", began)
 	began = PerfProbe.begin()
 	_keep_outside_the_boards()
+	_keep_in_the_openings()
 	_clear_the_dead(events)
 	PerfProbe.end(&"sim.boards_and_clear", began)
 	return events
@@ -375,21 +379,26 @@ func relocate(zombie_id: int, point: Vector3, gate_id: StringName = &"") -> void
 ## to a target (no ground offset) carries no floor, and the zombie keeps its height.
 func _settle_on_ground(zombie: ZombieBody, delta: float) -> void:
 	var gate := _sill_gate(zombie)
-	zombie.climbing = gate != null and zombie.is_alive()
 	var lift := gate.lift_at(zombie.position) if gate != null else 0.0
+	# Drawn climbing from the moment it is off the floor, not while it only nears the ledge.
+	zombie.climbing = lift >= CLIMB_DRAWN_FROM
 	var offset := pathing.ground_offset()
 	if is_nan(offset) and storey > 0.0:
 		offset = NAV_LIFT
-	var ground := 0.0
-	if is_nan(offset) or zombie.path.is_empty():
-		if gate == null:
-			return
-		ground = gate.centre.y  # no floor on the path: the ground at the sill is the gate's
-	else:
+	var ground := NAN
+	if not is_nan(offset) and not zombie.path.is_empty():
 		ground = _ground_under(zombie) - offset
+	elif gate != null:
+		ground = gate.centre.y  # no floor on the path: the ground at the sill is the gate's
 	if not zombie.is_alive():
 		return
-	zombie.position.y = move_toward(zombie.position.y, ground + lift, tuning.climb_speed * delta)
+	# The floor it stands on follows the path at the climb speed; the sill's lift is exact (a body
+	# that reaches the ledge before it is lifted would stand in the wall), so it is kept apart.
+	var floor_y := zombie.position.y - zombie.lift
+	if not is_nan(ground):
+		floor_y = move_toward(floor_y, ground, tuning.climb_speed * delta)
+	zombie.lift = lift
+	zombie.position.y = floor_y + lift
 
 
 ## The gate whose sill the zombie is climbing over now: it stands in an opening's reach and the
@@ -529,6 +538,17 @@ func _keep_outside_the_boards() -> void:
 		var stop := -tuning.board_stop
 		if depth < 0.0 and depth > stop:
 			zombie.position += gate.inward * (stop - depth)
+
+
+## A zombie in the thickness of a window's wall stays between its jambs, whatever the walking
+## mesh's way or the crowd's push did.
+func _keep_in_the_openings() -> void:
+	for gate: ZombieGate in gates.values():
+		if gate.sill <= 0.0 or not is_finite(gate.clear_half):
+			continue
+		for zombie: ZombieBody in zombies.values():
+			if zombie.is_alive():
+				zombie.position = gate.keep_in_opening(zombie.position)
 
 
 func _ground_speed(zombie: ZombieBody) -> float:

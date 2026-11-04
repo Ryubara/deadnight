@@ -46,6 +46,10 @@ STAIR_PITCH = math.degrees(math.atan2(STOREY, STAIR_RUN))  # 33.7 degrees, under
 # walking mesh sees (a 1.2 m gap would close under the dead's 0.5 m radius); the frame, the sill and the blocker that
 # keeps players in are StaticBody3D pieces the baker never reads.
 WINDOW_GAP = 2.0
+# What the walking mesh is cut with: the wall's gap is 1.5 m, so the dead's way (the gap less the baker's 0.5 m of
+# radius a side) is 0.5 m wide and a body of 0.3 m radius stays inside the opening's 1.2 m (#915: a way 1.0 m wide let
+# the dead's shoulders into the jambs).
+WINDOW_NAV_GAP = 1.5
 WINDOW_WIDTH = 1.2
 WINDOW_SILL = 0.9
 WINDOW_TOP = 2.2
@@ -389,7 +393,7 @@ def window(spec, breach: bool = False) -> tuple[float, float, float]:
         "metadata/room": f'"{room}"',
         "metadata/kind": '"breach"' if breach else '"window"',
         # The gap in the wall the walking mesh sees: width, height, the wall's thickness.
-        "metadata/gap": bg.vec((WINDOW_GAP, WINDOW_TOP, thick)),
+        "metadata/gap": bg.vec((WINDOW_NAV_GAP, WINDOW_TOP, thick)),
     }
     key = bg.node(f"Window_{wid}", "Node3D", "Windows", props)
     jamb = (WINDOW_GAP - WINDOW_WIDTH) / 2
@@ -428,7 +432,8 @@ def window(spec, breach: bool = False) -> tuple[float, float, float]:
                       "metadata/board_half": f"{BOARD_LENGTH / 2:g}",
                       # The sill the dead climb over, the wall's thickness and the opening's half width (`ZombieGate`).
                       "metadata/sill": f"{WINDOW_SILL:g}", "metadata/thickness": f"{thick:g}",
-                      "metadata/gap_half": f"{WINDOW_GAP / 2:g}"})  # fmt: skip
+                      "metadata/gap_half": f"{WINDOW_NAV_GAP / 2:g}",
+                      "metadata/clear_half": f"{(WINDOW_GAP - 0.4 if breach else WINDOW_WIDTH) / 2:g}"})  # fmt: skip
     for i in range(BOARDS):
         if slots is not None:
             bg.lines.append(f'[node name="Board{i + 1}" parent="{boards}" instance=ExtResource("board")]')
@@ -541,7 +546,7 @@ def build() -> None:
     win = {w[0]: w for w in WINDOWS}
 
     def gaps_of(*ids: str) -> list[tuple[float, float, float, float]]:
-        return [(win[i][4], WINDOW_GAP, 0.0, MODULE_HEIGHT) for i in ids]
+        return [(win[i][4], WINDOW_NAV_GAP, 0.0, MODULE_HEIGHT) for i in ids]
 
     gw = GROUND_WALL
     bg.wall("Start", "WallW", "z", -0.15, 0.0, 14.8, CEILING, MATS["wall"], thick=gw)
@@ -554,7 +559,7 @@ def build() -> None:
     bg.wall("Side", "WallN", "x", -7.95, -6.3, 16.3, CEILING, MATS["wall"], thick=gw)
     bg.wall("Side", "WallE", "z", 16.15, -7.8, -0.3, CEILING, MATS["wall"], thick=gw)
     bg.wall("Side", "WallW", "z", -6.15, -8.1, -0.3, CEILING, MATS["wall"],
-            [(BREACH[4], WINDOW_GAP, 0.0, MODULE_HEIGHT)], gw)  # fmt: skip
+            [(BREACH[4], WINDOW_NAV_GAP, 0.0, MODULE_HEIGHT)], gw)  # fmt: skip
 
     # The start room's counter and its pillars (to the ceiling), and the side room's racks.
     cx0, cx1, cz0, cz1 = COUNTER

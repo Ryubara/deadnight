@@ -197,7 +197,10 @@ func test_the_dead_come_in_through_every_window_to_the_room_it_opens_into() -> v
 				var id: StringName = came_from[zombie.id]
 				# Over the sill and down the far side (#915): the floor is read where it is flat again.
 				var sill := _seated.world.barricade(id)
-				if sill.depth_of(zombie.position) < sill.thickness * 0.5 + ZombieGate.CLIMB_RAMP:
+				var flat_from := (
+					sill.thickness * 0.5 + ZombieGate.BODY_CLEARANCE + ZombieGate.CLIMB_RAMP
+				)
+				if sill.depth_of(zombie.position) < flat_from:
 					continue
 				if not through.has(id):
 					through[id] = zombie.position

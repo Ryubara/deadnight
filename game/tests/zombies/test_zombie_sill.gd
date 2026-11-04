@@ -55,14 +55,30 @@ func _cross(sim: ZombieSim, zombie: ZombieBody, seconds: float) -> Dictionary:
 
 func test_the_sill_lifts_in_the_wall_and_falls_off_on_both_ramps() -> void:
 	var gate := _gate()
+	var held := THICK * 0.5 + ZombieGate.BODY_CLEARANCE
 	assert_float(gate.lift_at(Vector3(0.0, 0.0, 0.0))).is_equal_approx(SILL, 0.001)
-	assert_float(gate.lift_at(Vector3(THICK * 0.5 - 0.01, 0.0, 0.0))).is_equal_approx(SILL, 0.01)
-	var half_way := THICK * 0.5 + ZombieGate.CLIMB_RAMP * 0.5
+	# A body's edge is on the sill's height as soon as it reaches the ledge.
+	assert_float(gate.lift_at(Vector3(-held + 0.01, 0.0, 0.0))).is_equal_approx(SILL, 0.01)
+	assert_float(gate.lift_at(Vector3(held - 0.01, 0.0, 0.0))).is_equal_approx(SILL, 0.01)
+	var half_way := held + ZombieGate.CLIMB_RAMP * 0.5
 	assert_float(gate.lift_at(Vector3(-half_way, 0.0, 0.0))).is_between(0.3, 0.6)
 	assert_float(gate.lift_at(Vector3(half_way, 0.0, 0.0))).is_between(0.3, 0.6)
-	var past := THICK * 0.5 + ZombieGate.CLIMB_RAMP + 0.01
+	var past := held + ZombieGate.CLIMB_RAMP + 0.01
 	assert_float(gate.lift_at(Vector3(-past, 0.0, 0.0))).is_equal(0.0)
 	assert_float(gate.lift_at(Vector3(past, 0.0, 0.0))).is_equal(0.0)
+
+
+func test_a_zombie_in_the_wall_is_kept_between_the_jambs() -> void:
+	var gate := ZombieGate.new(GATE, Vector3.ZERO, Vector3.RIGHT, 2.05, SILL, THICK, 0.8, 0.6)
+	# The wall runs along z here (inward is +x): a body at z 0.5 in the wall, 0.6 clear half and 0.3
+	# of body, is moved to 0.3; one in the room, or already clear, is left alone.
+	var moved := gate.keep_in_opening(Vector3(0.0, 0.9, 0.5))
+	var kept := 0.6 - ZombieGate.BODY_HALF_WIDTH - ZombieGate.JAMB_MARGIN
+	assert_float(absf(moved.z)).is_equal_approx(kept, 0.001)
+	assert_float(moved.x).is_equal(0.0)
+	assert_vector(gate.keep_in_opening(Vector3(2.0, 0.0, 0.5))).is_equal(Vector3(2.0, 0.0, 0.5))
+	assert_vector(gate.keep_in_opening(Vector3(0.0, 0.9, 0.1))).is_equal(Vector3(0.0, 0.9, 0.1))
+	assert_vector(_gate().keep_in_opening(Vector3(0.0, 0.0, 1.5))).is_equal(Vector3(0.0, 0.0, 1.5))
 
 
 func test_there_is_no_lift_beside_the_opening_or_where_there_is_no_sill() -> void:
@@ -77,7 +93,7 @@ func test_the_dead_climb_over_the_sill_and_come_down_inside() -> void:
 	var run := _cross(sim, zombie, 8.0)
 	assert_bool(run["climbed"]).is_true()
 	assert_float(run["max_y"]).is_equal_approx(SILL, 0.05)
-	assert_float(run["at_x"]).is_between(-THICK * 0.5 - 0.1, THICK * 0.5 + 0.1)
+	assert_float(run["at_x"]).is_between(-1.0, 1.0)
 	assert_float(run["end_x"]).is_greater(3.0)
 	assert_float(run["end_y"]).is_equal_approx(0.0, 0.01)
 	assert_bool(zombie.climbing).is_false()

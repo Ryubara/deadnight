@@ -328,7 +328,8 @@ func gates() -> Dictionary[StringName, ZombieGate]:
 			barricade.board_half,
 			barricade.sill,
 			barricade.thickness,
-			barricade.opening_half
+			barricade.opening_half,
+			barricade.clear_half
 		)
 	return found
 
