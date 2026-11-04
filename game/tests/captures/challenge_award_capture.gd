@@ -27,7 +27,6 @@ var _boards := 0
 var _boosted: Dictionary[int, bool] = {}
 var _list: Label
 var _lines: Array[String] = []
-var _names := {1: "ANN", 2: "BOT 2", 3: "BOT 3", 4: "BOT 4"}
 var _done_heard := 0
 var _own_done := 0
 var _stills := 0
@@ -105,7 +104,7 @@ func _record(
 func _held_board(catalog: ChallengeCatalog, clock: ChallengeClock) -> Dictionary:
 	var held := ChallengeProfile.fresh()
 	held.refresh(catalog, clock.day())
-	held.apply(catalog, ChallengeStats.KILLS, 4, 4)
+	held.apply(catalog, ChallengeStats.KILLS, 6, 6)
 	held.apply(catalog, ChallengeStats.KILLS_HEAD, 3, 3)
 	return JSON.parse_string(ChallengeSave.to_json(held))
 
@@ -167,6 +166,7 @@ func _run() -> void:
 	var room := _server.room_of_match(MATCH)
 	var state := _screen.night.state
 	_build_list()
+	room.server.rules.round_number = maxi(_args.get_int("startround", 6) - 1, 0)
 	state.event_received.connect(_on_event)
 	var started := _game_seconds()
 	while _game_seconds() - started < seconds:
@@ -216,7 +216,7 @@ func _build_list() -> void:
 	add_child(layer)
 	var box := VBoxContainer.new()
 	var width := get_viewport().get_visible_rect().size.x
-	box.position = Vector2((width - LIST_WIDTH) / 2.0, 120)
+	box.position = Vector2(width - LIST_WIDTH - 24.0, 150)
 	box.custom_minimum_size = Vector2(LIST_WIDTH, 0)
 	layer.add_child(box)
 	_list = Label.new()
@@ -235,12 +235,7 @@ func _on_event(event: Dictionary) -> void:
 			_push(
 				(
 					"%s  %s  %d / %d"
-					% [
-						_names.get(event["player_id"], "?"),
-						event["text"],
-						event["after"],
-						event["target"]
-					]
+					% [_who(event["player_id"]), event["text"], event["after"], event["target"]]
 				)
 			)
 		&"challenge_done":
@@ -251,13 +246,13 @@ func _on_event(event: Dictionary) -> void:
 			_push(
 				(
 					"%s  DONE  %s  +%d XP"
-					% [
-						_names.get(event["player_id"], "?"),
-						event["text"],
-						int(event["reward"].get("xp", 0))
-					]
+					% [_who(event["player_id"]), event["text"], int(event["reward"].get("xp", 0))]
 				)
 			)
+
+
+func _who(player_id: int) -> String:
+	return String(_screen.night.state.names.get(player_id, "?")).to_upper()
 
 
 func _push(line: String) -> void:
