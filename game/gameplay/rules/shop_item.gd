@@ -42,12 +42,18 @@ const MIN_FUEL_SPACE := 1.0
 
 
 func price_at(round_number: int) -> int:
-	return price + price_per_round * maxi(round_number - 1, 0)
+	return PointSteps.price(price + price_per_round * maxi(round_number - 1, 0))
+
+
+## What `part` of the `amount` one whole purchase adds costs this round: the share of the price,
+## rounded up to a step of 5 (`PointSteps.price`), so every part purchase is a multiple of 5.
+func part_price(round_number: int, part: float) -> int:
+	return PointSteps.price(float(price_at(round_number)) * part / amount)
 
 
 ## AMMO: what `rounds` rounds cost this round (one whole purchase at most), rounded up to a point.
 func ammo_price(round_number: int, rounds: int) -> int:
-	return ceili(float(price_at(round_number)) * mini(rounds, int(amount)) / amount)
+	return part_price(round_number, mini(rounds, int(amount)))
 
 
 ## FUEL: what a purchase puts in a tank with `space` units of room this round: `{price, units}`. A
@@ -57,7 +63,7 @@ func fuel_offer(round_number: int, space: float) -> Dictionary:
 	if kind != Kind.FUEL or space < MIN_FUEL_SPACE:
 		return {"price": 0, "units": 0.0}
 	var units := minf(amount, space)
-	return {"price": ceili(float(price_at(round_number)) * units / amount), "units": units}
+	return {"price": part_price(round_number, units), "units": units}
 
 
 ## The crane's weapons not in `owned`.

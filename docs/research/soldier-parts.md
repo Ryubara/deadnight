@@ -76,3 +76,53 @@ learned:
 - **The short-sleeved tops pushed the hands off the grips**, his as much as hers: the bare-arm push (25 mm along the
   normals of every `skin` face) took the hands too, 15-20 mm off every weapon's grip. Hands (faces of the finger
   bones) are no longer pushed, and `test_menu_grips.gd` holds every weapon in every top for both.
+
+## Fit: no holes, no mask, no clipping (#895)
+
+The maintainer saw the Pit crew (her, green rolled sleeves) in the menu with a see-through neck, a line round the face
+like a mask, a red dash for a mouth and arms through each other. The causes and what changed:
+
+- **The kit has no neck.** Its head is a hood open underneath (a 32-edge ring, z 1.53-1.68, r 0.34), closed only by the
+  vest's tall collar, whose top is the same ring. The open-necked tops folded that collar down and left the ring open:
+  Godot culls back faces, so from behind the eye looked through the head (the mouth showed from the back). Every
+  earlier render was Workbench without back-face culling, which draws the inside of a shell as if it were outside.
+  Now each head is one closed shape with its own neck ([Character faces](character-faces.md)); the trunk's own neck
+  hole is capped, facing up (`holes_fill` faced it down into the trunk).
+- **The open collars** lay the kit collar on a slope from the shoulders to a band just inside the neck, on the Neck
+  bone (on Head it swung through the shoulders); its lip and front flap, inside out once laid down, are dropped.
+- **Every collar has an inside**: a reversed copy of its faces (`primary_shade`, the tank's in skin). A ray between a
+  tall collar and the jaw, or under an open collar, looked into the collar and out through it. The lining is about
+  330 triangles on the tall collars; lining only their top half opened the chest-level rays again.
+- **The bare-arm push cracked the arms.** The kit body is split at every seam, so a vertex is several vertices in one
+  place; pushed along their own normals they parted all along the forearms and shins. The push moves every copy alike
+  (`push_faces`) and tapers to nothing at the wrist and the ankle (the shorts' shins pulled away from the shoe tops).
+- **Bare wrists** dropped the kit's three cuff rings (pulled into the arm they bared the open end of the sleeve tube
+  and the hand's open wrist) and join the two openings with one band of skin (`bridge_wrist`).
+- **Clipping**: the seat armband sat at the middle of the upper arm and sank up to 6 cm into the chest in the menu's
+  pistol hold: now 0.65 along the arm. The bow tie and scarf follow Neck, not Head. The long sleeves' forearms are 20 mm
+  slimmer (the right forearm crossed the jacket's chest 46 mm deep in the long guns' carried hold; now 30-39 mm).
+- **A far triangle dropped by the export** (the letterman's far mesh counted 759, Godot 758): the far copy also drops
+  faces with two corners under 0.01 mm apart, under 1e-8 m² or repeating another face.
+
+### The checks
+
+| Check | What it does | Where |
+| --- | --- | --- |
+| Combination sweep | Every head x top x neckwear, top x trousers, trousers x shoes, top x armwear on both bodies, and every part alone: rays from 60 directions over each junction (neck, waist, ankles, wrists, shoulders); fails where the first face a ray meets faces away and nothing facing it lies within 6 cm behind. A closed and an opened ball check the probe itself | `tests/character/test_soldier_watertight.gd`, `tests/art/body_fit.gd` (`BodyFit.see_through`) |
+| Clip sampler | Every clip of the player's library (the parts file's and the player's own files', as `PlayerAnimation` loads them), 4 frames each, on her in rolled sleeves and him in a jacket: forearm and hand vertices inside the trunk, head, legs or the other arm, head pieces inside the trunk, armbands inside the trunk, deeper than 3 cm | `tests/character/test_soldier_clip_fit.gd`, `tests/art/clip_fit.gd` |
+| Menu pose | The menu soldier with every weapon (`MenuHero`, read at `skeleton_updated` with the hand pose on) | the same suite |
+| Turntables | 360 degrees, the menu pose, red dots where the eye sees through | `tests/captures/soldier_turntable.tscn --probe` |
+| Heads | Close-ups with back faces culled, and drawn small | `tools/blender/render_soldier_heads.py` |
+
+On main the sweep failed 133 combinations (the Pit crew's neck: 48 rays); now none. The probes are physics rays
+against `ConcavePolygonShape3D` pairs (both sides, front only) on layers no game body uses; a shape's faces front the
+way the mesh draws them. New faces reach the broadphase only after two physics steps (with one, a sample met the
+last pose's surface), so the suites step physics at 480 Hz. A clip that does not key the fingers keeps whatever the
+last clip left: the sampler resets the bones before each sample.
+
+The arms in the clips are not all clean: the kit's and our clips reach a hand into a thigh in the revive kneel and the
+crawl, a forearm across the chest in the dual pistols and the strikes (up to 14 cm), and a quick strike swings the upper
+arm through a bow tie. Those are clip faults, recorded per clip in `tests/character/clip_fit_recorded.json`; the sampler
+fails a clip that gets deeper than recorded and any new one; #939 is to bring them down. The menu's long-gun holds keep
+a long sleeve's right forearm 30-39 mm into the chest (recorded, at most 4 cm); her rolled sleeves (the maintainer's
+look) are clean with every weapon.
