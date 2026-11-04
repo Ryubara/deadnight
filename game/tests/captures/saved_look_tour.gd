@@ -5,7 +5,7 @@ extends Node
 ## Settings go to a throwaway file. Run it with Movie Maker, 10 fps:
 ##
 ##     godot --path game res://tests/captures/saved_look_tour.tscn --write-movie <abs>/look.png \
-##         --fixed-fps 10 --quit-after 120
+##         --fixed-fps 10 --quit-after 300
 ##
 ## Prints `SHOT <name> <frame>` for the wardrobe seen from the front and the back and for the night:
 ## the frames to read. `-- --look=<spec>` dresses it in another look (`soldier_turntable.gd`'s form:
@@ -72,6 +72,7 @@ func _wardrobe() -> void:
 
 
 func _night() -> void:
+	NightScreen.arrival_enabled = false  # the shot is the player's camera, not the helicopter drop
 	UIRouter.reset(MENU, UITransition.Kind.CUT)
 	await UIRouter.idle
 	UIRouter.push(NIGHT, UITransition.Kind.CUT)

@@ -113,6 +113,18 @@
    "lens_cyan": [
     15,
     1
+   ],
+   "gold": [
+    0,
+    2
+   ],
+   "gold_shade": [
+    1,
+    2
+   ],
+   "film": [
+    2,
+    2
    ]
   }
  },
@@ -447,6 +459,15 @@
      "tris": 212,
      "mesh_far": "headwear__visor__far",
      "tris_far": 212
+    },
+    "creature": {
+     "label": "Creature mask",
+     "mesh": "headwear__creature",
+     "tris": 636,
+     "mesh_far": "headwear__creature__far",
+     "tris_far": 143,
+     "hides_hair": true,
+     "hides_eyewear": true
     }
    }
   },
@@ -557,6 +578,32 @@
       "mesh_far": "torso__coveralls__female__far",
       "tris_far": 905
      }
+    },
+    "creature": {
+     "label": "Creature tee",
+     "mesh": "torso__creature",
+     "tris": 2618,
+     "mesh_far": "torso__creature__far",
+     "tris_far": 649,
+     "female": {
+      "mesh": "torso__creature__female",
+      "tris": 2618,
+      "mesh_far": "torso__creature__female__far",
+      "tris_far": 645
+     }
+    },
+    "varsity": {
+     "label": "Varsity gold",
+     "mesh": "torso__varsity",
+     "tris": 2967,
+     "mesh_far": "torso__varsity__far",
+     "tris_far": 738,
+     "female": {
+      "mesh": "torso__varsity__female",
+      "tris": 2967,
+      "mesh_far": "torso__varsity__female__far",
+      "tris_far": 744
+     }
     }
    }
   },
@@ -627,6 +674,19 @@
       "mesh_far": "legs__overalls__female__far",
       "tris_far": 220
      }
+    },
+    "swing": {
+     "label": "Swing skirt",
+     "mesh": "legs__swing",
+     "tris": 602,
+     "mesh_far": "legs__swing__far",
+     "tris_far": 161,
+     "female": {
+      "mesh": "legs__swing__female",
+      "tris": 602,
+      "mesh_far": "legs__swing__female__far",
+      "tris_far": 161
+     }
     }
    }
   },
@@ -660,6 +720,20 @@
      "tris": 1038,
      "mesh_far": "feet__saddle__far",
      "tris_far": 274
+    },
+    "skates": {
+     "label": "Roller skates",
+     "mesh": "feet__skates",
+     "tris": 1038,
+     "mesh_far": "feet__skates__far",
+     "tris_far": 270
+    },
+    "rubber": {
+     "label": "Rubber boots",
+     "mesh": "feet__rubber",
+     "tris": 788,
+     "mesh_far": "feet__rubber__far",
+     "tris_far": 208
     }
    }
   },
@@ -751,6 +825,19 @@
       "tris": 224,
       "mesh_far": "neck__bolo__female__far",
       "tris_far": 224
+     }
+    },
+    "film": {
+     "label": "Film-strip scarf",
+     "mesh": "neck__film",
+     "tris": 160,
+     "mesh_far": "neck__film__far",
+     "tris_far": 160,
+     "female": {
+      "mesh": "neck__film__female",
+      "tris": 160,
+      "mesh_far": "neck__film__female__far",
+      "tris_far": 160
      }
     }
    }

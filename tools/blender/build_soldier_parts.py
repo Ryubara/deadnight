@@ -71,7 +71,31 @@ FIXED = {
     "mouth": "#2a1414",  # #895: the mouth, dark like the eyes so it reads on every skin tone at night
     "lens_red": "#c8332e",  # #1078: the Cinema glasses' two lenses
     "lens_cyan": "#37a6c4",
+    "gold": "#e0b02c",  # #1078: Varsity gold, a fixed colour so it reads gold whatever the look's colours
+    "gold_shade": "#a87e1a",
+    "film": "#252525",  # #1078: under FILM_TILE, the one patterned swatch (a strip of film, one frame a quad)
 }
+# The film's frame, drawn into its swatch, one character a pixel: black film, sprocket holes along both edges, and a
+# frame with a moon over a dark lot. Painted in faces, the holes alone would pass the neck's far budget.
+FILM_TILE = (
+    "################",
+    "#oo##oo##oo##oo#",
+    "#oo##oo##oo##oo#",
+    "################",
+    "#..............#",
+    "#.........oo...#",
+    "#........oooo..#",
+    "#.........oo...#",
+    "#..............#",
+    "#xxxxxxxxxxxxxx#",
+    "#xxxxxxxxxxxxxx#",
+    "#xxxxxxxxxxxxxx#",
+    "################",
+    "#oo##oo##oo##oo#",
+    "#oo##oo##oo##oo#",
+    "################",
+)
+FILM_INKS = {"#": "#252525", "o": "#e9e2cf", ".": "#5f7d8c", "x": "#2e4466"}
 PALETTES = {
     "skin": ["#f1c9a5", "#d9a77a", "#b89359", "#a68450", "#8a5a3b", "#5e3b26"],
     "hair": ["#252525", "#4a3221", "#7a4b2a", "#c9a25a", "#9c3d22", "#8f8f8f"],
@@ -158,6 +182,7 @@ SLOTS = {
             "papercap": "Paper cap",
             "ranger": "Ranger hat",
             "visor": "Projectionist's visor",  # #1078: the ladder's pieces, appended (a part is an index on the wire)
+            "creature": "Creature mask",
         },
     },
     "torso": {
@@ -171,6 +196,8 @@ SLOTS = {
             "letterman": "Letter jacket",
             "usher": "Usher's jacket",
             "coveralls": "Coveralls",
+            "creature": "Creature tee",
+            "varsity": "Varsity gold",
         },
     },
     "legs": {
@@ -181,11 +208,19 @@ SLOTS = {
             "shorts": "Shorts",
             "striped": "Striped",
             "overalls": "Overalls",
+            "swing": "Swing skirt",
         },
     },
     "feet": {
         "default": "boots",
-        "parts": {"boots": "Boots", "sneakers": "Sneakers", "shoes": "Shoes", "saddle": "Saddle shoes"},
+        "parts": {
+            "boots": "Boots",
+            "sneakers": "Sneakers",
+            "shoes": "Shoes",
+            "saddle": "Saddle shoes",
+            "skates": "Roller skates",
+            "rubber": "Rubber boots",
+        },
     },
     "eyewear": {
         "default": "none",
@@ -205,6 +240,7 @@ SLOTS = {
             "bowtie": "Bow tie",
             "lanyard": "Press lanyard",
             "bolo": "Bolo tie",
+            "film": "Film-strip scarf",
         },
     },
     "arm": {"default": "none", "parts": {"none": "None", "armband": "Armband"}},
@@ -227,18 +263,21 @@ SLOTS = {
         },
     },
 }
-HIDES_HAIR = {"helmet", "ballcap", "ranger"}
+HIDES_HAIR = {"helmet", "ballcap", "ranger", "creature"}
+HIDES_EYEWEAR = {"creature"}  # a mask over the whole head: no glasses fit under it, and all of them would come through
 HIDES_LEGS = {"coveralls"}  # a one-piece: its legs are part of the top, so the look's trousers do not show
 BODY_SLOT = "body"
 FEMALE = "female"
 # The slots whose every part has a female variant: her face, and the torso and legs shaped by female_shape.
 BODY_VARIANTS = ("head", "torso", "legs", "mouth")
 # Parts of other slots with a variant of her own: what hangs on her chest (soldier_ladder.female_neck).
-HER_NECK = ("lanyard", "bolo")
+HER_NECK = ("lanyard", "bolo", "film")
 HER_NECK_RIGID = 0.25  # an island of a neck piece smaller than this moves whole
 # The ladder's pieces (#1078): the build holds each to the budgets in the place of its slot's part in every preset.
 LADDER_PARTS = (("torso", "usher"), ("torso", "coveralls"), ("legs", "overalls"), ("feet", "saddle"),
-                ("eyewear", "cinema"), ("headwear", "visor"), ("neck", "lanyard"), ("neck", "bolo"))  # fmt: skip
+                ("eyewear", "cinema"), ("headwear", "visor"), ("neck", "lanyard"), ("neck", "bolo"),
+                ("feet", "skates"), ("legs", "swing"), ("torso", "creature"), ("feet", "rubber"),
+                ("headwear", "creature"), ("neck", "film"), ("torso", "varsity"))  # fmt: skip
 # What the face choices are called on her: no beard; freckles and rosy cheeks instead.
 # Slots with no far mesh: a mouth is one of the small pieces a collapse would cut to slivers, and a copy of each would be
 # 16 more hidden mesh nodes on every body in the night, so one mesh shows at every distance.
@@ -444,6 +483,13 @@ def uv_of(key):
     return ((col * SWATCH_PX + SWATCH_PX / 2) / ATLAS_W, 1 - (row * SWATCH_PX + SWATCH_PX / 2) / ATLAS_H)
 
 
+def uv_cell(key):
+    """A swatch's whole cell, (u left, v bottom, u right, v top), for a face that shows its pattern."""
+    col, row = CELLS[key]
+    px = SWATCH_PX
+    return (col * px / ATLAS_W, 1 - (row + 1) * px / ATLAS_H, (col + 1) * px / ATLAS_W, 1 - row * px / ATLAS_H)
+
+
 def channel_rgb(colours):
     out = {}
     for c in CHANNELS:
@@ -464,6 +510,11 @@ def paint_atlas(name, colours):
             for x in range(col * SWATCH_PX, (col + 1) * SWATCH_PX):
                 i = (y * ATLAS_W + x) * 4
                 px[i : i + 4] = [*rgb, 1.0]
+    col, row = CELLS["film"]
+    for dy, line in enumerate(FILM_TILE):
+        for dx, ink in enumerate(line):
+            i = ((ATLAS_H - 1 - (row * SWATCH_PX + dy)) * ATLAS_W + col * SWATCH_PX + dx) * 4
+            px[i : i + 4] = [*hex_rgb(FILM_INKS[ink]), 1.0]
     img = bpy.data.images.new(name, ATLAS_W, ATLAS_H, alpha=True)
     img.pixels = px
     return img
@@ -652,19 +703,23 @@ def torso_rule(kind):
         if pouch:
             return None  # closed boxes on the vest: the vest is whole underneath
         if t.mat == "DarkGrey":
-            return "primary_shade"
+            return "gold_shade" if kind == "varsity" else "primary_shade"
         if kind in ("jacket", "usher"):
             if cuff or collar:
                 return "accent"
             return "primary"
         if kind == "coveralls":
             return "primary_shade" if cuff or collar else "primary"
+        if kind == "varsity":
+            if cuff or collar:
+                return "gold_shade"
+            return "primary" if sleeve else "gold"
         if kind == "letterman":
             if cuff or collar:
                 return "primary_shade"
             return "accent" if sleeve else "primary"
         upper = t.bone.startswith("UpperArm")  # the sleeve tube has one long face per side from shoulder to elbow
-        if kind in ("shirt", "rolled"):
+        if kind in ("shirt", "rolled", "creature"):
             if cuff:
                 return None  # bare wrists: the rings go, a band of skin joins the sleeve to the hand (bridge_wrist)
             if sleeve:
@@ -696,6 +751,10 @@ def legs_rule(kind):
             return "secondary"  # the stripe is cut in afterwards (cut_stripe): faces by centre zigzag
         if kind == "shorts":
             return "skin" if (cuff or t.centre.z < 0.56) else "secondary"
+        if kind == "swing":  # the bare legs under it, with bobby socks; the skirt is soldier_ladder.swing_skirt
+            if cuff and t.centre.z < 0.35:
+                return "white"
+            return "skin"  # the legs end at the knee, under the skirt (soldier_ladder._cut_legs)
         raise ValueError(kind)
 
     return rule
@@ -715,13 +774,17 @@ def feet_rule(kind):
             return "black" if sole else "leather"
         if kind == "saddle":  # the sock's line and the saddle are cut in afterwards (soldier_ladder.saddle_shoes)
             return "leather" if sole else "white"
+        if kind == "skates":  # the plate, the wheels and the toe stop are soldier_ladder.roller_skates
+            return "darkgrey" if sole else "accent" if top else "white"
+        if kind == "rubber":  # the shaft is soldier_ladder.rubber_boots
+            return "black" if sole else "accent_shade" if t.centre.y < -0.14 else "accent"
         raise ValueError(kind)
 
     return rule
 
 
 # Open-necked torsos fold the kit's tall collar down: its verts above the chin line drop and pull in.
-LOW_COLLAR = {"shirt", "rolled", "tank"}
+LOW_COLLAR = {"shirt", "rolled", "tank", "creature"}
 OPEN_COLLAR = LOW_COLLAR | {"coveralls"}  # the same collar on long sleeves: its wrists keep the kit's cuffs
 
 # The hand's vertices (main bone a finger's, as the grip test reads them) never move: the weapon grips (#507) were
@@ -745,7 +808,9 @@ PUSH = {  # (slot, part): [(swatch the push applies to, metres along the normal)
     ("torso", "shirt"): [("skin", -0.025)],
     ("torso", "rolled"): [("skin", -0.025)],
     ("torso", "tank"): [("skin", -0.025)],
+    ("torso", "creature"): [("skin", -0.025)],
     ("legs", "shorts"): [("skin", -0.03)],
+    ("legs", "swing"): [("skin", -0.03)],
 }
 
 
@@ -2008,6 +2073,8 @@ def part_entry(s, p, label, tris, tris_far, female):
     }
     if s == "headwear" and p in HIDES_HAIR:
         entry["hides_hair"] = True
+    if s == "headwear" and p in HIDES_EYEWEAR:
+        entry["hides_eyewear"] = True
     if s == "torso" and p in HIDES_LEGS:
         entry["hides_legs"] = True
     if s == "hair" and p in HAIR_BODY:
@@ -2149,10 +2216,13 @@ def main():
         """The mesh names a look shows (SoldierLook.visible_meshes)."""
         hide_hair = lk["parts"]["headwear"] in HIDES_HAIR
         hide_legs = lk["parts"]["torso"] in HIDES_LEGS
+        hide_eyes = lk["parts"]["headwear"] in HIDES_EYEWEAR
         her = lk["parts"].get(BODY_SLOT) == FEMALE
         out = []
         for s, p in lk["parts"].items():
             if s == BODY_SLOT or p == "none" or (s == "hair" and hide_hair) or (s == "legs" and hide_legs):
+                continue
+            if s == "eyewear" and hide_eyes:
                 continue
             out.append(f"{s}__{p}__{FEMALE}" if her and (s, p) in female else f"{s}__{p}")
         return out
