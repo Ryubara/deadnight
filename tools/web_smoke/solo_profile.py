@@ -1,4 +1,5 @@
-"""A signed-in solo night sends its XP to the account's profile slot (#1106), in a real browser against the real backend.
+"""A signed-in solo night sends its XP to the account's profile slot (#1106) and its challenge board to the `challenges`
+slot (#1124), in a real browser against the real backend.
 
 The script starts the platform backend (`spikes/backend`, run by Node with memory storage, guest sign-in on) on a free
 port, serves the web export, and opens the page with `?autopilot&signin=1`: the game signs in as a guest and the
@@ -10,6 +11,8 @@ IndexedDB, the way `guest_account.py` does) and reads the `profile` slot:
    or more (a stale revision or a refusal would have left it empty);
 2. the profile file the page keeps (`user://profile.json`) agrees: the same XP, and nothing left in the queue unless
    the backend refused a write (then the XP is in the account and the queue together, never lost or counted twice).
+3. the `challenges` slot holds the night's board (kills counted, the day's dailies), the file the page keeps names the
+   account and agrees with it, and a second page of the same browser opens the menu on the Challenges tab (the shot).
 
     uv run --project ../gdstudio/python gds quiet -- uv run --with playwright==1.64.1 python \\
         tools/web_smoke/solo_profile.py build/web build/solo-profile [--gpu] [--rounds 2] [--returning]
@@ -45,13 +48,14 @@ import smoke
 BACKEND_DIR = Path(__file__).resolve().parents[2] / "spikes" / "backend"
 USER_DIR = "/userfs/godot/app_userdata/Deadnight"
 PROFILE_FILE = f"{USER_DIR}/profile.json"
+CHALLENGE_FILE = f"{USER_DIR}/challenges.json"
 SECRETS = {
     "SESSION_SECRET": "session-secret-of-at-least-32-characters-a",
     "TICKET_SECRET": "ticket-secret-of-at-least-32-characters-b",
     "GAME_SERVER_SECRET": "server-secret-of-at-least-32-characters-c",
 }
 # A fresh account has no profile yet: reading it is a 404 the browser logs, and the game takes as "nothing saved".
-IGNORED = ("A user gesture is required to request Pointer Lock", "/saves/profile")
+IGNORED = ("A user gesture is required to request Pointer Lock", "/saves/profile", "/saves/challenges")
 
 
 def free_port() -> int:
@@ -95,6 +99,46 @@ def stored_text(page: Page, path: str) -> str | None:
     return (page.evaluate(guest_account.READ_FILE_JS, path) or {}).get("text")
 
 
+def check_board(page: Page, backend: str, token: str, account: str, result: dict, problems: list[str]) -> None:
+    """The night's challenge board is in the account's `challenges` slot, and the file the page keeps is its cache:
+    the same kills, the account's name and the slot's revision (#1124)."""
+    status, saved = guest_account.request("GET", f"{backend}/saves/challenges", token=token)
+    result["challenges_slot"] = [status, {key: saved.get(key) for key in ("revision", "schemaVersion")}]
+    held = saved.get("data", {}) if status == 200 else {}
+    kills = held.get("lifetime", {}).get("kills", 0)
+    result["kills_in_account"] = kills
+    if status != 200:
+        problems.append(f"the challenges slot is empty: {status} {saved}")
+        return
+    if not kills > 0:
+        problems.append(f"the challenges slot should hold the night's kills: {held.get('lifetime')}")
+    if not held.get("dailies"):
+        problems.append("the challenges slot should hold the day's dailies")
+    text = stored_text(page, CHALLENGE_FILE)
+    local = json.loads(text) if text else {}
+    result["challenges_file"] = {key: local.get(key) for key in ("account", "accountRevision", "revision")}
+    if local.get("account") != account:
+        problems.append(f"the board file should name the account {account}: {local.get('account')!r}")
+    if local.get("data", {}).get("lifetime", {}).get("kills") != kills:
+        problems.append(
+            f"the board file's kills should be the account's ({kills}): {local.get('data', {}).get('lifetime')}"
+        )
+
+
+def show_challenges_tab(context, origin: str, backend: str, out: Path, result: dict, problems: list[str]) -> None:
+    """A second page of the same browser: the menu's Challenges tab shows what the night counted."""
+    page = context.new_page()
+    page.goto(f"{origin}/index.html?backend={backend}", wait_until="commit")
+    smoke.reach_menu(page)
+    smoke.menu_item(page, "Challenges")
+    page.wait_for_timeout(1500)
+    page.screenshot(path=out / "challenges-tab.png")
+    result["menu_tab"] = smoke.probe(page).get("tab")
+    if result["menu_tab"] != "Challenges":
+        problems.append(f"the menu should be on the Challenges tab: {result['menu_tab']!r}")
+    page.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("web", help="folder with the export")
@@ -125,10 +169,11 @@ def main() -> int:
                 else p.chromium.launch(headless=True, args=smoke.SOFTWARE_GL)
             )
             try:
+                # One context for every page: a later page finds the first one's files and credential.
                 first_account = ""
                 if args.returning:
                     # Visit one: Play together makes the Guest account and the browser keeps its credential.
-                    _, page = guest_account.open_context(
+                    context, page = guest_account.open_context(
                         browser, f"{origin}/index.html?backend={backend}&probe", console, problems, "visit 1"
                     )
                     first = guest_account.to_lobby(page, "Ann")
@@ -139,7 +184,8 @@ def main() -> int:
                             break
                         page.wait_for_timeout(250)
                 else:
-                    page = browser.new_page(viewport=smoke.VIEWPORT)
+                    context = browser.new_context(viewport=smoke.VIEWPORT)
+                    page = context.new_page()
                 page.on("console", lambda m: console.append(f"[{m.type}] {m.text} {m.location.get('url', '')}"))
                 page.on(
                     "pageerror",
@@ -204,6 +250,9 @@ def main() -> int:
                     )
                 if local.get("account") != account:
                     problems.append(f"the file should name the account {account}: {local.get('account')!r}")
+                check_board(page, backend, signed.get("token"), account, result, problems)
+                page.close()
+                show_challenges_tab(context, origin, backend, args.out, result, problems)
                 result["round_reached"] = report.get("round_reached")
                 result["night_seconds"] = report.get("seconds")
             except (TimeoutError, PlaywrightError) as error:

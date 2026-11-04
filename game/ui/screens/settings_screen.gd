@@ -156,6 +156,15 @@ const TABS := [
 				"values": [0, 1, 2],
 			},
 			{
+				"key": SettingsService.PROGRESS_POPUPS,
+				"title": "Level-up popups",
+				"hint":
+				"The cards that drop in when you level up, unlock something or finish a challenge.",
+				"kind": "option",
+				"labels": ["All", "Big ones only", "Off"],
+				"values": [0, 1, 2],
+			},
+			{
 				"key": SettingsService.SHOW_LEVELS,
 				"title": "Player levels",
 				"hint": "Each player's level and icon beside their name.",

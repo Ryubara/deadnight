@@ -122,12 +122,18 @@ static func look_from_flag(text: String) -> CharacterLook:
 	return CharacterLook.from_preset(text.to_int())
 
 
+func _exit_tree() -> void:
+	MenuPopups.set_night(false)
+
+
 func _ready() -> void:
 	super._ready()
 	# B (`ui_cancel`) crouches in the night: it must not take the player back to the menu.
 	allow_back = false
 	# The menu's ambience ends as a night starts to load (the night has its own beds).
 	MenuAmbience.stop()
+	# The night's HUD owns the popup lane (under its round banner) while this screen is up.
+	MenuPopups.set_night(true)
 	# The night is made for the player's own UI scale: the menu's phone factor (2, which halves the
 	# canvas to 540 units high) would put half the touch buttons off the top. The menu puts the
 	# factor back when it shows again (`MenuShell`).
@@ -147,6 +153,10 @@ func _ready() -> void:
 	return_api = null
 	if challenge_path != "":
 		night.challenge_board = ChallengeBoard.open(challenge_path)
+		# Under the root, like the profile's: the last round's write is sent after this screen has gone.
+		night.challenge_uplink = ChallengeUplink.new(
+			TogetherApi.new(get_tree().root, TogetherScreen.backend_url())
+		)
 	if profile_path != "":
 		night.profile_store = ProfileStore.open(profile_path, TogetherApi.signed_in)
 		# Under the root: the last round's write is sent after this screen has gone.
