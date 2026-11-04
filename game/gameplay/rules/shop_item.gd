@@ -36,7 +36,9 @@ const MIN_FUEL_SPACE := 1.0
 @export_range(0.0, 1000.0, 1.0, "or_greater", "suffix:hp") var health_bonus: float = 0.0
 ## DOOR: another door that must be open first (the lot opens outward).
 @export var requires: StringName = &""
-## CRANE: the weapons a play can give, with one weight each.
+## CRANE: the weapons a play can give. Each is drawn by its definition's `crane_weight`
+## (`WeaponDef`, #972); `pool_weights` is a map's own weights, one for each weapon of `pool`, and is
+## empty (the definitions' weights) as shipped.
 @export var pool: Array[StringName] = []
 @export var pool_weights: PackedFloat32Array = PackedFloat32Array()
 
@@ -80,15 +82,28 @@ func roll(owned: Array[StringName], rng: RandomNumberGenerator) -> StringName:
 	var left := pool_without(owned)
 	var total := 0.0
 	for weapon_id in left:
-		total += _weight(weapon_id)
+		total += weight_of(weapon_id)
 	var pick := rng.randf() * total
 	for weapon_id in left:
-		pick -= _weight(weapon_id)
+		pick -= weight_of(weapon_id)
 		if pick < 0.0:
 			return weapon_id
 	return left[left.size() - 1]
 
 
-func _weight(weapon_id: StringName) -> float:
+## The weight of a weapon of the pool in the draw: this item's own when it lists weights, the
+## weapon definition's `crane_weight` otherwise (1 for an id the catalogue does not know).
+func weight_of(weapon_id: StringName) -> float:
 	var index := pool.find(weapon_id)
-	return pool_weights[index] if index < pool_weights.size() else 1.0
+	if index >= 0 and index < pool_weights.size():
+		return pool_weights[index]
+	var id := WeaponCatalog.catalog_id(weapon_id)
+	return WeaponCatalog.get_def(id).crane_weight if WeaponCatalog.has(id) else 1.0
+
+
+## The weight of every weapon of the pool, in the pool's order.
+func weights() -> PackedFloat32Array:
+	var all := PackedFloat32Array()
+	for weapon_id in pool:
+		all.append(weight_of(weapon_id))
+	return all

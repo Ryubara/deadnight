@@ -38,8 +38,13 @@ stateDiagram-v2
     Preview --> Together: Back / night full
     Lobby --> Night: host presses Start / guest presses Play
     Lobby --> Together: Leave
+    Night --> Lobby: the night ends (the lobby opens again)
     Night --> Menu: leave the night
 ```
+
+When a night ends it does not drop its lobby: after the intermission everyone is back in the same lobby, with its code,
+its host, its seats (the people who were still there), its map, bots and rules, ready for the host to start again
+([the end of a night](end-of-night.md#online)).
 
 ### 1. Create a night (the host)
 

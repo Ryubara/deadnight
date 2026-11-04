@@ -17,6 +17,8 @@ signal ready_to_play
 ## How far the night has got in getting ready (0 to 1) and what it is doing, for a loading screen.
 signal loading(fraction: float, text: String)
 signal night_over(round_reached: int)
+## The server's intermission is over: everyone goes back to where the night began.
+signal night_closed
 ## `start_remote` could not join: why, in words for the player.
 signal connect_failed(reason: String)
 ## After every tick of the night, whatever drove it.
@@ -117,7 +119,10 @@ var markers: NightMarkers
 var ticks_per_frame := 1
 ## Autopilot only: film the bot through its own shoulder camera, as a player sees it.
 var shoulder_camera := false
-## False before the night starts, while paused and after it is over.
+## The camera of the end of the night, once it is over (`NightEnding`).
+var end_camera: EndCamera
+## False before the night starts, while paused and after it is over (the intermission is ticked
+## all the same, until the server closes the night).
 var running := false
 ## Draw and load everything the night uses once before it starts (`NightWarmup`), behind a loading
 ## screen. The game turns it on; a test that needs no pictures leaves it off, which saves seconds.
@@ -368,7 +373,9 @@ func _track_challenges() -> void:
 func _build_view(camera: Camera3D) -> void:
 	view = NightView.new()
 	add_child(view)
-	view.setup(state, camera, _telegraphs(), _board_seconds())
+	view.setup(
+		state, camera, LookTimings.telegraphs(rules_tuning), LookTimings.board_seconds(rules_tuning)
+	)
 	view.barricade_points = _barricade_points()
 	view.bodies = _body_of
 	view.repair_interval = _repair_seconds
@@ -385,13 +392,17 @@ func _build_view(camera: Camera3D) -> void:
 	state.event_received.connect(_on_event)
 
 
-## The night ended: the ticks stop. Online the client has nothing more to say or hear, so it
-## leaves the seat at once (the server frees it) instead of leaving the socket unread, where a
-## browser's buffer fills with snapshots ("Buffer payload full").
+## The night ended: this client reads the server's intermission but plays no more (`NightEnding`).
 func _on_over(_round_reached: int) -> void:
 	running = false
+	NightEnding.begin(self)
+
+
+## The server closed the night: online the seat is left at once, not left unread.
+func _on_closed() -> void:
 	if remote:
 		_leave_server.call_deferred()
+	night_closed.emit()
 
 
 ## Closes the link and drops what is still in flight: the night has ended, so frames that arrive
@@ -516,27 +527,6 @@ func _post_point(circuit_id: StringName) -> Variant:
 	return post.global_position if post != null else null
 
 
-## Seconds each look's blow takes to land, for the looks of the types that telegraph it.
-func _telegraphs() -> Dictionary[StringName, float]:
-	var telegraphs: Dictionary[StringName, float] = {}
-	for type in rules_tuning.roster.types:
-		if type.telegraph_seconds > 0.0:
-			for look in type.looks:
-				telegraphs[look] = type.telegraph_seconds
-	return telegraphs
-
-
-## Seconds each look's type takes to pull one board off, for its tear clip (`ZombieView`).
-func _board_seconds() -> Dictionary[StringName, float]:
-	var seconds: Dictionary[StringName, float] = {}
-	var per_board := rules_tuning.barricades.seconds_per_board
-	for type in rules_tuning.roster.types:
-		if type.barrier_speed > 0.0:
-			for look in type.looks:
-				seconds[look] = per_board / type.barrier_speed
-	return seconds
-
-
 ## Where each breach's boards stand, for the effects of tearing and mending them.
 func _barricade_points() -> Dictionary[StringName, Vector3]:
 	var points: Dictionary[StringName, Vector3] = {}
@@ -583,7 +573,7 @@ func _physics_process(_delta: float) -> void:
 	if (_warming or _leaving) and remote:
 		link.pump()
 	for _i in ticks_per_frame:
-		if not running:
+		if not running and not (state != null and state.over and not state.closed):
 			return
 		tick()
 
@@ -592,6 +582,11 @@ func _physics_process(_delta: float) -> void:
 func tick() -> void:
 	if remote:
 		_tick_remote()
+		return
+	if state.over:
+		link.pump()
+		link.broadcast(server.step(STEP))
+		ticked.emit()
 		return
 	var began := PerfProbe.begin()
 	link.pump()
@@ -627,6 +622,9 @@ func tick() -> void:
 ## server will check it), and send the next command.
 func _tick_remote() -> void:
 	link.pump()
+	if state.over:
+		ticked.emit()
+		return
 	match stalls.check(Time.get_ticks_msec()):
 		StallGuard.Verdict.RESYNC:
 			_resync_body()
@@ -696,6 +694,7 @@ func _on_resumed(snapshot: Dictionary) -> void:
 func _on_remote_event(event: Dictionary) -> void:
 	if event["type"] != &"frame":
 		return
+	NightEnding.noticed(self, event)
 	_mirror.follow(event)
 	avatars.apply_frame(event)
 	var me: Dictionary = event["players"].get(state.player_id, {})
@@ -824,6 +823,8 @@ func _on_event(event: Dictionary) -> void:
 		preview.grenades_left = event["count"]
 	if event["type"] == &"game_over":
 		night_over.emit(event["round_reached"])
+	elif event["type"] == NightServer.NIGHT_CLOSED:
+		_on_closed()
 	else:
 		_show_grenade(event)
 		_show_revive(event)

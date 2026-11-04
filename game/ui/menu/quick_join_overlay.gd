@@ -202,6 +202,7 @@ func _go_in(pass_to: Dictionary) -> void:
 	NightScreen.join_url = TogetherScreen.server_url_of(pass_to, TogetherScreen.in_discord())
 	NightScreen.join_ticket = pass_to["ticket"]
 	NightScreen.join_map = MapRegistry.of_lobby(_lobby).id
+	NightScreen.remember_lobby(api, _lobby, get_tree().root)
 	if opener.is_valid():
 		opener.call()
 	else:

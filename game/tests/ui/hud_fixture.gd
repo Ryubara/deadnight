@@ -147,3 +147,74 @@ static func hurt(bearing: float, health: float) -> Dictionary:
 		"bearing": bearing,
 		"source_id": 1,
 	}
+
+
+## A late round, as a fight shows it (#948): a party of four at round 24, one of them down, 64 of 96
+## dead left, six perks, three weapons, the generator panel, the feed and the gains up, markers and
+## a price on the prompt. Needs a fixture of four players.
+func fill_late_round() -> void:
+	var state := hud.state
+	into_round_one()
+	state.apply_event({"type": &"round_started", "round": 24, "zombie_count": 96})
+	state.zombies_left = 64
+	var totals := [18450, 9300, 12250, 4150]
+	for i in totals.size():
+		state.apply_event(
+			{"type": &"points_changed", "player_id": i + 1, "total": totals[i], "delta": 0}
+		)
+	state.set_health(62.0, 100.0)
+	state.apply_event({"type": &"grenade_count_changed", "player_id": 1, "count": 3})
+	var ids := WeaponCatalog.IDS
+	var carried: Array[StringName] = [ids[1], ids[2], ids[3]]
+	state.weapon_names[carried[0]] = "Rifle"
+	state.set_slot_count(3)
+	state.set_slots(carried, 1)
+	state.set_ammo(11, 142, "Rifle")
+	give_perks(6)
+	state.set_area("The Back Lot", "Light the booth to open the projection room")
+	act(RulesAction.set_downed(3, true))
+	state.set_prompt(&"buy_weapon", "Pump Shotgun", 1500, "Five shells, one loud night")
+	(
+		state
+		. set_markers(
+			(
+				[
+					late_marker(&"door", &"objective", 0.62, 0.5, 19.0, "Booth", true),
+					late_marker(&"moe", &"ally", 0.3, 0.55, 12.0, "Moe", false),
+					late_marker(&"dee", &"ally", 0.7, 0.6, 22.0, "Dee", true),
+				]
+				as Array[Dictionary]
+			)
+		)
+	)
+	for text in ["RUBY OPENED THE PROJECTION BOOTH", "MOE REPAIRED THE WINDOW", "DEE IS DOWN"]:
+		hud.events_feed.push(text)
+	hud.notices.push("CAL CONNECTED")
+	for amount in [100, 60, 130]:
+		hud.gains.add_gain(&"headshot_kill", amount)
+	hud.fuel.peek()
+	advance(HudTuning.current().banner_in + 0.1)
+
+
+static func late_marker(
+	id: StringName,
+	kind: StringName,
+	x: float,
+	y: float,
+	distance: float,
+	label: String,
+	downed: bool
+) -> Dictionary:
+	return {
+		"id": id,
+		"kind": kind,
+		"x": x,
+		"y": y,
+		"distance": distance,
+		"label": label,
+		"important": kind == &"objective",
+		"downed": downed and kind == &"ally",
+		"dead": false,
+		"bleed": 31,
+		"revive": 0.0,
+	}

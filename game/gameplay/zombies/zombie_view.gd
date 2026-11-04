@@ -380,9 +380,14 @@ func _enter(mode: int) -> void:
 					ZombieRig.CRAWL_ATTACK_SCALE_PARAMETER, ZombieRig.CRAWL_HIT_SECONDS / _telegraph
 				)
 		ZombieBody.Mode.STAGGER:
-			state = ZombieRig.STATE_STAGGER
+			# A flinch on the floor for a body that lies on it (the walker's stands it up).
+			state = (
+				ZombieRig.STATE_CRAWL_STAGGER
+				if ZombieModels.crawls(look)
+				else ZombieRig.STATE_STAGGER
+			)
 		ZombieBody.Mode.DYING:
-			state = ZombieRig.STATE_DIE
+			state = ZombieRig.STATE_CRAWL_DIE if ZombieModels.crawls(look) else ZombieRig.STATE_DIE
 			_light_lamp(_model, false)
 		ZombieBody.Mode.EMERGING:
 			_emerge_left = _emerge_seconds

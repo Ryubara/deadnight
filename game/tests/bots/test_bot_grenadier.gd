@@ -217,3 +217,43 @@ func test_a_distance_no_throw_reaches_has_no_pitch() -> void:
 	var grenadier := BotGrenadier.new(_level())
 	assert_bool(is_nan(grenadier.solve_pitch(80.0, &"over"))).is_true()
 	assert_bool(is_nan(grenadier.solve_pitch(0.1, &"over"))).is_true()
+
+
+## A thin post (0.1 m across, 4 m tall) standing at `post` on the ground: the distance along a
+## segment to the first point within its radius, or -1.0. Walked in small steps.
+func _post_sight(post: Vector2) -> Callable:
+	return func(from: Vector3, to: Vector3) -> float:
+		var steps := 200
+		for i in steps + 1:
+			var at := from.lerp(to, float(i) / float(steps))
+			if at.y < 4.2 and Vector2(at.x, at.z).distance_to(post) < 0.1:
+				return from.distance_to(at)
+		return -1.0
+
+
+func test_a_post_beside_the_arc_stops_the_throw_a_post_well_clear_does_not() -> void:
+	# The line to the pack runs straight ahead. A post 0.25 m off it is not on the planned line, but
+	# a bot thrown off by the few decimetres it slides or by the hand's reach hits it (#1019: a bot
+	# took 0.4 of its health from a lamp post 0.7 m in front of it).
+	var pack := _pack(Vector3(0, 0, -10))
+	var beside := BotGrenadier.new(BotLevel.new(_post_sight(Vector2(0.25, -0.7))))
+	assert_object(beside.plan(HERE, pack, 2, 0.0)).is_null()
+	# 0.14 m off: between the line and the first strip, where a coarser check let a thin post by.
+	var between := BotGrenadier.new(BotLevel.new(_post_sight(Vector2(0.14, -0.7))))
+	assert_object(between.plan(HERE, pack, 2, 0.0)).is_null()
+	var clear := BotGrenadier.new(BotLevel.new(_post_sight(Vector2(1.0, -0.7))))
+	assert_object(clear.plan(HERE, pack, 2, 0.0)).is_not_null()
+
+
+func test_a_post_far_beyond_the_blast_reach_does_not_stop_a_throw() -> void:
+	# Past the reach of a blast that would hurt the bot, a wall edge only shortens a harmless throw.
+	var far := BotGrenadier.new(BotLevel.new(_post_sight(Vector2(0.25, -10.8))))
+	assert_object(far.plan(HERE, _pack(Vector3(0, 0, -11.5)), 2, 0.0)).is_not_null()
+
+
+func test_a_walking_bot_plans_from_where_it_will_stand() -> void:
+	var stop := BotGrenadier.stop_point(Vector3(1.0, 0.3, 2.0), Vector3(5.0, 2.0, -5.0))
+	assert_float(stop.x).is_equal_approx(1.0 + 5.0 * BotGrenadier.STOP_SECONDS, 0.001)
+	assert_float(stop.y).is_equal_approx(0.3, 0.001)
+	assert_float(stop.z).is_equal_approx(2.0 - 5.0 * BotGrenadier.STOP_SECONDS, 0.001)
+	assert_vector(BotGrenadier.stop_point(HERE, Vector3.ZERO)).is_equal(HERE)
