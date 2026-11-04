@@ -4,12 +4,12 @@ extends GdUnitTestSuite
 const STEP := Night.STEP
 
 
-func test_a_night_starts_with_the_player_holding_a_pistol() -> void:
+func test_a_night_starts_with_the_player_holding_the_house_pistol() -> void:
 	var night := await NightFixture.start(self, Night.Mode.MANUAL)
 	NightFixture.run(night, 5)
 	var me := night.state.me()
-	assert_str(String(me["weapon"])).is_equal("pistol")
-	assert_int(me["ammo"]).is_equal(10)
+	assert_str(String(me["weapon"])).is_equal("house_pistol")
+	assert_int(me["ammo"]).is_equal(15)
 	assert_int(me["points"]).is_equal(200)
 	assert_int(night.state.phase()).is_equal(GameRules.Phase.BREAK)
 	night.queue_free()

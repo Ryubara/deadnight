@@ -58,6 +58,8 @@ jobs:
         run: bash deploy/web/test_deploy.sh
       - name: The deploy jobs refuse a build older than the live one and deploy a newer one
         run: bash deploy/test_check_head.sh
+      - name: The backend deploy finds a backend that is behind the game's match settings
+        run: bash deploy/backend/test_check_keys.sh
       - name: The Discord bridge's share half refuses nothing it could have asked for first
         # A client that wants `authenticate` before any command (RPC 4006 otherwise, #627); no packages, node is on the runner.
         run: node --test deploy/web/test_discord_share.mjs
@@ -147,6 +149,24 @@ jobs:
           grep -q "^REPORT" night.log
           ! grep -E "^(SCRIPT )?ERROR|leaked at exit|still in use" night.log
 
+      - name: Hold the late-round worst case to its budget
+        if: matrix.shard == 1
+        # Round 12 at 3x with four players (the person and three bots) and the desktop's crowd, played headless at a fixed
+        # step with a sample a second of the engine's counts (`PerfSampler`). The counts are the same on every machine, so
+        # they are held tight; the frame is held as a multiple of a fixed piece of GDScript timed in the same process
+        # (tools/perf/budget.json, docs/research/performance.md). A leak, a pool that stopped being returned or a cost
+        # that grew fails here, not in the maintainer's hands.
+        run: |
+          set -o pipefail
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          "$godot" --headless --path repos/deadnight/game --fixed-fps 60 -- --autopilot --rounds=12 --startround=12 --hold=110 --seconds=140 --count=3 --bots=3 --ceiling=desktop --sample=1 --out="$PWD/perf.json" 2>&1 | tee perf.log
+          if grep -E "^(SCRIPT )?ERROR" perf.log; then exit 1; fi
+          python3 repos/deadnight/tools/perf/check_budget.py perf.json repos/deadnight/tools/perf/budget.json --markdown perf-summary.md
+      - name: Show the budget in the job summary
+        if: always() && matrix.shard == 1
+        run: |
+          if [ -f perf-summary.md ]; then cat perf-summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+
       - name: Run the tests (GdUnit4), this shard's folders
         # No `-d`: with the debugger attached, the first script error stops the engine at a prompt and the job hangs.
         # `--ignoreHeadlessMode` is needed because GdUnit4 otherwise refuses to run headless; the report folder is
@@ -175,6 +195,8 @@ jobs:
             tests.log
             night.log
             leaks.txt
+            perf.json
+            perf.log
           if-no-files-found: warn
 
   bots-soak:
@@ -422,6 +444,53 @@ jobs:
       - name: Deploy and wait until the server is live
         if: env.skip != 'true'
         run: bash deploy/server/deploy.sh deadnight-server
+
+  deploy-backend:
+    # Publishes the platform backend of main's head (spikes/backend, deploy/backend/) to the Railway service `backend`
+    # beside the web build and the game server. Nothing deployed it before (#944): the live backend stayed at the build
+    # of the day it was made, answered 404 to the rules a host sets and ignored the ones a start carries, and every
+    # night of every lobby was the usual one on the drive-in with no bots. After the deploy the live `/health` is
+    # compared with the game's match settings (deploy/backend/check_keys.sh), and the job fails when they differ. Same
+    # token and the same skip as `deploy`; the Postgres service keeps its data, only the code is replaced.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [godot, backend]
+    concurrency:
+      group: deploy-backend
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    steps:
+      - name: Check the deploy token
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::warning title=Backend not deployed::The repository secret RAILWAY_TOKEN is not set (docs/research/web-export.md)."
+            echo "skip=true" >> "$GITHUB_ENV"
+          fi
+      - if: env.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            deploy
+            spikes/backend
+            game/gameplay/rules
+          fetch-depth: 0 # the check asks whether one commit is an ancestor of another
+      - if: env.skip != 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - if: env.skip != 'true'
+        run: npm install --global @railway/cli@5.63.1
+      - name: Skip a build that is older than the one the service runs
+        if: env.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash deploy/check_head.sh "$GITHUB_SHA" backend || { test $? = 3 && echo "skip=true" >> "$GITHUB_ENV"; }
+      - name: Deploy, wait until it is live and compare its settings with the game's
+        if: env.skip != 'true'
+        run: bash deploy/backend/deploy.sh backend
 
   backend:
     # The platform backend's own tests (spikes/backend, `npm test`: the lobby, presence, ticket and save rules), which no

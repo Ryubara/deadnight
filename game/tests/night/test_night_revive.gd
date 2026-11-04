@@ -121,6 +121,10 @@ func test_a_reviver_who_goes_down_stops_the_channel() -> void:
 		)
 		. is_equal("down")
 	)
+	# Everyone is down, so the night is over and frozen: its frame shows nobody being raised.
+	assert_int(night.server.rules.phase).is_equal(GameRules.Phase.OVER)
+	assert_int(night.state.frame["players"][1]["reviving"]).is_equal(0)
+	assert_float(night.state.frame["players"][2]["revive"]).is_equal(0.0)
 	night.queue_free()
 
 

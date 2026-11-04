@@ -51,7 +51,10 @@ image):
 - `PUT/GET /saves/:slot`: a save is `{revision, schemaVersion, data}`; a stale `revision` is a 409 instead of lost
   progress. Format rules: [Save format](#save-format).
 - `POST /internal/servers/heartbeat` (shared secret): a game server announces itself, its capacity and the ids of the
-  matches it is running. `POST /internal/matches/:id/end` (shared secret): a match is over, its slot is free.
+  matches it is running. `POST /internal/matches/:id/end` (shared secret): a match is over, its slot is free. A night
+  that ran its end-of-night intermission out sends `{finished: true, present: [user ids still in the room]}` and its
+  lobby opens again for them (open, same code, host, settings and Activity instance; a user already in another lobby
+  is not put back); any other end drops the lobby ([end of a night](end-of-night.md)).
   How lobbies and capacity end: [Lobby and match lifecycle](#lobby-and-match-lifecycle).
 - `src/stub-gameserver.ts` stands in for headless Godot: it heartbeats, and admits only a valid ticket
   that is unexpired, for this server and unused (`jti`), sent as the first WebSocket message.
@@ -240,7 +243,7 @@ injected clock.
 | What | Ends when |
 | --- | --- |
 | Open lobby | Idle for 10 minutes (create, join, leave, start and a member's `GET` all count as activity), or its last member leaves. A member not seen for a minute is dropped while another is still there ([presence](#the-lobby-before-the-night)). |
-| Started lobby | The game server calls `POST /internal/matches/:id/end`, or its heartbeat stops listing the match, or it is 2 hours old, or its last member leaves. |
+| Started lobby | The game server calls `POST /internal/matches/:id/end` (a finished night reopens the lobby), or its heartbeat stops listing the match, or it is 2 hours old, or its last member leaves. |
 | A user's place | A user is in one open lobby; starting the lobby, leaving it or its end frees them. The host role passes to the next member when the host leaves. |
 
 A sweep every 30 s drops expired lobbies, and a lookup of an expired one answers `not_found` at once.
@@ -314,6 +317,40 @@ before `MatchSettings.from_dict` (strict) sees it. The first version of this cha
 backend would have been refused; `tickets.json` now holds a ticket the backend signed with settings. What is not
 done: none. The lobby screen's panel is the host's way in (`LobbyScreen.rules`, `TogetherApi.set_settings`); a
 lobby reads its rules back with `MatchSettings.from_json`, which makes the whole float a whole number the same way.
+
+### A setting is never dropped (#944)
+
+On 2026-11-03 the maintainer made a lobby, set a second map, bots and intensity, and every night was the usual one on
+the drive-in with no bots. Nothing in the code lost them: the live `backend` service had been deployed once, on
+2026-11-02 at 08:34 UTC, from a build that came before the host's rules (#559), and nothing deployed it again (the `ci`
+workflow deployed `web` and `deadnight-server`). That backend answered `PUT /lobbies/:id/settings` with a bare `404 Not
+Found`, ignored the `settings` a start carries, and sent lobbies with no `settings` at all, so every ticket was without
+rules and the room was built on the defaults: all six settings lost at once, by one cause. The lobby said "Something
+went wrong (Not Found). Try again." and went on.
+
+What keeps it from happening again:
+
+- **The backend is deployed with the game.** The `deploy-backend` job of `ci` (`deploy/backend/deploy.sh`) publishes
+  `spikes/backend` to the `backend` service on every green push to `main`, beside `web` and `deadnight-server`, with the
+  same skip of a build older than the live one (`deploy/check_head.sh`). The Postgres service keeps its data.
+- **A deploy compares the keys.** `/health` lists `settingsKeys`; `deploy/backend/check_keys.sh` compares them with the
+  keys of `MatchSettings.KEYS` in the game's source and fails the deploy job when a backend lacks a key the game has (or
+  has one the game lacks); a backend from before the list fails it too. `deploy/backend/test_check_keys.sh` is the
+  script's own test, in `conventions`.
+- **An unknown or wrong setting is an error that names it.** The backend answers `400 bad_settings` with `detail`
+  (`unknown setting perk_limit`, `bad bots`, never a value) on a change and on a start, and logs it; the client shows
+  it. The game server refuses a ticket that carries a key it does not know (`ticket carries a setting this server does not
+  know: perk_limit`) and a dedicated server stops on an option it cannot take (`--map nowhere`).
+- **A backend that keeps no rules is said to the host.** A lobby with no `settings` key (a backend from before the
+  rules), or a `404` on the change, shows "This server is out of date and keeps none of these rules" on the lobby screen
+  and makes its panel read-only, instead of letting the host's choices vanish.
+- **One test per setting, through the real stack.** `tests/net/test_lobby_settings_reach_the_night.gd` runs the real
+  backend, a real game server and the real lobby screen with its panel, for each key of `MatchSettings.KEYS` twice
+  (changed while the lobby waits, changed as Start is pressed), plus the last change winning and a start with no rules
+  in it, and reads the room's rules, the lot it built, the bots it seated and the lot the client built from the WELCOME;
+  a key with no case fails the suite, and one more compares the backend's list with the game's. A setting that is added
+  (the perk limit, #913) therefore cannot ship until it reaches the night. `tools/web_smoke/lobby_settings.py` does the
+  same from the web build in a browser, against a local stack or a deployed one.
 
 ## What is not decided or not proven
 

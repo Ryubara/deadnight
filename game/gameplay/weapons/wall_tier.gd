@@ -20,6 +20,7 @@ const MAX_WALL := LONG
 
 ## The weapons that have a wall tier, by catalogue id. Every other id is `BOX`.
 const TIERS: Dictionary[StringName, int] = {
+	&"house_pistol": HAND,
 	&"pistol": HAND,
 	&"crowbar": HAND,
 	&"baseball_bat": HAND,

@@ -1,0 +1,11 @@
+# Railway config for the `backend` service (picked up from the uploaded folder): the platform backend of
+# spikes/backend, with its own health check, so a build that does not start never replaces the one that runs.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

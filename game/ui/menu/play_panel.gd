@@ -26,9 +26,8 @@ var _refresh_note: Label
 
 func _ready() -> void:
 	var column := VBoxContainer.new()
-	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	column.add_theme_constant_override(&"separation", 10)
-	add_child(column)
+	hold(column)
 	if not context.compact:
 		sign_node = NeonSign.new()
 		sign_node.name = "Sign"

@@ -43,6 +43,7 @@ const OWN_GUNS: Array[StringName] = [
 	&"mp5",
 	&"pump_870",
 	&"dual_pistols",
+	&"house_pistol",
 ]
 const CELLS: Array[StringName] = [&"alone", &"reload", &"mate", &"zombie", &"world"]
 const MATE_GUNS: Array[StringName] = [&"pistol", &"smg", &"rifle", &"shotgun"]

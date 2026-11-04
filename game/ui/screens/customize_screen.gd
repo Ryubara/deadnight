@@ -16,6 +16,8 @@ extends UIScreen
 
 ## Emitted when the working look changes, so a stage somewhere else can show it.
 signal look_changed(look: CharacterLook)
+## Emitted when the embedded rows go one over the other, or side by side again (a narrow tab).
+signal rows_stacked(stacked: bool)
 
 const PANEL_WIDTH := 1500
 const PICKER_WIDTH := 900
@@ -23,8 +25,11 @@ const PICKER_WIDTH := 900
 const STRIP_WIDTH := 540
 ## The same in the main menu's Loadout tab, where the pickers have a column of their own.
 const EMBEDDED_STRIP_WIDTH := 380
-## Height of the scrolling list of pickers.
+## Height of the scrolling list of pickers on its own screen; embedded it takes what its tab leaves.
 const SCROLL_HEIGHT := 640
+## The least width of a row's title in the embedded pickers: the longest title (Character, Trousers)
+## is about this wide, and the hint under it is cut with an ellipsis.
+const EMBEDDED_TITLE_WIDTH := 150.0
 ## The keys of the strips: a prefix and the slot name.
 const PART_PREFIX := "part:"
 const COLOUR_PREFIX := "colour:"
@@ -36,6 +41,8 @@ var unlocks := LookUnlocks.new()
 var look: CharacterLook
 ## The look on disk.
 var saved: CharacterLook
+## The widths the embedded rows share (title, control), once built: the tab's own rows use them.
+var row_widths := Vector2.ZERO
 
 var _rng := RandomNumberGenerator.new()
 var _strips := {}
@@ -51,6 +58,9 @@ var _armband_note: UILabel
 var _save_button: UIButton
 var _building := false
 var _embedded := false
+var _rows: Control
+var _pickers: Control
+var _picker_scroll: ScrollContainer
 
 
 func _ready() -> void:
@@ -225,7 +235,9 @@ func _build_pickers() -> Control:
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.follow_focus = true
-	scroll.custom_minimum_size.y = SCROLL_HEIGHT
+	_picker_scroll = scroll
+	_pickers = panel
+	scroll.custom_minimum_size.y = 0.0 if _embedded else SCROLL_HEIGHT
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	holder.add_child(scroll)
 	var rows := VBoxContainer.new()
@@ -258,11 +270,53 @@ func _build_pickers() -> Control:
 		rows.add_child(_build_part_row(slot))
 	for slot in LookCatalog.colour_slots():
 		rows.add_child(_build_colour_row(slot))
+	if _embedded:
+		_rows = rows
+		_tighten_rows(rows)
+		resized.connect(_restack)
 
 	_hint = _label("", UILabel.Style.CAPTION)
 	_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	holder.add_child(_hint)
 	return panel
+
+
+## The embedded pickers sit in a column of the tab's width (900 units, a phone's 818): every row
+## takes the title and control widths that fit it, the control as wide as the widest strip, so the
+## controls line up and the card is not wider than its area (#980).
+func _tighten_rows(rows: Control) -> void:
+	var widest := 0.0
+	for row in rows.get_children():
+		var strip := (row as UIRow).control as ChoiceStrip
+		if strip != null:
+			widest = maxf(widest, strip.get_combined_minimum_size().x)
+	row_widths = Vector2(EMBEDDED_TITLE_WIDTH, widest)
+	for row in rows.get_children():
+		(row as UIRow).set_widths(row_widths.x, row_widths.y)
+
+
+## Puts a row of the host's own at the top of the scrolling pickers (embedded only): on a phone the
+## Loadout tab's weapon row goes there, since the tab's 372 units are the pickers' to scroll.
+func prepend_row(row: Control) -> void:
+	_rows.add_child(row)
+	_rows.move_child(row, 0)
+
+
+## The rows go one over the other (title above the control) when the tab is too narrow to hold
+## them side by side: a phone's narrowest canvas gives the pickers 672 units.
+func _restack() -> void:
+	if _rows == null or size.x <= 0.0:
+		return
+	var around := (
+		_pickers.get_theme_stylebox(&"panel").get_minimum_size().x
+		+ UIScroll.side_room(_picker_scroll)
+	)
+	var gap := float(_tokens.space_lg)
+	var stacked := size.x < row_widths.x + gap + row_widths.y + around
+	for row in _rows.get_children():
+		if row is UIRow:
+			(row as UIRow).set_stacked(stacked)
+	rows_stacked.emit(stacked)
 
 
 func _build_part_row(slot: StringName) -> UIRow:
