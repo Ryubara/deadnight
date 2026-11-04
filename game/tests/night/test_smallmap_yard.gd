@@ -8,11 +8,11 @@ const GREYBOX := preload("res://world/smallmap/smallmap_greybox.tscn")
 const BACKDROP := preload("res://world/smallmap/backdrop.tscn")
 const SETTLE_FRAMES := 4
 ## Inside the start room, facing the first window across the hall.
-const START_EAR := Vector3(4.0, 1.6, 10.0)
-const WINDOW_1 := Vector3(4.0, 1.55, 14.65)
+const START_EAR := Vector3(8.0, 1.6, 10.0)
+const WINDOW_1 := Vector3(8.0, 1.55, 14.65)
 ## South of that window, straight out of it, and due north through the walls.
-const OUT_SOUTH := Vector3(4.0, 1.6, 40.0)
-const OUT_NORTH := Vector3(4.0, 1.6, -30.0)
+const OUT_SOUTH := Vector3(8.0, 1.6, 40.0)
+const OUT_NORTH := Vector3(8.0, 1.6, -30.0)
 const FAR_AWAY := Vector3(900.0, 1.6, 900.0)
 const OUTSIDE := Vector3(30.0, 1.6, 30.0)
 
@@ -141,7 +141,7 @@ func test_a_window_nearer_the_listener_is_not_louder_for_it() -> void:
 	var unit := 10.0
 	var heard: Array[float] = []
 	for z in [6.0, 10.0, 13.5]:
-		var ear := Vector3(4.0, 1.6, z)
+		var ear := Vector3(8.0, 1.6, z)
 		var way := _sounds.ways.route(ear, OUT_SOUTH, unit)
 		assert_str(way.window).is_equal("start_1")
 		var gain := 20.0 * log(unit / ear.distance_to(way.at)) / log(10.0) + way.extra_db

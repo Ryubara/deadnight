@@ -108,8 +108,8 @@ func _script() -> void:
 	_key(7.0, Vector3(8.0, EYE, 6.0), Vector3(8.0, 0.9, 14.0))
 	# The first window: in line with it, the yard comes in at the window.
 	_stage("at a boarded window", 9.0)
-	_key(9.0, Vector3(4.0, EYE, 9.5), Vector3(4.0, 1.4, 16.0))
-	_key(13.0, Vector3(4.0, EYE, 9.5), Vector3(4.0, 1.4, 16.0))
+	_key(9.0, Vector3(8.0, EYE, 9.5), Vector3(8.0, 1.4, 16.0))
+	_key(13.0, Vector3(8.0, EYE, 9.5), Vector3(8.0, 1.4, 16.0))
 	# The dead tear the boards off, one at a time, the last one with its own sound.
 	_stage("the boards come off", 13.0)
 	_event(14.0, {"type": &"board_torn", "barricade_id": &"start_1", "boards": 3, "zombie_id": 1})
@@ -122,7 +122,7 @@ func _script() -> void:
 	_event(
 		22.0, {"type": &"board_repaired", "barricade_id": &"start_1", "boards": 2, "player_id": 1}
 	)
-	_key(23.5, Vector3(4.0, EYE, 9.5), Vector3(4.0, 1.4, 16.0))
+	_key(23.5, Vector3(8.0, EYE, 9.5), Vector3(8.0, 1.4, 16.0))
 	# To the plank door at the hall's north-east corner, and through it into the rewind room.
 	_stage("the plank door", 24.0)
 	_key(27.0, Vector3(13.0, EYE, 3.0), Vector3(14.0, 1.4, -0.15))
