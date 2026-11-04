@@ -120,20 +120,22 @@ The start weapon went from the revolver (24 a hit, 86 a second) to the House Pis
 ([the table](../design/weapons.md#the-house-pistol-and-the-hit-zones-898)). The simulator and the bots start with it
 (`SimWeapons.START`, `WeaponCatalog.START_WEAPON`, `start_weapons`); no range, health or price of
 the night was changed. Gate cells
-(60 nights each, seed 4000, medians; the baseline is a detached checkout of `main` at d1056635 run before the
-change, the House Pistol row is the branch merged with the same `main`; an earlier run on the first `main` of the branch,
-69d92354, read 5 / 13 / 15 / 16 / 18 / 18 and 5 / 11 / 15 / 16 / 18 / 18 with the pistol, with a spread of 0.8 or 0.6):
+(60 nights each, seed 4000, medians; the baseline is a detached checkout of `main` at 040692cc run before the
+change, the House Pistol row is the branch merged with the same `main`; the first runs, on the older `main` 69d92354,
+read 5 / 13 / 15 / 16 / 18 / 18 and 5 / 11 / 15 / 16 / 18 / 18 with the pistol, at a spread of 0.8 or 0.6):
 
 | Cell | weak x1 | average x1 | average x2 | average x4 | average x8 | strong x1 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Range | 4 to 9 | 8 to 14 | 11 to 16 | 12 to 17 | 14 to 20 | 12 to 19 |
-| `main` (d1056635) | 5 | 11 | 14 | 16 | 17 | 17 |
-| House Pistol start | 5 | 10 | 12 | 15 | 18 | 14 |
+| `main` (040692cc) | 5 | 11 | 14 | 16 | 17 | 16 |
+| House Pistol start | 4 | 10 | 12 | 15 | 17 | 14 |
 
 The cost is the opening: the extra shots a round-1 to round-5 walker takes cost every player time and rounds before the
-first wall weapon, so the solo and small-party medians move down (average one to two rounds, strong solo three) and all
-six stay inside their ranges. Nothing was retuned. 60 nights a cell is the CI
-gate's sample, not the nightly run's hundred.
+first wall weapon, so the medians move down (one to two rounds; the weak median is on the floor of its range) and all
+six stay inside their ranges. No range, health or price was retuned. One test threshold moved: `CLIMB_CARRIED` (how
+much further the re-cut and the tonic carry the nights) from 0.5 to 0.3, because the strong solo night gains 0.38 from
+them now (14.08 against 13.70 with both inert; the two party cells still gain more than 0.5). 60 nights a cell is the
+CI gate's sample, not the nightly run's hundred.
 
 ## The re-cut and the tonic (#281)
 
