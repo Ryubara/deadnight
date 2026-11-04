@@ -6,7 +6,7 @@
 // clock, so tests move time by hand.
 import { randomBytes, randomUUID } from "node:crypto";
 import type { GameServerInfo } from "./servers.ts";
-import { type MatchSettings, checkSettings } from "./settings.ts";
+import { DEFAULT_MAP, type MatchSettings, checkSettings, mapOpenAt } from "./settings.ts";
 
 export interface Member {
   userId: string;
@@ -16,6 +16,11 @@ export interface Member {
 export interface Match {
   id: string;
   server: GameServerInfo;
+  /**
+   * The level of the lobby's host when the match started: signed into EVERY ticket of the match (a guest's too), so the
+   * game server decides the map from one number whatever order the players arrive in or whoever the host becomes.
+   */
+  hostLevel: number;
 }
 
 export interface Lobby {
@@ -297,13 +302,14 @@ export class LobbyService {
 
   /**
    * The host sets the rules of the night while the lobby waits: every member reads them on their next poll. Only the
-   * host, only before the start (they are fixed from then on), and only a value the game takes.
+   * host, only before the start (they are fixed from then on), and only a value the game takes: a map must be one the
+   * host's level (`hostLevel`, read by the caller from the stored profile) opens.
    */
-  setSettings(id: string, userId: string, settings: unknown): Lobby {
+  setSettings(id: string, userId: string, hostLevel: number, settings: unknown): Lobby {
     const lobby = this.get(id);
     if (lobby.hostId !== userId) throw new LobbyFailure("not_host");
     if (lobby.state === "started") throw new LobbyFailure("already_started");
-    const checked = checkSettings(settings);
+    const checked = checkSettings(settings, hostLevel);
     if ("problem" in checked) throw new LobbyFailure("bad_settings", checked.problem);
     lobby.settings = checked.settings;
     lobby.lastActiveAt = this.now();
@@ -313,17 +319,23 @@ export class LobbyService {
   /**
    * The host starts the match: a game server is allocated and the lobby is closed to newcomers. The rules are the
    * ones sent with the start, else the ones the host set while waiting (`setSettings`), else the game's own.
+   * `hostLevel` is the starting host's level, read now: it is kept on the match and signed into every ticket. Rules sent
+   * with the start name a map that level opens (else `bad_settings`); rules kept from the waiting, set by a host who
+   * has left and whose level opened a map the new host's does not, start the match on the default map instead (the
+   * game server does the same with a ticket, `MatchSettings.fit_host`).
    */
-  start(id: string, userId: string, settings: unknown = undefined): Lobby {
+  start(id: string, userId: string, hostLevel: number, settings: unknown = undefined): Lobby {
     const lobby = this.get(id);
     if (lobby.hostId !== userId) throw new LobbyFailure("not_host");
     if (lobby.state === "started") throw new LobbyFailure("already_started");
     const given = settings !== undefined && settings !== null;
     let chosen = lobby.settings;
     if (given) {
-      const checked = checkSettings(settings);
+      const checked = checkSettings(settings, hostLevel);
       if ("problem" in checked) throw new LobbyFailure("bad_settings", checked.problem);
       chosen = checked.settings;
+    } else if (chosen?.map !== undefined && !mapOpenAt(chosen.map, hostLevel)) {
+      chosen = { ...chosen, map: DEFAULT_MAP };
     }
     const matchId = randomUUID();
     const server = this.hooks.allocate(matchId);
@@ -333,7 +345,7 @@ export class LobbyService {
     lobby.settings = chosen;
     lobby.startedAt = now;
     lobby.lastActiveAt = now;
-    lobby.match = { id: matchId, server };
+    lobby.match = { id: matchId, server, hostLevel };
     this.byMatch.set(matchId, lobby.id);
     // A started lobby is no longer an open one: its members may open or join another.
     for (const m of lobby.members) if (this.openLobbyOf.get(m.userId) === lobby.id) this.openLobbyOf.delete(m.userId);
@@ -341,7 +353,7 @@ export class LobbyService {
   }
 
   /** Quick join: a public night with room (open or started), else a new public one, started at once. */
-  quick(member: Member, maxPlayers = MAX_PLAYERS): Lobby {
+  quick(member: Member, hostLevel: number, maxPlayers = MAX_PLAYERS): Lobby {
     for (const lobby of this.lobbies.values()) {
       if (lobby.visibility !== "public" || this.expired(lobby)) continue;
       if (lobby.members.some((m) => m.userId === member.userId)) return lobby;
@@ -353,7 +365,7 @@ export class LobbyService {
     }
     const lobby = this.create(member, maxPlayers, null, "public");
     try {
-      return this.start(lobby.id, member.userId);
+      return this.start(lobby.id, member.userId, hostLevel);
     } catch (error) {
       this.remove(lobby);
       throw error;

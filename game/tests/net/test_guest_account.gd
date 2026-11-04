@@ -111,7 +111,7 @@ func test_a_guest_comes_back_to_its_account_with_the_credential_it_kept(
 	assert_str(credential).is_equal(signed["guestToken"])
 	assert_int(int(signed["guestExpiresIn"])).is_equal(7 * 24 * 3600)
 
-	# It writes a save under this account.
+	# It writes a save under this account (the `challenges` slot: the backend checks `profile`).
 	var wrote: Dictionary = await first.call(
 		"_call",
 		"PUT",

@@ -155,11 +155,11 @@ func test_the_backend_lists_the_maps_the_game_can_play() -> void:
 	if not FileAccess.file_exists(path):
 		return
 	var text := FileAccess.get_file_as_string(path)
-	var found := RegEx.create_from_string("PLAYABLE_MAPS = \\[([^\\]]*)\\]").search(text)
+	var found := RegEx.create_from_string("MAP_UNLOCK_LEVELS[^=]*= [{]([^}]*)[}]").search(text)
 	assert_object(found).is_not_null()
 	var listed: Array[String] = []
 	for part in found.get_string(1).split(","):
-		var id := part.strip_edges().trim_prefix('"').trim_suffix('"')
+		var id := part.get_slice(":", 0).strip_edges()
 		if id != "":
 			listed.append(id)
 	var playable: Array[String] = []
