@@ -46,6 +46,7 @@ static func shop(world: NightWorld, tuning: RulesTuning) -> BotShop:
 		found.shopping.assign(overlay.bot_shopping)
 	var night_tuning := NightTuning.shipped()
 	found.use_reach = night_tuning.use_reach
+	found.spot_reach = night_tuning.spot_reach
 	found.fuel_reach = night_tuning.fuel_reach
 	found.lamp_reach = LightTuning.current().lamp_reach
 	for item in tuning.economy.items:
@@ -54,6 +55,7 @@ static func shop(world: NightWorld, tuning: RulesTuning) -> BotShop:
 				if world.door_ids().has(item.id) and not world.door_stands(item.id).is_empty():
 					found.doors.append(item.id)
 					found.door_stands[item.id] = world.door_stands(item.id)
+					found.door_points[item.id] = world.door_points(item.id)
 			ShopItem.Kind.FUEL:
 				found.fuel_item = item
 	found.spots = world.shop_spots()

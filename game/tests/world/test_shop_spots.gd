@@ -1,13 +1,17 @@
 # The lot's shop spots (docs/design/map.md): wall weapons, the prize crane, ammunition lockers,
 # the machines and the grenade rack are markers the night reads; each names a real shop item,
 # stands on ground a player can reach and sits clear of every door and of the other spots, so one
-# press never means two things.
+# press never means two things (#908; the floor between every two use zones of both maps is walked
+# by test_use_zone_spacing.gd).
 extends GdUnitTestSuite
 
 const KINDS: Array[StringName] = [&"wall", &"crane", &"ammo", &"upgrade", &"perk", &"rack"]
-## The night's reach for a use (NightTuning.use_reach): spots of different kinds must be farther
-## apart than twice this, so no place is in reach of two of them.
-const REACH := 3.2
+## The two reaches: a spot's marker from a door's slab (`NightTuning.spot_reach` and `use_reach`),
+## and from a spot of another kind (two `spot_reach`), so their discs never meet in the open. The
+## half metre between two zones is walked on the floor itself, walls and all (#908,
+## test_use_zone_spacing.gd).
+var _slab_apart := NightTuning.shipped().spot_reach + NightTuning.shipped().use_reach
+var _spot_apart := 2.0 * NightTuning.shipped().spot_reach
 
 var _world: NightWorld
 var _spots: Array[Dictionary]
@@ -93,11 +97,11 @@ func test_no_spot_is_within_reach_of_a_door_slab_or_of_another_kind_of_spot() ->
 						. override_failure_message(
 							"%s is %.1f m from %s" % [spot["shop_id"], apart, door.name]
 						)
-						. is_greater(REACH)
+						. is_greater_equal(_slab_apart)
 					)
 		for other in _spots:
 			if other["kind"] != spot["kind"]:
-				assert_float(_flat(at, other["position"])).is_greater(REACH)
+				assert_float(_flat(at, other["position"])).is_greater_equal(_spot_apart)
 
 
 func test_every_spot_stands_inside_the_lot() -> void:

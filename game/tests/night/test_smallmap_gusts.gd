@@ -9,7 +9,7 @@ const SETTLE_FRAMES := 4
 const DT := 1.0 / 30.0
 ## What the roof wind's trim was before the gusts drove it (the rooms' levels are read from it).
 const ROOF_TRIM_BEFORE_DB := -19.0
-const START_EAR := Vector3(4.0, 1.6, 10.0)
+const START_EAR := Vector3(8.0, 1.6, 10.0)
 const UPPER_B := Vector3(-3.0, 5.0, -4.0)
 const UPPER_A := Vector3(8.0, 5.0, 2.0)
 const FAR_AWAY := Vector3(900.0, 1.6, 900.0)

@@ -33,6 +33,9 @@ extends RefCounted
 
 ## Ticks between the asks which areas the map has taken in (a quarter second).
 const SPAWN_RETRY_TICKS := 15
+## Ticks of the dead's places kept for the bodies (#914): the lag compensation's quarter second and
+## a margin.
+const DEAD_RING := 18
 const COMMAND := &"command"
 const JOIN := &"join"
 const LEAVE := &"leave"
@@ -131,6 +134,17 @@ var pings: Dictionary[int, int] = {}
 ## The crowd this match stands, from the weakest client in it (`CrowdCeiling.set_platform`).
 var crowd := CrowdCeiling.new()
 
+## The dead stop the bodies (#914). `dead_tuning` is the one table, `_dead_ring` where the dead
+## stood at the last ticks (in the centimetres a frame carries), `_dead_fields` the field each body
+## is moved against, `_shove` what a sustained push does. A body is stopped by the dead where its
+## client saw them (`dead_as_seen`), the positions its predicting copy holds, so the two bodies end
+## at the same place; off, by where they stand now.
+var dead_tuning := DeadContactTuning.shipped()
+var dead_as_seen := true
+var _dead_ring: Array[DeadSnapshot] = []
+var _dead_fields: Dictionary[int, DeadField] = {}
+var _shove: DeadShove
+
 var _pending: Dictionary[int, NightCommand] = {}
 ## Steps since each player's last command arrived.
 var _silent: Dictionary[int, int] = {}
@@ -153,6 +167,10 @@ var _facing_breach: Dictionary[int, StringName] = {}
 var _face_left: Dictionary[int, float] = {}
 ## The teammates raising downed players (held `use` beside a downed one).
 var _revive: ReviveChannel
+## Which presses may buy: none from a repair, a replacing one only when meant (#908).
+var _guard: UseGuard
+## The marker of the spot `_spot_offer` last answered with.
+var _spot_at := Vector3.ZERO
 ## What decides whether a ping is true, and whether an order to the bots is taken.
 var _ping_judge: PingJudge
 var _order_judge: OrderJudge
@@ -196,8 +214,10 @@ func _init(
 	_sight = UseSight.new(_probe.static_callable())
 	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
 	_revive.sight = _sight
+	_guard = UseGuard.new(tuning)
 	_ping_judge = PingJudge.new(tuning, ping_board, rules, world, sim, _bodies, _announce)
 	_order_judge = OrderJudge.new(_ping_judge, bot_orders, rules, world, _bodies, _announce)
+	_shove = DeadShove.new(sim, dead_tuning)
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
 	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
@@ -289,6 +309,16 @@ func _view_tick_of(view_step: int) -> int:
 	return tick_count - behind if behind <= 0x7FFF else tick_count
 
 
+## What the dead did to this player's body in the last tick (#914).
+func dead_field_of(player_id: int) -> DeadField:
+	return _dead_fields.get(player_id)
+
+
+## The sustained pushes' numbers (nudges made and seconds of yield).
+func shove() -> DeadShove:
+	return _shove
+
+
 func body_of(player_id: int) -> Player:
 	return _bodies.get(player_id)
 
@@ -302,13 +332,14 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	_outbox = []
 	tick_count += 1
 	var began := PerfProbe.begin()
-	_move_players()
+	_move_players(delta)
 	_return_strays(delta)
 	PerfProbe.end(&"server.move", began)
 	if tick_count % SPAWN_RETRY_TICKS == 0:
 		director.spawn_points = world.spawn_points()
 	began = PerfProbe.begin()
 	director.tick(delta, _chase_targets())
+	_remember_the_dead()
 	PerfProbe.end(&"server.zombies", began)
 	began = PerfProbe.begin()
 	rules.apply(RulesAction.tick(delta, _revive.held_targets()))
@@ -346,6 +377,8 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 		return
 	_slots[player_id] = _bodies.size()
 	_bodies[player_id] = world.add_body(world.player_spawn(_slots[player_id]), local, drawn_bodies)
+	_dead_fields[player_id] = DeadField.new(dead_tuning)
+	_bodies[player_id].dead = _dead_fields[player_id]
 	crowd.join(player_id, OS.has_feature("web") if local else true)
 	looks.join(player_id)
 	_shot_seq[player_id] = 0
@@ -367,6 +400,8 @@ func _leave(player_id: int) -> void:
 		_bodies.erase(player_id)
 		_slots.erase(player_id)
 		_out_for.erase(player_id)
+		_dead_fields.erase(player_id)
+		_shove.forget(player_id)
 		crowd.leave(player_id)
 		_pending.erase(player_id)
 		_silent.erase(player_id)
@@ -374,6 +409,7 @@ func _leave(player_id: int) -> void:
 		pings.erase(player_id)
 		_repairing.erase(player_id)
 		_revive.forget(player_id)
+		_guard.forget(player_id)
 		ping_board.forget(player_id)
 		bot_orders.forget(player_id)
 		say_board.forget(player_id)
@@ -399,7 +435,7 @@ func _is_downed(player_id: int) -> bool:
 	return state == null or state.downed
 
 
-func _move_players() -> void:
+func _move_players(delta: float) -> void:
 	for player_id in _bodies:
 		_silent[player_id] = _silent.get(player_id, 0) + 1
 		var command := _pending.get(player_id) as NightCommand
@@ -415,12 +451,44 @@ func _move_players() -> void:
 				motion = command.motion
 				# The trigger is the command's own, whoever made the motion.
 				motion.fire = command.fire
-		_bodies[player_id].tick(motion)
+		var body := _bodies[player_id]
+		var field := _dead_fields[player_id]
+		var began := PerfProbe.begin()
+		if dead_tuning.enabled:
+			field.fill(_dead_seen_by(command), body.global_position)
+		PerfProbe.end(&"dead.fill", began)
+		body.tick(motion)
+		began = PerfProbe.begin()
+		_shove.step(player_id, field, delta)
+		PerfProbe.end(&"dead.shove", began)
 		if command != null:
 			# Pressed edges are used once.
 			command.motion.jump = false
 			command.motion.melee = false
 			command.motion.swap_shoulder = false
+
+
+## Keeps where the dead stand after this tick, a few ticks' worth.
+func _remember_the_dead() -> void:
+	if not dead_tuning.enabled:
+		return
+	var began := PerfProbe.begin()
+	_dead_ring.append(DeadSnapshot.of_sim(sim.zombies, tick_count))
+	while _dead_ring.size() > DEAD_RING:
+		_dead_ring.pop_front()
+	PerfProbe.end(&"dead.snapshot", began)
+
+
+## The dead as the player of `command` saw them: the snapshot of the frame its view step names, no
+## older than the lag compensation allows; the latest when it names none.
+func _dead_seen_by(command: NightCommand) -> DeadSnapshot:
+	if _dead_ring.is_empty():
+		return DeadSnapshot.new()
+	var last := _dead_ring[-1]
+	if not dead_as_seen or command == null or command.view_step < 0:
+		return last
+	var behind := clampi(last.tick - command.view_tick, 0, _dead_ring.size() - 1)
+	return _dead_ring[_dead_ring.size() - 1 - behind]
 
 
 ## The server's rule for a player who has left the playable space (a hop past a fence, a physics
@@ -689,6 +757,9 @@ func _target_list() -> Array:
 
 func _act(player_id: int, delta: float) -> void:
 	_hand_wait[player_id] = maxf(_hand_wait[player_id] - delta, 0.0)
+	# What the card shows, each tick, so a press knows how long its offer has been up (#908).
+	var target := {} if _is_downed(player_id) else use_target(player_id)
+	_guard.see(player_id, target, combat.now)
 	var command := _pending.get(player_id) as NightCommand
 	if command == null or _is_downed(player_id):
 		_repairing[player_id] = &""
@@ -710,7 +781,9 @@ func _act(player_id: int, delta: float) -> void:
 	if command.swap or command.slot != WeaponSlots.NONE or command.fire or command.reload:
 		_repairing[player_id] = &""
 	if command.use:
-		_use(player_id)
+		# A swap or a slot this tick changed the hand the offer is for.
+		var changed := command.swap or command.slot != WeaponSlots.NONE
+		_use(player_id, use_target(player_id) if changed else target)
 	_hold_repair(player_id, command)
 	_revive.hold(player_id, command.use_held)
 	_face_breach(player_id, delta)
@@ -809,32 +882,61 @@ func use_target(player_id: int) -> Dictionary:
 			"progress": _revive.progress(raise),
 			"bleed": rules.bleed_left_of(raise),
 		}
+	# The maps keep the zones apart (`UseZones`); where two still meet, a held repair keeps its
+	# breach and otherwise the one the player looks at wins (#908).
+	var view := _view_of(player_id)
+	var offers: Array[Dictionary] = []
 	var door := UseOffers.door(world, rules, tuning, here, _sight)
 	if not door.is_empty():
-		return door
-	var offer := _spot_offer(player_id, here)
-	if not offer.is_empty():
-		return offer
-	var post := UseOffers.post(world, rules, tuning, here, _sight)
-	if not post.is_empty():
-		return post
-	return UseOffers.fuel(world, rules, tuning, here, _sight)
+		offers.append({"offer": door, "at": _nearest(world.door_points(door["id"]), here)})
+	var spot := _spot_offer(player_id, here)
+	if not spot.is_empty():
+		offers.append({"offer": spot, "at": _spot_at})
+	var post := UseOffers.post(world, rules, tuning, here, _sight, view)
+	if post.get("kind") == &"repair":
+		if post["id"] == _repairing.get(player_id, &""):
+			return post
+		offers.append({"offer": post, "at": world.barricade(post["id"]).centre()})
+	elif not post.is_empty():
+		offers.append({"offer": post, "at": world.switches.post(post["id"]).global_position})
+	var fuel := UseOffers.fuel(world, rules, tuning, here, _sight)
+	if not fuel.is_empty():
+		offers.append({"offer": fuel, "at": world.fuel.standing_point(fuel["id"])})
+	return UseOffers.faced(offers, here, view)
 
 
-## The offer of the nearest shop spot in reach that has one, or `{}`.
+static func _nearest(points: Array[Vector3], here: Vector3) -> Vector3:
+	var best := here
+	var best_apart := INF
+	for point in points:
+		if point.distance_to(here) < best_apart:
+			best_apart = point.distance_to(here)
+			best = point
+	return best
+
+
+## Where the player looks, flat: the view of their latest command, else the way the body faces.
+func _view_of(player_id: int) -> Vector3:
+	var command := _pending.get(player_id) as NightCommand
+	var yaw := command.motion.yaw if command != null else _bodies[player_id].state.facing
+	return Vector3(-sin(yaw), 0.0, -cos(yaw))
+
+
+## The offer of the nearest shop spot in reach that has one, or `{}` (its marker in `_spot_at`).
 func _spot_offer(player_id: int, here: Vector3) -> Dictionary:
 	var best := {}
 	var best_apart := INF
 	for spot in world.shop_spots():
 		var apart := world.reach_distance(here, spot["position"])
-		if apart > tuning.use_reach or apart >= best_apart:
+		if apart >= best_apart:
 			continue
-		if not _sight.clear(here, spot["position"]):
+		if not UseZones.spot_reaches(world, tuning, _sight, spot["position"], here):
 			continue
 		var offer := _offer_at(player_id, spot)
 		if not offer.is_empty():
 			best = offer
 			best_apart = apart
+			_spot_at = spot["position"]
 	return best
 
 
@@ -906,8 +1008,9 @@ func _ammo_offer(player_id: int, weapon: StringName) -> Dictionary:
 	}
 
 
-func _use(player_id: int) -> void:
-	var target := use_target(player_id)
+func _use(player_id: int, target: Dictionary) -> void:
+	if _guard.refuses(player_id, target, combat.now, is_repairing(player_id)) != &"":
+		return
 	match target.get("kind"):
 		&"door", &"weapon", &"ammo", &"grenades", &"crane", &"recut", &"tonic":
 			buy(player_id, target["id"])
@@ -951,6 +1054,7 @@ func _repair(player_id: int, breach: StringName) -> void:
 	if _hand_wait[player_id] <= 0.0:
 		_hand_wait[player_id] = tuning.repair_interval
 		rules.apply(RulesAction.repair(player_id, breach))
+		_guard.board(player_id, combat.now)
 		_facing_breach[player_id] = breach
 		_face_left[player_id] = tuning.repair_interval
 
