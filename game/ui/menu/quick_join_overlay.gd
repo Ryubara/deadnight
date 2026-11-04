@@ -56,9 +56,15 @@ func _ready() -> void:
 	var panel := UIPanel.new()
 	panel.variant = UIPanel.Variant.MARQUEE
 	centre.add_child(panel)
+	# The card scrolls rather than grow past the canvas: a failure is a sentence, and a card of it
+	# was 975 units high, more than a phone's 540 or an interface size of Large (#980).
+	var scroll := UIFitScroll.new()
+	scroll.name = "Scroll"
+	scroll.margin = float(_tokens.space_md)
+	panel.add_child(scroll)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override(&"separation", _tokens.space_md)
-	panel.add_child(box)
+	scroll.add_child(box)
 	box.add_child(_label("QUICK JOIN", UILabel.Style.OVERLINE))
 	status = _label(SEARCHING, UILabel.Style.TITLE)
 	status.name = "Status"
@@ -230,6 +236,8 @@ func _say(line: String) -> void:
 ## Searching offers Cancel; a failure offers Create a night and Close.
 func _show_buttons() -> void:
 	var failed := state == State.FAILED
+	# What the backend says about a failure is a sentence, read at the size of one.
+	status.style = UILabel.Style.BODY if failed else UILabel.Style.TITLE
 	create_button.visible = failed
 	close_button.visible = failed
 	cancel_button.visible = not failed

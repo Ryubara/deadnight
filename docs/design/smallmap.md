@@ -158,8 +158,8 @@ rise on the yard and walk up to it.
 
 | Where | What | Price | Ratio to P |
 | --- | --- | ---: | ---: |
-| Hall, west wall | Revolver (back in the pool once given up) | 90 | 0.2 |
-| Hall, west wall | Crowbar | 270 | 0.6 |
+| Hall, west wall | Crowbar | 90 | 0.2 |
+| Hall, west wall | Revolver (no longer the start weapon, #898: the House Pistol is; it hits three times as hard) | 270 | 0.6 |
 | Side room, middle and north walls | Pump shotgun, Tommy gun | 540 each | 1.2 |
 | Upstairs, four walls | Baseball bat | 540 | 1.2 |
 | | Flare gun | 630 | 1.4 |

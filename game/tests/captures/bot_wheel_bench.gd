@@ -86,6 +86,7 @@ func _drive(args: NetArgs) -> void:
 			await _wait(OPEN_SECONDS)
 			var motion := InputEventMouseMotion.new()
 			motion.relative = toward * BotWheel.MOUSE_REACH
+			motion.screen_relative = motion.relative
 			motion.position = Vector2(960.0, 540.0)
 			get_viewport().push_input(motion, true)
 		"pad":

@@ -11,6 +11,7 @@ const CLASS_OF := {
 	&"rifle": &"Rifle",
 	&"shotgun": &"Shotgun",
 	&"smg": &"Rifle",
+	&"house_pistol": &"Pistol",
 	&"pistol": &"Pistol",
 	&"flare_gun": &"Pistol",
 	&"mp5": &"Rifle",

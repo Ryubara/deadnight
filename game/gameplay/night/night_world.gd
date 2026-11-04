@@ -49,6 +49,9 @@ var _barricades: Dictionary[StringName, Barricade] = {}
 var _lamps: LotLamps
 ## The rules' generator, which says which circuits are lit; without one every lamp is.
 var _generator: GeneratorState
+## `shop_spots`, read once the markers are in the scene.
+var _shop_spots: Array[Dictionary] = []
+var _shop_spots_built := false
 
 
 ## Builds the map (the default one when none is given) and waits until its collision and navigation
@@ -275,13 +278,15 @@ func _flat(a: Vector3, b: Vector3) -> float:
 ## shop id and sells the rounds of the weapon in hand). A crane spot also has `crane_spot`: its
 ## place in the rules' list of crane places (metadata `crane_spot`, 0 when not set).
 func shop_spots() -> Array[Dictionary]:
-	var spots: Array[Dictionary] = []
+	if _shop_spots_built:
+		return _shop_spots
 	var group := greybox.get_node_or_null("ShopSpots")
 	if group == null:
-		return spots
+		var none: Array[Dictionary] = []
+		return none
 	for marker in group.get_children():
 		(
-			spots
+			_shop_spots
 			. append(
 				{
 					"kind": StringName(marker.get_meta("kind")),
@@ -292,7 +297,13 @@ func shop_spots() -> Array[Dictionary]:
 				}
 			)
 		)
-	return spots
+	# The markers do not move and the list is asked for by every player on every tick: it is read
+	# once and shared, and read-only so a caller cannot change what the next one sees (#931).
+	for spot in _shop_spots:
+		spot.make_read_only()
+	_shop_spots.make_read_only()
+	_shop_spots_built = true
+	return _shop_spots
 
 
 ## The turn of a marker about the up axis, from where its +Z axis points (an Euler angle is not
@@ -379,7 +390,11 @@ func is_lit(point: Vector3) -> bool:
 ## A body for one player, driven by the server (its own physics step is off). `drawn` false makes
 ## a body that is only physics (a game server draws nothing): the Soldier's model, skeleton and
 ## animation are left out, which is most of a body's nodes and all of its per-frame work.
-func add_body(spawn: Vector3, local_input: bool, drawn: bool = true) -> Player:
+## `viewless` makes a body no one looks through (a bot's, one that draws nothing): its camera rig is
+## not run in every drawn frame (`Player.make_viewless`).
+func add_body(
+	spawn: Vector3, local_input: bool, drawn: bool = true, viewless: bool = false
+) -> Player:
 	var body := PLAYER_SCENE.instantiate() as Player
 	body.local_input = local_input
 	body.capture_mouse = local_input
@@ -390,6 +405,9 @@ func add_body(spawn: Vector3, local_input: bool, drawn: bool = true) -> Player:
 		# Only the person's own body owns the current camera: a bot's, which enters the tree after
 		# it, would take the view (#702).
 		body.release_view()
+	if viewless:
+		# No one looks through it (a bot's, a body that draws nothing): its rig is not run either.
+		body.make_viewless()
 	add_child(body)
 	body.teleport(spawn)
 	body.set_physics_process(false)

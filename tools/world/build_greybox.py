@@ -1357,11 +1357,24 @@ def build() -> None:
     block(back, "Bus", -44, -32, 20.5, 23.3, 3.0, "backlot_prop")
     block(back, "ScrapStackA", -58, -52, 20, 26, 2.6, "backlot_prop")
     block(back, "ScrapStackB", -26, -20, 22, 28, 2.6, "backlot_prop")
-    block(back, "SignBoard", -50, -44, 35.2, 35.8, 4.2, "neon", 0.0)
+    # The lot's sign stands against the south fence: a plank board (the sign's wall) with the neon on its north face.
+    block(back, "SignBoard", -50, -44, 35.2, 35.8, 4.2, "backlot_wall", 0.0)
     bk = lamps(back, "back_lot", flicker="failing_battery")
     for i in BACK_LOT_LAMP_NUMBERS:
         instance(bk, f"Lamp{i}", "lamp", FIELD_LAMPS[i - 1], props=back_lot_post_props(FIELD_LAMPS[i - 1]))
-    omni(bk, "NeonSign", (-47, 3.5, 33.5), 1.8, 12, "#ff3a4a")
+    # The neon sign (#852): a `LotNeonSign` on the board's face, facing the lot, burning through the back lot's failing
+    # battery with the posts. Its lamp is the spot of the sign's scene (same slot as the omni it replaces, about where
+    # that stood) and lights the ground for the rules as the omni did; its halo shows from the front only.
+    instance(
+        bk, "NeonSign", "neon_sign", (-47, 2.9, 35.14), 180.0,
+        props={
+            "text": '"OVERFLOW"',
+            "neon_color": "Color(1, 0.36, 0.2, 1)",
+            "halo_front_only": "true",
+            "lights_ground": "true",
+            "light_angle": "60.0",
+        },
+    )  # fmt: skip
     breaches_of(back, BACK_BREACHES, "backlot_wall", {})
     label(back, "Label", "6  BACK LOT  (dim)", (-39, 0.6, 12), 110)
 

@@ -14,6 +14,7 @@ const EXPECTED := {
 	&"shotgun": [&"Shotgun", "res://assets/weapons/double_shotgun/double_shotgun.glb"],
 	&"crowbar": [&"Melee", "res://assets/weapons/crowbar/crowbar.glb"],
 	&"smg": [&"Rifle", "res://assets/weapons/tommy_gun/tommy_gun.glb"],
+	&"house_pistol": [&"Pistol", "res://assets/weapons/house_pistol/house_pistol.glb"],
 	&"pistol": [&"Pistol", "res://assets/weapons/revolver/revolver.glb"],
 	&"flare_gun": [&"Pistol", "res://assets/weapons/flare_gun/flare_gun.glb"],
 	&"baseball_bat": [&"Melee", "res://assets/weapons/baseball_bat/baseball_bat.glb"],
