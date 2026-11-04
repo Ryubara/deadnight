@@ -656,7 +656,7 @@ func _end_round() -> void:
 		# The cap on repair pay runs from one round's end to the next: the break's repairs count.
 		player.repair_points_this_round = 0
 		if player.downed:
-			var penalty := floori(player.points * economy.down_penalty_fraction)
+			var penalty := PointSteps.loss(player.points * economy.down_penalty_fraction)
 			if penalty > 0:
 				player.points -= penalty
 				_emit(
@@ -803,7 +803,9 @@ func _blow(action: Dictionary) -> void:
 			_check_game_over()
 
 
-func _award(player_id: int, amount: int, reason: StringName) -> void:
+func _award(player_id: int, raw_amount: int, reason: StringName) -> void:
+	# The one place awards are rounded: every source ends here (`PointSteps`).
+	var amount := PointSteps.award(raw_amount)
 	if amount <= 0:
 		return
 	var player: PlayerState = players[player_id]
@@ -878,7 +880,7 @@ func _paid_hit_limit(type: ZombieType) -> int:
 
 
 func _scaled(points: int, type: ZombieType) -> int:
-	return roundi(float(points) * type.points_multiplier)
+	return PointSteps.award(float(points) * type.points_multiplier)
 
 
 ## Why this hit cannot land, or an empty name when it can.

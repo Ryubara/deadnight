@@ -55,6 +55,12 @@ of the menu's table alone through the real service, at the default settings) aga
 walk through the real menus) for the hint cap and the slider's tick gap, with `--before` another recording for a plot of
 both. `docs/research/menu-sfx.md`.
 
+The menu's ambience bed (#926) is checked against its hints without ears by `menu_speakers.py`: it reads the recording of
+`game/tests/captures/audio_menu_bed.tscn` (the bed alone) and the `levels` recording, puts both through a laptop and a
+phone speaker model (assumed curves, in its header) and prints, for every hint and model, the peak over the bed's loudest
+400 ms (gate 10 dB) and the margin in the hints' own band (gate 6 dB); `--pin` writes `game/tests/core/menu_bed_levels.json`
+for `test_menu_bed_levels.gd`, `--plot` the picture. `menu_levels.py tour --labels` titles the two rows of the plot.
+
 The flare gun's report (#761) is limited the same way (`limit_crest`); `gun_levels.py --table` also writes
 a SHA-256 of every gun file it played, which `test_gun_audio_rules.gd` checks.
 

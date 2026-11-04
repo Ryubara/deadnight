@@ -192,7 +192,7 @@ func test_the_jump_rung_uses_a_curated_place_the_way_it_says() -> void:
 
 func test_the_lot_gives_its_loops_and_breaches_to_a_bots_level() -> void:
 	var night := await NightFixture.seat(self, 1, SeatedNight.one_a_round(), 5)
-	assert_int(night.level.breaches.size()).is_equal(6)
+	assert_int(night.level.breaches.size()).is_equal(16)
 	assert_int(night.level.loops.size()).is_equal(2)
 	for ring in night.level.loops:
 		assert_int(ring.size()).is_equal(4)

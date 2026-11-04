@@ -135,4 +135,4 @@ func test_a_snapshot_carries_each_living_zombies_health() -> void:
 	var events := copy.apply(RulesAction.hit(1, zombie_id, RulesAction.ZONE_BODY, 40.0))
 	assert_float(events[0]["damage"]).is_equal(RulesFixture.round_health(1) - 25.0)
 	assert_str(events.back()["cause"]).is_equal("killed")
-	assert_int(copy.points_of(1)).is_equal(200 + 4 + 60)
+	assert_int(copy.points_of(1)).is_equal(200 + 5 + 55)

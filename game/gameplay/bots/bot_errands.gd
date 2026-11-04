@@ -56,8 +56,7 @@ const PERSON_AT_BREACH := 10.0
 ## the seconds an area stays empty before its circuit goes off.
 const AREA_MARGIN := 3.0
 const AREA_EMPTY := 15.0
-## Metres from a stand at which a bot counts itself arrived, for a stand in the open and a door (a
-## door's stand is 1.5 m from the slab and a hand reaches 3.2 m, so it must come closer than 1.7).
+## Metres from a stand at which a bot counts itself arrived, in the open and at a door's stand.
 const ARRIVE := 1.0
 const ARRIVE_DOOR := 0.8
 ## Metres of height at most between a bot and its stand for it to count as arrived (a bench above
@@ -441,6 +440,7 @@ func _plan(beliefs: BotBeliefs, state: ClientState, me: Dictionary, frame: Dicti
 func _carry_out(intent: BotIntent, pick: BotEconomy.Buy, me: Dictionary, now: float) -> bool:
 	var prompt: Dictionary = me.get("prompt", {})
 	var here: Vector3 = me["pos"]
+	intent.look_yaw = _shop.thing_yaw(pick.item, pick.prompt, pick.stand, here)
 	if _sells(prompt, pick) and _at_marked(pick, here):
 		var wrong := _hands_wrong(pick, prompt, me)
 		intent.keep_weapon = wrong or pick.prompt in [&"ammo", &"weapon", &"crane"]
@@ -457,8 +457,7 @@ func _carry_out(intent: BotIntent, pick: BotEconomy.Buy, me: Dictionary, now: fl
 		return false
 	var radius := ARRIVE_DOOR if pick.prompt == &"door" else ARRIVE
 	if _flat(here, pick.stand) <= radius + 0.5 and absf(here.y - pick.stand.y) <= ARRIVE_HEIGHT:
-		if _arrived_at < 0.0:
-			_arrived_at = now
+		_arrived_at = now if _arrived_at < 0.0 else _arrived_at
 		intent.keep_weapon = pick.prompt == &"ammo"
 		if _wants_swap(pick, me) and now - _swap_at >= SWAP_GAP:
 			intent.swap = true
@@ -466,6 +465,7 @@ func _carry_out(intent: BotIntent, pick: BotEconomy.Buy, me: Dictionary, now: fl
 		elif now - _arrived_at > AT_STAND_PATIENCE:
 			back_off(pick.item, now)
 			return false
+		intent.goal = pick.stand  # onto the stand while the card is not up (`BotShop.thing_yaw`)
 		intent.note = note
 		return true
 	if _cannot_reach(pick.stand, now):
@@ -480,7 +480,7 @@ func _carry_out(intent: BotIntent, pick: BotEconomy.Buy, me: Dictionary, now: fl
 ## Whether the bot is where `pick` is to be bought when a person marked the place: any locker sells
 ## the same rounds, but a mark is an order for that one, so a bot at another locker walks on.
 func _at_marked(pick: BotEconomy.Buy, here: Vector3) -> bool:
-	return pick.why != BotEconomy.AMMO_PING or _flat(here, pick.stand) <= _shop.use_reach
+	return pick.why != BotEconomy.AMMO_PING or _flat(here, pick.stand) <= _shop.spot_reach
 
 
 ## Notes a stand the legs found no way to, so the plan looks elsewhere. True when it is one.
