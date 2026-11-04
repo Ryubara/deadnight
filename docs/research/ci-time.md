@@ -23,51 +23,66 @@ one, which includes its `before()` and `after()`; sorting those gaps gives the l
 After the speed-ups below the same job took 15 min 10 s (suites 853 s, down about 420 s on the suites both runs had; `main`
 had grown by 26 suites and 150 s meanwhile). The rest is compute and real time, so the job is also split.
 
-## Jobs by test folder (three, six since #775)
+## Jobs by test folder (three), six (#775), eight by script seconds (#1015)
 
-`godot` is a matrix of three shards (`godot (1)` to `godot (3)`), each running its own test folders
-(`tools/ci_test_shards.py`: `night` and `rules`; `net`, `world` and `zombies`; everything else). A folder that is not
-named goes to shard 3, so a new folder is never left out, and the script's self-test (run in every shard) fails if a
-folder is in no shard or in two. Each shard repeats the checkout, the fetch of the pinned Godot (cached) and the import,
-about a minute; the main-scene run and the night run happen in shard 1 only. `build-ok` still waits for the whole
-`godot` job and is the one required name, so the ruleset needs no change. The timing per folder to balance by is in the
-job log: re-balance when one shard drifts past the others by more than a few minutes.
+`godot` is a matrix of parallel shards (`godot (1)` to `godot (8)`), each running its own test scripts. The history:
+three shards by folder (#524, then single scripts moved by hand, #676), six (#775), and each time the heaviest shard was
+back at the 15-minute limit within a day or two, because the suite grows with every merge (28 new scripts in one
+afternoon, #1015) and the shards were balanced by hand from a table that went stale. A shard that is over its limit is
+cancelled with no failing test.
 
-**The night folder is split by script (#676).** Shard 1 (`night` and `rules`) ran 14 min 15 s on `main` already, against
-a limit of 15, so the bot orders suites tipped it over and the job was cancelled with no test failing. The `night`
-folder is 13 minutes of it, almost all in a few bot suites (`test_bot_bands` 185 s, `test_bot_soak` 78 s,
-`test_bot_orders_night` 70 s), so `MOVED` in `tools/ci_test_shards.py` names those scripts and sends them to the shards
-with room: after the move the three shards' suites take about 530, 560 and 580 s. A script of a split folder that is not
-named stays with the folder's shard, so a new bot suite is still run. Check the shard times in the job log before a PR
-adds minutes of suites; the step takes a minute of setup on top.
+**Eight shards, dealt by measured seconds (#1015).** `tools/ci_test_shards.py` no longer names folders. Every
+`tests/**/test_*.gd` is one item, weighed by its seconds in `tools/ci_test_times.json`, and the items are dealt out
+heaviest first to the shard with the least so far; a script that is not in the file counts `default_seconds` (10), so a
+new script lands in the lightest shard and is never left out. The self-test (run in every shard) fails when a script is
+in no shard or two, or when the workflow's matrix is not the same shards or the job's limit is not the one the check
+assumes. Shard 1 starts with 60 s already counted, for the main scene, the night run and the late-round budget run it
+alone does (about 120 s of its job, 50 of them the budget run).
 
-**Six shards, by measured seconds (#775).** The three shards grew back to 12 to 15 minutes (shard 1 reached the 15-minute
-limit and was cancelled with no test failing, five times in one day). The suites alone were 655, 708 and 655 s in a
-fast run of `main` and 814, 838 and 673 s in a run 15 % slower, 2,018 and 2,325 s in all: 3 shards cannot meet "no
-shard over about 9 minutes" (a shard's job is its suites plus about 50 s of checkout, fetch and import), 4 could not
-survive a slow runner (10.5 min), so there are six, about 6 minutes of suites and 7 in all, and the limit stays 15.
-The seconds per script are the gaps between the `Run Test Suite:` lines of the job log (`gh api
-repos/<repo>/actions/jobs/<id>/logs --allow-escape-sequences`); the table is the mean of two runs.
+Measured on six complete CI runs (five of `main`, one of the late-round budget pull request, #968). The seconds of a
+suite are the duration on its `Statistics:` line (`tools/ci_shard_time.py`, `suite_times`; the same as the gap between
+its `Run Test Suite:` lines). The runner's speed varies by a factor of 1.5 from job to job (`test_balance_targets` 110 to
+207 s, `test_bot_bands` 86 to 149 s), except the `net` suites, whose time is real (`test_room_eight` 61 s every time):
 
-| Shard | Runs | Suites, s (fast / slow run) |
-| --- | --- | --- |
-| 1 | the rest of `night` (about 96 scripts), the main scene and a night run | 332 / 414 |
-| 2 | `night/test_bot_bands`, `player` | 349 / 356 |
-| 3 | `zombies`; `night/test_bot_soak`, `_orders_night`, `_combat`, `_team`, `_errand_buys` | 304 / 404 |
-| 4 | `net` | 358 / 377 |
-| 5 | `ui` and the small folders; `night/test_bot_own_ammo` | 343 / 362 |
-| 6 | `rules`, `world`; `night/test_bot_train` | 332 / 413 |
+| Shard | Before: suites, s | Before: job, min | After: suites, s | After: job, min (suites + 50 s, shard 1 + 120 s) |
+| --- | --- | --- | --- | --- |
+| 1 | 811 | 14.7 | 338 | 7.6 |
+| 2 | 251 | 5.0 | 408 | 7.6 |
+| 3 | 479 | 9.0 | 383 | 7.2 |
+| 4 | 488 | 9.0 | 458 | 8.5 |
+| 5 | 554 | 10.2 | 427 | 8.0 |
+| 6 | 766 | 13.9 | 450 | 8.3 |
+| 7 | | | 433 | 8.1 |
+| 8 | | | 446 | 8.3 |
 
-The slowest suites on the runner (mean seconds): `night/test_bot_bands` 206 (eight seeds for each band),
-`rules/test_balance_targets` 109 to 127 (60 seeded nights per cell, the gate), `night/test_bot_soak` 80,
-`night/test_bot_orders_night` 68, `net/test_room_eight` 59, `night/test_bot_combat` 51, `night/test_bot_errands` 45,
-`net/test_night_scoreboard_online` 43, `night/test_bot_team` 43, `world/smallmap/test_smallmap_bot_night` 40,
-`night/test_bot_own_ammo` 40. All are seeded bot nights or real sockets: the time is the test. I read the scripts of
-the 25 to 35 s suites outside
-`net` (`player/test_aim_press_order`, `ui/test_hud_prompt_fit`, `night/test_shot_on_crosshair`, ...): none has a
-`create_timer`, they load a night and step it, so none grew because of a bug and none got its own issue. They are also
-the next place to look when a shard drifts: `test_bot_bands` alone is a third of a shard (`BOTS_BANDS_SEEDS` shortens it
-by hand).
+Run A is the slowest `main` run with the "after" column the same suite times summed under the new split (job minutes
+are the suites plus the setup seen in the logs). Shard 1 of run A had no late-round budget step yet, which adds 50 s:
+its job would have been 15.5 minutes. Over all six runs the heaviest shard before was 653 to 816 s of suites (shard 1
+or 6; shard 1 was cancelled at the limit on one `main` run, and #968 had shard 6 at 14 min 50 s); after it is 364 to
+458 s. The expected job is 6.9 to 8.5 minutes on the slowest runners seen, and the spread inside a run is 100 to 120 s
+(it was 430 to 590 s).
+
+## Keeping the shards balanced (#1015)
+
+- **The check in every shard.** The last step of a `godot` shard (`tools/ci_shard_time.py check`) reads the shard's
+  `tests.log`, puts the slowest suites in the job summary, and compares the job's elapsed time (from a clock started
+  by the first step, checkout included) with the 15-minute limit: an annotation past 60 % (9 min), a failed job past
+  80 % (12 min). A balanced shard takes 6 to 9 minutes on the slowest runners seen, so the failure means real drift, and
+  it shows on the pull request that pushed it, minutes before the limit cancels a job with nothing wrong in the log.
+- **When it warns or fails,** or when the suite has grown by a few dozen scripts: download `tests.log` from the
+  `gdunit4-report-N` artifacts of two or three recent runs of `main`, run `python3 tools/ci_shard_time.py update <logs>`
+  (it averages the logs and rewrites the times file), commit it, and run `python3 tools/ci_test_shards.py --root game
+  --report`: each shard's expected seconds. If the heaviest is over `REPORT_SHARD_BUDGET` (440 s), add a shard (`SHARDS`
+  there and the matrix in the workflow; the self-test fails until both agree). The size rule from before still holds:
+  total suite seconds / 480, rounded up, plus a margin for a slow runner and growth (3,250 s / 480 = 6.8, so eight).
+- **Do not hand-edit** a shard's list; there is none. A script that is slow on purpose gets its time from the file.
+
+The slowest suites on the runner (mean seconds): `rules/test_balance_targets` 169 (60 seeded nights per cell, the gate),
+`night/test_bot_bands` 142, `night/test_bot_grenade_soak` 136, `world/test_midway_fence_reach` 126,
+`world/smallmap/test_smallmap_bot_night` 117, `night/test_bot_orders_night` 98, `night/test_bot_soak` 84,
+`night/test_bot_combat` 62, `net/test_room_eight` 61, `night/test_bot_own_ammo` 59. Together they are a third of the
+suite's time. All are seeded bot nights, a walk of the whole map or real sockets. Speed-up candidates are issues of their
+own (#1017 lists them).
 
 ## What a fast test does
 
