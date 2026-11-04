@@ -5,11 +5,11 @@ import type { Config } from "./config.ts";
 import { type DiscordClient, DiscordUnavailable } from "./discord.ts";
 import { RateLimit } from "./limits.ts";
 import { type Lobby, LobbyFailure, type LobbyLimits, LobbyService, MAX_PLAYERS } from "./lobbies.ts";
-import { chooseName } from "./names.ts";
+import { chooseName, firstUsable } from "./names.ts";
 import { DEFAULT_MAP, SETTINGS_KEYS } from "./settings.ts";
 import { GameServerRegistry } from "./servers.ts";
 import { checkSave, SaveRejected } from "./saves.ts";
-import { RevisionConflict, type Store } from "./store.ts";
+import { RevisionConflict, type Store, type User } from "./store.ts";
 import { signToken, verifyToken } from "./tokens.ts";
 
 export const SESSION_TTL_SECONDS = 60 * 60;
@@ -18,6 +18,13 @@ export const MAX_SAVE_BYTES = 64 * 1024;
 /** Guest sign-ins one address may make in an hour, and all addresses together. */
 export const GUESTS_PER_ADDRESS_PER_HOUR = 30;
 export const GUESTS_IN_ALL_PER_HOUR = 2000;
+/**
+ * How long a Guest account lasts without a sign-in: the guest credential is good for this long, and an account not signed
+ * in to for this long is deleted with its saves. Every sign-in restarts it. A Discord account never expires.
+ */
+export const GUEST_TTL_SECONDS = 7 * 24 * 60 * 60;
+/** How often idle Guest accounts are deleted (a returning guest past the 7 days is deleted at its sign-in anyway). */
+export const GUEST_SWEEP_MS = 60 * 60_000;
 /** A guest's `discord_id` column: its own namespace, never a number like a Discord snowflake. */
 export const GUEST_ID_PREFIX = "guest:";
 
@@ -25,6 +32,12 @@ export const GUEST_ID_PREFIX = "guest:";
 export function guestName(given: string | undefined): string {
   return chooseName([given]);
 }
+
+/** Deletes the Guest accounts last signed in to 7 days ago or more, with their saves; how many. Discord accounts stay. */
+export function sweepIdleGuests(store: Store, nowMs: number): Promise<number> {
+  return store.deleteIdleUsers(GUEST_ID_PREFIX, nowMs - GUEST_TTL_SECONDS * 1000);
+}
+
 /** How often expired lobbies are dropped. */
 export const LOBBY_SWEEP_MS = 30_000;
 
@@ -100,6 +113,15 @@ export function buildApp(deps: Deps): FastifyInstance {
   const sweeper = setInterval(() => lobbies.sweep(), LOBBY_SWEEP_MS);
   sweeper.unref();
   app.addHook("onClose", async () => clearInterval(sweeper));
+  const now = deps.now ?? Date.now;
+  const guestSweeper = setInterval(() => {
+    sweepIdleGuests(store, now()).then(
+      (count) => count > 0 && app.log.info({ count }, "deleted idle guest accounts"),
+      (error: unknown) => app.log.error({ err: error }, "guest sweep failed"),
+    );
+  }, GUEST_SWEEP_MS);
+  guestSweeper.unref();
+  app.addHook("onClose", async () => clearInterval(guestSweeper));
 
   // The web build is another origin than this API: the pages named in CORS_ORIGINS may call it from a browser (the
   // answer to a preflight, and the allow header on every answer). Nobody else gets the header, so a page on another
@@ -194,23 +216,65 @@ export function buildApp(deps: Deps): FastifyInstance {
     },
   );
 
-  // Guests: a visitor with no Discord (the web build) gets a user of their own. The id is random and lives in its own
-  // `guest:` namespace, so a guest can never be, or be mistaken for, a Discord user. Anyone can call this, so it is
-  // limited per address and in all.
+  // Guests: a visitor with no Discord (the web build and the desktop) gets a user of their own. The id is random and
+  // lives in its own `guest:` namespace, so a guest can never be, or be mistaken for, a Discord user.
+  //
+  // The account lasts: the answer carries `guestToken`, a signed credential good for 7 days that the client keeps in its
+  // own storage and sends back, and a sign-in with it is the same account, with its saves. A credential that is forged,
+  // expired, of an account already deleted or not a guest's is no credential: the visitor gets a new guest, never
+  // somebody else's. Each sign-in restarts the 7 days (a new credential, a new `lastSeen`); an account not signed in to
+  // for 7 days is deleted with its saves (the hourly sweep, or its own sign-in, whichever comes first).
+  //
+  // Anyone can call this, so it is limited per address (every call) and in all (every new account).
   const guestsPerAddress = new RateLimit(GUESTS_PER_ADDRESS_PER_HOUR, 60 * 60_000, deps.now);
   const guestsInAll = new RateLimit(GUESTS_IN_ALL_PER_HOUR, 60 * 60_000, deps.now);
-  app.post<{ Body: { name?: string } }>(
+
+  /**
+   * The guest this credential names, if it is one of ours, in date, and its account is still there and in date. Its
+   * expiry is read here and not by `verifyToken` so that a good signature on a credential that ran out still deletes
+   * its account when that is 7 days idle: the account is gone the moment anyone looks, not when the sweep comes.
+   */
+  const guestOf = async (credential: string | undefined, nowMs: number): Promise<User | null> => {
+    if (!credential) return null;
+    const claims = verifyToken(config.sessionSecret, "guest", credential, 0);
+    if (!claims) return null;
+    const user = await store.getUser(claims.sub);
+    if (!user || !user.discordId.startsWith(GUEST_ID_PREFIX)) return null;
+    if (nowMs - user.lastSeen >= GUEST_TTL_SECONDS * 1000) {
+      await store.deleteUser(user.id);
+      return null;
+    }
+    return claims.exp > Math.floor(nowMs / 1000) ? user : null;
+  };
+
+  app.post<{ Body: { name?: string; guestToken?: string } }>(
     "/auth/guest",
-    { schema: { body: { type: "object", properties: { name: { type: "string", maxLength: 64 } } } } },
+    {
+      schema: {
+        body: { type: "object", properties: { name: { type: "string", maxLength: 64 }, guestToken: { type: "string", maxLength: 1024 } } },
+      },
+    },
     async (request, reply) => {
       if (!config.guestSignIn) return reply.code(404).send({ error: "not_found" });
-      if (!guestsPerAddress.allow(request.ip) || !guestsInAll.allow("all")) {
-        return reply.code(429).send({ error: "too_many_guests" });
-      }
-      const name = guestName(request.body?.name);
-      const user = await store.upsertUser(`${GUEST_ID_PREFIX}${randomUUID()}`, name);
+      if (!guestsPerAddress.allow(request.ip)) return reply.code(429).send({ error: "too_many_guests" });
+      const nowMs = now();
+      const returning = await guestOf(request.body?.guestToken, nowMs);
+      if (!returning && !guestsInAll.allow("all")) return reply.code(429).send({ error: "too_many_guests" });
+      // The chosen name updates on every sign-in; a returning guest who gave none keeps the one it has.
+      const chosen = firstUsable([request.body?.name]);
+      const user = returning
+        ? await store.upsertUser(returning.discordId, chosen ?? returning.name, nowMs)
+        : await store.upsertUser(`${GUEST_ID_PREFIX}${randomUUID()}`, chosen ?? guestName(undefined), nowMs);
       const token = signToken(config.sessionSecret, "session", user.id, SESSION_TTL_SECONDS, { name: user.name });
-      return reply.code(201).send({ token, expiresIn: SESSION_TTL_SECONDS, user: { id: user.id, name: user.name, guest: true } });
+      const guestToken = signToken(config.sessionSecret, "guest", user.id, GUEST_TTL_SECONDS, {}, Math.floor(nowMs / 1000));
+      return reply.code(returning ? 200 : 201).send({
+        token,
+        expiresIn: SESSION_TTL_SECONDS,
+        guestToken,
+        guestExpiresIn: GUEST_TTL_SECONDS,
+        returning: returning !== null,
+        user: { id: user.id, name: user.name, guest: true },
+      });
     },
   );
 
