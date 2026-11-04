@@ -424,7 +424,11 @@ func _ground(x: float, z: float, y: float, slack: float) -> Vector3:
 	for i in SPOKES:
 		var turn := TAU * float(i) / float(SPOKES)
 		var middle := ground + Vector3(0.0, 0.6, 0.0)
-		if _wall(middle, middle + Vector3(sin(turn), 0.0, cos(turn)) * ROOM) >= 0.0:
+		var out := middle + Vector3(sin(turn), 0.0, cos(turn)) * ROOM
+		# Both ways: a ray that starts inside a wall does not see it, so a point in a wall's
+		# thickness looked clear from inside while ground stood behind it (the yard behind the side
+		# room's north wall, #917; a bank there had hidden it).
+		if _wall(middle, out) >= 0.0 or _wall(out, middle) >= 0.0:
 			return Vector3.INF
 	return ground
 

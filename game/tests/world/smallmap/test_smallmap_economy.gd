@@ -339,7 +339,7 @@ func test_the_windows_the_rules_list_are_the_boards_in_the_scene() -> void:
 	var listed := _rules.barricades.ids.duplicate()
 	listed.sort()
 	assert_array(in_scene).is_equal(listed)
-	assert_int(listed.size()).is_equal(12)
+	assert_int(listed.size()).is_equal(7)  # six windows and the breach (#917)
 
 
 func test_every_spot_and_door_in_the_scene_names_an_item_the_rules_sell() -> void:
