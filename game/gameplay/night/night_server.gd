@@ -33,6 +33,9 @@ extends RefCounted
 
 ## Ticks between the asks which areas the map has taken in (a quarter second).
 const SPAWN_RETRY_TICKS := 15
+## Ticks of the dead's places kept for the bodies (#914): the lag compensation's quarter second and
+## a margin.
+const DEAD_RING := 18
 const COMMAND := &"command"
 const JOIN := &"join"
 const LEAVE := &"leave"
@@ -131,6 +134,17 @@ var pings: Dictionary[int, int] = {}
 ## The crowd this match stands, from the weakest client in it (`CrowdCeiling.set_platform`).
 var crowd := CrowdCeiling.new()
 
+## The dead stop the bodies (#914). `dead_tuning` is the one table, `_dead_ring` where the dead
+## stood at the last ticks (in the centimetres a frame carries), `_dead_fields` the field each body
+## is moved against, `_shove` what a sustained push does. A body is stopped by the dead where its
+## client saw them (`dead_as_seen`), the positions its predicting copy holds, so the two bodies end
+## at the same place; off, by where they stand now.
+var dead_tuning := DeadContactTuning.shipped()
+var dead_as_seen := true
+var _dead_ring: Array[DeadSnapshot] = []
+var _dead_fields: Dictionary[int, DeadField] = {}
+var _shove: DeadShove
+
 var _pending: Dictionary[int, NightCommand] = {}
 ## Steps since each player's last command arrived.
 var _silent: Dictionary[int, int] = {}
@@ -203,6 +217,7 @@ func _init(
 	_guard = UseGuard.new(tuning)
 	_ping_judge = PingJudge.new(tuning, ping_board, rules, world, sim, _bodies, _announce)
 	_order_judge = OrderJudge.new(_ping_judge, bot_orders, rules, world, _bodies, _announce)
+	_shove = DeadShove.new(sim, dead_tuning)
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
 	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
@@ -295,6 +310,16 @@ func _view_tick_of(view_step: int) -> int:
 	return tick_count - behind if behind <= 0x7FFF else tick_count
 
 
+## What the dead did to this player's body in the last tick (#914).
+func dead_field_of(player_id: int) -> DeadField:
+	return _dead_fields.get(player_id)
+
+
+## The sustained pushes' numbers (nudges made and seconds of yield).
+func shove() -> DeadShove:
+	return _shove
+
+
 func body_of(player_id: int) -> Player:
 	return _bodies.get(player_id)
 
@@ -308,13 +333,14 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	_outbox = []
 	tick_count += 1
 	var began := PerfProbe.begin()
-	_move_players()
+	_move_players(delta)
 	_return_strays(delta)
 	PerfProbe.end(&"server.move", began)
 	if tick_count % SPAWN_RETRY_TICKS == 0:
 		director.spawn_points = world.spawn_points()
 	began = PerfProbe.begin()
 	director.tick(delta, _chase_targets())
+	_remember_the_dead()
 	PerfProbe.end(&"server.zombies", began)
 	began = PerfProbe.begin()
 	rules.apply(RulesAction.tick(delta, _revive.held_targets()))
@@ -352,6 +378,8 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 		return
 	_slots[player_id] = _bodies.size()
 	_bodies[player_id] = world.add_body(world.player_spawn(_slots[player_id]), local, drawn_bodies)
+	_dead_fields[player_id] = DeadField.new(dead_tuning)
+	_bodies[player_id].dead = _dead_fields[player_id]
 	if not bot:
 		crowd.join(player_id, OS.has_feature("web") if local else true)
 	looks.join(player_id)
@@ -386,6 +414,8 @@ func _leave(player_id: int) -> void:
 		_bodies.erase(player_id)
 		_slots.erase(player_id)
 		_out_for.erase(player_id)
+		_dead_fields.erase(player_id)
+		_shove.forget(player_id)
 		crowd.leave(player_id)
 		_pending.erase(player_id)
 		_silent.erase(player_id)
@@ -419,7 +449,7 @@ func _is_downed(player_id: int) -> bool:
 	return state == null or state.downed
 
 
-func _move_players() -> void:
+func _move_players(delta: float) -> void:
 	for player_id in _bodies:
 		_silent[player_id] = _silent.get(player_id, 0) + 1
 		var command := _pending.get(player_id) as NightCommand
@@ -435,12 +465,44 @@ func _move_players() -> void:
 				motion = command.motion
 				# The trigger is the command's own, whoever made the motion.
 				motion.fire = command.fire
-		_bodies[player_id].tick(motion)
+		var body := _bodies[player_id]
+		var field := _dead_fields[player_id]
+		var began := PerfProbe.begin()
+		if dead_tuning.enabled:
+			field.fill(_dead_seen_by(command), body.global_position)
+		PerfProbe.end(&"dead.fill", began)
+		body.tick(motion)
+		began = PerfProbe.begin()
+		_shove.step(player_id, field, delta)
+		PerfProbe.end(&"dead.shove", began)
 		if command != null:
 			# Pressed edges are used once.
 			command.motion.jump = false
 			command.motion.melee = false
 			command.motion.swap_shoulder = false
+
+
+## Keeps where the dead stand after this tick, a few ticks' worth.
+func _remember_the_dead() -> void:
+	if not dead_tuning.enabled:
+		return
+	var began := PerfProbe.begin()
+	_dead_ring.append(DeadSnapshot.of_sim(sim.zombies, tick_count))
+	while _dead_ring.size() > DEAD_RING:
+		_dead_ring.pop_front()
+	PerfProbe.end(&"dead.snapshot", began)
+
+
+## The dead as the player of `command` saw them: the snapshot of the frame its view step names, no
+## older than the lag compensation allows; the latest when it names none.
+func _dead_seen_by(command: NightCommand) -> DeadSnapshot:
+	if _dead_ring.is_empty():
+		return DeadSnapshot.new()
+	var last := _dead_ring[-1]
+	if not dead_as_seen or command == null or command.view_step < 0:
+		return last
+	var behind := clampi(last.tick - command.view_tick, 0, _dead_ring.size() - 1)
+	return _dead_ring[_dead_ring.size() - 1 - behind]
 
 
 ## The server's rule for a player who has left the playable space (a hop past a fence, a physics

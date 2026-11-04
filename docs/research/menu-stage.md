@@ -47,6 +47,12 @@ The governor reads the page's own frame time over 1.5 s windows, ignores the fir
 never steps back up in a session and does not run under Movie Maker. A covered menu (another screen on the router)
 draws nothing (`set_active(false)`). Reduced motion cuts the camera and stops the dead.
 
+The soldier is posed on every step of every level, a still's and reduced motion's included (a step of 0 seconds): his
+arms are `WeaponHandsIK`'s, which aims in the **world** (`aim_yaw`), so a turn or a weapon switch has to reach the aim
+as well as the body (`MenuHero.face`). Until #940 only an animated stage did, and a still showed the arms-out rest pose
+with the weapon pointing behind him. `tests/ui/test_menu_hero_arms.gd` sweeps every weapon at every 15 degrees in
+all three cases and fails on a hand or the muzzle behind the chest plane.
+
 ## Frame time in the web build
 
 Chrome 156 headless over Playwright 1.64.1, the single-threaded Web export, `tools/web_smoke/menu_stage.py`, the stage

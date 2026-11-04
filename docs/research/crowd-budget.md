@@ -181,6 +181,47 @@ crowd work in #930 (the client's crowd decode once a step) and #931 (the server'
 measurement is without them. The ceiling number itself (120, #453) is unchanged: it comes from the Railway server step
 (p95 14.8 ms at 120) and the 2.4 ms client draw above, which this run does not contradict.
 
+### The client's script in the tick, with bots: the crowd is decoded once (#907, #930)
+
+The decision above counted the client's draw and the server's step, not the client's GDScript in the tick. The review
+of #907 (a night at round 12, 3 bots, `count_multiplier` 3, the desktop ceiling, about 98 alive, headless so no draw
+cost, a busy machine) found the client side of a 60 Hz tick (`tick.pump`) as large as the server's step. Part of it
+was the same bytes read again and again: the frame event carries one `PackedByteArray` of zombies to every reader, and
+the readers (the person's `ClientState`, one more for **each bot**, the horde for the views) each decoded all of it,
+five decodes a tick with three bots, though the simulation steps at 30 Hz and every second frame holds the bytes of the
+one before.
+
+What changed:
+
+- `ZombieCodec.decode_shared` keeps the last bytes and entries and hands the same list out again; `ClientState` and the
+  horde use it. A reader never changes the list or an entry (`ZombieCodec.decode_count` is what a test counts).
+- `ZombieHorde.apply_snapshot` returns without touching a view when its bytes are the ones it applied last, and keeps
+  the time for the next one. The views walk to the new place over the ticks since the last (`ZombieView._move_to`), as
+  a client of a server always did, so the dead still move evenly (`test_zombie_shared_decode.gd`).
+- `NightView` updates the dead's voices (`ZombieVoices.update`) only when the horde moved, with the time since the last
+  (and at least every 0.25 s, for a crowd that stands quite still). A hit, a cripple or a death changes the bytes
+  (the mode, the look), so it is never late; a swing's sound can start up to one step (33 ms) after the tick it was
+  due on.
+
+Measured with the review's probe (`PerfProbe` labels, mean microseconds a tick over the ticks with 85 or more standing,
+3,300 ticks; headless, 3 bots, round 12, `count_multiplier` 3, the desktop ceiling): the base commit and the branch run
+**at the same time** on the same night (the rounds and counts are the same in both). Two pairs on a quiet machine, and
+one on a very busy one (about twice the time):
+
+| Label | Quiet before | Quiet after | Busy before | Busy after |
+| --- | ---: | ---: | ---: | ---: |
+| `tick.pump` (the client side) | 2,937 / 2,734 | 1,732 / 1,594 | 11,087 | 5,855 |
+| `event.frame` (a frame applied to every `ClientState` and the view) | 2,406 / 2,230 | 1,202 / 1,128 | 8,962 | 4,056 |
+| `view.horde` | 674 / 635 | 280 / 278 | 2,506 | 847 |
+| `view.voices` | 665 / 593 | 417 / 389 | 3,096 | 1,747 |
+| `horde.decode` | 173 / 154 | 1 / 1 | 536 | 1 |
+
+Decodes of the crowd: about 4.5 a tick before (541 in 120 ticks of a night with 3 bots, `test_zombie_shared_decode.gd`),
+3,118 in 6,000 ticks after (one for each simulation step). About 1.1 to 1.2 ms of a quiet tick, and 5 ms of a busy one.
+
+What is left: `view.voices` is still the largest of these (the loop runs for each step and sorts the due idle voices),
+and `event.frame` still carries the 19 listeners of the frame and the HUD. The server's lists are #931.
+
 ### The browser by system, and on a weak processor (#105)
 
 `tools/web_smoke/crowd_cost.py` exports the crowd bench (`crowd_cost_bench.tscn`: the real lot and views, the director
