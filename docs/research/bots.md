@@ -282,6 +282,20 @@ question (`probe`) goes through the same check. `tests/night/test_bot_fence.gd` 
 fence's edge (longest stuck under 3 s; 5 to 11 s on `main`); the old negative control for a wall the mesh does not know
 turns the check off, since the check now sees such a wall.
 
+### The way round: bots walk a mesh without the barricades (#995)
+
+Cutting a goal short or marking it unreachable (above) was not enough when the bot's way home was *through* a breach: a
+bot sent back from the road was routed through the south pocket's gap, the goal was unreachable for 5 s, and then asked
+again, so it stood at the boards for as long as it wanted to go home (the autopilot, which asks the mesh itself,
+stood against `Board1` at (12.0, 0, 33.45) for minutes). The lot has one navigation map and the dead need the gaps, so
+the mesh is cut, not baked twice: `DoorNavigation` puts the polygons that cross a barricade's line
+(`NavmeshSplit`, 57 of about 3,000 on the lot, 10 ms on a desktop for each mesh a door swaps in) in a region of their
+own on layer 2 (`NavLayers.GAP`); the rest is layer 1. A path asked with `NavLayers.WALK` (1, the engine's default, so
+`BotPath`, `Autopilot` and `HumanWalker` and any path asked without a layer) never crosses a barricade; the dead ask
+with `NavLayers.DEAD` (`NavmeshPathing`, the night's spawn checks). `walkable` stays as the check for every other
+thing the mesh does not know. `tests/night/test_bot_breach_paths.gd`: no walking path crosses any of the 16 barricades
+and the dead's do; a bot at the plaza's pockets and at the road door gets home by the gate in a minute.
+
 ## Economy
 
 The bot knows the shop table (prices, prerequisites, plan order) because every client has it. It shops from the

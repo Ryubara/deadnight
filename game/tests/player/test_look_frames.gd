@@ -243,13 +243,15 @@ func _drawn_yaw(rig: ThirdPersonCamera) -> float:
 	return rig.camera().global_transform.basis.get_euler(EULER_ORDER_YXZ).y
 
 
-## How much the window's stretch scales a motion's `relative` (the test window is not 1920 wide, and
-## the engine hands the player the motion in the 1920 x 1080 canvas's units): one motion of 10
-## pixels says. The path is sent divided by it, so the turn is the same whatever the window.
+## How many times the turn of 10 mouse pixels is what the shipped sensitivity says (1.0 when the
+## player heard the mouse and turned by its screen pixels, 0.0 when it heard nothing). The test
+## window is not 1920 wide, so the engine hands the player `relative` scaled by the stretch: the
+## player must not read that one (#928, `test_look_window_size.gd`).
 func _stretch(rig: ThirdPersonCamera) -> float:
 	var before := rig.yaw
 	var event := InputEventMouseMotion.new()
 	event.relative = Vector2(10.0, 0.0)
+	event.screen_relative = event.relative
 	event.position = Vector2(640.0, 360.0)
 	Input.parse_input_event(event)
 	Input.flush_buffered_events()
@@ -264,9 +266,10 @@ func _stretch(rig: ThirdPersonCamera) -> float:
 ## and the drawn view's turn.
 func _replay(rig: ThirdPersonCamera, lengths: Array[float]) -> Dictionary:
 	var path := _path()
-	var stretch := _stretch(rig)
-	assert_float(stretch).override_failure_message("the player did not hear the mouse").is_greater(
-		0.0
+	(
+		assert_float(_stretch(rig))
+		. override_failure_message("the player did not turn by the mouse's screen pixels")
+		. is_equal_approx(1.0, 0.001)
 	)
 	rig.yaw = 0.0
 	rig.pitch = 0.0
@@ -290,7 +293,8 @@ func _replay(rig: ThirdPersonCamera, lengths: Array[float]) -> Dictionary:
 				continue
 			hand += step
 			var event := InputEventMouseMotion.new()
-			event.relative = step / stretch
+			event.relative = step
+			event.screen_relative = step
 			event.position = Vector2(640.0, 360.0)
 			Input.parse_input_event(event)
 		Input.flush_buffered_events()

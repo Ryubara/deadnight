@@ -137,6 +137,11 @@ deltas. Bandwidth is not the limit at this size.
   that says nothing counts as a browser, so the safe number holds). A browser that joins a night of
   desktop players takes the crowd down to 40 for what spawns next; one that leaves puts it back. The rules' cap
   (`GameRules.crowd_ceiling`) and the sim's hard cap are set together.
+- **A bot is not a client** (#946): it has no screen, so the ceiling follows the **people's** platforms, not the seats'.
+  `NightServer` registers no platform for a bot's seat (before, a hosted bot was registered as a browser and any night
+  with a bot stood 40 on a desktop). A person who takes a bot's seat counts as a browser until its client says what it
+  is; a bot that inherits a seat drops the leaver's platform. A night with nobody but bots follows this process's own
+  platform. The cost at the higher ceiling is in [the bots section](#bots-and-the-desktop-ceiling-946).
 - The match settings' slider offers the host's platform's ceiling (a browser host 40, a desktop host 120).
 - **A server operator's cap**: `MAX_ALIVE` (`ServerConfig`) caps every night of the process. The rooms of one process
   share one thread's tick, so what the deployed server takes is sized in [the last section](#rooms-in-one-process-561)
@@ -147,6 +152,34 @@ deltas. Bandwidth is not the limit at this size.
 What this does not say: one machine of each kind and four standing players; a crowd chasing four moving players spreads
 the neighbours and costs less in separation and more in paths; four rooms in one process were not run together; the
 Discord proxy and a lossy link were not measured.
+
+### Bots and the desktop ceiling (#946)
+
+A hosted bot joined the crowd's table as a browser, so on a desktop any night with a bot stood the web's 40. A bot has
+no screen and no platform: **the ceiling follows the people's platforms** and a bot's seat is not in the table
+(`NightServer._join`; a person taking a bot's seat registers as a browser until its client says what it is; a bot
+inheriting a seat drops the leaver's flag; `test_bot_crowd_ceiling.gd`). Nobody but bots follows the process's
+platform (a Linux game server: 120). A person on the web build still holds the room at 40, with bots or not.
+
+What the lift costs, measured as the performance review did ([#907](https://github.com/Ryubara/deadnight/issues/907)):
+the real night (HUD, the autopilot as the person, 3 bots, 3x, from round 12, seed 1), the person told it is a desktop,
+150 s a headless run and 110 s a windowed one, two runs of each arm one after the other, counted over the ticks with
+at least 85 alive (99 is the rules' cap there; 34 or more for the old arm, whose cap is 40). "Old" is the build before
+the fix, bots registered as browsers (ceiling 40); "new" is the fix (ceiling 120, 99 stood). Debug build, the machine
+at 95 to 100 % CPU the whole time, so read the ratio and the order, not the milliseconds.
+
+| | Ceiling / alive | Labelled tick, headless (ms of 16.7) | Windowed 1280 x 720, frame mean / p95 / p99 | Frames over 25 ms |
+| --- | --- | --- | --- | --- |
+| Old (bots as browsers) | 40 / 38 | 5.9 and 5.9 | 6.6 / 13.3 / 16.5 and 6.4 / 13.4 / 21.1 | 0 % and 1 % |
+| New (bots do not count) | 120 / 99 | 12.1 and 8.1 | 16.4 / 29.6 / 38.1 and 12.5 / 21.8 / 31.8 | 11 % and 3 % |
+
+The tick is `pump + server + client + bots + the autopilot` of `Night.tick`, the labels of the review. The nodes at the
+end were 5446 (old) and 5955 (new, the extra dead and their views), with no orphans in either. The tick at 99 alive is
+8 to 12 ms of the 16.7 ms budget: it fits, with the margin the machine's load takes away. Frame time doubles (as the
+issue read), and on this loaded machine 3 to 11 % of the frames go over 25 ms. The review put about 4.8 ms a tick of
+crowd work in #930 (the client's crowd decode once a step) and #931 (the server's crowd lists once a step); this
+measurement is without them. The ceiling number itself (120, #453) is unchanged: it comes from the Railway server step
+(p95 14.8 ms at 120) and the 2.4 ms client draw above, which this run does not contradict.
 
 ### The client's script in the tick, with bots: the crowd is decoded once (#907, #930)
 

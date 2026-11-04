@@ -11,7 +11,8 @@ extends RefCounted
 ## the status effect the zombie is under in the three above them (`STATUS_SHIFT`, `STATUS_MASK`: the
 ## wire id of a `StatusDef`, 0 for none, so a client draws it frozen) and, in its top bit
 ## (`TEARING_BIT`), that the zombie is at its boards pulling one off, so a client plays the tear
-## clip and not the attack. Bit 6 is free. (Protocol 14: before it the mode had the seven low bits.)
+## clip and not the attack, and in bit 6 (`CLIMBING_BIT`) that it is climbing over a window's sill,
+## so a client draws it scrambling in. (Protocol 14: before it the mode had the seven low bits.)
 ##
 ## `look` is the index in `ZombieModels.looks()`, so a client that joins late draws every zombie in
 ## its type's body from the next frame, and a crippled one changes body when its look changes.
@@ -28,6 +29,7 @@ const HEADER_BYTES := 2
 const ENTRY_BYTES := 13
 const SPEED_STEP := 0.05
 const TEARING_BIT := 0x80
+const CLIMBING_BIT := 0x40
 const MODE_MASK := 0x07
 const STATUS_SHIFT := 3
 const STATUS_MASK := 0x07
@@ -56,6 +58,7 @@ static func encode(zombies: Dictionary[int, ZombieBody]) -> PackedByteArray:
 				zombie.mode
 				| ((zombie.status & STATUS_MASK) << STATUS_SHIFT)
 				| (TEARING_BIT if zombie.tearing else 0)
+				| (CLIMBING_BIT if zombie.climbing and zombie.is_alive() else 0)
 			)
 		)
 		bytes.encode_u8(at + 10, zombie.episode)
@@ -95,6 +98,7 @@ static func decode(bytes: PackedByteArray) -> Array[Dictionary]:
 			"mode": bytes.decode_u8(at + 9) & MODE_MASK,
 			"status": (bytes.decode_u8(at + 9) >> STATUS_SHIFT) & STATUS_MASK,
 			"tearing": (bytes.decode_u8(at + 9) & TEARING_BIT) != 0,
+			"climbing": (bytes.decode_u8(at + 9) & CLIMBING_BIT) != 0,
 			"episode": bytes.decode_u8(at + 10),
 			"speed": bytes.decode_u8(at + 11) * SPEED_STEP,
 			"look": ZombieModels.look_at(bytes.decode_u8(at + 12)),
