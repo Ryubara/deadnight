@@ -36,6 +36,28 @@ CREATE TABLE IF NOT EXISTS ledger (
 );
 CREATE INDEX IF NOT EXISTS ledger_user_kind_at ON ledger (user_id, kind, at DESC);`;
 
+/**
+ * Runs the schema as one transaction under an advisory lock: `CREATE TABLE IF NOT EXISTS` is not safe when two sessions
+ * run it at once on an empty database (one fails with a duplicate key on pg_type_typname_nsp_index, #1118), and two
+ * backend instances starting together, or two test files, do exactly that. The lock is held to the end of the
+ * transaction, so the second session waits, then finds the tables made and changes nothing. Its key holds the schema
+ * the connection writes to (its search_path), so a throwaway schema does not wait for another one.
+ */
+async function applySchema(pool: pg.Pool): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended('deadnight-schema:' || coalesce(current_schema(), ''), 0))");
+    await client.query(SCHEMA);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export class PgStore implements Store {
   private readonly pool: pg.Pool;
 
@@ -46,7 +68,12 @@ export class PgStore implements Store {
   /** Connects and creates the tables if they are missing (a real service would use migrations). */
   static async connect(databaseUrl: string): Promise<PgStore> {
     const pool = new pg.Pool({ connectionString: databaseUrl, max: 5 });
-    await pool.query(SCHEMA);
+    try {
+      await applySchema(pool);
+    } catch (error) {
+      await pool.end().catch(() => {});
+      throw error;
+    }
     return new PgStore(pool);
   }
 
