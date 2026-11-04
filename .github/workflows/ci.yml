@@ -278,9 +278,24 @@ jobs:
     # Any console error, page error or failed request fails the job. The export has no threads (preset option
     # `variant/thread_support=false`), so the page needs no cross-origin isolation headers, which a Discord Activity
     # cannot send anyway. Frame times on a runner come from a software renderer: recorded in the artifact, never gated.
+    #
+    # The job takes 1,100 to 1,700 s on a `main` run, nearly all of it the probes below, and was cancelled at 30 minutes
+    # when the browser's install took 471 s on a slow mirror (#1111). So: the install is cached (apt packages and the
+    # browser, below), each install step has a limit of its own that names it when it fails, the job has 40 minutes, and
+    # the last step (tools/ci_shard_time.py web) annotates a job past 30 and fails one past 36, with the install times
+    # in the summary (docs/research/ci-time.md, "The web job").
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
+    env:
+      # One version for the install, the cache keys and every probe: a cached browser always matches the library.
+      PLAYWRIGHT_VERSION: 1.64.1
     steps:
+      - name: Start the web job's clock
+        id: clock
+        # The share-of-the-limit check at the end measures the job from here; the image version keys the apt cache.
+        run: |
+          echo "WEB_CLOCK=$(date +%s)" >> "$GITHUB_ENV"
+          echo "image=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: repos/deadnight
@@ -314,29 +329,73 @@ jobs:
           test -s repos/deadnight/build/web/index.pck
           # The JSON catalogues are read as plain files: without `*.json` in the export filter they are missing.
           for name in parts.json clips.json zombies.json; do grep -aq "$name" repos/deadnight/build/web/index.pck; done
+      - name: Restore the browser's system packages
+        id: apt-cache
+        # The .deb files `playwright install-deps` fetched (fonts and libraries), by runner image and Playwright version:
+        # the Ubuntu mirror served them with gaps of 60 to 160 s once (#1111). A package the image has since updated is
+        # fetched again by apt, so a stale cache costs time, never correctness.
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: cache/apt-debs
+          key: web-apt-${{ runner.os }}-${{ steps.clock.outputs.image }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
+      - name: Restore the browser
+        id: browser-cache
+        # Playwright's download folder; the version in the key is the one `playwright install` below asks for.
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ~/.cache/ms-playwright
+          key: web-browser-${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
+      - name: Install the browser's system packages
+        # Its own limit: a slow mirror ends red on this step's name, not as a cancelled job. A cache hit puts the .deb files
+        # where apt looks first, so `install-deps` finds them and downloads nothing.
+        timeout-minutes: 10
+        run: |
+          started=$(date +%s)
+          touch apt-marker
+          if [ "${{ steps.apt-cache.outputs.cache-hit }}" = "true" ]; then
+            sudo cp cache/apt-debs/*.deb /var/cache/apt/archives/
+            echo "restored $(ls cache/apt-debs | wc -l) packages from the cache"
+          fi
+          uv run --with playwright=="$PLAYWRIGHT_VERSION" playwright install-deps chromium-headless-shell
+          if [ "${{ steps.apt-cache.outputs.cache-hit }}" != "true" ]; then
+            mkdir -p cache/apt-debs
+            # apt gives a download the server's modification time, so "new" is by change time, against a file made before.
+            find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -cnewer apt-marker -exec cp {} cache/apt-debs/ \;
+            echo "kept $(ls cache/apt-debs | wc -l) packages for the cache"
+            # An empty folder is not worth a cache entry: the next run would hit it and download everything anyway.
+            rmdir cache/apt-debs 2>/dev/null || true
+          fi
+          seconds=$(( $(date +%s) - started ))
+          echo "$seconds install-deps (cache hit: ${{ steps.apt-cache.outputs.cache-hit || 'false' }})" >> web-steps.txt
       - name: Install the browser
-        run: uv run --with playwright==1.64.1 playwright install --with-deps chromium-headless-shell
+        # A cache hit leaves nothing to download; the command still checks the folder holds this version's build.
+        timeout-minutes: 10
+        run: |
+          started=$(date +%s)
+          uv run --with playwright=="$PLAYWRIGHT_VERSION" playwright install chromium-headless-shell
+          seconds=$(( $(date +%s) - started ))
+          echo "$seconds playwright install (cache hit: ${{ steps.browser-cache.outputs.cache-hit || 'false' }})" >> web-steps.txt
       - name: Open the build in a browser
-        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/smoke.py repos/deadnight/build/web smoke
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" python repos/deadnight/tools/web_smoke/smoke.py repos/deadnight/build/web smoke
       - name: Count the bridge calls of a plain page
         # A player's page opens no probe: the menu and a night the autopilot plays cross the JavaScript bridge about never (#935).
-        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/bridge_calls.py repos/deadnight/build/web smoke/bridge-calls --max-per-second 1
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" python repos/deadnight/tools/web_smoke/bridge_calls.py repos/deadnight/build/web smoke/bridge-calls --max-per-second 1
       - name: Lose the pointer lock in the browser
         # The browser's first Esc frees the lock and never reaches the page: the night's menu must open at once (#476).
-        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/pointer_lock.py repos/deadnight/build/web smoke/pointer-lock
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" python repos/deadnight/tools/web_smoke/pointer_lock.py repos/deadnight/build/web smoke/pointer-lock
       - name: Press Start on a virtual gamepad in the browser
         # Start is `pause` and `ui_accept`: the night must pause and resume on it, and the pad must play with no mouse lock (#494).
-        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/pad_pause.py repos/deadnight/build/web smoke/pad-pause
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" python repos/deadnight/tools/web_smoke/pad_pause.py repos/deadnight/build/web smoke/pad-pause
       - name: Look through the person in a night with 3 bots in the browser
         # A bot's body must never hold the current camera: the probe's `view_is_players` stays true for a night with 3 bots (#702).
-        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/camera_owner.py repos/deadnight/build/web smoke/camera-owner
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" python repos/deadnight/tools/web_smoke/camera_owner.py repos/deadnight/build/web smoke/camera-owner
       - name: Tour the skin shaders in the browser
         # The menu, the three transitions and the credits: fails on a console error or an all-black or all-white frame.
-        run: uv run --with playwright==1.64.1 --with pillow python repos/deadnight/tools/web_smoke/skin_tour.py repos/deadnight/build/web smoke/skin-tour --size 1280x720 --hold-ms 500
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" --with pillow python repos/deadnight/tools/web_smoke/skin_tour.py repos/deadnight/build/web smoke/skin-tour --size 1280x720 --hold-ms 500
       - name: Start every web probe's menu path
         # The menu paths the probes in tools/web_smoke walk (Loadout, Play together, settings, Solo, the ?dev join screen)
         # through their shared helpers, once: a menu change that breaks one fails here, not the next time a probe is run.
-        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/startup_check.py repos/deadnight/build/web smoke/startup-check
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" python repos/deadnight/tools/web_smoke/startup_check.py repos/deadnight/build/web smoke/startup-check
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
@@ -349,8 +408,14 @@ jobs:
         # share window; a refused token and a refused sign-in must say the Activity is not signed in.
         run: |
           for mode in strict reject-token refuse-authorize; do
-            uv run --with playwright==1.64.1 --with cryptography python repos/deadnight/tools/web_smoke/activity.py repos/deadnight/build/web - "smoke/discord-share-$mode" --embed plain --share --real-bridge --local-backend --host-mode "$mode"
+            uv run --with playwright=="$PLAYWRIGHT_VERSION" --with cryptography python repos/deadnight/tools/web_smoke/activity.py repos/deadnight/build/web - "smoke/discord-share-$mode" --embed plain --share --real-bridge --local-backend --host-mode "$mode"
           done
+      - name: Hold the job to its share of the job's limit
+        # Warns past 75 % of the 40 minutes (the old limit) and fails past 90 %; names a slow install step either way.
+        if: always()
+        run: |
+          python3 repos/deadnight/tools/ci_shard_time.py web --elapsed "$(( $(date +%s) - WEB_CLOCK ))" \
+            --steps web-steps.txt --summary "$GITHUB_STEP_SUMMARY"
       - name: Upload the build
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
