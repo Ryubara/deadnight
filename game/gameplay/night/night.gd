@@ -217,7 +217,7 @@ func start(
 	bot_orders.sender = link.send
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
-	_track_challenges(true)
+	_track_challenges()
 	report = ReportTracker.follow(state, NightTally.fuel_items_of(rules_tuning))
 	_track_progress()
 	if hud != null:
@@ -266,7 +266,7 @@ func start_remote(
 	link = online
 	bot_orders.sender = link.send
 	state = ClientState.new()
-	_track_challenges()
+	_track_challenges(true)
 	report = ReportTracker.follow(state, NightTally.fuel_items_of(rules_tuning))
 	var failure := {"reason": ""}
 	var welcome := {}
@@ -388,13 +388,14 @@ func _last_frame(events: Array) -> Dictionary:
 	return {}
 
 
-## Counts the night into the player's challenges, when there is a board to count into. `runs_here`:
-## the rules run in this process, so its board is written to the account (online, the server's).
-func _track_challenges(runs_here: bool = false) -> void:
+## Counts the night into the player's challenges, when there is a board to count into. `online`:
+## a game server follows the account's board and tells the prompt (`ChallengeSession`); a night
+## that runs here writes the board itself.
+func _track_challenges(online: bool = false) -> void:
 	if challenge_board != null:
 		challenges = ChallengeSession.new(challenge_board, rules_tuning)
-		challenges.uplink = challenge_uplink if runs_here else null
-		challenges.attach(state)
+		challenges.uplink = null if online else challenge_uplink
+		challenges.attach(state, online)
 		if hud != null:
 			_challenge_link = ChallengeHudLink.new(challenges, hud)
 

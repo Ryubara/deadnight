@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tools/bench/challenge_award_micro.gd" id="1"]
+
+[node name="ChallengeAwardMicro" type="Node"]
+script = ExtResource("1")

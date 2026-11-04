@@ -44,7 +44,12 @@ static func from_json(text: String) -> Dictionary:
 	var parsed: Variant = json.data if json.parse(text) == OK else null
 	if not parsed is Dictionary:
 		return {"profile": null, "problem": UNREADABLE}
-	var envelope: Dictionary = parsed
+	return from_envelope(parsed)
+
+
+## `{profile, problem}` from an envelope already parsed (the backend's answer for the `challenges`
+## slot, which a game server reads): the same reading as `from_json`.
+static func from_envelope(envelope: Dictionary) -> Dictionary:
 	var version := int(envelope.get("schemaVersion", 0))
 	var data: Variant = envelope.get("data")
 	if version < 1 or not data is Dictionary:

@@ -500,6 +500,135 @@ Natural play, the desktop's 120 dead:
   (The "No award" columns' one write is an empty night report the bench made before a report with no seat was
   dropped; it is not sent now.)
 
+## The game server follows the challenges (#1076)
+
+Rule 9 for challenges: the server counts, the client asks. A seat that holds an account has its challenge board followed
+on the game server by the same `NightTally` and `ChallengeTracker` a client runs, over the events the night makes, so a
+finished challenge pays its XP and is said to every client in the tick it finished (the popup lane, #1064, and the voice
+lines, #1063, read it). The plan is [the save](../design/progression.md#the-save).
+
+### How the tracker works
+
+| Part | Where | What it does |
+| --- | --- | --- |
+| `ChallengeAward` | `gameplay/challenges/challenge_award.gd` | A board for each account that holds a seat. It hears the night's events where `XpAward` does (the rules' in `NightServer._on_rules_event`, the weapons' in `_combat`, the frame when one is built), one dictionary read for the events that cannot move a challenge. `take_events` answers `challenge_progress` and `challenge_done`; a finished challenge pays its `reward.xp` to the seat's `XpAward` (source `challenge`); `fill_report` puts the boards that moved into the report |
+| `NightHost` | `net/night_host.gd` | Asks for a seat's board once, when the seat sits down (`board_wanted`), hands the answer to the award (`board_arrived`), releases the seat when it is freed, and lets the award fill each report |
+| `GameServer` | `net/game_server.gd` | Reads the board (`GET /internal/users/:id/saves/challenges`, 3 s timeout, `board_reader` for a test) and queues the reports with the boards in them (`XpReportQueue`, unchanged) |
+| `ChallengeSession` | `gameplay/challenges/challenge_session.gd` | The client's prompt: online, for a seat that holds an account, it shows the server's `challenge_progress` and not its own count (the local count goes on quietly as the board's cache) |
+
+- **A night never waits for the backend.** The read is not awaited: the seat is in the night and is followed from the
+  moment the board arrives. An answer that never comes, a 5xx, a board this game cannot read or a newer game wrote:
+  the seat is **not followed and its board is never written**, so the backend's board is left as it is and the XP is
+  paid as ever. A 404 is an account with no board yet and starts a fresh one.
+- **A board is read once for the night.** It is kept in memory for the night: a seat that drops and comes back on a new
+  ticket (the same seat, or another one) is followed from where it was, and nothing it finished is said or paid twice
+  (`Board.finished`). A late joiner is told nothing of the past: events are not replayed.
+- **The day** is the server's (UTC), the clock the XP award uses for the first game of the day; the client's dailies
+  follow its local day. Which day a board follows is #1124's to decide.
+- **What no client can say.** Nothing in the protocol reaches the award: a forged tick carrying `challenge_done` is
+  dropped like the `xp_gained` one (`test_a_client_cannot_finish_a_challenge_by_saying_so`).
+
+### The tracker's events
+
+Every client hears them (they ride the tick like any rules event). A challenge that finishes says `challenge_progress`
+(it reached 100 %) and then `challenge_done`, in the tick it finished, ahead of the `xp_gained` that carries its reward.
+
+| Event | Keys | When |
+| --- | --- | --- |
+| `challenge_progress` | `player_id` and the advance `ChallengeProfile.apply` made: `id`, `family` (0 daily, 1 order, 2 milestone), `text`, `before`, `after`, `target`, `checkpoint` (25, 50, 75 or 100), `completed`, `rung`, `rungs` | A quarter mark of a daily or an order (a target under 4 is only said when done) or a ladder's step, never every kill. It is the in-night prompt's input as it was |
+| `challenge_done` | `player_id`, `id`, `family`, `text`, `target`, `rung`, `rungs`, `reward` (the definition's: `xp`) | Once for a challenge finished (a ladder's last step too), never twice in a night |
+
+### The interface with the backend
+
+Nothing is written per kill. The route and the field are the backend's
+([the board](platform-backend.md#the-challenge-board-a-game-server-follows)).
+
+- **Read:** `GET /internal/users/:userId/saves/challenges` with the game-server secret, once per account a night, when
+  the seat sits down: the slot's envelope or 404.
+- **Write:** in the round's report, each seat's `board` (`{schemaVersion, data}`, the profile as `ChallengeSave` writes
+  it) and `done` (the ids finished since the last report). A seat whose board moved without XP gets an entry of its own
+  (`xp: 0`); a seat that left still reports what it had. The backend replaces the slot, never lets a refused board stop
+  the XP, and answers `board: "saved" | "refused"` for each seat that sent one.
+
+### The tracker on the horde, measured
+
+**Method.** The same bench as the XP's (`xp_horde_bench.tscn`: a four-player night on a real `GameServer` with an
+autopilot client over a socket and three hosted bots, all holding accounts in the bench only, count multiplier 5 from
+round 8, players who cannot die, 120 seconds at a fixed 60 Hz step, headless), with `challenges=0|1` for the tracker
+(the XP award is on in both arms). Every account's board is the backend's "no board yet" (404), a fresh one, so the
+**shipped catalogue** (26 dailies, 12 orders, 12 milestones) is what runs. Three seeds, the arms played in turn on each;
+the machine ran other agents' Godot processes throughout, so read the spread of the seeds and the counts, not one time.
+`challenge_award_micro.tscn` times the tracker alone on hand-made events.
+
+Natural play, the web's 40 dead (seeds 1 to 3):
+
+| | No tracker | With the tracker |
+| --- | ---: | ---: |
+| Server tick, mean (ms) | 4.84 (4.65 to 5.07) | 4.53 (4.10 to 4.79) |
+| Server tick, p99 (ms) | 13.3 (11.3 to 15.0) | 12.5 (11.3 to 13.6) |
+| Server tick, worst (ms) | 45.2 (30.9 to 55.6) | 32.1 (30.7 to 33.8) |
+| Kills a second, mean | 1.78 | 1.85 |
+| The tracker's own time (microseconds a tick) | - | 16.1 (15.5 to 16.5) |
+| Advances the tracker handled in 120 s | - | 1,092 (1,067 to 1,106) |
+| `challenge_*` events a second a client hears, mean / peak second | 0 / 0 | 0.35 / 9 (3 to 12) |
+| Challenge bytes a second, mean / peak second | 0 / 0 | 119 / 2,963 (1,048 to 3,920) |
+| All bytes a second a client takes, mean | 23,275 | 23,218 |
+| Challenges finished in 120 s | - | 6 (3 to 8) |
+| A fresh board after the run (bytes of JSON) | - | 919 (900 to 957) |
+| The night's report, largest body (bytes) | 631 | 3,281 (3,248 to 3,314) |
+| Backend writes | 1 | 1 |
+| Calibration loop (ms) | 3.01 | 3.30 |
+
+Natural play plus 20 kills a second made at the rules (seed 1): tick mean 1.71 ms without and 1.67 ms with, p99 5.1
+and 4.4, the tracker 14.8 microseconds a tick, 549 advances, 4 challenges finished, backend writes 3 and 3 (the rounds
+that ended plus the night's). Natural play, the desktop's 120 dead (seed 1): tick mean 4.55 ms and 4.94 ms, p99 12.7 and
+15.5, worst 46 and 82 (one run each: inside the 31 to 56 ms the seeds of the web arm spread over), the tracker 17.0
+microseconds a tick, 3 finished.
+
+**The tracker alone** (`tools/bench/challenge_award_micro.tscn`, three runs, the calibration loop 2.6 ms, four seats
+with
+fresh boards on the shipped catalogue):
+
+| Piece | Cost |
+| --- | ---: |
+| One kill: three hits, the removal and its points (five events, eight stat changes), counted, advanced and listed | 57 to 59 microseconds |
+| An event it ignores (a hurt player) | 0.43 microseconds |
+| A shot (the weapon in the shooter's hand) | 1.5 microseconds |
+| A frame of four players | 2.9 microseconds |
+| A burst: 120 kills in one tick (a grenade into a horde) | 4.45 ms median, 6.6 worst of 200 |
+| The four boards put into a report | 27 microseconds |
+| A fresh board saved (JSON), and one `challenge_progress` on the wire | 527 bytes, 344 bytes |
+| The client applying one `challenge_progress` in `ClientState` | 0.86 microseconds |
+
+**Reading.**
+
+- **The tick does not move.** The room's mean tick with the tracker (4.53 ms) is inside the spread of the runs without
+  it
+  (4.65 to 5.07; the machine's noise is larger than the tracker). The tracker's own time is 16 microseconds a tick, 0.1
+  %
+  of the 16.7 ms tick, and the CI budget case (round 12 at 3x, every seat an account, the desktop's crowd) holds it as
+  `server.challenges` at 0.0047 times the calibration loop against a limit of 0.012.
+- **The burst is the number to watch.** A kill is 58 microseconds, about 4 times the XP award's 16, because every stat
+  change (a kill makes eight: the kill, the head, the weapon, the type, the points of the hits and the kill) walks the
+  seat's three open dailies and three open orders. 120 kills in a tick cost 4.4 ms, over five times the XP award's 0.8
+  and about a quarter of a tick, once, and only when the dead fall together (a grenade); the room's worst tick in
+  natural
+  play is already 30 to 55 ms. The knob if a real horde ever asks: index the open challenges of a profile by stat so a
+  change with no challenge on it is one lookup (a kill's `kills:type` and `kills:weapon` changes mostly have none).
+- **The events are about half a percent of what a client takes.** 0.35 a second on average, 9 in the peak second (a
+  round
+  ending finishes several at once), 119 bytes a second against 23 KB/s (peak second 3 KB/s), and only quarter marks are
+  told, never a kill. The XP events, by comparison, are 5 %.
+- **The backend** is read once for each account when its seat sits down (four reads, a test counts them) and written
+  with the round's report, never per kill: 1 write in the 120 s of one round, 3 where two rounds ended. A report with
+  four boards weighs 3.3 KB, 0.9 KB a board; a long-played board is bigger (every weapon and kind of dead is a stat),
+  and
+  the backend holds one to 64 KiB.
+- **What was not measured.** A board that has been played for weeks (hundreds of lifetime stats) was not: the profile's
+  work is the same three dailies and three orders, so its cost is the same per change, but its JSON grows with the stats
+  it counts and is sent whole each round. 8 seats in one room (the limit) was not run either; the cost is linear in
+  seats that hold an account.
+
 ## Sources, and what we could not read
 
 Everything linked above. Not read in full: the two 2006 papers (abstracts and secondary summaries), Zagal et al. 2013

@@ -7,13 +7,32 @@ const WARM_FRAMES := 5
 const FRAMES := 30
 ## Objects the count may move by (a frame of the engine's own).
 const JITTER := 2
+## Sounds an earlier suite is taken to have left playing on the `Audio` autoload.
+const LEFTOVER_SOUNDS := 12
 
 
 func _objects() -> int:
 	return int(Performance.get_monitor(Performance.OBJECT_COUNT))
 
 
+## Starts sounds on the autoload and leaves them: what a night run by the suite before leaves
+## playing (its zombies' voices, a sting) while the next suite starts.
+func _leave_sounds_playing() -> void:
+	var started := 0
+	for id: StringName in SoundCatalog.ids_for_night():
+		if started >= LEFTOVER_SOUNDS:
+			break
+		var def := SoundCatalog.get_def(id)
+		if not def.loop and not def.deferred and Audio.play(id) != null:
+			started += 1
+
+
 func test_a_background_load_that_is_under_way_does_not_move_a_count_after_the_settle() -> void:
+	# The suite before may have left sounds playing, each one's playback freed in a frame of its
+	# own as it ends: objects that fall during the count (5 and 8 on two pull requests, #1134).
+	# That is the suite before's motion, not the load's, so it is brought to a standstill first.
+	_leave_sounds_playing()
+	assert_bool(await QuietCount.settle(get_tree())).is_true()
 	var service: AudioService = auto_free(AudioService.new())
 	add_child(service)
 	service.start_background_preload()

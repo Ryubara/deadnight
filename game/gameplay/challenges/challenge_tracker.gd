@@ -32,6 +32,11 @@ func follow(player_id: int, profile: ChallengeProfile) -> void:
 	profile.refresh(catalog, clock.day())
 
 
+## Stops following this player (the seat is free): the profile keeps what it has.
+func unfollow(player_id: int) -> void:
+	_followed.erase(player_id)
+
+
 func profile_of(player_id: int) -> ChallengeProfile:
 	return _followed.get(player_id)
 

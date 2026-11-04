@@ -186,9 +186,8 @@ func apply(
 	var after := maxi(before, value) if ChallengeStats.is_best(stat) else before + delta
 	lifetime[stat] = after
 	if after != before:
-		for def in catalog.of_family(ChallengeDef.Family.MILESTONE):
-			if def.stat == stat:
-				_climb(def, before, after, moved)
+		for def: ChallengeDef in catalog.ladders_over(stat):
+			_climb(def, before, after, moved)
 	return moved
 
 
