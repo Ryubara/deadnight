@@ -45,7 +45,7 @@ func _init(p_server: NightServer, p_world: NightWorld, p_seed: int, p_deliver: C
 		_probe.callable(), p_world.is_lit, server.rules.tuning.rounds, p_world.map()
 	)
 	# The level gives the bots the shop too: they buy doors, boards and fuel as a person does.
-	LotBotData.fill(level, p_world, server.rules.tuning)
+	LotBotData.fill(level, p_world, server.rules.tuning, server.rules.settings)
 
 
 ## How many bots a night with `people` people in it seats for the setting `wanted`: never more than

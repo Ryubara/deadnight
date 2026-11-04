@@ -89,6 +89,31 @@ left forearm at the side of her waist (12 and 18 mm on that mean): the kit's own
 weapon sits on its grips in every top for both (`test_menu_grips.gd`); no hair or hat reaches the lens before the
 camera hides the body (`test_hair_and_the_camera.gd`).
 
+## Proportions
+
+The arm is in proportion to the body (#978): the upper arm 0.388, the forearm 0.352 and the hand 0.384 kit metres
+(0.310, 0.282 and 0.307 in the game), 1.124 in all, 0.507 of the height (2.216, sole to the top of the head, hair and
+hats left out), the forearm 0.91 of the upper arm, and standing (Idle) the fingertips hang at 0.198 of the height, at
+the knee. The kit Soldier's arm (and the Hazmat's and the Enemy's: one skeleton) was 1.212, 0.547 of the height, its
+forearm (0.440) longer than its upper arm, and the fingertips hung below the knee; every look of both characters wore
+it unchanged, and it read longest on her bare-armed looks (Carhop, Pit crew), where a thin skin-coloured arm ran from
+the sleeve to the knee beside her narrower waist.
+
+| | Upper arm | Forearm | Hand | Arm / height | Forearm / upper arm | Idle fingertips / height |
+| --- | --- | --- | --- | --- | --- | --- |
+| Kit Soldier, and every look before #978 | 0.388 | 0.440 | 0.384 | 0.547 | 1.13 | 0.165 |
+| Every look, his and hers, since #978 | 0.388 | 0.352 | 0.384 | 0.507 | 0.91 | 0.198 |
+
+`tools/blender/soldier_arms.py` shortens the forearm to `FOREARM` (0.80) of the kit's at rest, on the imported kit
+Soldier, before any clip is authored, in `build_soldier.py` and `build_soldier_parts.py` alike: each wrist moves along
+the forearm toward the elbow with the hand's bones and skin, and the forearm's skin is drawn in along it. The hand
+(the grips are solved on it) and the upper arm keep their size. The parts build's places along the arm (the cuff, the
+bare wrist's seam) are written in the kit's numbers and read through `soldier_arms.along`. Her arm is his: the
+skeleton is one, and the clips are shared. Measured by `tools/blender/measure_arms.py` (an `ARM` line per look and per
+kit character); held by `game/tests/character/test_arm_proportions.gd` (each look's arm over its height, the forearm
+against the upper arm, hers against his, and every hold of the menu keeping the bones' lengths with the left hand on
+its fore-end).
+
 ## Colour channels
 
 Faces of every part sit on one swatch of the atlas. Channel swatches are repainted per look; fixed swatches (black,

@@ -122,7 +122,7 @@ func test_a_crowbar_swing_hits_what_is_in_front_and_pays_as_melee() -> void:
 	var events := _server.apply(swing)
 	var hit := WeaponsFixture.of(events, &"damage_dealt")[0]
 	assert_bool(hit["melee"]).is_true()
-	assert_float(hit["damage"]).is_equal_approx(45.0, 0.5)
+	assert_float(hit["damage"]).is_equal_approx(WeaponsFixture.def(&"crowbar").damage, 0.5)
 	assert_int(WeaponsFixture.of(events, &"shot_fired")[0]["ammo"]).is_equal(0)
 
 

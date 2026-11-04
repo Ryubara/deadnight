@@ -23,6 +23,7 @@ import bpy
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import arm_clearance
 import kitlib
+import soldier_arms
 import soldier_clips as sc
 
 
@@ -103,6 +104,7 @@ def main():
     for t in list(ad.nla_tracks):
         ad.nla_tracks.remove(t)
     ad.action = None
+    soldier_arms.shorten_forearms(arm)  # #978: the arm every file carries, before any clip is solved by reach
 
     # Author the new clips in file units (rotations are unit-free; Body location keys get scaled below with the rest).
     sc.build(arm)

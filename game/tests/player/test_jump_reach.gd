@@ -7,7 +7,8 @@
 extends GdUnitTestSuite
 
 ## The most a player is measured to climb (metres): the highest block of the sweep it gets onto.
-const MEASURED_REACH := 1.25
+## The one number every reach and sweep test reads (`CameraProbe.BODY_REACH`).
+const MEASURED_REACH := CameraProbe.BODY_REACH
 ## How far the measure may move before this fails: other tests read the number, so a move is a
 ## decision.
 const TOLERANCE := 0.06

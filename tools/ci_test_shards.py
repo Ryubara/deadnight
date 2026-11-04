@@ -1,113 +1,122 @@
-"""Which test folders a `godot` job shard runs, so the suite is split across parallel jobs (#524).
+"""Which test scripts a `godot` job shard runs, so the suite is split across parallel jobs (#524, #775, #1015).
 
-    python3 tools/ci_test_shards.py --root game --shard 2      # prints "-a res://tests/net -a res://tests/world ..."
-    python3 tools/ci_test_shards.py --root game --self-test    # every test folder and file belongs to exactly one shard
+    python3 tools/ci_test_shards.py --root game --shard 2      # prints "-a res://tests/net/test_x.gd -a ..."
+    python3 tools/ci_test_shards.py --root game --self-test    # every script is in exactly one shard; the workflow agrees
+    python3 tools/ci_test_shards.py --root game --report       # the seconds each shard is expected to take
 
-The suite took 15 to 20 minutes in one job, then 12 to 15 minutes in each of three. The folders and scripts below are
-balanced by the seconds they took on a runner (the `godot` job's log, `docs/research/ci-time.md`); a folder that is not
-named goes to the last shard, so a new folder is never left out of CI. Re-balance the lists when one shard's job drifts
-past the others or past about 9 minutes.
+Every `tests/**/test_*.gd` is one item of work with a weight: its seconds in `tools/ci_test_times.json` (measured from
+the CI logs by `tools/ci_shard_time.py update`), or `default_seconds` for a script that is not in the file yet. The items
+are dealt out by weight, heaviest first, to the shard with the least so far (the longest-processing-time rule), so the
+shards are balanced by measured seconds, not by folder or file count, and a new script lands in the lightest shard
+without anyone naming it. The result depends only on the file list and the times file, so every shard's job agrees.
+
+To rebalance (a shard's job passed `ci_shard_time.py`'s warning, or the suite grew): download `tests.log` from the
+`gdunit4-report-N` artifacts of two or three recent runs of `main`, run `python3 tools/ci_shard_time.py update <logs>`,
+commit the new times file, and add a shard (`SHARDS` here and the matrix in the workflow) when `--report` says the
+heaviest shard is over `REPORT_SHARD_BUDGET` seconds of suites. `docs/research/ci-time.md` has the method and numbers.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
+import re
 import sys
 from pathlib import Path
 
-SHARDS = 6
-# Shards 1 to 5 are named; shard 6 takes everything else, so keep it a light one. Seconds are the mean of two runs of
-# `main` on the runner (1 = fast, 2 = a 15 % slower one); the job adds about a minute of setup (checkout, import).
-NAMED: dict[int, tuple[str, ...]] = {
-    # ~375 s: the rest of the night folder (those not moved below), and the once-per-run steps
-    1: ("night",),
-    # ~350 s
-    2: ("player",),
-    # ~355 s
-    3: ("zombies",),
-    # ~365 s: real sockets and real freezes, the time is the test
-    4: ("net",),
-    # ~350 s: ui and the small folders
-    5: (
-        "ui",
-        "bots",
-        "weapons",
-        "core",
-        "challenges",
-        "grenades",
-        "dev",
-        "outline",
-        "art",
-        "character",
-        "tuning",
-        "test_main_scene.gd",
-    ),
-    # ~370 s
-    6: ("rules", "world"),
-}
-# The `night` folder alone is 900 s (the bot suites are minutes long each), so its heaviest scripts are named one by
-# one and move to the shards with room (#676, #775). Any other script of a split folder stays with the folder's own
-# shard (1), and a new one is never left out. GdUnit4 takes a folder or a script as `-a`, not "a folder without
-# these", hence the per-script entries. Seconds on the runner, mean of two runs.
-MOVED: dict[str, int] = {
-    "night/test_bot_bands.gd": 2,  # 206: eight seeded nights per band
-    "night/test_bot_soak.gd": 3,  # 80
-    "night/test_bot_orders_night.gd": 3,  # 68
-    "night/test_bot_combat.gd": 3,  # 51
-    "night/test_bot_team.gd": 3,  # 43
-    "night/test_bot_errand_buys.gd": 3,  # 31
-    "night/test_bot_own_ammo.gd": 5,  # 40
-    "night/test_bot_train.gd": 6,  # 18
-}
+from ci_shard_time import JOB_LIMIT_SECONDS
+
+# Eight shards: 3,000 s of suites on the runner (3,350 s on a slow one) is 380 to 420 s each, about 8 to 9 minutes in all
+# on the slowest runner seen with the setup, against a limit of 15; the rule of thumb is total / 480 s, rounded up, with
+# a margin for a slow runner and for growth (the suite grew 5 % in a day, #1015). The workflow's matrix must list them.
+SHARDS = 8
+# Seconds the once-per-run steps of shard 1 take beyond the setup every shard does (main scene, a night, the late-round
+# budget run; 70 to 120 s on a runner), so shard 1 is dealt that much less test time.
+EXTRA_SECONDS = {1: 60.0}
+# `--report` flags a shard whose suites are expected to take more than this (a slow runner takes 15 % more; the check
+# in ci_shard_time.py fails the job at 12 minutes of setup and suites together).
+REPORT_SHARD_BUDGET = 440.0
+TIMES_FILE = Path(__file__).with_name("ci_test_times.json")
+WORKFLOW = Path(".github/workflows/ci.yml")
 
 
-def entries(root: Path) -> list[str]:
-    """Every test folder and every test script directly under tests/, as `res://` paths."""
+def scripts(root: Path) -> list[str]:
+    """Every test script, as a path under tests/ (what GdUnit4 finds: `test_*.gd`, in any subfolder)."""
     tests = root / "tests"
-    found = []
-    split = {name.split("/")[0] for name in MOVED}
-    for path in sorted(tests.iterdir()):
-        if path.name.startswith("."):
-            continue
-        if path.is_dir() and path.name in split:
-            found.extend(f"res://tests/{path.name}/{test.name}" for test in sorted(path.glob("test_*.gd")))
-            continue
-        if path.is_dir() or (path.suffix == ".gd" and path.name.startswith("test_")):
-            found.append(f"res://tests/{path.name}")
-    return found
+    return sorted(path.relative_to(tests).as_posix() for path in tests.rglob("test_*.gd"))
 
 
-def shard_of(entry: str) -> int:
-    name = entry.removeprefix("res://tests/")
-    if name in MOVED:
-        return MOVED[name]
-    for shard, names in NAMED.items():
-        if name in names or name.split("/")[0] in names:
-            return shard
-    return SHARDS
+def weights(root: Path, times_file: Path = TIMES_FILE) -> dict[str, float]:
+    data = json.loads(times_file.read_text(encoding="utf-8"))
+    known = data["seconds"]
+    default = float(data["default_seconds"])
+    return {name: float(known.get(name, default)) for name in scripts(root)}
 
 
-def paths(root: Path, shard: int) -> list[str]:
+def deal(weight: dict[str, float], shards: int = SHARDS) -> tuple[dict[str, int], list[float]]:
+    """Longest first to the lightest shard. Returns (shard of each script, expected seconds of each shard's job)."""
+    load = [EXTRA_SECONDS.get(shard, 0.0) for shard in range(1, shards + 1)]
+    shard_of: dict[str, int] = {}
+    for name, seconds in sorted(weight.items(), key=lambda item: (-item[1], item[0])):
+        lightest = min(range(shards), key=lambda index: (load[index], index))
+        load[lightest] += seconds
+        shard_of[name] = lightest + 1
+    return shard_of, load
+
+
+def paths(root: Path, shard: int, times_file: Path = TIMES_FILE) -> list[str]:
     if not 1 <= shard <= SHARDS:
         sys.exit(f"shard {shard} is not between 1 and {SHARDS}")
-    return [entry for entry in entries(root) if shard_of(entry) == shard]
+    shard_of, _ = deal(weights(root, times_file))
+    return [f"res://tests/{name}" for name in sorted(shard_of) if shard_of[name] == shard]
+
+
+def report(root: Path, times_file: Path = TIMES_FILE) -> str:
+    weight = weights(root, times_file)
+    shard_of, load = deal(weight)
+    known = json.loads(times_file.read_text(encoding="utf-8"))["seconds"]
+    unknown = sorted(name for name in weight if name not in known)
+    lines = [f"{len(weight)} scripts, {sum(weight.values()):.0f} s of suites, {SHARDS} shards"]
+    for shard, seconds in enumerate(load, start=1):
+        count = sum(1 for value in shard_of.values() if value == shard)
+        flag = "  <- over the budget: add a shard" if seconds > REPORT_SHARD_BUDGET else ""
+        lines.append(f"  shard {shard}: {seconds:5.0f} s expected, {count:3d} scripts{flag}")
+    lines.append(f"{len(unknown)} scripts have no time yet (counted at the default); the slowest suites:")
+    for name, seconds in sorted(weight.items(), key=lambda item: -item[1])[:10]:
+        lines.append(f"  {seconds:6.1f} s  shard {shard_of[name]}  {name}")
+    return "\n".join(lines)
+
+
+def workflow_text(root: Path) -> str | None:
+    path = root.resolve().parent / WORKFLOW
+    return path.read_text(encoding="utf-8") if path.is_file() else None
 
 
 def self_test(root: Path) -> None:
-    every = entries(root)
-    assert every, "no test folders found"
+    every = scripts(root)
+    assert every, "no test scripts found"
     seen: list[str] = []
     for shard in range(1, SHARDS + 1):
         found = paths(root, shard)
         assert found, f"shard {shard} runs nothing"
         seen.extend(found)
-    assert sorted(seen) == sorted(every), "a test folder is in no shard, or in two"
-    for names in NAMED.values():
-        for name in names:
-            assert any(e.startswith(f"res://tests/{name}") for e in every), f"{name} is named but is not a test folder"
-    for name in MOVED:
-        assert f"res://tests/{name}" in every, f"{name} is moved to a shard but is not a test script"
-    print(f"ok: {len(every)} entries in {SHARDS} shards")
+    assert sorted(seen) == sorted(f"res://tests/{name}" for name in every), "a script is in no shard, or in two"
+    data = json.loads(TIMES_FILE.read_text(encoding="utf-8"))
+    assert data["default_seconds"] > 0
+    assert all(seconds >= 0 for seconds in data["seconds"].values()), "a negative time in the times file"
+    # The workflow runs the shards this file deals: its matrix and its job limit are the ones the check assumes.
+    text = workflow_text(root)
+    if text is not None:
+        job = text.split("\n  godot:\n", 1)[1].split("\n  bots-soak:\n", 1)[0]
+        matrix = re.search(r"shard: \[([\d, ]+)\]", job)
+        assert matrix, "the workflow's godot job has no `shard: [...]` matrix"
+        listed = [int(n) for n in matrix.group(1).split(",")]
+        assert listed == list(range(1, SHARDS + 1)), f"the workflow runs shards {listed}, this file deals {SHARDS}"
+        limit = re.search(r"timeout-minutes: (\d+)", job)
+        assert limit and int(limit.group(1)) * 60 == JOB_LIMIT_SECONDS, (
+            "ci_shard_time.JOB_LIMIT_SECONDS is not the job's"
+        )
+    print(f"ok: {len(every)} scripts in {SHARDS} shards")
 
 
 def main() -> None:
@@ -115,11 +124,14 @@ def main() -> None:
     parser.add_argument("--root", type=Path, default=Path("game"), help="the Godot project folder")
     parser.add_argument("--shard", type=int)
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--report", action="store_true")
     args = parser.parse_args()
     if args.self_test:
         self_test(args.root)
+    elif args.report:
+        print(report(args.root))
     elif args.shard is None:
-        parser.error("--shard or --self-test")
+        parser.error("--shard, --report or --self-test")
     else:
         print(" ".join(f"-a {entry}" for entry in paths(args.root, args.shard)))
 

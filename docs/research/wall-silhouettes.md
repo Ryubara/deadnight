@@ -37,7 +37,7 @@ until the script went at exit and CI's exit-leak gate failed (#837).
 
 ## What it costs
 
-Measured in the real renderer, desktop, 1920 x 1080 (`tests/captures/wall_silhouette_cost.tscn`: one camera 4 m from each
+Measured in the real renderer, desktop, 1920 x 1080 (`tools/captures/wall_silhouette_cost.tscn`: one camera 4 m from each
 plaque, the silhouette, the old sign (a `Label3D`, 60 px with its outline) and neither, lowest of five frames each):
 
 | | Drive-in lot (3 spots) | Second map (9 spots, 8 meshes) |

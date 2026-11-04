@@ -16,6 +16,11 @@ const CAMERA_CLEAR := 0.1
 ## What the camera sweeps against: the player's own collision mask (`player.tscn`).
 const PLAYER_MASK := 3
 const PLAYER_TUNING: PlayerTuning = preload("res://gameplay/player/player_tuning_default.tres")
+## The most the real player body climbs from level ground (metres): the jump (`jump_height`, 1.1 m)
+## plus the step-up at an edge and the capsule's rounded foot. Measured by running the body at
+## blocks of each height (`tools/world/ledge_probe.gd`) and pinned by
+## `tests/player/test_jump_reach.gd`; every reach and sweep test reads this one number (#848).
+const BODY_REACH := 1.25
 
 
 ## The player's tuning. Read through this function, never as `PLAYER_TUNING.x` in an expression:

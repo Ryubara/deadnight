@@ -88,7 +88,10 @@ the buttons held through it, a blow and a down, a bot's drink), `tests/net/test_
 it) and `tests/player/test_player_drink.gd` (the clip, the bottle and its colours). The clip and the bottle:
 [Animation, Drink](animation.md#drink).
 
-**The limit and the loss.** A player carries at most `economy.max_tonics`; a tonic is bought once. A player who
+**The limit and the loss.** A player carries at most `economy.max_tonics`; a tonic is bought once. The host can lift the
+limit for a night with the **perk limit** match setting ([`perk_limit`](rounds.md#match-settings), Default or
+Unlimited, beside the zombie intensity in the lobby and on the Play screen): every perk machine, the rules' buy
+(`MatchSettings.tonic_limit`), the bots and the balance simulator (`--perks=unlimited`) read the same limit. A player who
 **goes down loses** what `perks.lost_on_down` says (`PerkPlay`): the health the hearty tonic gave goes with it and
 the weapon in the third slot is given up (`perks_lost`, the weapon leaves as a `weapon_replaced` with no new
 weapon). A self-revive loses nothing. The loss is the genre's; whether it is all, the last or none is [a number of

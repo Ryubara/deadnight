@@ -2,7 +2,8 @@ extends Node
 ## Stills of what Solo offers (#620), at the window's real pixel size, one PNG each into
 ## `--out=<folder>` named `<--label=><step>`: the menu, the room host's lobby over it (the
 ## reference for the settings), Solo pressed (a tap with a finger when the window is a phone's, a
-## click otherwise), what opens, the same with another intensity chosen, and the night that starts.
+## click otherwise), what opens, the same with another intensity and unlimited perks chosen, and
+## the night that starts.
 ## Run it before and after the change with the same arguments; it prints the screen each step shows
 ## and whether its controls fit the window. Run through the no-focus launcher, not headless:
 ## `gds godot -- --path game res://tests/captures/solo_settings_tour.tscn --windowed
@@ -43,6 +44,7 @@ func _ready() -> void:
 		loud.count_multiplier = 3.0
 		loud.max_alive = 12
 		loud.break_seconds = 15.0
+		loud.perk_limit = MatchSettings.PERKS_UNLIMITED
 		panel.set_settings(loud)
 		await _still("3-solo-3x")
 		await _press(screen.get("start_button"))

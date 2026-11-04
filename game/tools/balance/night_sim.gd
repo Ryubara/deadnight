@@ -86,11 +86,16 @@ var _over: bool = false
 
 
 func _init(
-	p_tuning: RulesTuning, p_skill: SimSkill, players: int, seed_value: int, p_step: float
+	p_tuning: RulesTuning,
+	p_skill: SimSkill,
+	players: int,
+	seed_value: int,
+	p_step: float,
+	p_settings: MatchSettings = null
 ) -> void:
 	step = p_step
 	_leave_out_the_unmodelled(p_tuning)
-	rules = GameRules.new(p_tuning, seed_value)
+	rules = GameRules.new(p_tuning, seed_value, p_settings)
 	_rng.seed = seed_value ^ 0x51A7
 	skill = p_skill.jittered(_rng, NIGHT_SPREAD)
 	_set_lights()
@@ -853,7 +858,10 @@ func _can_ever_buy(player: SimPlayer, item_id: StringName) -> bool:
 		return _crane_can_pay_off(player)
 	if _is_weapon_item(item_id):
 		return _worth_taking(player, item_id) and not rules.players[player.id].weapons.has(item_id)
-	return not rules.players[player.id].tonics.has(item_id)
+	var tonics := rules.players[player.id].tonics
+	return (
+		not tonics.has(item_id) and tonics.size() < rules.settings.tonic_limit(rules.tuning.economy)
+	)
 
 
 ## Spins the crane out in the break (the shopper stands at the glass, so the weapon is taken the

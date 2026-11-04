@@ -19,6 +19,16 @@ const LEGS: Array[String] = ["UpperLeg.L", "UpperLeg.R"]
 const BLENDED: Array[String] = [CHEST] + RIGHT + LEFT
 ## Points the elbows out and down: this fraction of the shoulder width, plus straight down.
 const ELBOW_OUT := 0.45
+## The elbows of a two-handed gun's hold (a stance turned), further out: with #978's shorter
+## forearm the shouldered hold folded the right forearm into the jacket (night probe: 68 mm in a
+## jacket firing the pump at 0.45, 45 mm at 1.0). One-handed holds and the reload keep `ELBOW_OUT`.
+const ELBOW_OUT_TWO_HANDED := 1.0
+## A two-handed weapon whose fore-end is out of the left arm's reach slides back along its barrel
+## until the left hand reaches it (#978): in this many passes, by at most `PULL_MAX` metres, to
+## `PULL_SLACK` metres inside the arm's full stretch (the two-bone reach stops 1 mm short of it).
+const PULL_PASSES := 2
+const PULL_MAX := 0.12
+const PULL_SLACK := 0.002
 ## How far the support hand's bone sits behind the fore-end it holds, in metres.
 const SUPPORT_HAND_BACK := 0.07
 ## How much of the view's pitch the chest takes when the player looks up or down (#110): the
@@ -85,6 +95,9 @@ var recoil_up_deg := 4.0
 var _solved_target := Transform3D.IDENTITY
 var _solved_left := Transform3D.IDENTITY
 var _solved_offhand := Transform3D.IDENTITY
+## How far the last modification slid the weapon back to bring its fore-end into the left arm's
+## reach (metres; `PULL_MAX`), read with `pulled()`.
+var _pulled := 0.0
 
 
 ## The weapon's pose the last modification reached for, in the world where the body is now (for
@@ -97,6 +110,12 @@ func solved_target() -> Transform3D:
 ## The left hand bone's pose the last modification reached for, likewise.
 func solved_left() -> Transform3D:
 	return get_skeleton().global_transform * _solved_left
+
+
+## How far the last modification slid the weapon back along its barrel so the left hand reached
+## its fore-end, in metres (0 when the fore-end was in reach).
+func pulled() -> float:
+	return _pulled
 
 
 ## The left gun's pose of a dual weapon the last modification reached for, likewise (the rigid
@@ -201,28 +220,44 @@ func _solve(skeleton: Skeleton3D) -> void:
 		_turn_chest(skeleton, stance)
 	_pitch_chest(skeleton)
 	var target := weapon_target()
-	_solved_target = skeleton.global_transform.affine_inverse() * target
 	var right_shoulder := _world(skeleton, skeleton.find_bone(RIGHT[0])).origin
 	var left_shoulder := _world(skeleton, skeleton.find_bone(LEFT[0])).origin
 	var side := (right_shoulder - left_shoulder).normalized()
+	var out := ELBOW_OUT_TWO_HANDED if hold.stance_turn_deg > 0.0 else ELBOW_OUT
 	var model_scale := absf(skeleton.global_basis.get_scale().x)
-	# The right hand: the weapon's world pose through the kit's grip gives the hand bone's pose.
-	var hand_basis := target.basis * hand_hold.basis.inverse()
-	var hand_origin := target.origin - hand_basis * (hand_hold.origin * model_scale)
-	_reach(skeleton, RIGHT, hand_origin, side * ELBOW_OUT + Vector3.DOWN, hand_basis, false)
+	var weapon := Transform3D.IDENTITY
+	var pulled := 0.0
+	for attempt in PULL_PASSES + 1:
+		# The right hand: the weapon's world pose through the kit's grip gives the hand bone's pose.
+		var hand_basis := target.basis * hand_hold.basis.inverse()
+		var hand_origin := target.origin - hand_basis * (hand_hold.origin * model_scale)
+		_reach(skeleton, RIGHT, hand_origin, side * out + Vector3.DOWN, hand_basis, false)
+		# The left hand goes where the weapon is now, after the right arm (which may fall a little
+		# short of the target), so the two hands always hold the same weapon.
+		var right_hand := (
+			skeleton.global_transform * skeleton.get_bone_global_pose(skeleton.find_bone(RIGHT[2]))
+		)
+		weapon = right_hand * hand_hold.scaled_local(Vector3.ONE * hold.model_scale)
+		if attempt == PULL_PASSES or hold.dual or grip == null or not grip.has_left:
+			break
+		# A fore-end out of the left arm's reach (the view far down, #978's shorter forearm): the
+		# weapon slides back along its barrel, toward the shoulder, until the left hand reaches it.
+		var step := minf(
+			_pull_to_reach(skeleton, left_hand_on(weapon).origin, target), PULL_MAX - pulled
+		)
+		if step <= 0.0:
+			break
+		target.origin += target.basis.x.normalized() * step
+		pulled += step
+	_solved_target = skeleton.global_transform.affine_inverse() * target
+	_pulled = pulled
 	# The left hand: on the fore-end, turned to hold it (the grip's), or reaching the support point.
-	# It goes where the weapon is now, after the right arm (which may fall a little short of the
-	# target), so the two hands always hold the same weapon.
-	var right_hand := (
-		skeleton.global_transform * skeleton.get_bone_global_pose(skeleton.find_bone(RIGHT[2]))
-	)
-	var weapon := right_hand * hand_hold.scaled_local(Vector3.ONE * hold.model_scale)
 	if hold.dual:
 		_reach_offhand(skeleton, -side * ELBOW_OUT + Vector3.DOWN, model_scale)
 	elif grip != null and grip.has_left:
 		var left := left_hand_on(weapon)
 		_solved_left = skeleton.global_transform.affine_inverse() * left
-		_reach(skeleton, LEFT, left.origin, -side * ELBOW_OUT + Vector3.DOWN, left.basis, false)
+		_reach(skeleton, LEFT, left.origin, -side * out + Vector3.DOWN, left.basis, false)
 	elif hold.support != Vector3.ZERO:
 		_reach(
 			skeleton, LEFT, support_point(target), -side * ELBOW_OUT + Vector3.DOWN, Basis(), true
@@ -302,6 +337,23 @@ func reload_point(skeleton: Skeleton3D, weapon: Transform3D, key: ReloadKey) -> 
 	if grip != null and grip.has_left:
 		basis = (weapon.basis.orthonormalized() * turn * grip.left_hand.basis).orthonormalized()
 	return Transform3D(basis, weapon * point)
+
+
+## How far the weapon at `target` must slide back along its barrel (its +X, toward the butt) for
+## the left arm to reach `goal` (the left hand bone's place on it), in metres; 0 when it reaches.
+func _pull_to_reach(skeleton: Skeleton3D, goal: Vector3, target: Transform3D) -> float:
+	var shoulder := _world(skeleton, skeleton.find_bone(LEFT[0])).origin
+	var elbow := _world(skeleton, skeleton.find_bone(LEFT[1])).origin
+	var wrist := _world(skeleton, skeleton.find_bone(LEFT[2])).origin
+	var reach := shoulder.distance_to(elbow) + elbow.distance_to(wrist) - PULL_SLACK
+	var r := goal - shoulder
+	if r.length() <= reach:
+		return 0.0
+	# |r + back * s| = reach, the smaller root; past the closest point the slide stops there.
+	var back := target.basis.x.normalized()
+	var along := r.dot(back)
+	var under := along * along - r.length_squared() + reach * reach
+	return maxf(-along - sqrt(maxf(under, 0.0)), 0.0)
 
 
 ## Turns the chest `degrees` about the world's up, the left shoulder forward (toward the aim): a

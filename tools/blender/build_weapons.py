@@ -462,7 +462,7 @@ def add_muzzle(o, name, chunk, table=MUZZLES, node=MUZZLE):
 
 
 # Where the hands meet each weapon (Deadnight #460), in drawing units before `chunk` like MUZZLES. Each is an empty
-# under the weapon; the grip solver (game/tests/art/solve_grips.gd) reads them and writes the hand poses.
+# under the weapon; the grip solver (game/tools/art/solve_grips.gd) reads them and writes the hand poses.
 # - `Grip`: the right hand's handle. At the centre of the handle where the middle finger wraps, its local +Z up the
 #   handle toward the index finger (`up`), its local +Y the way the straight fingers point (`front`: along the barrel
 #   for a pistol grip, so the palm lies on the grip's right and the fingertips reach round to its left; the striking

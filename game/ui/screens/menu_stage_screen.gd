@@ -2,7 +2,8 @@ class_name MenuStageScreen
 extends UIScreen
 ## The menu's live stage on its own, with nothing over it: Left and Right (or the bumpers) walk
 ## the tabs' cameras. It is what a browser run measures (`index.html?stage`, and `?stage=still`
-## for the still), and what a capture shows, before the tab panels sit on top of it.
+## for the still, `?stage=live` for the live stage on a software renderer too), and what a capture
+## shows, before the tab panels sit on top of it.
 
 var view := MenuStageView.new()
 var tab := MenuTab.Id.PLAY
@@ -14,6 +15,8 @@ func _ready() -> void:
 	stars = false
 	# A still asked for by the page address is for this run only: the setting is not written.
 	view.forced_mode = MenuStageView.MODE_STILL if params.get("still", false) else -1
+	if params.get("live", false):
+		view.forced_mode = MenuStageView.MODE_LIVE
 	add_child(view)
 	view.show_tab(tab)
 

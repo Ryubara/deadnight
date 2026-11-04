@@ -49,9 +49,9 @@ func get_float(key: String, fallback: float = 0.0) -> float:
 
 ## The match settings a game server is started with, one option for each setting of
 ## `MatchSettings.KEYS` (each left out is the default): `--count 2`, `--max-alive 12`, `--break 10`,
-## `--map small_indoor`, `--bots 2`, `--bot-skill 2`. Not pulled into bounds: the caller asks
-## `MatchSettings.problem` of the result and stops on a value the game does not take, instead of
-## starting a night with other rules than the ones asked for (Deadnight #944).
+## `--map small_indoor`, `--bots 2`, `--bot-skill 2`, `--perk-limit 1`. Not pulled into bounds: the
+## caller asks `MatchSettings.problem` of the result and stops on a value the game does not take,
+## instead of starting a night with other rules than the ones asked for (Deadnight #944).
 func match_settings() -> MatchSettings:
 	var settings := MatchSettings.new()
 	settings.count_multiplier = get_float("count", settings.count_multiplier)
@@ -60,4 +60,5 @@ func match_settings() -> MatchSettings:
 	settings.map = get_string("map", settings.map)
 	settings.bots = get_int("bots", settings.bots)
 	settings.bot_skill = get_int("bot-skill", settings.bot_skill)
+	settings.perk_limit = get_int("perk-limit", settings.perk_limit)
 	return settings

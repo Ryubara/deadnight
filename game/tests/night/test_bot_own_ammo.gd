@@ -56,10 +56,12 @@ func _night(open: bool, profile: BotProfile = null) -> SeatedNight:
 	var night := await NightFixture.seat(self, 2, tuning, SEED, true)
 	night.human(PERSON)
 	night.seat(BOT, profile if profile != null else BotProfile.regular(), SEED + BOT)
-	await night.settle(SETTLE_FRAMES)
 	if open:
 		night.open_door(DOOR)
-		await night.settle(SETTLE_FRAMES)
+		# The door's mesh reaches the map over 8 to 12 physics frames, which move with the load:
+		# wait for the map's answer (60 frames is a second of real time in each of 13 nights).
+		var taken_in := await night.settle_doors()
+		assert_bool(taken_in).override_failure_message("the map never took the door in").is_true()
 	night.server.rules.players[BOT].points = POINTS
 	_place(night, PERSON, OUTSIDE)
 	_place(night, BOT, OUTSIDE + Vector3(3.0, 0.0, -2.0))
