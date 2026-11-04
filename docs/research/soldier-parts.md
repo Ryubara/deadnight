@@ -109,7 +109,7 @@ like a mask, a red dash for a mouth and arms through each other. The causes and 
 | Check | What it does | Where |
 | --- | --- | --- |
 | Combination sweep | Every head x top x neckwear, top x trousers, trousers x shoes, top x armwear on both bodies, and every part alone: rays from 60 directions over each junction (neck, waist, ankles, wrists, shoulders); fails where the first face a ray meets faces away and nothing facing it lies within 6 cm behind. A closed and an opened ball check the probe itself | `tests/character/test_soldier_watertight.gd`, `tests/art/body_fit.gd` (`BodyFit.see_through`) |
-| Clip sampler | Every clip of the player's library (the parts file's and the player's own files', as `PlayerAnimation` loads them), 4 frames each, on her in rolled sleeves and him in a jacket: forearm and hand vertices inside the trunk, head, legs or the other arm, head pieces inside the trunk, armbands inside the trunk, deeper than 3 cm | `tests/character/test_soldier_clip_fit.gd`, `tests/art/clip_fit.gd` |
+| Clip sampler | Every clip of the player's library (the parts file's and the player's own files', as `PlayerAnimation` loads them), 8 frames each, on her in rolled sleeves and him in a jacket: forearm and hand vertices inside the trunk, head, legs or the other arm, head pieces inside the trunk, armbands inside the trunk, deeper than 3 cm | `tests/character/test_soldier_clip_fit.gd`, `tests/art/clip_fit.gd` |
 | Menu pose | The menu soldier with every weapon (`MenuHero`, read at `skeleton_updated` with the hand pose on) | the same suite |
 | Turntables | 360 degrees, the menu pose, red dots where the eye sees through | `tests/captures/soldier_turntable.tscn --probe` |
 | Heads | Close-ups with back faces culled, and drawn small | `tools/blender/render_soldier_heads.py` |
@@ -120,10 +120,14 @@ way the mesh draws them. New faces reach the broadphase only after two physics s
 last pose's surface), so the suites step physics at 480 Hz. A clip that does not key the fingers keeps whatever the
 last clip left: the sampler resets the bones before each sample.
 
-The arms in the clips are not all clean: the kit's and our clips reach a hand into a thigh in the revive kneel and the
-crawl, a forearm across the chest in the dual pistols and the strikes (up to 14 cm), and a quick strike swings the upper
-arm through a bow tie. Those are clip faults, recorded per clip in `tests/character/clip_fit_recorded.json`; the sampler
-fails a clip that gets deeper than recorded and any new one; #939 is to bring them down. The menu's long-gun holds keep
+The arms in the clips were not all clean: the dual pistols' hands through each other in the equip and the quick melee,
+the revive's hands through each other, the downed hand through the thigh and the crawl's knee through it, the strikes'
+free hand in the knee (up to 14 cm, 22 clips). #939 reworked them (docs/design/animation.md, the clips' sections):
+no clip puts a forearm or hand into the body now, nothing may be recorded for the arms, and the test samples eight
+frames a clip (four missed a windup). The night's own poses, after the hand IK, are measured by
+`tests/captures/clip_arms_tour.tscn -- --measure`: the clips' beats are at 3 cm or under but for the start of the
+crawl and his SMG carry (31-38 mm); the IK's reload and long-gun hold are not (#987). Only the armbands
+(33-50 mm) and the menu's holds are recorded. The menu's long-gun holds keep
 a long sleeve's right forearm 30-39 mm into the chest (recorded, at most 4 cm); her rolled sleeves (the maintainer's
 look) are clean with every weapon.
 
