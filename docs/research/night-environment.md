@@ -148,6 +148,9 @@ change (`LightTuning.lamp_reach` is one number for the lot), not a lighting one.
   excused from it. Another test reads every script and scene of the project for a light and fails on one that is not
   in its table, and checks that each weapon's shot, a blast and a grenade add exactly one light.
   The first run of the stronger test found 8 on two ground tiles, 7 on four more; no prop or car is above 6.
+  The blast's light is freed when its fade ends (0.7 s) and the whole effect when its scorch has faded (7 s)
+  (`BlastEffect`, #929): before that, an energy-0 blast light kept its slot on every mesh near the blast for the rest of
+  the night, so a few blasts at one chokepoint could push the lot's own lamps past the cap.
 - **The booth's spot** (`ProjectionBooth/Lamps/ProjectorBeam`, issue #840) is the beam's one real light: a
   `SpotLight3D` (energy 6, 7 degrees, range 100) 0.1 m inside the booth's north wall behind the port, facing the
   screen 70 m off. Two things about it are not obvious. A spot's forward is its -Z, so the builder's `yaw 180` turned it
