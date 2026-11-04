@@ -159,9 +159,9 @@ var xp: XpAward
 var dead_tuning := DeadContactTuning.shipped()
 var dead_as_seen := true
 ## The account level of each player the host knows (the local player's, from their profile; the
-## ticket's, once it carries one). Their look is held to what that level may wear: a locked piece in
-## a client's look is put back (`LookServer`, #1065). A player not named here has no known level
-## yet, and is trusted with the whole wardrobe until the ticket carries one.
+## ticket's XP for a seat with an account, `NightHost.register_account`). Their look is held to what
+## that level may wear: a locked piece in a client's look is put back (`LookServer`, #1065). A
+## player not named here has no known level (no backend), and is trusted with the whole wardrobe.
 var player_levels: Dictionary[int, int] = {}
 var _dead_ring: Array[DeadSnapshot] = []
 var _dead_fields: Dictionary[int, DeadField] = {}

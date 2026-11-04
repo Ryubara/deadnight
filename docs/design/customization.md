@@ -58,9 +58,10 @@ first row goes to the tab on show; down from a tab goes to the page's first cell
 
 Whatever comes from outside is untrusted: a damaged save, a look of another version, an index out of range all become
 the first option of that slot (or the default look for a wrong version), and the server puts back anything the sender
-has not unlocked (`LookServer`, with the unlocks `NightServer` answers from `player_levels`: the local player's level from
-their profile, and the ticket's once it carries one; a player whose level is not known yet is trusted with the whole
-wardrobe, which is the open point of the follow-up issue). The wire is at version 3 (the
+has not unlocked (`LookServer`, with the unlocks `NightServer` answers from `player_levels`: the level the ticket's
+XP gives a seat that has an account (`NightHost.register_account`), the local player's level from their profile in a
+night at their own machine; a player with no known level, a server with no backend, is trusted with the whole
+wardrobe). The wire is at version 3 (the
 `mouth` slot, #1061); a look of version 2 still reads (16 bytes, `CharacterLook.OLDEST_VERSION`, the first mouth), and a
 save from before the mouth has no `mouth` id and takes the first too.
 
