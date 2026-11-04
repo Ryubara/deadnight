@@ -42,11 +42,10 @@ func test_a_name_is_short_and_plain_and_no_two_skills_share_one() -> void:
 			all[bot_name] = true
 
 
-func test_every_look_is_a_real_preset_of_the_catalogue_and_free_to_wear() -> void:
+func test_every_look_is_a_real_preset_of_the_catalogue() -> void:
 	var ids: Array[String] = []
 	for preset in LookCatalog.presets():
 		ids.append(preset["id"])
-	var unlocks := LookUnlocks.new()
 	for skill: int in SKILLS:
 		for who: Dictionary in BotRoster.CAST[skill]:
 			(
@@ -55,9 +54,15 @@ func test_every_look_is_a_real_preset_of_the_catalogue_and_free_to_wear() -> voi
 				. is_true()
 			)
 		for seat in range(1, NightHost.MAX_PLAYERS + 1):
-			var look := BotRoster.look_for(skill, seat)
-			# The server takes the look as a person's look arrives: nothing in it may be locked.
-			assert_bool(look.equals(look.without_locked(unlocks))).is_true()
+			# A bot has no level and wears its preset whole (the ladder is a player's, #1065): the
+			# server holds no level for it and trusts it with the wardrobe.
+			var preset_id: StringName = BotRoster.identity(skill, seat)["look"]
+			(
+				assert_bool(
+					BotRoster.look_for(skill, seat).equals(BotRoster.look_of_preset(preset_id))
+				)
+				. is_true()
+			)
 
 
 func test_a_room_skill_means_the_shipped_profile_of_that_name() -> void:

@@ -25,6 +25,17 @@ const PIECES := {
 	&"neck/lanyard": "Press lanyard",
 	&"neck/bolo": "Bolo tie",
 }
+## The level each opens at (`unlocks.json`, the design page's table).
+const LEVELS := {
+	&"torso/usher": 18,
+	&"torso/coveralls": 36,
+	&"legs/overalls": 31,
+	&"feet/saddle": 28,
+	&"eyewear/cinema": 24,
+	&"headwear/visor": 33,
+	&"neck/lanyard": 19,
+	&"neck/bolo": 34,
+}
 const BODIES: Array[StringName] = [&"male", &"female"]
 
 
@@ -40,15 +51,15 @@ func test_the_pieces_are_appended_after_every_part_that_was_there() -> void:
 		assert_array(ids.slice(0, BEFORE[slot].size())).is_equal(BEFORE[slot])
 
 
-func test_every_piece_is_named_and_free_for_now() -> void:
+func test_every_piece_is_named_and_on_the_ladder_at_its_level() -> void:
 	for key: StringName in PIECES:
 		var slot := StringName(String(key).get_slice("/", 0))
 		var id := StringName(String(key).get_slice("/", 1))
 		assert_int(LookCatalog.option_index(slot, id)).is_greater(0)
 		var option := _option(slot, id)
 		assert_str(option["label"]).is_equal(PIECES[key])
-		# The ladder's locks come with the wardrobe grid (#1065), from `unlocks.json`.
-		assert_dict(option["gate"]).is_empty()
+		# The ladder's locks are the wardrobe grid's (#1065), from `unlocks.json`.
+		assert_dict(option["gate"]).is_equal({"level": LEVELS[key]})
 
 
 func test_a_look_with_a_piece_keeps_it_over_the_wire() -> void:

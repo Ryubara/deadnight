@@ -158,6 +158,11 @@ var xp: XpAward
 ## at the same place; off, by where they stand now.
 var dead_tuning := DeadContactTuning.shipped()
 var dead_as_seen := true
+## The account level of each player the host knows (the local player's, from their profile; the
+## ticket's XP for a seat with an account, `NightHost.register_account`). Their look is held to what
+## that level may wear: a locked piece in a client's look is put back (`LookServer`, #1065). A
+## player not named here has no known level (no backend), and is trusted with the whole wardrobe.
+var player_levels: Dictionary[int, int] = {}
 var _dead_ring: Array[DeadSnapshot] = []
 var _dead_fields: Dictionary[int, DeadField] = {}
 var _shove: DeadShove
@@ -223,7 +228,7 @@ func _init(
 	p_settings: MatchSettings = null
 ) -> void:
 	world = p_world
-	looks = LookServer.new(_send_look)
+	looks = LookServer.new(_send_look, _unlocks_of)
 	tuning = p_tuning if p_tuning != null else NightTuning.shipped()
 	ping_board.seconds = tuning.ping_seconds
 	ping_board.gap = tuning.ping_gap
@@ -1326,3 +1331,8 @@ func _arms_of(player_id: int) -> Dictionary:
 
 static func _flat(a: Vector3, b: Vector3) -> float:
 	return Vector2(a.x - b.x, a.z - b.z).length()
+
+
+## What `player_id` may wear: what their level opens, or everything while the level is unknown.
+func _unlocks_of(player_id: int) -> LookUnlocks:
+	return LookUnlocks.at_level(player_levels.get(player_id, LevelCurve.MAX_LEVEL))
