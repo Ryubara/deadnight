@@ -85,6 +85,19 @@ func _fx_of(night: Night, kind: ElementFx.Kind) -> Array[ElementFx]:
 	return found
 
 
+func _flames_on(night: Night, zombie_id: int) -> Array[ElementFx]:
+	var found: Array[ElementFx] = []
+	for fx in _fx_of(night, ElementFx.Kind.BURN):
+		if fx.burns(zombie_id):
+			found.append(fx)
+	return found
+
+
+func _status_of(night: Night, zombie_id: int) -> int:
+	var view := night.view.horde.view_of(zombie_id)
+	return view.status() if view != null else -1
+
+
 func test_the_other_client_sees_the_name_and_draws_the_burst_of_a_re_cut_revolver() -> void:
 	await _server()
 	var a := await _client()
@@ -123,3 +136,39 @@ func test_the_other_client_sees_the_name_and_draws_the_burst_of_a_re_cut_revolve
 	assert_bool(drawn).override_failure_message("a client drew no blast").is_true()
 	var blast := _fx_of(b, ElementFx.Kind.BLAST)[0]
 	assert_bool(blast.tint.is_equal_approx(ElementCatalog.get_def(&"explosive").tint)).is_true()
+
+
+func test_the_other_client_sees_the_flames_on_the_zombie_a_re_cut_pump_set_alight() -> void:
+	await _server()
+	var a := await _client()
+	var b := await _client()
+	assert_bool(await _until(func() -> bool: return b.avatars.ids().has(A))).is_true()
+	var server := _host.server
+	server._combat(CombatAction.give_weapon(A, &"pump_870"))
+	server._combat(CombatAction.upgrade_weapon(A, &"pump_870"))
+	server._combat(CombatAction.equip(A, &"pump_870"))
+	assert_bool(await _until(func() -> bool: return _a_zombie() != null, 60.0)).is_true()
+	var zombie := _a_zombie()
+	# A zombie that outlasts the shell, held still 3 m ahead of A and off the fence.
+	zombie.gate_id = &""
+	zombie.speed = 0.0
+	server.rules._zombies[zombie.id].health = 100000.0
+	var at: Vector3 = (server._bodies[A] as Node3D).global_position
+	zombie.position = at + Vector3(0.0, 0.0, -3.0)
+	var command := _commands[a] as NightCommand
+	command.aim_along(Vector3(0.0, 0.0, -1.0))
+	command.fire = true
+	# Both clients draw the flames from the one `element_burn` event, on that zombie.
+	var both := func() -> bool:
+		return not _flames_on(a, zombie.id).is_empty() and not _flames_on(b, zombie.id).is_empty()
+	var drawn := await _until(both)
+	command.fire = false
+	assert_bool(drawn).override_failure_message("a client drew no flames").is_true()
+	var flames := _flames_on(b, zombie.id)
+	# One fire a zombie, in the element's colour, though the pump fired again meanwhile.
+	assert_int(flames.size()).is_equal(1)
+	assert_bool(flames[0].tint.is_equal_approx(ElementCatalog.get_def(&"fire").tint)).is_true()
+	# The zombie's own view wears the burning shell the snapshot's status byte tells.
+	var burning := StatusCatalog.get_def(&"burning").wire
+	var shell := await _until(func() -> bool: return _status_of(b, zombie.id) == burning)
+	assert_bool(shell).is_true()

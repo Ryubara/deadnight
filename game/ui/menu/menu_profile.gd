@@ -1,18 +1,19 @@
 class_name MenuProfile
 extends RefCounted
-## What the menu shows of the player's account, from the cached profile (`profile/cache` in the
-## settings file: JSON the platform backend will fill; the client writes only the player's name).
-## Plain values and the Billing arithmetic of docs/design/progression.md; an empty or damaged cache
-## is a new player (level 1, no stubs), never an error, and a night never waits on it.
+## What the menu shows of the player's account. The name, stubs and mastery come from the cached
+## profile (`profile/cache` in the settings file: JSON the platform backend will fill; the client
+## writes only the player's name); the XP is the profile file's (`ProfileSave`, what the nights
+## add to) and the level is `LevelCurve`'s, computed from it. An empty or damaged cache or file is
+## a new player (level 1), never an error, and a night never waits on it.
 
-## Billing levels run 1 to `MAX_LEVEL`; Encores after it are cosmetic and not counted here.
-const MAX_LEVEL := 50
-## XP from level L to L + 1 is `XP_BASE + XP_PER_LEVEL * L`.
-const XP_BASE := 150
-const XP_PER_LEVEL := 30
+## Levels run 1 to `MAX_LEVEL` (XP past it is kept and shows a full bar).
+const MAX_LEVEL := LevelCurve.MAX_LEVEL
 const DEFAULT_NAME := "Player"
 ## The longest name shown, so a long one cannot push the tab bar around.
 const MAX_NAME := 16
+
+## The profile file the XP is read from; a test points it at its own.
+static var profile_path := ProfileSave.DEFAULT_PATH
 
 var display_name := DEFAULT_NAME
 var xp := 0
@@ -21,9 +22,12 @@ var stubs := 0
 var mastery: Dictionary = {}
 
 
-## The profile in the settings file.
+## The profile in the settings file, with the XP of the profile file (0 when there is none).
 static func load_saved() -> MenuProfile:
-	return from_json(Settings.get_value(SettingsService.PROFILE_CACHE))
+	var profile := from_json(Settings.get_value(SettingsService.PROFILE_CACHE))
+	var saved: Variant = ProfileSave.read(profile_path)["profile"]
+	profile.xp = (saved as Profile).xp if saved != null else 0
+	return profile
 
 
 ## Whether the profile holds a name somebody gave: the player (asked on the first Play together, or
@@ -89,47 +93,37 @@ static func to_json(
 	)
 
 
-## XP needed to go from `level` to the next.
+## XP needed to go from `level` to the next (`LevelCurve`).
 static func xp_to_next(level: int) -> int:
-	return XP_BASE + XP_PER_LEVEL * level
+	return LevelCurve.to_leave(level)
 
 
 ## Total XP at which `level` begins (level 1 begins at 0).
 static func xp_at(level: int) -> int:
-	var total := 0
-	for step in range(1, level):
-		total += xp_to_next(step)
-	return total
+	return LevelCurve.xp_for(level)
 
 
-## The Billing level of `total_xp`.
+## The level of `total_xp`.
 static func level_of(total_xp: int) -> int:
-	var level := 1
-	var left := total_xp
-	while level < MAX_LEVEL and left >= xp_to_next(level):
-		left -= xp_to_next(level)
-		level += 1
-	return level
+	return LevelCurve.level_of(total_xp)
 
 
 func level() -> int:
-	return level_of(xp)
+	return LevelCurve.level_of(xp)
 
 
 ## XP earned inside the current level, and what the level asks (0 at the top).
 func xp_in_level() -> int:
-	return xp - xp_at(level())
+	return LevelCurve.xp_in_level(xp)
 
 
 func xp_for_level() -> int:
-	return 0 if level() >= MAX_LEVEL else xp_to_next(level())
+	return LevelCurve.to_leave(level())
 
 
 ## How far to the next level, 0 to 1 (1 at the top).
 func level_fraction() -> float:
-	if level() >= MAX_LEVEL:
-		return 1.0
-	return clampf(float(xp_in_level()) / float(xp_for_level()), 0.0, 1.0)
+	return LevelCurve.fraction(xp)
 
 
 ## Mastery level of a weapon: 1 to 10, level N to N + 1 costing `400 + 100 x N` points.

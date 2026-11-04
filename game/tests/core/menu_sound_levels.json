@@ -3,6 +3,14 @@
   "rung": 3,
   "target_dbfs": -18.0
  },
+ "ui_card_earned|0.0": {
+  "rung": 4,
+  "target_dbfs": -13.0
+ },
+ "ui_challenge_done|0.0": {
+  "rung": 4,
+  "target_dbfs": -13.0
+ },
  "ui_confirm|0.0": {
   "rung": 4,
   "target_dbfs": -13.0
@@ -22,6 +30,10 @@
  "ui_hover|0.0": {
   "rung": 1,
   "target_dbfs": -27.0
+ },
+ "ui_level_up|0.0": {
+  "rung": 5,
+  "target_dbfs": -11.0
  },
  "ui_pop|0.0": {
   "rung": 2,
@@ -63,6 +75,10 @@
   "rung": 1,
   "target_dbfs": -25.0
  },
+ "ui_tier_up|0.0": {
+  "rung": 5,
+  "target_dbfs": -10.5
+ },
  "ui_toggle_off|0.0": {
   "rung": 2,
   "target_dbfs": -22.0
@@ -70,5 +86,9 @@
  "ui_toggle_on|0.0": {
   "rung": 2,
   "target_dbfs": -22.0
+ },
+ "ui_unlock|0.0": {
+  "rung": 4,
+  "target_dbfs": -13.0
  }
 }
