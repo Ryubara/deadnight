@@ -12,8 +12,10 @@ extends Node
 
 ## Seconds of game time a row covers.
 const PERIOD := 1.0
-## Classes counted in the scene every row (a walk of the tree, once a second).
-const LIGHTS := "Light3D"
+## Iterations of the calibration loop, and the seconds between two calibrations (a row carries the
+## newest, so a machine that got busy halfway through shows in the rows after it).
+const CALIBRATION_LOOPS := 20000
+const CALIBRATE_EVERY := 5.0
 
 ## The rows so far, each a Dictionary of numbers (see `_row`).
 var rows: Array[Dictionary] = []
@@ -34,6 +36,7 @@ var _usec: Dictionary = {}
 var _per_frame: Dictionary = {}
 var _counts: Dictionary = {}
 var _clock := 0.0
+var _calibrate_clock := 0.0
 var _started_msec := 0
 var _last_usec := 0
 
@@ -62,7 +65,7 @@ static func calibrate() -> float:
 		var began := Time.get_ticks_usec()
 		var table := {}
 		var total := 0.0
-		for i in 40000:
+		for i in CALIBRATION_LOOPS:
 			table[i % 512] = float(i) * 0.5
 			total += sqrt(float(table[(i * 7) % 512] if table.has((i * 7) % 512) else 1.0))
 		best = minf(best, float(Time.get_ticks_usec() - began) / 1000.0)
@@ -90,7 +93,11 @@ func _process(delta: float) -> void:
 		(_per_frame.get_or_add(label, []) as Array).append(float(taken["usec"][label]) / 1000.0)
 	for label: StringName in taken["counts"]:
 		_counts[label] = _counts.get(label, 0) + taken["counts"][label]
+	_calibrate_clock += delta
 	_clock += delta
+	if _calibrate_clock >= CALIBRATE_EVERY and _clock < PERIOD - 0.3:
+		_calibrate_clock = 0.0
+		calibration_ms = calibrate()
 	if _clock >= PERIOD:
 		rows.append(_row())
 		_reset_window()

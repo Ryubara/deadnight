@@ -22,6 +22,7 @@ extends Node
 ##                `startround` is given) so the bots have bought what a late round has
 ##   `ceiling=desktop` the bots say they are not browsers, so the desktop's 120 dead may stand (they
 ##                count as browsers otherwise: the ceiling is 40)
+##   `frames=0`   keep no row per frame (a long run's memory is what it measures)
 ##   `sample=1`   a `PerfSampler` row each second (monitors, counts, labelled times) in the report
 ##   `map=ID`     the map of the night (`MapRegistry`: `drive_in`, `small_indoor`; default the lot)
 ##   `seconds=S`  stop after S seconds of night whatever round it is (default 600)
@@ -58,6 +59,8 @@ var _done := false
 var _ablated := false
 var _sampler: PerfSampler
 var _jumped := false
+## False for a long run (`frames=0`): the per-frame rows would be the growth being measured.
+var _keep_frames := true
 
 
 func _init(args: NetArgs = null) -> void:
@@ -74,6 +77,7 @@ func _ready() -> void:
 	_hold = _args.get_float("hold", DEFAULT_HOLD)
 	_cap_seconds = _args.get_float("seconds", DEFAULT_SECONDS)
 	_out = _args.get_string("out")
+	_keep_frames = _args.get_int("frames", 1) != 0
 	LotBatcher.enabled = _args.get_string("batch", "1") != "0"
 	LotBatcher.keep_sources = _args.get_string("batch") == "toggle"
 	LotBatcher.small_range = _args.get_float("smallrange", 0.0)
@@ -100,7 +104,8 @@ func _process(delta: float) -> void:
 		_jumped = true
 		_start_at_round(night)
 	_played += delta
-	_rows.append([delta * 1000.0, night.state.round_number(), night.state.zombies.size()])
+	if _keep_frames:
+		_rows.append([delta * 1000.0, night.state.round_number(), night.state.zombies.size()])
 	if night.state.round_number() >= _rounds and _reached_at < 0.0:
 		_reached_at = _played
 	if (
