@@ -176,9 +176,11 @@ What broke on the way:
   weights, from the sleeve only (`on_sleeve`), and the ray that seats it starts under the collar's flare.
 - **The ladder's looks would have recut every far mesh** (ratio 0.284 to 0.235): the ratio stays solved over the
   presets, and each new piece is asserted against the far budget instead.
-- **The mouths (#1088) took three pieces over the budget**: held with every mouth, the widest adds 80 triangles, and
-  Usher's jacket, the Overalls and the Saddle shoes went 6 to 57 over in Pit crew. They lost the back's two buttons,
-  a bib column and row, two strap stops and a pair of lace bars; nothing that sets how they sit.
+- **The mouths (#1088) took three pieces over the budget**: held with every mouth, the teeth add 74 triangles on her and
+  76 on him over the smile, which took Pit crew in the Overalls, Usher's jacket and the Saddle shoes to 6,066, 6,057 and
+  6,006, and her Projectionist in the lanyard to 2,006 far. They lost the half belt's two buttons (and the belt its
+  outer third, which stood off the curving back), a bib column and row, two strap stops, a lace bar, a line on the
+  card and two facets on the bolo's tips; nothing that sets how they sit.
 
 The arms (`test_the_ladders_clothes_keep_the_arms_out_of_the_body`, every clip at eight frames): the bib takes no arm
 past the tolerance on either body. One vertex of the left forearm goes 40 mm in at one frame of `Strafe_Left` in the
