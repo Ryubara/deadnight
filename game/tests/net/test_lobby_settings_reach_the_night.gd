@@ -35,6 +35,9 @@ var _screens: Array[LobbyScreen] = []
 
 
 func before_test() -> void:
+	# The host picks the back rooms, which a level opens (docs/design/maps.md#levels-open-maps): a
+	# fresh account is level 1, and a picker refuses a map above its host's level.
+	PlayerLevel.use(MapRegistry.find(SECOND_MAP).unlock_level)
 	NightScreen.join_url = ""
 	NightScreen.join_ticket = ""
 	NightScreen.join_map = ""
@@ -42,6 +45,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	PlayerLevel.reset()
 	LobbyScreen.opener = Callable()
 	NightScreen.join_url = ""
 	NightScreen.join_ticket = ""
@@ -407,6 +411,11 @@ func _moved_and_started_at_once(key: String) -> void:
 	var host := await _guest("Ann", true)
 	var screen := await _host_screen(host)
 	var wanted := _move(screen.rules, key)
+	(
+		assert_bool(wanted.same_as(MatchSettings.new()))
+		. override_failure_message("moving '%s' on the panel changed nothing" % key)
+		. is_false()
+	)
 	# Nothing was sent yet: the change is still waiting when Start is pressed.
 	var client := await _start_on_screen(screen)
 	var room := _room(screen.lobby)

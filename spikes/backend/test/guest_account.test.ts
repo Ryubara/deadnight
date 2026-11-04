@@ -37,8 +37,8 @@ function platform(store: Store = new MemoryStore()) {
   };
   const auth = (answer: Answer) => ({ authorization: `Bearer ${answer.token}`, "content-type": "application/json" });
   const putSave = (answer: Answer, data: object) =>
-    app.inject({ method: "PUT", url: "/saves/profile", headers: auth(answer), payload: { revision: 0, schemaVersion: 1, data } });
-  const getSave = (answer: Answer) => app.inject({ method: "GET", url: "/saves/profile", headers: auth(answer) });
+    app.inject({ method: "PUT", url: "/saves/challenges", headers: auth(answer), payload: { revision: 0, schemaVersion: 1, data } });
+  const getSave = (answer: Answer) => app.inject({ method: "GET", url: "/saves/challenges", headers: auth(answer) });
   return { app, store, clock, signIn, putSave, getSave };
 }
 
@@ -150,14 +150,14 @@ test("an account idle for 7 days is gone with its saves at its next sign-in, and
   const back = await signIn({ guestToken: six.guestToken });
   assert.equal(back.returning, true);
   assert.equal(back.user.id, six.user.id);
-  assert.notEqual(await store.getSave(six.user.id, "profile"), null);
+  assert.notEqual(await store.getSave(six.user.id, "challenges"), null);
 
   clock.now += 1; // 7 days to the millisecond since `seven` signed in
   const gone = await signIn({ guestToken: seven.guestToken });
   assert.equal(gone.returning, false);
   assert.notEqual(gone.user.id, seven.user.id);
   assert.equal(await store.getUser(seven.user.id), null);
-  assert.equal(await store.getSave(seven.user.id, "profile"), null);
+  assert.equal(await store.getSave(seven.user.id, "challenges"), null);
   await app.close();
 });
 
@@ -177,8 +177,8 @@ test("the sweep deletes guests idle 7 days with their saves, keeps those idle 6,
   clock.now += 1; // `old` is 7 days idle; `recent` 6
   assert.equal(await sweepIdleGuests(store, clock.now), 1);
   assert.equal(await store.getUser(old.user.id), null);
-  assert.equal(await store.getSave(old.user.id, "profile"), null);
-  assert.notEqual(await store.getSave(recent.user.id, "profile"), null);
+  assert.equal(await store.getSave(old.user.id, "challenges"), null);
+  assert.notEqual(await store.getSave(recent.user.id, "challenges"), null);
 
   clock.now += 400 * DAY; // a year on: every guest is idle, the Discord account is not a guest
   assert.equal(await sweepIdleGuests(store, clock.now), 1);

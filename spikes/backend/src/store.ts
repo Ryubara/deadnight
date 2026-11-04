@@ -109,6 +109,8 @@ export class MemoryStore implements Store {
     this.users.delete(id);
     this.byDiscord.delete(user.discordId);
     for (const key of [...this.saves.keys()]) if (key.startsWith(`${id}/`)) this.saves.delete(key);
+    // As Postgres cascades the delete to the ledger: the account's lines go with it.
+    for (const [key, entry] of [...this.ledger]) if (entry.userId === id) this.ledger.delete(key);
   }
 
   async deleteIdleUsers(prefix: string, lastSeenAtOrBefore: number): Promise<number> {

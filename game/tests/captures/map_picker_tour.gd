@@ -8,7 +8,8 @@ extends Node
 ## launcher, not headless: `gds godot -- --path game res://tests/captures/map_picker_tour.tscn
 ## --windowed --resolution 1280x720 -- --out=<folder> --label=desktop`; a phone is
 ## `--resolution 844x390` (the menu's phone factor applies, as on a phone held sideways). Never
-## moves the real mouse.
+## moves the real mouse. `-- --level=10` makes the player level 10 (the back rooms open); the
+## default is level 1, where the back rooms are a `???` card (#1067).
 
 const MENU := "res://ui/screens/main_menu.tscn"
 const LOBBY := "res://ui/screens/lobby_screen.tscn"
@@ -19,11 +20,14 @@ var _label := "after"
 
 
 func _ready() -> void:
+	PlayerLevel.use(1)
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--out="):
 			_out = arg.trim_prefix("--out=")
 		elif arg.begins_with("--label="):
 			_label = arg.trim_prefix("--label=")
+		elif arg.begins_with("--level="):
+			PlayerLevel.use(int(arg.trim_prefix("--level=")))
 	DirAccess.make_dir_recursive_absolute(_out)
 	Settings.path = "user://map_picker_capture.cfg"
 	Settings.reset_defaults()
@@ -56,6 +60,7 @@ func _ready() -> void:
 	await _quick_join()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
 	Settings.reset_defaults()
+	PlayerLevel.reset()
 	# A lambda left in a static variable crashes the engine at quit (docs/godot/exit-code-139.md).
 	MainMenu.board_factory = Callable()
 	get_tree().quit()
