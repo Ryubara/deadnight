@@ -18,7 +18,7 @@ const SHOT_AFTER := 100
 ## and the camera's pitch (down, radians).
 const STANDS := {
 	"marker": Vector3(0.0, 0.0, 0.0),
-	"back": Vector3(-1.6, 0.0, 0.0),
+	"back": Vector3(-1.4, 0.0, 0.0),
 	"side": Vector3(-0.4, 1.3, 0.0),
 	"case": Vector3(0.2, 0.9, -0.5),
 }
