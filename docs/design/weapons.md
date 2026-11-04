@@ -200,14 +200,27 @@ Buying a weapon at the wall or taking a prize from the crane with both hands ful
 with its magazine and reserve (and its re-cut). The replaced weapon is not dropped on the ground: it is gone, and it
 is in the pool again, so the wall sells it again (shotgun, rifle) and the crane can give it again (every crane weapon,
 the revolver and the crowbar too). The card of a wall weapon and of a prize on offer says **REPLACES <weapon>** before
-the points are paid or the prize is taken. A weapon the player already carries is not offered; the wall sells its
-rounds.
+the points are paid or the prize is taken, and the press that takes it is one made once that card has been up 0.4 s
+(`NightTuning.replace_settle`), never one that carries on a repair (#908,
+[spacing and the press](../research/use-reach.md#spacing-and-the-press-908)). A weapon the player already carries is
+not offered; the wall sells its rounds.
 
 Two parts keep it true, each with the weapon in hand as the one given up: the rules (`WeaponCarry`; `PlayerState.weapons`
 is the carried list in shop ids, the start weapons in it, and `weapon_released` names what went) and the combat server
 (`weapon_replaced`: the dropped weapon, then the new one's `weapon_equipped`; the HUD drops the dropped weapon's rounds
 and keeps the other as the one put away, the hands take the new model). The purchase carries the released weapon, so
 the two never disagree even when the buyer names none (then the oldest goes).
+
+**A seat is not a loadout** ([#904](https://github.com/Ryubara/deadnight/issues/904)). The two parts above agree only
+while they hold the same list, and the combat server's list is kept by player id. A player who leaves (`player_removed`)
+takes it with them: `CombatServer` forgets the weapons, rounds, re-cuts and the weapon in hand of that id
+(`CombatAction.forget_player`), because the room hands the lowest free id to the next person. Before, the next person
+began with what the one before carried, free and re-cut, while the rules' list said the start weapon only, so the wall
+and the crane sold and refused by one list and gave by the other. `test_weapon_sources.gd` walks every weapon of the
+catalogue from every source either map has (each wall, each prize of the crane) through every carry (a free hand, full
+hands, the third-weapon perk, everything re-cut, after a down that took the perk) and checks the rules, the combat
+server, the frame and the HUD's slots say the same; `test_weapon_sources_online.gd` does the crane, the walls and the
+seat over a real socket.
 
 A re-cut goes with its weapon: a fresh copy can be re-cut again, for the same 5,000 as any re-cut (#909), so cycling
 weapons does not make re-cuts cheaper.
