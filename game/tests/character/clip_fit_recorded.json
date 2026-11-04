@@ -152,6 +152,9 @@
   "fifty_cal": {
    "right arm": 0.037
   },
+  "freeze_gun": {
+   "right arm": 0.036
+  },
   "m249": {
    "right arm": 0.036
   },
