@@ -7,6 +7,12 @@ const TICKS_PER_FRAME := 40
 const PURSE := 6000
 const CHEAP := 300
 const GIVE_UP_SECONDS := 1500.0
+## The doors past the booth. The autopilot buys every door it can pay for before it shops, so with
+## a purse of 6000 it spent the rest on the yard and the road (2000), walked out to the road and
+## could not walk back: its way home runs through a boarded fence breach (#995). The machines are
+## in the concession and the booth; these stay out of the purse's reach.
+const FAR_DOORS: Array[StringName] = [&"door_back_lot", &"door_yard", &"door_road"]
+const OUT_OF_REACH := 1000000
 
 
 func test_the_bot_re_cuts_its_weapon_and_drinks_the_hearty_tonic() -> void:
@@ -14,6 +20,8 @@ func test_the_bot_re_cuts_its_weapon_and_drinks_the_hearty_tonic() -> void:
 	tuning.economy.start_points = PURSE
 	tuning.economy.item(&"upgrade_weapon").price = CHEAP
 	tuning.economy.item(&"tonic_hearty").price = CHEAP
+	for door in FAR_DOORS:
+		tuning.economy.item(door).price = OUT_OF_REACH
 	var night := await NightFixture.start(self, Night.Mode.AUTOPILOT, tuning, 7)
 	night.ticks_per_frame = TICKS_PER_FRAME
 	var state := night.state
