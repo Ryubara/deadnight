@@ -32,6 +32,12 @@ const MODE_MASK := 0x07
 const STATUS_SHIFT := 3
 const STATUS_MASK := 0x07
 
+## How many times `decode` has read a snapshot's bytes in this process (a test counts them).
+static var decode_count := 0
+
+static var _held_bytes := PackedByteArray()
+static var _held_entries: Array[Dictionary] = []
+
 
 static func encode(zombies: Dictionary[int, ZombieBody]) -> PackedByteArray:
 	var bytes := PackedByteArray()
@@ -59,9 +65,22 @@ static func encode(zombies: Dictionary[int, ZombieBody]) -> PackedByteArray:
 	return bytes
 
 
+## `decode` for every reader of the frame in one process (the person's client, each bot's, the
+## horde): the frame event carries the same bytes to all of them, and they change only when the
+## simulation steps (30 Hz, a frame comes at 60 Hz), so the bytes of the last call are kept and
+## the entries read from them handed out again, never decoded again. The list is shared: a reader
+## never changes it or an entry in it.
+static func decode_shared(bytes: PackedByteArray) -> Array[Dictionary]:
+	if bytes != _held_bytes:
+		_held_entries = decode(bytes)
+		_held_bytes = bytes
+	return _held_entries
+
+
 ## The entries, in the form of `ZombieBody.view_entry()`. A packet that is too short for what
 ## it says gives an empty list: it is dropped, not guessed at.
 static func decode(bytes: PackedByteArray) -> Array[Dictionary]:
+	decode_count += 1
 	var entries: Array[Dictionary] = []
 	if bytes.size() < HEADER_BYTES:
 		return entries

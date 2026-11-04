@@ -657,6 +657,9 @@ func _tick_remote() -> void:
 			command.view_step = int(state.frame.get("tick", 0)) & 0xFFFF
 		command = NetWire.quantize(command)
 		if _body != null:
+			# Stopped by the dead the frame in hand shows, which is what the server will use
+			# (`NightServer._dead_seen_by` takes the frame the command names).
+			_body.dead.fill(DeadSnapshot.of_entries(state.zombies), _body.state.position)
 			_body.tick(command.motion)
 		_seq += 1
 		command.seq = _seq
@@ -926,6 +929,7 @@ func _make_autopilot() -> void:
 			ShopItem.Kind.TONIC:
 				if item.health_bonus > 0.0:
 					autopilot.tonic_price = item.price
+					autopilot.tonic_id = item.id
 	autopilot.wanted.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
 			return autopilot.prices_of_goods[a] < autopilot.prices_of_goods[b]
