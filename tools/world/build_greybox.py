@@ -881,6 +881,13 @@ def sign(parent: str, name: str, text: str, pos, yaw: float, size: int = 72) -> 
     node(name, "Label3D", parent, props)
 
 
+def silhouette(parent: str, name: str, shop_id: str, pos, yaw: float) -> None:
+    """What a wall weapon's plaque shows instead of its name (#829): the weapon's silhouette, made at run time from its
+    own model (`WallSilhouette`, `SilhouetteMesh`). It sits where the sign was; the name and price are the prompt's."""
+    node(name, "Node3D", parent, {"transform": xform(pos, yaw), "script": 'ExtResource("silhouette")',
+                                   "shop_id": f'&"{shop_id}"'})  # fmt: skip
+
+
 def ammo_locker(name: str, centre: tuple[float, float], yaw: float = 0.0) -> None:
     """A green crate with a yellow band: the lot's ammunition. The spot is half a metre in front of it."""
     x, z = centre
@@ -946,6 +953,7 @@ def build() -> None:
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/projector_beam.tscn" id="beam"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/glow_pane.tscn" id="pane"]')
     lines.append('[ext_resource type="Script" path="res://world/drive_in/model_glow.gd" id="model_glow"]')
+    lines.append('[ext_resource type="Script" path="res://world/shop/wall_silhouette.gd" id="silhouette"]')
     lines.append(f'[ext_resource type="PackedScene" path="{lot_props.WRECK}" id="wreck"]')
     lines.extend(lot_props.ext_resources())
     lines.extend(drivein_props.ext_resources())
@@ -1315,22 +1323,22 @@ def build() -> None:
     # --- Shop spots: wall weapons, the prize crane and the ammunition lockers ---------------------------------------
     # The weapons on the walls sell what the rules' tuning prices (weapon_shotgun, weapon_rifle); the crane is
     # crane_play inside the stand; a locker sells the rounds of the weapon in hand. Each spot is a marker with the
-    # kind and the shop id as metadata (NightWorld.shop_spots), and the plaque beside it only names it.
+    # kind and the shop id as metadata (NightWorld.shop_spots), and the plaque beside it shows the weapon's silhouette.
     group("ShopSpots", ".")
     group("ShopProps", ".")
     # The shotgun, on the stand's front wall, field side: the first weapon a player can afford, in the open.
     box("ShopProps", "ShotgunPlaque", (1.7, 0.9, 0.12), (-8.2, 1.6, -4.26), "plaque", collide=False)
-    sign("ShopProps", "ShotgunSign", "SHOTGUN", (-8.2, 1.6, -4.34), 180)
+    silhouette("ShopProps", "ShotgunSilhouette", "weapon_shotgun", (-8.2, 1.6, -4.34), 180)
     shop_spot("SpotShotgun", "wall", "weapon_shotgun", (-8.2, 0, -5.6), 180)
     # The grenade rack, on the stand's east wall in the alley (the midway side, so it opens with the concession): a
-    # plaque like the weapons' that names it; the spot sells the grenades the shop table prices (`grenades`), as many
+    # plaque like the weapons' that shows it; the spot sells the grenades the shop table prices (`grenades`), as many
     # as fit the pack. The front wall is full: windows, the door, the shotgun and the concession's breaker post.
     box("ShopProps", "GrenadePlaque", (1.7, 0.9, 0.12), (10.26, 1.6, 3.0), "plaque", 90, collide=False)
-    sign("ShopProps", "GrenadeSign", "GRENADES", (10.34, 1.6, 3.0), 90, 56)
+    silhouette("ShopProps", "GrenadeSilhouette", "grenades", (10.34, 1.6, 3.0), 90)
     shop_spot("SpotGrenades", "rack", "grenades", (11.4, 0, 3.0), 90)
     # The rifle, on the booth's front wall, midway side.
     box("ShopProps", "RiflePlaque", (1.7, 0.9, 0.12), (-4.0, 1.6, 21.74), "plaque", collide=False)
-    sign("ShopProps", "RifleSign", "RIFLE", (-4.0, 1.6, 21.66), 180)
+    silhouette("ShopProps", "RifleSilhouette", "weapon_rifle", (-4.0, 1.6, 21.66), 180)
     shop_spot("SpotRifle", "wall", "weapon_rifle", (-4.0, 0, 20.4), 180)
     # The prize crane, inside the stand, beside the cabinet that was already there.
     shop_spot("SpotCrane", "crane", "crane_play", (-6.4, 0, 5.0), 270, crane_spot=0)

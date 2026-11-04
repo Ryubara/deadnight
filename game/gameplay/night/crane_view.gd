@@ -62,8 +62,17 @@ func _move_to(spot: int) -> void:
 	if first:
 		crane.global_transform = _place
 		crane.visible = true
+		_fit_beam()
 		return
 	_sink_left = SINK_SECONDS
+
+
+## The beam rises to the first solid over the crane's new place: one ray, when it is put there.
+func _fit_beam() -> void:
+	if is_inside_tree():
+		crane.set_beam_length(
+			PrizeCrane.beam_length_over(get_world_3d().direct_space_state, _place.origin)
+		)
 
 
 func _travel() -> void:
@@ -75,6 +84,7 @@ func _travel() -> void:
 			_rest_y = _place.origin.y
 			crane.global_transform = _place
 			crane.position.y = _rest_y - SINK_DEPTH
+			_fit_beam()
 			_rise_left = RISE_SECONDS
 	elif _rise_left > 0.0:
 		_rise_left -= step
