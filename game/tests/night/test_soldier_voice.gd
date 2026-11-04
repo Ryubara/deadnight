@@ -47,7 +47,7 @@ func _frame(phase: int, mate_downed := false) -> void:
 		)
 	)
 	if _dead_near:
-		_state.zombies.assign([{"position": Vector3(4.0, 0.0, 0.0)}])
+		_state.zombies = [{"position": Vector3(4.0, 0.0, 0.0)}]
 
 
 func _tell(event: Dictionary) -> void:
@@ -125,7 +125,7 @@ func _voices(own_voice: StringName, mate_voice: StringName) -> void:
 			]
 		)
 	)
-	_state.zombies.assign([{"position": Vector3(4.0, 0.0, 0.0)}])
+	_state.zombies = [{"position": Vector3(4.0, 0.0, 0.0)}]
 
 
 func test_a_player_speaks_with_the_voice_their_frame_names() -> void:

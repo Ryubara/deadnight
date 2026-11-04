@@ -1,7 +1,9 @@
-# The second map's twelve windows (formula rows 15 and 18): each is a barricade of five boards
+# The second map's seven windows (formula rows 15 and 18): each is a barricade of five boards
 # the rules know (`BarricadeTuning.ids`), solid for players while the boards stand and never a way
-# out, with its dead rising 5 to 15 m outside it, where they tear the boards one by one and walk in
-# to the room it opens into: on the ground floor and, for the upper windows, on the floor above.
+# out, with its dead rising on the yard's ground 5 to 15 m outside it, where they tear the boards
+# one by one and walk in to the room it opens into: on the ground floor and, for the upper windows,
+# up the outside stair and along the terrace or the gallery to the floor above. Every window makes
+# sense where it is (#917): floor inside it and ground or a deck outside it at its own height.
 extends GdUnitTestSuite
 
 const SCENE := "res://world/smallmap/smallmap_greybox.tscn"
@@ -13,10 +15,12 @@ const SPAWN_TO := 15.0
 const BOARD_LAYER := 2
 ## Metres inside a window the player stands for the dead to come to it.
 const STAND_BEHIND := 2.5
-## Windows the walking mesh does not join to the room behind them (the floor there is the
-## stairwell's opening): a dead that rose at one comes in by the next window along, so its boards
-## stand (#824).
-const NO_WAY_IN: Array[StringName] = [&"upper_b1"]
+## The map's windows and breach (formula row 15: the hall 2, the side room 3, upstairs 3).
+const WINDOWS := 7
+## How far either side of a window its floor and the ground or deck outside are looked for, and how
+## near the window's own floor height they must be (a step, not a drop or a stairwell).
+const ASIDE := 1.5
+const LEVEL := 0.3
 
 var _night: Night
 var _seated: SeatedNight
@@ -48,11 +52,11 @@ func _room_rects(lot: Node3D) -> Dictionary:
 	return found
 
 
-func test_twelve_windows_are_barricades_of_five_boards_the_rules_list() -> void:
+func test_seven_windows_are_barricades_of_five_boards_the_rules_list() -> void:
 	await _start()
 	var world := _night.world
 	var listed := _night.server.rules.tuning.barricades
-	assert_int(world.barricade_ids().size()).is_equal(12)
+	assert_int(world.barricade_ids().size()).is_equal(WINDOWS)
 	assert_int(listed.boards).is_equal(BOARDS)
 	for id in listed.ids:
 		var barricade := world.barricade(id)
@@ -63,13 +67,14 @@ func test_twelve_windows_are_barricades_of_five_boards_the_rules_list() -> void:
 		assert_int(_night.server.rules.barricades.boards_of(id)).is_equal(BOARDS)
 
 
-func test_the_windows_are_five_in_the_hall_three_in_the_side_room_and_four_upstairs() -> void:
+func test_the_windows_are_two_in_the_hall_three_in_the_side_room_and_two_upstairs() -> void:
+	# One a wall on the ground floor, a few upstairs (the maintainer, #917).
 	await _start()
 	var counts := {}
 	for node in _night.world.greybox.find_children("*", "Barricade", true, false):
 		var room := String(node.get_parent().get_meta("room"))
 		counts[room] = int(counts.get(room, 0)) + 1
-	assert_dict(counts).is_equal({"start": 5, "side": 3, "upstairs": 4})
+	assert_dict(counts).is_equal({"start": 2, "side": 3, "upstairs": 2})
 
 
 func test_boards_are_solid_for_players_while_up_and_gone_when_torn() -> void:
@@ -106,7 +111,6 @@ func test_every_spawn_stands_5_to_15_metres_outside_its_own_window() -> void:
 	await _start()
 	var world := _night.world
 	var gates := world.spawn_gates()
-	assert_int(gates.size()).is_equal(12)
 	var rooms := _room_rects(world.greybox)
 	for point: Vector3 in gates:
 		var id: StringName = gates[point]
@@ -115,13 +119,19 @@ func test_every_spawn_stands_5_to_15_metres_outside_its_own_window() -> void:
 		assert_float(out).override_failure_message("%s: %.1f m outside" % [id, out]).is_between(
 			SPAWN_FROM, SPAWN_TO
 		)
-		# Outside the building: not inside any room's rectangle on that floor.
-		var floor_y: float = barricade.global_position.y
-		assert_float(absf(point.y - floor_y)).is_less(0.1)
-		for entry: Array in rooms[String(barricade.get_parent().get_meta("room"))]:
-			var rect: Rect2 = entry[0]
-			if absf(float(entry[1]) - floor_y) < 0.1:
-				assert_bool(rect.has_point(Vector2(point.x, point.z))).is_false()
+		# On the yard's ground (the dead rise from the earth, never on a roof or a deck: an upper
+		# window's dead climb to it), and outside the building: in no room's rectangle.
+		(
+			assert_float(absf(point.y))
+			. override_failure_message("%s rises at %.2f" % [id, point.y])
+			. is_less(0.1)
+		)
+		for room: String in rooms:
+			for entry: Array in rooms[room]:
+				var rect: Rect2 = entry[0]
+				if absf(float(entry[1])) < 0.1:
+					assert_bool(rect.has_point(Vector2(point.x, point.z))).is_false()
+	assert_int(gates.size()).is_equal(WINDOWS)
 
 
 func test_with_every_link_sold_the_map_leads_from_each_window_to_the_hall() -> void:
@@ -137,7 +147,7 @@ func test_with_every_link_sold_the_map_leads_from_each_window_to_the_hall() -> v
 	assert_bool(NavigationServer3D.map_get_use_async_iterations(map)).is_false()
 	var hall := _seated.world.player_spawn(0)
 	var gates := _seated.world.spawn_gates()
-	assert_int(gates.size()).is_equal(12)
+	assert_int(gates.size()).is_equal(WINDOWS)
 	for point: Vector3 in gates:
 		var way := NavigationServer3D.map_get_path(map, point, hall, true)
 		var end := way[way.size() - 1] if not way.is_empty() else point
@@ -176,13 +186,12 @@ func test_the_dead_come_in_through_every_window_to_the_room_it_opens_into() -> v
 		if event["type"] == &"board_torn":
 			torn[event["barricade_id"]] = true
 	var sim := _seated.server.sim
-	var windows: Array = _seated.world.spawn_gates().values().filter(
-		func(id: StringName) -> bool: return not NO_WAY_IN.has(id)
-	)
+	var windows: Array = _seated.world.spawn_gates().values()
 	var wanted := windows.size()
 	var turn := 0
 	_stand_behind(windows[turn])
-	for tick in 5400:
+	# The upper windows' dead walk up the outside stair and along the deck: a longer way in.
+	for tick in 10800:
 		_seated.tick()
 		if turn < windows.size() and torn.has(windows[turn]) and through.has(windows[turn]):
 			turn += 1
@@ -227,3 +236,81 @@ func _stand_behind(id: StringName) -> void:
 	var barricade := _seated.world.barricade(id)
 	var at := barricade.centre() + barricade.inward() * STAND_BEHIND
 	_seated.server.body_of(1).teleport(Vector3(at.x, barricade.global_position.y + 0.1, at.z))
+
+
+func test_every_window_has_floor_inside_and_ground_or_a_deck_outside_at_its_height() -> void:
+	# What a player reads (#917): a window is a way in from somewhere the dead can stand, to floor
+	# a person can hold. A window over a stairwell (#824) or over a drop, or one whose inside is a
+	# well, fails: 1.5 m inside and 1.5 m outside, the first solid below is within 0.3 m of the
+	# window's own floor.
+	var lot := (load(SCENE) as PackedScene).instantiate() as Node3D
+	add_child(lot)
+	auto_free(lot)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var space := lot.get_world_3d().direct_space_state
+	var count := 0
+	for socket: Node3D in lot.get_node("Windows").get_children():
+		count += 1
+		var id: String = socket.get_meta(&"barricade_id")
+		var floor_y := socket.global_position.y
+		var inward := socket.global_basis.z
+		for side: float in [1.0, -1.0]:
+			var at := socket.global_position + inward * side * ASIDE
+			var ray := PhysicsRayQueryParameters3D.create(
+				at + Vector3.UP * 1.0, at + Vector3.DOWN * (floor_y + 5.0)
+			)
+			ray.collision_mask = PhysicsLayers.WORLD
+			var hit := space.intersect_ray(ray)
+			var found: float = -INF if hit.is_empty() else (hit["position"] as Vector3).y
+			(
+				assert_float(absf(found - floor_y))
+				. override_failure_message(
+					(
+						"%s: %s it the first solid below is at %.2f, its floor at %.2f"
+						% [id, "inside" if side > 0.0 else "outside", found, floor_y]
+					)
+				)
+				. is_less(LEVEL)
+			)
+	assert_int(count).is_equal(WINDOWS)
+
+
+func test_an_upper_windows_dead_climb_to_it_from_the_yard() -> void:
+	# The ground outside is one level all round (#917): the deck outside an upper window is
+	# reached by walking from the yard (the outside stair), not a second ground at the sill. The
+	# way from each upper window's spawn on the yard to the deck outside it is walked on the
+	# night's mesh, every link shut.
+	_seated = await SmallMapNight.seat(self, 1, null, 5)
+	await _seated.settle(10)
+	var map := _seated.world.map()
+	var gates := _seated.world.spawn_gates()
+	var upper := 0
+	for point: Vector3 in gates:
+		var barricade := _seated.world.barricade(gates[point])
+		if barricade.global_position.y < 1.0:
+			continue
+		upper += 1
+		# It rises on the yard's ground, below its window, and walks up.
+		(
+			assert_float(point.y)
+			. override_failure_message(
+				"%s: its dead rise at %.2f, not on the yard" % [gates[point], point.y]
+			)
+			. is_less(0.1)
+		)
+		var outside := barricade.centre() - barricade.inward() * ASIDE
+		outside.y = barricade.global_position.y
+		var way := NavigationServer3D.map_get_path(map, point, outside, true)
+		var end := way[way.size() - 1] if not way.is_empty() else point
+		(
+			assert_float(end.distance_to(outside))
+			. override_failure_message(
+				(
+					"%s: the walk from the yard ends %.1f m from its deck"
+					% [gates[point], end.distance_to(outside)]
+				)
+			)
+			. is_less(1.0)
+		)
+	assert_int(upper).is_equal(2)

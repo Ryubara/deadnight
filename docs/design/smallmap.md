@@ -4,7 +4,8 @@ Deadnight's second map is small, close-quarters and indoors, built to the hard t
 [the small-map formula](../research/maps/small-map-formula.md) (measured from Nacht der Untoten) on a floorplan of
 our own. The look and its kit are [small map: art and kit](../research/maps/small-map-art.md); the outside seen
 through the windows (the drive-in's world in the distance) is #638's; the links, windows, buys and the box are
-[Playing it](#playing-it-links-windows-buys-and-the-box) below (#632).
+[Playing it](#playing-it-links-windows-buys-and-the-box) below (#632). The outside, the windows and the perks' alcoves
+were reworked so the building makes sense to a player ([Outside and windows](#outside-and-windows-917), #917).
 
 The map is `game/world/smallmap/smallmap_greybox.tscn`, written by `tools/world/build_smallmap_greybox.py` and
 `tools/world/build_smallmap_dress.py` (run the first from the repository root; a rerun leaves the scene unchanged). It
@@ -16,14 +17,15 @@ and the backdrop on those sockets ([Dressed](#dressed-792) below).
 
 ## The layout
 
-A two-storey depot of 1958 cut into a bank: its back (north) wall is underground on the ground floor, and the upper
-floor's back windows open onto the bank's top. Metres, x east, z south.
+A depot of 1958 facing the drive-in across its yard: the hall is one storey at the front (south), its flat roof a
+terrace; the rewind room behind it and the upper floor over both are the back. The yard is one level all round.
+Metres, x east, z south.
 
 | Room | Where (inside the walls) | What it is |
 | --- | --- | --- |
-| Start room | 16 x 14.5 m | the loading hall: a counter of 5 x 3.5 m on four pillars to run round, 5 windows (2 south, 3 east), the players' start south of the counter |
-| Side room | 22 x 7.5 m, along the hall's north side and 6 m past it to the west | the rewind room: a row of four pillars joined by film racks to run round, 2 windows south and a breach in the west end onto a dead-end pocket |
-| Upstairs | over the side room (22 x 7.6 m) and over the hall's north strip (16 x 4.5 m) | two halves joined by an opening with no door; 2 windows north onto the bank, 2 south onto the hall's roof |
+| Start room | 16 x 14.5 m | the loading hall: a counter of 5 x 3.5 m on four pillars to run round, 2 windows (south, facing the drive-in's screen, and east), the players' start south of the counter facing the south window |
+| Side room | 22 x 7.5 m, along the hall's north side and 6 m past it to the west | the rewind room: a row of four pillars joined by film racks to run round, a window on its south (west of the hall) and north walls and a breach in the west end onto the shed |
+| Upstairs | over the side room (22 x 7.6 m) and over the hall's north strip (16 x 4.5 m) | two halves joined by an opening with no door; 2 windows, both over the hall (south onto the terrace, west onto the gallery the dead climb to by the outside stair) |
 
 The links: the door between the hall and the rewind room at the hall's north-east corner, and one stair in each
 ground room along its north wall, each rising east into the half above it. Every link costs the same (#632 sets the
@@ -55,24 +57,24 @@ godot --headless --path game -s res://tests/world/smallmap/smallmap_report.gd
 
 | # | Target | Measured | Tolerance | Holds |
 | ---: | --- | --- | --- | --- |
-| 1 | Total floor inside, all links open | 584.6 m² | 540 to 660 m² | yes |
+| 1 | Total floor inside, all links open | 578.3 m² | 540 to 660 m² | yes |
 | 2 | Floors | 2 | exactly 2 | yes |
 | 3 | Rooms (upstairs in two halves joined by an opening) | 3 | exactly 3 | yes |
-| 4 | Start room floor | 205.2 m² | 188 to 230 m² | yes |
-| 5 | Side room floor | 150.8 m² | 138 to 168 m² | yes |
-| 6 | Upstairs floor, the largest (halves 66 and 162 m²) | 227.7 m² | 197 to 241 m² | yes |
+| 4 | Start room floor | 200.4 m² | 188 to 230 m² | yes |
+| 5 | Side room floor | 150.2 m² | 138 to 168 m² | yes |
+| 6 | Upstairs floor, the largest (halves 64 and 153 m²) | 216.7 m² | 197 to 241 m² | yes |
 | 7 | Side room width (22 x 7.5 m, 2.93 widths long) | 7.5 m | 6 to 8 m | yes |
 | 8 | Loop round the start room's counter and pillars | 29.0 m | 25 to 36 m | yes |
 | 9 | Ceiling, floor to ceiling in every room | 3.20 m | 3 to 3.6 m | yes |
 | 10 | Longest sight line indoors at eye height | 23.0 m | 16 to 24 m | yes |
 | 11 | Paid links, each joining two rooms | 3 | exactly 3 | yes |
 | 12 | One ring, closed only by the third link | yes | exact | yes |
-| 13 | The ring's lap | 68.1 m | 48 to 72 m | yes |
+| 13 | The ring's lap | 68.4 m | 48 to 72 m | yes |
 | 14 | Loop round the side room's rack row | 31.2 m | 25 to 36 m | yes |
-| 15 | Windows start / side (one a breach) / upstairs (both halves) | 5 / 3 / 4 | exact | yes |
+| 15 | Windows start / side (one a breach) / upstairs (over the hall), the maintainer's rule (#917) | 2 / 3 / 2 | exact | yes |
 | 16 | Directions to watch start / side / upstairs | 3 / 3 / 2 | exact | yes |
-| 17 | Players' start (the middle of the eight places) to the nearest window | 6.0 m | 4 to 7 m | yes |
-| 18 | A window's spawn outside it (and only its room reached) | 6.0 to 7.0 m | 5 to 15 m | yes |
+| 17 | Players' start (the middle of the eight places) to the nearest window | 4.4 m | 4 to 7 m | yes |
+| 18 | A window's spawn outside it, on the yard (in by its own window, its room only) | 7.0 to 14.8 m | 5 to 15 m | yes |
 | 19 | Stairs, one from each ground room, rising 3.4 m | 2 | exactly 2 | yes |
 | 27 | Narrowest camera passage (doors 2.0 m) | 1.9 m | at least 1.8 m | yes |
 | 28 | Camera probes at every door, stair and corner, the lens never in a wall | 15 probes, 1980 samples | exact | yes |
@@ -87,9 +89,10 @@ How each is measured:
 - **Links, ring and loops** (rows 3, 8, 11 to 14): the zombies' mesh (the night's sizes) for each of the eight sets of
   sold links, windows plugged: which room middles reach which. The lap and the loops are paths along the mesh through
   the markers in `Measure/`.
-- **Windows and spawns** (rows 15 to 18): the sockets in `Windows/` by the room they open into; each spawn walks into
-  its own room and no other with the links shut and the windows open (each room's windows open onto ground of their
-  own outside, so the dead never go round from one room to another outside).
+- **Windows and spawns** (rows 15 to 18): the sockets in `Windows/` by the room they open into; with the links shut
+  and the windows open, each spawn's way to the floor 1.5 m inside its own window comes in by that window (not round to
+  another, #824), and it walks into its own room and no other (the yard's walls give each room's windows ground of
+  their own, so the dead never go round outside from one room to another, and nor does a bot's way).
 - **Ceilings and sight lines** (rows 9, 10): rays from about 870 standing points (every room's edge every 0.5 m and
   inside every metre) at eye height (1.55 m), against walls, frames and the windows' blockers; and up from the floor.
 - **The camera** (rows 27, 28): the width across each probe at four heights, and the shoulder camera swept through
@@ -129,8 +132,8 @@ outside 400 to 475. None needs another (`requires` is empty): the team picks the
 A link is bought like a lot door: stand by its slab, press use, pay; the slab goes and the walking mesh of the new set
 is swapped in. A stair's slab sits at the foot, so it is bought from below or from its own flight, never from the floor
 above (a press reaches only what is on its floor: `NightWorld.on_level`). Each link also opens the dead's windows of the
-rooms it leads to (`metadata/opens`): the side room's three for the door, the upstairs' four for the first stair, both
-for the stair between the side room and the upstairs. The hall's five are open from the start.
+rooms it leads to (`metadata/opens`): the side room's three for the door, the upstairs' two for the first stair, both
+for the stair between the side room and the upstairs. The hall's two are open from the start.
 
 A link's card speaks in the map's own words, not the lot's: `MapWords` (`smallmap_tuning.tres`, `words`) names each link
 ("Side room door", "Hall stairs", "Side room stairs"), says what it opens ("Opens the side room"), and calls a breach a
@@ -140,14 +143,16 @@ the map names the lot (#697).
 
 ### The windows
 
-The twelve windows are `Barricade`s of five boards each (`Windows/Window_<id>/Boards`, the rules'
-`BarricadeTuning.ids`), with the kit's 1.5 m boards (so a mended board swings about 0.75 m, `Barricade.board_half`, not
-the fence breaches' 2.05). The dead rise 6 to 7 m outside a window, walk to its boards and tear them off one by one
-(1.2 s a board, as on the lot), then come in, up to the floor the window is on (the upper windows open onto the bank and
-the hall's roof at the upper floor's height). A player puts a board back for points, as at the lot's fence; the
-players-only blocker in the opening keeps everyone in whatever the boards do (the sill is 0.9 m, a jump is 1.1 m).
-`test_smallmap_windows.gd` runs a night of 24 at once and fails unless every one of the twelve is torn and walked
-through, to the room it opens into and the height it is at.
+The seven entries (six windows and the breach) are `Barricade`s of five boards each (`Windows/Window_<id>/Boards`, the
+rules' `BarricadeTuning.ids`), with the kit's 1.5 m boards (so a mended board swings about 0.75 m,
+`Barricade.board_half`, not the fence breaches' 2.05). The dead rise on the yard 7 to 15 m from a window, walk to its
+boards and tear them off one by one (1.2 s a board, as on the lot), then come in; an upper window's dead climb the
+outside stair first and walk along the gallery or the terrace to it ([Outside and windows](#outside-and-windows-917)). A
+player puts a board back for points, as at the lot's fence; the players-only blocker in the opening keeps everyone in
+whatever the boards do (the sill is 0.9 m, a jump is 1.1 m). `test_smallmap_windows.gd` runs a night of 24 at once and
+fails unless every one is torn and walked through, to the room it opens into and the height it is at; it also fails a
+window without floor inside it or ground or a deck outside it at its own height, and an upper window whose dead do not
+rise on the yard and walk up to it.
 
 ### The shop (formula rows 22 to 25)
 
@@ -155,7 +160,7 @@ through, to the room it opens into and the height it is at.
 | --- | --- | ---: | ---: |
 | Hall, west wall | Revolver (back in the pool once given up) | 90 | 0.2 |
 | Hall, west wall | Crowbar | 270 | 0.6 |
-| Side room, east and north walls | Pump shotgun, Tommy gun | 540 each | 1.2 |
+| Side room, middle and north walls | Pump shotgun, Tommy gun | 540 each | 1.2 |
 | Upstairs, four walls | Baseball bat | 540 | 1.2 |
 | | Flare gun | 630 | 1.4 |
 | | Fire axe | 720 | 1.6 |
@@ -227,9 +232,56 @@ foot, not the flat-nearer stand it would reach only by going round the whole map
 [the research page](../research/maps/small-map-play.md). In seven long nights (one bot, four bots, and four with every
 link sold first) **round 10 was reached in all seven and cleared in three** (before the dead's swing check stopped
 meeting the player's body it was five: #764); the first link was bought in round 1, the first stair by round 2, all
-twelve windows were torn, and the most dead at once was 20. `test_smallmap_bot_night.gd`
+twelve windows (the layout before #917) were torn, and the most dead at once was 20. `test_smallmap_bot_night.gd`
 plays a short night of one and of four in the tests; `test_smallmap_economy.gd`, `_links.gd`, `_buys.gd` and
 `_windows.gd` pin rows 20 to 26 and every link, buy and window; the shoulder-camera captures are on the pull request.
+
+## Outside and windows (#917)
+
+The maintainer, playing round 12: the ground outside the upper windows was the same flat land as outside the ground
+floor (a bank raised to the upper floor's height behind the building, and the hall's roof walked by the dead), the
+ground floor should look out on the drive-in, the upper windows should be reached by the dead walking up outside stairs
+onto a patio, one window a wall downstairs, no window above a stairwell, each perk in its own alcove. So the map was
+laid out again to read as a building a person believes; the inside rooms, the loops and the ring did not move. The
+proposal, the plans and the before and after captures are on the pull request.
+
+**The outside is one place.** The ground is one level (0 m) all round; no bank. The backdrop is turned half a circle,
+so the drive-in (its lit screen, the cars, the marquee) is south of the building, straight out of the hall's south
+window the players spawn facing; the yard's gate and the road to the drive-in are on that side, and the sky's glow over
+the screen (`screen_glow_direction`) points south. The yard is walled into three, as a depot's would be: the **front
+yard** (the hall's windows), the **alley** along the hall's west side with the outside stair (the upper windows), and the
+**back yard** round the north and west (the side room's windows and the shed behind the breach, its back door gone, so
+its dead come in from the yard through it). The walls keep each room's dead on ground of their own: one open yard gave
+the walking mesh a way out of one room's window and in by another's, which a bot took to reach the upper floor and then
+stopped at the boards.
+
+**The way up.** The hall is one storey; its flat roof is a **terrace** with a 1.1 m railing. A **gallery** (a deck on
+posts, 2.5 m wide) runs along the outside of the hall's west wall at the upper floor's height, and one **outside stair**
+climbs to it from the alley at the hall's south-west corner. The two upper windows open onto the gallery or the
+terrace; their dead rise in the alley by the stair's foot and climb it, in view of the windows.
+
+| Window | Room, wall | Outside it | Why the dead come from there |
+| --- | --- | --- | --- |
+| `start_1` | hall, south | the front yard, the gate and the drive-in's screen | the drive-in's side, straight across the yard |
+| `start_4` | hall, east | the east yard and the pole line | round the building's east side |
+| `side_1` | side room, south (west of the hall) | the notch between the shed and the hall, under the gallery | from the west yard |
+| `side_2` | side room, north | the back yard and its trees | from the dark behind the depot |
+| `side_breach` | side room, west | the shed, open to the yard | through the shed and the broken wall |
+| `upper_a1` | upstairs over the hall, west | the gallery | up the alley's outside stair and along the gallery |
+| `upper_a2` | upstairs over the hall, south | the terrace, and past its railing the yard and the screen | up the stair and across the terrace |
+
+Removed: the hall's second south window and two of its three east ones, the side room's second south window, the
+window over the side stair's well (`upper_b1` was there, #824) and the north upper window (now over a 3.4 m drop). The
+upper floor's windows are both in the half over the hall: a window of the other half on the same deck would join the
+two halves outside by a shorter way than the opening between them, and the night's walking mesh (the dead's, which the
+bots walk too) would send a bot out of one window and in by the other, to stop at the boards (the first build had one,
+and a bot never reached the rifle cabinet or the Third Holster). The
+hall's west wall has no window: it is the shop wall inside and the outside stair outside.
+
+**Each perk in its own alcove.** The five coolers stood in pairs on three walls. Each now stands at the back of a bay
+2.4 m wide and 1.3 m deep out of an outside wall, open full height to the room, its spot at the bay's mouth, and no two
+on one wall; the bays read from outside as bays of the building (a bay of two floors on the north wall, solid below
+the upper ones).
 
 ## Dressed (#792)
 
@@ -238,17 +290,17 @@ one script. What each socket wears, and what moved to make it fit:
 
 | Socket | Wears | What moved |
 | --- | --- | --- |
-| Windows (11) | the kit's window module (`wall_window_zombie`, `_upper` upstairs); boards in the module's own slots on the room side | the wall's gap runs to the module's 2.8 m top (a `Lintel` body fills it); the sill, jambs and blocker are collision only |
+| Windows (7) | the kit's window module (`wall_window_zombie`, `_upper` upstairs); boards in the module's own slots on the room side | the wall's gap runs to the module's 2.8 m top (a `Lintel` body fills it); the sill, jambs and blocker are collision only |
 | The breach | a kit post each side of the gap, a beam across its top, walked-over rubble | the gap runs to 2.8 m as the windows' do; the dead's 1.6 m way is unchanged |
 | Door (hall to side room), upstairs opening | the kit's wide opening (`wall_opening_wide`), its own hidden jambs and lintel | the wall's gap is the module's 3 m wide; the clear opening is the 2.0 x 2.4 m it was |
 | The door's leaf, the stairs' blockers | `door_purchase` stretched to 2 m, `debris_blocker` stretched to the 2 m flight; each with a `DoorGlow` of the far room's lamp | the slab stays (hidden): the walking mesh and `LotDoors` are as they were |
 | The two flights | the kit's `stair_straight` stretched to 2.0 x 5.1 x 3.4 m over the greybox's hidden ramp (rails off, the flight has a wall each side) | none: the ramp is what is walked on |
 | Pillars, racks | the kit's pillar to 2.8 m with a block band above it; two shelf racks a bay, squat as their 1.2 m collision so the view over them stays open | the boxes are hidden collision now |
 | Lamps | `PendantLight` (`hang` 0.4 m: the kit's lamp hangs from 2.8 m, the ceiling is 3.2 m): one real light each (the `powered_light` group), a halo, a pool and a cone of haze | the 8 omni lamps at 2.9 m, range 8, are these lights at 2.45 m, range 5.5 |
-| Extra light | decor pendants (no light slot) over the box and each shop wall, wall lanterns at the three links, moon shafts in six windows, chalk messages in four places | none |
+| Extra light | decor pendants (no light slot) over the box and each shop wall, wall lanterns at the three links, moon shafts in four windows, chalk messages in four places | none |
 | Cabinet | the kit's `tall_cabinet` with the plaque on end in its recess | the cabinet's box is the fixture's |
 | Clutter | filing cabinets, chairs, tipped tables, a rubble cone, walked-over rubble, helmets, radios and lanterns (`Dressing`) | solid pieces stand against walls and in corners; the saved walking meshes are baked again |
-| Outside | the backdrop (`backdrop.tscn`); the yard is the backdrop's 62 x 54 m, frosted ground, its boundary a wire fence seen through (the boxes that stop the dead are hidden); the north fence stands on the bank | the yard grew from 50 x 56 m; the haze is 0.035 (the lot's 0.013 barely shows in a 6 m room) |
+| Outside | the backdrop (`backdrop.tscn`); the yard is the backdrop's 62 x 54 m, frosted ground, its boundary a wire fence seen through (the boxes that stop the dead are hidden), turned so the drive-in is south (#917) | the yard grew from 50 x 56 m; the haze is 0.035 (the lot's 0.013 barely shows in a 6 m room) |
 
 Not done: the kit's pitched roof (`roof_bay`) and a broken bay's top light. The roof can be seen from nowhere a player
 stands (the ceilings are flat slabs under it and the windows look out sideways), so it would cost triangles for no
@@ -263,14 +315,17 @@ marker 0.7 to 1.1 m in front of it):
 | Where | Machine | Item and price |
 | --- | --- | --- |
 | Hall, west wall between the two plaques | soda fountain | hearty health tonic, 1000 |
-| Side room, north wall (the shop wall) | Quick Load and Swift Rescue coolers | 2500 and 1500 |
-| Upstairs, over the side room: south wall | re-cut bench, Third Holster cooler | re-cut 1500, Third Holster 3000 |
-| Upstairs, north wall | Double Shot and Reload Shock coolers | 3000 and 2000 |
+| Side room, its north wall's alcove | Quick Load cooler | 2500 |
+| Side room, its south-west alcove (under the gallery) | Swift Rescue cooler | 1500 |
+| Upstairs, over the side room: the middle wall | re-cut bench | 1500 |
+| Upstairs, the north wall's two alcoves | Double Shot (over Quick Load's) and Third Holster (west of the stairwell) coolers | 3000 each |
+| Upstairs, the east wall's alcove | Reload Shock cooler | 2000 |
 
-The dearest are on the farthest walls, as the weapons' prices climb. The perk coolers are drawn at 0.85 so their emblem
-(3.55 m at full size) clears the 3.2 m ceiling. The prices are the shared table's (one source); the bots shop
-at the soda fountain, the re-cut bench and the first two coolers (the map's `bot_shopping` list names them after
-the last link, #811); the Third Holster, Double Shot and Reload Shock coolers are a person's.
+Each cooler stands alone at the back of its own alcove (#917); the dearest are upstairs, as the weapons' prices climb.
+The perk coolers are drawn at 0.85 so their emblem (3.55 m at full size) clears the 3.2 m ceiling. The prices are the
+shared table's (one source); the bots shop at the soda fountain, the re-cut bench and the first two coolers (the map's
+`bot_shopping` list names them after the last link, #811); the Third Holster, Double Shot and Reload Shock coolers are a
+person's.
 
 ## Sockets for the kit and for the night
 
@@ -278,11 +333,11 @@ the last link, #811); the Third Holster, Double Shot and Reload Shock coolers ar
 | --- | --- |
 | `Start`, `Side`, `UpperA`, `UpperB` | a room each, with `room`, `rect` (x, z, width, depth) and `floor` metadata; walls, floors, pillars, counter, racks and stairs under it |
 | `Windows/Window_<id>` | a window or the breach: on the wall's centre line at floor height, +Z into the room; `barricade_id`, `room`, `kind` (`window` or `breach`), `gap` (the wall's gap: 2.0 m wide, 2.2 m tall, 2.4 for the breach). Its frame, sill and the players-only blocker (layer 2, as the boards) are StaticBody3D children the bake never reads. Its `Boards` child is the `Barricade` (five `window_board` slots, `board_half` 0.75) |
-| `ZombieSpawns/Spawn_<id>` | where the dead of each window rise: 6 to 7 m outside it, `barricade_id` and `room` |
+| `ZombieSpawns/Spawn_<id>` | where the dead of each window rise, on the yard: 7 m outside a ground window, in the alley by the outside stair's foot for an upper one, outside the shed's open door for the breach; `barricade_id` and `room` |
 | `Doors` (`LotDoors`) | `Door_Side`, `Stairs_Start`, `Stairs_Side`: `shop_id` (`door_side`, `door_stairs_start`, `door_stairs_side`), `requires` (none), `cost` (read from the map's tuning when the scene is written), `opens` (the rooms whose dead may rise once it is open); one slab each and a stand on each side |
 | `ShopSpots`, `ShopProps` | the markers a player buys from (`kind` `wall`, `crane` or `ammo`, `shop_id`, `room`; the cabinet also `cabinet`, the box `crane_spot` 0) and their plaques, signs, crates and cabinet: none of it is CSG, so the walking mesh does not change |
 | `PlayerSpawns` (eight places: two rows south of the counter, 1.3 to 2 m apart), `CameraProbes`, `Measure` | the players' start; the camera's narrow places; the ring's and loops' markers and each room's middle |
-| `Ceilings`, `Roof`, `Outside` | the slabs, the roof, and the ground outside (yards, the bank, the breach's pocket): #638 dresses `Outside` |
+| `Ceilings`, `Roof`, `Outside` | the slabs (the terrace is `Ceilings/Terrace`), the roof, the alcoves' bays, and outside the yard, its walls (`Alley*`, `YardWallE`), the shed, the outside stair (`OutStair*`) and the gallery (`Gallery*`): #638 dresses `Outside` |
 
 The zombies' meshes for the eight sets are saved in `game/world/smallmap/smallmap_navmeshes.res` (`LotNavmeshes`);
 bake them again after the geometry changes:
