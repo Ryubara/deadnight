@@ -326,11 +326,12 @@ func _off_path(here: Vector3) -> float:
 	return best
 
 
-## Whether a walk from `here` to `to` ends within `REACHED_SHORT` of it on the mesh as it is now. A
-## question the mesh cannot answer yet (none, or a door's new mesh on its way) is taken as yes.
-## Counts as a path query. The errands use it to tell a stand behind a shut door from one a bot can
-## walk to.
-func probe(here: Vector3, to: Vector3, now: float) -> bool:
+## Whether a walk from `here` to `to` ends within `short` (`REACHED_SHORT` by default) of it on the
+## mesh as it is now. A question the mesh cannot answer yet (none, or a door's new mesh on its way)
+## is taken as yes. Counts as a path query. The errands use it to tell a stand behind a shut door
+## from one a bot can walk to; the flank passes a smaller `short`, for a place that must be on the
+## ground it can walk and not a few metres past the edge of it.
+func probe(here: Vector3, to: Vector3, now: float, short := REACHED_SHORT) -> bool:
 	if not has_map() or _iteration() < 1 or holding(now):
 		return true
 	var target := snap(to)
@@ -339,7 +340,7 @@ func probe(here: Vector3, to: Vector3, now: float) -> bool:
 	queries += 1
 	var start := NavigationServer3D.map_get_closest_point(map, here)
 	var found := walkable(NavigationServer3D.map_get_path(map, start, target, true))
-	return not found.is_empty() and _flat(found[found.size() - 1], target) <= REACHED_SHORT
+	return not found.is_empty() and _flat(found[found.size() - 1], target) <= short
 
 
 ## The metres of walk from `here` to `to` on the mesh as it is now, or `INF` when it does not get
