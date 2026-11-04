@@ -30,7 +30,8 @@ extends RefCounted
 ##   special_round_cleared: round, special_id, reward (paid to each player on their feet)
 ##   round_ended: round, special_id
 ##   zombie_spawn_requested: zombie_id, zombie_type, look, boss, health, speed, point_roll (spawn
-##     point = point_roll % count), damage, knockback, telegraph_seconds, barrier_speed, hit_chance
+##     point = point_roll % count), damage, knockback, telegraph_seconds, reach, barrier_speed,
+##     hit_chance
 ##   zombie_damaged: zombie_id, zombie_type, player_id, zone, damage (what was taken off), health
 ##     (left), max_health
 ##   zombie_removed: zombie_id, zombie_type, boss, cause (killed or gone), killer_id (-1 when no
@@ -617,6 +618,7 @@ func _spawn_one() -> void:
 			"damage": type.damage,
 			"knockback": type.knockback,
 			"telegraph_seconds": type.telegraph_seconds,
+			"reach": type.reach,
 			"barrier_speed": type.barrier_speed,
 			"hit_chance": type.hit_chance,
 		}

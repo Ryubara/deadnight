@@ -92,7 +92,7 @@ func use_extra_clips() -> void:
 	var scene := (load(ZombieRig.EXTRA_CLIPS_FILE) as PackedScene).instantiate()
 	var source := scene.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	var library := AnimationLibrary.new()
-	for clip in [ZombieRig.SPRINT_CLIP, ZombieRig.TEAR_CLIP]:
+	for clip in [ZombieRig.SPRINT_CLIP, ZombieRig.TEAR_CLIP, ZombieRig.CRAWL_ATTACK_CLIP]:
 		library.add_animation(clip, source.get_animation(clip).duplicate(true))
 	player.add_animation_library(EXTRA, library)
 	scene.free()

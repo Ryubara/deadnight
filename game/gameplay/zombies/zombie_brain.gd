@@ -93,7 +93,10 @@ static func _chase(
 ) -> void:
 	if not has_target:
 		return
-	if same_level and _flat_distance(zombie.position, target_pos) <= tuning.reach:
+	if (
+		same_level
+		and _flat_distance(zombie.position, target_pos) <= zombie.profile.reach_in(tuning)
+	):
 		zombie.enter(ZombieBody.Mode.ATTACK)
 		return
 	var to_waypoint := waypoint - zombie.position
@@ -119,7 +122,7 @@ static func _attack(
 		_turn_toward(zombie, to_target, tuning.turn_rate * delta)
 		if not zombie.struck and zombie.mode_time >= profile.windup:
 			zombie.struck = true
-			if same_level and to_target.length() <= tuning.reach + tuning.strike_slack:
+			if same_level and to_target.length() <= profile.reach_in(tuning) + tuning.strike_slack:
 				strike = {
 					"zombie_id": zombie.id,
 					"target_id": zombie.target_id,

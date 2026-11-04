@@ -10,8 +10,9 @@ extends RefCounted
 ## kit's: 0.8 of it in the game). The kit's clips lay a hand on a thigh or the chest; skin touching
 ## skin is not a fault.
 const TOLERANCE := 0.03
-## Frames sampled in each clip, spread over its length.
-const SAMPLES := 4
+## Frames sampled in each clip, spread over its length. Four missed key poses between them (a windup
+## at a quarter of a clip, #939).
+const SAMPLES := 8
 ## The checks: name, the groups whose vertices move, the meshes they are taken from (every mesh
 ## when empty), the groups they must stay out of.
 const CHECKS := [
@@ -27,8 +28,7 @@ const CHECKS := [
 		[],
 		["trunk", "head", "thigh.L", "thigh.R", "shin.L", "shin.R", "hand.L", "forearm.L"],
 	],
-	# The trunk only: the quick strikes swing the upper arm across the chest, through a bow tie
-	# (an arm's fault, in the strike clips: #939).
+	# The trunk only: the quick strikes swing the upper arm across the chest, through a bow tie.
 	["head pieces", ["head"], ["hair__", "headwear__", "eyewear__", "neck__"], ["trunk"]],
 	["armbands", ["upper_arm.L", "upper_arm.R"], ["arm__", "Armband"], ["trunk"]],
 ]

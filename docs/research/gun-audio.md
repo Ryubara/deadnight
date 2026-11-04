@@ -415,6 +415,22 @@ Run: `generate.py --only <the names in gun_recipes_2.py>`, then the bench with `
 fifty_cal,mp5,pump_870,dual_pistols`, recorded to `.avi` and the track pulled with ffmpeg (the PNG movie writes a file
 for every frame, thousands, and ran at half the speed), `gun_levels.py --table`, merged into `tests/night/gun_levels.json`.
 
+### The House Pistol (#898)
+
+The start weapon's sounds are the second batch's method in the same deferred bank (`firearms_2`, #864): `shot_house_pistol`
+(5 variants), `tail_house_pistol` (3), `equip_house_pistol`, `dry_house_pistol` and the reload's steps
+`reload_house_mag_out`, `reload_house_mag_in`, `reload_house_slide` (the step names of its motion: `mag_out`, `pouch`,
+`mag_in`, `slide`), from `gun_recipes_2.py`. Its report is a small flat pop, lighter than the revolver's boom and the dual
+pistols' pair: a short sharp crack over a thin thump (centroid 3,256 Hz, 25% of the energy under 250 Hz against the
+revolver's 44%). Trims are the dual pistols' (-6.5 dB shot, -20.5 dB tail).
+
+**Measured** (the bench with `weapons=pistol,house_pistol`, the own shot flat, the table's beds at -35.3 LUFS; the revolver
+reads as its table row, so the run is the table's): one shot's loudest 400 ms -20.6 LUFS (14.7 LU over the beds, the
+rule's 14), the two second burst -17.6 LUFS (17.7 over, the rule's 17), peak -5.9 dBFS (the rule -4.5; a new firearm
+peaks no closer to full scale than the loudest existing -4.9). Pinned in `tests/night/gun_levels.json` with the files'
+SHA-256. Not re-measured: the headroom cells of #718 with this gun and a reload under its own fire (the peak is
+0.4 dB under the dual pistols', and its steps follow the first guns' range).
+
 ## The energy weapons and the re-cut layer (#791)
 
 The ray gun, the freeze gun and what an upgraded weapon sounds like. Recipes: `tools/audio/energy_recipes.py`; played by

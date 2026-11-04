@@ -10,6 +10,7 @@ PRs that are backing us up", with 21 open pull requests, the account's 20 concur
 | `ci` | `conventions` (first, seconds, also decides the rest) | every push to a pull request |
 | | `godot` (17 to 20 minutes on 2026-11-02, limit 30), `web` (about 15) | the change touches something they can see |
 | | `backend` (about a minute) | `spikes/backend/**` (not its Markdown) or `ci.yml` changed; every push to `main` |
+| | `deploy-backend` (a few minutes) | a green push to `main` only: publishes `spikes/backend` to the `backend` service and compares its `/health` settings keys with the game's ([#944](platform-backend.md#a-setting-is-never-dropped-944)) |
 | | `mkdocs`, `markdownlint`, `actionlint` | their own files changed |
 | | `build-ok` | always: the one required name for the build |
 | `pr` (`pull_request_target`) | `pr-rules` (the title, description, docs and commits checks, as steps) | every push and every edit of the description |

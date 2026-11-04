@@ -40,7 +40,7 @@ func test_the_bench_offers_to_re_cut_the_revolver_in_hand_at_the_rules_price() -
 	var night := await _start()
 	var prompt := _stand_at(night, _spot(night, &"upgrade"))
 	assert_str(String(prompt["kind"])).is_equal("recut")
-	assert_str(String(prompt["weapon"])).is_equal("pistol")
+	assert_str(String(prompt["weapon"])).is_equal("house_pistol")
 	assert_int(prompt["price"]).is_equal(night.server.rules.price_of(&"upgrade_weapon", 1))
 	night.queue_free()
 
@@ -50,18 +50,21 @@ func test_a_press_re_cuts_the_weapon_charges_and_fills_it() -> void:
 	_stand_at(night, _spot(night, &"upgrade"))
 	var before := night.state.points()
 	var price := night.server.rules.price_of(&"upgrade_weapon", 1)
-	var plain := WeaponCatalog.get_def(&"pistol")
+	var plain := WeaponCatalog.get_def(&"house_pistol")
 	_use(night)
 	assert_int(night.state.points()).is_equal(before - price)
-	var state := night.server.combat.state_of(1, &"pistol")
+	var state := night.server.combat.state_of(1, &"house_pistol")
 	assert_int(state.tier()).is_equal(1)
 	assert_float(state.def.damage).is_equal(
-		plain.damage * night.server.rules.tuning.upgrade.profile_of(&"pistol").damage_multiplier
+		(
+			plain.damage
+			* night.server.rules.tuning.upgrade.profile_of(&"house_pistol").damage_multiplier
+		)
 	)
 	assert_int(state.ammo).is_equal(state.def.magazine_size)
 	assert_int(state.reserve).is_equal(state.def.reserve_max)
 	# The frame says so too, and the next prompt says it is done.
-	assert_int(night.state.me()["arms"][&"pistol"][2]).is_equal(1)
+	assert_int(night.state.me()["arms"][&"house_pistol"][2]).is_equal(1)
 	assert_str(String(night.state.me()["prompt"]["kind"])).is_equal("recut_done")
 	night.queue_free()
 
@@ -94,7 +97,7 @@ func test_a_second_press_on_a_re_cut_weapon_is_refused_with_the_rule_and_costs_n
 	_use(night)
 	_use(night)
 	assert_int(night.state.points()).is_equal(before)
-	assert_int(night.server.combat.state_of(1, &"pistol").tier()).is_equal(1)
+	assert_int(night.server.combat.state_of(1, &"house_pistol").tier()).is_equal(1)
 	# The rules refuse it too, for a client that asks anyway.
 	var events := night.server.buy(1, &"upgrade_weapon")
 	assert_int(RulesFixture.first(events, &"purchase_denied")["result"]).is_equal(
@@ -110,8 +113,8 @@ func test_a_re_cut_weapon_hurts_by_the_multiplier_in_the_real_combat() -> void:
 	var def := night.server.combat.weapon_of(1).def
 	assert_float(DamageModel.damage(def, 0.0, &"body")).is_equal(
 		(
-			WeaponCatalog.get_def(&"pistol").damage
-			* night.server.rules.tuning.upgrade.profile_of(&"pistol").damage_multiplier
+			WeaponCatalog.get_def(&"house_pistol").damage
+			* night.server.rules.tuning.upgrade.profile_of(&"house_pistol").damage_multiplier
 		)
 	)
 	night.queue_free()
@@ -135,7 +138,7 @@ func test_without_the_points_the_bench_refuses_and_nothing_changes() -> void:
 	rules.players[1].points = 10
 	_stand_at(night, _spot(night, &"upgrade"))
 	_use(night)
-	assert_int(night.server.combat.state_of(1, &"pistol").tier()).is_equal(0)
+	assert_int(night.server.combat.state_of(1, &"house_pistol").tier()).is_equal(0)
 	assert_int(night.state.points()).is_equal(10)
 	night.queue_free()
 
@@ -172,7 +175,7 @@ func test_a_re_cut_plays_the_bench_and_a_tonic_plays_the_fountain_on_every_clien
 	_stand_at(night, _spot(night, &"upgrade"))
 	_use(night)
 	assert_bool(bench.is_playing()).is_true()
-	assert_str(String(bench.shown_weapon())).is_equal("pistol")
+	assert_str(String(bench.shown_weapon())).is_equal("house_pistol")
 	_stand_at(night, _spot(night, &"perk"))
 	_use(night)
 	assert_bool(fountain.is_playing()).is_true()

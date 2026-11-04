@@ -16,6 +16,7 @@ const FIREARMS: Array[String] = [
 	"mp5",
 	"m4a1",
 	"service_pistol",
+	"house_pistol",
 	"ray_gun",
 	"freeze_gun",
 	# The heavy batch (#796).

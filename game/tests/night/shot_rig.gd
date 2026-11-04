@@ -118,6 +118,7 @@ func _hold() -> void:
 	if _zombie != null:
 		_zombie.position = _zombie_at
 		_zombie.velocity = Vector3.ZERO
+		night.server.sim.touch()
 
 
 ## Takes the walls down: a wall left standing stops every shot after it.

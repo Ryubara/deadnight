@@ -148,7 +148,7 @@ func test_any_hit_on_a_frozen_zombie_kills_it_and_it_shatters_on_the_server_and_
 	_place(AHEAD)
 	_shoot()
 	_let_the_gun_cool()
-	_night.server.combat.apply(CombatAction.equip(1, &"pistol"))
+	_night.server.combat.apply(CombatAction.equip(1, &"house_pistol"))
 	NightFixture.run(_night, 40)
 	_shoot(false)
 	# The server: it is dead at once, removed whole, no corpse falling.
@@ -179,7 +179,7 @@ func test_any_hit_on_a_frozen_zombie_kills_it_and_it_shatters_on_the_server_and_
 
 func test_a_zombie_that_is_not_frozen_falls_and_is_not_shattered() -> void:
 	_place(AHEAD)
-	_night.server.combat.apply(CombatAction.equip(1, &"pistol"))
+	_night.server.combat.apply(CombatAction.equip(1, &"house_pistol"))
 	_night.server.rules.apply(RulesAction.hit(1, _zombie, &"body", RulesFixture.KILLING_DAMAGE))
 	NightFixture.run(_night, 3)
 	assert_array(_of(&"zombie_shattered")).is_empty()

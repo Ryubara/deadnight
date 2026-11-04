@@ -66,6 +66,7 @@ var _last_entry_tick := -1
 ## `phase` (0 to 1) starts the walk part-way through its cycle so a crowd does not march in step.
 ## A view that was parked (`park`) and is wanted in the same look is set going again as it is, with
 ## its model, skeleton and tree: nothing is made.
+## `model_scene` may be null for such a view: it is only read when the body is made.
 func setup(
 	model_scene: PackedScene,
 	id: int,
@@ -90,12 +91,13 @@ func setup(
 
 
 ## Takes the zombie off the lot and keeps its body for the next one of its look (`ZombieHorde` keeps
-## the parked views): hidden, with nothing to draw, move or animate.
+## the parked views): hidden, with nothing to draw, move or animate. The tree stays `active`: it is
+## advanced by hand and only by the throttle, which a parked view is not in, and switching it off
+## and on throws away its resolved tracks, which the next advance rebuilds (2 ms for twenty).
 func park() -> void:
 	set_status(0)
 	set_outlined(false)
 	visible = false
-	tree.active = false
 	_tearing = false
 	_placed = false
 	_glide_total = 0
@@ -106,7 +108,6 @@ func park() -> void:
 func _restart() -> void:
 	_posed = false
 	set_status(0)
-	tree.active = true
 	_mode = -1
 	_episode = -1
 	_speed_step = -1
@@ -266,6 +267,11 @@ func is_outlined() -> bool:
 	return _outline.enabled
 
 
+## The style the outline is drawn in.
+func outline_style() -> OutlineStyle:
+	return _outline.style
+
+
 ## Draws the zombie under the status effect with this wire id (`StatusDef.wire`, 0 for none): the
 ## status's shell over the body, and a status that holds it keeps the pose as it is.
 func set_status(wire: int) -> void:
@@ -327,6 +333,12 @@ func _enter(mode: int) -> void:
 			if _boss:
 				tree.set(
 					ZombieRig.BOSS_ATTACK_SCALE_PARAMETER, ZombieRig.BOSS_HIT_SECONDS / _telegraph
+				)
+			elif ZombieModels.crawls(look):
+				# A crawler grabs from the floor: its own clip, never the walker's standing punch.
+				state = ZombieRig.STATE_CRAWL_ATTACK
+				tree.set(
+					ZombieRig.CRAWL_ATTACK_SCALE_PARAMETER, ZombieRig.CRAWL_HIT_SECONDS / _telegraph
 				)
 		ZombieBody.Mode.STAGGER:
 			state = ZombieRig.STATE_STAGGER

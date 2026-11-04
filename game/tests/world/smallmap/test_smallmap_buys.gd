@@ -43,7 +43,7 @@ func test_every_wall_weapon_is_offered_at_its_price_and_bought_with_use() -> voi
 	var rules := _night.server.rules
 	for spot in _spots(&"wall"):
 		var id: StringName = spot["shop_id"]
-		# Both hands free for the test: the player starts with the revolver alone.
+		# Both hands free for the test: the player starts with the house pistol alone.
 		rules.players[1].weapons.assign([&"weapon_pistol"])
 		if id == &"weapon_pistol":
 			continue
@@ -107,7 +107,7 @@ func test_a_locker_sells_the_rounds_of_the_weapon_in_hand() -> void:
 	var lockers := _spots(&"ammo")
 	assert_int(lockers.size()).is_equal(4)
 	var rules := _night.server.rules
-	var state := _night.server.combat.state_of(1, &"pistol")
+	var state := _night.server.combat.state_of(1, &"house_pistol")
 	state.reserve = 0
 	SmallMapNight.stand_at(_night, lockers[0]["position"])
 	var prompt: Dictionary = _night.state.me()["prompt"]

@@ -234,6 +234,26 @@
       "burst_lufs": -15.8,
       "peak_dbfs": -5.2,
       "centroid_hz": 2943
+    },
+    "house_pistol": {
+      "trims_db": {
+        "shot_house_pistol": -6.5,
+        "tail_house_pistol": -20.5
+      },
+      "files_sha256": {
+        "shot_house_pistol_1.ogg": "fce743ed4ce1bb7c8b66ff35e1f6d252f1970d752c677eb2bc239ae0cab5fddb",
+        "shot_house_pistol_2.ogg": "ad41907ca31cab0663c8c2d46508d0b8ac289870a53d4e439917d00b359b5ad6",
+        "shot_house_pistol_3.ogg": "a0fed9d589bd6e4fbc8ae13bef80fe7fe9a9d6dcd2fe1179626bdceb4f2963bd",
+        "shot_house_pistol_4.ogg": "c3c06ac2b72fbb1f2cb43822d486cd2d98bb0f840d6bda4727577eb546021fb8",
+        "shot_house_pistol_5.ogg": "930f0ed9b298e1d6f9e3d71542f1146ec39963d136fbe9bd885b82a526265d32",
+        "tail_house_pistol_1.ogg": "6d32ea2b9d7bbe76055e2c1acc2034da5e6248c9b6462106403ac2e954c5a727",
+        "tail_house_pistol_2.ogg": "ea163caf87ad16203cfa07dcce7dfe6c823c5fb5cd62b5f17227e45b565e93c8",
+        "tail_house_pistol_3.ogg": "34b9d5bc51f355f20984c2c5dfdb40ce7e1c865941605e16dcc8499e5b07684e"
+      },
+      "single_momentary_lufs": -20.6,
+      "burst_lufs": -17.6,
+      "peak_dbfs": -5.9,
+      "centroid_hz": 3256
     }
   }
 }

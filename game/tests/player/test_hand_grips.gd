@@ -10,7 +10,7 @@ const TICK := 1.0 / 60.0
 const START := Vector3(0.0, 0.05, 10.0)
 ## Every weapon the player holds, by catalogue id (and `Melee` for the class hold, the bat).
 const WEAPONS: Array[StringName] = [
-	&"pistol", &"flare_gun", &"smg", &"rifle", &"shotgun", &"crowbar", &"Melee"
+	&"pistol", &"house_pistol", &"flare_gun", &"smg", &"rifle", &"shotgun", &"crowbar", &"Melee"
 ]
 ## Every model in `assets/weapons/` has a grip (the grenade's is for the shell in the hand).
 const MODELS: Array[String] = [
@@ -29,6 +29,7 @@ const MODELS: Array[String] = [
 	"mp5",
 	"m4a1",
 	"service_pistol",
+	"house_pistol",
 	"ray_gun",
 	"freeze_gun",
 	# The heavy batch (#796).

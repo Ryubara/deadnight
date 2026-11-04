@@ -14,9 +14,12 @@ extends RefCounted
 ## (`ZombieTuning.reach`, `strike_slack`).
 const REACH := 1.4
 const SLACK := 0.4
-## Seconds from the start of a swing to the blow: a plain zombie, and the headliner's telegraph
-## (`ZombieTuning.windup_seconds`, the roster's `telegraph_seconds`).
+## Seconds from the start of a swing to the blow: a plain zombie, the headliner's telegraph and the
+## crawler's (`ZombieTuning.windup_seconds`, the roster's `telegraph_seconds`): a grab from the
+## floor is shown a little longer. Its reach is shorter than a plain zombie's, so the plain numbers
+## above keep every bot out of it.
 const WINDUP := 0.45
+const CRAWLER_WINDUP := 0.65
 const BOSS_WINDUP := 1.2
 ## Metres past the blow's reach within which a swinger is still a danger (the bot may drift in),
 ## and the seconds the last step out of reach takes at a sprint: a blow closer than that is lost.
@@ -37,7 +40,9 @@ func _init(profile: BotProfile, seed_value: int = 1) -> void:
 
 ## The seconds from the start of a swing to its blow, for a zombie of `look`.
 static func windup_of(look: StringName) -> float:
-	return BOSS_WINDUP if ZombieModels.is_boss(look) else WINDUP
+	if ZombieModels.is_boss(look):
+		return BOSS_WINDUP
+	return CRAWLER_WINDUP if ZombieModels.crawls(look) else WINDUP
 
 
 ## The believed contacts whose blow will reach the bot at `here` unless it moves, and that the bot

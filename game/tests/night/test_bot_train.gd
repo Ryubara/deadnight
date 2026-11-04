@@ -43,9 +43,9 @@ func _night() -> SeatedNight:
 func _kit(night: SeatedNight, other: StringName) -> void:
 	var combat := night.server.combat
 	combat.apply(CombatAction.give_weapon(1, &"shotgun"))
-	if other != &"pistol":
-		combat.apply(CombatAction.give_weapon(1, other, &"pistol"))
-	combat.apply(CombatAction.equip(1, other if other == &"pistol" else &"shotgun"))
+	if other != &"house_pistol":
+		combat.apply(CombatAction.give_weapon(1, other, &"house_pistol"))
+	combat.apply(CombatAction.equip(1, other if other == &"house_pistol" else &"shotgun"))
 	night.run(3)
 	for id: StringName in combat.carried(1):
 		var state := combat.state_of(1, id)
@@ -103,7 +103,7 @@ func _play(
 
 
 func test_a_bot_with_an_empty_gun_and_a_train_takes_up_the_other_gun_and_ends_the_round() -> void:
-	var seen := await _play(31, &"pistol")
+	var seen := await _play(31, &"house_pistol")
 	assert_int(seen["placed"]).is_greater_equal(TRAIN_MIN)
 	assert_array(seen["carried"]).has_size(2)
 	# It put the empty pistol down and reloaded the shotgun, and the round ended.
