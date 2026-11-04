@@ -52,6 +52,11 @@ const SAY := &"say"
 const RESYNC := &"resync"
 ## A client's look, as `LookWire.look` bytes: `look` {player_id, packet}.
 const LOOK := &"look"
+## The seconds of the intermission after the night ends, counted by the server (the maintainer
+## asked for about fifteen), and the event that says they are over: `night_closed`, once. Every
+## client leaves for its lobby at it (`docs/design/end-of-night.md`).
+const END_SECONDS := 15.0
+const NIGHT_CLOSED := &"night_closed"
 ## The look server's answer to one client: `look_packet` {to, packet (`LookWire.player_look`)}.
 const LOOK_PACKET := &"look_packet"
 ## The weapons events worth sending on (the rules events ride the rules signal; the weapons
@@ -121,6 +126,8 @@ var tuning: NightTuning:
 			_revive.tuning = value
 			_ping_judge.tuning = value
 var tick_count := 0
+## The seconds of the intermission once the night is over (a test sets it shorter).
+var end_seconds := END_SECONDS
 ## The marks the players have put up.
 var ping_board := PingBoard.new()
 var bot_orders := BotOrders.new()
@@ -175,6 +182,12 @@ var _spot_at := Vector3.ZERO
 var _ping_judge: PingJudge
 var _order_judge: OrderJudge
 var _outbox: Array[Dictionary] = []
+## Seconds of the intermission left; -1 until the night is over. At 0 the night is closed.
+var _over_left := -1.0
+var _closed := false
+var _holds_ended := false
+## Player id -> the rounds they stood at the end of (`round_ended`'s `standing`), for the board.
+var _rounds_up: Dictionary[int, int] = {}
 var _probe: WorldProbe
 ## Whether a hand reaches what a prompt offers without a wall between (#831).
 var _sight: UseSight
@@ -338,6 +351,8 @@ func health_of(player_id: int) -> float:
 func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	_outbox = []
 	tick_count += 1
+	if rules.phase == GameRules.Phase.OVER:
+		return _step_over(delta, with_frame)
 	var began := PerfProbe.begin()
 	_move_players(delta)
 	_return_strays(delta)
@@ -374,6 +389,30 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 		_outbox.append(_frame())
 	PerfProbe.end(&"server.frame", began)
 	return _outbox
+
+
+## One tick of the intermission: the night stands still where it ended (the bodies, the dead, the
+## rules and the weapons take no step) and only the clock runs. At 0 it says `night_closed` once.
+func _step_over(delta: float, with_frame: bool) -> Array[Dictionary]:
+	if _over_left < 0.0:
+		_over_left = end_seconds
+	if not _holds_ended:
+		# The step that would stop a downed reviver's hold (`_act`) does not run once the night is
+		# frozen, and the game over is made by the last of them going down: end the holds here.
+		_holds_ended = true
+		_revive.end_all(&"down")
+	_over_left = maxf(_over_left - delta, 0.0)
+	if _over_left <= 0.0 and not _closed:
+		_closed = true
+		_outbox.append({"type": NIGHT_CLOSED})
+	if with_frame:
+		_outbox.append(_frame())
+	return _outbox
+
+
+## Whether the night is over and its intermission has run out.
+func closed() -> bool:
+	return _closed
 
 
 # --- Players ---
@@ -596,6 +635,12 @@ func _position_of_zombie(zombie_id: int) -> Vector3:
 func _on_rules_event(event: Dictionary) -> void:
 	_outbox.append(event)
 	match event["type"]:
+		&"game_over":
+			# The clock starts with the event, so the frame of this very step carries it.
+			_over_left = end_seconds
+		&"round_ended":
+			for id: int in event.get("standing", []):
+				_rounds_up[id] = _rounds_up.get(id, 0) + 1
 		&"player_hurt":
 			_repairing[event["player_id"]] = &""
 		&"purchase_made":
@@ -1153,6 +1198,8 @@ func _frame() -> Dictionary:
 			"revive": _revive.progress(player_id),
 			"reviver": _revive.holder_of(player_id),
 			"kills": rules.kills_of(player_id),
+			"headshots": rules.headshots_of(player_id),
+			"rounds": _rounds_up.get(player_id, 0),
 			"downs": rules.downs_of(player_id),
 			"revives": rules.revives_of(player_id),
 			"dead": rules.is_dead(player_id),
@@ -1173,6 +1220,9 @@ func _frame() -> Dictionary:
 		"round": rules.round_number,
 		"remaining": rules.zombies_remaining(),
 		"clock": floori(rules.night_time),
+		# Whole seconds of the intermission left (-1 while the night is on): the clock every client
+		# counts the end by.
+		"over_left": ceili(_over_left) if _over_left >= 0.0 else -1,
 		"fuel": rules.generator.fuel,
 		"circuits": rules.generator.circuits.duplicate(),
 		"doors": rules.doors_open.duplicate(),
