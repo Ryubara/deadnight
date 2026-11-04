@@ -14,6 +14,7 @@ const SELECT_SLOT := &"select_slot"
 const ADD_AMMO := &"add_ammo"
 const UPGRADE_WEAPON := &"upgrade_weapon"
 const REMOVE_WEAPONS := &"remove_weapons"
+const FORGET_PLAYER := &"forget_player"
 const TICK := &"tick"
 const TARGETS := &"targets"
 const TRACK_TARGET := &"track_target"
@@ -112,6 +113,13 @@ static func remove_weapons(player_id: int, weapon_ids: Array) -> Dictionary:
 	return {"type": REMOVE_WEAPONS, "player_id": player_id, "weapon_ids": weapon_ids}
 
 
+## A player has left the night: their weapons, rounds, re-cuts and the weapon in hand go with them,
+## so the next person given the same seat (the lowest free id) starts from the start weapon. The
+## combat server does this by itself when the rules say `player_removed`.
+static func forget_player(player_id: int) -> Dictionary:
+	return {"type": FORGET_PLAYER, "player_id": player_id}
+
+
 ## One fixed step of the combat clock: cooldowns, reloads, projectiles in flight.
 static func tick(delta: float) -> Dictionary:
 	return {"type": TICK, "delta": delta}
@@ -144,6 +152,8 @@ static func from_rules_event(event: Dictionary) -> Dictionary:
 			return track_target(event["zombie_id"])
 		&"zombie_removed":
 			return untrack_target(event["zombie_id"])
+		&"player_removed":
+			return forget_player(event["player_id"])
 		&"perks_lost":
 			if not event["weapons"].is_empty():
 				var ids: Array = []

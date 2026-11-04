@@ -82,7 +82,7 @@ func _stand_at(kind: StringName) -> void:
 	var machine := _machine_position(kind)
 	var toward := machine - spot
 	var flat := Vector3(toward.x, 0.0, toward.z).normalized()
-	var side := Vector3(flat.z, 0.0, -flat.x) * 1.2
+	var side := Vector3(flat.z, 0.0, -flat.x) * 1.0
 	_night.player().teleport(spot - flat * 0.9 + side + Vector3(0.0, 0.1, 0.0))
 	_yaw = atan2(-flat.x, -flat.z)
 	_night.player().camera_rig.yaw = _yaw

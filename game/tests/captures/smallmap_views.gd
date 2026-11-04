@@ -23,14 +23,18 @@ const VIEWS := [
 	# The dressed map (#792): each machine, the box, the breach, the cabinet, a window.
 	["hall_south", Vector3(8.0, 0.0, 9.8), Vector2(0.0, 1.0)],
 	["soda", Vector3(4.0, 0.0, 8.5), Vector2(-1.0, 0.0)],
-	["side_machines", Vector3(7.0, 0.0, -4.9), Vector2(-0.45, -0.9)],
+	# Each perk in its own alcove, the re-cut bench, the windows onto the terrace and gallery (#917).
+	["side_machines", Vector3(6.9, 0.0, -4.6), Vector2(0.0, -1.0)],
+	["side_rescue", Vector3(-1.45, 0.0, -3.4), Vector2(0.0, 1.0)],
 	["side_box", Vector3(10.5, 0.0, -3.4), Vector2(0.0, -1.0)],
 	["side_breach", Vector3(-3.0, 0.0, -2.5), Vector2(-1.0, 0.0)],
-	["recut", Vector3(-0.3, 3.4, -5.0), Vector2(0.0, 1.0)],
-	["perk_holster", Vector3(8.6, 3.4, -4.0), Vector2(0.0, 1.0)],
-	["perks_upper", Vector3(13.8, 3.4, -4.0), Vector2(0.0, -1.0)],
+	["recut", Vector3(1.0, 3.4, -5.0), Vector2(0.0, 1.0)],
+	["perk_holster", Vector3(-4.6, 3.4, -4.6), Vector2(0.0, -1.0)],
+	["perk_double", Vector3(6.9, 3.4, -4.6), Vector2(0.0, -1.0)],
+	["perk_shock", Vector3(12.6, 3.4, -4.0), Vector2(1.0, 0.0)],
 	["cabinet", Vector3(-3.0, 3.4, -4.0), Vector2(-1.0, 0.0)],
-	["window_north", Vector3(9.0, 3.4, -5.0), Vector2(0.0, -1.0)],
+	["window_terrace", Vector3(9.5, 3.4, 1.6), Vector2(0.0, 1.0)],
+	["window_gallery", Vector3(3.0, 3.4, 3.4), Vector2(-1.0, -0.3)],
 	["window_east", Vector3(12.0, 0.0, 8.0), Vector2(1.0, 0.0)],
 ]
 

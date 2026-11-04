@@ -127,7 +127,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | The till | `till_ring` | the shop's cash register (key thump, ratchet, bell) from `purchase_made`, where the buyer stands |
 | The soldiers | `vox_<moment>_<n>` | 115 takes of 21 moments, played by `SoldierVoice`: see [The soldiers' voices](#the-soldiers-voices); they replace the synthesised `player_hurt` and `player_downed` |
 | Stings | `round_start`, `round_end`, `special_round` | stereo, on Music; `round_start` ducks Effects 9 dB; `special_round` (3.5 s, on the rules' `special_round_announced`, a higher priority so it takes the one sting voice from the `round_end` that is still sounding) 9 dB for 2.2 s |
-| Beds | `bed_crickets`, `bed_highway`, `bed_projector`, `bed_score`, `bed_tension` | loops under everything, see below |
+| Beds | `bed_crickets`, `bed_highway`, `bed_projector`, `bed_score`, `bed_tension`; the menu's `bed_menu_crickets`, `bed_menu_projector` | loops under everything, see below; the menu's two are the night's files under quieter trims ([the menu's ambience bed](../research/menu-sfx.md#the-ambience-bed-926)) |
 | The wind | `bed_wind`, `wind_gust`, `wind_creak`, `wind_rattle`, `wind_flap` | a quiet base layer and gusts that come and go at random, with a detail now and then: see [The wind](#the-wind) |
 | The second map | `bed_room_tone`, `bed_roof_wind`, `yard_wind`, `yard_fire`, `yard_wire`, `yard_road`, `yard_rattle`, `debris_clear`, `step_wood`, `step_own_wood` | the depot's room tone, the wind under its roof and the cold yard heard through its windows, the debris blocker coming off a stair and feet on wood: [the second map's sound](../research/maps/small-map-audio.md) |
 
