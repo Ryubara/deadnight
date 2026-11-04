@@ -122,6 +122,7 @@ func sign_in(display_name: String = "") -> Dictionary:
 			if with_discord["ok"]:
 				_keep(with_discord["token"], with_discord["user"])
 				_authenticate_discord(str(with_discord.get("access_token", "")))
+				_signed_in_now()
 				return with_discord
 	var body := {"name": display_name}
 	var credential := _kept_credential()
@@ -131,6 +132,7 @@ func sign_in(display_name: String = "") -> Dictionary:
 	if answer["ok"]:
 		_keep(answer["token"], answer["user"])
 		_remember(answer)
+		_signed_in_now()
 	return answer
 
 
@@ -317,6 +319,36 @@ func _authenticate_discord(access_token: String) -> void:
 	)
 
 
+## The account's save in `slot` (`GET /saves/<slot>`): `{"ok", "found", "revision",
+## "schema_version", "data"}`; `found` is false for a slot nothing was written to (revision 0, an
+## empty `data`).
+func read_save(slot: String) -> Dictionary:
+	var answer := await _call("GET", "/saves/%s" % slot)
+	if answer["ok"]:
+		return {
+			"ok": true,
+			"found": true,
+			"revision": int(answer["revision"]),
+			"schema_version": int(answer["schemaVersion"]),
+			"data": answer["data"],
+		}
+	if answer.get("status") == 404:
+		return {"ok": true, "found": false, "revision": 0, "schema_version": 0, "data": {}}
+	return answer
+
+
+## Writes the account's save in `slot` (`PUT /saves/<slot>`), which must be sent on the `revision`
+## the backend holds: a stale one is `error: "revision_conflict"` with the backend's `revision`. The
+## profile slot is also held to what a person can earn (`implausible_progress`, `implausible_day`:
+## docs/design/progression.md#storage-and-trust). `{"ok", "revision", "schemaVersion", "data"}`.
+func write_save(slot: String, revision: int, schema_version: int, data: Dictionary) -> Dictionary:
+	return await _call(
+		"PUT",
+		"/saves/%s" % slot,
+		{"revision": revision, "schemaVersion": schema_version, "data": data}
+	)
+
+
 ## The OAuth code the Discord bridge got from the Activity's `authorize()`: waits for it (the
 ## player may be asked to agree), and is empty when there is no bridge, it failed or took long.
 func _discord_code() -> String:
@@ -371,7 +403,9 @@ func _call(
 		# What the backend names about the refusal (the setting it does not take).
 		if typeof(json) == TYPE_DICTIONARY:
 			detail = str((json as Dictionary).get("detail", ""))
-	return _failed(reason, detail)
+	var failed := _failed(reason, detail)
+	failed["status"] = status
+	return failed
 
 
 ## The credential the last visit kept, or "" (a Discord Activity signs in with Discord and keeps
@@ -389,6 +423,14 @@ func _remember(answer: Dictionary) -> void:
 	var credential := str(answer.get("guestToken", ""))
 	if credential != "" and instance_id == "":
 		GuestAccount.save_credential(base_url, credential, guest_path)
+
+
+## The run has an account now: the player's profile is read from it (`ProfileUplink`), without
+## waiting, so a night never waits on the backend. An isolated API (a test's second player) has no
+## profile file to keep it in.
+func _signed_in_now() -> void:
+	if not isolated:
+		ProfileUplink.sync_after_sign_in(self)
 
 
 func _has_session() -> bool:

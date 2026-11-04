@@ -8,7 +8,14 @@ extends RefCounted
 ## the cached profile at once and queued as a write with an id; `flush` sends the queue to the
 ## backend through a Callable and keeps what it refuses, to send again, so a night never waits on
 ## the backend (rule 10) and a resent write is the same write. An offline file is never merged into
-## an account. Keeping a Guest account across visits is a separate issue.
+## an account.
+##
+## **The queue holds changes, not profiles.** The backend takes the whole profile on its latest
+## revision, so a queued write is what the night added (`{id, xp, opening_night, bonus_day, done}`)
+## and `ProfileUplink` puts it on top of the account's own latest when it sends. The file is a cache
+## of the account's profile with those changes on it: `adopt` replaces it with what the backend
+## holds (read at sign-in), keeps the changes still queued on top, and drops a queue that belongs to
+## another account (a Guest account that ran out).
 ##
 ## Only a night a person plays gets a store (the night screen makes it); bots, captures and tests
 ## leave it empty, so they never write the player's file.
@@ -21,9 +28,15 @@ var path := ProfileSave.DEFAULT_PATH
 ## never writes over the file.
 var problem: StringName = ProfileSave.NO_PROBLEM
 var revision := 0
+## The backend's id of the account the file belongs to ("" while none has been read).
+var account := ""
+## The revision of the account's profile when it was last read (not kept in the file: it is read
+## again at every sign-in).
+var account_revision := 0
 
 var _account: Callable
 var _ids := RandomNumberGenerator.new()
+var _flushing := false
 
 
 ## The store of the file at `path`. `account_check` is a Callable returning whether this player has
@@ -41,6 +54,7 @@ static func open(
 		store.profile = read["profile"]
 		store.queue.assign(read["queue"])
 		store.revision = read["revision"]
+		store.account = read["account"]
 	return store
 
 
@@ -62,45 +76,80 @@ func credit(xp: int, opening_night: bool = false, bonus_day: int = Profile.NO_DA
 		return false
 	if xp <= 0 and not opening_night and bonus_day == Profile.NO_DAY:
 		return true
-	profile.add_xp(xp)
-	profile.opening_night = profile.opening_night or opening_night
-	if bonus_day != Profile.NO_DAY:
-		profile.bonus_day = bonus_day
-	(
-		queue
-		. append(
-			{
-				"id": "%016x" % _ids.randi(),
-				"xp": xp,
-				"opening_night": opening_night,
-				"bonus_day": bonus_day,
-			}
-		)
-	)
-	save()
+	_enqueue(xp, opening_night, bonus_day, [])
 	return true
 
 
-## Notes a finished challenge on the profile (for an account), and saves.
+## Notes a finished challenge on the profile (for an account), queues it for the backend and saves.
 func finished(id: StringName) -> void:
 	if has_account() and not profile.done.has(id):
-		profile.mark_done(id)
-		save()
+		_enqueue(0, false, Profile.NO_DAY, [String(id)])
+
+
+## The account's own profile, as `TogetherApi.read_save` answers it, replaces the cached one; the
+## writes still queued stay on top of it. A queue kept for another account is dropped. A profile in
+## a newer layout than this game reads is left alone.
+func adopt(answer: Dictionary, account_id: String) -> void:
+	if int(answer.get("schema_version", 0)) > ProfileSave.SCHEMA_VERSION:
+		return
+	if account != "" and account_id != "" and account != account_id:
+		queue.clear()
+	account = account_id
+	account_revision = int(answer.get("revision", 0))
+	profile = Profile.from_dict(answer.get("data", {}))
+	for write in queue:
+		profile.apply_write(write)
+	save()
+
+
+## Makes the whole queue one write: the XP added up, the one-offs and finished challenges kept. A
+## backend that holds a night to what a person earns in the time since the last write takes a
+## round's XP and the ones after it together, not one after another.
+func coalesce() -> void:
+	if queue.size() < 2:
+		return
+	var merged: Dictionary = queue[0].duplicate(true)
+	var finished_ids: Array = merged.get("done", [])
+	for write in queue.slice(1):
+		merged["xp"] = int(merged["xp"]) + int(write["xp"])
+		merged["opening_night"] = merged["opening_night"] or write["opening_night"]
+		merged["bonus_day"] = maxi(int(merged["bonus_day"]), int(write["bonus_day"]))
+		for id: Variant in write.get("done", []):
+			if not finished_ids.has(id):
+				finished_ids.append(id)
+	merged["done"] = finished_ids
+	queue.assign([merged])
 
 
 ## Sends the queue, oldest first, through `send` (a Callable taking the write, answering true when
-## the backend took it). Stops at the first refusal, keeping it and what follows. Returns how many
-## were taken.
-func flush(send: Callable) -> int:
+## the backend took it; it may await). Stops at the first refusal, keeping it and what follows.
+## `merge` sends the queue as one write (`coalesce`). Returns how many were taken. A flush that
+## finds another one running does nothing: that one goes on to what was queued meanwhile.
+func flush(send: Callable, merge: bool = false) -> int:
+	if _flushing:
+		return 0
+	_flushing = true
+	# The night that flushes may go while a request is out: the flush finishes and saves.
+	@warning_ignore("unused_variable")
+	var held := self
 	var taken := 0
 	while not queue.is_empty():
-		if send.call(queue[0]) != true:
+		if merge:
+			coalesce()
+		var sent: Variant = await send.call(queue[0])
+		if sent != true:
 			break
 		queue.pop_front()
 		taken += 1
+	_flushing = false
 	if taken > 0:
 		save()
 	return taken
+
+
+## Whether a flush is waiting on the backend now.
+func is_flushing() -> bool:
+	return _flushing
 
 
 ## Writes the file (unless it is from a newer game). True when written.
@@ -108,7 +157,21 @@ func save() -> bool:
 	if problem == ProfileSave.NEWER_VERSION:
 		return false
 	revision += 1
-	if ProfileSave.write(profile, queue, revision, path):
+	if ProfileSave.write(profile, queue, revision, path, account):
 		return true
 	revision -= 1
 	return false
+
+
+func _enqueue(xp: int, opening_night: bool, bonus_day: int, done: Array) -> void:
+	var write := {
+		"id": "%016x" % _ids.randi(),
+		"xp": xp,
+		"opening_night": opening_night,
+		"bonus_day": bonus_day,
+	}
+	if not done.is_empty():
+		write["done"] = done
+	profile.apply_write(write)
+	queue.append(write)
+	save()

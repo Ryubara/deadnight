@@ -789,6 +789,10 @@ base on rounds reached and points per round.
   game server must send are in [Progression on the backend](../research/platform-backend.md#progression-the-profile-slot-round-reports-and-the-xp-clamp).
   One decision there: the server posts XP **without** the two one-offs and claims them (`openingNight`, `bonusDay`); the
   backend knows the profile and pays each once.
+- **Built (#1106): a signed-in solo night sends its XP.** The queue holds **changes** (`{id, xp, opening_night,
+  bonus_day, done}`), not profiles: the backend takes the whole profile on a revision, so each send reads the account's
+  own latest, puts the change on it and writes that. The account's profile is read at sign-in and replaces the file's
+  (no merge of an offline file). How: [the solo night's write](../research/progression.md#a-signed-in-solo-nights-write-1106).
 - **What a level is seen by:** the ticket the backend mints carries `level`, `icon` and `xp`; never the client's word
   in the night.
 - **What would force more:** a leaderboard, any ranking, anything paid, or a reward a cheater would gain from (none
