@@ -94,6 +94,13 @@ repos:
         language: python
         entry: python tools/check_texture_imports.py --fix
         files: \.(png|jpg|jpeg|webp|svg|tga|bmp|exr|hdr|ktx2)\.import$
+      # The level icons' SVGs, atlases and manifest agree; a changed drawing needs its export (issue #1060).
+      - id: level-icons
+        name: level icon SVGs match their atlases
+        language: python
+        entry: python tools/check_level_icons.py
+        pass_filenames: false
+        files: ^(game/assets/ui/level(s|_atlas)/|tools/(level_icons/|check_level_icons\.py))
       - id: conventions-render
         name: generated files match the conventions
         language: python

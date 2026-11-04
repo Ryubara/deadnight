@@ -167,6 +167,53 @@ menus between nights (the design page's own assumption).
 - **One atlas for the tags.** Names over heads can be eight at once; one atlas texture keeps them in one batch on the
   web build. The source stays one SVG per icon.
 
+### The ladder as built (#1060)
+
+![The whole ladder at 128 px](progression-icon-ladder.png)
+
+*The 55 icons from the 128 px atlas, a column a tier, drawn in the game by `LevelIcons`
+(`game/tools/captures/level_tags.tscn`). Original drawings; none is traced from any game.*
+
+| Step | Where | What it does |
+| --- | --- | --- |
+| Draw | `tools/level_icons/draw_icons.py` | One function a drawing, the frames, the tier colours; writes the SVGs (standard library) |
+| Source | `game/assets/ui/levels/level_NN.svg` | 128 x 128, shapes and strokes, no `<text>`; a `<title>` (the working name) and a `<desc>` (the tier). The folder has a `.gdignore`: nothing the game ships reads them, and 55 more textures would only grow the pack |
+| Export | `game/tools/art/export_level_icons.gd` | `Image.load_svg_from_string` at each cell size, no window: `level_icons_64.png`, `level_icons_128.png` and `level_icons.json` in `game/assets/ui/level_atlas/`, a column per level in the tier, a row per tier |
+| Read | `LevelIcons` | `atlas(cell)`, `region(level, cell)`, `texture(level, cell)` (a shared `AtlasTexture`), `tier(level)` |
+| Check | `tools/check_level_icons.py` (CI, pre-commit) | The manifest holds a hash of every SVG and atlas, so an SVG changed without an export fails with no Godot and no raster compared across machines; so does an atlas changed by hand, and an SVG edited by hand that the script would overwrite |
+
+To change a drawing: edit its function, run the script, run the export, import once, and commit all of it.
+
+- **Frames:** ticket, token, sign in turn, a colour each, so that no two tiers of one shape share a colour: tickets
+  cream, tan, green, pink; tokens sky, silver, violet, gold on red; signs copper, periwinkle, teal.
+- **A drawing keeps to its plate.** It sits in a 100 x 100 box at 0.8, outlined 4.5 in the ink `#1c1730`, with two to
+  four colours; light (a beam, a fog bank) is the one thing with no outline. Bulbs are at y 120, r 5.2, lit butter,
+  unlit `#3b3350`. Everything stays 3 px inside the cell, so a mipmap does not bleed into the next one.
+- **24 px, read by eye and by number.** The closest pairs of whole icons at 24 px are all two of one tier (the frame
+  is the same): ray gun and saucer 11.2 of 255 a channel, cup and milkshake 11.6, radio mast and flare 11.9. Cup and
+  milkshake were the only pair that read alike by eye (a red band, a tapered shape, a straw): the cup's band went sky
+  blue. At 24 px the bulbs are a dotted line, not five countable dots: the number beside the icon carries the level.
+- **Mipmaps cost sharpness and buy stillness.** Both atlases carry mipmaps, and a canvas item that shows an icon under
+  its cell size sets `texture_filter = LevelIcons.FILTER`. Against plain linear filtering a 24 px icon is softer at
+  rest, and changes 22 to 43 percent less when it moves a quarter of a pixel (mean change a step on the asphalt, of
+  255: 4.3, 1.7, 4.5 with mipmaps, 5.5, 3.0, 5.7 without). A tag moves all the time, so tags want them.
+**Draw cost**, counted in the web build and on the desktop (the same numbers: Compatibility renderer, 1760 x 960,
+`tools/web_smoke/level_tags_cost.py`), draw calls of eight tags with the frame's one taken off:
+
+| Eight of them | Calls |
+| --- | ---: |
+| Icons from the atlas, one canvas item | 1 |
+| Icons from the atlas, eight `TextureRect`s (`LevelIcons.texture`) | 1 |
+| Icons from eight separate textures | 8 |
+| Whole tags: all the icons, then all the outlines, then all the letters | 3 |
+| Whole tags: icon, outline, letters, tag by tag | 24 |
+
+So `HudMarkers` (it already collects its words and draws them last) gets the icons first: three calls for eight tags,
+not twenty-four. The atlases add 0.98 MB to the pack (lossless, with mipmaps: 0.31 and 0.68 MB) and load on first use.
+
+**Locked silhouettes (the wardrobe, #1065).** A locked item's base icon is the same drawing language with its inner
+detail gone: one flat shape in `#3b3350` with the ink outline, on the plate of the grid, no bulbs.
+
 ## Sources, and what we could not read
 
 Everything linked above. Not read in full: the two 2006 papers (abstracts and secondary summaries), Zagal et al. 2013
