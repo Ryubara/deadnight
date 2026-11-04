@@ -573,7 +573,6 @@ extraction (#1056).
 | --- | --- | --- |
 | Hands in pockets | Clear a round without firing a shot | line (`shot_fired` per round) |
 | Stingy | Reach round 6 without spending a point | line (points spent, per night) |
-| Nobody home | Let a round end with you having killed nothing in it | line (kills per round) |
 | Three for one | Three dead with one grenade | line (kills grouped by blast) |
 | Carpenter's rush | Mend three boards on one window within ten seconds | line (`board_repaired` times) |
 | Door to door | Open every way through before round 5 | line (doors by round) |
@@ -592,13 +591,14 @@ extraction (#1056).
 | Whole crew | Finish a round with everyone upright | line |
 | Pit crew | Mend a board a teammate is also mending | event |
 | Hold the line | Five revives in one night | line |
+| Nobody home | Let a round end with you having killed nothing in it | line (kills per round) |
 
 **Hidden** (shown as `???` with a riddle until done): *Intermission* (stand at the stand for a whole break: event),
 *The long way round* (reach round 8 without using the second door: event), *Dead on arrival* (die in round 1: line),
-*Standing room only* (a night with four on the lot and the same four at the end: line), *Final cut* (finish all ten
+*Standing room only* (a night with four on the lot and the same four at the end: line), *Final cut* (finish all eleven
 tier cards: derived).
 
-**Numbers:** 12 easy, 12 grind, 12 odd, 4 together, 5 hidden = 45 challenges. The existing 26 dailies, 12 orders and
+**Numbers:** 12 easy, 12 grind, 11 odd, 5 together, 5 hidden = 45 challenges. The existing 26 dailies, 12 orders and
 12 milestones stay, and **pay XP** (and a card for finishing a family of orders, or a poster set, below). The
 challenge tracker runs on the game server for online nights (#1076) so a finished challenge shows in the popup lane in
 real time and every client can hear its celebration.

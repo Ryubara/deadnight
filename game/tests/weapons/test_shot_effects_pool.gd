@@ -13,8 +13,6 @@ const FIGHT_FRAMES := 240
 ## Resources and objects a frame of the fight may hold above where it began (the test's own
 ## bookkeeping; a shot that made its own mesh and material would hold dozens).
 const SLACK := 4
-## Frames the sounds an earlier suite left to decode may take before the fight is measured.
-const DRAIN_FRAMES := 6000
 
 var _effects: ShotEffects
 var _added := 0
@@ -23,10 +21,7 @@ var _added := 0
 func before_test() -> void:
 	# A night suite run before this one leaves the deferred sounds queued on the `Audio` service,
 	# and it makes a few of them every frame: resources this test would count as the fight's own.
-	var frames := 0
-	while Audio.decode_pending() > 0 and frames < DRAIN_FRAMES:
-		await get_tree().process_frame
-		frames += 1
+	await AudioSettle.until_idle(get_tree())
 	_effects = auto_free(ShotEffects.new())
 	add_child(_effects)
 	get_tree().node_added.connect(_on_node_added)
