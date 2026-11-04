@@ -47,6 +47,9 @@ var rows_text: Array[Array] = []
 var row_ids: Array[int] = []
 ## The way out: Leave online, Back alone.
 var leave_button: UIButton
+## The night report: the local player's XP lines and level bar, on a ticket under the round
+## (`show_report`); hidden until a report is given.
+var report_card := HudNightReport.new()
 
 var _tokens := UITokens.active()
 ## Player id -> what the board last heard of them, kept after they leave.
@@ -63,6 +66,7 @@ var _number := HudStyle.label("", HudStyle.NUMERAL, _tokens.accent, true)
 var _ticket := HudTicket.new()
 var _grid := VBoxContainer.new()
 var _insets := Vector4.ZERO
+var _report := {}
 
 
 func _init() -> void:
@@ -115,6 +119,9 @@ func _build_left() -> Control:
 	left.add_child(_title)
 	_round_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	left.add_child(_round_label)
+	_title.minimum_size_changed.connect(_fit_report)
+	report_card.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	left.add_child(report_card)
 	var spacer := Control.new()
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -151,6 +158,27 @@ func refresh(state: HudState) -> void:
 	round_text = "ROUND %d REACHED  ·  %s" % [_round, HudScoreboard.format_clock(_clock)]
 	HudStyle.set_text(_round_label, round_text)
 	_rebuild()
+
+
+## Shows the night report (`NightReport.compose`) on its ticket; a later call replaces it.
+func show_report(model: Dictionary) -> void:
+	_report = model
+	_fit_report()
+
+
+## The height the report's ticket has: what the screen leaves besides the rest of the left column
+## (the title wraps on a narrow screen, so it is read as it is laid out).
+func report_room() -> float:
+	var taken := 0.0
+	for part: Control in [_title, _round_label, _caption, _number, leave_button]:
+		taken += part.get_combined_minimum_size().y + float(HudStyle.SM)
+	var margins := float(HudStyle.margin()) * 2.0 + _insets.y + _insets.w
+	return size.y - margins - taken
+
+
+func _fit_report() -> void:
+	if not _report.is_empty():
+		report_card.show_report(_report, report_room() if size.y > 0.0 else INF)
 
 
 ## The seconds the server says are left; the board counts the end by them. Negative (the clock has
@@ -207,6 +235,7 @@ func _rebuild_later() -> void:
 	_signature = ""
 	if visible:
 		_rebuild.call_deferred()
+		_fit_report()
 
 
 func _rebuild() -> void:

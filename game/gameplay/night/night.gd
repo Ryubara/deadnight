@@ -124,6 +124,8 @@ var challenges: ChallengeSession
 ## online the server awards.
 var profile_store: ProfileStore
 var progress: ProgressSession
+## What the night report shows (`ReportTracker`), made with the client state.
+var report: ReportTracker
 ## Puts the names and the next door on the HUD from the player's camera (made with the view, when
 ## there is a HUD).
 var markers: NightMarkers
@@ -207,6 +209,7 @@ func start(
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
 	_track_challenges()
+	_track_report()
 	_track_progress()
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks, world.layout.words())
@@ -255,6 +258,7 @@ func start_remote(
 	bot_orders.sender = link.send
 	state = ClientState.new()
 	_track_challenges()
+	_track_report()
 	var failure := {"reason": ""}
 	var welcome := {}
 	online.welcomed.connect(func(snapshot: Dictionary) -> void: welcome["snapshot"] = snapshot)
@@ -382,6 +386,13 @@ func _track_challenges() -> void:
 		challenges.attach(state)
 		if hud != null:
 			_challenge_link = ChallengeHudLink.new(challenges, hud)
+
+
+## Reads the night's XP for the report at its end (`ReportTracker`): the server's own tally when an
+## account holds the night, else what the night would have paid.
+func _track_report() -> void:
+	report = ReportTracker.new()
+	report.attach(state, NightTally.fuel_items_of(rules_tuning))
 
 
 ## Counts the night into the player's XP, when there is a profile to keep it in. Only a night that
