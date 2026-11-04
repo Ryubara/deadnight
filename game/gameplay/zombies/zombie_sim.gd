@@ -535,7 +535,8 @@ func _gate_in_front_of(zombie: ZombieBody) -> ZombieGate:
 		return own
 	var best: ZombieGate
 	var best_along := INF
-	for gate: ZombieGate in gates.values():
+	for gate_id: StringName in gates:
+		var gate := gates[gate_id]
 		if gate == own or not gate.is_at(zombie.position):
 			continue
 		var along := absf(gate.along_of(zombie.position))

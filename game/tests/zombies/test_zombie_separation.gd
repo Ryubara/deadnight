@@ -126,6 +126,12 @@ func test_the_crowd_around_a_zombie_counts_as_it_did_on_the_old_grid() -> void:
 	assert_int(pair[0].crowd_around(99999, 1.0)).is_equal(0)
 
 
+func test_the_crowd_asked_before_the_first_step_is_nobody() -> void:
+	var sim := ZombieSim.new(null, SEED)
+	_crowd(sim, 4.0, 10)
+	assert_int(sim.crowd_around(1, 3.0)).is_equal(0)
+
+
 func test_the_grid_lists_only_the_standing_and_lets_go_of_the_rest() -> void:
 	var sim := ZombieSim.new(null, SEED)
 	_crowd(sim, 6.0, 20)

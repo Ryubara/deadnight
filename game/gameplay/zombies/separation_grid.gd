@@ -40,6 +40,12 @@ var at := PackedVector3Array()
 var _capacity: int = 0
 
 
+## Starts with room for `MIN_CAPACITY`, so a question asked before the first pass (`crowd_around`)
+## finds an empty list that ends in its sentinel.
+func _init() -> void:
+	_grow(0)
+
+
 ## Sorts the standing zombies of `zombies` (id to `ZombieBody`) into cells of `radius` metres.
 func rebuild(zombies: Dictionary, radius: float) -> void:
 	if zombies.size() > _capacity:
