@@ -17,6 +17,9 @@ var _present: Dictionary[int, bool] = {}
 var _held: Dictionary[int, StringName] = {}
 var _fuel_items: Array[StringName]
 var _changes: Array[Dictionary] = []
+## The only stats counted, when not empty (the XP award counts what pays and nothing else, so a
+## kill costs it a handful of dictionary reads, not the dozen stats the challenges keep).
+var _only: Dictionary[StringName, bool] = {}
 
 
 ## The shop ids that sell fuel in `tuning` (`fuel_can` when it has none), for `_init`.
@@ -51,6 +54,28 @@ func players() -> Array[int]:
 
 func is_present(player_id: int) -> bool:
 	return _present.get(player_id, false)
+
+
+## Counts only `stats` from now on (an empty list counts them all again). Kill details (a zombie's
+## type, a weapon's kills) are then not worked out for stats that are not kept.
+func keep_only(stats: Array[StringName]) -> void:
+	_only.clear()
+	for stat in stats:
+		_only[stat] = true
+
+
+## Says a player is here (or gone) without waiting for a frame to say so: a server that knows its
+## seats needs no frame of this class's.
+func set_present(player_id: int, here: bool = true) -> void:
+	if here:
+		_join(player_id)
+	else:
+		_present[player_id] = false
+
+
+## Forgets what this player has counted this night (a person takes the seat a bot played in).
+func forget(player_id: int) -> void:
+	_counts.erase(player_id)
 
 
 ## A new night: counts and who is present are forgotten; who holds what is kept (a frame says it).
@@ -112,6 +137,10 @@ func _on_removed(event: Dictionary) -> void:
 	if event["cause"] != &"killed" or killer < 0:
 		return
 	_join(killer)
+	if not _only.is_empty():
+		if event["boss"]:
+			_add(killer, ChallengeStats.KILLS_BOSS)
+		return
 	_add(killer, ChallengeStats.KILLS)
 	_add(killer, ChallengeStats.type_kills(event["zombie_type"]))
 	if event["boss"]:
@@ -170,7 +199,7 @@ func _present_ids() -> Array[int]:
 
 
 func _add(player_id: int, stat: StringName, amount: int = 1) -> void:
-	if amount == 0:
+	if amount == 0 or (not _only.is_empty() and not _only.has(stat)):
 		return
 	var mine: Dictionary = _counts.get(player_id, {})
 	mine[stat] = int(mine.get(stat, 0)) + amount

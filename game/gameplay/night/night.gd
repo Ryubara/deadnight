@@ -272,6 +272,7 @@ func start_remote(
 	rules_tuning = world.rules_for(load(GameRules.DEFAULT_TUNING_PATH))
 	state.player_id = online.player_id
 	state.load_names(welcome["snapshot"])
+	state.load_levels(welcome["snapshot"])
 	var camera: Camera3D
 	var has_body := mode == Mode.HUMAN or (mode == Mode.AUTOPILOT and shoulder_camera)
 	if has_body:
@@ -380,6 +381,13 @@ func _track_progress() -> void:
 	var clock := challenge_board.clock if challenge_board != null else ChallengeClock.system()
 	progress = ProgressSession.new(profile_store, clock, NightTally.fuel_items_of(rules_tuning))
 	progress.attach(state, challenges)
+	# The rules tell the player the same `xp_gained` and `level_up` events a game server would; the
+	# profile is written here (`ProgressSession`).
+	if profile_store.has_account():
+		var xp := profile_store.profile.xp
+		server.xp.register(PLAYER_ID, "local", xp, 0)
+		progress.award = server.xp
+		state.load_levels({"levels": server.xp.levels(), "account_xp": xp})
 
 
 ## The view and the sounds, once there is a camera to look through.
@@ -701,6 +709,7 @@ func _resync_body() -> void:
 
 ## The seat is ours again: the rules as the server has them now, in place of the events missed.
 func _on_resumed(snapshot: Dictionary) -> void:
+	state.load_levels(snapshot)
 	if hud != null:
 		hud.state.load_snapshot(snapshot)
 	connection_resumed.emit()

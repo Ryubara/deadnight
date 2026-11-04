@@ -4,7 +4,11 @@ extends RefCounted
 ## tokens.ts`, docs/research/platform-backend.md, "The game-server ticket"): an HS256 token whose
 ## payload says which player (`sub`, `name`), which night (`matchId`) and which game server
 ## (`serverId`) it is for, and, when the host chose them, the rules of the night (`settings`, the
-## game's `MatchSettings` as `to_dict` writes it).
+## game's `MatchSettings` as `to_dict` writes it). The account's progression rides in it too,
+## written by the backend from the stored profile and nowhere else (a client's own word is never
+## used): `xp` (the raw total), `level` and `icon` (`level_NN`; the level over a head reads them,
+## #1077). A ticket without `xp` is an account at 0 XP (docs/research/platform-backend.md,
+## "Progression").
 ##
 ## A ticket is good once: the `jti` of every one admitted is remembered until it would have expired
 ## anyway. Time is the caller's (`now`, seconds since 1970), so a test moves it by hand.
@@ -30,11 +34,12 @@ func _init(secret: String, server_id: String) -> void:
 	_server_id = server_id
 
 
-## `{"ok": true, "user": sub, "name", "match": matchId, "settings"}` for a ticket this server may
-## admit (and spends it), or `{"ok": false, "reason"}`. `settings` is the `MatchSettings` the host
-## chose, or null when the ticket has none (the usual rules). Rules this server cannot take (a value
-## out of its bounds: the backend and the game disagree) refuse the ticket, loudly, instead of
-## starting a night with other rules than the host asked for.
+## `{"ok": true, "user": sub, "name", "match": matchId, "settings", "account"}` for a ticket this
+## server may admit (and spends it), or `{"ok": false, "reason"}`. `account` is `{xp}` (see
+## `account_of`). `settings` is the `MatchSettings` the host chose, or null when the ticket has none
+## (the usual rules). Rules this server cannot take (a value out of its bounds: the backend and the
+## game disagree) refuse the ticket, loudly, instead of starting a night with other rules than the
+## host asked for.
 func admit(ticket: String, now: int) -> Dictionary:
 	var claims := claims_of(ticket, now)
 	if claims.is_empty():
@@ -66,7 +71,19 @@ func admit(ticket: String, now: int) -> Dictionary:
 		"name": str(claims.get("name", "")),
 		"match": claims["matchId"],
 		"settings": settings,
+		"account": account_of(claims),
 	}
+
+
+## What the ticket says about the player's progression: `xp` (whole, never negative).
+static func account_of(claims: Dictionary) -> Dictionary:
+	return {"xp": _whole(claims.get("xp"))}
+
+
+static func _whole(value: Variant) -> int:
+	if typeof(value) in [TYPE_INT, TYPE_FLOAT] and is_finite(float(value)):
+		return maxi(int(value), 0)
+	return 0
 
 
 ## Why the `settings` claim of a ticket is refused ("" when the game takes it). A key this build
