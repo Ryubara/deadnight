@@ -79,7 +79,13 @@ func test_a_rookie_leaves_a_shotgun_to_the_thin_dead_of_the_early_rounds() -> vo
 	assert_bool(BotEconomy.worth_taking(_view(900, {"arms": carried}), SHOTGUN)).is_true()
 	var thin := _view(900, {"arms": carried, "zombie_health": early})
 	assert_bool(BotEconomy.worth_taking(thin, SHOTGUN)).is_false()
-	assert_bool(BotEconomy.worth_taking(thin, RIFLE)).is_true()
+	# On round 1 the quick melee kills in one blow (83 health a second), so no gun beats it by half;
+	# from round 2 (two blows, 48) the rifle does.
+	assert_bool(BotEconomy.worth_taking(thin, RIFLE)).is_false()
+	var round_two := _view(
+		900, {"arms": carried, "zombie_health": tuning.rounds.health_for_round(2)}
+	)
+	assert_bool(BotEconomy.worth_taking(round_two, RIFLE)).is_true()
 	# Only the rookie weighs so, and the simulator's weak player is the one it follows.
 	assert_bool(BotProfile.rookie().weighs_by_round).is_true()
 	assert_bool(BotProfile.regular().weighs_by_round).is_false()

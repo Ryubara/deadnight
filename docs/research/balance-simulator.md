@@ -154,6 +154,24 @@ revolver and `SimPlayer.knife` the quick melee. Two numbers moved the gate and o
   the median round is 4 (weak, solo), 13 (average, solo), 14, 15 (average, two and four) and 15 (strong), inside every
   range, and 97% of average solo nights clear round 4. The 1.5 margin and the stampede's 110% stay as they were.
 
+## The quick melee was one hit past round 1 in the night and two in the model (#897)
+
+The maintainer: V "should not be one tapping zombies after round 1". The tables said 40 (two blows on round 1's 50
+health); the real night did 60 on every blow, one blow on rounds 1 and 2 and then two. The cause was in the sweep and
+not the table: it leaves the eye (1.55 m) with a 0.4 m thickness and a walker's head sphere is at 1.62 m, so the zone
+was the head on every blow at every reach and aim, and the head's x1.5 turned 40 into 60. The simulator rolls the zone
+from the skill's head rate and `WeaponWorth` reads the body, so both under-valued the blow by half a hit.
+
+The blow is now 50 in every zone (`quick_melee.tres`): one blow on round 1 (50 health), two on rounds 2 to 7, three on
+rounds 8 to 10 ([the table](../design/weapons.md#hits-to-kill-by-round)), the same on the head, the chest and the
+legs, so the model and the night agree. The gate (60 nights, seed 4000, the six cells) is **unchanged**: medians 5 /
+13 / 15 / 16 / 18 / 18 before and after, no misses, means within 0.2 (the simulated players are never dry,
+`dry_rounds` 0). What moved is the free hand's yardstick: the blow is worth 83 health a second against round 1's
+walker (it was 42), 48 to 82 on rounds 2 to 7, 59 to 79 on rounds 8 to 10, so on round 1 a free hand takes no weapon
+(it needs 1.5 times 83); a weapon beats it on round 2 (the smg, rifle, bat, mp5, ppsh, m4a1, m249) and again on round
+8; from round 5 only the rifle does, and on round 10 only the axe. Not done, and a finding: the bat, the axe and the
+crowbar are modelled on the body but the sweep crowns them too (x1.5, x2.5), so their real blow is the head's.
+
 ## The weak boss night against the bots (#568)
 
 The simulator says 40% of weak four-player nights that reach round 5 pass it; four Rookie bots passed 16 of 16 in the
