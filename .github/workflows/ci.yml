@@ -331,13 +331,16 @@ jobs:
           for name in parts.json clips.json zombies.json; do grep -aq "$name" repos/deadnight/build/web/index.pck; done
       - name: Restore the browser's system packages
         id: apt-cache
-        # The .deb files `playwright install-deps` fetched (fonts and libraries), by runner image and Playwright version:
-        # the Ubuntu mirror served them with gaps of 60 to 160 s once (#1111). A package the image has since updated is
-        # fetched again by apt, so a stale cache costs time, never correctness.
+        # The .deb files `playwright install-deps` fetched (fonts and libraries): the Ubuntu mirror served them with gaps
+        # of 60 to 160 s once (#1111). The key names the runner image, but the runner images rotate every few days and
+        # even between two runs minutes apart, so the newest entry of any image is restored when the exact one is missing:
+        # apt takes the files whose version it wants and fetches the rest, so a stale entry costs time, never
+        # correctness, and the step below adds what it fetched, so the entry saved under the new key is complete.
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: cache/apt-debs
           key: web-apt-${{ runner.os }}-${{ steps.clock.outputs.image }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
+          restore-keys: web-apt-${{ runner.os }}-
       - name: Restore the browser
         id: browser-cache
         # Playwright's download folder; the version in the key is the one `playwright install` below asks for.
@@ -346,27 +349,32 @@ jobs:
           path: ~/.cache/ms-playwright
           key: web-browser-${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
       - name: Install the browser's system packages
-        # Its own limit: a slow mirror ends red on this step's name, not as a cancelled job. A cache hit puts the .deb files
-        # where apt looks first, so `install-deps` finds them and downloads nothing.
+        # Its own limit: a slow mirror ends red on this step's name, not as a cancelled job. The restored .deb files go
+        # where apt looks first, so `install-deps` downloads only the packages the cache does not have.
         timeout-minutes: 10
         run: |
           started=$(date +%s)
           touch apt-marker
-          if [ "${{ steps.apt-cache.outputs.cache-hit }}" = "true" ]; then
+          restored=0
+          if [ -d cache/apt-debs ]; then
             sudo cp cache/apt-debs/*.deb /var/cache/apt/archives/
-            echo "restored $(find cache/apt-debs -name "*.deb" | wc -l) packages from the cache"
+            restored=$(find cache/apt-debs -name "*.deb" | wc -l)
           fi
           uv run --with playwright=="$PLAYWRIGHT_VERSION" playwright install-deps chromium-headless-shell
-          if [ "${{ steps.apt-cache.outputs.cache-hit }}" != "true" ]; then
-            mkdir -p cache/apt-debs
-            # apt gives a download the server's modification time, so "new" is by change time, against a file made before.
-            find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -cnewer apt-marker -exec cp {} cache/apt-debs/ \;
-            echo "kept $(find cache/apt-debs -name "*.deb" | wc -l) packages for the cache"
-            # An empty folder is not worth a cache entry: the next run would hit it and download everything anyway.
-            rmdir cache/apt-debs 2>/dev/null || true
-          fi
+          # apt gives a download the server's modification time, so "fetched now" is by change time, against a file made before.
+          mkdir -p cache/apt-debs
+          find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -cnewer apt-marker -exec cp -n {} cache/apt-debs/ \;
+          # Keep only the version that is installed now, so an entry never carries the old versions of a package forever.
+          for deb in cache/apt-debs/*.deb; do
+            installed=$(dpkg-query -W -f='${Version}' "$(dpkg-deb -f "$deb" Package)" 2>/dev/null || true)
+            [ "$installed" = "$(dpkg-deb -f "$deb" Version)" ] || rm -f "$deb"
+          done
+          kept=$(find cache/apt-debs -name "*.deb" | wc -l)
+          echo "restored $restored packages, fetched $(( kept - restored )), $kept in the cache"
+          # An empty folder is not worth a cache entry: the next run would hit it and download everything anyway.
+          rmdir cache/apt-debs 2>/dev/null || true
           seconds=$(( $(date +%s) - started ))
-          echo "$seconds install-deps (cache hit: ${{ steps.apt-cache.outputs.cache-hit || 'false' }})" >> web-steps.txt
+          echo "$seconds install-deps (restored $restored, fetched $(( kept - restored )) packages)" >> web-steps.txt
       - name: Install the browser
         # A cache hit leaves nothing to download; the command still checks the folder holds this version's build.
         timeout-minutes: 10
