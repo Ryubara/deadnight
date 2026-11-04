@@ -140,7 +140,7 @@ Nothing in the menu invents data; every number has a source, and an empty source
 | Panel | Reads | From | Until it exists |
 | --- | --- | --- | --- |
 | Soldier, Loadout | the saved look, the showcase weapon | `character/look` and `loadout/weapon` in the settings file (`LookStore`, `Settings`) | built |
-| Top right | name, Billing level and progress, stubs | the cached profile (`xp`, `stubs`, display name; the level is derived, `150 + 30 x level` XP to the next, see [progression](../design/progression.md#billing-account-level)) | a small `MenuProfile` reader over the settings key `profile/cache` (JSON, read-only, no network): level 1 and 0 stubs when empty |
+| Top right | name, Billing level and progress, stubs | the cached profile (`xp`, `stubs`, display name; the level is derived, `150 + 30 x level` XP to the next, see [progression](../design/progression.md#xp-and-the-ladder-of-55); the approved plan replaces the curve with the 55-level table and drops stubs) | a small `MenuProfile` reader over the settings key `profile/cache` (JSON, read-only, no network): level 1 and 0 stubs when empty |
 | Challenges and Today's challenges | active dailies with progress and the time to the next refresh, the three open orders, the milestones | the challenge tracker's read API (#399, one small class) | a stub with the same shape feeds the screen and the tests until #399 lands |
 | Loadout, weapon mastery | mastery level and points of the showcase weapon | the cached profile | zero levels, labelled |
 | Shop | stub balance, owned and priced cosmetics, locks | the cached profile and the look catalogue's gates (`LookCatalog`: a Billing level, stubs or an order) | catalogue entries from `LookCatalog`; **prices are placeholders** and say so |

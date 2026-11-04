@@ -147,7 +147,7 @@ func _gather_targets() -> void:
 			"yaw": yaw,
 			"scale": ZombieModels.height_of(look),
 			"aim_scale": ZombieModels.aim_scale(look),
-			"pose": ZombiePose.hit_set(look, mode),
+			"pose": ZombiePose.hit_set(look, mode, false, 0.0, zombie.get("climbing", false)),
 		}
 		_targets.append(target)
 

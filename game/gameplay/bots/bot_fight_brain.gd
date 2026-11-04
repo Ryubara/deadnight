@@ -581,6 +581,7 @@ func _roam_about(intent: BotIntent, beliefs: BotBeliefs, here: Vector3) -> void:
 	if legs != null:
 		avoid = Callable(legs.path, &"is_blocked").bind(beliefs.now)
 		reach = Callable(legs.path, &"probe").bind(beliefs.now)
+		_roam.exact = Callable(legs.path, &"probe").bind(beliefs.now, BotRoam.EXACT_SHORT)
 		mesh = legs.path.iteration()
 		short_of = legs.stopped_short_of
 	var goal := _roam.plan(
@@ -597,6 +598,13 @@ func _roam_about(intent: BotIntent, beliefs: BotBeliefs, here: Vector3) -> void:
 	)
 	if goal == Vector3.INF:
 		_forget_roam(beliefs)
+		if _roam.rejoin.is_finite():
+			# Cut off from the rest of the walking mesh: no path starts here, so the way back is
+			# a straight walk to the spot it chose from (#1041).
+			intent.reflex = (_roam.rejoin - here) * Vector3(1.0, 0.0, 1.0)
+			intent.run = false
+			intent.note = "rejoin"
+			return
 		if _roam.dwelling:
 			intent.look_yaw = _roam.look_yaw
 			intent.note = "roam_look"

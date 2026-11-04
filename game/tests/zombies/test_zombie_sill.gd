@@ -2,9 +2,9 @@ extends GdUnitTestSuite
 ## Every breach is a window, never a door (#915): the dead climb in over its sill. The navigation
 ## mesh runs through the gap at the ground, so the climb is the simulation's own link: with the
 ## boards down a zombie is lifted to the sill's height over the wall and set down on the other
-## side, slowed while it does, and drawn scrambling (the codec's climbing bit, the view's crawl
-## clip and lean). At standing boards nobody climbs. A straight-line field: the wall is the line
-## x = 0 and the way in is +x.
+## side, slowed while it does, and drawn climbing (the codec's climbing bit, the view's climb clip:
+## `test_zombie_climb_clip.gd`). At standing boards nobody climbs. A straight-line field: the wall
+## is the line x = 0 and the way in is +x.
 
 const GATE := &"win"
 const SILL := 0.9
@@ -149,9 +149,10 @@ func test_the_view_scrambles_in_over_the_sill_and_stands_up_after() -> void:
 	var view := ZombieView.new()
 	add_child(auto_free(view))
 	view.setup(ZombieModels.scene(), 1, 0.25, 0.7)
+	view.climb_gate = _gate()
 	var entry := {
 		"id": 1,
-		"position": Vector3(0, 0.5, 0),
+		"position": Vector3(-0.5, 0.9, 0),
 		"yaw": 0.0,
 		"mode": ZombieBody.Mode.CHASE,
 		"episode": 1,
@@ -163,20 +164,19 @@ func test_the_view_scrambles_in_over_the_sill_and_stands_up_after() -> void:
 	view.advance_animation()
 	var playback: AnimationNodeStateMachinePlayback = view.tree.get(ZombieRig.PLAYBACK_PARAMETER)
 	assert_bool(view.is_climbing()).is_true()
-	assert_str(playback.get_current_node()).is_equal(ZombieRig.STATE_CRAWL)
-	assert_float(view.model().rotation.x).is_equal_approx(deg_to_rad(ZombieView.CLIMB_LEAN), 0.001)
+	assert_str(playback.get_current_node()).is_equal(ZombieRig.STATE_CLIMB)
 	entry["climbing"] = false
 	view.apply(entry, 0.3)
 	view.advance_animation()
 	assert_bool(view.is_climbing()).is_false()
 	assert_str(playback.get_current_node()).is_equal(ZombieRig.STATE_MOVE)
-	assert_float(view.model().rotation.x).is_equal(0.0)
 
 
 func test_a_zombie_swinging_at_the_sill_is_not_drawn_climbing() -> void:
 	var view := ZombieView.new()
 	add_child(auto_free(view))
 	view.setup(ZombieModels.scene(), 1, 0.25, 0.7)
+	view.climb_gate = _gate()
 	(
 		view
 		. apply(
