@@ -52,32 +52,41 @@ grows: the counts to look at are `far30` and `far40` of the probe.
 
 ## Numbers
 
-All with the same scripted night fed to both versions, 99 dead, 600 steps, four repeats; headless; the machine had 21
-Godot processes up.
+The same scripted night fed to both versions, 99 dead, 600 steps, four repeats, headless, on a machine with 21 Godot
+processes up.
 
 **The sim, old code beside the new in one process** (the old `ZombieSim` and `ZombieBrain` copied under other names,
-which of the two goes first alternating every step, median of the per-step `sim.think`; the state of every dead
-compared after every step: identical in all repeats):
+which of the two goes first alternating every step, the median of the per-step `sim.think`, the state of every dead
+compared after every step: identical in every repeat, after main was merged too):
 
 | Map | `sim.think` old (us) | new (us) | new / old |
 | --- | ---: | ---: | ---: |
-| the lot (flat), a bent path over a floor | 1,075 to 1,144 | 922 to 966 | 0.85 |
-| two storeys, with the sight | 1,122 to 1,207 | 953 to 1,004 | 0.85 |
-| straight path, no floor | 936 to 955 | 770 to 792 | 0.82 |
+| the lot (flat), a bent path over a floor | 793 to 809 | 644 to 677 | 0.82 |
+| two storeys, with the sight | 611 to 856 | 527 to 724 | 0.84 |
+| straight path, no floor | 615 to 678 | 498 to 553 | 0.81 |
 
-**The real night** (round 12, 3x, 3 bots, desktop ceiling, `zz` probe of the review, seed 1, 100 s; base and branch
-started together; the second pair played the same crowd in both arms, 77.6 standing, 3,600 ticks): `sim.think` 1,269 /
-1,233 us a tick (`sim.path` 498 / 504 of it, so the dead's own script 771 / 728, -6 %), `tick.bot` 365 / 337, the rest
-unchanged. The first pair played different crowds in the two arms (the nights are not reproducible between runs) and read
--8 % on the same label.
+(An earlier run on a busier machine read 1,075 to 1,144 against 922 to 966 on the lot, the same 0.85: the ratio holds
+when the times do not.) `tools/bench/think_cost.gd` run as separate processes, base and branch alternating, three
+times: 758, 925, 834 us against 730, 726, 648 (the median 834 against 726, -13 %).
 
-**The bots' filter**: dictionary entries made by one `observe` with a contact held, 99 before, as many as there are
-contacts in the frame now (a handful to 23); the beliefs are identical on every tick of 4,000 (`bot_ab`), and
-`tick.bot` fell 8 %, within the noise of the machine.
+**The real night** (round 12, 3x, 3 bots, desktop ceiling, the review's probe, seed 1, 100 s; base and branch started
+together). The second pair played the same crowd in both arms (77.6 standing, 3,600 ticks): `sim.think` 1,269 and 1,233
+us a tick, of which `sim.path` (the nav queries, not changed) 498 and 504, so the dead's own script 771 and 728 (-6 %);
+`tick.bot` (the bots' tick) 365 and 337 us. The first pair played different crowds in the two arms (the nights are not
+reproducible from run to run) and read -8 % on the same label. The real night gains less than the sim's loop because
+60 % of its dead are swinging at a player, where the cuts that apply to a walker (the swing test, the ground speed, the
+strand test) do not.
 
-The dead's script is still the larger part of the server's tick. The budget of 6 ms for the night's script at 99 dead
-(the sweep's table) is **not met by this change alone**: it takes `sim.think` from about 1.25 to 1.17 ms of the 5 to 7
-ms of the server's tick; the other shares are #930, #931 and #933.
+**The bots' filter** (`BotPerception.observe`): the dictionary entries made in one call with a contact held went from 99
+(the whole frame) to the contacts in the frame (2 to 23); the beliefs are identical on every one of 4,000 ticks of a
+side-by-side run. The time moved with the machine's load (a median of 78 to 88 us a tick between looks against 82 to
+122 before, five runs, within noise): a count is what is claimed here.
+
+**The budget.** The sweep's table gives the night's script 6 ms at 99 dead. This change takes 0.04 to 0.15 ms off a tick
+of about 7: it does not meet the budget alone, and the limit stays where it is. What is left in the dead's own script is
+about 8 us a dead a step, nearly all of it the brain's step, the ground settle and the waypoint, each a handful of
+GDScript calls with nothing left to skip; to cut it again the dead have to think less (above), or the AI has to move out
+of GDScript.
 
 ## How to measure it again
 
