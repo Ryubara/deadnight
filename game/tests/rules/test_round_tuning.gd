@@ -183,4 +183,4 @@ func test_the_shipped_table_is_consistent() -> void:
 			assert_float(item.amount).is_greater(0.0)
 		if item.kind == ShopItem.Kind.CRANE:
 			assert_array(item.pool).is_not_empty()
-			assert_int(item.pool_weights.size()).is_equal(item.pool.size())
+			assert_int(item.weights().size()).is_equal(item.pool.size())

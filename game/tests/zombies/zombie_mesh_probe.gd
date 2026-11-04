@@ -86,13 +86,13 @@ static func make(host: Node, look: StringName) -> ZombieMeshProbe:
 	return probe
 
 
-## Adds the clips made for Deadnight (`Sprint`, `Tear_Boards`, in `ZombieRig.EXTRA_CLIPS_FILE`) to
-## the model's player, as `extra/<name>`.
+## Adds the clips made for Deadnight (`ZombieRig.EXTRA_CLIPS`: `Sprint`, `Tear_Boards` and the
+## crawler's own, in `ZombieRig.EXTRA_CLIPS_FILE`) to the model's player, as `extra/<name>`.
 func use_extra_clips() -> void:
 	var scene := (load(ZombieRig.EXTRA_CLIPS_FILE) as PackedScene).instantiate()
 	var source := scene.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	var library := AnimationLibrary.new()
-	for clip in [ZombieRig.SPRINT_CLIP, ZombieRig.TEAR_CLIP]:
+	for clip in ZombieRig.EXTRA_CLIPS:
 		library.add_animation(clip, source.get_animation(clip).duplicate(true))
 	player.add_animation_library(EXTRA, library)
 	scene.free()

@@ -23,6 +23,7 @@ const FIREARMS: Array[StringName] = [
 	&"mp5",
 	&"pump_870",
 	&"dual_pistols",
+	&"house_pistol",
 ]
 const TABLE := "res://tests/night/gun_levels.json"
 ## A shot is at least this many LU above the night's beds (integrated, measured alone): one shot's

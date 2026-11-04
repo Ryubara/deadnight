@@ -46,6 +46,10 @@ STAIR_PITCH = math.degrees(math.atan2(STOREY, STAIR_RUN))  # 33.7 degrees, under
 # walking mesh sees (a 1.2 m gap would close under the dead's 0.5 m radius); the frame, the sill and the blocker that
 # keeps players in are StaticBody3D pieces the baker never reads.
 WINDOW_GAP = 2.0
+# What the walking mesh is cut with: the wall's gap is 1.5 m, so the dead's way (the gap less the baker's 0.5 m of
+# radius a side) is 0.5 m wide and a body of 0.3 m radius stays inside the opening's 1.2 m (#915: a way 1.0 m wide let
+# the dead's shoulders into the jambs).
+WINDOW_NAV_GAP = 1.5
 WINDOW_WIDTH = 1.2
 WINDOW_SILL = 0.9
 WINDOW_TOP = 2.2
@@ -121,7 +125,6 @@ WINDOWS = [
 # The windows with a moon shaft (an additive card and its patch on the floor each; the others are plain).
 SHAFTS = {"start_1", "side_1", "upper_a1"}
 BREACH = ("side_breach", "side", "z", -6.15, -2.5, (1, 0), 0.0, GROUND_WALL)
-BREACH_HEIGHT = 2.4
 SPAWN_OUT = 7.0  # metres outside a ground window (row 18: 5 to 15)
 # Where the dead rise when it is not 7 m straight out: the upper windows' in the alley by the outside stair's foot (they
 # climb it to the gallery and the terrace), the breach's outside the shed's open back door.
@@ -153,13 +156,12 @@ BAYS = {
 BAY_RESCUE = (-2.6, -0.3, 0.0, 1.35)
 
 # The boards across a window (`Barricade`, five of them as the rules' BarricadeTuning.boards): the kit's 1.5 m board
-# (window_board.tscn), one above the other across the 1.3 m of opening above the sill; the breach's are spread over its
-# 2.4 m. A board is 1.5 m long, so a mended one swings about a point 0.75 m from its middle (`board_half`), not the
+# (window_board.tscn), one above the other across the 1.3 m of opening above the sill; the breach's are the same
+# (it is a window with a sill too, #915). A board is 1.5 m long, so a mended one swings about a point 0.75 m from its middle (`board_half`), not the
 # fence breaches' 2.05.
 BOARDS = 5
 BOARD_LENGTH = 1.5
 BOARD_PITCH = (WINDOW_TOP - WINDOW_SILL) / BOARDS  # 0.26: five fill the opening
-BREACH_BOARD_PITCH = BREACH_HEIGHT / BOARDS
 BOARD_OUT = 0.05  # metres outside the wall's centre line, on the dead's side
 
 # --- The shop (formula rows 22 to 24; the prices are smallmap_tuning.tres, the weapons are docs/design/smallmap.md) ----
@@ -521,11 +523,11 @@ def window(spec, breach: bool = False) -> tuple[float, float, float]:
         "metadata/room": f'"{room}"',
         "metadata/kind": '"breach"' if breach else '"window"',
         # The gap in the wall the walking mesh sees: width, height, the wall's thickness.
-        "metadata/gap": bg.vec((WINDOW_GAP, BREACH_HEIGHT if breach else WINDOW_TOP, thick)),
+        "metadata/gap": bg.vec((WINDOW_NAV_GAP, WINDOW_TOP, thick)),
     }
     key = bg.node(f"Window_{wid}", "Node3D", "Windows", props)
     jamb = (WINDOW_GAP - WINDOW_WIDTH) / 2
-    top = BREACH_HEIGHT if breach else WINDOW_TOP
+    top = WINDOW_TOP
     upper = thick == UPPER_WALL
     # The lintel over the gap (the wall's gap runs to the module's top): collision only, off the walking mesh.
     body(
@@ -535,7 +537,10 @@ def window(spec, breach: bool = False) -> tuple[float, float, float]:
         for side in (-1, 1):  # broken edges of the hole, 0.2 m a side
             body(key, f"Edge{'L' if side < 0 else 'R'}", (0.2, top, thick), (side * (WINDOW_GAP / 2 - 0.1), top / 2, 0),
                  bg.WALL_LAYERS, MATS["wall"])  # fmt: skip
-        body(key, "Blocker", (WINDOW_GAP - 0.4, top, thick), (0, top / 2, 0), BLOCKER_LAYER, None)
+        # The broken wall is a window too (#915): a sill of the wall's own stone under a hole that does not reach the floor.
+        body(key, "Sill", (WINDOW_GAP - 0.4, WINDOW_SILL, thick), (0, WINDOW_SILL / 2, 0), bg.WALL_LAYERS, MATS["wall"])
+        body(key, "Blocker", (WINDOW_GAP - 0.4, top - WINDOW_SILL, thick), (0, (WINDOW_SILL + top) / 2, 0),
+             BLOCKER_LAYER, None)  # fmt: skip
         dress.breach_dressing(key, thick)
         slots = None
     else:
@@ -554,7 +559,11 @@ def window(spec, breach: bool = False) -> tuple[float, float, float]:
     # sit where its module has them (room side, each a little askew); the breach's are spread over its 2.4 m.
     boards = bg.node("Boards", "Node3D", key,
                      {"script": 'ExtResource("barricade")', "metadata/barricade_id": f'"{wid}"',
-                      "metadata/board_half": f"{BOARD_LENGTH / 2:g}"})  # fmt: skip
+                      "metadata/board_half": f"{BOARD_LENGTH / 2:g}",
+                      # The sill the dead climb over, the wall's thickness and the opening's half width (`ZombieGate`).
+                      "metadata/sill": f"{WINDOW_SILL:g}", "metadata/thickness": f"{thick:g}",
+                      "metadata/gap_half": f"{WINDOW_NAV_GAP / 2:g}",
+                      "metadata/clear_half": f"{(WINDOW_GAP - 0.4 if breach else WINDOW_WIDTH) / 2:g}"})  # fmt: skip
     for i in range(BOARDS):
         if slots is not None:
             bg.lines.append(f'[node name="Board{i + 1}" parent="{boards}" instance=ExtResource("board")]')
@@ -562,7 +571,7 @@ def window(spec, breach: bool = False) -> tuple[float, float, float]:
             bg.lines.append("")
             bg.node_names.add(f"{boards}/Board{i + 1}")
         else:
-            bg.instance(boards, f"Board{i + 1}", "board", (0.0, 0.3 + i * BREACH_BOARD_PITCH, -BOARD_OUT))
+            bg.instance(boards, f"Board{i + 1}", "board", (0.0, WINDOW_SILL + (i + 0.5) * BOARD_PITCH, -BOARD_OUT))
     return pos
 
 
@@ -670,7 +679,7 @@ def build() -> None:
     win = {w[0]: w for w in WINDOWS}
 
     def gaps_of(*ids: str) -> list[tuple[float, float, float, float]]:
-        return [(win[i][4], WINDOW_GAP, 0.0, MODULE_HEIGHT) for i in ids]
+        return [(win[i][4], WINDOW_NAV_GAP, 0.0, MODULE_HEIGHT) for i in ids]
 
     def bay_gaps(*names: str) -> list[tuple[float, float, float, float]]:
         return [(BAYS[n][2], BAYS[n][4], 0.0, CEILING) for n in names]
@@ -686,7 +695,7 @@ def build() -> None:
     bg.wall("Side", "WallN", "x", -7.95, -6.3, 16.3, CEILING, MATS["wall"], gaps_of("side_2") + bay_gaps("BayLoad"), gw)
     bg.wall("Side", "WallE", "z", 16.15, -7.8, -0.3, CEILING, MATS["wall"], thick=gw)
     bg.wall("Side", "WallW", "z", -6.15, -8.1, -0.3, CEILING, MATS["wall"],
-            [(BREACH[4], WINDOW_GAP, 0.0, MODULE_HEIGHT)], gw)  # fmt: skip
+            [(BREACH[4], WINDOW_NAV_GAP, 0.0, MODULE_HEIGHT)], gw)  # fmt: skip
 
     # The start room's counter and its pillars (to the ceiling), and the side room's racks.
     cx0, cx1, cz0, cz1 = COUNTER

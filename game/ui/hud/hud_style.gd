@@ -54,7 +54,7 @@ static func label(
 	text: String, size: int, colour: Color, display := false, tracking := 0.0
 ) -> Label:
 	var tokens := UITokens.active()
-	var node := Label.new()
+	var node := HudLabel.new()
 	node.text = text
 	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var font := (
@@ -66,8 +66,9 @@ static func label(
 	node.add_theme_font_size_override(&"font_size", size)
 	node.add_theme_color_override(&"font_color", colour)
 	node.add_theme_color_override(&"font_shadow_color", tokens.shadow)
-	node.add_theme_color_override(&"font_outline_color", Color(0.0, 0.0, 0.0, 0.7))
-	node.add_theme_constant_override(&"outline_size", OUTLINE)
+	# The outline is the label's own (two draw calls for the outline and the shadow, `HudLabel`).
+	node.halo_colour = Color(0.0, 0.0, 0.0, 0.7)
+	node.halo_size = OUTLINE
 	node.add_theme_constant_override(&"shadow_offset_x", 0)
 	node.add_theme_constant_override(&"shadow_offset_y", maxi(2, int(size * 0.05)))
 	return node
@@ -85,7 +86,7 @@ static func clip(node: Label) -> Label:
 ## full and whose card may grow in height (a prompt). Fill it with `set_wrapped`. The lines sit with
 ## no extra gap, so the height `set_wrapped` reserves is the label's own.
 static func wrap(node: Label) -> Label:
-	node.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	(node as HudLabel).wrap_words(TextServer.AUTOWRAP_WORD_SMART)
 	node.add_theme_constant_override(&"line_spacing", 0)
 	return node
 
@@ -186,17 +187,25 @@ static func ticket_points(rect: Rect2, notch := NOTCH) -> PackedVector2Array:
 ## Draws a flat ticket: a hard offset shadow, an opaque fill, a thin edge and a stripe of `accent`
 ## down its left side. No blur, no gradient (the style bible's paper-and-sign rule).
 static func draw_ticket(item: CanvasItem, rect: Rect2, accent: Color, lit := 0.0) -> void:
+	var shapes := HudShapes.new()
+	add_ticket(shapes, rect, accent, lit)
+	shapes.flush(item)
+
+
+## The shapes of a ticket (`draw_ticket`) added to `shapes`, so a part can draw more in the same
+## command (the banner's bulbs): one command for the four shapes, not four (`HudShapes`).
+static func add_ticket(shapes: HudShapes, rect: Rect2, accent: Color, lit := 0.0) -> void:
 	var tokens := UITokens.active()
 	var outline := ticket_points(rect)
 	var shadow := PackedVector2Array()
 	for point in outline:
 		shadow.append(point + SHADOW)
-	item.draw_colored_polygon(shadow, tokens.shadow)
-	item.draw_colored_polygon(outline, tokens.surface_raised.lerp(tokens.accent_bright, lit * 0.16))
+	shapes.polygon(shadow, tokens.shadow)
+	shapes.polygon(outline, tokens.surface_raised.lerp(tokens.accent_bright, lit * 0.16))
 	var closed := outline.duplicate()
 	closed.append(outline[0])
-	item.draw_polyline(closed, tokens.outline.lightened(lit * 0.4), float(tokens.border))
-	item.draw_rect(
+	shapes.polyline(closed, tokens.outline.lightened(lit * 0.4), float(tokens.border))
+	shapes.rect(
 		Rect2(rect.position + Vector2(0.0, NOTCH), Vector2(STRIPE, rect.size.y - 2.0 * NOTCH)),
 		accent
 	)

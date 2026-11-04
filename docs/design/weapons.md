@@ -58,7 +58,8 @@ the real command, its own model drawn).
 
 | Model (`assets/weapons/`) | Definition | How it is obtained | Per hit / interval |
 | --- | --- | --- | --- |
-| `revolver` | `pistol`, the Revolver | **Start** (in hand) | 24 / 0.28 s |
+| `house_pistol` ([#898](https://github.com/Ryubara/deadnight/issues/898)) | `house_pistol`, the House Pistol | **Start** (in hand), every player | 8 / 0.2 s |
+| `revolver` | `pistol`, the Revolver | The **crane** (1), and on the second map a **wall** (270); no longer the start | 24 / 0.28 s, head x1.75 |
 | `crowbar` | `crowbar` | The **crane** only (1); no longer a start weapon, the quick melee replaced it | 45 / 0.55 s |
 | `double_shotgun` | `shotgun`, the Double-barrel | **Wall** 900, and the **crane** (weight 4) | 21 x 8 / 0.3 s |
 | `lever_rifle` | `rifle`, the Hunting rifle | **Wall** 1,200, and the **crane** (3) | 95 / 0.5 s |
@@ -90,8 +91,9 @@ walls), the Tommy gun (540), the flare gun (630) and, in the cabinet upstairs, t
 wall there, at prices that climb from room to room, and its box
 (425, one place) gives any weapon the buyer lacks. The tuning is the map's own overlay; the lot's walls are unchanged.
 
-**The crane gives every weapon the start and the wall do not**, the revolver too once the buyer has given it up (they
-carry it from the first second, and the crane never gives a weapon the buyer carries). A player carries two weapons, so
+**The crane gives every weapon the start and the wall do not**, the revolver too (the crane never gives a weapon the
+buyer carries; the House Pistol, the start, is no prize: it would be a dud, `test_crane_pool.gd` lists it with the
+reason). A player carries two weapons, so
 the pool is never empty for them. The pool and its weights are the shop item `crane_play`; the
 odds are [the mystery box page](../research/mystery-box.md). `game/tests/rules/test_crane_pool.gd` fails when a weapon
 of the catalogue is not in the pool (unless it is listed there as no prize, with the reason; none is) and when 10,000
@@ -129,26 +131,49 @@ runs dry. They are not re-cut at the projector (the re-cut list is the firearms)
   whatever is in hand, so no melee weapon is needed in a slot for emergencies; it replaced the starting crowbar
   ([below](#quick-melee)).
 
+### One resource per weapon (#972)
+
+A weapon is **one inspector-editable resource**, `defs/<id>.tres` (`WeaponDef`), and the rules, the bots
+(`WeaponWorth`) and the balance simulator (`SimWeapons`) all read it. Its groups, top to bottom in the inspector:
+
+| Group | What it holds |
+| --- | --- |
+| (top) | id, name, kind (hitscan, projectile, melee), automatic, dual, tracer |
+| Class | `weapon_class`: starter pistol, pistol, SMG, shotgun, rifle, LMG, sniper, special or melee: the yardstick a weapon is judged by |
+| Source | `wall_tier` (hand, long, box: where a wall may sell it) and `crane_weight` (its share of the prize crane's draw) |
+| Damage | damage, pellets, spread, falloff, range, **penetration** and the damage kept per body, the multiplier of each zone |
+| Handling | interval, magazine, reserve, reload, reload by the round, spread on the move |
+| Feel | shake, flash |
+| Projectile, Status, Element, Lure | a lob's flight and blast, the freeze, the fire patch, the lure |
+| Melee | reach, thickness, how many targets one blow hits |
+
+What is **not** on it, and why: the **price** is a shop item's (`default_tuning.tres`, and a map's own overlay, which
+re-prices a weapon room by room), the **re-cut** is the tuning's `UpgradeTuning.profiles` row for the weapon (the bench
+sells it for one flat price), and the **box's list** is each map's `crane_play` item (a map may leave a weapon out or
+set its own weights; it lists none as shipped, so every weight is the definition's).
+
 ### The wall tier
 
 **A wall spot sells only the weaker guns, on every map, and never a melee weapon** (the maintainer,
 [#858](https://github.com/Ryubara/deadnight/issues/858), [#910](https://github.com/Ryubara/deadnight/issues/910)).
-Every weapon has a wall tier, in `WallTier` (`gameplay/weapons/wall_tier.gd`); a wall may sell up to tier 2, and any
-weapon above it is **box only**: the prize crane is the only way to it.
+Every weapon has a wall tier, set on its definition (`WeaponDef.wall_tier`, read through `WallTier`,
+`gameplay/weapons/wall_tier.gd`); a wall may sell up to tier 2, and any weapon above it is **box only**: the prize crane
+is the only way to it.
 
 | Tier | Weapons | Wall? |
 | --- | --- | --- |
-| 1, sidearms | the revolver, the flare gun | yes |
+| 1, sidearms | the House Pistol, the revolver, the flare gun | yes |
 | 2, the older long guns | the double-barrel, the Tommy gun, the hunting rifle (the best a wall sells) | yes |
 | 3, box | every other weapon: **the melee weapons (the crowbar, the baseball bat, the fire axe)**, the pump 870, MP5, M4A1, PPSh, M249, fifty cal, dual pistols, the ray gun, the freeze gun | **no, the box only** |
 
-- **A melee weapon is tier 3 whatever the table says** (#910): `WallTier.tier_of` asks the weapon's own kind
-  (`WeaponDef.is_melee`), so a hand weapon added later cannot be put on a wall by a row. The first rule (#858) ranked
+- **A melee weapon is tier 3 whatever its definition says** (#910): `WallTier.tier_of` asks the weapon's own kind
+  (`WeaponDef.is_melee`) and the three definitions say tier 3, so a hand weapon added later cannot be put on a wall
+  by a number. The first rule (#858) ranked
   weapons by how weak they are per hit and put the three blades in the lowest tier, which a wall may sell; but a blow
   never runs dry, needs no reload and no rounds from the locker, so a wall that sells one sells a gun with no upkeep
   (the maintainer: "too overpowered"). Melee comes from the start kit and the box only.
-- **A weapon not named in `WallTier.TIERS` is tier 3**, so a gun added to the catalogue is in the box until someone
-  decides it may hang on a wall; the decision is a row in that table and in this one.
+- **A definition that sets no tier is tier 3**, so a gun added to the catalogue is in the box until someone decides it
+  may hang on a wall; the decision is its `wall_tier` and a row in this table.
 - **It holds on both maps.** The lot's walls are the double-barrel and the rifle; the second map's six places are
   the revolver, the double-barrel (two walls), the Tommy gun, the flare gun and, in the cabinet, the rifle (its
   crowbar, bat and axe walls were taken out in #910, not given to other guns). The pump, the MP5 and the M4A1 have
@@ -232,7 +257,8 @@ health (50 + 8 a round to round 8, then x1.16 a round); a blow is 50 flat. Blows
 ## Carrying weapons
 
 A player carries **two weapons** (`WeaponCatalog.CARRY_LIMIT`), melee ones included: there is no melee slot, and the
-bat and the axe take a slot like a gun. A player starts with the revolver alone and a free second hand: the crowbar that
+bat and the axe take a slot like a gun. A player starts with the House Pistol alone and a free second hand: the
+crowbar that
 used to fill it is replaced by the [quick melee](#quick-melee), which takes no slot. The swap button (F, d-pad up)
 cycles the two weapons once there are two. The keys **1** and **2** take the first and the second weapon in hand (3 is
 the third slot's, for the perk that carries three, #687); the slot already in hand, and an empty slot, change nothing. A
@@ -336,15 +362,57 @@ The headliner has one more zone, `weak`, a ball on its lit lamp that no other zo
 multiplier for it: the rules' x2.2 is the one). The test range draws them as they are. A limb the ray meets first gives
 way to the body or head right behind it.
 
-| Zone | Pistol | SMG | Shotgun (per pellet) | Rifle | Flare gun | Crowbar | Bat | Axe |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Head | x2.5 | x2.0 | x1.5 | x2.5 | x1.5 | x1.5 | x1.5 | x2.5 |
-| Body | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 |
-| Limb | x0.6 | x0.6 | x0.6 | x0.7 | x0.6 | x0.75 | x0.75 | x0.7 |
+| Zone | House Pistol | Revolver | SMG | Shotgun (per pellet) | Rifle | Flare gun | Crowbar | Bat | Axe |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Head | x2.5 | x1.75 | x2.0 | x1.5 | x2.5 | x1.5 | x1.5 | x1.5 | x2.5 |
+| Body | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 |
+| Limb | x0.85 | x0.6 | x0.6 | x0.6 | x0.7 | x0.6 | x0.75 | x0.75 | x0.7 |
 
 Damage of one hit is `damage x falloff(distance) x zone x 0.6^(bodies already passed)`. A shot that lands on one
 zombie with several pellets is one hit for the rules (one `hit` action carrying the damage, headshot
 if any pellet struck the head), so a shotgun cannot farm the four-point hit payout.
+
+## The House Pistol and the hit zones (#898)
+
+**The cause.** The start weapon was the revolver, 24 a hit with a head multiplier of 2.5: a head shot is 60. A walker has
+50 health in round 1 and 58 in round 2 (`RoundTuning.health_for_round`: 50, plus 8 a round to round 8, then x1.16
+a round), so one head shot killed on rounds 1 and 2 (round 3, 66, was the first it did not). The head zone is half
+the figure since the zones follow the bodies ([#745](../research/hit-zones.md#not-done-and-what-it-moves)), and the bots
+and good players land most of their hits there. Nothing stated how many shots the start weapon should take.
+
+**How a hit is worked out** (every weapon the same way, `DamageModel.damage`): `damage x falloff(distance) x zone
+multiplier x 0.6^(bodies passed)`. The zone is the shape the ray meets first (`Hitbox`, fitted per look and pose): `head`
+(a sphere), `body` (a capsule), `limb` (arms and legs are one zone, four capsules; there is no leg-only rule) and, on the
+boss, `weak`. A limb in front of the body or head gives way to it when the body or head is within 0.2 m behind. Each
+weapon's file lists its own multipliers; an unlisted zone counts 1. The rules take the damage as given and the kill is
+health at or under 0.
+
+**The House Pistol**, a 9 mm self-loader in the class of the service pistol of the 1980s (a generic one, named for the
+drive-in's house gun, not a maker): 8 a hit, **head x2.5, body x1.0, limb x0.85**, 0.2 s between shots, 15 in the magazine,
+90 in reserve at the start (150 at most), 30 rounds for 40 points (`ammo_house_pistol`). Shots to kill a walker at
+point blank, held by `test_starter_pistol.gd` through the real combat server and the rules' health:
+
+| Round (walker health) | Head | Body | Limb (legs only: x0.85) |
+| --- | ---: | ---: | ---: |
+| 1 (50) | 3 | 7 | 8 |
+| 2 (58) | 3 | 8 | 9 |
+| 5 (82) | 5 | 11 | 13 |
+| 10 (142.6) | 8 | 18 | 21 |
+
+The maintainer's bar was at least 3 to the head and 7 to the body on round 1, and about 8 with leg shots only. A limb
+shot that hits an arm counts the same as a leg: the game has one `limb` zone, so "legs only" is the worst case, not a
+separate rule. Falloff past 12 m takes more shots. **Seen from the shoulder camera the head is most of what is
+hit**: the fitted head
+zone of a standing walker spans about 0.9 to 1.7 m up, so a shot aimed at chest height (1.1 m) lands on it, and only a shot
+at about 0.95 m or lower is a body shot (`tests/captures/shots_to_kill.gd` aims there). A player who aims at the chest
+kills in the head column of the table, not the body column. The pistol is re-cut like the others (x1.75: 14 a hit,
+23 in the
+magazine), with no element.
+
+**The revolver** keeps 24 a hit and loses its head multiplier down to **x1.75** (42): two head shots, not one, on
+rounds 1 and 2 (and to round 5), three body shots on round 1. It is no longer the start: it is a prize of the crane
+(weight 1) and, on the second map, a wall buy at **270** (it was 90 as the start weapon's refill). Its re-cut
+(explosive rounds) is unchanged.
 
 ## The arsenal
 
@@ -353,6 +421,7 @@ distance down to the floor and holds there to the range.
 
 | Weapon | Kind | Per hit | Interval | Magazine / reserve | Reload | Falloff start to end (floor) | Range |
 | --- | --- | ---: | ---: | --- | ---: | --- | ---: |
+| House Pistol | hitscan, semi | 8 | 0.2 s | 15 / 90 (max 150) | 1.5 s | 12 to 32 m (50%) | 50 m |
 | Revolver | hitscan, semi | 24 | 0.28 s | 10 / 40 (max 80) | 1.3 s | 12 to 35 m (55%) | 60 m |
 | Tommy gun | hitscan, auto | 14 | 0.075 s | 30 / 120 (max 180) | 1.9 s | 10 to 30 m (50%) | 50 m |
 | Double-barrel | 8 pellets, 6 degrees | 22 x 8 | 0.3 s | 2 / 16 (max 32) | 1.8 s | 8 to 22 m (35%) | 30 m |

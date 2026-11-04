@@ -95,11 +95,14 @@ func _draw() -> void:
 	var shadow := PackedVector2Array()
 	for point in outline:
 		shadow.append(point + HudStyle.SHADOW * 0.75)
-	draw_colored_polygon(shadow, _tokens.shadow)
 	var paper := _tokens.accent if held else _tokens.surface_raised
 	if not held and weapon_id == &"":
 		paper = _tokens.surface
-	draw_colored_polygon(outline, paper)
 	var edge := outline.duplicate()
 	edge.append(outline[0])
-	draw_polyline(edge, _tokens.accent_bright if held else _tokens.outline, float(_tokens.border))
+	# One command for the three shapes (`HudShapes`).
+	var shapes := HudShapes.new()
+	shapes.polygon(shadow, _tokens.shadow)
+	shapes.polygon(outline, paper)
+	shapes.polyline(edge, _tokens.accent_bright if held else _tokens.outline, float(_tokens.border))
+	shapes.flush(self)

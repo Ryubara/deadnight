@@ -158,7 +158,7 @@ rise on the yard and walk up to it.
 
 | Where | What | Price | Ratio to P |
 | --- | --- | ---: | ---: |
-| Hall, west wall | Revolver (back in the pool once given up) | 90 | 0.2 |
+| Hall, west wall | Revolver (no longer the start weapon, #898: the House Pistol is; it hits three times as hard) | 270 | 0.6 |
 | Side room, middle and north walls | Pump shotgun, Tommy gun | 540 each | 1.2 |
 | Upstairs, two walls | Flare gun | 630 | 1.4 |
 | | Pump shotgun (a second wall of it) | 540 | 1.2 |
@@ -299,7 +299,7 @@ one script. What each socket wears, and what moved to make it fit:
 | Socket | Wears | What moved |
 | --- | --- | --- |
 | Windows (7) | the kit's window module (`wall_window_zombie`, `_upper` upstairs); boards in the module's own slots on the room side | the wall's gap runs to the module's 2.8 m top (a `Lintel` body fills it); the sill, jambs and blocker are collision only |
-| The breach | a kit post each side of the gap, a beam across its top, walked-over rubble | the gap runs to 2.8 m as the windows' do; the dead's 1.6 m way is unchanged |
+| The breach | a kit post each side of the gap, a beam across its top, walked-over rubble, and a 0.9 m sill of the wall's stone: it is a window like the others (#915), its boards in the same 0.9 to 2.2 m opening | the gap is the windows' 1.5 m, and the dead climb over the sill (`ZombieGate.sill`) |
 | Door (hall to side room), upstairs opening | the kit's wide opening (`wall_opening_wide`), its own hidden jambs and lintel | the wall's gap is the module's 3 m wide; the clear opening is the 2.0 x 2.4 m it was |
 | The door's leaf, the stairs' blockers | `door_purchase` stretched to 2 m, `debris_blocker` stretched to the 2 m flight; each with a `DoorGlow` of the far room's lamp | the slab stays (hidden): the walking mesh and `LotDoors` are as they were |
 | The two flights | the kit's `stair_straight` stretched to 2.0 x 5.1 x 3.4 m over the greybox's hidden ramp (rails off, the flight has a wall each side) | none: the ramp is what is walked on |
@@ -340,7 +340,7 @@ person's.
 | Node | What it is |
 | --- | --- |
 | `Start`, `Side`, `UpperA`, `UpperB` | a room each, with `room`, `rect` (x, z, width, depth) and `floor` metadata; walls, floors, pillars, counter, racks and stairs under it |
-| `Windows/Window_<id>` | a window or the breach: on the wall's centre line at floor height, +Z into the room; `barricade_id`, `room`, `kind` (`window` or `breach`), `gap` (the wall's gap: 2.0 m wide, 2.2 m tall, 2.4 for the breach). Its frame, sill and the players-only blocker (layer 2, as the boards) are StaticBody3D children the bake never reads. Its `Boards` child is the `Barricade` (five `window_board` slots, `board_half` 0.75) |
+| `Windows/Window_<id>` | a window or the breach: on the wall's centre line at floor height, +Z into the room; `barricade_id`, `room`, `kind` (`window` or `breach`), `gap` (the wall's gap the walking mesh sees: 1.5 m wide so the dead's way, 0.5 m a side less, stays inside the 1.2 m opening, 2.2 m tall, the breach's too). Its frame, sill and the players-only blocker (layer 2, as the boards) are StaticBody3D children the bake never reads. Its `Boards` child is the `Barricade` (five `window_board` slots, `board_half` 0.75; `sill`, `thickness`, `gap_half` and `clear_half` for the dead's climb) |
 | `ZombieSpawns/Spawn_<id>` | where the dead of each window rise, on the yard: 7 m outside a ground window, in the alley by the outside stair's foot for an upper one, outside the shed's open door for the breach; `barricade_id` and `room` |
 | `Doors` (`LotDoors`) | `Door_Side`, `Stairs_Start`, `Stairs_Side`: `shop_id` (`door_side`, `door_stairs_start`, `door_stairs_side`), `requires` (none), `cost` (read from the map's tuning when the scene is written), `opens` (the rooms whose dead may rise once it is open); one slab each and a stand on each side |
 | `ShopSpots`, `ShopProps` | the markers a player buys from (`kind` `wall`, `crane` or `ammo`, `shop_id`, `room`; the cabinet also `cabinet`, the box `crane_spot` 0) and their plaques, signs, crates and cabinet: none of it is CSG, so the walking mesh does not change |

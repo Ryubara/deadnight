@@ -122,6 +122,7 @@ func test_the_mouse_turns_the_view_while_a_grenade_is_held() -> void:
 	for _i in LOOK_STEPS:
 		var motion := InputEventMouseMotion.new()
 		motion.relative = Vector2(20.0, 0.0)
+		motion.screen_relative = motion.relative
 		Input.parse_input_event(motion)
 		Input.flush_buffered_events()
 		await _play(1)

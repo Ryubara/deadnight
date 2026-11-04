@@ -101,7 +101,7 @@ func test_no_wall_spot_of_either_map_sells_a_melee_weapon() -> void:
 	assert_int(melee).is_equal(0)
 
 
-func test_every_melee_weapon_of_the_catalogue_is_box_only_whatever_the_table_says() -> void:
+func test_every_melee_weapon_of_the_catalogue_is_box_only_whatever_its_definition_says() -> void:
 	var found := 0
 	for id in WeaponCatalog.IDS:
 		if WeaponCatalog.get_def(id).is_melee():
@@ -112,9 +112,13 @@ func test_every_melee_weapon_of_the_catalogue_is_box_only_whatever_the_table_say
 			)
 	# The crowbar, the bat and the axe.
 	assert_int(found).is_equal(3)
-	# The table names none of them: the rule is the weapon's kind, not a row someone can add.
-	for id in WallTier.TIERS:
-		assert_bool(WallTier.is_melee(id)).override_failure_message(String(id)).is_false()
+	# The rule is the weapon's kind, not a number someone can set: a definition that says hand
+	# (restored at once) is still above the wall.
+	var crowbar := WeaponCatalog.get_def(&"crowbar")
+	var kept := crowbar.wall_tier
+	crowbar.wall_tier = WallTier.HAND
+	assert_int(WallTier.tier_of(&"weapon_crowbar")).is_equal(WallTier.BOX)
+	crowbar.wall_tier = kept
 
 
 func test_the_pump_the_mp5_and_the_m4a1_have_no_wall_on_either_map() -> void:
@@ -128,13 +132,19 @@ func test_the_pump_the_mp5_and_the_m4a1_have_no_wall_on_either_map() -> void:
 			assert_object((rules as RulesTuning).economy.item(id)).is_null()
 
 
-func test_the_tier_table_names_real_weapons_and_the_start_weapon_is_a_wall_one() -> void:
-	for id in WallTier.TIERS:
-		assert_array(WeaponCatalog.IDS).override_failure_message(String(id)).contains([id])
+func test_every_weapon_has_a_tier_on_its_definition_and_the_start_weapon_is_a_wall_one() -> void:
+	for id in WeaponCatalog.IDS:
+		var tier := WeaponCatalog.get_def(id).wall_tier
+		(
+			assert_bool(tier >= WallTier.HAND and tier <= WallTier.BOX)
+			. override_failure_message(String(id))
+			. is_true()
+		)
+		assert_int(WallTier.tier_of(id)).is_equal(tier)
 	assert_bool(WallTier.wall_may_sell(WeaponCatalog.START_WEAPON)).is_true()
 	assert_int(WallTier.tier_of(&"weapon_rifle")).is_equal(WallTier.LONG)
 	assert_int(WallTier.tier_of(&"weapon_flare_gun")).is_equal(WallTier.HAND)
-	# A gun the table does not name is above the wall.
+	# A gun the catalogue does not know is above the wall.
 	assert_int(WallTier.tier_of(&"made_up_gun")).is_equal(WallTier.BOX)
 
 

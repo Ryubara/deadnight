@@ -87,7 +87,9 @@ func test_a_headshot_reports_the_head_and_its_damage() -> void:
 	var pellet := AimResolver.trace_one(pistol, from, Vector3(0, 0, -1), from, targets, Callable())
 	var hit: Dictionary = pellet["hits"][0]
 	assert_str(hit["zone"]).is_equal("head")
-	assert_float(hit["damage"]).is_equal_approx(pistol.damage * 2.5, 0.01)
+	assert_float(hit["damage"]).is_equal_approx(
+		pistol.damage * pistol.zone_multiplier(&"head"), 0.01
+	)
 
 
 func test_the_rifle_goes_through_two_bodies_and_stops_in_the_third() -> void:
