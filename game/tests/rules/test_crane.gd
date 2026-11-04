@@ -219,7 +219,7 @@ func test_the_pool_follows_its_weights_over_many_seeded_plays() -> void:
 	var t := RulesFixture.steady_crane_tuning()
 	var item := t.economy.item(&"crane_play")
 	var total := 0.0
-	for weight in item.pool_weights:
+	for weight in item.weights():
 		total += weight
 	var plays := 2000
 	var counts: Dictionary = {}
@@ -233,7 +233,7 @@ func test_the_pool_follows_its_weights_over_many_seeded_plays() -> void:
 		counts[ready["weapon"]] = counts.get(ready["weapon"], 0) + 1
 	for i in item.pool.size():
 		var share: float = counts.get(item.pool[i], 0) / float(plays)
-		assert_float(share).is_equal_approx(item.pool_weights[i] / total, 0.04)
+		assert_float(share).is_equal_approx(item.weights()[i] / total, 0.04)
 
 
 func test_the_chance_to_break_down_follows_the_table_over_many_seeded_plays() -> void:

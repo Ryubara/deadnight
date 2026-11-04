@@ -129,11 +129,33 @@ runs dry. They are not re-cut at the projector (the re-cut list is the firearms)
   whatever is in hand, so no melee weapon is needed in a slot for emergencies; it replaced the starting crowbar
   ([below](#quick-melee)).
 
+### One resource per weapon (#972)
+
+A weapon is **one inspector-editable resource**, `defs/<id>.tres` (`WeaponDef`), and the rules, the bots
+(`WeaponWorth`) and the balance simulator (`SimWeapons`) all read it. Its groups, top to bottom in the inspector:
+
+| Group | What it holds |
+| --- | --- |
+| (top) | id, name, kind (hitscan, projectile, melee), automatic, dual, tracer |
+| Class | `weapon_class`: starter pistol, pistol, SMG, shotgun, rifle, LMG, sniper, special or melee: the yardstick a weapon is judged by |
+| Source | `wall_tier` (hand, long, box: where a wall may sell it) and `crane_weight` (its share of the prize crane's draw) |
+| Damage | damage, pellets, spread, falloff, range, **penetration** and the damage kept per body, the multiplier of each zone |
+| Handling | interval, magazine, reserve, reload, reload by the round, spread on the move |
+| Feel | shake, flash |
+| Projectile, Status, Element, Lure | a lob's flight and blast, the freeze, the fire patch, the lure |
+| Melee | reach, thickness, how many targets one blow hits |
+
+What is **not** on it, and why: the **price** is a shop item's (`default_tuning.tres`, and a map's own overlay, which
+re-prices a weapon room by room), the **re-cut** is the tuning's `UpgradeTuning.profiles` row for the weapon (the bench
+sells it for one flat price), and the **box's list** is each map's `crane_play` item (a map may leave a weapon out or
+set its own weights; it lists none as shipped, so every weight is the definition's).
+
 ### The wall tier
 
 **A wall spot sells only the weaker guns, on every map** (the maintainer, [#858](https://github.com/Ryubara/deadnight/issues/858)).
-Every weapon has a wall tier, in `WallTier` (`gameplay/weapons/wall_tier.gd`); a wall may sell up to tier 2, and any
-weapon above it is **box only**: the prize crane is the only way to it.
+Every weapon has a wall tier, set on its definition (`WeaponDef.wall_tier`, read through `WallTier`,
+`gameplay/weapons/wall_tier.gd`); a wall may sell up to tier 2, and any weapon above it is **box only**: the prize crane
+is the only way to it.
 
 | Tier | Weapons | Wall? |
 | --- | --- | --- |
@@ -141,8 +163,8 @@ weapon above it is **box only**: the prize crane is the only way to it.
 | 2, the older long guns | the double-barrel, the Tommy gun, the hunting rifle (the best a wall sells) | yes |
 | 3, box | every other weapon: the pump 870, MP5, M4A1, PPSh, M249, fifty cal, dual pistols, the ray gun, the freeze gun | **no, the box only** |
 
-- **A weapon not named in `WallTier.TIERS` is tier 3**, so a gun added to the catalogue is in the box until someone
-  decides it may hang on a wall; the decision is a row in that table and in this one.
+- **A definition that sets no tier is tier 3**, so a gun added to the catalogue is in the box until someone decides it
+  may hang on a wall; the decision is its `wall_tier` and a row in this table.
 - **It holds on both maps.** The lot's walls are the double-barrel and the rifle; the second map's nine places are
   the revolver, the crowbar, the double-barrel (two walls), the Tommy gun, the bat, the flare gun, the axe and, in the
   cabinet, the rifle. The pump, the MP5 and the M4A1 have no wall on either: the second map asked for new places for them

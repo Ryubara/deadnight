@@ -47,6 +47,11 @@ static func catalog_id(shop_or_catalog_id: StringName) -> StringName:
 	return StringName(String(shop_or_catalog_id).trim_prefix(SHOP_PREFIX))
 
 
+## Whether `id` is a weapon of the catalogue (or the quick melee), by catalogue id.
+static func has(id: StringName) -> bool:
+	return id in IDS or id == QUICK_MELEE
+
+
 static func get_def(id: StringName) -> WeaponDef:
 	return load(DIR + String(id) + ".tres") as WeaponDef
 

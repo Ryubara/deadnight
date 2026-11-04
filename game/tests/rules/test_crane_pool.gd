@@ -58,7 +58,7 @@ func test_the_listed_exceptions_are_weapons_with_a_reason() -> void:
 
 func test_the_pool_has_only_weapons_once_each_with_a_weight() -> void:
 	var item := _pool(RulesFixture.tuning())
-	assert_int(item.pool_weights.size()).is_equal(item.pool.size())
+	assert_int(item.weights().size()).is_equal(item.pool.size())
 	var seen := {}
 	for i in item.pool.size():
 		var id := WeaponCatalog.catalog_id(item.pool[i])
@@ -73,7 +73,7 @@ func test_the_pool_has_only_weapons_once_each_with_a_weight() -> void:
 			. is_false()
 		)
 		seen[id] = true
-		assert_float(item.pool_weights[i]).is_greater(0.0)
+		assert_float(item.weights()[i]).is_greater(0.0)
 
 
 func test_solo_nights_start_from_a_fresh_seed_each() -> void:
@@ -103,7 +103,7 @@ func test_the_first_roll_of_a_solo_night_follows_the_weights() -> void:
 	var offered := item.pool_without(held)
 	var total := 0.0
 	for prize in offered:
-		total += item.pool_weights[item.pool.find(prize)]
+		total += item.weight_of(prize)
 	var counts := {}
 	for _i in FIRST_ROLLS:
 		var rules := RulesFixture.make_rules(1, NightScreen.solo_seed(), tuning)
@@ -118,7 +118,7 @@ func test_the_first_roll_of_a_solo_night_follows_the_weights() -> void:
 		assert_bool(ready.is_empty()).override_failure_message("no prize after the spin").is_false()
 		counts[ready["weapon"]] = counts.get(ready["weapon"], 0) + 1
 	for prize in offered:
-		var want: float = item.pool_weights[item.pool.find(prize)] / total
+		var want: float = item.weight_of(prize) / total
 		var share: float = counts.get(prize, 0) / float(FIRST_ROLLS)
 		(
 			assert_float(share)
