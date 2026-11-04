@@ -345,10 +345,14 @@ func _place(head: Vector3, delta: float) -> void:
 	_line_cap = _let_out(_line_cap, placed["raw_line"], delta)
 	var lens: Vector3 = placed["camera"]
 	_aim_transform = Transform3D(basis, lens)
+	# The rig first, then the lens: the lens is a child, and a child keeps its local transform when
+	# the parent moves. Set the other way round, the lens was drawn at the new view turned once more
+	# by this frame's turn of the rig (a long frame overshot, a frame with no mouse turned the view
+	# back) and its place swung with it (#905).
+	global_transform = Transform3D(Basis(Vector3.UP, yaw), pivot)
 	# The lens turns where it stands; the aim keeps the unshaken view.
 	_camera.global_transform = Transform3D(basis * shake.rotation() * sway.rotation(), lens)
 	_camera.fov = lerpf(_tuning.fov, _tuning.fov_aim, aim) + _tuning.sprint_fov_kick * sprint
-	global_transform = Transform3D(Basis(Vector3.UP, yaw), pivot)
 	_lens_distance = lens.distance_to(head)
 	_update_body_visibility()
 
