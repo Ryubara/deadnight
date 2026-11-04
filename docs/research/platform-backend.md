@@ -63,12 +63,12 @@ image):
   `SIGTERM`.
 
 Run it: `npm ci && npm test` in `spikes/backend/` (sign-in, lobbies, handoff, forged and expired tickets, capacity,
-saves, config that fails closed, the live Discord client and its timeout). `scripts/dev-compose.sh up --build -d`
-starts Postgres, the backend and the stub game server with development secrets kept in the workspace `scratch/` folder
-for the life of the stack (a second `up`, `restart` and `down` keep the data, `down -v` wipes both), then `npm run e2e`
-has two players sign in, share a lobby, start it and connect to the game server. Measured on the compose stack: the e2e
-run passed, a save survived a backend restart (Postgres), and `docker compose stop` took 0.7 s because the process
-closes on `SIGTERM`.
+saves, guest accounts that last, config that fails closed, the live Discord client and its timeout).
+`scripts/dev-compose.sh up --build -d` starts Postgres, the backend and the stub game server with development secrets
+kept in the workspace `scratch/` folder for the life of the stack (a second `up`, `restart` and `down` keep the data,
+`down -v` wipes both), then `npm run e2e` has two players sign in, share a lobby, start it and connect to the game
+server. Measured on the compose stack: the e2e run passed, a save survived a backend restart (Postgres), and
+`docker compose stop` took 0.7 s because the process closes on `SIGTERM`.
 
 ## Join flow: from the Activity to a running match
 
@@ -123,7 +123,9 @@ server (`deadnight-server`, headless Godot). What a player does is [Playing onli
 what happens underneath:
 
 1. **Sign in.** The web build calls `POST /auth/guest`: a random user in its own `guest:` id namespace (never a Discord
-   id), a name the player may choose or `Guest 1234`, limited to 30 sign-ins an hour from one address and 2000 in all.
+   id), a name the player may choose or `Guest 1234`, limited to 30 sign-ins an hour from one address and 2000 new
+   accounts in all. A guest comes back to the same account for **7 days after its last sign-in**
+   ([Guest accounts](#guest-accounts)).
    The backend runs `DISCORD_MODE=live` with guests switched on (`GUEST_SIGN_IN=1`); `DISCORD_MODE=off` is the same
    with no Discord at all. Browsers on another origin than the backend need it in `CORS_ORIGINS`; inside a Discord Activity
    everything goes through the proxy (`/api`, `/server`) and is same-origin.
@@ -167,16 +169,52 @@ A path variable set from Git Bash on Windows is rewritten (`/server` became `C:/
 server a Godot process of a few hundred MiB; at $10 per GB-month and $20 per vCPU-month that is roughly $3 to $6 a month
 with nobody playing, and a busy night adds a fraction of a core for each room in play.
 
+## Guest accounts
+
+A Guest account lasts **7 days without a sign-in** and is the same account each time it is signed in to in that time
+(#1080; the maintainer: guests are tracked on the server, expire after 7 days if not logged in again, and are normally
+reached again through local storage). A Discord account never expires, and moving a guest to Discord is not built.
+
+- **The credential.** `POST /auth/guest` answers with `guestToken` beside the one-hour `token`: an HS256 token of kind
+  `guest`, signed with the session secret, whose `sub` is the account's id and whose lifetime is 7 days
+  (`guestExpiresIn`, `GUEST_TTL_SECONDS`). A client cannot make one for another guest's id without the secret, and a
+  session token, a ticket or a bare id is not one (the kind is part of what is signed). It is no session: the API
+  refuses it as a bearer.
+- **Coming back.** The client sends `{name?, guestToken?}`. A credential that checks out for an account that is still
+  there, is a guest's and is in date signs that account in (200, `returning: true`); anything else, a forged, expired,
+  foreign or unknown credential included, makes a new guest (201), never another's account. Every sign-in sends a fresh
+  credential and sets the account's `last_seen` (`users.last_seen`), which restarts the 7 days. The chosen name updates
+  on each sign-in; a returning guest that gives none or an unusable one keeps its name.
+- **Expiry.** A Guest account whose `last_seen` is 7 days old or older is deleted with its saves (`ON DELETE CASCADE`):
+  at its own sign-in (a good signature on a credential that ran out still deletes an idle account, so it is gone when
+  anyone looks) and by an hourly sweep that also runs once when the backend starts (a backend redeployed more often than
+  hourly would never reach the first tick). The sweep matches only the `guest:` namespace, so no Discord account is
+  touched. Tests move the backend's clock (`Deps.now`) a millisecond either side of the 7 days.
+- **Limits.** The address limit counts every guest sign-in, a returning one too; the limit for all addresses counts
+  only new accounts, so a flood of new guests does not shut returning players out.
+- **Storage.** The game keeps the credential in `user://guest_account.json`
+  (`game/net/guest_account.gd`), which on the web build is the browser's IndexedDB, one credential for each backend.
+  A Discord Activity keeps none (it signs in with Discord). A test run keeps none unless a test names a file. Clearing
+  the browser's site data, or another browser, is a new guest: the account is reached only by the credential.
+- **Migration.** `users.last_seen` is added by `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, so accounts made before it
+  count as seen when the backend first starts with it (their 7 days begin then).
+- **Proved** by `spikes/backend/test/guest_account.test.ts` (with `TEST_DATABASE_URL` also against Postgres), by
+  `game/tests/net/test_guest_account.gd` (the real backend and the game's sign-in path) and by
+  `tools/web_smoke/guest_account.py`: the web build in headless Chromium signs in as a guest, a save is written to the
+  account, the page is reloaded and the probe reads the same account (and the save) back, while a second browser with
+  empty storage is another account ([how to run it](testing-multiplayer.md#playing-online-today)).
+
 ## Player names
 
 One name per player, the same on every screen of a night (#485).
 
 - **Where it comes from.** A web or desktop player with no saved name is asked on the first Play together ("Skip, call me
   Guest" is an answer too) and can change it under More in the menu; it is kept in the profile and sent to
-  `POST /auth/guest`. In a Discord Activity the backend reads it from Discord: the player's nickname in the guild the
-  Activity runs in (`guildId` in `POST /auth/discord`, read with the `guilds.members.read` scope), else the global name,
-  else the username. If the player refuses the scope the bridge asks for `identify` alone and the name falls back; the
-  sign-in never fails for a name.
+  `POST /auth/guest`; a guest who comes back and gives none keeps the name its account has
+  ([Guest accounts](#guest-accounts)). In a Discord Activity the backend reads it from Discord: the player's
+  nickname in the guild the Activity runs in (`guildId` in `POST /auth/discord`, read with the `guilds.members.read`
+  scope), else the global name, else the username. If the player refuses the scope the bridge asks for `identify` alone
+  and the name falls back; the sign-in never fails for a name.
 - **Cleaning (`spikes/backend/src/names.ts`).** Letters, digits, spaces and a few marks only, spaces squeezed, at most
   24 characters, a basic profanity filter; what is left empty becomes `Guest NNNN`. The backend is the one place that
   does it: anyone can send anything.

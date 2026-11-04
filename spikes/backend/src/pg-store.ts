@@ -8,6 +8,10 @@ CREATE TABLE IF NOT EXISTS users (
   name text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+-- When the account last signed in: a Guest account is deleted 7 days after it. Accounts made before this column
+-- count as seen at the time it is added.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen timestamptz NOT NULL DEFAULT now();
+CREATE INDEX IF NOT EXISTS users_last_seen ON users (last_seen);
 CREATE TABLE IF NOT EXISTS saves (
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   slot text NOT NULL,
@@ -33,19 +37,32 @@ export class PgStore implements Store {
     return new PgStore(pool);
   }
 
-  async upsertUser(discordId: string, name: string): Promise<User> {
+  async upsertUser(discordId: string, name: string, nowMs: number = Date.now()): Promise<User> {
     const { rows } = await this.pool.query(
-      `INSERT INTO users (discord_id, name) VALUES ($1, $2)
-       ON CONFLICT (discord_id) DO UPDATE SET name = EXCLUDED.name
-       RETURNING id, discord_id, name`,
-      [discordId, name],
+      `INSERT INTO users (discord_id, name, last_seen) VALUES ($1, $2, to_timestamp($3::double precision / 1000))
+       ON CONFLICT (discord_id) DO UPDATE SET name = EXCLUDED.name, last_seen = EXCLUDED.last_seen
+       RETURNING ${USER_COLUMNS}`,
+      [discordId, name, nowMs],
     );
     return toUser(rows[0]);
   }
 
   async getUser(id: string): Promise<User | null> {
-    const { rows } = await this.pool.query("SELECT id, discord_id, name FROM users WHERE id = $1", [id]);
+    const { rows } = await this.pool.query(`SELECT ${USER_COLUMNS} FROM users WHERE id = $1`, [id]);
     return rows[0] ? toUser(rows[0]) : null;
+  }
+
+  // The saves go with the user (ON DELETE CASCADE).
+  async deleteUser(id: string): Promise<void> {
+    await this.pool.query("DELETE FROM users WHERE id = $1", [id]);
+  }
+
+  async deleteIdleUsers(prefix: string, lastSeenAtOrBefore: number): Promise<number> {
+    const { rowCount } = await this.pool.query(
+      "DELETE FROM users WHERE starts_with(discord_id, $1) AND last_seen <= to_timestamp($2::double precision / 1000)",
+      [prefix, lastSeenAtOrBefore],
+    );
+    return rowCount ?? 0;
   }
 
   async getSave(userId: string, slot: string): Promise<Save | null> {
@@ -84,6 +101,9 @@ export class PgStore implements Store {
   }
 }
 
-function toUser(row: { id: string; discord_id: string; name: string }): User {
-  return { id: row.id, discordId: row.discord_id, name: row.name };
+// `last_seen` is read as epoch milliseconds (node-postgres would hand a Date, and a clock a test moves is a number).
+const USER_COLUMNS = "id, discord_id, name, (extract(epoch FROM last_seen) * 1000)::double precision AS last_seen_ms";
+
+function toUser(row: { id: string; discord_id: string; name: string; last_seen_ms: number }): User {
+  return { id: row.id, discordId: row.discord_id, name: row.name, lastSeen: Math.round(Number(row.last_seen_ms)) };
 }

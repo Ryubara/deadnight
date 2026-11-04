@@ -5,6 +5,8 @@ export interface User {
   id: string;
   discordId: string;
   name: string;
+  /** When the account last signed in (ms since the epoch): a Guest account is deleted 7 days after it. */
+  lastSeen: number;
 }
 
 export interface Save {
@@ -24,8 +26,16 @@ export class RevisionConflict extends Error {
 }
 
 export interface Store {
-  upsertUser(discordId: string, name: string): Promise<User>;
+  /** Makes the user, or renames the one with this `discordId`; either way the sign-in is `nowMs`, its `lastSeen`. */
+  upsertUser(discordId: string, name: string, nowMs?: number): Promise<User>;
   getUser(id: string): Promise<User | null>;
+  /** Deletes the user and every save of it. */
+  deleteUser(id: string): Promise<void>;
+  /**
+   * Deletes the users whose `discordId` starts with `prefix` and who last signed in at or before `lastSeenAtOrBefore`,
+   * with their saves; the number deleted. Users of other kinds are never touched.
+   */
+  deleteIdleUsers(prefix: string, lastSeenAtOrBefore: number): Promise<number>;
   getSave(userId: string, slot: string): Promise<Save | null>;
   /** Optimistic concurrency: `expectedRevision` is the revision the client last read (0 for a new slot). */
   putSave(
@@ -44,16 +54,31 @@ export class MemoryStore implements Store {
   private readonly byDiscord = new Map<string, string>();
   private readonly saves = new Map<string, Save>();
 
-  async upsertUser(discordId: string, name: string): Promise<User> {
+  async upsertUser(discordId: string, name: string, nowMs: number = Date.now()): Promise<User> {
     const existingId = this.byDiscord.get(discordId);
-    const user: User = { id: existingId ?? randomUUID(), discordId, name };
+    const user: User = { id: existingId ?? randomUUID(), discordId, name, lastSeen: nowMs };
     this.users.set(user.id, user);
     this.byDiscord.set(discordId, user.id);
     return user;
   }
 
   async getUser(id: string): Promise<User | null> {
-    return this.users.get(id) ?? null;
+    const user = this.users.get(id);
+    return user ? { ...user } : null;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    const user = this.users.get(id);
+    if (!user) return;
+    this.users.delete(id);
+    this.byDiscord.delete(user.discordId);
+    for (const key of [...this.saves.keys()]) if (key.startsWith(`${id}/`)) this.saves.delete(key);
+  }
+
+  async deleteIdleUsers(prefix: string, lastSeenAtOrBefore: number): Promise<number> {
+    const idle = [...this.users.values()].filter((u) => u.discordId.startsWith(prefix) && u.lastSeen <= lastSeenAtOrBefore);
+    for (const user of idle) await this.deleteUser(user.id);
+    return idle.length;
   }
 
   // Saves go through a JSON round trip, as they do through Postgres `jsonb`: what is read back is what a database
