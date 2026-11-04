@@ -2,6 +2,16 @@
 extends GdUnitTestSuite
 
 
+func test_a_scripts_yes_is_a_yes_whatever_type_the_engine_hands_back() -> void:
+	# The web runtime answers `true` as the integer 1; `answer == true` on it stops the function
+	# in a release build, and the answer was asked for again at every read (#983).
+	assert_bool(GamepadProbe.truthy(1)).is_true()
+	assert_bool(GamepadProbe.truthy(true)).is_true()
+	assert_bool(GamepadProbe.truthy(0)).is_false()
+	assert_bool(GamepadProbe.truthy(false)).is_false()
+	assert_bool(GamepadProbe.truthy(null)).is_false()
+
+
 func test_no_report_says_nothing() -> void:
 	assert_str(GamepadProbe.note({})).is_empty()
 

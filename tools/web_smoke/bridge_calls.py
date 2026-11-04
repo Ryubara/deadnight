@@ -137,7 +137,7 @@ def main() -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     label = args.label or ("probe" if args.probe else "plain")
-    server, port = smoke.serve(Path(args.build))
+    server, port = smoke.serve(Path(args.build), probing=False)
     base = f"http://127.0.0.1:{port}/index.html"
     report: dict = {"label": label, "probe": args.probe}
     problems: list[str] = []
