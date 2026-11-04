@@ -4,7 +4,8 @@ extends Node
 ##   `--map=lot|small`   (default lot);
 ##   `--id=nw`           the entry whose boards are down (default: the map's first);
 ##   `--pack=N`          how many dead (default 3);
-##   `--view=front|side` from inside facing the window (default), or from beside it.
+##   `--view=front|side|outside` from inside facing the window (default), from beside it, or from
+##                       outside behind the dead.
 ## Run with Movie Maker through the kit's `gds godot`:
 ## `gds godot -- --path game res://tests/captures/window_climb.tscn --fixed-fps 10
 ##  --write-movie out.png --quit-after 150 -- --map=lot --id=nw`.
@@ -71,15 +72,23 @@ func _make_camera(barricade: Barricade) -> void:
 	var inward := barricade.inward()
 	var sideways := inward.cross(Vector3.UP)
 	var base := barricade.global_position
-	if _arg("view", "front") == "side":
+	var view := _arg("view", "front")
+	if view == "side":
 		camera.look_at_from_position(
 			base + inward * 1.2 + sideways * 3.4 + Vector3.UP * 1.5, base + Vector3.UP * 1.0
+		)
+	elif view == "outside":
+		camera.look_at_from_position(
+			base - inward * 3.0 + sideways * 1.4 + Vector3.UP * 1.65, base + Vector3.UP * 1.0
 		)
 	else:
 		camera.look_at_from_position(
 			base + inward * 2.4 + Vector3.UP * 1.65, base - inward * 0.6 + Vector3.UP * 0.9
 		)
 	camera.make_current()
+	# The throttle poses only the dead the camera it is given can see: with the night's own camera,
+	# which looks elsewhere, every zombie here stayed frozen on its first pose.
+	_night.view.horde.throttle.camera = camera
 	# The night's own camera may take over for a frame; take it back once the first frames ran.
 	get_tree().create_timer(0.5).timeout.connect(camera.make_current)
 

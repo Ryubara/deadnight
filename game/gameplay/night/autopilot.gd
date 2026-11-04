@@ -490,7 +490,8 @@ func _aim(command: NightCommand, here: Vector3, zombie: Dictionary) -> void:
 static func _body_of(zombie: Dictionary) -> Vector3:
 	var look: StringName = zombie.get("look", ZombieModels.DEFAULT)
 	var mode: int = zombie.get("mode", ZombieBody.Mode.CHASE)
-	var offset := ZombiePose.aim_offset(look, mode, float(zombie.get("yaw", 0.0)))
+	var yaw := float(zombie.get("yaw", 0.0))
+	var offset := ZombiePose.aim_offset(look, mode, yaw, Hitbox.BODY, zombie.get("climbing", false))
 	return (zombie["position"] as Vector3) + offset
 
 

@@ -18,6 +18,8 @@ const PARKED_FOR_LOOK := {&"crawler": 20}
 
 var director: ZombieDirector
 var throttle: AnimationThrottle
+## The map's windows (`NightWorld.gates`): a climbing zombie's clip follows its way over one.
+var gates: Array[ZombieGate] = []
 ## Size in bytes of the last snapshot.
 var last_snapshot_bytes: int = 0
 
@@ -128,11 +130,23 @@ func apply_snapshot(bytes: PackedByteArray, delta: float) -> bool:
 		var view := _views[zombie_id]
 		if view.look != entry["look"]:
 			view = _redress(zombie_id, view, entry["look"])
+		if not entry["climbing"]:
+			view.climb_gate = null
+		elif view.climb_gate == null:
+			view.climb_gate = _gate_at(entry["position"])
 		view.apply(entry, delta)
 	for zombie_id in _views.keys():
 		if not seen.has(zombie_id):
 			_remove_view(zombie_id)
 	return true
+
+
+## The window whose sill lifts a zombie at `point`, or null.
+func _gate_at(point: Vector3) -> ZombieGate:
+	for gate in gates:
+		if gate.climbs(point):
+			return gate
+	return null
 
 
 ## Makes `counts[look]` bodies of each look ahead of the night and parks them, so its first zombies

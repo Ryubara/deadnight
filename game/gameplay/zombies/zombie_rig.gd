@@ -76,9 +76,33 @@ const CRAWL_HIT_SECONDS := 13.0 / 24.0
 ## stagger (0.4 s) and the fall is held on its last frame while it lies.
 const CRAWL_STAGGER_CLIP := &"Crawl_Stagger"
 const CRAWL_DEATH_CLIP := &"Crawl_Death"
+## Going over a window's sill (Deadnight #991): `Climb_Sill` for a body that stands, `Crawl_Climb`
+## for one that crawls. The simulation carries the zombie along the lift (`ZombieGate.lift_at`) at
+## its own pace; a frame of these clips is a place on that way, not a time, and the view seeks it
+## from where the snapshot has the zombie (`climb_time`): the way up is the clip's first
+## `CLIMB_RISE` frames, the way along the sill up to `CLIMB_OVER`, the way down the rest
+## (`clips.json`, events `over` and `down`). They are written for this sill
+## (test_zombie_climb_clip.gd reads the maps).
+const CLIMB_CLIP := &"Climb_Sill"
+const CRAWL_CLIMB_CLIP := &"Crawl_Climb"
+const CLIMB_SILL := 0.9
+## The thickest wall they are written for: a thinner one only leaves more room.
+const CLIMB_WALL := 0.56
+const CLIMB_RISE := 8.0
+const CLIMB_OVER := 36.0
+const CLIMB_FRAMES := 44.0
+const CLIMB_FPS := 24.0
+## Seconds of the blend from the gait into the climb and out of it.
+const CLIMB_BLEND := 0.12
 ## Every clip of the extra clips' file, and the ones that loop (the rest play once).
 const EXTRA_CLIPS: Array[StringName] = [
-	TEAR_CLIP, SPRINT_CLIP, CRAWL_ATTACK_CLIP, CRAWL_STAGGER_CLIP, CRAWL_DEATH_CLIP
+	TEAR_CLIP,
+	SPRINT_CLIP,
+	CRAWL_ATTACK_CLIP,
+	CRAWL_STAGGER_CLIP,
+	CRAWL_DEATH_CLIP,
+	CLIMB_CLIP,
+	CRAWL_CLIMB_CLIP,
 ]
 const EXTRA_LOOPING: Array[StringName] = [TEAR_CLIP, SPRINT_CLIP]
 
@@ -92,9 +116,16 @@ const STATE_DIE := &"die"
 const STATE_CRAWL_STAGGER := &"crawl_stagger"
 const STATE_CRAWL_DIE := &"crawl_die"
 const STATE_TEAR := &"tear"
+const STATE_CLIMB := &"climb"
+const STATE_CRAWL_CLIMB := &"crawl_climb"
 ## The tear state is the clip behind a seek and a time scale: their parameters.
 const TEAR_SEEK_PARAMETER := &"parameters/tear/seek/seek_request"
 const TEAR_SCALE_PARAMETER := &"parameters/tear/scale/scale"
+## The climb states are their clip behind a seek and a time scale of 0: only the seek moves them.
+const CLIMB_SEEK_PARAMETER := &"parameters/climb/seek/seek_request"
+const CLIMB_SCALE_PARAMETER := &"parameters/climb/scale/scale"
+const CRAWL_CLIMB_SEEK_PARAMETER := &"parameters/crawl_climb/seek/seek_request"
+const CRAWL_CLIMB_SCALE_PARAMETER := &"parameters/crawl_climb/scale/scale"
 ## The move state is a blend space behind a time scale; the crawl state a clip behind one.
 const BLEND_PARAMETER := &"parameters/move/space/blend_position"
 const MOVE_RATE_PARAMETER := &"parameters/move/scale/scale"
@@ -132,7 +163,10 @@ static func attach(model: Node) -> AnimationTree:
 	if _library == null:
 		_library = _build_library(player)
 	player.add_animation_library(LIBRARY, _library)
-	return _tree(model, player, _build_state_machine())
+	var tree := _tree(model, player, _build_state_machine())
+	tree.set(CLIMB_SCALE_PARAMETER, 0.0)
+	tree.set(CRAWL_CLIMB_SCALE_PARAMETER, 0.0)
+	return tree
 
 
 ## The same for the headliner: its five clips and its own machine (`STATE_MOVE` walks or stands,
@@ -162,6 +196,19 @@ static func release() -> void:
 	_library = null
 	_boss_library = null
 	_warm.clear()
+
+
+## Where in a climb clip (seconds) a zombie at `point` is on `gate`'s way, going `way` (1 in, -1
+## out). The way is cut as the clip is, so a thinner wall only takes fewer metres along the sill.
+static func climb_time(gate: ZombieGate, point: Vector3, way: float = 1.0) -> float:
+	var held := gate.thickness * 0.5 + ZombieGate.BODY_CLEARANCE
+	var depth := gate.depth_of(point) * way
+	var frame := CLIMB_RISE + (CLIMB_OVER - CLIMB_RISE) * (depth + held) / (2.0 * held)
+	if depth < -held:
+		frame = CLIMB_RISE * (1.0 + (depth + held) / ZombieGate.CLIMB_RAMP)
+	elif depth > held:
+		frame = CLIMB_OVER + (CLIMB_FRAMES - CLIMB_OVER) * (depth - held) / ZombieGate.CLIMB_RAMP
+	return clampf(frame, 0.0, CLIMB_FRAMES) / CLIMB_FPS
 
 
 ## The ground speed a look's locomotion clips cover at their authored rate, per walker's: the
@@ -274,7 +321,19 @@ static func _build_state_machine() -> AnimationNodeStateMachine:
 	machine.add_node(STATE_CRAWL_STAGGER, _clip_node(CRAWL_STAGGER_CLIP))
 	machine.add_node(STATE_CRAWL_DIE, _clip_node(CRAWL_DEATH_CLIP))
 	machine.add_node(STATE_TEAR, _tear_node(LIBRARY))
+	machine.add_node(STATE_CLIMB, _seek_node(CLIMB_CLIP))
+	machine.add_node(STATE_CRAWL_CLIMB, _seek_node(CRAWL_CLIMB_CLIP))
+	_blend(machine, STATE_MOVE, STATE_CLIMB)
+	_blend(machine, STATE_CRAWL, STATE_CRAWL_CLIMB)
 	return machine
+
+
+## The two states blend into each other (`ZombieView` travels between them).
+static func _blend(machine: AnimationNodeStateMachine, a: StringName, b: StringName) -> void:
+	for ends: Array in [[a, b], [b, a]]:
+		var transition := AnimationNodeStateMachineTransition.new()
+		transition.xfade_time = CLIMB_BLEND
+		machine.add_transition(ends[0], ends[1], transition)
 
 
 static func _build_boss_machine() -> AnimationNodeStateMachine:
@@ -297,6 +356,18 @@ static func _build_boss_machine() -> AnimationNodeStateMachine:
 static func _tear_node(library: StringName) -> AnimationNodeBlendTree:
 	var tree := AnimationNodeBlendTree.new()
 	tree.add_node(&"clip", _clip_node(TEAR_CLIP, library))
+	tree.add_node(&"seek", AnimationNodeTimeSeek.new())
+	tree.add_node(&"scale", AnimationNodeTimeScale.new())
+	tree.connect_node(&"seek", 0, &"clip")
+	tree.connect_node(&"scale", 0, &"seek")
+	tree.connect_node(&"output", 0, &"scale")
+	return tree
+
+
+## A clip behind a seek and a time scale, which `attach` stops: it is where the last seek put it.
+static func _seek_node(clip: StringName) -> AnimationNodeBlendTree:
+	var tree := AnimationNodeBlendTree.new()
+	tree.add_node(&"clip", _clip_node(clip))
 	tree.add_node(&"seek", AnimationNodeTimeSeek.new())
 	tree.add_node(&"scale", AnimationNodeTimeScale.new())
 	tree.connect_node(&"seek", 0, &"clip")
