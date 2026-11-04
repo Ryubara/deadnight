@@ -95,6 +95,32 @@ The nights are longer, so they earn twice the points; every share is inside the 
 (round 10 to 13, a mix of walls) to the second boss night at 15, as in the original, where a player of this skill dies
 between 8 and 15.
 
+## 5,000 flat, once a weapon (#909)
+
+The maintainer, playing round 12 with three bots, saw the bench ask 3,000 for his second weapon and said it should
+cost 5,000 every time, and that a weapon can be re-cut once "for now". **Where the price grew:** the section "The step
+keeps the bench honest" above. #435 chose 1,500 plus a step of 1,500 for each weapon already re-cut
+(`UpgradeTuning.price_step`) because the first runs, with one flat price and no stopping point, let a strong solo
+player re-cut four weapons a night; then the carry (#566) added `PlayerState.recuts_lost` so that giving a weapon up
+did not make the next re-cut cheaper. Both came from the model's behaviour, and the genre's own station (5,000 once
+per weapon, the first row of this page) was set aside on the note that "the price barely matters". The price was the
+maintainer's to set. Now it is the item's alone (`upgrade_weapon`, 5,000), `price_step` and `recuts_lost` are gone
+(the rules snapshot is version 15), and the refusal for a re-cut weapon was already there (`ALREADY_OWNED`, the
+bench's `recut_done`); its card now says why.
+
+The simulator and the bots read the price from the item, so they follow with no change of their own: a modelled player
+saves for 5,000 (`saves_for`), re-cuts one weapon (two when strong), and the bots' `re_cuts` still counts weapons.
+Gate cells (60 nights, seed 4000; weak solo, average 1, 2, 4 and 8, strong solo), the baseline taken from `main`
+(`0fe9a1ff`) before any edit:
+
+| | Medians | Gate |
+| --- | --- | --- |
+| `main`, 1,500 and the step | 5 / 13 / 15 / 16 / 18 / 18 | passes |
+| 5,000 flat | 5 / 11 / 14 / 16 / 17 / 17 | passes (every median inside its range; no retune) |
+
+The average player's re-cut comes later (it needs 5,000 saved), which costs a round or two in the middle cells, as
+this page said it would ("a dearer re-cut costs them things they never needed").
+
 ## Traps the model fell into (and the policy that fixed them)
 
 - **A shopping list is read again at every break.** The re-cut can be bought for another weapon, so the modelled player
@@ -115,7 +141,8 @@ between 8 and 15.
 ## Open
 
 - Only the hearty tonic has an effect; second wind, quick hands and fleet are entries with no effect and no machine.
-- One re-cut a weapon. A second step (the later games' repack) is a follow-up if weapons need to keep up past round 20.
+- One re-cut a weapon, the maintainer's rule "for now" (#909). A second step (the later games' repack) is a follow-up
+  if weapons need to keep up past round 20.
 - Hearty may want more (+75 or +100) once the model has blows that scale with health; the gate does not ask for it.
 
 ## Sources

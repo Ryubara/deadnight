@@ -3,6 +3,9 @@ extends GdUnitTestSuite
 ## weapon the server found in the buyer's hand and the tuning allows, and named in the purchase.
 ## The hearty tonic beside it: the first perk with an effect, more health.
 
+## What a re-cut costs, every time (#909).
+const RECUT_PRICE := 5000
+
 var _rules: GameRules
 var _log: RulesFixture
 
@@ -35,6 +38,28 @@ func test_a_re_cut_costs_the_price_and_names_the_weapon() -> void:
 	assert_int(_rules.points_of(1)).is_equal(10200 - price)
 	var made := _log.of(&"purchase_made")[0]
 	assert_str(made["detail"]["upgrade"]).is_equal("rifle")
+	assert_array(_rules.players[1].upgraded).contains_exactly([&"rifle"])
+
+
+func test_a_re_cut_costs_5000_for_the_first_the_second_and_the_third_weapon() -> void:
+	# The maintainer's rule (#909): 5000 flat; the price did not grow with the weapons re-cut.
+	_begin(RECUT_PRICE * 3)
+	var item := RulesFixture.tuning().economy.item(&"upgrade_weapon")
+	assert_int(item.price).is_equal(RECUT_PRICE)
+	for weapon: StringName in [&"rifle", &"pistol", &"shotgun"]:
+		var before := _rules.points_of(1)
+		assert_int(_rules.price_of(&"upgrade_weapon", 1)).is_equal(RECUT_PRICE)
+		assert_int(_cut(weapon)).is_equal(GameRules.BuyResult.OK)
+		assert_int(before - _rules.points_of(1)).is_equal(RECUT_PRICE)
+	assert_array(_rules.players[1].upgraded).contains_exactly([&"rifle", &"pistol", &"shotgun"])
+
+
+func test_a_second_re_cut_of_one_weapon_is_refused_and_costs_nothing() -> void:
+	_begin(RECUT_PRICE * 3)
+	assert_int(_cut(&"rifle")).is_equal(GameRules.BuyResult.OK)
+	var before := _rules.points_of(1)
+	assert_int(_cut(&"rifle")).is_equal(GameRules.BuyResult.ALREADY_OWNED)
+	assert_int(_rules.points_of(1)).is_equal(before)
 	assert_array(_rules.players[1].upgraded).contains_exactly([&"rifle"])
 
 

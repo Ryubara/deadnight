@@ -109,7 +109,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 
 | Group | Ids | Notes |
 | --- | --- | --- |
-| UI | `ui_hover`, `ui_focus`, `ui_tick`, `ui_press`, `ui_back`, `ui_push`, `ui_pop` | relay clacks and a rising or falling film whoosh; hover and focus together make one sound |
+| UI | `ui_hover`, `ui_focus`, `ui_tick`, `ui_press`, `ui_back`, `ui_confirm`, `ui_tab`, `ui_select`, `ui_toggle_on`, `ui_toggle_off`, `ui_refuse`, `ui_push`, `ui_pop`, `ui_sign_on` | the menu's sound language (#894): a marquee bulb, a ticket punch and tear, a relay, a slide projector, a rocker switch, a shutter and the neon sign; which control plays which is the table `UiSoundTable`, the rules that keep it quiet are `UiSounds` ([the menu's sounds](../research/menu-sfx.md)) |
 | Guns | `shot_<gun>`, `tail_<gun>` for the pistol (the revolver), SMG, rifle and shotgun; `shot_flare`, `burst_flare`; `dry_fire`, `weapon_swap`; for the PPSh, M249, M4A1, .50 calibre, MP5, 870 pump and dual pistols (`ppsh`, `m249`, `m4a1`, `fifty_cal`, `mp5`, `pump_870`, `dual_pistols`) `shot_`, `tail_`, `equip_` and `dry_` plus the id | see [The guns](#the-guns) |
 | The energy weapons | `shot_ray`, `bolt_ray` (loops), `burst_ray`, `reload_ray_cell_out/_in`, `equip_ray`; `shot_freeze`, `freeze_hit`, `freeze_creak`, `freeze_thaw`, `freeze_shatter`, `reload_freeze_out/_in`, `equip_freeze` | the ray gun and the freeze gun: [below](#the-energy-weapons-and-the-re-cut-layer) |
 | The re-cut layer | `recut_layer`, `recut_blast`, `recut_shock`, `recut_fire` | what every re-cut weapon adds to its shot: [below](#the-energy-weapons-and-the-re-cut-layer) |
