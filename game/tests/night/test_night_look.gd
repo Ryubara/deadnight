@@ -111,6 +111,17 @@ func test_the_saved_look_is_worn_by_the_player_in_the_night() -> void:
 	await _leave(screen)
 
 
+func test_the_mouth_chosen_in_the_wardrobe_is_the_mouth_in_the_night() -> void:
+	var look := _own_look()
+	look.parts[&"mouth"] = &"smirk"
+	_save(look)
+	var screen := await _enter_night()
+	var shown := _shown(screen.night.player().get_node("Model"))
+	assert_array(shown).contains(["mouth__smirk"])
+	assert_array(shown).not_contains(["mouth__smile"])
+	await _leave(screen)
+
+
 func test_the_default_look_is_worn_when_nothing_was_saved() -> void:
 	var screen := await _enter_night()
 	_assert_wears(screen.night.player(), CharacterLook.default_look())
