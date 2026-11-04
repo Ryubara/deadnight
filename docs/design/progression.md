@@ -680,6 +680,22 @@ players' rows are untouched by it (the icon and level beside a name are #1077's)
   still audible. Nothing is sound-only: the cards are the picture. This replaces the first proposal's ticket punch and
   bells for level and tier cues.
 
+### Built (#1064)
+
+The lane is `PopupLane` (`game/ui/hud/`), a HUD part in the night and an overlay of the router's layer in the
+menus (`MenuPopups`); how it works, and what the tests measure, is
+[the research page](../research/popup-lane.md). The choices the design page left open:
+
+- **The tier is the level's card made longer** (one card for the moment, with the marquee's bulbs chasing along its
+  edges), not a second card.
+- **Punch holes** are the levels left to the next unlock (one more punched for each level nearer, eight at most);
+  **the next unlock** reads like everywhere a level sits beside a name: its icon, its level, a little padding, its name.
+- **The lane never goes over the crosshair.** Under a round banner (and a boss bar) there is room for fewer cards on a
+  small canvas: the rest wait, in order, until the banner leaves or a card does.
+- **A finished challenge** is a card of the lane (so the prompt on the left edge says only the steps) unless the player
+  turned the cards off: then the prompt says the finish as before.
+- **Setting:** `Level-up popups` in Settings, Accessibility: All, Big ones only (level, tier, challenge), Off.
+
 ## Voice lines
 
 The maintainer: **new voice lines for progression events, heard by all clients**, **multiple celebration lines for
