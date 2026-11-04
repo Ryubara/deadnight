@@ -34,8 +34,8 @@ enum Kind {
 
 @export_group("Reward")
 ## Paid to every player on their feet when the round is cleared, on top of the round bonus.
-@export_range(0, 1000, 1, "or_greater", "suffix:pts") var reward_base: int = 200
-@export_range(0, 1000, 1, "or_greater", "suffix:pts") var reward_per_round: int = 40
+@export_range(0, 1000, 5, "or_greater", "suffix:pts") var reward_base: int = 200
+@export_range(0, 1000, 5, "or_greater", "suffix:pts") var reward_per_round: int = 40
 
 
 ## The fields of `special_round_announced` for this special as round `round_number`, in a break of
