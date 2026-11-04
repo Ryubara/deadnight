@@ -52,6 +52,11 @@ var flare_pitch := 0.0
 var trapped := false
 ## A line to call out, sent once by the client (`BotSay`): the action, or empty for none.
 var say := {}
+## Points the legs must not step toward while the bot is within `keep_out_reach` metres of them:
+## its own live grenades (#872). A reflex heading is chosen away from them already; this is for the
+## steps the legs take on their own (giving way to a person, which walked a bot into its blast).
+var keep_out: Array[Vector3] = []
+var keep_out_reach := 0.0
 ## A short reason, for the ring buffer of decisions.
 var note := ""
 

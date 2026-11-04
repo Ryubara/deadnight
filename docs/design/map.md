@@ -93,7 +93,7 @@ Besides the doors, the lot sells at fixed spots: the markers of `ShopSpots` in t
 `shop_id`, read by `NightWorld.shop_spots()`. A player in reach (3.2 m, `NightTuning.use_reach`) of one is offered what
 it sells on the prompt card and buys with `interact`, the same press as a door; a door in reach wins, then the nearest
 spot with something to sell. What a spot offers comes from the rules' tuning, so the price is never in the scene (the
-plaque only names the weapon).
+plaque shows the weapon's silhouette, never its name: [wall silhouettes](../research/wall-silhouettes.md)).
 
 | Spot | Where | Sells | Why there |
 | --- | --- | --- | --- |
@@ -105,7 +105,7 @@ plaque only names the weapon).
 | Swift Rescue machine | the midway, on the west fence at `(-15.2, 11)`, facing east | `tonic_swift_rescue`: faster revives, and a solo self-revive ([perks](perks.md)) | opens with the concession: a team's first extra |
 | Quick Load machine | the projection booth, on the east wall at `(5.35, 30.5)`, facing west | `tonic_quick_load`: faster reloads | past the booth's door (750), a few steps from the bench |
 | Double Shot machine | the generator yard, against the south fence at `(24, 37.2)`, facing north | `tonic_double_shot`: faster fire | past the yard's door (500), the far side of the lamps |
-| Reload Shock machine | the back lot, against the south fence at `(-20, 37.2)`, facing north | `tonic_reload_shock`: a shock when you reload | in the dark area (1,250): a reason to go there |
+| Reload Shock machine | the back lot, against the south fence at `(-20, 37.2)`, facing north | `tonic_reload_shock`: a shock when you reload | in the dimmed, failing-lit area (1,250): a reason to go there |
 | Grenade rack | the stand's east wall, in the alley on the midway side, plaque at `(10.26, 3.0)`, spot at `(11.4, 3.0)` | `grenades`: as many as fit the pack (two a purchase, up to five), at their share of the price | a place to restock the throwable, opened with the concession; the stand's front wall is full (windows, door, shotgun, breaker) |
 | Third Holster machine (the plaza's) | the middle of the plaza's south wall, at `(0, 57.2)`, facing the gate, spot at `(0, 56.0)` | `tonic_third_holster`: a third weapon ([the perks](perks.md)) | the last door's own machine (2,000), at the far end of the court from its gate: the dearest perk behind the dearest door |
 | Ammunition lockers (5) | the avenue (field), the stand (its north-east corner), the midway, the yard, the back lot | rounds for the weapon in hand, as many as fit | one in the open from the start, one more in each area that opens, so a fight is never a long walk from rounds |
@@ -138,8 +138,9 @@ m north so the fountain's spot is farther than a reach from it.
 
 A locker never sells the crowbar anything (it never runs dry). The tests (`test_shop_spots.gd`) hold every spot to a
 real shop item, to the lot, and farther than a reach from every door slab and from every spot of another kind, so one
-press never means two things. The lockers are a green crate with a yellow band, the wall weapons an amber plaque, all
-lit by their own colour so they read in the dark (captures in the pull request).
+press never means two things. The lockers are a green crate with a yellow band, the wall weapons an amber plaque with
+the weapon's own silhouette on it in dark brown (no weapon text from a distance; the prompt card gives the name and
+the price from reach), all lit by their own colour so they read in the dark (captures in the pull request).
 
 ## The ticket plaza
 
@@ -154,7 +155,8 @@ and a small one, a dumpster, crates, tyres), so nothing of the lot lies past it 
 | What | Where |
 | --- | --- |
 | The gate | the door's slab at `(0, 38)`, 4 m, from the midway |
-| The ticket booths and canopy | two booths at x = ±6, z 44 to 46.4, under an 18 m canopy at 3.6 m, queue barriers between them: a lap round both booths is about 45 m, a place to run round, not a kiting ground (the loops table is below) |
+| The ticket booths and canopy | two booths at x = ±6, z 44 to 46.4, under an 18 m canopy at 3.6 m, queue barriers between them: a lap round both booths is 52 m on the dead's walking mesh (the loops table is below) |
+| The carton rows | two rows of four carton stacks (1.40 m) across the south half at z 51.6, x 1.2 to 5.7 each side, with the machine's line clear between them ([#855](https://github.com/Ryubara/deadnight/issues/855)): the machine is reached round them from both sides, and they add a lap of 30 m round the rows and one of 60 m round the rows and the booths |
 | The marquee | the east wall, `(12.4, 50.6)` |
 | The perk machine | against the south wall at `(0, 57.2)`, facing the gate; its block, `Road/PerkMachine`, runs to the wall |
 | The wreck | nose-in at `(-9, 55.7)`: its headlights are the `battery` circuit, the only light on the lot with the tank dry, shining up the court |
@@ -224,9 +226,17 @@ near a wall or a fence is placed touching it or a body's width off, never in bet
 | Concession, midway, back lot, field | about 120 m | the back lot |
 | Round the generator cage (open on two sides) | about 50 m | the yard |
 | Round the booth | about 85 m | the booth |
-| Round the ticket booths | about 45 m | the road door |
+| Round the ticket booths | 52 m | the road door |
+| Round the plaza's carton rows; round the rows and the booths | 30 m; 60 m | the road door |
 | Back lot's wreck lanes | three of 30 to 40 m | the back lot |
 | Car rows: aisle to aisle behind a row | 20 to 60 m | the start |
+| Round the west flank's wreck row; the east flank's | 44 m; 44 m | the start |
+| Round each pair of the south strip's kerb walls (west; east) | 45 m; 44 m | the start |
+| Round the yard's carton row and container B | 41 m | the yard |
+
+The lengths without "about" are measured and held by `test_lot_loops.gd`: the shortest lap a pack can cut to, on a
+walking mesh for the dead's agent (0.5 m) with every door sold, through waypoints at the outside corners of what the
+loop circles. The others are from the plan.
 
 A loop under about 40 m is too short for a pack to string out; the counter loop is the exception, for one player
 buying time. Two loops share the concession, so a team splits across them and the stand is never a dead end. The
@@ -236,8 +246,12 @@ only dead ends are deliberate: the midway's two alleys (6 m by 12 m, dark, for a
 
 - **The avenue** (x = 0, 35 m of cleared ground from the apron to the stand): the longest clear line, lit. The first
   rounds are shot down it.
-- **The field's flanks**: open ground beyond the outer rows, with the playground and the picnic shelter as the only
-  cover. The dead are seen coming from far off, but only the head and shoulders show over the cars.
+- **The field's flanks**: open ground beyond the outer rows, with the playground, the picnic shelter and a row of four
+  wrecks on each flank ([#855](https://github.com/Ryubara/deadnight/issues/855)). The wrecks are 1.3 m, under the
+  shoulder camera, so the breaches behind them stay in view; the dead come round the rows' ends. The dead are seen
+  coming from far off, but only the head and shoulders show over the cars.
+- **The south strip**: four kerb walls (1.0 m) in two pairs, 5 to 6 m in front of the fence: low cover to shoot over,
+  with a lane behind.
 - **Behind the car rows**: cars are 1.65 m tall. The shoulder camera at a level view sits 1.55 m up, below a roof, so
   it looks through the gaps, not over the cars; tilted down about 8 degrees (the arm swings the camera up by
   `2.8 x sin(pitch)`) it clears the roofs and sees the aisle behind. A standing player's head and shoulders show above
@@ -252,7 +266,7 @@ only dead ends are deliberate: the midway's two alleys (6 m by 12 m, dark, for a
 ## Light and dark
 
 The generator powers every `powered_light` (a node group): the field's lamps, the stand and booth, the yard, the
-projector beam, the neon in the back lot. The moon is dim and blue, so unlit ground is dark, not black.
+projector beam, the back lot's lights. The moon is dim and blue, so unlit ground is dark, not black.
 
 The night's look is the `Lighting` node: a near-black blue sky with stars and a moon hanging over the screen, fog
 that thickens past 25 m, a dim cool ambient and a cool moon light, so the screen is the brightest thing on the lot and
@@ -267,7 +281,7 @@ the lamps are the warm pools in it ([night environment](../research/night-enviro
 | Midway | 1,104 m² | 487 m² (44%) | two dim lamps and the booth's front light, and the field's posts at its north end; the alleys dark |
 | Booth | 120 m² | 110 m² (92%) | two lights, and the projector beam (the brightest thing on the map) |
 | Generator yard | 1,932 m² | 463 m² (24%) | four work lamps and the generator's glow, the generator set in its cage (its day tank, stack and running light show over the walls): lit while the tank has fuel, and the most to lose |
-| Back lot | 1,932 m² | 580 m² (30%) | posts of the field's circuit round its edge (476 m²) and one flickering neon sign (104 m²) |
+| Back lot | 1,932 m² | 580 m² (30%) | five lamp posts and the neon sign, dimmed and failing like a dying battery ([below](#the-back-lots-failing-lights)); dark until its breaker is thrown |
 | Ticket plaza | 640 m² | 274 m² (43%) | the ticket kiosk, and a wreck's headlights (127 m², the only ground lit with the tank dry) |
 
 "Lit" is the rules' word, not the eye's: ground within 6 m (`LightTuning.lamp_reach`) of a lamp whose circuit is on,
@@ -322,6 +336,11 @@ What is solid changes the moment the rules say so; only the drawing moves, with 
 A jump of several boards (a late join, a snapshot catching up) moves only the last board that changed; the others snap.
 Binding to the rules at the start of a night snaps.
 
+**The ghost of a missing board.** Every barricade on both maps (these six breaches, the second map's eleven windows and
+its side breach) draws a faint outline of each board it is missing, so a player sees at a glance what needs mending
+([the look and its cost](../research/board-outline.md)). One shape a slot, from the barricade's own boards; planks go
+back from the bottom up, so the outline is always the top slots and each plank nailed on takes the lowest one away.
+
 ### Which lamps hang on which circuit
 
 Each `Lamps` group carries `metadata/circuit`, and every light below it takes that circuit. Four are the generator's
@@ -329,10 +348,10 @@ Each `Lamps` group carries `metadata/circuit`, and every light below it takes th
 
 | Circuit | Lamps |
 | --- | --- |
-| `screen_lot` (on at the start) | the field's 28 lamp posts (six of them the dim [apron lamps](#the-apron-lamps)), the screen's glow |
+| `screen_lot` (on at the start) | the field's 23 lamp posts (six of them the dim [apron lamps](#the-apron-lamps)), the screen's glow |
 | `concession` | the stand's three interior lights, the midway's two lamps |
 | `booth` | the projector beam, the booth's two lights |
-| `back_lot` | the neon sign, the ticket kiosk in the ticket plaza |
+| `back_lot` | the back lot's five lamp posts and the neon sign (dimmed and failing, [below](#the-back-lots-failing-lights)), the ticket kiosk in the ticket plaza (steady) |
 | `mains` | the yard's four work lamps and the generator's glow: wired straight to the generator with no switch, so lit while the tank has fuel and black when it is dry |
 | `battery` | the wreck's headlights in the ticket plaza: not the generator's, they burn all night |
 
@@ -340,10 +359,11 @@ The rules decide, the lamps follow. The zombies' lit pace asks `GeneratorState` 
 `LotLamps.lit_at`: a lamp within 6 m whose circuit is on and whose tank has fuel), never a light node, so a server
 that draws nothing agrees with every client. The client's `LotLamps` mirrors `circuit_changed`, `fuel_empty`,
 `fuel_restored` and each frame's `fuel`: a circuit that goes off hides its lights and darkens its posts' bulbs; in the
-tank's last tenth (`brownout_fraction`) the lights sag and drop out in a flicker that is a function of the frame's
-tick and the lamp's number (no clock, no random draw), so a recording and a test see the same lights; at an empty tank
-they go out. Only the screen's glow outlasts the generator, at 30% (`afterglow`), and it lights no ground for the
-dead. The flicker is only the picture: the lit pace stays whole until the tank is empty.
+tank's last tenth (`brownout_fraction`) the lights sag and dip in the slow events of `FailingBattery.brownout` (a sag,
+a stutter, a dropout, one at most every 3.6 s, deeper the lower the tank, never more than three flashes a second), a
+function of the frame's tick and the lamp's number (no clock, no random draw), so a recording and a test see the same
+lights; at an empty tank they go out. Only the screen's glow outlasts the generator, at 30% (`afterglow`), and it
+lights no ground for the dead. The flicker is only the picture: the lit pace stays whole until the tank is empty.
 
 ![The lot from above: the start, every circuit on, a dry tank](map-circuits.png)
 
@@ -432,19 +452,20 @@ go dark when the tank runs dry. A player choosing what to give up wants the grou
 
 | Circuit | Lights | Ground it lights | Draw a minute, round 1 / 30 | Ground per unit of draw |
 | --- | --- | --- | --- | ---: |
-| `screen_lot` | the field's posts and the screen's glow | 1,947 m² of the field, 476 in the back lot, 169 in the midway, 16 elsewhere | 3.6 / 6.7 | 724 m² |
+| `screen_lot` | the field's posts and the screen's glow | 1,900 m² of the field, 113 in the midway, 43 elsewhere | 3.6 / 6.7 | 571 m² |
 | `concession` | the stand, the midway's two lamps | 217 m² in the stand, 206 m² in the midway, 69 m² outside them | 3.0 / 5.6 | 164 m² |
 | `booth` | the booth and the projector beam | 110 m² in the booth, 168 m² in the midway | 4.8 / 9.0 | 58 m² |
-| `back_lot` | the neon sign, the ticket kiosk | 104 m² in the back lot, 112 m² in the plaza | 4.2 / 7.9 | 51 m² |
+| `back_lot` | the back lot's posts and the neon sign, the ticket kiosk | 549 m² in the back lot, 116 m² in the plaza, 103 m² through its walls (the field, the midway) | 4.2 / 7.9 | 183 m² |
 | `mains` | the yard's four work lamps and the generator's glow | 447 m² of the yard | none: the idle draw (1.8 / 3.4) | |
 | `battery` | the wreck's headlights | 127 m² of the plaza | none: not the generator's | |
 
-So the back lot and the booth go dark first, and the field's circuit last, and a team that does it that way keeps most
-of the ground it can use. A tank with only the field's circuit on lasts 18.5 minutes of full-rate burn at round 1 and
-9.9 at round 30; with every circuit on, 5.7 and 3.1 (the breaks burn half). When it runs low (the last tenth,
-`brownout_fraction`) the lamps sag and flicker, and when it is empty every generator lamp is out: the screen keeps an
-afterglow for the eye but lights no ground for the rules, the yard goes black, and the plaza's headlights are the only
-lit ground on the lot, 60 m south of the field's fence. Every zombie is then 25% faster, everywhere.
+So the booth goes dark first, then the stand and the back lot, and the field's circuit last, and a team that does it
+that way keeps most of the ground it can use. A tank with only the field's circuit on lasts 18.5 minutes of full-rate
+burn at round 1 and 9.9 at round 30; with every circuit on, 5.7 and 3.1 (the breaks burn half). When it runs low (the
+last tenth, `brownout_fraction`) the lamps sag and flicker, and when it is empty every generator lamp is out: the
+screen keeps an afterglow for the eye but lights no ground for the rules, the yard goes black, and the plaza's
+headlights are the only lit ground on the lot, 60 m south of the field's fence. Every zombie is then 25% faster,
+everywhere.
 
 ### Where the dead come from as the lot opens
 
@@ -494,7 +515,7 @@ the side the player arrives from, and four capsules abreast need 2.8 m (2 x 0.35
 | Concession (350) | the stand's front, (0, -3.6) | 3 m | 1.6 m (the stand's light): bought in the light | 64 m |
 | Generator yard (500) | the gate in the field's south fence, (40, -4) | 4 m | 17 m (the work lamps); the field's nearest post is 11 m away: bought in the dark | 32 m |
 | Booth (750) | the booth's front, (0, 22.2), in the midway | 3 m | 0.1 m (the booth's light) | 79 m |
-| Back lot (1250) | the gate in the field's south fence, (-40, -4) | 4 m | 38 m (the neon sign); the field's post is 5 m away: bought at the edge of the field's light | 32 m |
+| Back lot (1250) | the gate in the field's south fence, (-40, -4) | 4 m | 5.4 m (a post on the back lot's circuit, off until its breaker, 4.5 m east of the gate, is thrown): bought in the dark | 32 m |
 | Plaza (2000) | the plaza's gate, (0, 38) | 4 m | 6.0 m (the kiosk): at the edge of lit | 89 m |
 
 The yard's and the back lot's gates are the odd ones. They stand in the field's far south fence, 11 m and 5 m from the
@@ -618,11 +639,11 @@ size where it stands in the way).
 
 | Where | What |
 | --- | --- |
-| Field | the 76 parked cars: the lot's own 1950s sedan (`car.tscn`, five paints picked from where each car stands, never random); the four wrecks on the flanks; ten trees on the flanks and beside the screen; junk against the perimeter fence (tyres, sofas, a skip, pipes, drums); barriers on the north fence beyond the last car; low junk on the south strip; litter in the aisles |
+| Field | the 76 parked cars: the lot's own 1950s sedan (`car.tscn`, five paints picked from where each car stands, never random); a straight row of four wrecks on each flank and one wreck among the cars (`FIELD_WRECKS` in the generator); four kerb walls on the south strip (`KERB_WALLS`, concrete blocks); ten trees on the flanks and beside the screen; junk against the perimeter fence (tyres, sofas, a skip, pipes, drums); a sofa in the open between the east cars and the wrecks; barriers on the north fence beyond the last car; low junk on the south strip; litter in the aisles |
 | Midway | a dumpster at the end of each alley, cartons where crate stack A was, a small container where B was, cones at the road gate |
-| Generator yard | two pairs of containers where A and B were, six drums in two touching rows where the drum row was, cartons and pallets, two gas bottles on the generator cage's north wall, a water tank and tyres on the east fence; pipes on the north fence, a skip by the fuel tanks, hoardings and drums on the south fence, crates on the cage's south wall, a tree, litter |
+| Generator yard | two pairs of containers where A and B were, six drums in two touching rows where the drum row was, cartons and pallets, two gas bottles on the generator cage's north wall, a water tank on the east fence, a row of nine carton stacks in the east third, 2.6 m short of container B, and tyres in the south-east corner; pipes on the north fence, a skip by the fuel tanks, hoardings and drums on the south fence, crates on the cage's south wall, a tree, litter |
 | Back lot | the wreck rows are the kit's Broken Car (`wreck.tscn`); tyres, debris, a spilt drum |
-| Ticket plaza (`Road`) | crates and litter by the kiosks; queue barriers to the kiosks, a tree in each north corner, street lights on its side walls (models only, no light); against the end wall, either side of the machine: a broken-down wreck nose-in (the battery headlights sit at its front), a small container, crates, a dumpster, a container and tyres, with cones and planks in front |
+| Ticket plaza (`Road`) | crates, tyres and litter by the kiosks; queue barriers to the kiosks, a tree in each north corner, street lights on its side walls (models only, no light); two rows of carton stacks across the south half; against the end wall, either side of the machine: a broken-down wreck nose-in (the battery headlights sit at its front), a small container, loose cartons, a dumpster and a container, with cones and planks in front |
 
 Rules the placement keeps, all checked by the world tests:
 
@@ -636,12 +657,32 @@ Rules the placement keeps, all checked by the world tests:
   all, and from low walls (the west alley's drums stand at its open end, 7 m from the dumpster): a barrier by a
   low wall, or a climbable wreck beside it, failed `test_drive_in_jump_reach.gd`. The wreck's block is one box
   1.3 m tall (no step at the bonnet), so it cannot be climbed from the ground.
+- **No step to a top over the reach, and no inside corner of one.** A prop taller than the body's reach (1.25 m: a
+  wreck, a carton stack at 1.40 m, a container) has nothing a body stands on within a sprint-jump (6 m) of it, and two
+  of them meet square and end to end, never in an L. The body got onto a wreck from the floor at the inside corner of
+  a car turned across a row's end, and onto the plaza's containers, dumpster, machine and wreck from two crates and a
+  stack of tyres beside them; the container's back edge, against the wall, was a roost (no blow from ten dead in 40
+  s). `test_plaza_escape.gd` fails on any standing place over the reach in the plaza
+  ([#855](https://github.com/Ryubara/deadnight/issues/855)).
 - **No slots.** Props stand against a wall or touch each other, or leave at least a passage's width: nothing on the
   map is single file, and no prop stands in a door, a breach or its apron, a camera passage or a shop spot.
 
 Capture views for the props, at the player's eye height (`--view=`): `yard_drums`, `yard_east`, `backlot_rows`,
 `alley`, `midway_court`; and the ticket plaza's: `plaza`, `plaza_east`, `plaza_west`, `perk`, `door`, and the
 booth's window, `roost`.
+
+### The back lot's failing lights
+
+The back lot is lit but dimmed (Deadnight #851, the maintainer's decision): its five lamp posts (`Lamp13` to `Lamp17`,
+which were the field's) and the neon sign hang on the `back_lot` circuit and burn at 60% of a lamp's light, in a flicker
+like a battery going out and struggling to stay on: slow sags, a stutter of two quick dips, a dropout of a third of a
+second with a stumbling recovery, one event at most every 3.6 s and never out. It is a seeded function of the tick
+(`FailingBattery`), so a recording and a test see the same lights, and it is only the picture: the ground is lit for the
+rules while the circuit is on. It is not a strobe: the most any second holds is three flashes of one lamp and two of the
+lot (the common photosensitivity guidance), and the lights never switch off. The back lot's price and role stay as the
+table above has them: 580 m² lit (30%), a circuit that costs 4.2 a minute at round 1, a door bought in the dark. The
+plaza's kiosk and marquee, on the same circuit, burn steady. How it is built, measured and followed by a sign:
+[the failing battery](../research/failing-battery.md).
 
 ## Not yet decided
 

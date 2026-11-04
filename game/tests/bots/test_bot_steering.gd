@@ -38,6 +38,29 @@ func test_it_runs_from_the_dead_not_toward_them() -> void:
 		assert_float(heading.dot(away)).is_greater(0.5)
 
 
+func test_a_heading_toward_a_point_to_keep_out_of_is_no_way_out() -> void:
+	# The dead come from the south and a live grenade lies 5 m north (#872): straight away from the
+	# dead is straight at the blast. With the point kept out of, the heading takes the bot no nearer
+	# to it; without, it runs at it.
+	var level := await _hall()
+	var steering := BotSteering.new(level)
+	var here := _arena.centre(3, 3)
+	var blast := here + Vector3(0.0, 0.0, -5.0)
+	var dead := _threat(here + Vector3(0.0, 0.0, 2.0), 6.0)
+	var free := steering.pick(here, dead, Vector3.ZERO, Vector3.ZERO)
+	assert_float(free.dot(Vector3(0.0, 0.0, -1.0))).is_greater(0.5)
+	steering.keep_out = [blast]
+	steering.keep_out_reach = 8.0
+	for _i in 3:
+		var kept := steering.pick(here, dead, Vector3.ZERO, Vector3.ZERO)
+		if kept != Vector3.ZERO:
+			var end := here + kept * BotSteering.STEP
+			var before := Vector2(here.x - blast.x, here.z - blast.z).length()
+			assert_float(Vector2(end.x - blast.x, end.z - blast.z).length()).is_greater_equal(
+				before
+			)
+
+
 func test_a_wall_behind_the_bot_bends_the_escape_along_it() -> void:
 	var level := await _hall()
 	var steering := BotSteering.new(level)
@@ -183,8 +206,8 @@ func test_a_far_pull_turns_the_flight_round_a_pack_toward_the_person() -> void:
 	var person := here + Vector3(0.0, 0.0, -30.0)
 	var pack := _pack_between(here, person)
 	var toward := (person - here).normalized()
-	var near := steering.pick(here, pack, toward * BotFightBrain.far_bend(10.0, 8), Vector3.ZERO)
-	var far := steering.pick(here, pack, toward * BotFightBrain.far_bend(40.0, 8), Vector3.ZERO)
+	var near := steering.pick(here, pack, toward * BotRetreat.far_bend(10.0, 8), Vector3.ZERO)
+	var far := steering.pick(here, pack, toward * BotRetreat.far_bend(40.0, 8), Vector3.ZERO)
 	assert_bool(near != Vector3.ZERO and far != Vector3.ZERO).is_true()
 	# The weak pull of a bot beside the person runs straight away; the far one bends it round
 	# (more of the way to the person) and still never closes on the pack.
@@ -197,15 +220,13 @@ func test_a_far_pull_turns_the_flight_round_a_pack_toward_the_person() -> void:
 
 
 func test_the_retreat_bend_grows_with_the_distance_from_the_person() -> void:
-	assert_float(BotFightBrain.far_bend(5.0, 8)).is_equal(BotFightBrain.HOME_BEND)
-	assert_float(BotFightBrain.far_bend(BotFightBrain.FAR_BEND_FROM, 8)).is_equal(
-		BotFightBrain.HOME_BEND
-	)
-	assert_float(BotFightBrain.far_bend(BotFightBrain.FAR_BEND_FULL + 30.0, 8)).is_equal(
-		BotFightBrain.FAR_BEND * 8.0
+	assert_float(BotRetreat.far_bend(5.0, 8)).is_equal(BotRetreat.HOME_BEND)
+	assert_float(BotRetreat.far_bend(BotRetreat.FAR_BEND_FROM, 8)).is_equal(BotRetreat.HOME_BEND)
+	assert_float(BotRetreat.far_bend(BotRetreat.FAR_BEND_FULL + 30.0, 8)).is_equal(
+		BotRetreat.FAR_BEND * 8.0
 	)
 	# One dead (or none) pulls by `FAR_BEND`, and between the two distances the pull is between.
-	assert_float(BotFightBrain.far_bend(100.0, 0)).is_equal(BotFightBrain.FAR_BEND)
-	assert_float(BotFightBrain.far_bend(26.0, 4)).is_between(
-		BotFightBrain.HOME_BEND, BotFightBrain.FAR_BEND * 4.0
+	assert_float(BotRetreat.far_bend(100.0, 0)).is_equal(BotRetreat.FAR_BEND)
+	assert_float(BotRetreat.far_bend(26.0, 4)).is_between(
+		BotRetreat.HOME_BEND, BotRetreat.FAR_BEND * 4.0
 	)

@@ -22,8 +22,12 @@ extends RefCounted
 ##   damage_dealt: shooter_id, target_id, zone, damage, headshot, melee, pellets, health, point,
 ##     weapon_id, dir (the unit way the shot or blow travelled, ZERO for a burst: the view sprays
 ##     blood along it and looks for a wall behind the zombie, `BloodFx`), element (the id of the
-##     element that made the damage, empty for the weapon's own hit)
-##   target_killed: shooter_id, target_id, zone, headshot, melee
+##     element that made the damage, empty for the weapon's own hit), shattered (the hit broke a
+##     frozen zombie: no blood, the pieces are `zombie_shattered`)
+##   target_killed: shooter_id, target_id, zone, headshot, melee, shattered
+##   status_applied: target_id, status (a `StatusDef` id), seconds (left), then what the target is
+##     under now: wire, halts, speed_scale (`StatusBoard.summary_of`)
+##   status_ended: target_id, status, then the same summary
 ##   reload_started: shooter_id, weapon_id, seconds, rounds (how many it will load: all of them at
 ##     the end for a magazine, one at a time for a `reload_by_round` weapon)
 ##   reload_round: shooter_id, weapon_id, ammo, reserve (a by-round reload put one more round in)
@@ -55,6 +59,9 @@ var rng_seed: int = 0
 var world_ray: Callable
 var rules: GameRules
 var lag: LagCompensator
+## The status effects the zombies are under (`StatusBoard`). The rules read it to know that a hit on
+## a zombie shatters (`GameRules.statuses`); this server puts them on and runs them down.
+var statuses := StatusBoard.new()
 
 var _defs: Dictionary[StringName, WeaponDef] = {}
 var _loadouts: Dictionary[int, Dictionary] = {}
@@ -86,12 +93,15 @@ func _init(
 	lag = LagCompensator.new(max_rewind)
 	if rules != null:
 		rules.event_emitted.connect(_on_rules_event)
+		rules.statuses = statuses
 
 
 ## Stops listening to the rules. Call when the night is over.
 func detach() -> void:
 	if rules != null and rules.event_emitted.is_connected(_on_rules_event):
 		rules.event_emitted.disconnect(_on_rules_event)
+	if rules != null and rules.statuses == statuses:
+		rules.statuses = null
 
 
 ## The one way in. Returns the events the action caused, in order.
@@ -164,6 +174,7 @@ func _dispatch(action: Dictionary) -> void:
 			_alive[action["target_id"]] = true
 		CombatAction.UNTRACK_TARGET:
 			_alive.erase(action["target_id"])
+			statuses.forget(action["target_id"])
 		_:
 			_emit(&"action_rejected", {"reason": &"unknown_action"})
 
@@ -376,6 +387,7 @@ func _tick(delta: float) -> void:
 				_emit(&"reload_round", fields)
 			if done:
 				_emit(&"reload_finished", fields)
+	_events.append_array(statuses.step(delta))
 	_step_projectiles(delta)
 	_burn_patches(delta)
 
@@ -466,7 +478,7 @@ func _fire(action: Dictionary) -> void:
 	)
 	for target_id: int in damage:
 		var total: Dictionary = damage[target_id]
-		_hurt(shooter_id, target_id, total, def.is_melee(), def.id, dir)
+		_hurt(shooter_id, target_id, total, def.is_melee(), def.id, dir, def)
 	if def.has_element() and def.is_hitscan():
 		_element_hits(shooter_id, def, damage)
 
@@ -555,24 +567,31 @@ func _hurt(
 	total: Dictionary,
 	melee: bool,
 	weapon_id: StringName,
-	dir: Vector3 = Vector3.ZERO
+	dir: Vector3 = Vector3.ZERO,
+	def: WeaponDef = null
 ) -> void:
 	if rules == null or not _alive.has(target_id):
 		return
 	var head: bool = total["head"]
 	var zone: StringName = Hitbox.HEAD if head else total["zone"]
+	# The weapon that puts a status on does not break it: its own bolt on a frozen zombie keeps it.
+	var keeps: StringName = def.status if def != null and def.has_status() else &""
 	var rules_events := rules.apply(
-		RulesAction.hit(shooter_id, target_id, zone, total["damage"], melee)
+		RulesAction.hit(shooter_id, target_id, zone, total["damage"], melee, keeps)
 	)
 	var health := 0.0
+	var dealt: float = total["damage"]
 	var killed := false
+	var shattered := false
 	var applied := false
 	for event in rules_events:
 		if event["type"] == &"zombie_damaged":
 			applied = true
 			health = event["health"]
+			dealt = event["damage"]
 		elif event["type"] == &"zombie_removed" and event["cause"] == &"killed":
 			killed = true
+			shattered = event.get("shattered", false)
 	if not applied:
 		_events.append_array(rules_events)
 		return
@@ -582,7 +601,7 @@ func _hurt(
 			"shooter_id": shooter_id,
 			"target_id": target_id,
 			"zone": zone,
-			"damage": total["damage"],
+			"damage": dealt if shattered else total["damage"],
 			"headshot": head,
 			"melee": melee,
 			"pellets": total["pellets"],
@@ -590,6 +609,7 @@ func _hurt(
 			"point": total["point"],
 			"weapon_id": weapon_id,
 			"dir": dir,
+			"shattered": shattered,
 			"element": total.get("element", &""),
 		}
 	)
@@ -602,9 +622,43 @@ func _hurt(
 				"zone": zone,
 				"headshot": head,
 				"melee": melee,
+				"shattered": shattered,
 			}
 		)
 	_events.append_array(rules_events)
+	if not killed and def != null and def.has_status():
+		_put_status(target_id, def)
+
+
+## The status `def` puts on a zombie its bolt reached. A status the zombie kind gates
+## (`StatusDef.kind_gated`) goes on only if the kind can take it (`ZombieType.freezable`) and after
+## as many bolts as it needs (`ZombieType.freeze_bolts`): a kind that cannot, and the bolts before
+## the last, only get the lesser status (`StatusDef.for_boss`, a slow); the count is kept as long as
+## that lasts. A zombie already under the status keeps it for the seconds again.
+func _put_status(target_id: int, def: WeaponDef) -> void:
+	var status := StatusCatalog.get_def(def.status)
+	if status == null or not _alive.has(target_id):
+		return
+	if status.kind_gated and not statuses.has(target_id, status.id):
+		var type := rules.tuning.roster.type_of(rules.zombie_type(target_id))
+		var needed := type.freeze_bolts if type != null else 1
+		var bolts := needed
+		if type != null and not type.freezable:
+			bolts = 0
+		elif type != null:
+			bolts = statuses.add_bolt(target_id, status.id, def.status_seconds)
+		if bolts < needed:
+			_put_lesser(target_id, status, def.status_seconds)
+			return
+		statuses.clear_bolts(target_id, status.id)
+	_events.append(statuses.apply(target_id, status, def.status_seconds))
+
+
+## The lesser status of a gated one (a slow), unless the status leaves that kind alone.
+func _put_lesser(target_id: int, status: StatusDef, seconds: float) -> void:
+	var lesser := status.for_boss()
+	if lesser != StatusDef.IMMUNE_BOSS:
+		_events.append(statuses.apply(target_id, StatusCatalog.get_def(lesser), seconds))
 
 
 func _reject_fire(shooter_id: int, seq: int, reason: StringName) -> void:
@@ -700,8 +754,31 @@ func _burst(projectile: ProjectileState, result: Dictionary, alive: Dictionary) 
 				damage, [{"target_id": id, "zone": Hitbox.BODY, "damage": blast, "point": point}]
 			)
 	for target_id: int in damage:
-		_hurt(projectile.shooter_id, target_id, damage[target_id], false, projectile.def.id)
+		_hurt(
+			projectile.shooter_id,
+			target_id,
+			damage[target_id],
+			false,
+			projectile.def.id,
+			Vector3.ZERO,
+			projectile.def
+		)
+	if def.has_status() and def.splash_radius > 0.0:
+		_bloom(projectile, point, alive, damage)
 	_start_patch(projectile, point)
+
+
+## The burst of a weapon that puts a status on reaches every zombie in its radius that the bolt did
+## not already hurt (those got it in `_hurt`, or died).
+func _bloom(
+	projectile: ProjectileState, point: Vector3, alive: Dictionary, hurt: Dictionary
+) -> void:
+	for id: int in alive:
+		if hurt.has(id) or not _alive.has(id):
+			continue
+		var reach := Hitbox.distance_from(point, alive[id]["pos"], alive[id]["yaw"])
+		if reach <= projectile.def.splash_radius:
+			_put_status(id, projectile.def)
 
 
 # --- Elements ---

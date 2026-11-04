@@ -78,7 +78,7 @@ claim: it is the hit that empties the health, decided by the server. There is no
 | --- | --- | --- |
 | `zombie_spawn_requested` | `zombie_id`, `zombie_type`, `look`, `boss`, `health`, `speed`, `point_roll`, `damage`, `knockback`, `telegraph_seconds`, `barrier_speed`, `hit_chance` | build the zombie in its `look`; pick the spawn point with `point_roll % count`; its attack, knockback and barrier work come from the same event |
 | `zombie_damaged` | `zombie_id`, `zombie_type`, `player_id`, `zone`, `damage` (taken off), `health` (left), `max_health` | play the hit reaction; drive the health bar (a boss's bar is `health / max_health`) |
-| `zombie_removed` | `zombie_id`, `zombie_type`, `boss`, `cause` (`killed` or `gone`), `killer_id`, `zone`, `melee` | play the death for `killed` (by `zone`, `melee`), vanish quietly for `gone` |
+| `zombie_removed` | `zombie_id`, `zombie_type`, `boss`, `cause` (`killed` or `gone`), `killer_id`, `zone`, `melee`, `shattered` | play the death for `killed` (by `zone`, `melee`), vanish quietly for `gone`; a `shattered` one was frozen and breaks into ice (the `zombie_shattered` event) |
 | `special_round_announced` | `round`, `special_id`, `title`, `kind` (`boss` or `only`), `boss_type`, `boss_count`, `seconds` | in the break before a special round: the HUD marquee, the sting, the lights flicker. `seconds` is the whole break, 10 s longer than usual |
 | `round_started` | `round`, `zombie_count`, `special_id` (`""` in a normal round), `boss_count` | show the round; a non-empty `special_id` keeps the marquee lit |
 | `special_round_cleared` | `round`, `special_id`, `reward` | the reward line; `reward` was paid to each player on their feet as `points_changed` with reason `special_reward` |
@@ -329,7 +329,7 @@ Shop (prices at round 1):
 | Door: concession stand / generator yard / booth / back lot / road | 350 / 500 / 750 / 1250 / 2000 | opens for everyone; the yard and booth need the concession, the back lot the booth, the road the back lot ([the lot](map.md)) |
 | Wall weapons: shotgun / rifle | 900 / 1200 | per player |
 | Crane play | 550 | a spin, then a random weapon the player lacks to take (shotgun 4, rifle 3, SMG 2, flare gun 1); may break down and refund ([the crane](#the-prize-crane)) |
-| Re-cut of the weapon in hand | 1500, +1500 for each weapon already re-cut | x1.75 damage, x1.5 magazine and reserve limit, filled; once a weapon ([the re-cut](upgrades.md)) |
+| Re-cut of the weapon in hand | 5000 flat, every weapon (#909) | x1.75 damage, x1.5 magazine and reserve limit, filled; once a weapon ([the re-cut](upgrades.md)) |
 | Perks (tonics): hearty / double shot / quick load / third holster / swift rescue / reload shock | 1000 / 3000 / 2500 / 3000 / 1500 / 2000 | one of each, four at most, all lost on a down ([perks](perks.md), the prices [from the simulator](../research/perks.md#numbers)) |
 | Fuel can (+25 units) | 100 + 20 per round | a partial fill pays only for the room |
 | Grenades (+2) | 150 + 5 per round | up to 5 carried; a part purchase pays a part price |

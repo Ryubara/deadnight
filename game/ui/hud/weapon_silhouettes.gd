@@ -46,12 +46,17 @@ func has(weapon_id: StringName) -> bool:
 
 ## The share of the picture's width a weapon of this hold fills, longer weapons more.
 static func width_share(hold: WeaponHold) -> float:
+	return share_of_length(hold.model_length * hold.model_scale)
+
+
+## The same for a weapon of this `length` in the units of `model_length x model_scale`.
+static func share_of_length(length: float) -> float:
 	if _longest <= 0.0:
 		for id in WeaponCatalog.IDS:
 			var other := WeaponHoldMap.hold_for(id)
 			if other != null:
 				_longest = maxf(_longest, other.model_length * other.model_scale)
-	var share := (hold.model_length * hold.model_scale) / maxf(_longest, 0.001)
+	var share := length / maxf(_longest, 0.001)
 	return clampf(share, SMALLEST_SHARE, 1.0) * FILL.x
 
 
@@ -78,8 +83,8 @@ func _build(weapon_id: StringName) -> SubViewport:
 		meshes.append(node as MeshInstance3D)
 	# Lay the weapon along the picture's width with the long side from its grip to the right: a gun
 	# already is (its barrel is its -X), a club stands on its end in the model.
-	model.rotation.z = _turn_to_the_right(_bounds(meshes, model))
-	var bounds := _bounds(meshes, view)
+	model.rotation.z = turn_to_the_right(bounds_of(meshes, model))
+	var bounds := bounds_of(meshes, view)
 	var camera := Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.near = 0.05
@@ -98,7 +103,7 @@ func _build(weapon_id: StringName) -> SubViewport:
 
 ## The turn about Z (radians) that lays a model with these `bounds` (origin on the grip) along the
 ## picture's width, its longer side from the grip pointing to the picture's right (the model's -X).
-static func _turn_to_the_right(bounds: AABB) -> float:
+static func turn_to_the_right(bounds: AABB) -> float:
 	var along := Vector2.RIGHT if bounds.size.x >= bounds.size.y else Vector2.UP
 	var low := -(bounds.position.x if along.x != 0.0 else bounds.position.y)
 	var high := bounds.end.x if along.x != 0.0 else bounds.end.y
@@ -107,11 +112,11 @@ static func _turn_to_the_right(bounds: AABB) -> float:
 
 
 ## The box of `meshes` in the space of `frame`, one of their ancestors.
-static func _bounds(meshes: Array[MeshInstance3D], frame: Node) -> AABB:
+static func bounds_of(meshes: Array[MeshInstance3D], frame: Node) -> AABB:
 	var bounds := AABB()
 	var first := true
 	for mesh in meshes:
-		var to_frame := _relative(mesh, frame)
+		var to_frame := relative_transform(mesh, frame)
 		var local := mesh.get_aabb()
 		var box := AABB(to_frame * local.position, Vector3.ZERO)
 		for i in 8:
@@ -123,7 +128,7 @@ static func _bounds(meshes: Array[MeshInstance3D], frame: Node) -> AABB:
 
 ## `node`'s transform in the space of `ancestor`, by the chain of transforms between them (so it
 ## also works for a node that is not in the tree yet).
-static func _relative(node: Node3D, ancestor: Node) -> Transform3D:
+static func relative_transform(node: Node3D, ancestor: Node) -> Transform3D:
 	var result := Transform3D.IDENTITY
 	var step: Node = node
 	while step != null and step != ancestor:
