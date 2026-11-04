@@ -39,9 +39,11 @@ func _finish(made: Dictionary) -> void:
 	(made["hud"] as Hud).queue_free()
 
 
+## Stands at the spot and reads its card for as long as a replacing purchase asks (#908): a press
+## that throws a carried weapon away is one made once the card that says so has been up.
 func _stand_at(night: Night, spot: Dictionary) -> void:
 	night.player().teleport(spot["position"] + Vector3(0.0, 0.1, 0.0))
-	NightFixture.run(night, 3)
+	NightFixture.run(night, 3 + ceili(night.server.tuning.replace_settle / Night.STEP))
 
 
 func _use(night: Night) -> void:
