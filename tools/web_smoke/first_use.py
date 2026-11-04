@@ -249,7 +249,7 @@ def main() -> int:
 
     deployed = args.build.startswith(("http://", "https://"))
     server, port = (None, 0) if deployed else smoke.serve(Path(args.build))
-    url = args.build if deployed else f"http://127.0.0.1:{port}/index.html"
+    url = smoke.probing(args.build) if deployed else f"http://127.0.0.1:{port}/index.html"
     summaries = []
     runs = []
     try:

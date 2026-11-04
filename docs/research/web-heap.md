@@ -106,11 +106,40 @@ gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/heap_soak.p
 `heap_soak.py` prints one JSON row per collection and writes `<label>.json` (and `<label>_sampling.txt`). `gds quiet`
 stops a command at 900 s: 12 minutes with the load is the longest one run.
 
-## Left for another issue
+## The fences and the redraws that were left (#883)
 
-A frame still makes about 8 ids on the best page (5 fences, 2 buffers, a vertex array), which is 4 MB a minute at 100
-frames a second and a third of that at a phone's 30. A flat heap needs the renderer to stop creating them (a newer
-engine, or a custom template whose id tables are not padded), which is a maintainer's decision about the pinned tool.
+Issue #834 left about 8 ids a frame: 5 fence syncs, about 2 buffers and a vertex array. Where they came from:
+
+- **A fence for each canvas pass.** The Compatibility renderer ends every canvas (the root, each `CanvasLayer`, empty
+  or hidden too) with a fence sync whose WebGL id the page keeps. The game had three overlay layers (the controller
+  hint, "turn your phone", the film) above the router's: they are now the last children of the router's own layer
+  (`Main._add_overlays`, in that order, freed with the scene), so a night makes 2 fences a frame, not 5. The tours
+  still give the prompt a layer of its own. `BenchAblation` has `canvas=1` (prints the passes), `views=0` and
+  `off=A,B` to count what a pass costs.
+- **Touch hints** drew their pulse (a dot and a ring, circles and arcs) again every frame. The pill is now drawn when
+  it changes, and the pulse is a child `Node2D` whose position, scale and fade are set each frame (moving a drawn
+  item makes no new command). Up or used, a night now makes the same buffers a frame (1.4 against 1.3 in a minute).
+- The marquee's bulbs and the objective markers' polygons were also fixed here, and were then done better by #969
+  and #1004 on `main` (the bulbs step, the shapes in one command), so this change keeps main's.
+
+Autopilot night, phone page, unpaced Chrome, 12 minutes (about 160 000 frames), forced collection every 30 s, two
+builds in parallel, `main` at the merge of #1021 against this change:
+
+| Arm | fences a frame | buffers a frame | minute 3 | minute 12 | rate from minute 3 |
+| --- | --- | --- | --- | --- | --- |
+| `main`, hints up | 5.0 | 11.5 | 48.1 MB | 145.7 MB | 10.8 MB a minute |
+| this change, hints up | 2.0 | 4.7 | 29.4 MB | 62.3 MB | 3.6 MB a minute |
+| `main`, hints marked used (`hints=0`) | 5.0 | 4.7 | 33.4 MB | 82.2 MB | 5.4 MB a minute |
+| this change, hints marked used | 2.0 | 4.7 | 29.4 MB | 62.2 MB | 3.6 MB a minute |
+
+![Heap over a night, main and this change](web-heap-883.png)
+
+A new player's night (hints up, the real case) grows 3 times slower; the #834 bar was on hints used, 1.5 times slower
+than `main`. It is still not flat: 3.6 MB a minute, 62 MB at the end of a night. What remains is 2 fences (the router's
+canvas and the 3D pass) and the buffers that grow as the night goes on (1.4 a frame in the first minute, 4.7 over
+twelve: the round banner, damage and the markers while they show), about 7 ids a frame. A flat heap needs the renderer
+to stop creating them (a newer engine or a template whose id tables are not padded), a maintainer's decision about the
+pinned tool; at a phone's 30 frames a second the rate is a third of this.
 
 ## The probes in a player's page (#935)
 
@@ -126,10 +155,37 @@ read `window.deadnight` over the bridge in every frame (the pad probe also made 
 | before | 430 a second (3 119 reads, 3 249 writes, 145 evals in 15 s) | 141 a second |
 | after | 9 a second (145 evals, no reads, no writes) | 4 a second |
 
-What is left are `eval`s: `GamepadProbe.in_frame` (about 5 a second, from the snapshot and the controller hint; it was
-meant to be asked once and is not, found here, not fixed) and `WebClipboard.read` (4 a second, the snapshot). Heap
+What was left were `eval`s, removed in #983 (below): `GamepadProbe.in_frame`, `WebClipboard.read` and the touch
+controls' safe-area read. Heap
 after a forced collection, four minutes of an autopilot night on a desktop page (`heap_soak.py --plain`): 23.2 to
 38.3 MB before (4.3 MB a minute), 23.9 to 38.2 MB after (4.0): unchanged, as #834 found.
+
+## No evals in a player's page (#983)
+
+Three things still ran a script in the page, 9 a second in the menu and 4 in a night:
+
+- `GamepadProbe.in_frame` was meant to ask the page once (`static var _framed`) and asked at every read, about 5 a
+  second. The cause: the web runtime hands a script's `true` back as the integer 1, so `framed == true` on that `int`
+  is an invalid operation; a release build ends the function there without an error and the line that kept the answer
+  never ran. Found by logging with a second `eval` after each statement; fixed with `GamepadProbe.truthy` (`bool()`),
+  with a unit test of the types ([lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-04-a-cached-answer-was-asked-again-because-eval-returns-an-int.md)).
+  It also means the "click the game once" hint never worked in a Discord frame before.
+- `WebClipboard.read` (4 a second) was the snapshot's. The snapshot (`WebProbe.snapshot`, a walk of the screen's
+  nodes four times a second) is now built only when the page asks (`WebProbe.asked`): a plain page gets no
+  `window.deadnight` at all. `ControllerHint` reads the page only inside a frame.
+- `TouchControls` read the safe area (a `div` made and measured in the page) every half second, 2 a second in a night,
+  even for a mouse. It reads on a resize, and while the controls are wanted.
+
+Every browser test that reads `window.deadnight` now gets the probes: `smoke.serve(folder)` puts
+`window.deadnight_probe=true` in the head of the page it serves (`probing=False` serves the page a player opens:
+`bridge_calls.py`, `heap_soak.py --plain`); a deployed build is opened with `smoke.probing(url)`.
+
+| Software GL, 20 s windows | menu | night (autopilot) |
+| --- | --- | --- |
+| before (#982) | 9 a second | 4 a second |
+| after | 1 eval in 20 s (0.05 a second) | 1 eval in 20 s (0.05 a second) |
+
+The web job's ceiling is now 1 a second (`bridge_calls.py --max-per-second 1`).
 
 ## The marquee and the damage frame (#934)
 

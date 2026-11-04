@@ -29,8 +29,9 @@ const BUILDING := AABB(Vector3(-7.0, -0.5, -9.0), Vector3(24.0, 8.0, 24.5))
 ## Row 15's windows a room, the maintainer's rule for this map (#917): one window a wall on the
 ## ground floor (the hall's west wall is the shop wall), a few upstairs, both in the half over the
 ## hall (two halves' windows on one deck would join the halves outside by a shorter way than the
-## opening); the side room's three include the breach.
-const WINDOWS := {"start": 2, "side": 3, "upstairs": 2}
+## opening); the side room's two are a window and the breach, one at each end (#994: a second
+## window in its south-west corner shared the breach's corner and the perk alcove's ground).
+const WINDOWS := {"start": 2, "side": 2, "upstairs": 2}
 ## Row 18: how far inside a window its dead must reach by it (metres, along the window's +Z).
 const INSIDE := 1.5
 ## Words that are Nacht der Untoten's, or of its setting, and never in ours (row 29).

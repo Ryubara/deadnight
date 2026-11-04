@@ -617,6 +617,12 @@ func _work_the_boards(zombie: ZombieBody, delta: float, events: Array[Dictionary
 		return
 	if _slide_to_the_opening(zombie, gate, delta):
 		return
+	_tear_the_boards(zombie, delta, events)
+
+
+## The swing of a zombie in front of the opening, with the boards in the way: it attacks, the work
+## of a board adds up, and after `SIEGE_SECONDS` of it the dead are through for good.
+func _tear_the_boards(zombie: ZombieBody, delta: float, events: Array[Dictionary]) -> void:
 	if zombie.mode == ZombieBody.Mode.CHASE:
 		zombie.enter(ZombieBody.Mode.ATTACK)
 	if zombie.mode != ZombieBody.Mode.ATTACK:

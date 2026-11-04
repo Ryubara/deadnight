@@ -240,7 +240,8 @@ func _process(delta: float) -> void:
 	_inset_clock += delta
 	if _inset_clock >= tuning.inset_period:
 		_inset_clock = 0.0
-		_relayout()
+		if _enabled:  # the notch is for a finger: a page without the controls never asks (#983)
+			_relayout()
 		_refresh_active()
 	var verb := _verb_now()
 	if verb != _interact_verb:

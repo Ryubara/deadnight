@@ -2065,6 +2065,57 @@ on the side the way leans (by seat when it is dead ahead), and slows the pace as
 climbs if a body is held anyway. Bots alone barely meet the dead at rounds up to 9 (held 0.04 percent of the time, the same
 rounds as with the dead off): [The player and the dead](dead-contact.md#the-variants-and-the-numbers).
 
+## The soak's person shops (#998)
+
+The soak's person stand-in (`bots_soak.tscn --person`, the autopilot seated at seat 1) ran dry and stayed dry: its pistol
+read `[0, 0, 0]` for rounds on end while it kited the dead at a walk, and the three bots (Roam) were 30 to 60 m away.
+That made every soak and round-length number that has a person in it worse than a night with a real one (a person buys
+rounds).
+
+**Cause: a stand-in made bare.** `Night._make_autopilot` builds an `Autopilot` and then fills it from the lot and the
+rules (shop spots, ammo and weapon prices, doors, re-cut, tonic, breaches, breaker posts, fuel). `SeatedNight.seat(...,
+legacy)` built the same class and filled none of it, so `_plan_shopping` looped over no spots: it only bought at a locker
+it happened to stand beside, and it opened no doors. It had nothing to do with the House Pistol or revolver change, the
+points in fives, the wall tiers or the re-cut. `AutopilotSetup.configure` is now the one place that fills it, called by
+both.
+
+Three smaller faults showed once it could shop, each found by watching a seat that stayed dry with points in hand:
+
+- **An empty gun swapped to another empty gun** every 20 ticks, and a gun put away for a blade was never bought rounds
+  for (the ammunition purchase is for the weapon in hand, and a blade is never "low on rounds"). It now swaps an empty gun
+  for a gun with rounds, or for a blade only with a zombie within 12 m; with nothing near and the points for rounds it
+  takes the dry gun back in hand (`_refill_gun`).
+- **A flight bent only toward home**, so a chase never led to a locker. With a gun nearly out the flight bends toward
+  the planned shop (`SHOP_PULL` 0.8; the home bend stays 0.35).
+- **A locker on the floor above was "arrived at"** from under it (the arrival and the reach test were flat), so on the
+  second map the stand-in stood under the locker for 98 s with 3655 points. Arrival and reach now check height
+  (`ARRIVE_HEIGHT` 1.5 m), and the nearest spot counts 8 m a metre of height, as the bots' economy does. It also walks on
+  from a door prompt it cannot pay for, where it used to hold still.
+
+The soak report has a `people` list: per person seat, seconds up, seconds dry (a firearm in hand with nothing in the
+magazine and none in reserve), the longest dry run, the rounds it was dry in and the points it ends with.
+
+**Measured** (`bots_soak.tscn --person --bots=3 --profile=regular`, headless, `main` at 044d485b with only the soak's
+instruments against this branch; lot seeds 1 to 10 and 31, second map seeds 1 to 4):
+
+| | dry share of the person's time | longest dry run | rounds reached (median) | longest round (median, max) | boss-round tail (median, max) |
+| --- | --- | --- | --- | --- | --- |
+| lot, before (11 nights) | 64.5% | 345 s | 10 | 152 s, 284 s | 63 s, 112 s |
+| lot, after (11 nights) | 4.2% | 61 s | 11 | 104 s, 172 s | 47 s, 107 s |
+| second map, before (4 nights) | 62.9% | 80 s | 9.5 | 98 s, 120 s | 64 s, 91 s |
+| second map, after (4 nights) | 6.2% | 37 s | 11 | 90 s, 480 s | 52 s, 427 s |
+
+Lot seeds 4 and 31 (the issue's): dry 807 of 1012 s and 931 of 1147 s before, 3.6 s and 0 s after. The tail on the lot falls
+from 63 s to the 47 s the issue hoped for. The second map's 427 s tail is one night (seed 1, round 8): a dead at the
+window at (-4.3, 0.9) that the person mends as fast as it tears, the round of #950; with that branch merged in, the same
+seed ends round 10 with a 45 s tail. A person with a gun lives longer than a dry one, so the nights run to rounds 11 to
+16 instead of 10 and meet the late-round faults (that one) the dry person never reached.
+
+What moves: every soak with `--person` (`bots_soak.tscn`, `tools/bots/soak_report.py`), whose person now buys, opens doors
+(about 4 against 2) and lives to round 11 instead of 10, with the bots' kills up by a third; the report gains `people`.
+`test_bot_soak.gd` seats the stand-in as its fourth bot, now shopping. A night with the autopilot (`Night`, the captures)
+is set up as before.
+
 ## A flank bot that stood still (#953)
 
 **Symptom.** `test_under_follow_the_bots_stay_with_the_person_who_gave_the_order` (seed 53, bar 0.9) read 0.925 on `main`

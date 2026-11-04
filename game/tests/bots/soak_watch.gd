@@ -121,6 +121,9 @@ var _boss_modes: Dictionary = {}
 var _boss_swings := 0
 var _boss_last: Dictionary = {}
 var _round_kit: Dictionary = {}
+## By person seat: ticks up, ticks dry (the gun in hand a firearm with no round in the magazine and
+## none in reserve), the longest dry run, the run now, and the round it was last dry in (#998).
+var _person: Dictionary = {}
 
 
 func _init(p_night: SeatedNight, p_people: Array[int], p_order: StringName) -> void:
@@ -296,6 +299,7 @@ func tick() -> void:
 		if not team.is_empty():
 			hold_spot = team["at"]
 	_watch_bosses()
+	_watch_dry()
 	_watch_tail()
 	var humans := _humans_up()
 	var places: Array[Vector3] = []
@@ -328,6 +332,41 @@ func tick() -> void:
 		for j in range(i + 1, places.size()):
 			_spread_sum += Vector2(places[i].x - places[j].x, places[i].z - places[j].z).length()
 			_spread_n += 1
+
+
+## Whether the weapon in hand of this frame entry is a firearm with nothing in it and nothing in
+## reserve: the stand-in is out of the fight until it shops.
+static func is_dry(me: Dictionary) -> bool:
+	var id: StringName = me.get("weapon", &"")
+	if id == &"":
+		return false
+	var held := WeaponCatalog.get_def(id)
+	return (
+		held != null
+		and not held.is_melee()
+		and int(me.get("ammo", 1)) <= 0
+		and int(me.get("reserve", 1)) <= 0
+	)
+
+
+## The seconds each person stand-in is up and dry (a person buys rounds; the stand-in must).
+func _watch_dry() -> void:
+	for id in people:
+		if not _person.has(id):
+			_person[id] = {"up": 0, "dry": 0, "run": 0, "longest": 0, "dry_rounds": {}}
+		var tally: Dictionary = _person[id]
+		var me: Dictionary = night.frame["players"].get(id, {})
+		if me.is_empty() or me.get("downed", false) or me.get("dead", false):
+			tally["run"] = 0
+			continue
+		tally["up"] += 1
+		if is_dry(me):
+			tally["dry"] += 1
+			tally["run"] += 1
+			tally["longest"] = maxi(tally["longest"], tally["run"])
+			tally["dry_rounds"][night.server.rules.round_number] = true
+		else:
+			tally["run"] = 0
 
 
 ## Counts the seconds a round stands down to its last few dead (the ones the screen outlines).
@@ -842,9 +881,34 @@ func report() -> Dictionary:
 		"boss_modes": _boss_modes,
 		"boss_swings": _boss_swings,
 		"round_kit": _round_kit,
+		"people": _people_report(),
 		"end": _end_state(),
 		"bots": bots,
 	}
+
+
+## By person seat: seconds up, seconds dry, the longest dry run, the rounds it was dry in, and the
+## points it ends with.
+func _people_report() -> Array[Dictionary]:
+	var found: Array[Dictionary] = []
+	for id in _person:
+		var tally: Dictionary = _person[id]
+		var rounds: Array = tally["dry_rounds"].keys()
+		rounds.sort()
+		(
+			found
+			. append(
+				{
+					"seat": id,
+					"up_seconds": snappedf(float(tally["up"]) / 60.0, 0.1),
+					"dry_seconds": snappedf(float(tally["dry"]) / 60.0, 0.1),
+					"dry_longest": snappedf(float(tally["longest"]) / 60.0, 0.1),
+					"dry_rounds": rounds,
+					"points": night.server.rules.points_of(id),
+				}
+			)
+		)
+	return found
 
 
 ## The gates a night's report breaks, in words (empty: it held them). `people` is whether a person
