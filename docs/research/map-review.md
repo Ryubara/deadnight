@@ -193,9 +193,12 @@ list went to #831's owner.
 ## The second map
 
 A two-storey depot of 585 m²: the hall (start), the side room and two upstairs halves, three links in a ring, twelve
-windows. The formula's tests hold; the map plays well in the camera: warm pendants, plaques you read, machines you can
-tell apart, a long lit corridor down the side room. The shoulder camera is tight on the upstairs and at the stair foot
-(the arm is pulled in; the known cases). One real fault and one art fault.
+windows. (Since #917 the ground outside is one level, walled into three yards, with the drive-in to the south, the upper
+windows open onto a terrace and a gallery the dead climb to, and there are eight entries; the layout, its reasons and
+its captures are on [the map's page](../design/smallmap.md#outside-and-windows-917). This review is of the layout before
+it.) The formula's tests hold; the map plays well in the camera: warm pendants, plaques you read, machines you can tell
+apart, a long lit corridor down the side room. The shoulder camera is tight on the upstairs and at the stair foot (the
+arm is pulled in; the known cases). One real fault and one art fault.
 
 ![The second map, top-down, with the findings](maps/review/plan-small-ground.jpg)
 
