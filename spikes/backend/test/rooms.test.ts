@@ -6,6 +6,7 @@ import { buildApp, GUEST_ID_PREFIX, GUESTS_PER_ADDRESS_PER_HOUR, guestName } fro
 import { loadConfig } from "../src/config.ts";
 import { OffDiscord } from "../src/discord.ts";
 import { MAX_PLAYERS } from "../src/lobbies.ts";
+import { freshProfile } from "../src/progression.ts";
 import { GameServerRegistry } from "../src/servers.ts";
 import { MemoryStore } from "../src/store.ts";
 import { verifyToken } from "../src/tokens.ts";
@@ -281,8 +282,10 @@ test("settings sent with the start win over the ones set while waiting", async (
 });
 
 test("the host's map is checked, kept on the lobby, shown in its view and preview, and signed into the ticket", async () => {
-  const { app, guest, call, config } = await platform();
+  const { app, guest, call, config, store } = await platform();
   const host = await guest("host");
+  // The back rooms are for hosts from level 10 (test/map_gate.test.ts has the gate itself): this host is one.
+  await store.putSave(host.user.id, "profile", { schemaVersion: 1, data: { ...freshProfile(), xp: 965 } }, 0);
   const lobby = (await call("POST", "/lobbies", host.headers, {})).json();
   // A night nobody set a map for is on the default one, in the lobby's view and in what a code says before joining.
   assert.equal(lobby.settings, null);
