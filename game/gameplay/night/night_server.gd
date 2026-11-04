@@ -185,6 +185,7 @@ var _outbox: Array[Dictionary] = []
 ## Seconds of the intermission left; -1 until the night is over. At 0 the night is closed.
 var _over_left := -1.0
 var _closed := false
+var _holds_ended := false
 ## Player id -> the rounds they stood at the end of (`round_ended`'s `standing`), for the board.
 var _rounds_up: Dictionary[int, int] = {}
 var _probe: WorldProbe
@@ -388,6 +389,11 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 func _step_over(delta: float, with_frame: bool) -> Array[Dictionary]:
 	if _over_left < 0.0:
 		_over_left = end_seconds
+	if not _holds_ended:
+		# The step that would stop a downed reviver's hold (`_act`) does not run once the night is
+		# frozen, and the game over is made by the last of them going down: end the holds here.
+		_holds_ended = true
+		_revive.end_all(&"down")
 	_over_left = maxf(_over_left - delta, 0.0)
 	if _over_left <= 0.0 and not _closed:
 		_closed = true
