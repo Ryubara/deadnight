@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        replica: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        replica: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -48,7 +48,10 @@ jobs:
           for pair in pre:13324588325 p920:13329201106 main:13346506157; do
             name=${pair%%:*}
             id=${pair##*:}
-            gh api "repos/Ryubara/deadnight/actions/artifacts/$id/zip" > "$name.zip"
+            for try in 1 2 3 4; do
+              gh api "repos/Ryubara/deadnight/actions/artifacts/$id/zip" > "$name.zip" && break
+              sleep $((try * 10))
+            done
             mkdir -p "builds/$name"
             unzip -q "$name.zip" -d "builds/$name"
             rm "$name.zip"
@@ -58,7 +61,7 @@ jobs:
         run: uv run --with playwright==1.64.1 playwright install --with-deps chromium-headless-shell
       - name: The idle menu of each build, in turns
         run: |
-          uv run --with playwright==1.64.1 python tools/web_smoke/menu_idle.py pre=builds/pre p920=builds/p920 main=builds/main --out out --pairs 3 --seconds 9 | tee out/log.txt
+          uv run --with playwright==1.64.1 python tools/web_smoke/menu_idle.py pre=builds/pre p920=builds/p920 main=builds/main --out out --pairs 4 --seconds 6 | tee out/log.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

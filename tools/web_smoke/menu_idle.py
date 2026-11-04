@@ -28,7 +28,17 @@ import time
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
-from smoke import LOAD_TIMEOUT_S, SOFTWARE_GL, VIEWPORT, serve, trace, wait_for
+from smoke import (
+    FRAME_TIMES_JS,
+    LOAD_TIMEOUT_S,
+    MENU_FRAME_SECONDS,
+    SOFTWARE_GL,
+    VIEWPORT,
+    serve,
+    stats,
+    trace,
+    wait_for,
+)
 
 SETTLE_MS = 2500
 
@@ -59,6 +69,8 @@ def run_one(
             load_s = round(time.monotonic() - started, 2)
             page.mouse.click(5, 5)
             page.wait_for_timeout(SETTLE_MS)
+            # The smoke's own window first (no wrapped WebGL calls), so its `menu_frames` can be read beside the trace.
+            gate = stats(page.evaluate(FRAME_TIMES_JS, MENU_FRAME_SECONDS))
             cpu_before = process_cpu(browser_cdp)
             followed = trace(page, seconds)
             cpu_after = process_cpu(browser_cdp)
@@ -76,6 +88,7 @@ def run_one(
             kind: round((cpu_after[kind] - cpu_before.get(kind, 0.0)) * 1000 / frames, 2) for kind in cpu_after
         },
         "mean_ms": round(seconds * 1000 / frames, 1),
+        "menu_frames": gate,
         **followed,
     }
 
@@ -103,7 +116,7 @@ def main() -> int:
             result = run_one(folder, args.seconds, shot, args.throttle, args.query, args.screen, args.flag)
             results[label].append(result)
             print(
-                f"pair {n} {label}: load={result['load_to_menu_s']} frames={result['frames']} "
+                f"pair {n} {label}: load={result['load_to_menu_s']} gate_window={result['menu_frames']['mean_ms']} frames={result['frames']} "
                 f"mean={result['mean_ms']} each_second={result['mean_ms_each_second']} "
                 f"gl_per_frame={ {k: v['mean'] for k, v in result['gl_calls_per_frame'].items()} } "
                 f"cpu_ms_per_frame={result['cpu_ms_per_frame']}",
