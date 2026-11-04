@@ -156,6 +156,8 @@ func _dispatch(action: Dictionary) -> void:
 			_upgrade(action["player_id"], action["weapon_id"])
 		CombatAction.REMOVE_WEAPONS:
 			_remove(action["player_id"], action["weapon_ids"])
+		CombatAction.FORGET_PLAYER:
+			_forget(action["player_id"])
 		CombatAction.TICK:
 			_tick(action["delta"])
 		CombatAction.TARGETS:
@@ -236,6 +238,16 @@ func _remove(player_id: int, weapon_ids: Array) -> void:
 		_current.erase(player_id)
 		if not held.is_empty():
 			_equip(player_id, held.keys()[held.size() - 1])
+
+
+## A player who left takes everything with them. The rules' list of a player is gone with the seat;
+## a loadout kept here would be handed to the next person with the same id, whose rules list says
+## the start weapon only, so the wall and the crane would sell and refuse by one list and give by
+## the other (#904).
+func _forget(player_id: int) -> void:
+	_loadouts.erase(player_id)
+	_current.erase(player_id)
+	_quick_wait.erase(player_id)
 
 
 func _equip(player_id: int, weapon_id: StringName) -> void:
