@@ -154,12 +154,25 @@ def fight_clip(args: argparse.Namespace) -> None:
             told.append(
                 (float(m[1]), re.sub(r"^voxf?_|_\d+$", "", m[2]), "female" if m[2].startswith("voxf_") else "male")
             )
+    heard: dict[float, list[str]] = {}
+    for row in args.log.read_text(encoding="utf-8", errors="replace").splitlines():
+        if m := re.match(r"SERVER ([\d.]+) (\w+) (\d+)", row):
+            heard.setdefault(float(m[1]), []).append(f"{m[2].replace('_', ' ')} {m[3]}")
     font = FONT_BOLD.replace(":", "\\:")
+    server = [
+        f"drawtext=fontfile='{font}':text='server told every client\\: {', '.join(events)}':x=(w-text_w)/2:y=h*0.52"
+        f":fontsize=26:fontcolor=#9fd8ff:box=1:boxcolor=0x000000AA:boxborderw=12"
+        f":enable='between(t,{at:.2f},{at + 3.2:.2f})'"
+        for at, events in heard.items()
+    ]
     captions = ",".join(
-        f"drawtext=fontfile='{font}':text='{moment.replace('_', ' ')}  ({voice})':x=(w-text_w)/2:y=h*0.62:fontsize=34"
-        f":fontcolor=#ffe296"
-        f":box=1:boxcolor=0x000000AA:boxborderw=14:enable='between(t,{at:.2f},{at + 3.2:.2f})'"
-        for at, moment, voice in told
+        server
+        + [
+            f"drawtext=fontfile='{font}':text='{moment.replace('_', ' ')}  ({voice})':x=(w-text_w)/2:y=h*0.62"
+            f":fontsize=34:fontcolor=#ffe296"
+            f":box=1:boxcolor=0x000000AA:boxborderw=14:enable='between(t,{at:.2f},{at + 3.2:.2f})'"
+            for at, moment, voice in told
+        ]
     )
     frames = args.frames.as_posix() + "/" + args.pattern
     run(
