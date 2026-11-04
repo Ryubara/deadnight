@@ -82,7 +82,7 @@ func test_a_three_second_flight_adds_no_node_after_the_first_dot() -> void:
 	# Read before any assertion: an assertion is an object of its own.
 	var objects_after := Performance.get_monitor(Performance.OBJECT_COUNT)
 	assert_int(most_nodes).is_equal(nodes)
-	assert_float(objects_after).is_equal(objects)
+	assert_float(objects_after).is_less_equal(objects)
 	# The lamp's bulb is a draw of its own, and the shell: the trail adds one.
 	assert_int(peak_calls).is_less_equal(_draw_calls(view) + 1)
 
@@ -117,10 +117,16 @@ func test_objects_and_nodes_are_flat_after_many_throws() -> void:
 		view.queue_free()
 		await get_tree().process_frame
 	await get_tree().process_frame
-	assert_float(Performance.get_monitor(Performance.OBJECT_COUNT)).is_equal(objects)
-	assert_float(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT)).is_equal(resources)
-	assert_float(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)).is_equal(nodes)
-	assert_float(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)).is_equal(orphans)
+	# Read before any assertion: an assertion is an object of its own.
+	var objects_now := Performance.get_monitor(Performance.OBJECT_COUNT)
+	var resources_now := Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT)
+	var nodes_now := Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
+	var orphans_now := Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)
+	# Growth only: an earlier suite's object freed during the throws lowers a count and is not a leak.
+	assert_float(objects_now).is_less_equal(objects)
+	assert_float(resources_now).is_less_equal(resources)
+	assert_float(nodes_now).is_less_equal(nodes)
+	assert_float(orphans_now).is_less_equal(orphans)
 
 
 func test_a_dot_fades_to_nothing_in_its_time_and_leaves_no_draw() -> void:

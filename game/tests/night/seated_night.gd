@@ -100,7 +100,8 @@ static func start(
 	return night
 
 
-## Seats a bot with `profile` at player `id`. `legacy` makes the autopilot's brain run on it;
+## Seats a bot with `profile` at player `id`. `legacy` makes the autopilot's brain run on it, set up
+## as the night sets it up (`AutopilotSetup`: it shops, buys the doors and mends like a person);
 ## `hashing` makes it hash every command it sends (a replay or golden test; it costs time).
 func seat(
 	id: int, profile: BotProfile, bot_seed: int, legacy: bool = false, hashing: bool = false
@@ -113,6 +114,7 @@ func seat(
 	if legacy:
 		var autopilot := Autopilot.new(state, world.map())
 		autopilot.sight = level.sight
+		AutopilotSetup.configure(autopilot, world, server.rules.tuning, NightTuning.shipped())
 		bot.legacy = autopilot
 	bot.telemetry.hashing = hashing
 	host.add(bot)

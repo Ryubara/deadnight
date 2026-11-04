@@ -91,7 +91,7 @@ def main() -> int:
         port = args.port
     else:
         server, port = smoke.serve(Path(args.build))
-    url = args.build if deployed else f"http://127.0.0.1:{port}/index.html"
+    url = smoke.probing(args.build) if deployed else f"http://127.0.0.1:{port}/index.html"
     if args.backend:
         url += ("&" if "?" in url else "?") + f"backend={args.backend}"
     problems: list[str] = []

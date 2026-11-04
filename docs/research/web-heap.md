@@ -126,10 +126,37 @@ read `window.deadnight` over the bridge in every frame (the pad probe also made 
 | before | 430 a second (3 119 reads, 3 249 writes, 145 evals in 15 s) | 141 a second |
 | after | 9 a second (145 evals, no reads, no writes) | 4 a second |
 
-What is left are `eval`s: `GamepadProbe.in_frame` (about 5 a second, from the snapshot and the controller hint; it was
-meant to be asked once and is not, found here, not fixed) and `WebClipboard.read` (4 a second, the snapshot). Heap
+What was left were `eval`s, removed in #983 (below): `GamepadProbe.in_frame`, `WebClipboard.read` and the touch
+controls' safe-area read. Heap
 after a forced collection, four minutes of an autopilot night on a desktop page (`heap_soak.py --plain`): 23.2 to
 38.3 MB before (4.3 MB a minute), 23.9 to 38.2 MB after (4.0): unchanged, as #834 found.
+
+## No evals in a player's page (#983)
+
+Three things still ran a script in the page, 9 a second in the menu and 4 in a night:
+
+- `GamepadProbe.in_frame` was meant to ask the page once (`static var _framed`) and asked at every read, about 5 a
+  second. The cause: the web runtime hands a script's `true` back as the integer 1, so `framed == true` on that `int`
+  is an invalid operation; a release build ends the function there without an error and the line that kept the answer
+  never ran. Found by logging with a second `eval` after each statement; fixed with `GamepadProbe.truthy` (`bool()`),
+  with a unit test of the types ([lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-04-a-cached-answer-was-asked-again-because-eval-returns-an-int.md)).
+  It also means the "click the game once" hint never worked in a Discord frame before.
+- `WebClipboard.read` (4 a second) was the snapshot's. The snapshot (`WebProbe.snapshot`, a walk of the screen's
+  nodes four times a second) is now built only when the page asks (`WebProbe.asked`): a plain page gets no
+  `window.deadnight` at all. `ControllerHint` reads the page only inside a frame.
+- `TouchControls` read the safe area (a `div` made and measured in the page) every half second, 2 a second in a night,
+  even for a mouse. It reads on a resize, and while the controls are wanted.
+
+Every browser test that reads `window.deadnight` now gets the probes: `smoke.serve(folder)` puts
+`window.deadnight_probe=true` in the head of the page it serves (`probing=False` serves the page a player opens:
+`bridge_calls.py`, `heap_soak.py --plain`); a deployed build is opened with `smoke.probing(url)`.
+
+| Software GL, 20 s windows | menu | night (autopilot) |
+| --- | --- | --- |
+| before (#982) | 9 a second | 4 a second |
+| after | 1 eval in 20 s (0.05 a second) | 1 eval in 20 s (0.05 a second) |
+
+The web job's ceiling is now 1 a second (`bridge_calls.py --max-per-second 1`).
 
 ## The marquee and the damage frame (#934)
 
