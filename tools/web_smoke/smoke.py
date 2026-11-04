@@ -292,6 +292,13 @@ def probe(page: Page) -> dict:
     return page.evaluate(PROBE_JS) or {}
 
 
+def give_level(page: Page, level: int) -> None:
+    """Makes the game think the player is level `level` (`PlayerLevel`, which a page that asks for the probes reads
+    from `window.deadnight_player_level`): a fresh page has no profile, so the back rooms (level 10) are locked.
+    Call it before the page is opened."""
+    page.add_init_script(f"window.deadnight_probe = true; window.deadnight_player_level = {int(level)};")
+
+
 def give_name(page: Page, name: str, seconds: float = 60.0) -> None:
     """Answers the Play together name prompt, which a player with no saved name gets before signing in."""
     deadline = time.monotonic() + seconds
