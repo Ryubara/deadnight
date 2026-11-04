@@ -17,6 +17,8 @@ signal ready_to_play
 ## How far the night has got in getting ready (0 to 1) and what it is doing, for a loading screen.
 signal loading(fraction: float, text: String)
 signal night_over(round_reached: int)
+## The server's intermission is over: everyone goes back to where the night began.
+signal night_closed
 ## `start_remote` could not join: why, in words for the player.
 signal connect_failed(reason: String)
 ## After every tick of the night, whatever drove it.
@@ -117,6 +119,8 @@ var markers: NightMarkers
 var ticks_per_frame := 1
 ## Autopilot only: film the bot through its own shoulder camera, as a player sees it.
 var shoulder_camera := false
+## The camera of the end of the night, once it is over (`NightEnding`).
+var end_camera: EndCamera
 ## False before the night starts, while paused and after it is over.
 var running := false
 ## Draw and load everything the night uses once before it starts (`NightWarmup`), behind a loading
@@ -384,13 +388,17 @@ func _build_view(camera: Camera3D) -> void:
 	state.event_received.connect(_on_event)
 
 
-## The night ended: the ticks stop. Online the client has nothing more to say or hear, so it
-## leaves the seat at once (the server frees it) instead of leaving the socket unread, where a
-## browser's buffer fills with snapshots ("Buffer payload full").
+## The night ended: this client reads the server's intermission but plays no more (`NightEnding`).
 func _on_over(_round_reached: int) -> void:
-	running = false
+	NightEnding.begin(self)
+
+
+## The server closed the night: online the seat is left at once, not left unread ("Buffer payload
+## full").
+func _on_closed() -> void:
 	if remote:
 		_leave_server.call_deferred()
+	night_closed.emit()
 
 
 ## Closes the link and drops what is still in flight: the night has ended, so frames that arrive
@@ -592,6 +600,11 @@ func tick() -> void:
 	if remote:
 		_tick_remote()
 		return
+	if state.over:
+		link.pump()
+		link.broadcast(server.step(STEP))
+		ticked.emit()
+		return
 	var began := PerfProbe.begin()
 	link.pump()
 	PerfProbe.end(&"tick.pump", began)
@@ -626,6 +639,9 @@ func tick() -> void:
 ## server will check it), and send the next command.
 func _tick_remote() -> void:
 	link.pump()
+	if state.over:
+		ticked.emit()
+		return
 	match stalls.check(Time.get_ticks_msec()):
 		StallGuard.Verdict.RESYNC:
 			_resync_body()
@@ -695,6 +711,7 @@ func _on_resumed(snapshot: Dictionary) -> void:
 func _on_remote_event(event: Dictionary) -> void:
 	if event["type"] != &"frame":
 		return
+	NightEnding.noticed(self, event)
 	_mirror.follow(event)
 	avatars.apply_frame(event)
 	var me: Dictionary = event["players"].get(state.player_id, {})
@@ -823,6 +840,8 @@ func _on_event(event: Dictionary) -> void:
 		preview.grenades_left = event["count"]
 	if event["type"] == &"game_over":
 		night_over.emit(event["round_reached"])
+	elif event["type"] == NightServer.NIGHT_CLOSED:
+		_on_closed()
 	else:
 		_show_grenade(event)
 		_show_revive(event)

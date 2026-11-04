@@ -367,12 +367,39 @@ export class LobbyService {
     if (lobby) lobby.round = round;
   }
 
-  /** The match is over (the game server said so, or stopped listing it): its lobby goes. Unknown ids are ignored. */
-  matchEnded(matchId: string): void {
+  /**
+   * The match is over (the game server said so, or stopped listing it): its lobby goes. Unknown ids are ignored.
+   *
+   * A night that ran its end-of-night intermission out is `finished` instead (`present`: the users the game server had
+   * at that moment): the lobby opens again for the people who were there, with its code, its host (the next seat when
+   * the host is not among them), its Activity instance and the settings the host chose (map, bots, rules), ready for
+   * the host to start the next night. A member who is already in another open lobby is not put back in this one.
+   */
+  matchEnded(matchId: string, finished?: { present: string[] }): void {
     const lobbyId = this.byMatch.get(matchId);
     const lobby = lobbyId ? this.lobbies.get(lobbyId) : undefined;
-    if (lobby) this.remove(lobby);
-    else this.hooks.release(matchId);
+    if (!lobby) {
+      this.hooks.release(matchId);
+      return;
+    }
+    const back = finished ? lobby.members.filter((m) => finished.present.includes(m.userId) && !this.openLobbyOf.has(m.userId)) : [];
+    if (back.length === 0) {
+      this.remove(lobby);
+      return;
+    }
+    this.byMatch.delete(matchId);
+    this.hooks.release(matchId);
+    const now = this.now();
+    lobby.state = "open";
+    lobby.match = null;
+    lobby.players = null;
+    lobby.round = null;
+    lobby.startedAt = null;
+    lobby.members = back;
+    lobby.seen = new Map(back.map((m) => [m.userId, now]));
+    lobby.lastActiveAt = now;
+    if (!back.some((m) => m.userId === lobby.hostId)) lobby.hostId = back[0]!.userId;
+    for (const m of back) this.openLobbyOf.set(m.userId, lobby.id);
   }
 
   isMember(lobby: Lobby, userId: string): boolean {

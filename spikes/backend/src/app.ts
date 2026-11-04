@@ -432,15 +432,26 @@ export function buildApp(deps: Deps): FastifyInstance {
     },
   );
 
-  // The game server says a match is over: its slot is free and its lobby goes. Idempotent.
-  app.post<{ Params: { matchId: string } }>(
+  // The game server says a match is over: its slot is free and its lobby goes. A night that ran its end-of-night
+  // intermission out says `finished` with the users still there, and its lobby opens again for them. Idempotent.
+  app.post<{ Params: { matchId: string }; Body: { finished?: boolean; present?: string[] } | null }>(
     "/internal/matches/:matchId/end",
     {
       onRequest: requireGameServer,
-      schema: { params: { type: "object", properties: { matchId: { type: "string", minLength: 1, maxLength: 64 } } } },
+      schema: {
+        params: { type: "object", properties: { matchId: { type: "string", minLength: 1, maxLength: 64 } } },
+        body: {
+          type: ["object", "null"],
+          properties: {
+            finished: { type: "boolean" },
+            present: { type: "array", maxItems: 64, items: { type: "string", minLength: 1, maxLength: 64 } },
+          },
+        },
+      },
     },
     async (request, reply) => {
-      lobbies.matchEnded(request.params.matchId);
+      const body = request.body;
+      lobbies.matchEnded(request.params.matchId, body?.finished ? { present: body.present ?? [] } : undefined);
       return reply.code(204).send();
     },
   );

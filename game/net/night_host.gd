@@ -47,6 +47,9 @@ const HELLO_WITHIN := 10.0
 ## Seconds the seat of a player whose socket dropped is held, standing still in the lot, for them
 ## to come back with their resume token.
 const RESUME_WITHIN := 30.0
+## Seconds a client has, after the night is closed, to leave by itself (it does at once); what is
+## still connected then is hung up on, so the room never waits for a client that does not leave.
+const CLOSE_GRACE := 3.0
 
 ## Set before the node enters the tree.
 var port := NetWire.DEFAULT_PORT
@@ -109,6 +112,12 @@ var worst_ms := 0.0
 var nights := 0
 ## Peers hung up on for breaking `PeerLimits`.
 var kicked_count := 0
+## The night is over and its intermission ran out (`NightServer.NIGHT_CLOSED`): everyone goes back
+## to the lobby they came from. `returning` is the backend's user ids of the players who were here
+## at that moment (away ones included), told to the backend with the match's end so it can reopen
+## the lobby for them.
+var finished := false
+var returning: Array[String] = []
 
 var _peers: Dictionary[int, HostPeer] = {}
 var _by_player: Dictionary[int, HostPeer] = {}
@@ -121,6 +130,7 @@ var _events: Array[Dictionary] = []
 ## What the server said outside a step (a join, a name, a ping a bot made) that the bots have not
 ## heard yet: they hear it with the next step's events.
 var _unheard: Array[Dictionary] = []
+var _closed_at := 0.0
 var _stats_at := 0.0
 var _stats_bytes := 0
 var _stats_steps := 0
@@ -172,6 +182,8 @@ func _physics_process(_delta: float) -> void:
 	var events := server.step(Night.STEP, framed)
 	var frame: Dictionary = events.pop_back() if framed else {}
 	_events.append_array(events)
+	if not finished and server.closed():
+		_finish()
 	_run_bots(events, frame)
 	steps += 1
 	if sending:
@@ -185,12 +197,39 @@ func _physics_process(_delta: float) -> void:
 	_expire_away()
 	_stats_steps += 1
 	_log_stats()
+	if finished and not _peers.is_empty() and _now() - _closed_at >= CLOSE_GRACE:
+		for peer: HostPeer in _peers.values():
+			if not peer.kicked:
+				_kick(peer)
 	if _peers.is_empty() and _away.is_empty() and nights > 0 and _night_began():
 		if embedded:
 			serving = false
 			emptied.emit()
 		else:
 			_rebuild()
+
+
+## The night's intermission ran out: remembers who is here to go back to the lobby, and lets go of
+## the seats held for dropped sockets (nobody can come back to a closed night).
+func _finish() -> void:
+	finished = true
+	_closed_at = _now()
+	returning = users()
+	_away.clear()
+	_log("night_closed", {"players": returning.size()})
+
+
+## The backend's user ids of the people here now, those whose socket dropped included (`""` ids,
+## from a server with no backend, are left out).
+func users() -> Array[String]:
+	var out: Array[String] = []
+	for peer: HostPeer in _by_player.values():
+		if peer.user != "" and not out.has(peer.user):
+			out.append(peer.user)
+	for away: Away in _away.values():
+		if away.user != "" and not out.has(away.user):
+			out.append(away.user)
+	return out
 
 
 func player_count() -> int:
@@ -227,6 +266,11 @@ func configure_match(settings: MatchSettings) -> bool:
 		return false
 	server.rules.apply(RulesAction.configure(match_settings))
 	return true
+
+
+## Whether the night has ended: it stands still, so no bot takes a seat in it any more.
+func _night_over() -> bool:
+	return server.rules.phase == GameRules.Phase.OVER
 
 
 ## Whether the first player has arrived and started the night.
@@ -521,7 +565,7 @@ func _welcome_snapshot() -> Dictionary:
 ## Empty when not (the seat is then freed).
 func _bot_inherits(player_id: int) -> Array[Dictionary]:
 	var people := _people()
-	if not _night_began() or people.is_empty():
+	if not _night_began() or _night_over() or people.is_empty():
 		return []
 	if not bots.wants_more(server.rules.settings.bots, people.size()):
 		return []
@@ -538,7 +582,7 @@ func _people() -> Array:
 ## Seats bots up to the setting, in the seats the people leave free. Only once the night has begun,
 ## and never for a night with nobody in it.
 func _fill_bots() -> void:
-	if not _night_began() or _people().is_empty():
+	if not _night_began() or _night_over() or _people().is_empty():
 		return
 	_collect(bots.fill(server.rules.settings.bots, _people()))
 

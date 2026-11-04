@@ -12,6 +12,8 @@ var frame: Dictionary = {}
 ## list and its entries are shared with every other client, so a reader never changes them.
 var zombies: Array[Dictionary] = []
 var over := false
+## The server closed the night after its intermission (`night_closed`): everyone goes back.
+var closed := false
 var round_reached := 0
 var kills := 0
 var points_earned := 0
@@ -60,6 +62,8 @@ func _apply(event: Dictionary) -> void:
 		&"game_over":
 			over = true
 			round_reached = event["round_reached"]
+		&"night_closed":
+			closed = true
 		&"zombie_removed":
 			if event["killer_id"] == player_id:
 				kills += 1
@@ -103,6 +107,12 @@ func phase() -> int:
 
 func round_number() -> int:
 	return frame.get("round", 0)
+
+
+## Whole seconds of the end-of-night intermission left, as the server's last frame says (-1 while
+## the night is on). Every client counts the end by it, so they stay in step with the server.
+func over_left() -> int:
+	return int(frame.get("over_left", -1))
 
 
 func points() -> int:

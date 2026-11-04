@@ -98,6 +98,12 @@ static func show_lobby(from: TogetherApi, held: Dictionary) -> void:
 	UIRouter.push(SCREEN, UITransition.Kind.SLIDE, {"api": from, "lobby": held})
 
 
+## Opens the lobby screen in place of the night that ended, for the lobby the backend opened again
+## (`NightScreen` at the end of the sequence).
+static func replace_with_lobby(from: TogetherApi, held: Dictionary) -> void:
+	UIRouter.replace(SCREEN, UITransition.Kind.SLIDE, {"api": from, "lobby": held})
+
+
 ## Opens the screen on what a code says, with Join.
 static func show_preview(from: TogetherApi, seen: Dictionary) -> void:
 	UIRouter.push(SCREEN, UITransition.Kind.SLIDE, {"api": from, "preview": seen})
@@ -424,6 +430,7 @@ func _go_in(held: bool) -> void:
 	NightScreen.join_ticket = pass_to["ticket"]
 	NightScreen.join_map = MapRegistry.of_lobby(lobby).id
 	NightScreen.join_as_bot = play_as_bot
+	NightScreen.remember_lobby(api, lobby, get_tree().root)
 	_entering = true
 	watch.stop()
 	if opener.is_valid():

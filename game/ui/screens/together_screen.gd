@@ -355,6 +355,7 @@ func _enter_night() -> void:
 		return
 	NightScreen.join_url = server_url_of(pass_to, in_discord())
 	NightScreen.join_ticket = pass_to["ticket"]
+	NightScreen.remember_lobby(api, _lobby, get_tree().root)
 	_busy = false
 	UIRouter.push(NIGHT_SCREEN, UITransition.Kind.IRIS)
 

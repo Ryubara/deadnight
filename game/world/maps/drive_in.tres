@@ -1,6 +1,39 @@
-[gd_resource type="Resource" script_class="MapInfo" format=3]
+[gd_resource type="Resource" script_class="MapInfo" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://world/maps/map_info.gd" id="1_info"]
+[ext_resource type="Script" path="res://gameplay/night/end/end_shot.gd" id="2_shot"]
+
+[sub_resource type="Resource" id="Shot_plaza"]
+script = ExtResource("2_shot")
+lens_from = Vector3(-8, 34, 62)
+lens_to = Vector3(8, 34, 54)
+look_from = Vector3(0, 2, -18)
+look_to = Vector3(0, 2, -24)
+fov = 62.0
+
+[sub_resource type="Resource" id="Shot_west"]
+script = ExtResource("2_shot")
+lens_from = Vector3(-52, 15, -2)
+lens_to = Vector3(-52, 15, -20)
+look_from = Vector3(4, 3, -36)
+look_to = Vector3(2, 6, -46)
+fov = 60.0
+
+[sub_resource type="Resource" id="Shot_yard"]
+script = ExtResource("2_shot")
+lens_from = Vector3(54, 17, -6)
+lens_to = Vector3(54, 17, 8)
+look_from = Vector3(20, 1, 20)
+look_to = Vector3(20, 1, 26)
+fov = 60.0
+
+[sub_resource type="Resource" id="Shot_midway"]
+script = ExtResource("2_shot")
+lens_from = Vector3(0, 24, -6)
+lens_to = Vector3(0, 24, 10)
+look_from = Vector3(0, 1, 30)
+look_to = Vector3(0, 1, 38)
+fov = 58.0
 
 [resource]
 script = ExtResource("1_info")
@@ -14,3 +47,4 @@ min_players = 1
 max_players = 8
 shipped = true
 batch_still = true
+end_shots = Array[ExtResource("2_shot")]([SubResource("Shot_plaza"), SubResource("Shot_west"), SubResource("Shot_yard"), SubResource("Shot_midway")])
