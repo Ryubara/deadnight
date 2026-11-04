@@ -271,12 +271,12 @@ Plots and a recording with sound of both walks are on the pull request.
 
 ## The progression sounds (#1062)
 
-The popups of the progression ([design](../design/progression.md)) play **live, in the middle of a fight**. Five
-cues, made here by recipes (`tools/audio/progress_recipes.py`: noise, sines, sawtooth stacks, no sample and no
-audio of any game; the record scratch is a style reference only), in the bank `ui_progress.tres` (deferred, on the
-`UI` bus, so the Settings slider "Interface sounds" at 0 is mute for all of them), played by cue name with no
-source: `UIAudio.play(&"level_up")` and the rest (`UiSoundTable.PROGRESS_CUES`, a row of the role `any`). Issues 1063
-(voice lines) and 1064 (popups) use these names.
+The popups of the progression ([design](../design/progression.md#popups-motion-and-sound)) play **live, in the
+middle of a fight**. Five cues, made here by recipes (`tools/audio/progress_recipes.py`: noise, sines, sawtooth
+stacks, no sample and no audio of any game; the record scratch is a style reference only), in the bank
+`ui_progress.tres` (deferred, on the `UI` bus, so the Settings slider "Interface sounds" at 0 is mute for all of
+them), played by cue name with no source: `UIAudio.play(&"level_up")` and the rest (`UiSoundTable.PROGRESS_CUES`,
+a row of the role `any`). Issues 1063 (voice lines) and 1064 (popups) use these names.
 
 | Cue (sound) | What it is | Length | Peak in the mix, menu | Weight |
 | --- | --- | ---: | ---: | --- |
