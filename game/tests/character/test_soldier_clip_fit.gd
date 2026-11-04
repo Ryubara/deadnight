@@ -3,9 +3,10 @@
 # - the menu's soldier, the maintainer's shot: no arm or armband in the body with any weapon, but
 #   the right forearm of a long sleeve with the long guns (up to 4 cm, recorded);
 # - every hair cut, hat, pair of glasses and neckwear out of the shoulders in every clip;
-# - the arms in the clips: no clip deeper than the depths recorded in `clip_fit_recorded.json`
-#   (the kit's and our clips' own reach: a hand into a thigh in the kneel, a forearm across the
-#   chest in the dual pistols: #939), and no new clip with any.
+# - the arms in the clips: no forearm or hand deeper than the tolerance in any clip, sampled at
+#   eight frames (four missed a windup's key pose); none may be recorded (#939 reworked the clips
+#   that did: the dual pistols, the strikes, downed, crawl and revive, the sprints, the repair);
+# - the armbands no deeper than recorded in `clip_fit_recorded.json`, and those records small.
 # Docs: docs/research/soldier-parts.md, "Fit".
 extends GdUnitTestSuite
 
@@ -14,6 +15,11 @@ const RECORDED := "res://tests/character/clip_fit_recorded.json"
 const SLACK := 0.005
 ## The deepest the menu's soldier may be recorded at, metres.
 const MENU_MOST := 0.04
+## The deepest an armband may be recorded at in a clip, metres.
+const ARMBAND_MOST := 0.055
+## Frames sampled in each clip for the arms (the clips are short: a windup's key pose lies between
+## four samples).
+const ARM_SAMPLES := 8
 ## The looks the arms are sampled on: hers in rolled sleeves (the maintainer's), his in a jacket.
 const ARM_LOOKS: Array[int] = [10, 0]
 ## One look per head piece, each on a tall collar (the closest to the head): [preset, parts].
@@ -119,7 +125,7 @@ func test_no_clip_puts_an_arm_deeper_into_the_body_than_recorded() -> void:
 		var model := _model(CharacterLook.from_preset(preset))
 		var skeleton := model.find_child("Skeleton3D", true, false) as Skeleton3D
 		var fit := BodyFit.new(_host, skeleton)
-		var report := await ClipFit.new(fit, model).sample_clips()
+		var report := await ClipFit.new(fit, model).sample_clips([], [], ARM_SAMPLES)
 		var known: Dictionary = recorded.get(str(preset), {})
 		for clip: String in report:
 			for check: String in report[clip]:
@@ -136,3 +142,19 @@ func test_no_clip_puts_an_arm_deeper_into_the_body_than_recorded() -> void:
 		_host.remove_child(model)
 		model.free()
 	assert_array(fails).is_empty()
+
+
+## No clip may put an arm into the body (#939): nothing is recorded for the arms, so the tolerance
+## is the bound; the armbands' records stay small.
+func test_no_clip_is_recorded_for_the_arms() -> void:
+	var recorded: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(RECORDED))
+	var arms: Array[String] = []
+	for preset in ARM_LOOKS:
+		var known: Dictionary = recorded.get(str(preset), {})
+		for clip: String in known:
+			for check: String in known[clip]:
+				if check.ends_with(" arm"):
+					arms.append("%d %s %s" % [preset, clip, check])
+				else:
+					assert_float(known[clip][check]).is_less_equal(ARMBAND_MOST)
+	assert_array(arms).is_empty()

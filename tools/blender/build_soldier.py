@@ -21,6 +21,7 @@ from pathlib import Path
 import bpy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import arm_clearance
 import kitlib
 import soldier_clips as sc
 
@@ -54,6 +55,24 @@ def strip_channels(path, unkeyed):
     return removed
 
 
+# The clips soldier.glb carries besides the kit's own (#42): every clip authored since ships in its own file, so a
+# rebuild of soldier.glb without `--clips main` would pick them all up (67 clips in place of 35, #939).
+MAIN_CLIPS = {
+    "Walk", "Downed", "Swing_Melee",
+    *(f"{action}_{cls}" for action in ("Aim", "Equip", "Unequip") for cls in ("Rifle", "Shotgun", "Pistol", "Melee")),
+    *(f"{action}_{cls}" for action in ("Fire", "Reload") for cls in ("Rifle", "Shotgun", "Pistol")),
+}  # fmt: skip
+
+
+def wanted(name, clips, kit):
+    """Whether the clip `name` goes in a file built with `--clips clips` (`kit`: the kit's own clip names)."""
+    if not clips:
+        return True
+    if clips == "main":
+        return name in kit or name in MAIN_CLIPS
+    return name.startswith(tuple(p for p in clips.split(",") if p))
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
@@ -71,7 +90,8 @@ def main():
         help="export only the clips whose name starts with this, or with one of these comma-separated prefixes "
         "(Grenade_: the grenade clips as their own file, game/assets/characters/soldier/grenade/soldier_grenade.glb, "
         "for the controller to add to the Soldier's library; Walk_,Strafe_: the aim-move clips); clips.json beside "
-        "it lists only those",
+        "it lists only those. `main`: soldier.glb's own set (every kit clip and MAIN_CLIPS), without the clips that "
+        "ship in their own files",
     )
     args = ap.parse_args(argv)
     out = args.out.resolve()
@@ -89,6 +109,15 @@ def main():
     kit_actions = [a for a in bpy.data.actions if "|" in a.name]
     for a in kit_actions:
         sc.bake_static(arm, a)
+    # How deep each arm goes into the body in the clips this file carries (#939): one ARMS line per clip, on the kit
+    # body; the game's own check on the dressed parts is ClipFit (game/tests/character/test_soldier_clip_fit.gd).
+    kit = {re.sub(r"^.*\|", "", a.name) for a in kit_actions}
+    body = arm_clearance.Body(arm)
+    for name in sorted(sc.CLIPS):
+        if not wanted(name, args.clips, kit):
+            continue
+        action = bpy.data.actions.get(name) or next(a for a in kit_actions if a.name.endswith("|" + name))
+        print(arm_clearance.line(name, arm_clearance.clip_depths(arm, body, action)))
 
     # 2. Held items (the 14 kit weapons on Index1.R), strays, leaf empties.
     _body, held, stray = kitlib.split_parts(objs)
@@ -131,12 +160,10 @@ def main():
     # (Wave, Yes, No, Punch, Duck, Jump x3) stay in the file: they cost nothing until played and the lobby may want them.
     for a in kit_actions:
         a.name = re.sub(r"^.*\|", "", a.name)
-    if args.clips:
-        prefixes = tuple(args.clips.split(","))
-        for a in [a for a in bpy.data.actions if not a.name.startswith(prefixes)]:
-            bpy.data.actions.remove(a)
-        for name in [n for n in sc.CLIPS if not n.startswith(prefixes)]:
-            del sc.CLIPS[name]
+    for a in [a for a in bpy.data.actions if not wanted(a.name, args.clips, kit)]:
+        bpy.data.actions.remove(a)
+    for name in [n for n in sc.CLIPS if not wanted(n, args.clips, kit)]:
+        del sc.CLIPS[name]
     clips = sorted(bpy.data.actions, key=lambda a: a.name)
     for a in clips:
         a.use_fake_user = True
