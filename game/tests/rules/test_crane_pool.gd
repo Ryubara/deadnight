@@ -4,10 +4,16 @@ extends GdUnitTestSuite
 ## `Night.SEED`, so a person's crane rolled the same prizes in the same order every night: the
 ## shotgun first, always, and the bat, the axe and the crowbar never in the first plays.
 
-## Weapons of the catalogue the crane does not give, each with the reason. Empty: every weapon is a
+## Weapons of the catalogue the crane does not give, each with the reason. Every other weapon is a
 ## prize, the revolver too (the crane skips it only for a buyer who carries it). A weapon added to
 ## `WeaponCatalog.IDS` is in the crane's pool, or is listed here with why not.
-const NOT_PRIZES := {}
+const NOT_PRIZES := {
+	&"house_pistol":
+	(
+		"the start pistol (#898): the weakest gun, every player starts with it; a play of the crane"
+		+ " that paid back what the buyer gave up would be a dud, not a prize"
+	),
+}
 ## First rolls drawn, each with its own fresh seed.
 const FIRST_ROLLS := 10000
 ## How far a prize's share of the first rolls may be from its weight's share. The largest share

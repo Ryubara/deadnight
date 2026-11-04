@@ -571,8 +571,8 @@ the third holster and the reload shock are in the simulator but on no modelled p
 research](../research/perks.md#what-the-gate-sees)). Grenades, repair, the fence's boards (the simulator keeps its
 own six-second barrier) and the doors' and spots' geometry (they only cost points) are not modelled either.
 
-**Ammunition and the shop** (#152). The players carry the revolver from the start and every weapon
-they buy or win with the reserve the weapon gives; rounds only come from the shop, at the shop's price for the
+**Ammunition and the shop** (#152). The players carry the House Pistol from the start (the revolver until #898) and every
+weapon they buy or win with the reserve the weapon gives; rounds only come from the shop, at the shop's price for the
 rounds that fit (`NightSim` asks the rules the same `buy` the night does). Between rounds a player, in order: buys
 fuel, buys rounds up to a reserve of `ammo_floor_mags` magazines for each weapon worth shooting (at least half the
 best one's sustained damage), buys the things they are saving for, and with what is left over (keeping the price of
