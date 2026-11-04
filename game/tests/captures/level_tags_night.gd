@@ -119,7 +119,7 @@ func _join(with_bot: bool) -> void:
 
 func _ticket(index: int, settings: MatchSettings) -> String:
 	var level := LEVELS[index]
-	var claims := {"level": level, "icon": "level_%02d" % level, "xp": LevelCurve.xp_for(level)}
+	var claims := {"xp": LevelCurve.xp_for(level)}
 	return TicketMaker.make(
 		SECRET,
 		SERVER_ID,

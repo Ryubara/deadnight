@@ -35,8 +35,17 @@ export const MAX_PERK_LIMIT = 1;
 
 /** The map every night had before there was a choice. */
 export const DEFAULT_MAP = "drive_in";
-/** The maps the game can play now (its `MapRegistry.playable`, which a game test compares this list with). */
-export const PLAYABLE_MAPS = ["drive_in", "small_indoor"];
+/**
+ * The account level that opens each map the game can play now: its `MapInfo.unlock_level`, one number a map in
+ * game/world/maps/*.tres (a backend test compares both, and `MapRegistry.playable` with the ids). The HOST's level
+ * decides a hosted night's map (docs/design/maps.md#levels-open-maps); a guest below it still plays there.
+ */
+export const MAP_UNLOCK_LEVELS: Readonly<Record<string, number>> = { drive_in: 1, small_indoor: 10 };
+/** The maps the game can play now (its `MapRegistry.playable`, which a backend test compares this list with). */
+export const PLAYABLE_MAPS: readonly string[] = Object.keys(MAP_UNLOCK_LEVELS);
+
+/** Whether a host of `level` may choose `map` (an id of `PLAYABLE_MAPS`; any other id is not open). */
+export const mapOpenAt = (map: string, level: number): boolean => level >= (MAP_UNLOCK_LEVELS[map] ?? Infinity);
 
 /** The keys every settings object has; `map` and `bots` may be left out by a client from before them (default map, 0 bots). */
 const KEYS = ["count_multiplier", "max_alive", "break_seconds"];
@@ -56,9 +65,11 @@ export type SettingsProblem = string;
 
 /**
  * The settings `value` holds, or why it is not settings the game takes: a key that is not one of the game's
- * ("unknown setting a_rule"), a missing one, or one outside its bounds. Nothing is dropped silently.
+ * ("unknown setting a_rule"), a missing one, or one outside its bounds. Nothing is dropped silently. With
+ * `hostLevel` (the level of the person who sets or starts: the host's), a map that level does not open is refused
+ * ("map needs level 10"), so the picker's refusal and the game server's agree.
  */
-export function checkSettings(value: unknown): { settings: MatchSettings } | { problem: SettingsProblem } {
+export function checkSettings(value: unknown, hostLevel?: number): { settings: MatchSettings } | { problem: SettingsProblem } {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return { problem: "settings are not an object" };
   const given = value as Record<string, unknown>;
   const unknown = Object.keys(given).filter((key) => !SETTINGS_KEYS.includes(key));
@@ -73,6 +84,9 @@ export function checkSettings(value: unknown): { settings: MatchSettings } | { p
   if (!inRange(max_alive, 0, MAX_ALIVE) || !Number.isInteger(max_alive)) return { problem: "bad max_alive" };
   if (break_seconds !== 0 && !inRange(break_seconds, MIN_BREAK, MAX_BREAK)) return { problem: "bad break_seconds" };
   if (map !== undefined && !(typeof map === "string" && PLAYABLE_MAPS.includes(map))) return { problem: "bad map" };
+  if (typeof map === "string" && hostLevel !== undefined && !mapOpenAt(map, hostLevel)) {
+    return { problem: `map needs level ${MAP_UNLOCK_LEVELS[map]}` };
+  }
   if (bots !== undefined && (!inRange(bots, 0, MAX_BOTS) || !Number.isInteger(bots))) return { problem: "bad bots" };
   if (botSkill !== undefined && (!inRange(botSkill, 0, MAX_BOT_SKILL) || !Number.isInteger(botSkill))) {
     return { problem: "bad bot_skill" };

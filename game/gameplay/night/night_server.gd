@@ -146,6 +146,10 @@ var drawn_bodies := true
 var pings: Dictionary[int, int] = {}
 ## The crowd this match stands, from the weakest client in it (`CrowdCeiling.set_platform`).
 var crowd := CrowdCeiling.new()
+## The XP of the seats that hold an account, counted as the rules decide each kill and told to every
+## client as events (`XpAward`). Whoever knows a seat's account registers it; a night with none pays
+## nothing.
+var xp: XpAward
 
 ## The dead stop the bodies (#914). `dead_tuning` is the one table, `_dead_ring` where the dead
 ## stood at the last ticks (in the centimetres a frame carries), `_dead_fields` the field each body
@@ -224,6 +228,7 @@ func _init(
 	ping_board.seconds = tuning.ping_seconds
 	ping_board.gap = tuning.ping_gap
 	rules = GameRules.new(p_rules_tuning, p_seed, p_settings)
+	xp = XpAward.new(NightTally.fuel_items_of(rules.tuning))
 	_probe = WorldProbe.new(world.get_world_3d().direct_space_state)
 	combat = CombatServer.new(WeaponCatalog.all(), rules, _probe.callable(), p_seed)
 	_cast = WorldCast.new(world.get_world_3d().direct_space_state)
@@ -393,6 +398,8 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	bot_orders.step(delta)
 	say_board.step(delta)
 	_throw_grenades(delta)
+	# What the seats earned this tick, told once each, before the frame that closes the list.
+	_outbox.append_array(xp.end_tick())
 	if with_frame:
 		_outbox.append(_frame())
 	PerfProbe.end(&"server.frame", began)
@@ -666,6 +673,7 @@ func _position_of_zombie(zombie_id: int) -> Vector3:
 
 func _on_rules_event(event: Dictionary) -> void:
 	_outbox.append(event)
+	xp.observe(event)
 	match event["type"]:
 		&"game_over":
 			# The clock starts with the event, so the frame of this very step carries it.

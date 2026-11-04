@@ -174,12 +174,11 @@ much it stresses when we do it". The design keeps the cost per kill small and pu
   level.
 - **A signed-in solo night stays on the player's machine**: the same tally runs in the local rules and the client writes
   at round ends; the backend caps how fast XP can rise (about 120 XP a minute, three times a strong four-player night).
-- **The stress is measured** (#1059): a four-player night at **count multiplier 5** on the dedicated server, with and
-  without the tally, three seeds: tick time (mean, p99, worst) and the tally's cost per kill; `xp_gained` events and
-  bytes a second per client at the peak; the client's cost of applying them; the backend writes a night (must be the
-  rounds plus one a seat, never the kills). The balance simulator's nights give the scale: a strong four-player night
-  at x5 kills about 2 a second across the team on average (the simulator's bots die early at x5, so a real horde with
-  people is the number to measure). If too high, events are coalesced further (a 0.25 s window) before anything else.
+- **The stress is measured** (#1059, built): a four-player night at **count multiplier 5** on the dedicated server, with
+  and without the tally, three seeds: tick time (mean, p99, worst) and the tally's cost per kill; `xp_gained` events and
+  bytes a second per client at the peak; the client's cost of applying them; the backend writes a night (the rounds
+  plus the night's own, never the kills). The numbers, the events' keys and the interface with the backend are in
+  [the research page](../research/progression.md#the-game-server-awards-xp-1059).
 
 ### The curve
 
@@ -704,15 +703,16 @@ the name alone, with no badge and no gap. In a list (the scoreboard, the report,
 room of two digits, so the names of the people start on one line and 55 is never cut; over a head the level takes its
 own width and the whole tag is centred as a bare name is. In the compact box the name ends in an ellipsis before the
 badge or the points are cut. **Shown by default**
-(decision 18); a setting hides every level on the viewer's own screen. The level and icon ride with the name: in the
-ticket the backend signs, then in the WELCOME's names and the `player_named` event. **Bots have no level** and keep
+(decision 18); a setting hides every level on the viewer's own screen. The level comes from the server's XP tally, which
+every client hears (the WELCOME's `levels`, then `account_seated`, `level_up` and `account_left`); the icon is the
+level's own. **Bots have no level** and keep
 their usual difficulties (the earlier idea of a level near the lobby's average is dropped). A Guest account is an
 account and has a level like any other; only a bot has none.
 Also on the scoreboard, the lobby list, the night report and the player boxes at the bottom left (calling cards
 beside the box come with #1070). A name tag never shows a card or an emblem in the night.
 Built in #1077: [how it travels and what it costs](../research/multiplayer.md#the-level-and-icon-beside-a-name-1077).
-The setting is **Player levels** (Settings, Accessibility). A level gained in a night reaches the tags through
-`NightHost.set_level` (the `player_leveled` event); the server's XP tally (#1059) calls it.
+The setting is **Player levels** (Settings, Accessibility). A level gained in a night reaches the tags by the
+`level_up` event the tally already sends (#1114), so a tag changes the moment the level does.
 
 ## Prestige
 

@@ -624,12 +624,8 @@ func _show_seats() -> void:
 			names.append(str(member["name"]))
 			hosts.append(bool(member.get("host", false)))
 			away.append(bool(member.get("away", false)))
-			var claims := TicketVerifier.level_claims(
-				{"level": member.get("level"), "icon": member.get("icon")}
-			)
-			levels.append(
-				Vector2i(claims["level"], claims["icon"]) if show_levels else Vector2i.ZERO
-			)
+			var tag := LevelCurve.member_tag(member.get("level"), member.get("icon"))
+			levels.append(tag if show_levels else Vector2i.ZERO)
 	else:
 		max_players = int(preview.get("maxPlayers", NightHost.MAX_PLAYERS))
 		for who: Variant in preview.get("names", []):

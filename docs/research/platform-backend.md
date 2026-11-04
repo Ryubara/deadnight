@@ -412,6 +412,7 @@ travel with the ticket, so the game server needs no second channel:
    `400 bad_settings` otherwise, leaving the lobby open. They are fixed when the match starts; the lobby view shows
    them.
 2. Every ticket of the match (`/lobbies/:id/ticket`) carries the same `settings` claim, signed with the rest.
+   And the same `hostLevel` claim: [the lobby host's level](#the-hosts-level-decides-the-map-1098) when the match started.
 3. The game server's `TicketVerifier.admit` returns them as a `MatchSettings`; the ticket that opens the room gives
    it to `NightHost.match_settings` before the night is built, and every WELCOME carries them from there. A ticket
    whose rules the game cannot take (the two sides' bounds drifted) is refused as `ticket carries rules this server
@@ -422,6 +423,26 @@ before `MatchSettings.from_dict` (strict) sees it. The first version of this cha
 backend would have been refused; `tickets.json` now holds a ticket the backend signed with settings. What is not
 done: none. The lobby screen's panel is the host's way in (`LobbyScreen.rules`, `TogetherApi.set_settings`); a
 lobby reads its rules back with `MatchSettings.from_json`, which makes the whole float a whole number the same way.
+
+### The host's level decides the map (#1098)
+
+The back rooms open at level 10 ([the design](../design/maps.md)). The host's level decides, not the
+holder's: a guest below a map's level still plays a hosted night there.
+
+- `src/settings.ts` keeps `MAP_UNLOCK_LEVELS` (`drive_in` 1, `small_indoor` 10), the game's `MapInfo.unlock_level`;
+  `PLAYABLE_MAPS` is its keys. `test/map_gate.test.ts` reads the game's `game/world/maps/*.tres` and holds the ids and the
+  levels equal (the `backend` job checks out `game/world/maps` for it, and a change to those files starts the job).
+- `PUT /lobbies/:id/settings` and `POST /lobbies/:id/start` read the requester's level from the stored profile
+  (`ProgressService.levelFor`, the same curve as the ticket's `level`; no profile is level 1) and refuse a map it does not
+  open as `400 bad_settings` (`map needs level 10`), so the picker's refusal and the server's agree. Rules the host set
+  while waiting and a new host inherited (the host left) start on the drive-in lot when the new host's level does not open
+  their map, the other rules standing, as the game server does with a ticket.
+- The level is read **at the start** and kept on the match (`Match.hostLevel`); `/lobbies/:id/ticket` signs that number
+  into the ticket of every member, so the order the players arrive in decides nothing and XP the host earns in the night
+  moves the badge (`level`) and not the gate. A night that reopens its lobby reads the host again at its next start, so
+  a host who passed the role on changes it for the next match.
+- A backend from before this signs no `hostLevel`; the game server then leaves the host's choice
+  (`TicketVerifier.NO_LEVEL`).
 
 ### A setting is never dropped (#944)
 

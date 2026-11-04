@@ -207,6 +207,11 @@ export class ProgressService {
     this.now = now;
   }
 
+  /** The level an account has reached (1 for one with no profile): what a host's level is, for the map gate. */
+  async levelFor(userId: string): Promise<number> {
+    return levelOf(profileOf(await this.store.getSave(userId, PROFILE_SLOT)).xp);
+  }
+
   /** The claims a ticket carries for a seat: never the client's word. */
   async claimsFor(userId: string): Promise<{ level: number; icon: string; xp: number }> {
     const profile = profileOf(await this.store.getSave(userId, PROFILE_SLOT));

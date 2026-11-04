@@ -120,8 +120,9 @@ var circuits: Dictionary[StringName, bool] = {}
 ## left), "revive" (the hold's progress, 0 to 1), "reviver" (who holds it, 0 for nobody) and
 ## "self_revive" (seconds left of the revive perk's own, 0 for none) are the server's too
 ## (`set_player_revive`). "level" and "icon" (the account's level and the ladder icon beside it, 0
-## for none: a bot, a night with no backend) are the server's too (`set_player_level`); a part reads
-## them through `level_of`, which also honours the viewer's setting.
+## for none: a bot, a night with no backend) are the server's too (`set_player_level`, from the
+## `account_seated`, `level_up` and `account_left` events); a part reads them through `level_of`,
+## which also honours the viewer's setting.
 var team: Dictionary[int, Dictionary] = {}
 ## Whether the viewer wants levels shown beside names (the setting `SettingsService.SHOW_LEVELS`,
 ## on by default): off hides every level on this screen, the data stays.
@@ -367,7 +368,7 @@ func set_night_clock(seconds: int) -> void:
 
 
 ## The level and icon a team member shows, `Vector2i(level, icon)`; `Vector2i.ZERO` for none: a bot
-## has no level, nor has a seat whose ticket had none, nor does a viewer who turned levels off.
+## has no level, nor has a seat with no account, nor does a viewer who turned levels off.
 func level_of(member: Dictionary) -> Vector2i:
 	var level := int(member.get("level", 0))
 	if not show_levels or level < 1 or bool(member.get("bot", false)):
@@ -497,8 +498,9 @@ func load_snapshot(data: Dictionary) -> void:
 				team[int(player_id)]["name"] = str(named[player_id]).strip_edges().left(
 					HudStyle.NAME_LIMIT
 				)
-	# The levels of the seats (a WELCOME's `levels`: player id -> Vector2i(level, icon)); a seat the
-	# snapshot does not list has none (a server of protocol 14 sends no `levels`: the tags stay bare).
+	# The levels of the seats (a WELCOME's `levels`: player id -> the level of each seat with an
+	# account, the server's XP tally); a seat the snapshot does not list has none (a bot, a night
+	# with no backend: the tags stay bare).
 	var levels: Variant = data.get("levels")
 	if typeof(levels) == TYPE_DICTIONARY:
 		for player_id in team:
@@ -613,11 +615,14 @@ func _handler(type: StringName) -> Callable:
 		&"player_named":
 			handler = func(e: Dictionary) -> void:
 				set_player_name(int(e["player_id"]), str(e["name"]))
-				# A name with no level clears the seat's (a bot named the seat of a person).
-				set_player_level(int(e["player_id"]), int(e.get("level", 0)), int(e.get("icon", 0)))
-		&"player_leveled":
+		# The server's XP tally tells every client a seat's level when an account sits (`account_seated`),
+		# when it crosses one (`level_up`) and when the account leaves (`account_left`): the icon is the
+		# level's own.
+		&"account_seated", &"level_up":
 			handler = func(e: Dictionary) -> void:
-				set_player_level(int(e["player_id"]), int(e["level"]), int(e.get("icon", 0)))
+				set_player_level(int(e["player_id"]), int(e["level"]), int(e["level"]))
+		&"account_left":
+			handler = func(e: Dictionary) -> void: set_player_level(int(e["player_id"]), 0, 0)
 		&"player_hurt":
 			handler = _on_player_hurt
 		&"weapon_replaced":

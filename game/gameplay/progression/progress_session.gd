@@ -21,6 +21,10 @@ var tally: NightTally
 ## Sends a queued write to the backend (a Callable taking the write, answering whether it was
 ## taken); empty until the backend takes writes (#1075). A refused write stays queued.
 var uploader := Callable()
+## The night's `XpAward`, when the local rules tell the player their XP as events (a signed-in solo
+## night): the one-off awards and challenge rewards, which no stat shows, are told to it so its
+## totals agree with the profile.
+var award: XpAward
 
 var _clock: ChallengeClock
 var _meter: XpMeter
@@ -107,6 +111,7 @@ func _on_advanced(advance: Dictionary) -> void:
 	if reward > 0:
 		_meter.add_xp(reward)
 		_challenge_xp += reward
+		_tell_award(reward, XpAward.CHALLENGE)
 		gained.emit(reward * XpRules.HUNDREDTHS, _meter.xp())
 	store.finished(id)
 
@@ -121,9 +126,16 @@ func _claim_once() -> void:
 	if not store.profile.opening_night:
 		_pending_opening = true
 		_meter.add_xp(XpRules.OPENING_NIGHT_XP)
+		_tell_award(XpRules.OPENING_NIGHT_XP, XpAward.OPENING_NIGHT)
 	if store.profile.bonus_due(day):
 		_pending_day = day
 		_meter.add_xp(XpRules.FIRST_GAME_OF_THE_DAY_XP)
+		_tell_award(XpRules.FIRST_GAME_OF_THE_DAY_XP, XpAward.FIRST_GAME)
+
+
+func _tell_award(xp: int, source: StringName) -> void:
+	if award != null:
+		award.add_xp(_following, xp, source)
 
 
 func _persist() -> void:

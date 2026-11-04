@@ -28,24 +28,36 @@ var last_event: Dictionary = {}
 ## Player id -> the name that seat shows, as the server says it (the WELCOME's `names` and the
 ## `player_named` events): the same on every client. A seat without a name is not in it.
 var names: Dictionary = {}
-## Player id -> `Vector2i(level, icon)` the seat shows beside its name, as the server says it (the
-## WELCOME's `levels`, the `player_named` and `player_leveled` events). A bot, and a person whose
-## ticket had no level, are not in it.
+## Player id -> the level of each seat that holds an account, as the server says it (the WELCOME's
+## `levels`, `account_seated`, `account_left` and `level_up`). A bot has none. Read the level over a
+## head and the scoreboard from it.
 var levels: Dictionary = {}
+## This player's XP as the server counts it: the account's raw total (the WELCOME's `account_xp`,
+## then every `xp_gained`), and the XP of this night so far.
+var account_xp := 0
+var night_xp := 0
+## The `xp_gained` events heard.
+var xp_events := 0
 
 
 ## Keeps the names a WELCOME's snapshot carries (`names`: player id -> name).
 func load_names(snapshot: Dictionary) -> void:
 	var held: Variant = snapshot.get("names", {})
 	names.clear()
+	if typeof(held) != TYPE_DICTIONARY:
+		return
+	for id: Variant in held:
+		names[int(id)] = str(held[id])
+
+
+## Keeps the levels and this player's raw XP a WELCOME's snapshot carries.
+func load_levels(snapshot: Dictionary) -> void:
 	levels.clear()
+	var held: Variant = snapshot.get("levels", {})
 	if typeof(held) == TYPE_DICTIONARY:
 		for id: Variant in held:
-			names[int(id)] = str(held[id])
-	var seen: Variant = snapshot.get("levels", {})
-	if typeof(seen) == TYPE_DICTIONARY:
-		for id: Variant in seen:
-			_keep_level(int(id), LevelCurve.seat_tag(seen[id]))
+			levels[int(id)] = int(held[id])
+	account_xp = int(snapshot.get("account_xp", 0))
 
 
 func apply_events(events: Array) -> void:
@@ -58,14 +70,6 @@ func apply_events(events: Array) -> void:
 			PerfProbe.count(StringName("ev.%s" % event["type"]))
 
 
-## Keeps `tag` (`Vector2i(level, icon)`) as the seat's, or forgets the seat's when it is zero.
-func _keep_level(player_id: int, tag: Vector2i) -> void:
-	if tag.x > 0:
-		levels[player_id] = tag
-	else:
-		levels.erase(player_id)
-
-
 func _apply(event: Dictionary) -> void:
 	match event["type"]:
 		&"frame":
@@ -73,17 +77,19 @@ func _apply(event: Dictionary) -> void:
 			zombies = ZombieCodec.decode_shared(event["zombies"])
 		&"player_named":
 			names[int(event["player_id"])] = str(event["name"])
-			# A name with no level clears the seat's (a bot named the seat of a person).
-			_keep_level(
-				int(event["player_id"]),
-				LevelCurve.seat_tag([event.get("level", 0), event.get("icon", 0)])
-			)
-		&"player_leveled":
-			_keep_level(
-				int(event["player_id"]), LevelCurve.seat_tag([event["level"], event.get("icon", 0)])
-			)
 		&"round_started":
 			rounds_started += 1
+		&"xp_gained":
+			xp_events += 1
+			if event["player_id"] == player_id:
+				account_xp = event["total"]
+				night_xp = event["xp"]
+		&"level_up":
+			levels[int(event["player_id"])] = int(event["level"])
+		&"account_seated":
+			levels[int(event["player_id"])] = int(event["level"])
+		&"account_left":
+			levels.erase(int(event["player_id"]))
 		&"game_over":
 			over = true
 			round_reached = event["round_reached"]

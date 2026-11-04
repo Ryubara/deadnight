@@ -67,14 +67,15 @@ func _ally(id: int, x: float, state: HudState, label := "Ruby", extra := {}) -> 
 
 func test_the_state_keeps_the_level_and_icon_of_a_seat_from_the_events() -> void:
 	var state := HudState.new()
-	state.apply_event(
-		{"type": &"player_named", "player_id": 2, "name": "Moe", "level": 30, "icon": 31}
-	)
-	assert_vector(state.level_of(state.team[2])).is_equal(Vector2i(30, 31))
-	state.apply_event({"type": &"player_leveled", "player_id": 2, "level": 31, "icon": 31})
+	# The server's tally seats an account with its level, moves it on a `level_up` and takes it away
+	# when the account leaves; the icon is the level's own.
+	state.apply_event({"type": &"player_named", "player_id": 2, "name": "Moe"})
+	assert_vector(state.level_of(state.team[2])).is_equal(Vector2i.ZERO)
+	state.apply_event({"type": &"account_seated", "player_id": 2, "level": 30})
+	assert_vector(state.level_of(state.team[2])).is_equal(Vector2i(30, 30))
+	state.apply_event({"type": &"level_up", "player_id": 2, "level": 31, "total": 4000})
 	assert_vector(state.level_of(state.team[2])).is_equal(Vector2i(31, 31))
-	# A name with no level (a bot took the seat) clears it.
-	state.apply_event({"type": &"player_named", "player_id": 2, "name": "Bot Vic"})
+	state.apply_event({"type": &"account_left", "player_id": 2})
 	assert_vector(state.level_of(state.team[2])).is_equal(Vector2i.ZERO)
 
 
@@ -93,15 +94,15 @@ func test_a_late_joiner_reads_every_level_from_the_snapshot_and_keeps_them_after
 		rules.apply(RulesAction.add_player(id))
 	var snapshot := rules.to_dict()
 	snapshot["names"] = {1: "Ruby", 2: "Moe", 3: "Dee"}
-	snapshot["levels"] = {1: Vector2i(12, 12), 2: Vector2i(30, 31)}
+	snapshot["levels"] = {1: 12, 2: 30}
 	var state := HudState.new()
 	state.local_player_id = 3
 	state.load_snapshot(snapshot)
 	assert_vector(state.level_of(state.team[1])).is_equal(Vector2i(12, 12))
-	assert_vector(state.level_of(state.team[2])).is_equal(Vector2i(30, 31))
+	assert_vector(state.level_of(state.team[2])).is_equal(Vector2i(30, 30))
 	assert_vector(state.level_of(state.team[3])).is_equal(Vector2i.ZERO)
 	# The seat that came back is loaded again from a newer snapshot: its level is the new one.
-	snapshot["levels"] = {1: Vector2i(13, 13)}
+	snapshot["levels"] = {1: 13}
 	state.load_snapshot(snapshot)
 	assert_vector(state.level_of(state.team[1])).is_equal(Vector2i(13, 13))
 	assert_vector(state.level_of(state.team[2])).is_equal(Vector2i.ZERO)
