@@ -67,13 +67,16 @@ func _ready() -> void:
 	if not OS.has_feature("web"):
 		set_process(false)
 		return
+	if not asked():
+		# A player's page publishes nothing: no object, no snapshot of the screen (a walk of its
+		# nodes four times a second), no probes (#983). A browser test asks with `?probe`.
+		set_process(false)
+		return
 	_object = JavaScriptBridge.create_object("Object")
 	JavaScriptBridge.get_interface("window").deadnight = _object
 	_bench = JavaScriptBridge.get_interface("window").deadnight_bench != null
 	if _bench:
 		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
-	if not asked():
-		return
 	add_child(JudderProbe.new())
 	add_child(FlashWebProbe.new())
 	add_child(ViewWebProbe.new())

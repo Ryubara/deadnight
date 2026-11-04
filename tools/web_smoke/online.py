@@ -143,7 +143,7 @@ def main() -> int:
         local, port = smoke.serve(Path(args.web))
         url = f"http://127.0.0.1:{port}/index.html"
     # `?dev` shows the server address button of the Play together screen on the web.
-    url += ("&" if "?" in url else "?") + "dev"
+    url += ("&" if "?" in url else "?") + "dev&probe"
     with sync_playwright() as p:
         if args.gpu:
             browser = p.chromium.launch(channel="chrome", headless=True)
