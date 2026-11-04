@@ -20,7 +20,8 @@ writes the catalog `parts.json` beside the model, so this page, the file and the
 {
   "parts": {
     "head": "plain", "hair": "pompadour", "headwear": "none", "torso": "jacket",
-    "legs": "cuffed", "feet": "boots", "eyewear": "none", "neck": "none", "arm": "none", "body": "male"
+    "legs": "cuffed", "feet": "boots", "eyewear": "none", "neck": "none", "arm": "none", "body": "male",
+    "mouth": "smile"
   },
   "colours": {"skin": 2, "hair": 0, "primary": 0, "secondary": 9, "accent": 1}
 }
@@ -39,7 +40,7 @@ writes the catalog `parts.json` beside the model, so this page, the file and the
 
 | Slot | Bone(s) | Parts |
 | --- | --- | --- |
-| head | Head, Neck | one closed head with its own neck, a buzz of hair, the kit's eyes and brows and a mouth (#895, [Character faces](../research/character-faces.md)): `plain`, `stubble`, `beard` |
+| head | Head, Neck | one closed head with its own neck, a buzz of hair, the kit's eyes and brows (#895, [Character faces](../research/character-faces.md)): `plain`, `stubble`, `beard` |
 | hair | Head | `none`, `crew`, `pompadour`, `flattop`, `ponytail`, `bob`, `curls`, `bun` |
 | headwear | Head | `none`, `helmet` (the kit Soldier's), `pillbox`, `ballcap`, `papercap`, `ranger` |
 | torso | spine, arms, hands | `vest` (the kit Soldier's), `jacket`, `shirt`, `rolled`, `tank`, `letterman` |
@@ -49,6 +50,7 @@ writes the catalog `parts.json` beside the model, so this page, the file and the
 | neck | Neck | `none`, `scarf`, `bowtie` |
 | arm | UpperArm.L | `none`, `armband` |
 | body | - | `male`, `female`: the character (no mesh of its own) |
+| mouth | Head | `smile`, `line`, `grin`, `open`, `smirk`, `oh`, `frown`, `teeth`: free to everyone, on every head (#1061). One mesh at every distance, no `__far` copy |
 
 Names: slot and part ids are lower-case ASCII words; the mesh node is `<slot>__<part>` (two underscores), so
 `torso__letterman`. A new part is a new entry in the build script's tables and a rebuild; ids are never renamed once
@@ -57,14 +59,14 @@ shipped (saved looks refer to them).
 ## The character
 
 The female Soldier (#678) is the same skeleton and every same clip with her own face, torso and legs. The `body`
-slot is last on the wire (the look's wire version is 2). A part with a variant for her has a `female` entry in
-`parts.json` (`mesh`, `tris`, `mesh_far`, `tris_far`: the node `<slot>__<part>__female`), and
+slot came last on the wire at version 2, the `mouth` slot after it at version 3. A part with a variant for her has a
+`female` entry in `parts.json` (`mesh`, `tris`, `mesh_far`, `tris_far`: the node `<slot>__<part>__female`), and
 `SoldierLook.visible_meshes` shows it when the look's `body` is `female`; every other part (hair, hats, eyewear,
 neckwear, the armband, the shoes) is shared, so every outfit fits both.
 
 | Part | Hers |
 | --- | --- |
-| Face | his head with lashes over each eye, brows half as tall and arched, a smaller mouth (0.115 m against his 0.135). Her names for the three head choices: Natural, Freckles (dots of `skin_shade` under the eyes) and Rosy (`blush` cheeks): no beard |
+| Face | his head with lashes over each eye, brows half as tall and arched, smaller mouths (0.115 m against his 0.135 where a mouth is full width). Her names for the three head choices: Natural, Freckles (dots of `skin_shade` under the eyes) and Rosy (`blush` cheeks): no beard |
 | Torso, legs | his six tops and four trousers moved at rest by one warp (`female_shape`): a chest of two soft lobes, a 13 % narrower waist, 5 % wider hips. The chest's weights lean 60 % to `Torso`, so the shoulders do not pull it. Arms and hands do not move |
 | Hair | three cuts of hers, `bob` (ends flared clear of the collar), `curls` (two rolls on top, the back to the nape) and `bun`; each hair part names the character it belongs to (`body`), and the ponytail is either's |
 
@@ -118,7 +120,7 @@ its fore-end).
 
 Faces of every part sit on one swatch of the atlas. Channel swatches are repainted per look; fixed swatches (black,
 greys, white, leather, lens, metal, lips, blush, mouth) never change. `mouth` (#2a1414, #895) is as dark as the eyes,
-so the mouth reads on every skin tone; `lips` is no longer used and keeps its cell.
+so the mouth reads on every skin tone; `lips` is the `open` mouth's tongue, and `white` the `teeth` mouth's teeth.
 
 | Channel | Palette | Used for |
 | --- | --- | --- |

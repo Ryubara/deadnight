@@ -91,8 +91,52 @@ func test_every_preset_round_trips_through_dict_json_and_bytes() -> void:
 		assert_bool(CharacterLook.from_bytes(bytes).equals(look)).is_true()
 
 
+## `look` as a build from before the mouth (#1061) sent it: version 2, no mouth's byte.
+func _version_2_bytes(look: CharacterLook) -> PackedByteArray:
+	var bytes := look.to_bytes()
+	bytes[0] = 2
+	bytes.remove_at(CharacterLook.wire_slots(3).find(&"mouth") + 1)
+	return bytes
+
+
+func test_a_look_from_before_the_mouth_wears_the_first_and_keeps_the_rest() -> void:
+	var look := CharacterLook.from_preset(6)
+	look.colours[&"accent"] = 3
+	var bytes := _version_2_bytes(look)
+	assert_int(bytes.size()).is_equal(16)
+	assert_int(bytes.size()).is_equal(CharacterLook.wire_size(2))
+	assert_bool(CharacterLook.from_bytes(bytes).equals(look)).is_true()
+	# Its slots are read at their old places: a mouth chosen here is not sent, the rest is.
+	look.parts[&"mouth"] = &"teeth"
+	var read := CharacterLook.from_bytes(_version_2_bytes(look))
+	assert_str(String(read.parts[&"mouth"])).is_equal("smile")
+	assert_str(String(read.parts[&"body"])).is_equal(String(look.parts[&"body"]))
+	assert_int(read.colours[&"accent"]).is_equal(3)
+
+
+func test_a_mouth_travels_in_the_look() -> void:
+	for option: Dictionary in LookCatalog.options(&"mouth"):
+		var look := CharacterLook.from_preset(1)
+		look.parts[&"mouth"] = option["id"]
+		var read := CharacterLook.from_bytes(look.to_bytes())
+		assert_str(String(read.parts[&"mouth"])).is_equal(String(option["id"]))
+		assert_str(String(CharacterLook.from_dict(look.to_dict()).parts[&"mouth"])).is_equal(
+			String(option["id"])
+		)
+
+
+func test_a_look_saved_before_the_mouth_keeps_everything_and_wears_the_first() -> void:
+	var look := CharacterLook.from_preset(5)
+	var data := look.to_dict()
+	(data["parts"] as Dictionary).erase("mouth")
+	data["version"] = 2
+	assert_bool(CharacterLook.from_dict(data).equals(look)).is_true()
+	data["parts"]["mouth"] = "fangs"
+	assert_str(String(CharacterLook.from_dict(data).parts[&"mouth"])).is_equal("smile")
+
+
 func test_the_wire_form_is_small() -> void:
-	assert_int(CharacterLook.wire_size()).is_less_equal(16)
+	assert_int(CharacterLook.wire_size()).is_less_equal(17)
 
 
 func test_a_saved_look_with_unknown_or_wrong_entries_falls_back_slot_by_slot() -> void:
@@ -121,6 +165,12 @@ func test_bytes_of_the_wrong_version_or_length_are_refused() -> void:
 	var other_version := good.duplicate()
 	other_version[0] = CharacterLook.VERSION + 1
 	assert_object(CharacterLook.from_bytes(other_version)).is_null()
+	other_version[0] = CharacterLook.OLDEST_VERSION - 1
+	assert_object(CharacterLook.from_bytes(other_version)).is_null()
+	# The old version's byte with the new length, and the new one's with the old length.
+	other_version[0] = CharacterLook.OLDEST_VERSION
+	assert_object(CharacterLook.from_bytes(other_version)).is_null()
+	assert_object(CharacterLook.from_bytes(good.slice(0, good.size() - 1))).is_null()
 	assert_object(CharacterLook.from_bytes(good.slice(0, 5))).is_null()
 	assert_object(CharacterLook.from_bytes(PackedByteArray())).is_null()
 	var longer := good.duplicate()
