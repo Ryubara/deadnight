@@ -52,6 +52,9 @@ var leave_button: UIButton
 ## The night report: the local player's XP lines and level bar, on a ticket under the round
 ## (`show_report`); hidden until a report is given.
 var report_card := HudNightReport.new()
+## The film credits: a crew title for every player, under the players' ticket (`show_credits`);
+## hidden until given.
+var credits_card := HudCredits.new()
 
 var _tokens := UITokens.active()
 ## Player id -> what the board last heard of them, kept after they leave.
@@ -69,6 +72,8 @@ var _ticket := HudTicket.new()
 var _grid := VBoxContainer.new()
 var _insets := Vector4.ZERO
 var _report := {}
+var _crew := {}
+var _right := VBoxContainer.new()
 
 
 func _init() -> void:
@@ -85,11 +90,15 @@ func _init() -> void:
 	_margin.add_child(across)
 	across.add_child(_build_left())
 	_ticket.accent = _tokens.hot
-	_ticket.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_right.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_right.add_theme_constant_override(&"separation", HudStyle.MD)
 	_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_grid.add_theme_constant_override(&"separation", HudStyle.XS)
 	_ticket.body.add_child(_grid)
-	across.add_child(_ticket)
+	_right.add_child(_ticket)
+	_right.add_child(credits_card)
+	across.add_child(_right)
 	resized.connect(_rebuild_later)
 
 
@@ -172,6 +181,14 @@ func show_report(model: Dictionary) -> void:
 	_fit_report()
 
 
+## Shows the film credits (`ReportTracker.credits_input`) under the players' ticket; a later call
+## replaces them, and the rows of both tickets share the height the screen leaves.
+func show_credits(input: Dictionary) -> void:
+	_crew = input
+	_signature = ""
+	_rebuild()
+
+
 ## The height the report's ticket has: what the screen leaves besides the rest of the left column
 ## (the title wraps on a narrow screen, so it is read as it is laid out).
 func report_room() -> float:
@@ -225,8 +242,31 @@ func order() -> Array[int]:
 func row_height() -> float:
 	if size.y <= 0.0 or _members.is_empty():
 		return ROW_HEIGHT
+	if _crew.is_empty():
+		return clampf(_each(), MIN_ROW_HEIGHT, ROW_HEIGHT)
+	# The credits' row is cut first; what it cannot give up (its floor) comes off the players'.
+	return clampf(_each() - credits_row_height(), MIN_ROW_HEIGHT, ROW_HEIGHT)
+
+
+## The height one row of the credits has, from the same room (`row_height`): its share of what each
+## player gets, to a floor.
+func credits_row_height() -> float:
+	if size.y <= 0.0 or _members.is_empty():
+		return HudCredits.ROW
+	return clampf(_each() * (1.0 - _player_share()), HudCredits.MIN_ROW, HudCredits.ROW)
+
+
+## What the screen leaves for each player: both tickets' rows when the credits are up.
+func _each() -> float:
 	var room := size.y - float(HudStyle.margin()) * 2.0 - CHROME_HEIGHT
-	return clampf(room / float(_members.size()), MIN_ROW_HEIGHT, ROW_HEIGHT)
+	if not _crew.is_empty():
+		room -= HudCredits.CHROME + float(HudStyle.MD)
+	return room / float(_members.size())
+
+
+## The part of a player's room the players' ticket takes; the credits' row has the rest.
+func _player_share() -> float:
+	return ROW_HEIGHT / (ROW_HEIGHT + HudCredits.ROW)
 
 
 func _set_margins() -> void:
@@ -268,6 +308,16 @@ func _rebuild() -> void:
 		rows_text.append(cells)
 		_grid.add_child(_player_row(id, cells, height))
 	_ticket.update_minimum_size()
+	if not _crew.is_empty():
+		credits_card.show_credits(_shown_members(ids), _crew, _local_id, credits_row_height())
+
+
+## The members the board draws (`ids`), for the credits.
+func _shown_members(ids: Array[int]) -> Dictionary:
+	var shown := {}
+	for id in ids.slice(0, NightHost.MAX_PLAYERS):
+		shown[id] = _members[id]
+	return shown
 
 
 func _cells(id: int) -> Array[String]:

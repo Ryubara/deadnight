@@ -1,0 +1,12 @@
+{
+  "titles": [
+    {"id": "special_effects", "title": "Special Effects", "stat": "kills:boss", "reason": "most headliners felled"},
+    {"id": "stunt_coordinator", "title": "Stunt Coordinator", "stat": "revives", "reason": "most mates got up"},
+    {"id": "best_boy", "title": "Best Boy", "stat": "fuel_cans", "reason": "most fuel cans"},
+    {"id": "location_manager", "title": "Location Manager", "stat": "doors_bought", "reason": "most doors opened"},
+    {"id": "key_grip", "title": "Key Grip", "stat": "boards_repaired", "reason": "most boards mended"},
+    {"id": "stunt_double", "title": "Stunt Double", "stat": "downs", "reason": "most times down"},
+    {"id": "executive_producer", "title": "Executive Producer", "stat": "points_earned", "reason": "most points earned"}
+  ],
+  "extra": {"id": "extra", "title": "Extra", "reason": "on set all night"}
+}

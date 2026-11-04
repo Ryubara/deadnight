@@ -375,12 +375,13 @@ func _on_night_over(_round_reached: int) -> void:
 	_show_report()
 
 
-## The night report on the board: what the night paid, from the night's own events, and again when
-## the server tells more (the last round's XP can come after the end).
+## The night report and the film credits on the board: what the night paid, from the night's own
+## events, and again when the server tells more (the last round's XP can come after the end).
 func _show_report() -> void:
 	if night.report == null:
 		return
 	_end.show_report(night.report.model())
+	_end.show_credits(night.report.credits_input())
 	if not night.report.changed.is_connected(_on_report_changed):
 		night.report.changed.connect(_on_report_changed)
 
@@ -388,6 +389,7 @@ func _show_report() -> void:
 func _on_report_changed() -> void:
 	if _end.visible and not _left:
 		_end.show_report(night.report.model())
+		_end.show_credits(night.report.credits_input())
 
 
 func _process(_delta: float) -> void:

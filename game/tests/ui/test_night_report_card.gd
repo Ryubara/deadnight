@@ -176,7 +176,7 @@ func _faults(board: HudEndBoard, canvas: Vector2, insets: Vector4, where: String
 		faults.append("%s: Leave %s on the card %s" % [where, button, seen])
 	for control in board.find_children("*", "HudTicket", true, false):
 		var players := (control as Control).get_global_rect()
-		if control != card and seen.intersects(players):
+		if control != card and control != board.credits_card and seen.intersects(players):
 			faults.append("%s: the card %s on the players %s" % [where, seen, players])
 	var round_line := board._round_label.get_global_rect()
 	if seen.intersects(round_line):
