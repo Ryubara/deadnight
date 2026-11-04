@@ -104,7 +104,12 @@ a corridor that squeezes the shoulder camera, a line through a wall).
 ## Walking it
 
 `test_smallmap_walk.gd` walks three real player bodies (`PlayerSimulation`) from goal to goal along the zombies' mesh
-for 90 s and runs a body and a jump at every window from inside. The long run is the move soak:
+for 90 s and runs a body and a jump at every window from inside. `test_smallmap_escape_sweep.gd` runs the real body
+at everything beside the walls (counters, cabinets, machines, the window sills): it stands it on every top of 1.25 m or
+less within 6 m of a wall or a closed link's slab, and on the floor beside every taller top, sprints and jumps at what
+is ahead, three hops deep, for each of the eight sets of links, and fails on a standing place outside the building
+(the yards, the hall's roof), in a room the links do not open yet, or 2 m and more over its floor (#848). The long run
+is the move soak:
 
 ```text
 godot --headless --path game res://tests/captures/smallmap_move_soak.tscn -- --minutes=20 --bodies=4 --seed=1
@@ -149,10 +154,10 @@ rules' `BarricadeTuning.ids`), with the kit's 1.5 m boards (so a mended board sw
 boards and tear them off one by one (1.2 s a board, as on the lot), then come in; an upper window's dead climb the
 outside stair first and walk along the gallery or the terrace to it ([Outside and windows](#outside-and-windows-917)). A
 player puts a board back for points, as at the lot's fence; the players-only blocker in the opening keeps everyone in
-whatever the boards do (the sill is 0.9 m, a jump is 1.1 m). `test_smallmap_windows.gd` runs a night of 24 at once and
-fails unless every one is torn and walked through, to the room it opens into and the height it is at; it also fails a
-window without floor inside it or ground or a deck outside it at its own height, and an upper window whose dead do not
-rise on the yard and walk up to it.
+whatever the boards do (the sill is 0.9 m, the body climbs 1.25 m, `CameraProbe.BODY_REACH`).
+`test_smallmap_windows.gd` runs a night of 24 at once and fails unless every one is torn and walked through, to the
+room it opens into and the height it is at; it also fails a window without floor inside it or ground or a deck outside
+it at its own height, and an upper window whose dead do not rise on the yard and walk up to it.
 
 ### The shop (formula rows 22 to 25)
 
