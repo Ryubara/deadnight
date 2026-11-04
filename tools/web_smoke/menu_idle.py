@@ -2,9 +2,10 @@
 
 The web smoke reads the menu's frames for three seconds (`menu_frames`) with the stage a still, and a still should cost
 nothing. This opens each build in a new Chromium (SwiftShader, as CI), lets the menu settle as the smoke does (click,
-2.5 s), then follows `--seconds` of the page's own `requestAnimationFrame` deltas and, in each frame, the WebGL calls
-the engine made (`smoke.trace`: draws, clears, framebuffer blits and bindings, texture uploads). The counts do not
-depend on the machine: a frame that draws the 3D stage again shows in them, a runner that is merely slow does not.
+2.5 s, the probe read and a screenshot), reads the smoke's own 3 s window (`menu_frames`), then follows `--seconds` of
+the page's own `requestAnimationFrame` deltas and, in each frame, the WebGL calls the engine made (`smoke.trace`:
+draws, clears, framebuffer blits and bindings, texture uploads). The counts do not depend on the machine: a frame that
+draws the 3D stage again shows in them, a runner that is merely slow does not.
 The browser processes' CPU seconds are read before and after (CDP `SystemInfo.getProcessInfo`); the GPU process runs
 SwiftShader's threads, which spin while they wait, so that figure says whether two builds ask the same of the CPU,
 not how much work a frame is. The builds take turns, `--pairs` times each, so a drifting machine hits both alike.

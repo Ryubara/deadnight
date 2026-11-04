@@ -241,39 +241,54 @@ draws more than 8, and lists them.
 ### The idle menu after #920 (#989)
 
 The smoke's `menu_frames` (the mean of `requestAnimationFrame` over 3 s, 2.5 s after the menu's first click, the stage a
-still) was 99 to 131 ms on four attempts of #920 against 55 to 122 on the runs before it. #920 merged at 12:26 UTC on
-4 November, so the question stands on `main` too. What was measured:
+still) was 99 to 145 ms on 10 of 58 runs after #920 (merged 12:26 UTC, 4 November) against 22 of 704 before it, though
+the median did not move (97.8 and 98.5 ms). It is the runner's CPU model, which sits on the 120 ms line, plus about 1 %
+that #920 added. What settles it:
 
-- **The stage's work in a frame is the same.** `tools/web_smoke/menu_idle.py` opens two web exports (#920's parent with
-  the four stage files of the pull request put back, and `main`), in turns, in SwiftShader at 1280 x 720 as CI, and counts
-  what the engine asks of WebGL in every frame of the idle menu. Both: **277 draws, 1 clear, 1 framebuffer blit, 6
-  framebuffer bindings, 8 uploads, 277 program switches, every frame, no frame different** (the stage is drawn once;
-  the rest is the menu's own canvas). The CPU the GPU process used per frame: 207.7 against 207.3 ms (5 pairs; it is
-  SwiftShader's spinning threads, so it says "the same", not "how much work"). Mean frame, 5 pairs at 16 cores: median
-  20.4 against 20.3 ms; 6 pairs pinned to 2 cores: 30.3 against 29.2 ms, the first 3 s 35.7 against 37.9. No difference
-  is left to find in the engine's work, and the machine's own noise (other agents, 20 to 50 ms runs) is bigger than any
-  difference.
-- **Not the wasm compiler.** A frame trace of the idle menu shows the first 6 s are 25 to 40 % slower than the rest
-  (second 1 of the trace: 35 to 46 ms, from the 7th second 20 to 24 ms), in both builds, with the GL counts constant.
-  Chrome's `--js-flags=--no-liftoff` (compile the wasm optimised before running; the menu then took 17 s to load) kept
-  the same shape, so it is not Liftoff handing over to TurboFan. The cause of that decay is not found.
-- **A side finding.** `index.html?stage=still` (the stage alone, no menu) draws 4 calls and a frame in 16.6 ms on
-  `main`; on #920's parent it drew 97 calls and a frame in 400 ms, so that page did not hold a still there (the main
-  menu did, in both). Not what the gate reads; the reason is not looked into.
-- **On CI the shift is real, and no runner measure of the same run explains it.** The 151 `web-smoke` artifacts of 3 and
-  4 November (`gh run download <id> -n web-smoke`): the 134 runs without #920 had an idle frame of 55.6 to 121.6 ms
-  (mean 89.1, median 97.9), 4 of them (3 %) at 120 or more; the 17 runs with it (its own three heads that ran a smoke,
-  and `main` after the merge) 61.0 to 144.5 (mean 106.0, median 102.2), 7 of them (41 %) at 120 or more (Fisher, p
-  0.00002). The 19 runs of the hour before the merge were 57 to 100. The nights were the same (57.6 against 59.0 s on
-  average), and the seven slow-idle runs had fast nights (49 to 66 s); the menu's load is 8.5 s against 13.9 (#966). So
-  an idle frame of 130 to 145 ms came with a night that, on a pre-#920 run, went with an idle frame near 85. The shift
-  lives in the 3 s window after the menu comes up on the runner and in nothing the browser here reproduces.
-- **What can tell next.** The smoke now follows 9 s more of the idle menu (`menu_trace` in `result.json`: the mean frame
-  each second and the WebGL calls per frame, counted only for those seconds so the night the gate times is not slowed).
-  Read it on the next runs of `main`: `draws` other than 277 means the runner draws something the browser here does not;
-  277 with a long first seconds means the runner's threads (two cores for the renderer, the compositor and SwiftShader's
-  workers) are the cause, and the 3 s `menu_frames` is a window on a decay, not a steady state, that moved earlier when
-  the menu got quicker. The load gate does not use it (#966).
+- **The same build is 60 to 120 ms on the CI runners, by CPU model.** A throwaway workflow (a push trigger on the issue's
+  branch, a matrix of 20 jobs, `lscpu` in each) downloaded the `web-build` of #920's parent, of #920 and of a later
+  `main`, and ran `tools/web_smoke/menu_idle.py` on all three in turns on each runner, taking the smoke's own steps (the
+  probe, a screenshot) and then its 3 s window. Median of that window, ms (runners; `ubuntu-24.04`, one label):
+
+  | CPU | runners | #920's parent | #920 | later `main` |
+  | --- | --- | --- | --- | --- |
+  | AMD EPYC 9V45 | 6 | 60.8 | 60.2 | 59.1 |
+  | Intel Xeon 6975P-C | 1 | 73.4 | 73.1 | 73.1 |
+  | AMD EPYC 9V74 | 6 | 80.0 | 80.5 | 79.7 |
+  | AMD EPYC 7763 | 3 | 97.8 | 101.2 | 99.0 |
+  | Intel Xeon Platinum 8573C | 1 | 98.4 | 100.0 | 98.5 |
+  | **Intel Xeon Platinum 8370C** | 3 | **119.3** | **121.1** | **117.0** |
+
+  Windows at or over 120 ms: 8370C 3, 8 and 1 of 12; every other CPU 0 of 68 for each build. A census of the 66 runners
+  these runs landed on: 9V74 23, 7763 18, 9V45 9, 6975P 7, 8573C 5, 8370C 4 (6 %; none in the first 18 runners, 1 of
+  24, then 3 of 20), and four image versions (which did not sort the frames). The slow runs of the CI history, 120 to 135
+  ms (3 % of the runs before #920), are the 8370C's band.
+- **#920 cost about 1 %, and the 120 ms line sits on the 8370C.** Per runner, #920 over its parent: mean ratio 1.010 (15
+  of 20 runners slower, sign test p 0.02; +0.9 ms on a 9V74, +3.1 on a 7763, +1.9 on an 8370C); a later `main` over #920:
+  0.982 (17 of 20 faster; the probe reads removed in #982 and #1029 are among the merges between). A 1 to 2 ms step moves
+  an 8370C's windows across 120: 3 of 12 before, 8 of 12 with #920, 1 of 12 on `main`. The share over the line is a
+  product of this and of how many 8370Cs a run got; the idle frame is not gated, so no threshold changed.
+- **The stage's work in a frame is the same, and the page comes up sooner.** Counts per idle frame in both builds: 277
+  draws, 1 clear, 1 blit, 6 framebuffer bindings (`menu_trace`; before and after on a 16-core machine 20.4 against 20.3
+  ms, on 2 cores 30.3 against 29.2). On the same runners the menu is up in 8.4 to 10 s with #920 against 13 to 17 s
+  before (the 5 s that moved the night-load gate, #966). Without the probe read and the screenshot the smoke does before
+  its window, #920's parent read 150 to 2 600 ms in 78 of 96 windows (the page was still busy); #920's build read as
+  everywhere else (the 4 windows over 120 are the 8370C's).
+- **The runs of the CI history cannot be sorted by CPU, and what they show is the same.** The 1 217 `web-smoke`
+  artifacts of 2 to 4 November (read with `tools/web_smoke/smoke_history.py`, 70 KB a run): the idle frame follows the
+  runner's speed on a step #920 does not touch (the Godot export step, rank correlation 0.71 before and 0.72 after);
+  the share over 120 ms was 9 of 67 runs from 15:00 UTC on 2 November, with no #920 (against 10 of 58 after it, Fisher p
+  0.62), and 0 of 15 after 15:46 UTC on 4 November; the first 34 minutes after the merge had 5 slow runs of 13. Those
+  hours may have had more 8370Cs than the census's 6 %; the artifacts of that day carry no CPU model to check.
+- **From now on the smoke writes the machine.** `result.json` has `machine` (`cpu_model`, `cpus`, `usable_cpus`,
+  `loadavg`); `smoke_history.py --out <file> --summary` prints the idle frame by hour and by CPU model, so the next
+  time a share of runs reads slow, the table says whether the runners changed. The smoke's `menu_trace` (9 s more of the
+  idle menu with the WebGL call counts) stays.
+
+Two traps met on the way: a probe that wraps the engine's WebGL calls and skips the smoke's probe read and screenshot
+reads #920's parent at 150 to 2 600 ms a window (above), so a probe copies the gate's steps before its window; and the
+same label gave 60 and 120 ms in one batch, so a runner's frame time is read beside its CPU model or in turns on one
+runner, never by two sets of runs.
 
 ### The load grew again, and where (#828)
 
