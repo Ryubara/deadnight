@@ -40,6 +40,11 @@ or at the type's telegraph with the same 0.75 s of recovery after it, and only i
   for paths directly (every 0.25 s, each zombie at its own phase) and walks them. A zombie's body for shooting is the
   analytic `Hitbox` shapes, not a collider. Avoidance is a spatial-hash push (0.8 m radius), not RVO: it is
   deterministic, runs on the server, and kept 40 zombies from stacking in the capture.
+- **The dead stop a player's body, in the player simulation (#914).** Being data, they were nothing a `CharacterBody3D`
+  could meet, and players ran through them. `DeadBlock` makes each living zombie a 0.4 m circle in `PlayerSimulation`
+  (one-way, so a prediction a few centimetres off never fights the reconciler); the server stops each body by the dead as
+  that player's client drew them; a push held 0.6 s rolls a zombie out of the way (`DeadShove`, `ZombieSim.nudge`).
+  Numbers, variants and the choice: [The player and the dead](dead-contact.md).
 - **The crowd cap is 40 whatever the rules ask.** The rules' alive cap grows with players (up to 46 with four); spawn
   requests beyond 40 wait in the director in order and enter as zombies fall.
 - **Clients draw from bytes.** `ZombieCodec` is 2 + 13 bytes a zombie (id, position in cm, yaw, mode with a tearing

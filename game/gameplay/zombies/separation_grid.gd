@@ -49,8 +49,7 @@ func rebuild(zombies: Dictionary, radius: float) -> void:
 		var zombie: ZombieBody = zombies[id]
 		if not zombie.is_alive():
 			continue
-		var position := zombie.position
-		var key := floori(position.x / radius) * CELL_STRIDE + floori(position.z / radius)
+		var key := key_of(zombie.position, radius)
 		bodies[found] = zombie
 		cell_of[found] = key
 		places[found] = key * INDEX_SPAN + found
@@ -68,6 +67,11 @@ func rebuild(zombies: Dictionary, radius: float) -> void:
 		var body_index := places[place] & INDEX_MASK
 		place_of[body_index] = place
 		at[place] = bodies[body_index].position
+
+
+## The key of the cell of `size` metres that `position` is in.
+static func key_of(position: Vector3, size: float) -> int:
+	return floori(position.x / size) * CELL_STRIDE + floori(position.z / size)
 
 
 ## The first place whose entry is `key * INDEX_SPAN` or more: where the run of cell `key` begins.

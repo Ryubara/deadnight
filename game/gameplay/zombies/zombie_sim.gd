@@ -35,6 +35,9 @@ const SWING_SLACK := 0.5
 ## Metres of walking a step up or down one storey counts for when a zombie picks its target: a
 ## player on another floor is as far as this many metres of floor for each metre of height.
 const STOREY_WEIGHT := 3.0
+## Metres past a nudge's step that must be clear of walls for a zombie to be moved (the width of the
+## body it would be moved into).
+const NUDGE_CLEARANCE := 0.45
 
 ## A zombie that is chasing, is `STRAND_FAR` metres or more from its target and whose path from the
 ## map stops `STRAND_GAP` metres or more short of it, for `STRAND_SECONDS`, is stranded: the crowd
@@ -188,6 +191,59 @@ func blast(zombie_id: int, impulse: Vector3, stun: float) -> void:
 		return
 	ZombieBrain.stun(zombie, stun)
 	zombie.push = Vector3(impulse.x, 0.0, impulse.z).limit_length(tuning.push_max_speed)
+
+
+## A person's push moves a zombie (#914): it goes `velocity` for `delta` seconds, along the ground,
+## unless a wall stands within `NUDGE_CLEARANCE` metres beyond the step or it is one the push must
+## not move (not up yet, dying, frozen, at its boards). Returns whether it moved. Its height is the
+## path's, as ever (`_settle_on_ground`).
+func nudge(zombie_id: int, velocity: Vector3, delta: float) -> bool:
+	var zombie: ZombieBody = zombies.get(zombie_id)
+	if zombie == null or zombie.mode == ZombieBody.Mode.EMERGING or not zombie.is_alive():
+		return false
+	if zombie.gate_id != &"" or zombie.halted or velocity.length_squared() < COINCIDENT_DISTANCE:
+		return false
+	var step := Vector3(velocity.x, 0.0, velocity.z) * delta
+	if sight.is_valid():
+		var lift := Vector3(0.0, SWING_HEIGHT * 0.5, 0.0)
+		var ahead := step + step.normalized() * NUDGE_CLEARANCE
+		if float(sight.call(zombie.position + lift, zombie.position + lift + ahead)) >= 0.0:
+			return false
+	zombie.position += step
+	return true
+
+
+## How many living zombies other than `zombie_id` stand within `radius` of it (the crowd that would
+## have to give way for it to).
+func crowd_around(zombie_id: int, radius: float) -> int:
+	var zombie: ZombieBody = zombies.get(zombie_id)
+	if zombie == null:
+		return 0
+	var count := 0
+	var limit := radius * radius
+	var size := tuning.separation_radius
+	var cell := SeparationGrid.key_of(zombie.position, size)
+	var reach := ceili(radius / size)
+	var bodies := _grid.bodies
+	var places := _grid.places
+	# The cells of the last step's grid within `reach` of its cell: a run of the grid's list for
+	# each column.
+	for dx in range(-reach, reach + 1):
+		var column := cell + dx * SeparationGrid.CELL_STRIDE
+		var place := _grid.first_of(column - reach)
+		var past := (column + reach + 1) * SeparationGrid.INDEX_SPAN
+		while places[place] < past:
+			var other := bodies[places[place] & SeparationGrid.INDEX_MASK]
+			place += 1
+			if (
+				other == zombie
+				or absf(other.position.y - zombie.position.y) >= tuning.separation_height
+			):
+				continue
+			var away := other.position - zombie.position
+			if away.x * away.x + away.z * away.z <= limit:
+				count += 1
+	return count
 
 
 ## A status effect changed what the zombie is under (`CombatServer`'s `status_applied` and
@@ -642,7 +698,8 @@ func _push_on(index: int, radius: float) -> Vector3:
 						zombie, bodies[places[place] & SeparationGrid.INDEX_MASK], radius
 					)
 			place += 1
-	# A pile of coincident zombies adds up a push from each; the sum is bounded so no tick throws one.
+	# A pile of coincident zombies adds up a push from each; the sum is bounded so no tick throws
+	# one.
 	return push.limit_length(tuning.separation_max_speed)
 
 

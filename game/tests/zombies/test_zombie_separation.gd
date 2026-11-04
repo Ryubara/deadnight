@@ -111,6 +111,21 @@ func test_a_whole_night_of_ticks_with_dying_and_cleared_dead_matches_the_old_gri
 	assert_int(pair[0].zombies.size()).is_equal(pair[1].zombies.size())
 
 
+func test_the_crowd_around_a_zombie_counts_as_it_did_on_the_old_grid() -> void:
+	var pair := _pair(6.0)
+	for _i in 5:
+		pair[0]._separate(ZombieSim.STEP)
+		pair[1]._separate(ZombieSim.STEP)
+	var counted := 0
+	for radius in [0.5, 1.0, 2.5, 4.0]:
+		for id in range(1, DEAD + 1):
+			var expected: int = pair[1].reference_crowd_around(id, radius)
+			counted += expected
+			assert_int(pair[0].crowd_around(id, radius)).is_equal(expected)
+	assert_int(counted).is_greater(0)
+	assert_int(pair[0].crowd_around(99999, 1.0)).is_equal(0)
+
+
 func test_the_grid_lists_only_the_standing_and_lets_go_of_the_rest() -> void:
 	var sim := ZombieSim.new(null, SEED)
 	_crowd(sim, 6.0, 20)

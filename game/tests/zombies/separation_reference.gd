@@ -46,5 +46,30 @@ func _reference_push_on(zombie: ZombieBody, radius: float) -> Vector3:
 	return push.limit_length(tuning.separation_max_speed)
 
 
+## `crowd_around` as it was when it read the dictionary of cells.
+func reference_crowd_around(zombie_id: int, radius: float) -> int:
+	var zombie: ZombieBody = zombies.get(zombie_id)
+	if zombie == null:
+		return 0
+	var count := 0
+	var limit := radius * radius
+	var cell := _reference_cell(zombie.position, tuning.separation_radius)
+	var reach := ceili(radius / tuning.separation_radius)
+	for dx in range(-reach, reach + 1):
+		for dz in range(-reach, reach + 1):
+			for other: ZombieBody in _reference_cells.get(
+				cell + Vector2i(dx, dz), _reference_empty
+			):
+				if (
+					other == zombie
+					or absf(other.position.y - zombie.position.y) >= tuning.separation_height
+				):
+					continue
+				var away := other.position - zombie.position
+				if away.x * away.x + away.z * away.z <= limit:
+					count += 1
+	return count
+
+
 static func _reference_cell(position: Vector3, size: float) -> Vector2i:
 	return Vector2i(floori(position.x / size), floori(position.z / size))
