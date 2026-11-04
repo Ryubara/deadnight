@@ -1,6 +1,6 @@
 # The autopilot seated as a person in a suite or the soak (`SeatedNight.seat` with `legacy`) shops
 # like the one in a night does (#998): it was made bare, with no shop spots and no prices, so its
-# pistol read 0/0 for rounds on end while it had points to spend. Ticks are run by hand.
+# start pistol read 0/0 for rounds on end while it had points to spend. Ticks are run by hand.
 extends GdUnitTestSuite
 
 const TICKS_PER_SECOND := 60
@@ -47,7 +47,7 @@ func _pilot(night: SeatedNight) -> Autopilot:
 
 
 func _pistol(night: SeatedNight) -> Object:
-	return night.server.combat.state_of(PERSON, &"pistol")
+	return night.server.combat.state_of(PERSON, WeaponCatalog.START_WEAPON)
 
 
 ## Runs until `done` says so or `seconds` are over, giving the engine a physics frame every
@@ -66,7 +66,7 @@ func test_a_seated_autopilot_knows_the_shop_a_night_gives_it() -> void:
 	var night := await _night()
 	var pilot := _pilot(night)
 	assert_bool(pilot.spots.is_empty()).is_false()
-	assert_bool(pilot.ammo_prices.has(&"pistol")).is_true()
+	assert_bool(pilot.ammo_prices.has(WeaponCatalog.START_WEAPON)).is_true()
 	assert_bool(pilot.wanted.is_empty()).is_false()
 	assert_bool(pilot.order.is_empty()).is_false()
 	assert_bool(pilot.repair_goals.is_empty()).is_false()
@@ -79,7 +79,8 @@ func test_a_seated_autopilot_with_an_empty_pistol_walks_to_a_locker_and_buys_rou
 	_pistol(night).ammo = 0
 	_pistol(night).reserve = 0
 	night.server.rules.players[PERSON].points = ROUNDS_POINTS
-	var bought := func() -> bool: return _bought.has(&"ammo_pistol")
+	var bought := func() -> bool:
+		return _bought.has(StringName("ammo_%s" % WeaponCatalog.START_WEAPON))
 	assert_bool(await _until(night, bought, TRIP)).is_true()
 	assert_int(_pistol(night).reserve + _pistol(night).ammo).is_greater(0)
 	night.dispose()
