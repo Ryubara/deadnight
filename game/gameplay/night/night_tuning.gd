@@ -20,8 +20,21 @@ const SHIPPED_PATH := "res://gameplay/night/night_tuning_default.tres"
 @export_range(0.1, 5.0, 0.05, "suffix:s") var out_of_bounds_seconds: float = 0.5
 
 @export_group("Hands")
-## Metres from the player's feet to a door slab (or a board) that it can be used from.
-@export_range(0.5, 10.0, 0.05, "suffix:m") var use_reach: float = 3.2
+## Metres on the flat from the player's feet to a thing in a wall it can be used from: a door's
+## slab, a breach, a breaker post (each has its stand 1.4 to 1.5 m out, and a bot comes within a
+## metre of a stand). It was 3.2 m, and a
+## window's reach took in the wall weapon beside it (#908): two use zones never overlap
+## (`UseZones.MIN_GAP`), and a smaller reach is what lets the maps keep them apart.
+@export_range(0.5, 10.0, 0.05, "suffix:m") var use_reach: float = 2.5
+## Metres on the flat from a shop spot's marker (where the player stands to buy: a wall weapon, a
+## locker, the crane, a machine, the rack) that it can be used from.
+@export_range(0.5, 10.0, 0.05, "suffix:m") var spot_reach: float = 1.5
+## Seconds after a player's last board during which a press of use buys nothing (#908): the taps
+## that carry on a repair never fall on the wall weapon or machine beside the window.
+@export_range(0.0, 5.0, 0.05, "suffix:s") var repair_grace: float = 1.5
+## Seconds an offer that replaces a weapon carried (hands full) must have been the player's prompt
+## before a press takes it (#908): the card that says what goes was on screen.
+@export_range(0.0, 2.0, 0.05, "suffix:s") var replace_settle: float = 0.4
 ## Seconds between two boards put back: the first at the press, then one every interval while the
 ## button stays down.
 @export_range(0.1, 5.0, 0.05, "suffix:s") var repair_interval: float = 1.0

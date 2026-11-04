@@ -200,8 +200,10 @@ Buying a weapon at the wall or taking a prize from the crane with both hands ful
 with its magazine and reserve (and its re-cut). The replaced weapon is not dropped on the ground: it is gone, and it
 is in the pool again, so the wall sells it again (shotgun, rifle) and the crane can give it again (every crane weapon,
 the revolver and the crowbar too). The card of a wall weapon and of a prize on offer says **REPLACES <weapon>** before
-the points are paid or the prize is taken. A weapon the player already carries is not offered; the wall sells its
-rounds.
+the points are paid or the prize is taken, and the press that takes it is one made once that card has been up 0.4 s
+(`NightTuning.replace_settle`), never one that carries on a repair (#908,
+[spacing and the press](../research/use-reach.md#spacing-and-the-press-908)). A weapon the player already carries is
+not offered; the wall sells its rounds.
 
 Two parts keep it true, each with the weapon in hand as the one given up: the rules (`WeaponCarry`; `PlayerState.weapons`
 is the carried list in shop ids, the start weapons in it, and `weapon_released` names what went) and the combat server
