@@ -1,0 +1,74 @@
+{
+ "ui_back|0.0": {
+  "rung": 3,
+  "target_dbfs": -18.0
+ },
+ "ui_confirm|0.0": {
+  "rung": 4,
+  "target_dbfs": -13.0
+ },
+ "ui_focus|-4.0": {
+  "rung": 1,
+  "target_dbfs": -30.0
+ },
+ "ui_focus|0.0": {
+  "rung": 1,
+  "target_dbfs": -26.0
+ },
+ "ui_hover|-4.0": {
+  "rung": 1,
+  "target_dbfs": -31.0
+ },
+ "ui_hover|0.0": {
+  "rung": 1,
+  "target_dbfs": -27.0
+ },
+ "ui_pop|0.0": {
+  "rung": 2,
+  "target_dbfs": -30.0
+ },
+ "ui_press|-2.0": {
+  "rung": 3,
+  "target_dbfs": -19.0
+ },
+ "ui_press|-3.0": {
+  "rung": 3,
+  "target_dbfs": -20.0
+ },
+ "ui_press|0.0": {
+  "rung": 3,
+  "target_dbfs": -17.0
+ },
+ "ui_push|0.0": {
+  "rung": 2,
+  "target_dbfs": -29.0
+ },
+ "ui_refuse|0.0": {
+  "rung": 3,
+  "target_dbfs": -18.0
+ },
+ "ui_select|0.0": {
+  "rung": 2,
+  "target_dbfs": -23.0
+ },
+ "ui_sign_on|0.0": {
+  "rung": 5,
+  "target_dbfs": -18.0
+ },
+ "ui_tab|0.0": {
+  "rung": 2,
+  "target_dbfs": -21.0
+ },
+ "ui_tick|0.0": {
+  "rung": 1,
+  "target_dbfs": -25.0
+ },
+ "ui_toggle_off|0.0": {
+  "rung": 2,
+  "target_dbfs": -22.0
+ },
+ "ui_toggle_on|0.0": {
+  "rung": 2,
+  "target_dbfs": -22.0
+ }
+}

@@ -269,6 +269,7 @@ func _ready() -> void:
 	_share_timer.timeout.connect(_show_share)
 	add_child(_share_timer)
 	copy_field = LineEdit.new()
+	UiSounds.wire_field(copy_field)
 	copy_field.name = "CopyField"
 	copy_field.editable = false
 	copy_field.custom_minimum_size.x = FIELD_WIDTH

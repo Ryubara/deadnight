@@ -38,12 +38,10 @@ static func _in_hand(player: PlayerState, held: StringName) -> StringName:
 	return player.weapons[0]
 
 
-## A re-cut weapon that is gone takes its re-cut with it; a fresh one can be re-cut again, and the
-## price step of the next re-cut still counts it.
+## A re-cut weapon that is gone takes its re-cut with it; a fresh one is a new weapon and can be
+## re-cut again, for the same price as any re-cut.
 static func _forget_recut(player: PlayerState, weapon_id: StringName) -> void:
-	if player.upgraded.has(weapon_id):
-		player.upgraded.erase(weapon_id)
-		player.recuts_lost += 1
+	player.upgraded.erase(weapon_id)
 
 
 ## The weapons past the limit are given up, the last taken first (a player who lost the third-weapon

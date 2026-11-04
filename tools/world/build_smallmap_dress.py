@@ -384,9 +384,9 @@ def machines() -> None:
 # --- The cabinet and the clutter -------------------------------------------------------------------------------------------
 
 
-def cabinet(name: str, text: str, face, into, floor: float, yaw: float, plaque_mat: str) -> None:
+def cabinet(name: str, shop_id: str, face, into, floor: float, yaw: float, plaque_mat: str) -> None:
     """The rifle's wall buy: the kit's tall cabinet against the wall with the lot's plaque on end in its recess, the
-    name on the plaque. Its hidden collision is the cabinet's."""
+    silhouette on the plaque. Its hidden collision is the cabinet's."""
     x, z = face
     dx, dz = into
     depth = 0.53
@@ -394,7 +394,7 @@ def cabinet(name: str, text: str, face, into, floor: float, yaw: float, plaque_m
         "ShopProps", f"{name}Case", fixture("tall_cabinet"), (x + dx * depth / 2, floor, z + dz * depth / 2), yaw
     )
     # The fixture's `PlaqueSlot` (turned a quarter about Z, so the 1.7 x 0.9 plaque stands upright in the 0.92 x 1.72 m
-    # recess); the sign inside it is turned back.
+    # recess); the silhouette inside it is turned back.
     slot = "Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 1.02, -0.13)"
     bg.node("Slot", "Node3D", path, {"transform": slot})
     bg.node(
@@ -403,10 +403,9 @@ def cabinet(name: str, text: str, face, into, floor: float, yaw: float, plaque_m
         f"{path}/Slot",
         {"size": "Vector3(1.7, 0.9, 0.12)", "material": f'ExtResource("{plaque_mat}")'},
     )
-    bg.node("Sign", "Label3D", f"{path}/Slot",
-            {"transform": "Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0.07)", "pixel_size": "0.006",
-             "text": f'"{text}"', "font_size": "44", "outline_size": "24",
-             "modulate": "Color(0.1, 0.07, 0.02, 1)", "outline_modulate": "Color(1, 0.9, 0.6, 1)"})  # fmt: skip
+    bg.node("Silhouette", "Node3D", f"{path}/Slot",
+            {"transform": "Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0.07)", "script": 'ExtResource("silhouette")',
+             "shop_id": f'&"{shop_id}"', "upright": "true"})  # fmt: skip
 
 
 # The hall's counter: its top, where the radio and the lantern stand (the greybox builds the counter to this height).

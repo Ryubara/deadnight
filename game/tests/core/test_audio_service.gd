@@ -46,10 +46,22 @@ func test_every_catalog_sound_has_all_its_variant_files() -> void:
 			assert_object(load(path)).is_instanceof(AudioStreamOggVorbis)
 
 
-func test_every_ui_cue_the_addon_can_send_has_a_sound() -> void:
-	for cue: StringName in [&"hover", &"press", &"focus", &"back", &"push", &"pop", &"tick"]:
-		var id: StringName = SoundCatalog.UI_CUES.get(cue, &"")
-		assert_object(SoundCatalog.get_def(id)).override_failure_message("cue " + cue).is_not_null()
+func test_every_sound_of_the_menus_table_exists() -> void:
+	for role: StringName in UiSoundTable.ROLES:
+		for cue: StringName in UiSoundTable.ROLES[role]:
+			var a_row: Dictionary = UiSoundTable.ROLES[role][cue]
+			if UiSoundTable.is_silent(a_row):
+				(
+					assert_str(a_row.get("why", ""))
+					. override_failure_message("%s/%s is silent without a reason" % [role, cue])
+					. is_not_empty()
+				)
+				continue
+			(
+				assert_object(SoundCatalog.get_def(a_row["sound"]))
+				. override_failure_message("%s/%s plays %s" % [role, cue, a_row["sound"]])
+				. is_not_null()
+			)
 
 
 func test_a_flat_sound_plays_on_a_pooled_player() -> void:

@@ -121,7 +121,7 @@ func select(index: int, emit := true) -> void:
 	_keep_selection_in_view()
 	set_process(true)
 	if emit:
-		UIAudio.play(&"tick")
+		UIAudio.play(&"tick", self)
 		item_selected.emit(_selected)
 
 
@@ -129,7 +129,7 @@ func select(index: int, emit := true) -> void:
 func activate() -> void:
 	if _selected < 0:
 		return
-	UIAudio.play(&"press")
+	UIAudio.play(&"press", self)
 	item_activated.emit(_selected)
 
 
@@ -334,14 +334,18 @@ func _draw_scroll_bar(rect: Rect2, inset: float) -> void:
 	)
 
 
+func ui_sound_role() -> StringName:
+	return &"list"
+
+
 func _on_focus_entered() -> void:
 	_keys_focus = not UIInputMode.pointer
-	UIAudio.play(&"focus")
+	UIAudio.play(&"focus", self)
 
 
 func _on_mouse_entered() -> void:
 	_inside = true
-	UIAudio.play(&"hover")
+	UIAudio.play(&"hover", self)
 	set_process(true)
 
 

@@ -55,8 +55,8 @@ func _ready() -> void:
 		return
 	UITokens.active_changed().connect(_on_tokens_changed)
 	mouse_entered.connect(_on_mouse_entered)
-	focus_entered.connect(UIAudio.play.bind(&"focus"))
-	pressed.connect(UIAudio.play.bind(&"press"))
+	focus_entered.connect(UIAudio.play.bind(&"focus", self))
+	pressed.connect(UIAudio.play.bind(&"press", self))
 	snap_to_targets()
 
 
@@ -163,8 +163,12 @@ func _draw_back() -> void:
 	_ring.draw(_back, rect, _focus.value)
 
 
+func ui_sound_role() -> StringName:
+	return &"button_" + ["primary", "secondary", "ghost"][variant]
+
+
 func _on_mouse_entered() -> void:
-	UIAudio.play(&"hover")
+	UIAudio.play(&"hover", self)
 	if not disabled:
 		grab_focus()
 

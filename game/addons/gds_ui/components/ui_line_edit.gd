@@ -93,14 +93,18 @@ func _draw() -> void:
 	_ring.draw(self, Rect2(Vector2.ZERO, size), _focus.value)
 
 
+func ui_sound_role() -> StringName:
+	return &"field"
+
+
 func _on_focus_entered() -> void:
 	_keys_focus = not UIInputMode.pointer
-	UIAudio.play(&"focus")
+	UIAudio.play(&"focus", self)
 
 
 func _on_mouse_entered() -> void:
 	_inside = true
-	UIAudio.play(&"hover")
+	UIAudio.play(&"hover", self)
 	set_process(true)
 
 

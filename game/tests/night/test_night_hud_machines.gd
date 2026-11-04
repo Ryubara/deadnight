@@ -53,6 +53,21 @@ func test_the_card_at_the_bench_names_the_weapon_the_price_and_what_it_gives() -
 	_finish(night, hud)
 
 
+func test_the_card_says_5000_and_a_re_cut_weapon_is_told_why_it_is_refused() -> void:
+	var made := await _start()
+	var night: Night = made["night"]
+	var hud: Hud = made["hud"]
+	_stand_at(night, &"upgrade")
+	assert_int(hud.state.prompt["cost"]).is_equal(5000)
+	_use(night)
+	_stand_at(night, &"upgrade")
+	assert_str(String(hud.state.prompt["kind"])).is_equal("recut_info")
+	assert_int(hud.state.prompt["cost"]).is_equal(0)
+	assert_str(hud.state.prompt["detail"]).is_equal(MachinePrompts.RECUT_DONE)
+	assert_str(hud.state.prompt["detail"]).contains("ONCE")
+	_finish(night, hud)
+
+
 func test_the_ammo_card_takes_the_new_name_and_the_bigger_magazine() -> void:
 	var made := await _start()
 	var night: Night = made["night"]
