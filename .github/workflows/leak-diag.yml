@@ -1,0 +1,80 @@
+name: leak-diag
+# TEMPORARY (#1014): names the suite behind the shard-5 exit leak that shows on some runners. Not for main.
+on:
+  push:
+    branches: [tests-fix-the-exit-leak-in-shard-5-after-the]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        copy: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: repos/deadnight
+          persist-credentials: false
+          lfs: true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Ryubara/gdstudio
+          path: repos/gdstudio
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: cache/downloads
+          key: tools-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
+      - name: Make the workspace and fetch the pinned Godot and GdUnit4
+        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,gdunit4
+      - name: Import the project
+        run: |
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          "$godot" --headless --path repos/deadnight/game --import > import.log 2>&1 || true
+      - name: Which machine
+        run: |
+          echo "vendor: $(cat /sys/devices/virtual/dmi/id/sys_vendor 2>/dev/null) / $(cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null)"
+          echo "cpu: $(grep -m1 'model name' /proc/cpuinfo) cores: $(nproc)"
+          mount | grep ' / ' || true
+      - name: Each entry of shard 5 in a process of its own, then each suite of an entry that leaks
+        run: |
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          cd repos/deadnight/game
+          mkdir -p ../../../diag
+          run_one() { # $1 = res:// path, $2 = log name
+            timeout 900 "$godot" --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a "$1" -c --ignoreHeadlessMode --verbose > "../../../diag/$2.log" 2>&1 || true
+            grep -E "ObjectDB instances were leaked" "../../../diag/$2.log" | head -1 | sed "s#^#LEAK $1: #"
+          }
+          read -r -a args < <(python3 ../tools/ci_test_shards.py --root . --shard 5)
+          entries=()
+          for ((i = 1; i < ${#args[@]}; i += 2)); do entries+=("${args[$i]}"); done
+          echo "entries: ${entries[*]}"
+          for e in "${entries[@]}"; do
+            name=$(echo "$e" | tr '/:' '__')
+            echo "== $e"
+            out=$(run_one "$e" "$name")
+            echo "${out:-clean: $e}"
+            if [ -n "$out" ] && [ -d "${e#res://}" ]; then
+              for f in $(find "${e#res://}" -name 'test_*.gd' | sort); do
+                res="res://$f"
+                one=$(run_one "$res" "$(echo "$res" | tr '/:' '__')")
+                [ -n "$one" ] && echo "$one"
+              done
+            fi
+          done
+          echo "done"
+      - name: Keep the leak lists
+        if: always()
+        run: grep -h -E "leaked at exit|still in use|Leaked instance|Resource still in use" diag/*.log > diag/leaks.txt || true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: leak-diag-${{ matrix.copy }}
+          path: diag/leaks.txt
