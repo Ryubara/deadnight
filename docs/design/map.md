@@ -312,6 +312,20 @@ while the circuit is on and the tank has fuel; the simulator confirms the pace b
 
 ## The fence's breaches
 
+**Every barricade is a window, never a door** ([#915](https://github.com/Ryubara/deadnight/issues/915): "every single
+barricade should be a window, not a "door" -- it gives the players this false idea that they can walk through it").
+A gap that reaches the ground says "walk here", and a barricade is a thing to hold, not a way through. So each breach
+is an opening with a 0.9 m sill under it (the second map's waist-high sill, under the 1.1 m jump so a player does not
+take it for a wall), a jamb each side and a header above, the five boards filling the 1.5 m between 0.9 and 2.4 m. The
+players cannot go through it whatever the boards do: a players-only blocker (the boards' physics layer, so shots pass)
+fills the opening, and the sill, jambs and header are solid. The dead climb in over the sill: the navigation mesh still
+runs through the gap at the ground (the sill, jambs, header and blocker are bodies the baker never reads, not CSG), and
+the simulation is the link across it: a zombie with the boards down is lifted to the sill's height over the wall and
+set down inside, at its own pace (`ZombieGate.sill`, `lift_at`), and drawn scrambling in (the crawl
+clip and a lean, `ZombieView`; the snapshot's bit 6, `ZombieCodec.CLIMBING_BIT`). A new barricade gets this from the
+generators (`breach()` in `tools/world/build_greybox.py`); `test_barricade_windows.gd` walks every barricade of both
+maps and fails on one that a player can walk in under, or through, or that the dead cannot get in.
+
 The dead come in at six gaps in the field's fence, 4 m wide: two in the west fence, two in the east, two in the north
 (`Field/BreachNW`, `NE`, `W`, `E`, `N`, `N2`, the ids in the rules' tuning). Outside each gap is a walled apron 8 m
 deep and 12 m wide, closed on three sides (nobody walks off the map through a torn fence), where the dead appear out
@@ -322,7 +336,8 @@ boards follow the rules' `board_torn` and `board_repaired`, one at a time from t
 bottom, and while they stand they are solid for players and nothing else: they sit on their own physics layer, so
 shots, grenades and the camera pass them (a zombie at the boards can be shot), and they are not part of the
 navigation mesh, which keeps the gap open, so the dead's way in is a path and what holds them is the simulation. A
-player puts boards back from the field side only, within reach of the middle of the gap.
+player puts boards back from the field side only, within reach of the middle of the gap. The boards are 0.27 m tall
+(planks, 0.3 m apart) so five fill the window's opening.
 
 What is solid changes the moment the rules say so; only the drawing moves, with one Tween a board and nothing per frame
 (`test_barricade_motion.gd` steps them by hand, `tests/captures/board_motion.tscn` films them):

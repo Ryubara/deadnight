@@ -374,13 +374,34 @@ func relocate(zombie_id: int, point: Vector3, gate_id: StringName = &"") -> void
 ## floor beside the ramp, and that path led back to the ramp's foot. A path that is a straight line
 ## to a target (no ground offset) carries no floor, and the zombie keeps its height.
 func _settle_on_ground(zombie: ZombieBody, delta: float) -> void:
+	var gate := _sill_gate(zombie)
+	zombie.climbing = gate != null and zombie.is_alive()
+	var lift := gate.lift_at(zombie.position) if gate != null else 0.0
 	var offset := pathing.ground_offset()
 	if is_nan(offset) and storey > 0.0:
 		offset = NAV_LIFT
-	if is_nan(offset) or zombie.path.is_empty() or not zombie.is_alive():
+	var ground := 0.0
+	if is_nan(offset) or zombie.path.is_empty():
+		if gate == null:
+			return
+		ground = gate.centre.y  # no floor on the path: the ground at the sill is the gate's
+	else:
+		ground = _ground_under(zombie) - offset
+	if not zombie.is_alive():
 		return
-	var ground := _ground_under(zombie) - offset
-	zombie.position.y = move_toward(zombie.position.y, ground, tuning.climb_speed * delta)
+	zombie.position.y = move_toward(zombie.position.y, ground + lift, tuning.climb_speed * delta)
+
+
+## The gate whose sill the zombie is climbing over now: it stands in an opening's reach and the
+## boards across it are down (or it is a type no boards hold), or none. Beside it, or at boards that
+## stand, the zombie keeps to the ground.
+func _sill_gate(zombie: ZombieBody) -> ZombieGate:
+	if not zombie.is_alive():
+		return null
+	for gate: ZombieGate in gates.values():
+		if gate.climbs(zombie.position) and not _boards_hold(zombie, gate):
+			return gate
+	return null
 
 
 ## The height of the path under the zombie: the segment it walks is the one that ends at its

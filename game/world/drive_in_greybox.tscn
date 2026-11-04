@@ -132,6 +132,30 @@ instance_count = 28
 mesh = ExtResource("speaker_mesh")
 buffer = PackedFloat32Array(0.9848, 0, 0.1736, -11.0298, 0, 1, 0, 0, -0.1736, 0, 0.9848, -50.0551, 0.7628, 0, 0.6466, -8.5438, 0, 1, 0, 0, -0.6466, 0, 0.7628, -44.7582, 0.3327, 0, 0.943, -3.7258, 0, 1, 0, 0, -0.943, 0, 0.3327, -41.4379, -0.6579, 0, 0.7531, 7.3684, 0, 1, 0, 0, -0.7531, 0, -0.6579, -43.5652, -0.9479, 0, 0.3186, 10.6165, 0, 1, 0, 0, -0.3186, 0, -0.9479, -48.4322, 0.7628, 0, 0.6466, -13.8837, 0, 1, 0, 0, -0.6466, 0, 0.7628, -40.2321, 0.3327, 0, 0.943, -6.0544, 0, 1, 0, 0, -0.943, 0, 0.3327, -34.8365, -0.3575, 0, 0.9339, 6.5074, 0, 1, 0, 0, -0.9339, 0, -0.3575, -35.0031, -0.6579, 0, 0.7531, 11.9737, 0, 1, 0, 0, -0.7531, 0, -0.6579, -38.2934, 0.9848, 0, 0.1736, -24.8172, 0, 1, 0, 0, -0.1736, 0, 0.9848, -47.6241, 0.5675, 0, 0.8234, -14.2998, 0, 1, 0, 0, -0.8234, 0, 0.5675, -31.2501, 0.3327, 0, 0.943, -8.383, 0, 1, 0, 0, -0.943, 0, 0.3327, -28.2352, -0.1883, 0, 0.9821, 4.7457, 0, 1, 0, 0, -0.9821, 0, -0.1883, -27.2509, -0.9816, 0, 0.1909, 24.7367, 0, 1, 0, 0, -0.1909, 0, -0.9816, -47.1898, 0.9848, 0, 0.1736, -31.7108, 0, 1, 0, 0, -0.1736, 0, 0.9848, -46.4085, 0.7628, 0, 0.6466, -24.5634, 0, 1, 0, 0, -0.6466, 0, 0.7628, -31.1798, 0.1273, 0, 0.9919, -4.1005, 0, 1, 0, 0, -0.9919, 0, 0.1273, -20.0622, -0.3902, 0, 0.9207, 12.5653, 0, 1, 0, 0, -0.9207, 0, -0.3902, -22.3529, -0.8013, 0, 0.5983, 25.8016, 0, 1, 0, 0, -0.5983, 0, -0.8013, -32.7356, 0.9848, 0, 0.1736, -38.6045, 0, 1, 0, 0, -0.1736, 0, 0.9848, -45.193, 0.8644, 0, 0.5029, -33.883, 0, 1, 0, 0, -0.5029, 0, 0.8644, -32.2876, 0.7628, 0, 0.6466, -29.9033, 0, 1, 0, 0, -0.6466, 0, 0.7628, -26.6537, 0.6377, 0, 0.7703, -24.9976, 0, 1, 0, 0, -0.7703, 0, 0.6377, -21.8047, 0.3327, 0, 0.943, -13.0402, 0, 1, 0, 0, -0.943, 0, 0.3327, -15.0325, -0.1012, 0, 0.9949, 3.9663, 0, 1, 0, 0, -0.9949, 0, -0.1012, -13.0012, -0.274, 0, 0.9617, 10.7407, 0, 1, 0, 0, -0.9617, 0, -0.274, -14.3002, -0.4383, 0, 0.8988, 17.1824, 0, 1, 0, 0, -0.8988, 0, -0.4383, -16.7664, -0.7216, 0, 0.6923, 28.2869, 0, 1, 0, 0, -0.6923, 0, -0.7216, -24.8616)
 
+[sub_resource type="BoxShape3D" id="solid_shape_4x0p9x0p56"]
+size = Vector3(4, 0.9, 0.56)
+
+[sub_resource type="BoxMesh" id="solid_mesh_4x0p9x0p56_field_struct"]
+material = ExtResource("field_struct")
+size = Vector3(4, 0.9, 0.56)
+
+[sub_resource type="BoxShape3D" id="solid_shape_4x0p6x0p56"]
+size = Vector3(4, 0.6, 0.56)
+
+[sub_resource type="BoxMesh" id="solid_mesh_4x0p6x0p56_field_struct"]
+material = ExtResource("field_struct")
+size = Vector3(4, 0.6, 0.56)
+
+[sub_resource type="BoxShape3D" id="solid_shape_0p2x1p5x0p56"]
+size = Vector3(0.2, 1.5, 0.56)
+
+[sub_resource type="BoxMesh" id="solid_mesh_0p2x1p5x0p56_field_struct"]
+material = ExtResource("field_struct")
+size = Vector3(0.2, 1.5, 0.56)
+
+[sub_resource type="BoxShape3D" id="solid_shape_4x1p5x0p4"]
+size = Vector3(4, 1.5, 0.4)
+
 [sub_resource type="BoxMesh" id="ParkingLines_mesh"]
 material = ExtResource("line_paint")
 size = Vector3(0.12, 0.02, 5)
@@ -416,21 +440,78 @@ material = ExtResource("field_fence")
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, -46.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "nw"
+metadata/sill = 0.9
+metadata/thickness = 0.56
 
 [node name="Board1" parent="Field/BreachNW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Field/BreachNW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Field/BreachNW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Field/BreachNW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Field/BreachNW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameNW" type="Node3D" parent="Field"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, -46.000)
+
+[node name="Sill" type="StaticBody3D" parent="Field/FrameNW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNW/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNW/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Field/FrameNW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNW/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNW/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Field/FrameNW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNW/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNW/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Field/FrameNW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNW/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNW/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Field/FrameNW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNW/Blocker"]
+shape = SubResource("solid_shape_4x1p5x0p4")
 
 [node name="ApronNW" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, -0.200, -46.000)
@@ -460,21 +541,78 @@ material = ExtResource("field_fence")
 transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, -46.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "ne"
+metadata/sill = 0.9
+metadata/thickness = 0.56
 
 [node name="Board1" parent="Field/BreachNE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Field/BreachNE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Field/BreachNE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Field/BreachNE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Field/BreachNE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameNE" type="Node3D" parent="Field"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, -46.000)
+
+[node name="Sill" type="StaticBody3D" parent="Field/FrameNE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNE/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNE/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Field/FrameNE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNE/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNE/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Field/FrameNE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNE/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNE/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Field/FrameNE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNE/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameNE/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Field/FrameNE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameNE/Blocker"]
+shape = SubResource("solid_shape_4x1p5x0p4")
 
 [node name="ApronNE" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, -0.200, -46.000)
@@ -504,21 +642,78 @@ material = ExtResource("field_fence")
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, -22.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "w"
+metadata/sill = 0.9
+metadata/thickness = 0.56
 
 [node name="Board1" parent="Field/BreachW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Field/BreachW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Field/BreachW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Field/BreachW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Field/BreachW" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameW" type="Node3D" parent="Field"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, -22.000)
+
+[node name="Sill" type="StaticBody3D" parent="Field/FrameW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameW/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameW/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Field/FrameW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameW/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameW/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Field/FrameW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameW/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameW/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Field/FrameW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameW/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameW/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Field/FrameW"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameW/Blocker"]
+shape = SubResource("solid_shape_4x1p5x0p4")
 
 [node name="ApronW" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, -0.200, -22.000)
@@ -548,21 +743,78 @@ material = ExtResource("field_fence")
 transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, -22.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "e"
+metadata/sill = 0.9
+metadata/thickness = 0.56
 
 [node name="Board1" parent="Field/BreachE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Field/BreachE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Field/BreachE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Field/BreachE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Field/BreachE" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameE" type="Node3D" parent="Field"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, -22.000)
+
+[node name="Sill" type="StaticBody3D" parent="Field/FrameE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameE/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameE/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Field/FrameE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameE/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameE/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Field/FrameE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameE/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameE/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Field/FrameE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameE/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameE/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Field/FrameE"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameE/Blocker"]
+shape = SubResource("solid_shape_4x1p5x0p4")
 
 [node name="ApronE" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, -0.200, -22.000)
@@ -592,21 +844,78 @@ material = ExtResource("field_fence")
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, 0.000, -52.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "n"
+metadata/sill = 0.9
+metadata/thickness = 0.56
 
 [node name="Board1" parent="Field/BreachN" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Field/BreachN" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Field/BreachN" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Field/BreachN" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Field/BreachN" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameN" type="Node3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, 0.000, -52.000)
+
+[node name="Sill" type="StaticBody3D" parent="Field/FrameN"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Field/FrameN"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Field/FrameN"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Field/FrameN"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Field/FrameN"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN/Blocker"]
+shape = SubResource("solid_shape_4x1p5x0p4")
 
 [node name="ApronN" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, -0.200, -56.000)
@@ -636,21 +945,78 @@ material = ExtResource("field_fence")
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 0.000, -52.000)
 script = ExtResource("barricade")
 metadata/barricade_id = "n2"
+metadata/sill = 0.9
+metadata/thickness = 0.56
 
 [node name="Board1" parent="Field/BreachN2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.050, 0.030)
 
 [node name="Board2" parent="Field/BreachN2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.350, -0.030)
 
 [node name="Board3" parent="Field/BreachN2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.030)
 
 [node name="Board4" parent="Field/BreachN2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.950, -0.030)
 
 [node name="Board5" parent="Field/BreachN2" instance=ExtResource("board")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.250, 0.030)
+
+[node name="FrameN2" type="Node3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 0.000, -52.000)
+
+[node name="Sill" type="StaticBody3D" parent="Field/FrameN2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.450, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN2/Sill"]
+shape = SubResource("solid_shape_4x0p9x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN2/Sill"]
+mesh = SubResource("solid_mesh_4x0p9x0p56_field_struct")
+
+[node name="Header" type="StaticBody3D" parent="Field/FrameN2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN2/Header"]
+shape = SubResource("solid_shape_4x0p6x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN2/Header"]
+mesh = SubResource("solid_mesh_4x0p6x0p56_field_struct")
+
+[node name="JambL" type="StaticBody3D" parent="Field/FrameN2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN2/JambL"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN2/JambL"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="JambR" type="StaticBody3D" parent="Field/FrameN2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.900, 1.650, 0.000)
+collision_layer = 3
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN2/JambR"]
+shape = SubResource("solid_shape_0p2x1p5x0p56")
+
+[node name="Mesh" type="MeshInstance3D" parent="Field/FrameN2/JambR"]
+mesh = SubResource("solid_mesh_0p2x1p5x0p56_field_struct")
+
+[node name="Blocker" type="StaticBody3D" parent="Field/FrameN2"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.650, 0.000)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Field/FrameN2/Blocker"]
+shape = SubResource("solid_shape_4x1p5x0p4")
 
 [node name="ApronN2" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, -0.200, -56.000)
