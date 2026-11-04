@@ -193,9 +193,12 @@ list went to #831's owner.
 ## The second map
 
 A two-storey depot of 585 m²: the hall (start), the side room and two upstairs halves, three links in a ring, twelve
-windows. The formula's tests hold; the map plays well in the camera: warm pendants, plaques you read, machines you can
-tell apart, a long lit corridor down the side room. The shoulder camera is tight on the upstairs and at the stair foot
-(the arm is pulled in; the known cases). One real fault and one art fault.
+windows. (Since #917 the ground outside is one level, walled into three yards, with the drive-in to the south, the upper
+windows open onto a terrace and a gallery the dead climb to, and there are eight entries; the layout, its reasons and
+its captures are on [the map's page](../design/smallmap.md#outside-and-windows-917). This review is of the layout before
+it.) The formula's tests hold; the map plays well in the camera: warm pendants, plaques you read, machines you can tell
+apart, a long lit corridor down the side room. The shoulder camera is tight on the upstairs and at the stair foot (the
+arm is pulled in; the known cases). One real fault and one art fault.
 
 ![The second map, top-down, with the findings](maps/review/plan-small-ground.jpg)
 
@@ -241,6 +244,7 @@ places, the quick-load cooler 1.2 m from a place behind the wall, the upstairs s
 | Kit and scale | Toon props and greybox walls, 2.4 to 3.0 m fences | the second map's own kit, 3.2 m ceilings | consistent: both read as 1958 brick; plaques, machines and prompt text are the same |
 | Reach assumed | 1.1 m (jump) in the test and the page | 1.1 m in the formula and the counter | measured 1.25 m (J) |
 | Words on cards | the lot's | the map's own (`MapWords`), tested | fine |
+| Use zones (missed by this review, found in play: [#908](https://github.com/Ryubara/deadnight/issues/908)) | 7 overlapping pairs at the old 3.2 m reach; none after the reaches shrank and two posts and the rifle moved | 51 pairs (a locker 1.45 m from `upper_a2`, perks 2.1 to 2.9 m apart); 26 left at the new reaches, listed for [#917](https://github.com/Ryubara/deadnight/issues/917) | the spacing sweep is a test on both maps ([use reach](use-reach.md#spacing-and-the-press-908)) |
 
 ## The reach (J)
 

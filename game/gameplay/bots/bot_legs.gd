@@ -28,6 +28,13 @@ const AHEAD := 1.5
 const MEET := 1.1
 const APART := 1.6
 const DODGE := 0.8
+## The dead stop a body (#914): a zombie within `DEAD_LOOK` metres ahead whose edge the way would
+## brush (within `DEAD_CLEAR` metres of its middle, the body's radius and the zombie's and a hand)
+## is walked round, on the side the way already leans, and the pace eases as the gap closes.
+const DEAD_LOOK := 2.4
+const DEAD_CLEAR := 1.0
+const DEAD_DODGE := 0.9
+const DEAD_SLOW := 1.3
 ## A person this close is given way; or this close and closing in a gap.
 const YIELD_CLOSE := 1.2
 const YIELD_NEAR := 2.5
@@ -135,7 +142,8 @@ func step(
 	intent: BotIntent,
 	crew: Array[Dictionary],
 	threat: float,
-	may_query: bool = true
+	may_query: bool = true,
+	dead: Array[Vector3] = []
 ) -> void:
 	_may_query = may_query
 	wish = Vector3.ZERO
@@ -148,8 +156,11 @@ func step(
 		return
 	var base := _base_direction(here, intent, now)
 	base = _avoid_players(here, base, crew, intent.run)
+	base = _avoid_dead(here, base, dead)
 	_watch_the_gap(delta, here, base, crew)
-	# Giving way to a person who walks at the bot.
+	# Giving way to a person who walks at the bot, but not into the bot's own live grenade.
+	steering.keep_out = intent.keep_out
+	steering.keep_out_reach = intent.keep_out_reach
 	var given := _give_way(delta, here, crew)
 	var direction := given if given != Vector3.ZERO else base
 	var progress := _progress(here, base, intent, given)
@@ -238,6 +249,36 @@ func _avoid_players(here: Vector3, base: Vector3, crew: Array[Dictionary], run: 
 		way = way.rotated(Vector3.UP, -side * DODGE * clampf(1.5 - apart / LOOK_FOR, 0.5, 1.0))
 		if apart < APART:
 			pace = minf(pace, clampf(apart / APART, 0.4, 1.0))
+	return way.normalized()
+
+
+## `base` bent round the dead that stand in the way (they stop a body, so a way through one is a way
+## nowhere); unchanged when none does. Slows `pace` while one is close ahead.
+func _avoid_dead(here: Vector3, base: Vector3, dead: Array[Vector3]) -> Vector3:
+	if base == Vector3.ZERO or dead.is_empty():
+		return base
+	var way := base
+	for at in dead:
+		var to := at - here
+		to.y = 0.0
+		var apart := to.length()
+		if apart < 0.01 or apart > DEAD_LOOK:
+			continue
+		var ahead := base.dot(to / apart)
+		if ahead < 0.2:
+			continue
+		# How far the way passes from the zombie's middle.
+		var lateral := absf(base.cross(to).y)
+		if lateral >= DEAD_CLEAR:
+			continue
+		var side := signf(base.cross(to).y)
+		if absf(side) < 0.01 or lateral < 0.1:
+			# Dead ahead: the side the bot's seat does not crowd, so a pair of bots part.
+			side = 1.0 if seat % 2 == 0 else -1.0
+		var urgency := clampf(1.6 - apart / DEAD_LOOK, 0.5, 1.0)
+		way = way.rotated(Vector3.UP, -side * DEAD_DODGE * urgency)
+		if apart < DEAD_SLOW + 0.75:
+			pace = minf(pace, clampf((apart - 0.75) / DEAD_SLOW + 0.4, 0.4, 1.0))
 	return way.normalized()
 
 

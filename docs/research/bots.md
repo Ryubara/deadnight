@@ -803,7 +803,7 @@ timing) are ours too ([Ocio Barriales](http://www.gameaipro.com/GameAIPro3/GameA
 | Rots after release | The abandoned L4D bots mod; Vermintide's open reports | Soak in CI, the coverage test, and an owner in each phase |
 | Makes the night easier or harder than people | Ellie's "killing machine" | The parity batch against the simulator, damage left alone |
 | Predictable and exploitable | Practice bots | Seeded variety in positions and timing |
-| Fires or throws into teammates | Any shooter | A grenade hurts its thrower alone (#856): none where its blast reaches the bot, under a tenth of its health at that spot (`BotGrenadier.harmless_apart`, 5.8 m; the blast hurts the thrower out to 8 m, #805). The 7.5 m kept from every teammate no longer protects health and stays for now ([measured](grenades.md#only-the-thrower-856)) |
+| Fires or throws into teammates | Any shooter | A grenade hurts its thrower alone (#856): none where its blast reaches the bot, under a tenth of its health at that spot (`BotGrenadier.harmless_apart`, 5.8 m; the blast hurts the thrower out to 8 m, #805), planned 7 m off. The bots keep no distance from teammates (nothing to protect), and keep out of their own live grenade ([#872](grenades.md#the-bots-and-their-own-grenade-872)) |
 
 ## Phases
 
@@ -1005,14 +1005,18 @@ decides, the others hold a rule each, so a test pins them one by one):
   rule forbade the swing, the swap back waited for 8 m clear, and a bot kited ten dead for 500 s with a fire axe in
   hand and a shotgun at 0/54).
 - **`BotGrenadier`**: a grenade at a pack of three (two in Crawl Space) within 3 m of each other, 3 to 12 m away, as
-  the pack will stand when the 3 s fuse runs out (it keeps walking), when the blast is 6 m or more from the bot and
-  **4 m plus a margin of 1.5 m from every teammate** (where they stand and where they will be by then; the margin is
-  the scatter of a real throw, see the lesson on the rolling grenade), with an open arc and 6 s since the last. The
+  the pack will stand when the 3 s fuse runs out (it keeps walking), when the blast is 7 m or more from the bot (a
+  blast that lands exactly there takes 2% of its health; the grenade lands a metre or so off, see the lesson on the
+  rolling grenade) and wherever the teammates are (only the thrower takes the damage, #856; #872 took the old
+  clearance away), with an open arc and 6 s since the last. The
   pitch comes from a table of real flights made once with `GrenadeArc` on flat ground: the heavy grenade (#680) lies
   4 to 12 m out and hardly rolls, so a short throw is a lob (underarm up to 4 m, steep overarm to 12 m). The plan flies
-  the walls only; a zombie in the way stops the real grenade at its feet. The motor turns, holds the
-  button for two ticks and keeps the view still while the arm swings; the brain takes the order back if a teammate
-  walks in.
+  the walls, and the dead where they will stand as the arc passes (`ZombieBump`): a zombie that would stop the real
+  grenade nearer than 7 m from the bot drops it at the bot's feet, so the throw is not made (#872). The motor turns,
+  holds the button for two ticks and keeps the view still while the arm swings; the brain takes the order back while
+  the view still turns if a zombie comes within 3 m. From the order to the blast the bot keeps out of its own grenade
+  (`BotFightBrain`): it steps out of reach, never takes a retreat heading toward it (`BotSteering.keep_out`), and
+  within 20 m of it stands and fights (`blast_wait`) instead of following, chasing or running an errand.
 - **`BotDodge`**: a swing that began on the frame (`attack_at` on the contact) and that would still reach the bot
   (within 1.4 + 0.4 m, plus 0.3 of drift) is stepped out of after the profile's reaction time, if there is time before
   the blow (0.45 s a plain zombie, **1.2 s the headliner**): a retreat heading on the mesh at a sprint. A telegraphed
@@ -1990,3 +1994,11 @@ Measured (`bots_soak.tscn --map=small_indoor`, Regular, seeds 1 to 5, headless; 
 
 A lone bot that buys the tonics lasts twice the rounds it did: the machines are what the economy's late points are for.
 `test_smallmap_bot_night.gd` holds the solo night over seeds 1, 3, 4 and 7 (it flaked on a seed picked to pass).
+
+## Walking round the dead (#914)
+
+The dead stop a body now, so a path that runs through a standing zombie is a way nowhere. `BotLegs._avoid_dead` bends the
+way round a zombie the bot believes in (`BotClient._dead_near`: within 2.4 m, ahead, its middle within 1 m of the way),
+on the side the way leans (by seat when it is dead ahead), and slows the pace as the gap closes; the stuck ladder still
+climbs if a body is held anyway. Bots alone barely meet the dead at rounds up to 9 (held 0.04 percent of the time, the same
+rounds as with the dead off): [The player and the dead](dead-contact.md#the-variants-and-the-numbers).

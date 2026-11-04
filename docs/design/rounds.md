@@ -110,9 +110,9 @@ round), announced as `player_healed` whenever the whole-unit value changes. Gett
 ([Revive](revive.md)). Health, its maximum, the wait since the last blow, the bleed-out clock, a hold in progress and
 whether a player bled out are in the snapshot.
 
-**What a zombie is worth.** The first 4 hits that do not kill pay 4 (8 to the head); the hit that
-kills pays the kill (60, head 70, melee 130) instead of a hit. Any hits after the fourth, and hits
-on a dead zombie, pay nothing, so a zombie is worth at most 4 hits and a kill (102 with the head)
+**What a zombie is worth.** The first 4 hits that do not kill pay 5 (10 to the head); the hit that
+kills pays the kill (55, head 65, melee 130) instead of a hit. Any hits after the fourth, and hits
+on a dead zombie, pay nothing, so a zombie is worth at most 4 hits and a kill (105 with the head)
 however many shots it takes; tiny hits cannot farm it. The tables below still hold.
 
 Not the rules' job: whether a client could really have fired that shot (aim, range, rate of fire,
@@ -149,7 +149,7 @@ only through two actions:
 
 **Hold to repair** (#297). The player does not press once a board: a press of `interact` at a breach puts the first
 board up at once, and the button held down keeps putting boards up, one every `repair_interval` (night tuning, 1.0 s),
-at the rules' pay per board (12; nothing else changes). The rules know nothing of it: each `repair` is the same action
+at the rules' pay per board (10; nothing else changes). The rules know nothing of it: each `repair` is the same action
 a press sends, and the server paces them. The client sends the press (`use`, an edge) and whether the button is still
 down (`use_held`, a level) in every command, so it works the same from the keyboard, any gamepad and the touch button,
 which all press the `interact` action. The server lets go of the hold, and the next board needs a new press, when:
@@ -310,15 +310,31 @@ types below); special rounds replace the mix.
 | 20 | 54 / 86 / 151 | 567 | 4.24 | 30% | 10% | 6% | 1.47 s | 21 | 0.15 |
 | 30 | 101 / 161 / 282 | 2,294 | 5.00 | 30% | 10% | 6% | 0.98 s | 28 | 0.15 |
 
+**Points come in fives** (#916). Every amount a player earns, spends, is refunded or loses is a multiple of 5, so a
+score is never 31 or 34. One rule, `PointSteps`, applied once on the server after the last multiplier
+(`GameRules._award`, the shop's prices, the crane's refund, the penalty for being down):
+
+| What | Rounds | Example |
+| --- | --- | --- |
+| An award (hit, kill, repair, bonus, refund, grant) | to the nearest 5, halves up, never below 5 | a runner's kill, 55 x 1.2 = 66, pays 65; its hit, 5 x 1.2 = 6, pays 5 |
+| A price (a part purchase of ammunition, fuel or grenades; a price with a rise per round) | up to the next 5, 0 stays 0 | 7 rounds of a 60-round, 90-point pack: 10.5 pays 15 |
+| A loss (the penalty for being down: a tenth of the points) | down to the 5, may be 0 | a tenth of 1,255 is 125 |
+
+The tuning's own numbers are multiples of 5 (their inspector fields step by 5), so the rule only acts on what a
+multiplier or a share made. `test_point_steps.gd` holds the table and every price at every round;
+`test_points_in_fives.gd` plays seeded nights and fails on any points event, total or price off the fives. The hit
+pay (4 / 8 became 5 / 10) and the repair pay (12 became 10) are the nearest fives; the kill pay fell with them
+(60 / 70 became 55 / 65, [the retune](#points-in-fives-916)).
+
 Points (everything is per player):
 
 | Source | Points |
 | --- | ---: |
 | Starting points | 200 |
-| Hit that does not kill / headshot hit (first 4 per zombie) | 4 / 8 |
-| Kill / headshot kill / melee kill | 60 / 70 / 130 (the head was 100 until the hit zones grew, #745) |
+| Hit that does not kill / headshot hit (first 4 per zombie) | 5 / 10 |
+| Kill / headshot kill / melee kill | 55 / 65 / 130 (60 / 70 until #916; the head was 100 until the hit zones grew, #745) |
 | Kill by a grenade blast | 40 (times the type's pay, like a bullet's) |
-| Repair one board (at most 120 from one round's end to the next) | 12 |
+| Repair one board (at most 120 from one round's end to the next) | 10 |
 | Round survived, standing | 20 + 10 per round |
 | Special round cleared, standing | 150 or 200 + 40 per round (by kind, see below) |
 
@@ -329,7 +345,7 @@ Shop (prices at round 1):
 | Door: concession stand / generator yard / booth / back lot / road | 350 / 500 / 750 / 1250 / 2000 | opens for everyone; the yard and booth need the concession, the back lot the booth, the road the back lot ([the lot](map.md)) |
 | Wall weapons: shotgun / rifle | 900 / 1200 | per player |
 | Crane play | 550 | a spin, then a random weapon the player lacks to take (shotgun 4, rifle 3, SMG 2, flare gun 1); may break down and refund ([the crane](#the-prize-crane)) |
-| Re-cut of the weapon in hand | 1500, +1500 for each weapon already re-cut | x1.75 damage, x1.5 magazine and reserve limit, filled; once a weapon ([the re-cut](upgrades.md)) |
+| Re-cut of the weapon in hand | 5000 flat, every weapon (#909) | x1.75 damage, x1.5 magazine and reserve limit, filled; once a weapon ([the re-cut](upgrades.md)) |
 | Perks (tonics): hearty / double shot / quick load / third holster / swift rescue / reload shock | 1000 / 3000 / 2500 / 3000 / 1500 / 2000 | one of each, four at most, all lost on a down ([perks](perks.md), the prices [from the simulator](../research/perks.md#numbers)) |
 | Fuel can (+25 units) | 100 + 20 per round | a partial fill pays only for the room |
 | Grenades (+2) | 150 + 5 per round | up to 5 carried; a part purchase pays a part price |
@@ -820,6 +836,29 @@ share, not a position, so the check is that share replaced: 200 nights per cell,
 The medians move one round at most (the average solo night, which keeps two circuits lit and had the most of the
 dark approach to lose) and the others by nothing; that is inside the simulator's seed noise, so the rounds' pace and the
 fuel table above stand. The lamps are dim, not out, on purpose: dimming them does not change the rule, only the picture.
+
+## Points in fives (#916)
+
+The maintainer asked for every score and price in steps of 5 (a score of 31 to 34 read as noise). The sources of
+points that were not multiples of 5, found in the rules: the hit pay (4 and 8) and the repair pay (12) of the
+tuning table; every pay times a zombie type's `points_multiplier` (a runner's 1.2: 4 became 5, 60 became 72, 130
+became 156; a headliner's 6.0: 4 became 24); the part purchases of ammunition, fuel and grenades (a share of the
+price, rounded up to a point: 3, 8, 18, 33 for the revolver's rounds, 103 for grenades); the crane's refund (a
+fraction of the price, rounded to a point); the penalty for being down (a tenth, rounded down to a point); and a
+`grant_points` action. The tuning fields stepped by 1. Prices, the round bonus, the special round reward, the
+blast kill and the re-cut step were already multiples of 5.
+
+Rounding the tuning's 4 and 8 to 5 and 10 adds a quarter to every non-lethal hit, and a brute's or headliner's many
+paid hits (8 and 20 of them, times 2.5 and 6) make hits a good part of what they pay: on the same seeded nights (60
+per cell, seed 4000, the `main` before the flat re-cut, #937) the average solo player earned 21,292 points a night
+instead of 17,807 and the median went from 13 to 15 rounds (the gate allows 8 to 14). So the kills pay 55 and 65
+instead of 60 and 70 (melee stays 130): that put the nights back within noise of `main` (mean round and median, `main`
+then here: weak solo 5.68 (5) then 5.45 (5); average solo 11.75 (13) then 11.72 (13); average 2 / 4 / 8 players 14.43 /
+16.00 / 17.77 (15 / 16 / 18) then 14.55 / 16.17 / 17.72 (15 / 16 / 18); strong solo 17.28 (18) then 16.88 (18)).
+Measured again after merging the flat re-cut: `main` 5.62 (5), 10.88 (11), 13.43 / 15.13 / 16.70 (14 / 16 / 17), 15.58
+(17); here 5.37 (5), 11.05 (11), 13.47 / 15.02 / 16.58 (14 / 16 / 17), 15.15 (16). The cells of 60 nights move by a
+few tenths of a round with any change that shifts a purchase by a moment, so the pay is judged on the median and the
+shape, as the gate does.
 
 ## Open questions
 

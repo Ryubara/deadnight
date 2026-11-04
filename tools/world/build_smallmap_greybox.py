@@ -101,28 +101,56 @@ LINK_OPENS = {
 START_AREAS = ["start"]
 STAND = bg.DOOR_STAND_DISTANCE
 
-# The windows (row 15): id, room, the wall's axis and fixed coordinate, the centre along the wall, the inward direction
-# (dx, dz), the floor height, the wall thickness. Start 5, side 3 (one a breach), upstairs 4 with each half one or more.
+# The windows (row 15, as the maintainer set it in #917: one window a wall on the ground floor, a few upstairs, and every
+# one opening onto ground or a deck at its own floor's height, never over a drop or a stairwell): id, room, the wall's
+# axis and fixed coordinate, the centre along the wall, the inward direction (dx, dz), the floor height, the wall
+# thickness. The hall 2 (south, facing the drive-in, and east; its west wall is the shop wall with the outside stair
+# beyond it), the side room 3 (one a breach), upstairs 2, both in the half over the hall, onto the gallery and the terrace
+# the dead climb to. Never two windows of different halves on one deck: the dead's walking mesh would join the halves
+# outside by a shorter way than the opening between them, and a bot's way across would run out of one window and in by
+# the other, and stop at the boards.
 WINDOWS = [
-    ("start_1", "start", "x", 14.65, 4.0, (0, -1), 0.0, GROUND_WALL),
-    ("start_2", "start", "x", 14.65, 12.0, (0, -1), 0.0, GROUND_WALL),
-    ("start_3", "start", "z", 16.15, 4.0, (-1, 0), 0.0, GROUND_WALL),
+    ("start_1", "start", "x", 14.65, 8.0, (0, -1), 0.0, GROUND_WALL),
     ("start_4", "start", "z", 16.15, 8.0, (-1, 0), 0.0, GROUND_WALL),
-    ("start_5", "start", "z", 16.15, 12.0, (-1, 0), 0.0, GROUND_WALL),
     ("side_1", "side", "x", -0.15, -4.6, (0, -1), 0.0, GROUND_WALL),
-    ("side_2", "side", "x", -0.15, -1.6, (0, -1), 0.0, GROUND_WALL),
-    ("upper_a1", "upstairs", "x", 4.6, 4.0, (0, -1), STOREY, UPPER_WALL),
-    ("upper_a2", "upstairs", "x", 4.6, 12.0, (0, -1), STOREY, UPPER_WALL),
-    ("upper_b1", "upstairs", "x", -7.95, -1.0, (0, 1), STOREY, UPPER_WALL),
-    ("upper_b2", "upstairs", "x", -7.95, 9.0, (0, 1), STOREY, UPPER_WALL),
+    ("side_2", "side", "x", -7.95, 14.3, (0, 1), 0.0, GROUND_WALL),
+    ("upper_a1", "upstairs", "z", -0.15, 1.6, (1, 0), STOREY, UPPER_WALL),
+    ("upper_a2", "upstairs", "x", 4.6, 9.5, (0, -1), STOREY, UPPER_WALL),
 ]
-# The side room's third entry: a broken wall onto a dead-end pocket the dead come out of (row 15).
+# The side room's third entry: a broken wall onto the shed, whose back door is gone (the dead come in from the yard).
 # The windows with a moon shaft (an additive card and its patch on the floor each; the others are plain).
-SHAFTS = {"start_1", "start_3", "start_5", "side_1", "upper_a1", "upper_b1"}
+SHAFTS = {"start_1", "side_1", "upper_a1"}
 BREACH = ("side_breach", "side", "z", -6.15, -2.5, (1, 0), 0.0, GROUND_WALL)
 BREACH_HEIGHT = 2.4
-SPAWN_OUT = 7.0  # metres outside a window (row 18: 5 to 15)
-BREACH_SPAWN_OUT = 6.0
+SPAWN_OUT = 7.0  # metres outside a ground window (row 18: 5 to 15)
+# Where the dead rise when it is not 7 m straight out: the upper windows' in the alley by the outside stair's foot (they
+# climb it to the gallery and the terrace), the breach's outside the shed's open back door.
+SPAWN_AT = {
+    "upper_a1": (-5.5, 0.0, 14.0),
+    "upper_a2": (-1.0, 0.0, 15.0),
+    "side_breach": (-15.6, 0.0, -2.5),
+}
+
+# The way up (#917): the hall's flat roof a terrace with a railing, a gallery on posts along the hall's west wall at the
+# upper floor's height, and one stair from the alley up to it, so the dead reach the upper windows by walking up. Players
+# never get out (every window keeps its blocker), so none of it is theirs.
+GALLERY = (-2.8, -0.3, 0.0, 8.9)  # x0, x1, z0, z1 of the deck; its top is the upper floor's
+OUT_STAIR = (-2.8, -0.3, 8.9)  # x0, x1 and the z of its top: it climbs north from z 8.9 + the run
+TERRACE_Z = 4.7  # the terrace's north edge: the upper floor's south wall (4.5 to 4.7) stands on the slab north of it
+RAIL = 1.1  # the terrace's and the gallery's railing above the deck (the dead's walking mesh stops at it)
+
+# The perk alcoves (#917: each perk in its own alcove): a bay pushed out of an outside wall, open full height to the
+# room, the cooler at its back. name: (axis of the wall, the wall's outer face, centre along it, outward (dx, dz), width,
+# depth past the face, which floors are hollow (the rest of the bay's height is solid)).
+BAY_WIDTH = 2.4
+BAY_DEPTH = 1.3
+BAYS = {
+    "BayLoad": ("x", -8.1, 6.9, (0, -1), BAY_WIDTH, BAY_DEPTH, ("Side", "UpperB")),
+    "BayHolster": ("x", -8.1, -4.6, (0, -1), BAY_WIDTH, BAY_DEPTH, ("UpperB",)),
+    "BayShock": ("z", 16.3, -4.0, (1, 0), BAY_WIDTH, BAY_DEPTH, ("UpperB",)),
+}
+# The side room's south-west alcove sits under the gallery (its ceiling is the gallery's deck): x0, x1, z0, z1 inside.
+BAY_RESCUE = (-2.6, -0.3, 0.0, 1.35)
 
 # The boards across a window (`Barricade`, five of them as the rules' BarricadeTuning.boards): the kit's 1.5 m board
 # (window_board.tscn), one above the other across the 1.3 m of opening above the sill; the breach's are spread over its
@@ -140,37 +168,40 @@ BOARD_OUT = 0.05  # metres outside the wall's centre line, on the dead's side
 # it, as (dx, dz). Start 2 (0.2 and 0.6 P), side 2 (1.2 P), upstairs 4 and a cabinet (1.2 to 1.8 P).
 SPOT_IN = 1.35
 WALL_SPOTS = [
-    # (name, shop id, sign, room, wall face (x, z), into, floor)
-    ("PistolStart", "weapon_pistol", "REVOLVER", "start", (0.0, 11.0), (1, 0), 0.0),
-    ("CrowbarStart", "weapon_crowbar", "CROWBAR", "start", (0.0, 6.0), (1, 0), 0.0),
-    ("ShotgunSide", "weapon_shotgun", "SHOTGUN", "side", (16.0, -6.0), (-1, 0), 0.0),
-    ("SmgSide", "weapon_smg", "TOMMY GUN", "side", (5.5, -7.8), (0, 1), 0.0),
-    ("BatUpstairs", "weapon_baseball_bat", "BAT", "upstairs", (16.05, 2.3), (-1, 0), STOREY),
-    ("FlareUpstairs", "weapon_flare_gun", "FLARE GUN", "upstairs", (-0.05, 2.3), (1, 0), STOREY),
-    ("AxeUpstairs", "weapon_fire_axe", "FIRE AXE", "upstairs", (16.05, -4.0), (-1, 0), STOREY),
-    ("ShotgunUpstairs", "weapon_shotgun", "SHOTGUN", "upstairs", (5.0, -7.85), (0, 1), STOREY),
+    # (name, shop id, room, wall face (x, z), into, floor)
+    ("PistolStart", "weapon_pistol", "start", (0.0, 11.0), (1, 0), 0.0),
+    ("CrowbarStart", "weapon_crowbar", "start", (0.0, 6.0), (1, 0), 0.0),
+    ("ShotgunSide", "weapon_shotgun", "side", (9.5, -0.3), (0, -1), 0.0),
+    ("SmgSide", "weapon_smg", "side", (3.6, -7.8), (0, 1), 0.0),
+    ("BatUpstairs", "weapon_baseball_bat", "upstairs", (16.05, 2.3), (-1, 0), STOREY),
+    ("FlareUpstairs", "weapon_flare_gun", "upstairs", (4.5, 4.5), (0, -1), STOREY),
+    ("AxeUpstairs", "weapon_fire_axe", "upstairs", (16.05, -6.6), (-1, 0), STOREY),
+    ("ShotgunUpstairs", "weapon_shotgun", "upstairs", (11.5, -7.85), (0, 1), STOREY),
 ]
 # The sniper cabinet: the rifle, at 1.5 P, in the upstairs half over the side room.
-CABINET = ("RifleCabinet", "weapon_rifle", "RIFLE", "upstairs", (-6.05, -4.0), (1, 0), STOREY)
+CABINET = ("RifleCabinet", "weapon_rifle", "upstairs", (-6.05, -4.0), (1, 0), STOREY)
 # The box (the crane, one place, never moves, formula row 22): in the side room, set back 1.5 m from its marker.
 BOX_MARKER = (10.5, 0.0, -5.9)
 BOX_YAW = 180.0  # toward the wall the box stands against (the marker faces its box)
 # Ammunition lockers: a crate against a wall; the spot sells the rounds of the weapon in hand.
 LOCKERS = [
-    ("LockerStart", "start", (8.0, 14.5), (0, -1), 0.0),
+    ("LockerStart", "start", (12.5, 14.5), (0, -1), 0.0),
     ("LockerSide", "side", (5.0, -0.3), (0, -1), 0.0),
     ("LockerUpstairs", "upstairs", (6.0, -0.25), (0, -1), STOREY),
     ("LockerUpstairsA", "upstairs", (12.0, 4.5), (0, -1), STOREY),
 ]
 
-# --- Outside: not playable. Each room's windows open onto ground of their own, so the dead never walk round from one
-# room to another outside: the front yard (the hall's windows), the west yard (the rewind room's), the pocket behind
-# the breach, the bank (the upper floor's north windows, at the upper floor's height) and the hall's roof (the upper
-# floor's south windows). #638 builds the backdrop beyond them.
+# --- Outside: not playable. The ground is at one level all round the building (#917: the same ground is seen from
+# both floors), the drive-in beyond the south fence. The yard is walled into three, so each room's dead come from ground
+# of their own and the walking mesh has no way round outside from one room to another (a bot would take it, and stop at
+# the boards): the front yard (the hall's windows, the gate to the drive-in), the alley along the hall's west side with
+# the outside stair the dead climb to the terrace and the gallery (the upper windows), and the back and west yard (the
+# side room's windows and the shed behind the breach, its back door gone). #638 builds the backdrop beyond the yard.
 YARD = (-31.0, 31.0, -27.0, 27.0)  # the backdrop's yard (its wire fence is drawn on these lines)
-BANK_TOP = STOREY
 FENCE_H = 3.0
 POCKET = (-13.8, -6.3, -5.0, 0.0)
+POCKET_DOOR = (-3.7, -1.3)  # the gap in the shed's west wall (z from, to)
+ALLEY = (-6.5, -0.1, 7.8)  # the alley's walls: west face, east face, its north end under the gallery (to the fence)
 
 MIDDLES = {
     "Start": (8.0, 0.0, 11.0),
@@ -182,6 +213,9 @@ MIDDLES = {
 # The moon indoors: low, against the lot's 0.36. Nothing casts a shadow in the Compatibility renderer, so the moon
 # lifts every floor under the roof evenly (kit docs/godot/compat-lighting.md, Light cards indoors).
 INDOOR_MOON_ENERGY = 0.1
+# The direction of the drive-in's screen from the building, for the sky's glow over it: south (the backdrop is turned so
+# the hall's south window faces the screen, #917).
+SCREEN_GLOW = (0.0, 0.0, 1.0)
 # The haze indoors: the lot's 0.013 barely shows in a 6 m room; this reads about 19 % at 6 m (the art page, Lighting).
 FOG_DENSITY = 0.035
 
@@ -217,10 +251,16 @@ RENDER_RULES = [
     (r"UpperB/WallS\d", UPPER_A_LAYER | UPPER_B_LAYER),
     (r"UpperB/Wall[NWE]\d", UPPER_B_LAYER),
     (r"Ceilings/StartSlab\w", START_LAYER | UPPER_A_LAYER),
+    (r"Ceilings/Terrace", START_LAYER | OUTDOORS_LAYER),
     (r"Ceilings/SideSlab\w", SIDE_LAYER | UPPER_B_LAYER),
-    (r"Roof/Slab", UPPER_A_LAYER | UPPER_B_LAYER),
+    (r"Ceilings/Bay\w+", SIDE_LAYER | UPPER_B_LAYER),
+    (r"Roof/(Slab|Bay\w+)", UPPER_A_LAYER | UPPER_B_LAYER),
     (r"Roof/Parapet\w", OUTDOORS_LAYER),
-    (r"Outside/GroundNotch", OUTDOORS_LAYER),
+    (r"Side/Bay\w+", SIDE_LAYER),
+    (r"UpperB/Bay\w+", UPPER_B_LAYER),
+    # The gallery's deck over the side room's south-west alcove is that alcove's ceiling too.
+    (r"Outside/GalleryDeckN", SIDE_LAYER | OUTDOORS_LAYER),
+    (r"Outside/(GroundNotch\w*|Gallery\w+|OutStair\w+|Bay\w+|Alley\w|YardWallE)", OUTDOORS_LAYER),
 ]
 ROOM_LAYER = {"Start": START_LAYER, "Side": SIDE_LAYER, "UpperA": UPPER_A_LAYER, "UpperB": UPPER_B_LAYER}
 # The lamps, by the lamp's index in `LAMPS` (`Lamp1`..), take their room's layer and the default one; the soda fountain
@@ -353,6 +393,99 @@ def stair(parent: str, name: str, foot_x: float, north_z: float, floor: float) -
     return (foot_x, x1, z0, z1)
 
 
+def outside_stair() -> None:
+    """The stair the dead climb from the front yard to the gallery: along the outside of the hall's west wall, rising
+    north to the deck at the upper floor's height. One hidden ramp is what is walked on (as inside), the kit's flight is
+    drawn over it with its rails, and a railing of the deck's height runs up its open (west) side."""
+    x0, x1, top_z = OUT_STAIR
+    foot_z = top_z + STAIR_RUN
+    width = x1 - x0
+    length = math.hypot(STAIR_RUN, STOREY)
+    c, s = math.cos(math.radians(STAIR_PITCH)), math.sin(math.radians(STAIR_PITCH))
+    thick = 0.3
+    xm, zm = (x0 + x1) / 2, (top_z + foot_z) / 2
+    # Turned about X so its length runs south and down (local +Z); the middle of the top face, moved down along the
+    # face's normal (0, c, s) by half the thickness.
+    for name, size, up in (("OutStairRamp", (width, thick, length), 0.0), ("OutStairRail", (0.15, RAIL, length), 1.0)):
+        my, mz = (
+            STOREY / 2 - c * thick / 2 + up * c * (RAIL + thick) / 2,
+            zm - s * thick / 2 + up * s * (RAIL + thick) / 2,
+        )
+        mx = xm if up == 0.0 else x0 + 0.075
+        ramp = f"Transform3D(1, 0, 0, 0, {c:.4f}, {-s:.4f}, 0, {s:.4f}, {c:.4f}, {mx:.3f}, {my:.3f}, {mz:.3f})"
+        props = {"transform": ramp, "layers": str(OUTDOORS_LAYER), "use_collision": "true"}
+        if up:
+            props["collision_layer"] = str(bg.WALL_LAYERS)
+        props.update(
+            {"size": bg.vec(size), "material": f'ExtResource("{MATS["stair"]}")', "metadata/surface": '"wood"'}
+        )
+        bg.node(name, "CSGBox3D", "Outside", props)
+    dress.outside_stair_model((xm, 0.0, zm), STAIR_RUN, width, STOREY)
+
+
+def gallery() -> None:
+    """The gallery: a deck on posts at the upper floor's height along the hall's west wall, from the outside stair's
+    top to the upper floor's south-west corner, joined to the terrace (the hall's roof) along the hall's wall; a railing
+    on its open (west) side. Its north end, over the side room's alcove, is that alcove's ceiling too."""
+    x0, x1, z0, z1 = GALLERY
+    split = BAY_RESCUE[3] + 0.2  # the alcove's back wall
+    wood_box("Outside", "GalleryDeckN", (x0, x1, z0, split), CEILING, STOREY, MATS["upper_floor"])
+    wood_box("Outside", "GalleryDeckS", (x0, x1, split, z1), CEILING, STOREY, MATS["upper_floor"])
+    rect_box("Outside", "GalleryRail", (x0, x0 + 0.15, z0, z1), STOREY, STOREY + RAIL, MATS["stair"], bg.WALL_LAYERS)
+    for i, z in enumerate((4.6, z1 - 0.1), start=1):
+        rect_box("Outside", f"GalleryPost{i}", (x0, x0 + 0.2, z - 0.1, z + 0.1), 0.0, CEILING, MATS["stair"],
+                 bg.WALL_LAYERS)  # fmt: skip
+
+
+def _footprint(axis: str, lo: float, hi: float, start: float, far: float) -> tuple[float, float, float, float]:
+    """A bay's rectangle (x0, x1, z0, z1): `lo` to `hi` along the wall, `start` to `far` across it."""
+    a0, a1 = min(start, far), max(start, far)
+    return (lo, hi, a0, a1) if axis == "x" else (a0, a1, lo, hi)
+
+
+def bays() -> None:
+    """The perk alcoves: each a bay out of an outside wall, the full storey high where it is hollow (its floor, its two
+    sides, its back and its ceiling) and one solid block where it is not, so it reads from outside as one bay of the
+    building. The wall's gap is cut by the wall's own builder; the cooler is placed by the dressing."""
+    for name, (axis, face, along, (dx, dz), width, depth, hollow) in BAYS.items():
+        # The bay's footprint outside the ground wall's outer face (its floors, which meet the rooms' floors there), and
+        # the same from the wall's middle (its walls and its roof, which close on the wall without a slit), with walls
+        # 0.2 m thick round the hollow part.
+        lo, hi = along - width / 2 - 0.2, along + width / 2 + 0.2
+        out = dx + dz
+        far = face + out * (depth + 0.2)
+
+        outer = _footprint(axis, lo, hi, face, far)
+        outer_w = _footprint(axis, lo, hi, face - out * 0.15, far)
+        levels = [("Side", 0.0), ("UpperB", STOREY)]
+        for group, floor in levels:
+            if group not in hollow:
+                rect_box("Outside", f"{name}{group}Solid", outer, floor - (0.4 if floor == 0.0 else SLAB), floor + CEILING,
+                         MATS["wall"], bg.WALL_LAYERS)  # fmt: skip
+                continue
+            mat = MATS["wall"] if floor == 0.0 else MATS["upper_wall"]
+            if floor == 0.0:
+                rect_box(group, f"{name}Floor", outer, -0.4, 0.0, MATS["floor"])
+            ox0, ox1, oz0, oz1 = outer_w
+            if axis == "x":
+                sides = [(ox0, ox0 + 0.2, oz0, oz1), (ox1 - 0.2, ox1, oz0, oz1)]
+                back = (ox0, ox1, oz0, oz0 + 0.2) if dz < 0 else (ox0, ox1, oz1 - 0.2, oz1)
+            else:
+                sides = [(ox0, ox1, oz0, oz0 + 0.2), (ox0, ox1, oz1 - 0.2, oz1)]
+                back = (ox1 - 0.2, ox1, oz0, oz1) if dx > 0 else (ox0, ox0 + 0.2, oz0, oz1)
+            for tag, r in (("SideA", sides[0]), ("SideB", sides[1]), ("Back", back)):
+                rect_box(group, f"{name}{tag}", r, floor, floor + CEILING, mat, bg.WALL_LAYERS)
+        # The slab between the floors and the roof over the bay.
+        wood_box("Ceilings", f"{name}Slab", outer, CEILING, STOREY, MATS["upper_floor"])
+        rect_box("Roof", f"{name}Roof", outer_w, STOREY + CEILING, STOREY + CEILING + SLAB, MATS["ceiling"])
+    # The side room's south-west alcove, under the gallery: its floor, its west side and its back (the hall's west wall
+    # is its east side, the gallery's deck its ceiling).
+    x0, x1, z0, z1 = BAY_RESCUE
+    rect_box("Side", "BayRescueFloor", (x0 - 0.2, x1, z0, z1 + 0.2), -0.4, 0.0, MATS["floor"])
+    rect_box("Side", "BayRescueSideA", (x0 - 0.2, x0, z0, z1 + 0.2), 0.0, CEILING, MATS["wall"], bg.WALL_LAYERS)
+    rect_box("Side", "BayRescueBack", (x0, x1, z1, z1 + 0.2), 0.0, CEILING, MATS["wall"], bg.WALL_LAYERS)
+
+
 def link_price(shop_id: str) -> int:
     """The price of a shop item in the map's tuning (smallmap_tuning.tres)."""
     for block_text in re.split(r"\n\n", TUNING.read_text(encoding="utf-8")):
@@ -436,29 +569,23 @@ def window(spec, breach: bool = False) -> tuple[float, float, float]:
     return pos
 
 
-def sign_size(text: str) -> int:
-    """The font size of a plaque's name: 60, smaller for a long name so it stays within the 1.7 m plaque (a letter is
-    about 0.21 m wide at 60)."""
-    return min(60, int(420 / len(text)))
-
-
 def _yaw_of(into: tuple[int, int]) -> float:
     return math.degrees(math.atan2(into[0], into[1]))
 
 
-def wall_spot(name, shop_id, text, room, face, into, floor, cabinet: bool = False) -> None:
-    """A weapon on a wall: a plaque (a cabinet for the rifle) with its name, and the marker a player buys from. Nothing
+def wall_spot(name, shop_id, room, face, into, floor, cabinet: bool = False) -> None:
+    """A weapon on a wall: a plaque (a cabinet for the rifle) with its silhouette, and the marker a player buys from. Nothing
     here is CSG, so the walking mesh does not change; the cabinet is solid to players and shots."""
     x, z = face
     dx, dz = into
     yaw = _yaw_of(into)
     spot = (x + dx * SPOT_IN, floor, z + dz * SPOT_IN)
     if cabinet:
-        dress.cabinet(name, text, face, into, floor, yaw, MATS["plaque"])
+        dress.cabinet(name, shop_id, face, into, floor, yaw, MATS["plaque"])
     else:
         bg.box("ShopProps", f"{name}Plaque", (1.7, 0.9, 0.12), (x + dx * 0.06, floor + 1.6, z + dz * 0.06), MATS["plaque"],
                yaw, collide=False)  # fmt: skip
-        bg.sign("ShopProps", f"{name}Sign", text, (x + dx * 0.14, floor + 1.6, z + dz * 0.14), yaw, sign_size(text))
+        bg.silhouette("ShopProps", f"{name}Silhouette", shop_id, (x + dx * 0.14, floor + 1.6, z + dz * 0.14), yaw)
     props = {"transform": bg.xform(spot, yaw), "metadata/kind": '"wall"', "metadata/shop_id": f'"{shop_id}"',
              "metadata/room": f'"{room}"'}  # fmt: skip
     if cabinet:
@@ -495,14 +622,16 @@ def build() -> None:
     lines.append('[ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/smallmap/fixtures/window_board.tscn" id="board"]')
     lines.append('[ext_resource type="Shader" path="res://world/drive_in/night_sky.gdshader" id="night_sky"]')
+    lines.append('[ext_resource type="Script" path="res://world/shop/wall_silhouette.gd" id="silhouette"]')
     for mid in sorted(set(MATS.values())):
         folder = "smallmap" if mid == "frost_ground" else "lot"
         lines.append(f'[ext_resource type="Material" path="res://assets/{folder}/materials/{mid}.tres" id="{mid}"]')
     lines.append("")
-    lines.extend(
-        line.replace(f"fog_density = {bg.FOG_DENSITY:g}", f"fog_density = {FOG_DENSITY:g}")
-        for line in bg.night_environment_resources()
-    )
+    for line in bg.night_environment_resources():
+        lines.append(line.replace(f"fog_density = {bg.FOG_DENSITY:g}", f"fog_density = {FOG_DENSITY:g}"))
+        if line == 'shader = ExtResource("night_sky")':
+            # The drive-in's screen is south of this map (#917): its glow over the horizon is too.
+            lines.append(f"shader_parameter/screen_glow_direction = {bg.vec(SCREEN_GLOW)}")
     bg.node(ROOT, "Node3D", None, {
         "metadata/map_id": '"smallmap"', "metadata/storey": f"{STOREY:g}", "metadata/ceiling": f"{CEILING:g}",
         # What a night reads (MapLayout, MapTuning): the rooms open for the dead at the start, the saved meshes, the
@@ -535,7 +664,9 @@ def build() -> None:
     stair_a = stair("Start", "StairA", STAIR_A[0], STAIR_A[1], 0.0)
     stair_b = stair("Side", "StairB", STAIR_B[0], STAIR_B[1], 0.0)
     bg.node("Ceilings", "Node3D", ".")
-    slab_with_hole("Ceilings", "StartSlab", (-0.3, 16.3, 0.0, 14.8), stair_a, CEILING, MATS["upper_floor"])
+    # The hall's ceiling: under the upper floor, and south of it the terrace (the hall's flat roof, outdoors).
+    slab_with_hole("Ceilings", "StartSlab", (-0.3, 16.3, 0.0, TERRACE_Z), stair_a, CEILING, MATS["upper_floor"])
+    wood_box("Ceilings", "Terrace", (-0.3, 16.3, TERRACE_Z, 14.8), CEILING, STOREY, MATS["upper_floor"])
     slab_with_hole("Ceilings", "SideSlab", (-6.3, 16.3, -8.1, 0.0), stair_b, CEILING, MATS["upper_floor"])
 
     # Ground walls: (group, name, axis, fixed, from, to, gaps). A gap is (centre, width, bottom, top).
@@ -544,15 +675,18 @@ def build() -> None:
     def gaps_of(*ids: str) -> list[tuple[float, float, float, float]]:
         return [(win[i][4], WINDOW_GAP, 0.0, MODULE_HEIGHT) for i in ids]
 
+    def bay_gaps(*names: str) -> list[tuple[float, float, float, float]]:
+        return [(BAYS[n][2], BAYS[n][4], 0.0, CEILING) for n in names]
+
+    rescue_gap = ((BAY_RESCUE[0] + BAY_RESCUE[1]) / 2, BAY_RESCUE[1] - BAY_RESCUE[0], 0.0, CEILING)
+
     gw = GROUND_WALL
     bg.wall("Start", "WallW", "z", -0.15, 0.0, 14.8, CEILING, MATS["wall"], thick=gw)
-    bg.wall("Start", "WallS", "x", 14.65, -0.3, 16.3, CEILING, MATS["wall"], gaps_of("start_1", "start_2"), gw)
-    bg.wall(
-        "Start", "WallE", "z", 16.15, 0.0, 14.8, CEILING, MATS["wall"], gaps_of("start_3", "start_4", "start_5"), gw
-    )
-    side_gaps = gaps_of("side_1", "side_2") + [(DOOR_X, OPENING_MODULE, 0.0, MODULE_HEIGHT)]
+    bg.wall("Start", "WallS", "x", 14.65, -0.3, 16.3, CEILING, MATS["wall"], gaps_of("start_1"), gw)
+    bg.wall("Start", "WallE", "z", 16.15, 0.0, 14.8, CEILING, MATS["wall"], gaps_of("start_4"), gw)
+    side_gaps = gaps_of("side_1") + [(DOOR_X, OPENING_MODULE, 0.0, MODULE_HEIGHT), rescue_gap]
     bg.wall("Side", "WallS", "x", -0.15, -6.3, 16.3, CEILING, MATS["wall"], side_gaps, gw)
-    bg.wall("Side", "WallN", "x", -7.95, -6.3, 16.3, CEILING, MATS["wall"], thick=gw)
+    bg.wall("Side", "WallN", "x", -7.95, -6.3, 16.3, CEILING, MATS["wall"], gaps_of("side_2") + bay_gaps("BayLoad"), gw)
     bg.wall("Side", "WallE", "z", 16.15, -7.8, -0.3, CEILING, MATS["wall"], thick=gw)
     bg.wall("Side", "WallW", "z", -6.15, -8.1, -0.3, CEILING, MATS["wall"],
             [(BREACH[4], WINDOW_GAP, 0.0, MODULE_HEIGHT)], gw)  # fmt: skip
@@ -577,24 +711,25 @@ def build() -> None:
     up = STOREY
     uw = UPPER_WALL
     bg.wall("UpperA", "WallS", "x", 4.6, -0.25, 16.25, CEILING, MATS["upper_wall"],
-            gaps_of("upper_a1", "upper_a2"), uw, up)  # fmt: skip
-    bg.wall("UpperA", "WallW", "z", -0.15, -0.05, 4.5, CEILING, MATS["upper_wall"], thick=uw, y0=up)
+            gaps_of("upper_a2"), uw, up)  # fmt: skip
+    bg.wall("UpperA", "WallW", "z", -0.15, -0.05, 4.5, CEILING, MATS["upper_wall"], gaps_of("upper_a1"), uw, up)
     bg.wall("UpperA", "WallE", "z", 16.15, -0.05, 4.5, CEILING, MATS["upper_wall"], thick=uw, y0=up)
     bg.wall("UpperB", "WallS", "x", -0.15, -6.25, 16.25, CEILING, MATS["upper_wall"],
             [(OPENING_X, OPENING_MODULE, 0.0, MODULE_HEIGHT)], uw, up)  # fmt: skip
     bg.wall("UpperB", "WallN", "x", -7.95, -6.25, 16.25, CEILING, MATS["upper_wall"],
-            gaps_of("upper_b1", "upper_b2"), uw, up)  # fmt: skip
+            bay_gaps("BayLoad", "BayHolster"), uw, up)  # fmt: skip
     bg.wall("UpperB", "WallW", "z", -6.15, -7.85, -0.25, CEILING, MATS["upper_wall"], thick=uw, y0=up)
-    bg.wall("UpperB", "WallE", "z", 16.15, -7.85, -0.25, CEILING, MATS["upper_wall"], thick=uw, y0=up)
+    bg.wall("UpperB", "WallE", "z", 16.15, -7.85, -0.25, CEILING, MATS["upper_wall"], bay_gaps("BayShock"), uw, up)
     bg.node("Roof", "Node3D", ".")
     rect_box("Roof", "Slab", (-6.25, 16.25, -8.05, 4.7), up + CEILING, up + CEILING + SLAB, MATS["ceiling"])
-    # The start room's roof south of the upper floor: the dead walk on it to the upper floor's south windows.
+    # The terrace (the hall's roof south of the upper floor): a railing round it, open on the west where the gallery
+    # joins it; the dead walk on it to the upper floor's south window.
     for name, rect in (
         ("ParapetS", (-0.3, 16.3, 14.5, 14.8)),
-        ("ParapetW", (-0.3, 0.0, 4.7, 14.5)),
-        ("ParapetE", (16.0, 16.3, 4.7, 14.5)),
+        ("ParapetW", (-0.3, 0.0, GALLERY[3], 14.5)),
+        ("ParapetE", (16.0, 16.3, TERRACE_Z, 14.5)),
     ):
-        rect_box("Roof", name, rect, up, up + 0.6, MATS["wall"], bg.WALL_LAYERS)
+        rect_box("Roof", name, rect, up, up + RAIL, MATS["wall"], bg.WALL_LAYERS)
 
     # --- Windows, the breach, and the dead's spawns outside each (rows 15 and 18) ---------------------------------
     bg.node("Windows", "Node3D", ".")
@@ -602,9 +737,8 @@ def build() -> None:
     for spec in [*WINDOWS, BREACH]:
         is_breach = spec is BREACH
         at = window(spec, is_breach)
-        out = BREACH_SPAWN_OUT if is_breach else SPAWN_OUT
         dx, dz = spec[5]
-        spawn = (at[0] - dx * out, at[1], at[2] - dz * out)
+        spawn = SPAWN_AT.get(spec[0], (at[0] - dx * SPAWN_OUT, at[1], at[2] - dz * SPAWN_OUT))
         bg.node(f"Spawn_{spec[0]}", "Marker3D", "ZombieSpawns",
                 {"transform": bg.xform(spawn), "metadata/barricade_id": f'"{spec[0]}"',
                  "metadata/room": f'"{spec[1]}"'})  # fmt: skip
@@ -637,7 +771,7 @@ def build() -> None:
     dress.decor_pendant("Start", "SodaLamp", (1.7, 0.0, 8.5), "Lamp1")
     dress.decor_pendant("UpperB", "ShopLampUp", (13.6, up, -6.4), "Lamp8")
     dress.chalk("Start", "ChalkWindows", "HOLD THE WINDOWS", (5.6, 1.75, stair_a[3] + 0.21), 0.0, 2.2, "Lamp3")
-    dress.chalk("Side", "ChalkLight", "STAY IN THE LIGHT", (13.4, 1.75, -7.79), 0.0, 2.0, "Lamp5")
+    dress.chalk("Side", "ChalkLight", "STAY IN THE LIGHT", (12.0, 1.75, -7.79), 0.0, 1.8, "Lamp5")
     dress.chalk("Side", "ChalkBreach", "NOT THIS WAY", (-5.99, 1.75, -5.3), 90.0, 1.6, "Lamp4")
     dress.chalk("UpperB", "ChalkDark", "THEY COME AT DARK", (2.2, up + 1.75, -7.84), 0.0, 2.0, "Lamp7")
 
@@ -655,42 +789,60 @@ def build() -> None:
     # --- Outside -----------------------------------------------------------------------------------------------------
     bg.node("Outside", "Node3D", ".")
     yx0, yx1, yz0, yz1 = YARD
-    # Ground round the building's box (x -6.3..16.3, z -8.1..14.8) and in its notch west of the start room.
+    # One yard at the ground's level round the building's box (x -6.3..16.3, z -8.1..14.8) and in its notch west of the
+    # start room, cut round the floors of the two ground-floor alcoves that stand out of the walls.
+    load = BAYS["BayLoad"]
+    lx0, lx1 = load[2] - load[4] / 2 - 0.2, load[2] + load[4] / 2 + 0.2
+    back = -8.1 - load[5] - 0.2
+    ax0, _ax1, _az0, az1 = BAY_RESCUE
     for name, rect in (
         ("GroundS", (yx0, yx1, 14.8, yz1)),
         ("GroundE", (16.3, yx1, -8.1, 14.8)),
         ("GroundW", (yx0, -6.3, -8.1, 14.8)),
-        ("GroundNotch", (-6.3, -0.3, 0.0, 14.8)),
+        ("GroundN", (yx0, yx1, yz0, back)),
+        ("GroundNWest", (-6.3, lx0, back, -8.1)),
+        ("GroundNEast", (lx1, 16.3, back, -8.1)),
+        ("GroundNotch", (-6.3, ax0 - 0.2, 0.0, 14.8)),
+        ("GroundNotchE", (ax0 - 0.2, -0.3, az1 + 0.2, 14.8)),
     ):
         rect_box("Outside", name, rect, -0.4, 0.0, MATS["yard"])
-    rect_box("Outside", "Bank", (yx0, yx1, yz0, -8.1), -0.4, BANK_TOP, MATS["bank"])
     fences = [
         ("FenceS", (yx0, yx1, yz1 - 0.4, yz1)),
-        ("FenceW", (yx0, yx0 + 0.4, -8.1, yz1)),
-        ("FenceE", (yx1 - 0.4, yx1, -8.1, yz1)),
-        ("FenceSplit", (-0.5, -0.1, 14.8, yz1 - 0.4)),  # the hall's yard and the rewind room's yard are apart
-        ("BankRim", (yx0, yx1, yz0, yz0 + 0.4)),
+        ("FenceW", (yx0, yx0 + 0.4, yz0, yz1)),
+        ("FenceE", (yx1 - 0.4, yx1, yz0, yz1)),
+        ("FenceN", (yx0, yx1, yz0, yz0 + 0.4)),
+        # The yard's own walls: the alley from the hall's south-west corner to the fence and across the notch under
+        # the gallery, and the back yard apart from the front yard east of the building.
+        ("AlleyE", (ALLEY[1] - 0.4, ALLEY[1], 14.8, yz1 - 0.4)),
+        ("AlleyW", (ALLEY[0], ALLEY[0] + 0.2, ALLEY[2], yz1 - 0.4)),
+        ("AlleyN", (ALLEY[0], -0.3, ALLEY[2], ALLEY[2] + 0.2)),
+        ("YardWallE", (16.3, yx1 - 0.4, -8.4, -8.1)),
     ]
     px0, px1, pz0, pz1 = POCKET
+    d0, d1 = POCKET_DOOR
     fences += [
         ("PocketN", (px0, px1, pz0 - 0.3, pz0)),
         ("PocketS", (px0, px1, pz1, pz1 + 0.3)),
-        ("PocketW", (px0 - 0.3, px0, pz0 - 0.3, pz1 + 0.3)),
+        ("PocketW", (px0 - 0.3, px0, pz0 - 0.3, d0)),
+        ("PocketWS", (px0 - 0.3, px0, d1, pz1 + 0.3)),
     ]
     for name, (x0, x1, z0, z1) in fences:
-        base = BANK_TOP if name == "BankRim" else 0.0
-        # The yard's boundary is the backdrop's wire fence, seen through; these boxes are only the dead's wall. The inner
-        # walls (the split between the yards, the breach's pocket) are drawn as the building's own block.
-        boundary = name in ("FenceS", "FenceW", "FenceE", "BankRim")
-        rect_box("Outside", name, (x0, x1, z0, z1), base, base + FENCE_H, MATS["wall"], bg.WALL_LAYERS, not boundary)
+        # The yard's boundary is the backdrop's wire fence, seen through; these boxes are only the dead's wall. The
+        # shed's walls are drawn as the building's own block.
+        boundary = name.startswith("Fence")
+        rect_box("Outside", name, (x0, x1, z0, z1), 0.0, FENCE_H, MATS["wall"], bg.WALL_LAYERS, not boundary)
     rect_box("Outside", "PocketRoof", (px0 - 0.3, px1, pz0 - 0.3, pz1 + 0.3), CEILING, CEILING + SLAB, MATS["ceiling"])
+    # The way up for the dead, and the perks' alcoves (their solid parts stand in the yard).
+    outside_stair()
+    gallery()
+    bays()
     dress.outside()
 
     # --- The shop (rows 22 to 24) ----------------------------------------------------------------------------------
     bg.node("ShopSpots", "Node3D", ".")
     bg.node("ShopProps", "Node3D", ".")
-    for name, shop_id, text, room, face, into, floor in [*WALL_SPOTS, CABINET]:
-        wall_spot(name, shop_id, text, room, face, into, floor, cabinet=(name == CABINET[0]))
+    for name, shop_id, room, face, into, floor in [*WALL_SPOTS, CABINET]:
+        wall_spot(name, shop_id, room, face, into, floor, cabinet=(name == CABINET[0]))
     bx, by, bz = BOX_MARKER
     bg.node("SpotBox", "Marker3D", "ShopSpots",
             {"transform": bg.xform((bx, by, bz), BOX_YAW), "metadata/kind": '"crane"', "metadata/shop_id": '"crane_play"',
