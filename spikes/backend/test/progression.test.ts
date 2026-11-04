@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { buildApp } from "../src/app.ts";
+import { buildApp, GUEST_TTL_SECONDS, sweepIdleGuests } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
 import { StubDiscord } from "../src/discord.ts";
 import { PgStore } from "../src/pg-store.ts";
@@ -266,6 +266,36 @@ test("a report for an account that is not there pays nobody and does not stop th
   const r = await api.report("m1", roundReport(1, [seat("00000000-0000-4000-8000-000000000000", 50), seat(ana.id, 50)]));
   assert.deepEqual(r.json().seats.map((s: { status: string }) => s.status), ["unknown_user", "paid"]);
   await api.app.close();
+});
+
+/** A Guest with a paid report expires after 7 days (#1085): the account, its save and its ledger lines go, in either store (#1103). */
+async function expiredGuestLeavesNoLedger(store: Store, clockStart: number) {
+  const api = await backend(store);
+  const guest = await api.guest("visitor");
+  const matchId = `expire-${clockStart}`;
+  const paid = await api.report(matchId, roundReport(1, [seat(guest.id, 40)]));
+  assert.equal(paid.json().seats[0].status, "paid");
+  await api.store.putSave(guest.id, "profile", { schemaVersion: 1, data: profile({ xp: 41 }) }, 1, { userId: guest.id, matchId: "", kind: "solo", round: 2, xp: 1, reason: {}, at: T0 });
+  assert.equal(await api.store.ledgerTotal(guest.id, matchId), 40);
+  assert.notEqual(await api.store.getLedgerEntry(guest.id, matchId, "round", 1), null);
+  assert.equal(await api.store.lastLedgerAt(guest.id, "solo"), T0);
+
+  assert.equal(await sweepIdleGuests(api.store, T0 + GUEST_TTL_SECONDS * 1000 + 1), 1);
+  assert.equal(await api.store.getUser(guest.id), null);
+  assert.equal(await api.store.getLedgerEntry(guest.id, matchId, "round", 1), null);
+  assert.equal(await api.store.ledgerTotal(guest.id, matchId), 0);
+  assert.equal(await api.store.lastLedgerAt(guest.id, "solo"), null);
+
+  // The game server posts the same report again after the account is gone: it pays nobody and writes no line.
+  const late = await api.report(matchId, roundReport(1, [seat(guest.id, 40)]));
+  assert.equal(late.json().seats[0].status, "unknown_user");
+  assert.equal(await api.store.getLedgerEntry(guest.id, matchId, "round", 1), null);
+  assert.equal(await api.store.getSave(guest.id, "profile"), null);
+  await api.app.close();
+}
+
+test("a Guest that expires after a paid report leaves no ledger lines, and a late report pays nobody", async () => {
+  await expiredGuestLeavesNoLedger(new MemoryStore(), 1);
 });
 
 test("a report adds on top of the account's own latest, and the client's stale revision is read again", async () => {
@@ -582,6 +612,15 @@ test("Postgres: a ledger entry and its save are one step, and a stale revision o
     assert.equal(await store.ledgerTotal(user.id, "m"), 10); // a solo line is not the match's
     assert.equal(await store.lastLedgerAt(user.id, "solo"), T0);
     assert.equal(await store.lastLedgerAt(user.id, "nothing"), null);
+  } finally {
+    await store.close();
+  }
+});
+
+test("Postgres: a Guest that expires after a paid report leaves no ledger lines, and a late report pays nobody", { skip: !databaseUrl }, async () => {
+  const store = await PgStore.connect(databaseUrl!);
+  try {
+    await expiredGuestLeavesNoLedger(store, Date.now());
   } finally {
     await store.close();
   }
