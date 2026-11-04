@@ -687,6 +687,19 @@ nobody keeps (no account at all) is counted by the client with the same `XpRules
 "your night, unsaved" with the XP it would have paid, no bar and "no account: this night was not saved". The
 players' rows are untouched by it (the icon and level beside a name are #1077's).
 
+**Built (#1069).** The credits are a second ticket under the players' ticket on the end board
+(`HudCredits`): a line for every player with their crew title, what it was for, their name and the XP the night paid
+them (nothing where the server told none: a bot, or a night nobody keeps). `NightCredits.award` is a pure function of
+what `NightTally` counted: the titles of `crew_titles.json` are handed out in the order of the file (the rarer deeds
+first, so the top scorer does not take them all), each to the player with the most of its stat among those without a
+title, a tie to the lower seat, a stat of zero to no one; a player has at most one, and the rest are Extras, so a solo
+night has its credit too. The titles name only stats the night counts: Special Effects (headliners felled), Stunt
+Coordinator (revives), Best Boy (fuel cans), Location Manager (doors opened), Key Grip (boards mended), Stunt Double
+(times down; `NightTally` now counts `downs` from `player_downed`) and Executive Producer (points earned). A client
+counts them for every player in `CrewTracker` (only those stats, and only a boss kill of the horde) and reads each
+seat's XP from the `xp_gained` every client hears; `ReportTracker` owns it, so the Night itself gains no line. The rows
+of the two tickets share the screen's height, to a floor, so eight players fit the smallest canvas.
+
 ## Popups, motion and sound
 
 ![Popup storyboard](../research/progression-popups.png)
@@ -756,7 +769,7 @@ combat chatter but not urgent lines (hurt, downed, a boss, a warning). **Made (#
 voice on the free tier, at the maintainer's word ("go ahead and get them going, I'll get the package with commercial
 rights in a moment"); they are **not licensed for commercial use** and are regenerated under the commercial plan before
 release ([#252](https://github.com/Ryubara/deadnight/issues/252)). The server's `level_up`, `tier_up` and
-`unlock_earned` are wired to them for every client; `challenge_done` waits for the challenge tracker (#1076)
+`unlock_earned` and the challenge tracker's `challenge_done` (#1135) are wired to them for every client
 ([research](../research/audio.md#the-progression-voice-lines-1063),
 [sound design](audio.md#the-soldiers-voices)).
 

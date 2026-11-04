@@ -36,10 +36,11 @@ const PROGRESS: Array[StringName] = [
 ]
 ## The progression events a game server tells every client (`XpAward`), and the moment each one
 ## becomes. An `unlock_earned` is a card, an emblem (or a frame) or a plain unlock by its slot.
-## `challenge_done` (the challenge tracker, #1076) joins this table when its event exists.
+## A `challenge_done` (the challenge tracker, #1076) is its own cheer.
 const CHEER_OF_EVENT: Dictionary[StringName, StringName] = {
 	&"level_up": &"level_up",
 	&"tier_up": &"tier_up",
+	&"challenge_done": &"challenge_done",
 }
 const CHEER_OF_SLOT: Dictionary[StringName, StringName] = {
 	&"calling_cards": &"card",
@@ -49,10 +50,12 @@ const CHEER_OF_SLOT: Dictionary[StringName, StringName] = {
 	&"plate_frame": &"emblem",
 }
 ## Which cheer a player gets when several of their events arrive together: the highest weight (a
-## tier over what a level unlocks over the level), the first of equals. A level that gives an item
-## is cheered for the item.
+## tier over a challenge or what a level unlocks over the level), the first of equals. A level that
+## gives an item is cheered for the item; a challenge is something the player did, a level is what
+## doing it paid, so a challenge that pays a level is cheered as the challenge.
 const CHEER_WEIGHT: Dictionary[StringName, int] = {
 	&"tier_up": 3,
+	&"challenge_done": 2,
 	&"unlock": 2,
 	&"card": 2,
 	&"emblem": 2,
