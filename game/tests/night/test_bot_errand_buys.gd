@@ -119,21 +119,21 @@ func test_a_bot_plays_the_crane_and_takes_the_prize_it_wants() -> void:
 func test_a_bot_with_a_short_reserve_walks_to_a_locker_and_buys_rounds() -> void:
 	var night := await _night(1)
 	_give(night, 1, 200)
-	night.server.combat.state_of(1, &"pistol").reserve = 4
-	var bought := _purchases(night, &"ammo_pistol")
+	night.server.combat.state_of(1, &"house_pistol").reserve = 4
+	var bought := _purchases(night, &"ammo_house_pistol")
 	_seconds(night, 90.0)
 	assert_int(bought.size()).is_greater_equal(1)
-	assert_int(night.server.combat.state_of(1, &"pistol").reserve).is_greater(4)
+	assert_int(night.server.combat.state_of(1, &"house_pistol").reserve).is_greater(4)
 	night.dispose()
 
 
 func test_a_bot_with_a_dry_gun_walks_to_a_locker_and_buys_rounds() -> void:
 	var night := await _night(1)
 	_give(night, 1, 200)
-	var pistol = night.server.combat.state_of(1, &"pistol")
+	var pistol = night.server.combat.state_of(1, &"house_pistol")
 	pistol.ammo = 0
 	pistol.reserve = 0
-	var bought := _purchases(night, &"ammo_pistol")
+	var bought := _purchases(night, &"ammo_house_pistol")
 	_seconds(night, 120.0)
 	assert_int(bought.size()).is_greater_equal(1)
 	assert_int(pistol.reserve + pistol.ammo).is_greater(0)
@@ -142,7 +142,7 @@ func test_a_bot_with_a_dry_gun_walks_to_a_locker_and_buys_rounds() -> void:
 
 func _dry_bot_with_a_dead_one_at(metres: float) -> SeatedNight:
 	var night := await _night(1)
-	var pistol = night.server.combat.state_of(1, &"pistol")
+	var pistol = night.server.combat.state_of(1, &"house_pistol")
 	pistol.ammo = 0
 	pistol.reserve = 0
 	var here := night.server.body_of(1).global_position
@@ -161,8 +161,8 @@ func test_a_dry_bot_runs_for_rounds_with_a_dead_one_in_sight_but_not_in_reach() 
 	# The bot has made the dead one out before it holds the price.
 	_seconds(night, 3.0)
 	_give(night, 1, 200)
-	var pistol = night.server.combat.state_of(1, &"pistol")
-	var bought := _purchases(night, &"ammo_pistol")
+	var pistol = night.server.combat.state_of(1, &"house_pistol")
+	var bought := _purchases(night, &"ammo_house_pistol")
 	_seconds(night, 90.0)
 	assert_int(bought.size()).is_greater_equal(1)
 	assert_int(pistol.reserve + pistol.ammo).is_greater(0)
@@ -198,25 +198,25 @@ func _mark_ammo(night: SeatedNight, at: Vector3) -> void:
 
 func test_a_bot_short_of_rounds_buys_at_the_locker_a_person_marked() -> void:
 	var night := await _person_and_bot(200)
-	night.server.combat.state_of(1, &"pistol").reserve = 4
+	night.server.combat.state_of(1, &"house_pistol").reserve = 4
 	# Standing at the other locker, whose prompt sells the same rounds: the mark is an order for the
 	# marked one, so the bot walks on.
 	night.server.body_of(1).teleport(HOME_LOCKER + Vector3(-1.0, 0.1, 1.0))
 	night.run(2)
 	assert_str(String(night.frame["players"][1]["prompt"].get("kind", &""))).is_equal("ammo")
 	_mark_ammo(night, MARKED_LOCKER)
-	var at := _where_bought(night, &"ammo_pistol", 90.0)
+	var at := _where_bought(night, &"ammo_house_pistol", 90.0)
 	assert_bool(at.is_finite()).is_true()
 	assert_float(_flat(at, MARKED_LOCKER)).is_less(AT_LOCKER)
-	assert_int(night.server.combat.state_of(1, &"pistol").reserve).is_greater(4)
+	assert_int(night.server.combat.state_of(1, &"house_pistol").reserve).is_greater(4)
 	assert_array(_catcher.lines).is_empty()
 	night.dispose()
 
 
 func test_without_the_mark_the_same_bot_uses_the_locker_at_home() -> void:
 	var night := await _person_and_bot(200)
-	night.server.combat.state_of(1, &"pistol").reserve = 4
-	var at := _where_bought(night, &"ammo_pistol", 90.0)
+	night.server.combat.state_of(1, &"house_pistol").reserve = 4
+	var at := _where_bought(night, &"ammo_house_pistol", 90.0)
 	assert_bool(at.is_finite()).is_true()
 	assert_float(_flat(at, HOME_LOCKER)).is_less(AT_LOCKER)
 	night.dispose()
@@ -224,7 +224,7 @@ func test_without_the_mark_the_same_bot_uses_the_locker_at_home() -> void:
 
 func test_a_bot_with_full_reserves_does_not_go_to_a_marked_locker() -> void:
 	var night := await _person_and_bot(200)
-	var bought := _purchases(night, &"ammo_pistol")
+	var bought := _purchases(night, &"ammo_house_pistol")
 	var start := night.server.body_of(1).global_position
 	_mark_ammo(night, MARKED_LOCKER)
 	_seconds(night, 40.0)

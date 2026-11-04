@@ -8,7 +8,7 @@ extends GdUnitTestSuite
 const OWN := 1
 const MUZZLE := Vector3(0.0, 1.5, 0.0)
 const NEW_GUNS: Array[StringName] = [
-	&"ppsh", &"m249", &"m4a1", &"fifty_cal", &"mp5", &"pump_870", &"dual_pistols"
+	&"ppsh", &"m249", &"m4a1", &"fifty_cal", &"mp5", &"pump_870", &"dual_pistols", &"house_pistol"
 ]
 const BANK := "res://core/audio/banks/firearms_2.tres"
 ## The step a gun's reload must have for its mechanism: its own sound, not another gun's.
@@ -20,6 +20,7 @@ const SIGNATURE_STEP := {
 	&"mp5": [&"mag_out", &"mag_in", &"bolt"],
 	&"pump_870": [&"shell_in", &"pump"],
 	&"dual_pistols": [&"mag_out", &"mag_in", &"slide"],
+	&"house_pistol": [&"mag_out", &"mag_in", &"slide"],
 }
 
 var _heard: Array[Dictionary] = []

@@ -185,15 +185,15 @@ to 107 s before. A shared runner moves the same build by 40 % and more, and the 
 a 26 s mean) tripped on noise within hours, then 72 s (twice a 36 s mean of those ten runs) tripped on four runs of 75 to
 89 s in two days with nothing wrong.
 
-**The gate is a ratio (#873).** Across 28 `main` runs of 2 and 3 Nov (the `web-smoke` artifacts) the night took 24.8
-to 75.3 s and the menu 8.6 to 17.5 s: a slow runner is slow at both. The night's load divided by the same run's load
-to the menu was 2.23 to 4.56 (median 3.1). `tools/web_smoke/night_load.py` fails the smoke when that ratio is over
-**5.5**, 20 % over the worst of the 28; it writes `night_load` (both times, the ratio and the limits) into
-`result.json`. A backstop of **150 s** (twice the slowest run) fails a night that hangs whatever the menu did. The
-menu time is floored at 8 s in the ratio (no run was under 8.6 s), so one lucky fast page load does not inflate it.
-The limits and how they were set are in `tools/web_smoke/night_load_baseline.json`; `python -I
-tools/web_smoke/night_load.py <result.json>...` replays the gate on saved results (none of the 28 fails; the flat 72 s
-failed the 75.3 s run).
+**The gate is a ratio (#873; the numbers of this paragraph are the first calibration, replaced in #966, below).**
+Across 28 `main` runs of 2 and 3 Nov (the `web-smoke` artifacts) the night took 24.8 to 75.3 s and the menu 8.6 to
+17.5 s: a slow runner is slow at both. The night's load divided by the same run's load to the menu was 2.23 to 4.56
+(median 3.1). `tools/web_smoke/night_load.py` fails the smoke when that ratio is over **5.5**, 20 % over the worst of
+the 28; it writes `night_load` (both times, the ratio and the limits) into `result.json`. A backstop of **150 s**
+(twice the slowest run) fails a night that hangs whatever the menu did. The menu time is floored at 8 s in the ratio
+(no run was under 8.6 s), so one lucky fast page load does not inflate it. The limits and how they were set are in
+`tools/web_smoke/night_load_baseline.json`; `python -I tools/web_smoke/night_load.py <result.json>...` replays the
+gate on saved results (none of the 28 fails; the flat 72 s failed the 75.3 s run).
 
 What the ratio catches and what it does not: a night whose loading grows by about 80 % over the median (a ratio of 5.5
 from 3.1), or by 20 % in the noisiest run. The 107 s of before the cut on a 15 s menu (7.1) trips it; its 82 s on the same
@@ -202,6 +202,35 @@ menu (5.5) is on the line. It does **not** catch a few seconds: the sounds decod
 that line is a count, not a time: `tests/night/test_load_cost.gd` caps the seconds of sound decoded behind the bar
 (deferred sound banks, #828), and a rise of tens of percent is read from the recorded `loading` numbers of the runs, not
 gated.
+
+### The gate after a faster menu (#966)
+
+Pull requests #920, #943 and #965 failed the gate on nights in the range of `main`'s. #920 made the menu load in 6.8 to
+8.2 s (it took 9 to 18) by not resizing the stage's viewport while the page came up, so the night over the menu rose
+(8.6, 11.2 and 6.6) with the night unchanged. The numbers behind the fix are the `web-smoke` artifacts of 181 runs of
+3 and 4 November (`gh run download <id> -n web-smoke`; `main` and pull requests):
+
+- **The runner moves the night by a factor of 3.8**: 25.0 to 95.1 s, median 52.9, on the same build; the menu 8.2 to
+  18.0 s. The old limit (5.5 over a floor of 8 s, set from 28 runs) failed 8 of these 181 healthy runs, #965's 85.9 s
+  among them.
+- **No divisor the runs recorded predicts the night.** Log correlation with the night: menu 0.58, idle menu frame 0.51
+  (and #920's idle frames were 99 to 131 ms on a still stage, which is not explained), the running night's frame time
+  0.71, the lot's first steps 0.62. A fit of the night on any of them, or on two, leaves a spread (leave-one-out) of
+  0.22 to 0.27 in the logarithm against 0.29 for no predictor; replaying the gate with each as the divisor, at a limit
+  that passes all 181 runs, fails the same share of a night made 1.5, 2 and 3 times longer (6 to 10 %, 35 to 56 %,
+  86 to 97 %) whichever it is. Within a run the slow steps vary too ("Setting the scene: moonlight" 3 to 26 s).
+- **So the divisor is chosen to be steady, not to explain**: the menu's time floored at **14 s**, the median menu.
+  A menu that loads faster (or slower, to 14 s) no longer moves the gate; a slow runner still raises the divisor with its
+  menu. The limit is **7.5**, 10 % over the worst of the 181 (6.8 at that floor); the backstop stays 150 s.
+  `python -I tools/web_smoke/night_load.py --scale 1.5 <result.json>...` replays any set with every night made 1.5 times
+  longer. On the 181: no healthy run fails; a night x1.5 fails 7 (4 %), x2 55 (30 %), x3 148 (82 %). The old gate on the
+  same runs failed 8 at x1, 78 (43 %) at x1.5 and 159 (88 %) at x2: it saw more only by also failing healthy runs.
+- **What a time gate cannot see, a count holds.** With healthy runs spread by 3.8, any gate that never fails a healthy run
+  sees only a doubling or more. The load's length in a unit the runner does not move is the number of frames the warm-up
+  draws (`NightWarmup.shots`: 96), capped at 100 by `tests/night/test_load_cost.gd`; the same test caps the sound seconds
+  and the lit shaders. A warm-up that draws each frame 1.5 times (a scratch build, not committed) makes it 174 and fails
+  the test; the browser's Play to a running night on that build and on `main`, CPU throttled 4 times on a busy machine,
+  varied from 44 to 138 s between runs of the same build, so a local before and after cannot tell 50 % from noise.
 
 What is left with a GPU is 8 lit `StandardMaterial3D` settings combinations at 1.2 to 2 s each (an alpha-blended lit one,
 a double-sided textured one, the emissive-and-textured one of the soldier and the dead): the next cut is a material that

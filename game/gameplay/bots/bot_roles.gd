@@ -6,8 +6,9 @@ extends RefCounted
 ##
 ## - `ANCHOR` (the default): stays within the follow band of the nearest people; there is at least
 ##   one anchor for each person, so nobody is left alone;
-## - `FLANK`: with a person and enough bots to spare, one bot holds a choke 8 to 14 m to the side of
-##   the group's heading (`flank_centre`), where it covers a way the others do not face;
+## - `FLANK`: with a person and enough bots to spare, one bot holds a choke 8 to 10 m to the side of
+##   the group's heading (`flank_centre`), where it covers a way the others do not face, on ground
+##   it can walk to;
 ## - `MAINTAINER`: the bot whose turn it is to go on an errand (`BotTurn`); it comes back.
 ##
 ## One table is shared by the team (`BotTeam.roles`). Any bot may ask for the roles of this moment
@@ -19,16 +20,19 @@ enum Role { ANCHOR, FLANK, MAINTAINER }
 ## Seconds between two assignments, and the least a bot keeps a role it was given.
 const REASSIGN_EVERY := 3.0
 const STICKY := 10.0
-## Metres of the flank's choke from the group: nearest, farthest and the one aimed at.
+## Metres of the flank's choke from the group: nearest, farthest and the one aimed at. The farthest
+## is the far edge of the calm follow band (`BotFollow.CALM_BAND`): a flank still follows the
+## person, and holds its place within `BotFightBrain.HOLD_RADIUS` and a half of it, which stays
+## inside the 12 m that "with the person" counts.
 const FLANK_NEAR := 8.0
-const FLANK_FAR := 14.0
-const FLANK_AT := 11.0
+const FLANK_FAR := 10.0
+const FLANK_AT := 9.0
 ## Metres a second under which a group counts as standing (its heading is then where it faces).
 const STANDING := 0.5
 ## The flank holds only while the people stand or nearly (they are at a door, a shop or a fight);
 ## while they walk it follows with the rest, and it never holds farther than this from them.
 const FLANK_STILL := 1.0
-const FLANK_LIMIT := 11.5
+const FLANK_LIMIT := FLANK_FAR
 
 var _roles: Dictionary[int, Role] = {}
 var _since: Dictionary[int, float] = {}
@@ -105,8 +109,9 @@ func _give(id: int, role: Role, now: float, force: bool) -> void:
 
 
 ## Where the flank holds: `FLANK_AT` metres from the centre of `people`, to the side of the way they
-## are heading (or facing, when they stand), on the side of the first person's left.
-static func flank_centre(people: Array[Dictionary]) -> Vector3:
+## are heading (or facing, when they stand), on the side of the first person's left. `turn` swings
+## the side about the group (PI is the other side) and `reach` is the metres from them.
+static func flank_centre(people: Array[Dictionary], turn := 0.0, reach := FLANK_AT) -> Vector3:
 	var centre := Vector3.ZERO
 	var velocity := Vector3.ZERO
 	for person in people:
@@ -118,8 +123,19 @@ static func flank_centre(people: Array[Dictionary]) -> Vector3:
 	if heading.length() < STANDING:
 		var yaw := float(people[0].get("facing", 0.0))
 		heading = Vector3(-sin(yaw), 0.0, -cos(yaw))
-	var side := heading.normalized().cross(Vector3.UP)
-	return centre + side * FLANK_AT
+	var side := heading.normalized().cross(Vector3.UP).rotated(Vector3.UP, turn)
+	return centre + side * reach
+
+
+## The places the flank may hold, best first: its side at `FLANK_AT` metres, the other side, then
+## both again at `FLANK_NEAR`. The lot's fence and props are not in the way a straight line is
+## drawn, so the bot takes the first the walking mesh reaches (`BotFightBrain._flank`).
+static func flank_choices(people: Array[Dictionary]) -> Array[Vector3]:
+	var found: Array[Vector3] = []
+	for reach in [FLANK_AT, FLANK_NEAR]:
+		for turn in [0.0, PI]:
+			found.append(flank_centre(people, turn, reach))
+	return found
 
 
 ## The centre of `people` and the speed of the group (metres a second, the mean).

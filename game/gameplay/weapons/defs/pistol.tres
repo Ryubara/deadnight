@@ -19,7 +19,7 @@ penetration = 0
 penetration_falloff = 0.6
 zone_multipliers = Dictionary[StringName, float]({
 &"body": 1.0,
-&"head": 2.5,
+&"head": 1.75,
 &"limb": 0.6
 })
 fire_interval = 0.28
