@@ -9,6 +9,8 @@ static var _count := 0
 ## A ticket for `user` in `match_id` on `server_id`, good for `seconds` from now; `settings` (a
 ## `MatchSettings.to_dict`) are the rules the host chose, none when empty; `host_level` is the
 ## lobby host's level the backend signs in (none when null, a backend from before levels).
+## `account` is the progression the backend writes from the stored profile: `xp`, `openingNight`,
+## `bonusDay`.
 static func make(
 	secret: String,
 	server_id: String,
@@ -17,7 +19,8 @@ static func make(
 	user_name: String = "Tester",
 	seconds: int = 60,
 	settings: Dictionary = {},
-	host_level: Variant = null
+	host_level: Variant = null,
+	account: Dictionary = {}
 ) -> String:
 	_count += 1
 	var now := int(Time.get_unix_time_from_system())
@@ -35,6 +38,7 @@ static func make(
 		claims["settings"] = settings
 	if host_level != null:
 		claims["hostLevel"] = host_level
+	claims.merge(account)
 	var head := TicketVerifier.HEADER
 	var body := _encode(JSON.stringify(claims).to_utf8_buffer())
 	var signature := Crypto.new().hmac_digest(
