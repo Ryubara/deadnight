@@ -166,6 +166,14 @@ FIELD_LAMPS = [
     (-56.5698, -0.03959632, -6.20401),
     (22.056038, 0, -8.007768),
 ]
+# The posts inside the back lot's fence (the numbers of FIELD_LAMPS) hang on the back lot's circuit, not the field's
+# (Deadnight #851: the lot is lit but dimmed, its lights failing like a dying battery).
+BACK_LOT_LAMP_NUMBERS = range(13, 18)
+# The back lot's walls a post can stand near: (the unit vector from inside towards the wall, the wall's coordinate on
+# that axis). A post within WALL_REACH of one aims its light away from it and shrinks its pool (`LampPost.away`).
+BACK_LOT_WALLS = [((1, 0, 0), -16.0), ((0, 0, -1), -4.0), ((0, 0, 1), 38.0), ((-1, 0, 0), -62.0)]
+LAMP_CONE = 30.0  # the half angle of an aimed post's light, degrees (`LampPost.AWAY_CONE`)
+WALL_REACH = 10.0  # a light of range 11 hung 3.9 m up reaches 10.3 m along the ground
 # The field's wrecks (x, z, yaw): the kit's Broken Car, whose block is one box 2.05 by 4.3 m and 1.3 m tall, over the
 # real body's reach (1.25 m), so it is run round and seen over, never stood on. Each flank has a straight row of four
 # end to end, a lap of 40 m and more round it (#855; `test_lot_loops.gd`), from the playground's swing frame or the
@@ -342,11 +350,47 @@ def group(name: str, parent: str) -> str:
     return name if parent == "." else f"{parent}/{name}"
 
 
-def lamps(parent: str, circuit: str, name: str = "Lamps") -> str:
+def lamps(parent: str, circuit: str, name: str = "Lamps", flicker: str = "") -> str:
     """A group of lamps on one circuit. Every light below it takes the circuit id from this node's metadata
-    (`LotLamps`): a generator circuit, `mains` (wired to the generator, no switch) or `battery` (not the generator's)."""
-    node(name, "Node3D", parent, {"metadata/circuit": f'"{circuit}"'})
+    (`LotLamps`): a generator circuit, `mains` (wired to the generator, no switch) or `battery` (not the generator's).
+    `flicker` names how the group's lights burn when they are on (`LotLamps`; `failing_battery`: dimmed and struggling,
+    `FailingBattery`); empty is steady."""
+    meta = {"metadata/circuit": f'"{circuit}"'}
+    if flicker:
+        meta["metadata/flicker"] = f'"{flicker}"'
+    node(name, "Node3D", parent, meta)
     return f"{parent}/{name}"
+
+
+def back_lot_post_props(at) -> dict[str, str]:
+    """What a back lot post near a wall needs so that its light and pool stay on its side (`LampPost.away`): the
+    direction away from the walls near it, and the pool's half size, the largest that fits when the pool is moved half
+    its size away from them."""
+    near = []
+    for (nx, _, nz), plane in BACK_LOT_WALLS:
+        d = (plane - at[0]) * nx if nx else (plane - at[2]) * nz
+        if 0 < d < WALL_REACH:
+            near.append(((nx, nz), d))
+    if not near:
+        return {}
+    ax = -sum(n[0] for n, _ in near)
+    az = -sum(n[1] for n, _ in near)
+    norm = math.hypot(ax, az)
+    ax, az = ax / norm, az / norm
+    half = 7.5
+    squarest = 1.0
+    for (nx, nz), d in near:
+        c = -(ax * nx + az * nz)  # how squarely the wall faces away from the aim
+        half = min(half, d / (1 - 0.5 * c))
+        squarest = min(squarest, c)
+    # The cone (half angle LAMP_CONE, as in `LampPost.AWAY_CONE`) tilted this far from straight down stays on this side
+    # of every wall near it: sin(tilt) * c >= sin(cone). Two degrees more than the least, so no edge touches the plane.
+    tilt = math.degrees(math.asin(math.sin(math.radians(LAMP_CONE)) / squarest)) + 2.0
+    return {
+        "away": f"Vector3({ax:.4f}, 0, {az:.4f})",
+        "pool_half": f"{half - 0.05:.2f}",
+        "aim_tilt": f"{tilt:.1f}",
+    }
 
 
 counter = {"n": 0}
@@ -750,6 +794,13 @@ def sign(parent: str, name: str, text: str, pos, yaw: float, size: int = 72) -> 
     node(name, "Label3D", parent, props)
 
 
+def silhouette(parent: str, name: str, shop_id: str, pos, yaw: float) -> None:
+    """What a wall weapon's plaque shows instead of its name (#829): the weapon's silhouette, made at run time from its
+    own model (`WallSilhouette`, `SilhouetteMesh`). It sits where the sign was; the name and price are the prompt's."""
+    node(name, "Node3D", parent, {"transform": xform(pos, yaw), "script": 'ExtResource("silhouette")',
+                                   "shop_id": f'&"{shop_id}"'})  # fmt: skip
+
+
 def ammo_locker(name: str, centre: tuple[float, float], yaw: float = 0.0) -> None:
     """A green crate with a yellow band: the lot's ammunition. The spot is half a metre in front of it."""
     x, z = centre
@@ -815,6 +866,7 @@ def build() -> None:
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/projector_beam.tscn" id="beam"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/glow_pane.tscn" id="pane"]')
     lines.append('[ext_resource type="Script" path="res://world/drive_in/model_glow.gd" id="model_glow"]')
+    lines.append('[ext_resource type="Script" path="res://world/shop/wall_silhouette.gd" id="silhouette"]')
     lines.append(f'[ext_resource type="PackedScene" path="{lot_props.WRECK}" id="wreck"]')
     lines.extend(lot_props.ext_resources())
     lines.extend(drivein_props.ext_resources())
@@ -927,9 +979,10 @@ def build() -> None:
     lamps_f = lamps(field, "screen_lot")
     field_lamps_xz = [(x, z) for x, _, z in FIELD_LAMPS]
     for i, at in enumerate(FIELD_LAMPS, start=1):
-        props = {"dim": str(APRON_LAMP_DIM)} if i in APRON_LAMPS else None
-        instance(lamps_f, f"Lamp{i}", "lamp", at, props=props)
-        override_light(f"{lamps_f}/Lamp{i}/Light")
+        if i not in BACK_LOT_LAMP_NUMBERS:
+            props = {"dim": str(APRON_LAMP_DIM)} if i in APRON_LAMPS else None
+            instance(lamps_f, f"Lamp{i}", "lamp", at, props=props)
+            override_light(f"{lamps_f}/Lamp{i}/Light")
     omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
     # The projected picture (the face, the spill below it) follows the screen's lamp (LotScreen).
     instance(
@@ -1119,13 +1172,15 @@ def build() -> None:
     block(back, "ScrapStackA", -58, -52, 20, 26, 2.6, "backlot_prop")
     block(back, "ScrapStackB", -26, -20, 22, 28, 2.6, "backlot_prop")
     block(back, "SignBoard", -50, -44, 35.2, 35.8, 4.2, "neon", 0.0)
-    bk = lamps(back, "back_lot")
+    bk = lamps(back, "back_lot", flicker="failing_battery")
+    for i in BACK_LOT_LAMP_NUMBERS:
+        instance(bk, f"Lamp{i}", "lamp", FIELD_LAMPS[i - 1], props=back_lot_post_props(FIELD_LAMPS[i - 1]))
     omni(bk, "NeonSign", (-47, 3.5, 33.5), 1.8, 12, "#ff3a4a")
     bz = group("ZombieSpawns", back)
     marker(bz, "SpawnNW", (-60, 0, -2))
     marker(bz, "SpawnSW", (-60, 0, 36))
     marker(bz, "SpawnS", (-30, 0, 36))
-    label(back, "Label", "6  BACK LOT  (dark)", (-39, 0.6, 12), 110)
+    label(back, "Label", "6  BACK LOT  (dim)", (-39, 0.6, 12), 110)
 
     # --- Road: the ticket plaza behind the last door, closed off at its south end (#686) -------------------------------
     # The lot used to run on into a road (a 124 m strip of asphalt, a roadblock, two wrecks) that was never finished and
@@ -1182,22 +1237,22 @@ def build() -> None:
     # --- Shop spots: wall weapons, the prize crane and the ammunition lockers ---------------------------------------
     # The weapons on the walls sell what the rules' tuning prices (weapon_shotgun, weapon_rifle); the crane is
     # crane_play inside the stand; a locker sells the rounds of the weapon in hand. Each spot is a marker with the
-    # kind and the shop id as metadata (NightWorld.shop_spots), and the plaque beside it only names it.
+    # kind and the shop id as metadata (NightWorld.shop_spots), and the plaque beside it shows the weapon's silhouette.
     group("ShopSpots", ".")
     group("ShopProps", ".")
     # The shotgun, on the stand's front wall, field side: the first weapon a player can afford, in the open.
     box("ShopProps", "ShotgunPlaque", (1.7, 0.9, 0.12), (-8.2, 1.6, -4.26), "plaque", collide=False)
-    sign("ShopProps", "ShotgunSign", "SHOTGUN", (-8.2, 1.6, -4.34), 180)
+    silhouette("ShopProps", "ShotgunSilhouette", "weapon_shotgun", (-8.2, 1.6, -4.34), 180)
     shop_spot("SpotShotgun", "wall", "weapon_shotgun", (-8.2, 0, -5.6), 180)
     # The grenade rack, on the stand's east wall in the alley (the midway side, so it opens with the concession): a
-    # plaque like the weapons' that names it; the spot sells the grenades the shop table prices (`grenades`), as many
+    # plaque like the weapons' that shows it; the spot sells the grenades the shop table prices (`grenades`), as many
     # as fit the pack. The front wall is full: windows, the door, the shotgun and the concession's breaker post.
     box("ShopProps", "GrenadePlaque", (1.7, 0.9, 0.12), (10.26, 1.6, 3.0), "plaque", 90, collide=False)
-    sign("ShopProps", "GrenadeSign", "GRENADES", (10.34, 1.6, 3.0), 90, 56)
+    silhouette("ShopProps", "GrenadeSilhouette", "grenades", (10.34, 1.6, 3.0), 90)
     shop_spot("SpotGrenades", "rack", "grenades", (11.4, 0, 3.0), 90)
     # The rifle, on the booth's front wall, midway side.
     box("ShopProps", "RiflePlaque", (1.7, 0.9, 0.12), (-4.0, 1.6, 21.74), "plaque", collide=False)
-    sign("ShopProps", "RifleSign", "RIFLE", (-4.0, 1.6, 21.66), 180)
+    silhouette("ShopProps", "RifleSilhouette", "weapon_rifle", (-4.0, 1.6, 21.66), 180)
     shop_spot("SpotRifle", "wall", "weapon_rifle", (-4.0, 0, 20.4), 180)
     # The prize crane, inside the stand, beside the cabinet that was already there.
     shop_spot("SpotCrane", "crane", "crane_play", (-6.4, 0, 5.0), 270, crane_spot=0)
