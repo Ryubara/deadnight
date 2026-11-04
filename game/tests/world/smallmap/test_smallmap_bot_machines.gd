@@ -4,8 +4,10 @@
 # the spots of `ShopSpots`). #811.
 extends GdUnitTestSuite
 
-## Game seconds a bot is given in the break to walk to all of them.
-const SECONDS := 240.0
+## Game seconds a bot is given in the break to walk to all of them. Each perk stands in its own
+## alcove (#917): the bot plays the box first (about 210 s with this seed), then walks to the
+## coolers, which no longer stand within reach of the box (it bought them from there before).
+const SECONDS := 420.0
 ## The break (and the intro before it) is longer than the run: the bot shops in the break the test
 ## names, with no dead on the lot. In a night that went on into its rounds, the errands were held
 ## by whichever dead were near (a bot starts none with a dead within 12 m), so what was bought in

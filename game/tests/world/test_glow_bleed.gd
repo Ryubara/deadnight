@@ -47,7 +47,7 @@ const LOST := {
 	},
 	"res://world/smallmap/smallmap_greybox.tscn":
 	{
-		"Start/Lamp3/Light|UpperB/WallS2":
+		"Start/Lamp3/Light|UpperB/WallS0":
 		"up the stairwell onto the next hall's wall base, above a slab",
 		"Start/Lamp3/Light|Ceilings/SideSlabS":
 		"up the stairwell onto the next hall's floor, a room's glow in another room",

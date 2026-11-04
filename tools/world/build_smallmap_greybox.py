@@ -175,7 +175,7 @@ WALL_SPOTS = [
     ("SmgSide", "weapon_smg", "side", (3.6, -7.8), (0, 1), 0.0),
     ("BatUpstairs", "weapon_baseball_bat", "upstairs", (16.05, 2.3), (-1, 0), STOREY),
     ("FlareUpstairs", "weapon_flare_gun", "upstairs", (4.5, 4.5), (0, -1), STOREY),
-    ("AxeUpstairs", "weapon_fire_axe", "upstairs", (16.05, -1.3), (-1, 0), STOREY),
+    ("AxeUpstairs", "weapon_fire_axe", "upstairs", (16.05, -6.6), (-1, 0), STOREY),
     ("ShotgunUpstairs", "weapon_shotgun", "upstairs", (11.5, -7.85), (0, 1), STOREY),
 ]
 # The sniper cabinet: the rifle, at 1.5 P, in the upstairs half over the side room.

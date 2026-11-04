@@ -2145,17 +2145,17 @@ metadata/shop_id = "weapon_flare_gun"
 metadata/room = "upstairs"
 
 [node name="AxeUpstairsPlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.990, 5.000, -1.300)
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.990, 5.000, -6.600)
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
 [node name="AxeUpstairsSilhouette" type="Node3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.910, 5.000, -1.300)
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.910, 5.000, -6.600)
 script = ExtResource("silhouette")
 shop_id = &"weapon_fire_axe"
 
 [node name="SpotAxeUpstairs" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 14.700, 3.400, -1.300)
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 14.700, 3.400, -6.600)
 metadata/kind = "wall"
 metadata/shop_id = "weapon_fire_axe"
 metadata/room = "upstairs"
