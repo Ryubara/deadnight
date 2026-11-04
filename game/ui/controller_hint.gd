@@ -3,7 +3,8 @@ extends Control
 ## "Click the game once to use a controller": a line at the bottom of every screen while the game
 ## runs in a frame that has no focus (a Discord Activity before its first click). A browser lists
 ## no gamepad to such a frame, so a controller does nothing until one click gives it the focus
-## (#479). Reads the page every half second (`GamepadProbe.hint`); off the web it never shows.
+## (#479). In a frame it reads the page every half second (`GamepadProbe.hint`); in a tab, on the
+## desktop, it never reads and never shows (a player's page crosses the bridge about never, #983).
 
 ## The canvas layer it sits on: above the router, below the "turn your phone" prompt (105).
 const LAYER := 104
@@ -36,6 +37,7 @@ func _ready() -> void:
 	label.offset_bottom = -12.0
 	add_child(label)
 	show_for({})
+	set_process(GamepadProbe.in_frame())
 
 
 func _process(delta: float) -> void:
