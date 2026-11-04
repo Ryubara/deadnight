@@ -124,6 +124,13 @@ func test_a_ticket_without_rules_admits_with_none_and_one_with_rules_hands_them_
 	)
 	var bot_rules := _verifier().admit(bots, int(Time.get_unix_time_from_system()))
 	assert_int((bot_rules["settings"] as MatchSettings).bots).is_equal(MatchSettings.MAX_BOTS)
+	# A setting this build does not know is refused by name, not dropped (Deadnight #944).
+	var unknown := TicketMaker.make(
+		SECRET, "gs-test", "m", "fy", "Fy", 60, chosen.merged({"perk_limit": 2})
+	)
+	var unheard := _verifier().admit(unknown, int(Time.get_unix_time_from_system()))
+	assert_bool(unheard["ok"]).is_false()
+	assert_str(unheard["reason"]).is_equal(TicketVerifier.UNKNOWN_SETTING + ": perk_limit")
 	var many := TicketMaker.make(
 		SECRET, "gs-test", "m", "di", "Di", 60, chosen.merged({"bots": MatchSettings.MAX_BOTS + 1})
 	)
