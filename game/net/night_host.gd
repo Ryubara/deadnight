@@ -24,6 +24,10 @@ signal player_away(player_id: int)
 signal player_resumed(player_id: int)
 ## The night is built and the room takes players.
 signal built
+## What the seats with an account earned, to be posted to the backend: at the end of a round
+## (`final` false, `round_number` the one that ended) and once at the night's end (`final` true).
+## Never once per kill. `seats` are `XpAward.take_report`'s entries. The `GameServer` queues them.
+signal report_ready(round_number: int, final: bool, seats: Array)
 ## An embedded room's night began and everyone has gone: the `GameServer` ends and frees it.
 signal emptied
 
@@ -69,6 +73,8 @@ var alive_share := 0
 ## kill-switch). Set with `set_bot_limit`.
 var bot_limit := MatchSettings.MAX_BOTS
 var log_enabled := true
+## False: the room awards no XP (the measurement's arm without the tally).
+var xp_awards := true
 ## The seconds the connection rules (a peer's rates, the hello, a seat held for a returning player)
 ## are timed by. Empty is the machine's clock; a soak that plays faster than real time gives the
 ## game's own (`Engine.get_physics_frames` over the tick rate), so a minute of play is a minute to
@@ -108,6 +114,9 @@ var steps := 0
 var phase := 0
 var work_ms := 0.0
 var worst_ms := 0.0
+## When on, the milliseconds of every step are kept in `tick_log` (a measurement's, off in play).
+var record_ticks := false
+var tick_log := PackedFloat32Array()
 ## The nights built so far.
 var nights := 0
 ## Peers hung up on for breaking `PeerLimits`.
@@ -118,6 +127,9 @@ var kicked_count := 0
 ## the lobby for them.
 var finished := false
 var returning: Array[String] = []
+## Reports made (`report_ready`), and whether the night's own has gone.
+var reports_made := 0
+var night_reported := false
 
 var _peers: Dictionary[int, HostPeer] = {}
 var _by_player: Dictionary[int, HostPeer] = {}
@@ -182,6 +194,7 @@ func _physics_process(_delta: float) -> void:
 	var events := server.step(Night.STEP, framed)
 	var frame: Dictionary = events.pop_back() if framed else {}
 	_events.append_array(events)
+	_report_what_is_due()
 	if not finished and server.closed():
 		_finish()
 	_run_bots(events, frame)
@@ -191,6 +204,8 @@ func _physics_process(_delta: float) -> void:
 	var spent := (Time.get_ticks_usec() - began) / 1000.0
 	work_ms += spent
 	worst_ms = maxf(worst_ms, spent)
+	if record_ticks:
+		tick_log.append(spent)
 	_stats_work += spent
 	_close_refused()
 	_close_silent()
@@ -292,6 +307,8 @@ func _build_night() -> void:
 	bots.limit = bot_limit
 	_unheard.clear()
 	server.crowd.limit = alive_limit()
+	server.xp.enabled = xp_awards
+	night_reported = false
 	_events.clear()
 	nights += 1
 	serving = true
@@ -340,12 +357,15 @@ func _hz() -> int:
 
 
 ## A `GameServer` hands this room a connection (`user` is who the backend's ticket says it is).
-func attach(transport_id: int, user: String = "", user_name: String = "") -> void:
+func attach(
+	transport_id: int, user: String = "", user_name: String = "", account: Dictionary = {}
+) -> void:
 	_on_connected(transport_id)
 	var peer: HostPeer = _peers.get(transport_id)
 	if peer != null:
 		peer.user = user
 		peer.user_name = user_name
+		peer.account = account
 
 
 ## What the connection sent, from a `GameServer` that routes it here.
@@ -419,6 +439,9 @@ func _free_seat(player_id: int) -> void:
 	_away.erase(player_id)
 	_names.erase(player_id)
 	if server != null:
+		if server.xp.has_seat(player_id):
+			_collect([{"type": &"account_left", "player_id": player_id}])
+		server.xp.release(player_id)
 		var inherited := _bot_inherits(player_id)
 		if inherited.is_empty():
 			_collect(server.apply({"type": NightServer.LEAVE, "player_id": player_id}))
@@ -481,6 +504,17 @@ func _on_player_packet(peer: HostPeer, data: PackedByteArray) -> void:
 				_fault(peer)
 				return
 			server.crowd.set_platform(peer.player_id, web == 1)
+		NetWire.Type.ARRIVAL:
+			var begin := NetWire.read_arrival(data)
+			if begin < 0:
+				_fault(peer)
+				return
+			_collect(
+				server.apply(
+					{"type": NightServer.ARRIVAL, "player_id": peer.player_id, "begin": begin == 1},
+					peer.player_id
+				)
+			)
 		NetWire.Type.MARK:
 			var mark := NetWire.read_mark(data)
 			if mark.is_empty():
@@ -525,6 +559,7 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 	peer.player_id = player_id
 	peer.token = Crypto.new().generate_random_bytes(NetWire.TOKEN_SIZE)
 	_by_player[player_id] = peer
+	register_account(player_id, peer.user, peer.account)
 	if bots.holds(player_id):
 		# The seat is a bot's: the person takes it as it stands, and the round goes on. The name
 		# goes first, so the notice the others read says who, and a person without a name gets
@@ -544,20 +579,68 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 		_collect(server.apply({"type": NightServer.START_NIGHT}))
 	_fill_bots()
 	listener.send(
-		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, _welcome_snapshot())
+		peer.transport_id,
+		NetWire.welcome(player_id, _hz(), peer.token, _welcome_snapshot(player_id))
 	)
 	_log("joined", {"player": player_id, "players": _by_player.size()})
 	player_joined.emit(player_id)
 
 
 ## What a WELCOME carries: the rules' snapshot and the names of the seats (`names`: player id ->
-## name, the bots' too), so a client that joins late, or comes back, shows everyone by name at once.
-func _welcome_snapshot() -> Dictionary:
+## name, the bots' too), so a client that joins late, or comes back, shows everyone by name at once;
+## the level of every seat with an account (`levels`: player id -> level, a bot has none); and the
+## joiner's own raw XP (`account_xp`, from the ticket the server verified and what the night added),
+## so its bar is right before the first `xp_gained`.
+func _welcome_snapshot(for_player: int = 0) -> Dictionary:
 	var snapshot := server.rules.to_dict()
 	var names := bots.names()
 	names.merge(_names, true)
 	snapshot["names"] = names
+	snapshot["levels"] = server.xp.levels()
+	if server.xp.has_seat(for_player):
+		snapshot["account_xp"] = server.xp.total_of(for_player)
 	return snapshot
+
+
+## Gives a seat the account the backend's ticket said (`user` is the ticket's `sub`; `""`, a server
+## with no backend, is no account and earns nothing). The XP is the ticket's alone.
+func register_account(player_id: int, user: String, account: Dictionary = {}) -> void:
+	if user == "" or server == null:
+		return
+	var seated := server.xp.has_seat(player_id)
+	server.xp.register(player_id, user, int(account.get("xp", 0)), server.rules.round_number)
+	if server.xp.has_seat(player_id) and not seated:
+		# Everyone already here learns this seat's level (the joiner reads the others' in its WELCOME).
+		var level: int = server.xp.levels()[player_id]
+		_collect([{"type": &"account_seated", "player_id": player_id, "level": level}])
+
+
+## A round ended (or the night did): what the seats earned goes out as a report, once. The night's
+## report is the last and lists every seat.
+func _report_what_is_due() -> void:
+	if not server.xp.has_due():
+		return
+	for due in server.xp.take_due():
+		_report(due["round"], due["final"])
+
+
+func _report(round_number: int, final: bool) -> void:
+	if final:
+		if night_reported:
+			return
+		night_reported = true
+	var seats := server.xp.take_report(final)
+	if seats.is_empty():
+		return
+	reports_made += 1
+	report_ready.emit(round_number, final, seats)
+
+
+## The room is closing: what was earned and not yet reported (everyone left in the middle of a
+## round) goes out as the night's report. `GameServer` calls it before it frees the room.
+func close_reports() -> void:
+	if server != null and not night_reported:
+		_report(server.rules.round_number, true)
 
 
 ## The events of a bot taking the seat of the person who just left, as it stands (body, points,
@@ -664,8 +747,10 @@ func _resume(peer: HostPeer, player_id: int) -> void:
 	peer.token = Crypto.new().generate_random_bytes(NetWire.TOKEN_SIZE)
 	peer.zombie_base = {}
 	_by_player[player_id] = peer
+	register_account(player_id, peer.user, peer.account)
 	listener.send(
-		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, _welcome_snapshot())
+		peer.transport_id,
+		NetWire.welcome(player_id, _hz(), peer.token, _welcome_snapshot(player_id))
 	)
 	_collect(server.apply({"type": NightServer.RESYNC, "player_id": player_id}))
 	_log("resumed", {"player": player_id, "players": _by_player.size()})
@@ -879,6 +964,8 @@ class HostPeer:
 	## Who the backend's ticket says this is (`""` when the server has no backend), and their name.
 	var user := ""
 	var user_name := ""
+	## The progression the ticket carries (`TicketVerifier.account_of`).
+	var account: Dictionary = {}
 
 	func _init(p_transport_id: int, now: float = 0.0) -> void:
 		transport_id = p_transport_id

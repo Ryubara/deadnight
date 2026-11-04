@@ -328,6 +328,12 @@ static func snapshot(top: Control) -> Dictionary:
 	var state := night_screen.night.state
 	data["night"] = true
 	data["running"] = night_screen.night.running
+	# The helicopter drop of the arrival is on this screen (#1057).
+	data["arriving"] = night_screen.night.is_arriving()
+	data["hud_visible"] = night_screen.hud_shown()
+	data["arrival_seconds"] = (
+		night_screen.night.arrival_show.plan.seconds() if night_screen.night.is_arriving() else 0.0
+	)
 	if night_screen.night.server != null:
 		# The rules the night runs under (solo's come from the Play screen's panel).
 		var rules := night_screen.night.server.rules

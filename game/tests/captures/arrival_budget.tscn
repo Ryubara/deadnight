@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/captures/arrival_budget.gd" id="1"]
+
+[node name="ArrivalBudget" type="Node"]
+script = ExtResource("1")

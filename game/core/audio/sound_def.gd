@@ -20,6 +20,10 @@ var bus: StringName = &"Effects"
 ## Not decoded to samples behind the night's loading bar (a bank sets it for all its sounds:
 ## `SoundBank.deferred`). Its files are loaded there; the samples come in the background.
 @export var deferred := false
+## Loaded only when played (a bank sets it for all its sounds: `SoundBank.on_demand`), so the
+## night's
+## loading and the background decode skip it.
+@export var on_demand := false
 
 @export_group("Level")
 ## Trim on top of the file's own level (files are all normalised, the catalog balances them).

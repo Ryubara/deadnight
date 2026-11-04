@@ -224,7 +224,7 @@ func _process(delta: float) -> void:
 func start_background_preload() -> void:
 	if not _background_ids.is_empty() or _background_at > 0:
 		return
-	_background_ids = SoundCatalog.ids()
+	_background_ids = SoundCatalog.ids_for_night()
 	_background_wait = BACKGROUND_WAIT_S
 
 

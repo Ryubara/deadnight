@@ -67,6 +67,18 @@ var hello_within := HELLO_WITHIN
 var idle_room_seconds := IDLE_ROOM_SECONDS
 ## Seconds between heartbeats (a test sets it shorter).
 var heartbeat_every := HEARTBEAT_EVERY
+## The seconds the connection rules and the rooms are timed by. Empty is the machine's clock; a run
+## that plays faster than real time gives the game's own (`Engine.get_physics_frames` over the tick
+## rate), so a minute of play is a minute to the limits too.
+var clock := Callable()
+
+## The reports of what the seats earned, waiting for the backend (`XpReportQueue`), and how they are
+## sent: a Callable taking `(path, body)` and answering the HTTP status (0: no answer). Unset, the
+## backend's own address and secret are used; a test sets it to see what would be posted.
+var reports := XpReportQueue.new()
+var report_sender := Callable()
+## False: no room awards XP (the measurement's arm without the tally).
+var xp_awards := true
 
 var listener := WsListener.new()
 var heartbeats_sent := 0
@@ -131,6 +143,7 @@ func _physics_process(_delta: float) -> void:
 		_close_if_done(match_id, now)
 	if now >= _beat_at:
 		_heartbeat()
+	_send_reports(now)
 
 
 ## The match ids of the rooms this process runs.
@@ -231,18 +244,32 @@ func _route(transport_id: int, pending: Pending, data: PackedByteArray) -> void:
 			pending.routing = false
 			_refuse(transport_id, pending, NetWire.Refusal.FULL, "ROOMS")
 			return
+		if admitted.get("map_refused", "") != "":
+			_log(
+				"map_locked",
+				{
+					"match": match_id,
+					"map": admitted["map_refused"],
+					"host_level": admitted["host_level"]
+				}
+			)
 		room = await _open_room(match_id, admitted.get("settings"))
 	if not _pending.has(transport_id):
 		return
-	_hand_over(transport_id, room, admitted["user"], admitted["name"], data)
+	_hand_over(transport_id, room, admitted["user"], admitted["name"], data, admitted["account"])
 
 
 func _hand_over(
-	transport_id: int, room: NightHost, user: String, user_name: String, hello: PackedByteArray
+	transport_id: int,
+	room: NightHost,
+	user: String,
+	user_name: String,
+	hello: PackedByteArray,
+	account: Dictionary = {}
 ) -> void:
 	_pending.erase(transport_id)
 	_room_of[transport_id] = room
-	room.attach(transport_id, user, user_name)
+	room.attach(transport_id, user, user_name, account)
 	room.receive(transport_id, hello)
 
 
@@ -279,6 +306,9 @@ func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 	room.listener = listener
 	room.room_id = match_id
 	room.log_enabled = log_enabled
+	room.xp_awards = xp_awards
+	room.clock = clock
+	room.report_ready.connect(_on_report.bind(match_id))
 	room.seed_value = seed_value
 	room.rules_tuning = rules_tuning
 	if settings != null:
@@ -345,6 +375,7 @@ func _end_room(match_id: String) -> void:
 	var room: NightHost = _rooms.get(match_id)
 	if room == null:
 		return
+	room.close_reports()
 	_rooms.erase(match_id)
 	_opened_at.erase(match_id)
 	_share_budget()
@@ -381,6 +412,62 @@ func _heartbeat() -> void:
 	)
 
 
+## A room made a report: it is queued as it is and sent in order, again until the backend takes it.
+## `POST /internal/matches/:id/report` with `{kind: "round" | "night", round, seats}`; the backend
+## keys each seat by match, kind, round and account, so a retry pays nothing twice
+## (docs/research/platform-backend.md, "Progression").
+func _on_report(round_number: int, final: bool, seats: Array, match_id: String) -> void:
+	var path := "/internal/matches/%s/report" % match_id.uri_encode()
+	reports.push(
+		path,
+		{"kind": "night" if final else "round", "round": round_number, "seats": _wire_seats(seats)}
+	)
+	_log(
+		"xp_report",
+		{"match": match_id, "round": round_number, "final": final, "seats": seats.size()}
+	)
+
+
+## The seats of a report as JSON (stat names as plain text).
+func _wire_seats(seats: Array) -> Array:
+	var out: Array = []
+	for seat: Dictionary in seats:
+		var lines := {}
+		for stat: StringName in seat["night_stats"]:
+			lines[String(stat)] = seat["night_stats"][stat]
+		var line := {"userId": seat["user"], "xp": seat["xp"], "lines": lines}
+		if seat["finished_round"]:
+			# Claims: the backend knows the profile and pays the two one-offs itself, once.
+			line["openingNight"] = true
+			line["bonusDay"] = seat["day"]
+		out.append(line)
+	return out
+
+
+## Sends the oldest waiting report when it is time. One goes at a time; the answer, or the lack of
+## one, decides whether it waits and is sent again.
+func _send_reports(now: float) -> void:
+	var report := reports.next(now)
+	if report.is_empty():
+		return
+	var status := await _post_report(report["path"], report["body"])
+	reports.answered(status, _now())
+	if status in XpReportQueue.TAKEN:
+		return
+	_log("xp_report_failed", {"path": report["path"], "status": status, "tries": report["tries"]})
+
+
+func _post_report(path: String, body: Dictionary) -> int:
+	if report_sender.is_valid():
+		return await report_sender.call(path, body)
+	if backend_url == "":
+		return 204
+	var answer := await HttpJson.send(
+		self, "POST", backend_url + path, {"Authorization": "Bearer " + backend_secret}, body
+	)
+	return answer["status"]
+
+
 func _tell_backend(method: String, path: String, body: Variant) -> void:
 	if backend_url == "":
 		return
@@ -400,6 +487,8 @@ func _tell_backend(method: String, path: String, body: Variant) -> void:
 
 
 func _now() -> float:
+	if clock.is_valid():
+		return clock.call()
 	return Time.get_ticks_msec() / 1000.0
 
 

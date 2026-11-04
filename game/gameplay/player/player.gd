@@ -67,6 +67,8 @@ var grip := MouseGrip.new()
 var look_locked := false
 
 var _controls_enabled := true
+## The body is hidden for the arrival show (`set_arriving`).
+var _arriving := false
 var _was_down := {}
 var _submitted: PlayerCommand
 ## The stance the last `puppet_to` was given (`PlayerStance`), to see a jump begin and a landing.
@@ -243,7 +245,14 @@ func dress(look: CharacterLook, seat := 0) -> void:
 ## The lens is too close to the head (or clear again): draw or hide the body.
 func _on_body_hidden_changed(hidden: bool) -> void:
 	if not is_puppet:
-		_model.visible = not hidden
+		_model.visible = not hidden and not _arriving
+
+
+## The body is out of sight while its player is lowered from a helicopter on their own screen (the
+## arrival, #1057): the show draws a Soldier of its own and the body appears when it ends.
+func set_arriving(arriving: bool) -> void:
+	_arriving = arriving
+	_model.visible = not arriving and not camera_rig.is_body_hidden()
 
 
 func _on_setting_changed(_key: StringName, _value: Variant) -> void:

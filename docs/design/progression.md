@@ -174,12 +174,11 @@ much it stresses when we do it". The design keeps the cost per kill small and pu
   level.
 - **A signed-in solo night stays on the player's machine**: the same tally runs in the local rules and the client writes
   at round ends; the backend caps how fast XP can rise (about 120 XP a minute, three times a strong four-player night).
-- **The stress is measured** (#1059): a four-player night at **count multiplier 5** on the dedicated server, with and
-  without the tally, three seeds: tick time (mean, p99, worst) and the tally's cost per kill; `xp_gained` events and
-  bytes a second per client at the peak; the client's cost of applying them; the backend writes a night (must be the
-  rounds plus one a seat, never the kills). The balance simulator's nights give the scale: a strong four-player night
-  at x5 kills about 2 a second across the team on average (the simulator's bots die early at x5, so a real horde with
-  people is the number to measure). If too high, events are coalesced further (a 0.25 s window) before anything else.
+- **The stress is measured** (#1059, built): a four-player night at **count multiplier 5** on the dedicated server, with
+  and without the tally, three seeds: tick time (mean, p99, worst) and the tally's cost per kill; `xp_gained` events and
+  bytes a second per client at the peak; the client's cost of applying them; the backend writes a night (the rounds
+  plus the night's own, never the kills). The numbers, the events' keys and the interface with the backend are in
+  [the research page](../research/progression.md#the-game-server-awards-xp-1059).
 
 ### The curve
 
@@ -354,7 +353,8 @@ text.* The 15 new wearable pieces are art in waves (#1078): eight, then seven; t
 
 ## Maps
 
-`MapRegistry` lists the maps with a `shipped` flag; `unlock_level` is added to each map resource (#1067). The drive-in
+`MapRegistry` lists the maps with a `shipped` flag; `unlock_level` is on each map resource (built in #1067, see
+[Maps](maps.md#levels-open-maps)). The drive-in
 (first map) is level 1; **the back rooms (the second map) is level 10**. Reserved rows at 25 and 40 for maps three and
 four when they exist. The picker shows a locked card dark with "Level 10" in the same `???`-and-hover look as the
 wardrobe. **The host's level decides the lot** (decision 17): a lobby whose host is below a map's level does not offer

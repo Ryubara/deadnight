@@ -29,6 +29,7 @@ const BANKS: Array[String] = [
 	"res://core/audio/banks/energy.tres",
 	"res://core/audio/banks/wind.tres",
 	"res://core/audio/banks/perks.tres",
+	"res://core/audio/banks/arrival.tres",
 ]
 
 static var _defs := {}
@@ -45,6 +46,16 @@ static func ids() -> Array:
 	if _defs.is_empty():
 		_build()
 	return _defs.keys()
+
+
+## The sounds a night loads and decodes before and while it runs: every one but the `on_demand`
+## ones.
+static func ids_for_night() -> Array:
+	var ids := []
+	for id: StringName in ids():
+		if not get_def(id).on_demand:
+			ids.append(id)
+	return ids
 
 
 ## The mix numbers shared by all sounds (`sound_mix_default.tres`).
@@ -67,6 +78,8 @@ static func _build() -> void:
 			assert(not _defs.has(def.id), "two sounds are called %s" % def.id)
 			if bank.deferred:
 				def.deferred = true
+			if bank.on_demand:
+				def.on_demand = true
 			_defs[def.id] = def
 	SoldierVoiceCatalog.build(_add)
 

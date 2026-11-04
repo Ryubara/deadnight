@@ -5,18 +5,29 @@ extends GdUnitTestSuite
 ## the browser builds again): the frame of a kill cost 10 ms more than any other in the web build.
 ## The bot plays a night of walkers, and between its sixth kill and its twentieth no node enters the
 ## tree and no resource is held that was not before.
+##
+## Objects are counted where the fight stands still, never at a peak. A fight holds objects of its
+## own that come and go with it, a different number at every frame: a torn or mended board is a
+## Tween with its tweeners (3 to 5 objects each, up to nine at once), every sound that starts is a
+## budget voice and the engine's playback (2 each, 20 or more at once), and every zombie alive is
+## a few more. A peak taken against a start at another point of that swing was 37 to 45 locally and
+## 49 and 52 elsewhere (#1102), and the count could not tell them from a kill's own objects. So the
+## night is stood still twice, before the kills and after them with as many dead alive as before,
+## its sounds stopped and its motions finished, and what is held is what the two readings differ by.
 
 ## Kills that fill the pools, and kills played after them.
 const WARM_KILLS := 6
 const PLAYED_KILLS := 14
 ## Frames the run may take before it gives up.
 const GIVE_UP_FRAMES := 6000
-## Objects and resources the run may hold above where it began (the rules' and the bot's own
-## bookkeeping; a kill that made its own material and mesh would hold dozens).
+## Resources the run may hold above where it began (the rules' and the bot's own bookkeeping; a kill
+## that made its own material and mesh would hold dozens).
 const SLACK := 8
-## Objects too, with the engine's own: every sound that starts makes a playback that lives as long
-## as it plays (six for a kill), which a count of objects cannot tell from a made mesh.
-const OBJECT_SLACK := 48
+## Objects the run may hold above where it began, at a standstill with as many dead alive. The
+## bookkeeping is a few more than resources: the night's seed makes the same 7 to 10 of them, which
+## come in over the first thirty kills and then stop (lazy makes of the rules and the engine, no
+## node or resource among them), where a kill that holds one object of its own makes 14.
+const OBJECT_SLACK := 16
 ## A quick night of walkers who come at once.
 const SPAWN_DELAY := 0.5
 ## Ticks run in each physics frame, so the run takes seconds.
@@ -76,6 +87,17 @@ func _no_points(night: Night) -> void:
 	night.server.rules.players[1].points = 0
 
 
+## Zombies alive in the simulation now.
+func _alive(night: Night) -> int:
+	return night.server.director.sim.zombies.size()
+
+
+## The night stood still and quiet (`QuietCount`): its ticks stopped, its sounds and motions over.
+func _quiet(night: Night) -> bool:
+	night.ticks_per_frame = 0
+	return await QuietCount.settle(get_tree())
+
+
 ## Frames until the bot has made `kills` kills.
 func _play_until(night: Night, kills: int) -> void:
 	var frames := 0
@@ -94,44 +116,56 @@ func test_a_run_of_kills_adds_no_node_and_holds_no_more_resources() -> void:
 	var night := await _night()
 	await _play_until(night, WARM_KILLS)
 	# Let what the last kills left finish, so the count starts from a quiet moment.
-	for _i in 200:
-		await get_tree().physics_frame
+	await AudioSettle.until_idle(get_tree())
+	var quiet_before := await _quiet(night)
 	var kills_before := night.state.kills
+	var alive_before := _alive(night)
 	var objects := int(Performance.get_monitor(Performance.OBJECT_COUNT))
 	var resources := int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))
-	var peak_objects := objects
 	var peak_resources := resources
+	night.ticks_per_frame = TICKS_PER_FRAME
 	_added = 0
 	get_tree().node_added.connect(_on_node_added)
 	var frames := 0
+	# The kills, then on to a moment with as many dead alive as at the first reading (each is a few
+	# objects of its own).
 	while (
-		night.state.kills < kills_before + PLAYED_KILLS
+		(night.state.kills < kills_before + PLAYED_KILLS or _alive(night) != alive_before)
 		and frames < GIVE_UP_FRAMES
 		and not night.state.over
 	):
 		_no_points(night)
 		await get_tree().physics_frame
 		frames += 1
-		peak_objects = maxi(peak_objects, int(Performance.get_monitor(Performance.OBJECT_COUNT)))
 		peak_resources = maxi(
 			peak_resources, int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))
 		)
 	get_tree().node_added.disconnect(_on_node_added)
+	var alive_after := _alive(night)
+	var quiet_after := await _quiet(night)
+	var objects_after := int(Performance.get_monitor(Performance.OBJECT_COUNT))
+	var resources_after := int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))
 	var played := night.state.kills - kills_before
 	assert_int(played).override_failure_message("kills played").is_greater_equal(PLAYED_KILLS)
+	(
+		assert_bool(quiet_before and quiet_after)
+		. override_failure_message("the night never went quiet")
+		. is_true()
+	)
+	assert_int(alive_after).override_failure_message("dead alive").is_equal(alive_before)
 	(
 		assert_int(_added)
 		. override_failure_message("%d nodes made over %d kills: %s" % [_added, played, _kinds])
 		. is_equal(0)
 	)
 	(
-		assert_int(peak_resources - resources)
+		assert_int(maxi(peak_resources, resources_after) - resources)
 		. override_failure_message("resources held: %d" % (peak_resources - resources))
 		. is_less_equal(SLACK)
 	)
 	(
-		assert_int(peak_objects - objects)
-		. override_failure_message("objects held: %d" % (peak_objects - objects))
+		assert_int(objects_after - objects)
+		. override_failure_message("objects held: %d" % (objects_after - objects))
 		. is_less_equal(OBJECT_SLACK)
 	)
 	night.queue_free()

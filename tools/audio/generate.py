@@ -22,6 +22,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import arrival_recipes
 import challenge_recipes
 import drink_recipes
 import dsp
@@ -41,6 +42,7 @@ from recipes import Entry
 
 REGISTRY: list[Entry] = [
     *recipes.REGISTRY,
+    *arrival_recipes.REGISTRY,
     *night_recipes.REGISTRY,
     *weapon_recipes.REGISTRY,
     *gun_recipes_2.REGISTRY,
