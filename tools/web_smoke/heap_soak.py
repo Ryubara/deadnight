@@ -58,7 +58,8 @@ RECORDER_JS = """
 # to it, so each creation costs eight bytes in each of the tables until the page closes: the heap growth of #834).
 GL_COUNT_JS = """
 () => {
-  window.__gl = {};
+  window.__gl = {frames: 0};
+  (function tick() { window.__gl.frames += 1; requestAnimationFrame(tick); })();
   const names = ['createBuffer', 'createTexture', 'createProgram', 'createShader', 'createFramebuffer',
     'createRenderbuffer', 'createVertexArray', 'fenceSync', 'createQuery', 'createSampler', 'createTransformFeedback'];
   for (const proto of [WebGL2RenderingContext.prototype, WebGLRenderingContext.prototype]) {
@@ -74,6 +75,15 @@ GL_COUNT_JS = """
 }
 """
 DRAIN_JS = "() => { const d = window.__d || []; window.__d = []; return d.length; }"
+
+
+def per_frame(series: list[dict]) -> dict[str, float]:
+    """WebGL objects created a frame between the first and the last row (needs `--count-gl`)."""
+    if len(series) < 2 or "gl_created" not in series[0]:
+        return {}
+    first, last = series[0]["gl_created"], series[-1]["gl_created"]
+    frames = max(last.get("frames", 0) - first.get("frames", 0), 1)
+    return {k: round((last[k] - first.get(k, 0)) / frames, 2) for k in last if k != "frames"}
 
 
 def metrics(session) -> dict[str, float]:
@@ -136,6 +146,7 @@ def run(args: argparse.Namespace) -> dict:
             )
             page = context.new_page()
             page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
+            page.on("console", lambda m: print(m.text, flush=True) if m.text.startswith("[canvas]") else None)
             page.on("pageerror", lambda e: errors.append(str(e)))
             session = context.new_cdp_session(page)
             session.send("Performance.enable")
@@ -214,6 +225,10 @@ def main() -> int:
     report = run(args)
     (Path(args.out) / f"{args.label}.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
     first, last = report["series"][0], report["series"][-1]
+    if args.count_gl:
+        report["gl_per_frame"] = per_frame(report["series"])
+        (Path(args.out) / f"{args.label}.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
+        print("created a frame:", json.dumps(report["gl_per_frame"]))
     print(
         f"{args.label}: heap after a forced collection {first['heap_mb']} MB at {first['t']} s -> {last['heap_mb']} MB at {last['t']} s"
     )
