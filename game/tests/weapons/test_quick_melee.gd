@@ -112,7 +112,7 @@ func test_two_blows_kill_a_round_one_zombie_and_pay_the_melee_price() -> void:
 	_stand(ceili(_quick.fire_interval * 60.0) + 2)
 	var events := _blow(2)
 	assert_array(WeaponsFixture.of(events, &"target_killed")).has_size(1)
-	assert_int(_rules.points_of(1) - before).is_equal(4 + 130)
+	assert_int(_rules.points_of(1) - before).is_equal(5 + 130)
 
 
 func test_a_bad_aim_is_refused() -> void:

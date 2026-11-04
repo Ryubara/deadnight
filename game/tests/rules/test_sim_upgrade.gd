@@ -54,18 +54,17 @@ func test_a_player_with_the_points_re_cuts_and_the_rules_agree() -> void:
 	assert_int(tuned).is_equal(owned.upgraded.size())
 
 
-func test_the_bench_charges_the_step_for_each_weapon_already_re_cut() -> void:
+func test_the_bench_charges_the_same_for_every_weapon_already_re_cut() -> void:
 	var rules := RulesFixture.make_rules(1)
 	var first := rules.price_of(&"upgrade_weapon", 1)
 	assert_int(first).is_equal(rules.price_of(&"upgrade_weapon"))
 	rules.apply(RulesAction.start())
 	rules.apply(RulesAction.grant_points(1, BIG_PURSE))
 	rules.apply(RulesAction.buy(1, &"upgrade_weapon", -1, &"pistol"))
-	var step := rules.tuning.upgrade.price_step
-	assert_int(rules.price_of(&"upgrade_weapon", 1)).is_equal(first + step)
+	assert_int(rules.price_of(&"upgrade_weapon", 1)).is_equal(first)
 	var before := rules.points_of(1)
 	rules.apply(RulesAction.buy(1, &"upgrade_weapon", -1, &"rifle"))
-	assert_int(before - rules.points_of(1)).is_equal(first + step)
+	assert_int(before - rules.points_of(1)).is_equal(first)
 
 
 func test_the_player_of_the_sim_has_the_health_the_tonic_gave() -> void:

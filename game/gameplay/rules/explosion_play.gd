@@ -28,7 +28,9 @@ static func _blast_one(
 ) -> void:
 	var tuning := rules.tuning
 	var type := rules._type(zombie.type)
-	var dealt := minf(damage, zombie.health)
+	# A frozen zombie is killed by any blast, whatever it did to it.
+	var shattered := rules.statuses != null and rules.statuses.shatterable(zombie.id)
+	var dealt := zombie.health if shattered else minf(damage, zombie.health)
 	zombie.health -= dealt
 	zombie.leg_damage += minf(leg_damage, dealt)
 	rules._emit_damaged(zombie, player_id, RulesAction.ZONE_BLAST, dealt)
@@ -37,7 +39,9 @@ static func _blast_one(
 			player_id, rules._scaled(tuning.explosives.explosion_kill, type), &"explosion_kill"
 		)
 		rules.players[player_id].kills += 1
-		rules._remove_zombie(zombie.id, &"killed", player_id, RulesAction.ZONE_BLAST, false)
+		rules._remove_zombie(
+			zombie.id, &"killed", player_id, RulesAction.ZONE_BLAST, false, shattered
+		)
 		return
 	if zombie.paid_hits < rules._paid_hit_limit(type):
 		zombie.paid_hits += 1

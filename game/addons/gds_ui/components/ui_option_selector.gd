@@ -79,7 +79,7 @@ func _ready() -> void:
 	UITokens.active_changed().connect(_on_tokens_changed)
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
-	focus_entered.connect(UIAudio.play.bind(&"focus"))
+	focus_entered.connect(UIAudio.play.bind(&"focus", self))
 
 
 ## Chooses an index (clamped, no wrap). Emits `selected_changed` if it changed and `emit` is set.
@@ -98,8 +98,12 @@ func step(delta: int) -> void:
 		return
 	_move_to(posmod(_index + delta, options.size()), float(signi(delta)))
 	(_left if delta < 0 else _right).value = 1.0
-	UIAudio.play(&"press")
+	UIAudio.play(&"select", self)
 	selected_changed.emit(_index)
+
+
+func ui_sound_role() -> StringName:
+	return &"option"
 
 
 func text() -> String:
@@ -212,7 +216,7 @@ func _update_targets() -> void:
 
 func _on_mouse_entered() -> void:
 	_inside = true
-	UIAudio.play(&"hover")
+	UIAudio.play(&"hover", self)
 	grab_focus()
 	set_process(true)
 

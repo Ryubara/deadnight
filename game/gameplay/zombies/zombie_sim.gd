@@ -194,13 +194,13 @@ func blast(zombie_id: int, impulse: Vector3, stun: float) -> void:
 
 ## A person's push moves a zombie (#914): it goes `velocity` for `delta` seconds, along the ground,
 ## unless a wall stands within `NUDGE_CLEARANCE` metres beyond the step or it is one the push must
-## not move (not up yet, dying, at its boards). Returns whether it moved. Its height is the path's,
-## as ever (`_settle_on_ground`).
+## not move (not up yet, dying, frozen, at its boards). Returns whether it moved. Its height is the
+## path's, as ever (`_settle_on_ground`).
 func nudge(zombie_id: int, velocity: Vector3, delta: float) -> bool:
 	var zombie: ZombieBody = zombies.get(zombie_id)
 	if zombie == null or zombie.mode == ZombieBody.Mode.EMERGING or not zombie.is_alive():
 		return false
-	if zombie.gate_id != &"" or velocity.length_squared() < COINCIDENT_DISTANCE:
+	if zombie.gate_id != &"" or zombie.halted or velocity.length_squared() < COINCIDENT_DISTANCE:
 		return false
 	var step := Vector3(velocity.x, 0.0, velocity.z) * delta
 	if sight.is_valid():
@@ -234,6 +234,39 @@ func crowd_around(zombie_id: int, radius: float) -> int:
 				if away.x * away.x + away.z * away.z <= limit:
 					count += 1
 	return count
+
+
+## A status effect changed what the zombie is under (`CombatServer`'s `status_applied` and
+## `status_ended`): `wire` is the id the snapshot carries (0 for none), `halts` whether it stands
+## still and does not attack, `speed_scale` the share of its speed it keeps.
+func set_status(zombie_id: int, wire: int, halts: bool, speed_scale: float) -> void:
+	if not zombies.has(zombie_id):
+		return
+	var zombie := zombies[zombie_id]
+	zombie.status = wire
+	zombie.halted = halts
+	zombie.slow = speed_scale
+	if halts:
+		ZombieBrain.hold(zombie)
+
+
+## A zombie the rules killed while it was frozen breaks apart: it is gone at once, with no corpse
+## and no fall. The answer is the `zombie_shattered` event the clients draw the pieces from (where
+## it stood, how it faced, its look and how tall its body was against a walker's), or `{}` for a
+## zombie the sim does not hold.
+func shatter(zombie_id: int) -> Dictionary:
+	if not zombies.has(zombie_id):
+		return {}
+	var zombie := zombies[zombie_id]
+	zombies.erase(zombie_id)
+	return {
+		"type": &"zombie_shattered",
+		"zombie_id": zombie_id,
+		"position": zombie.position,
+		"yaw": zombie.yaw,
+		"look": zombie.look(),
+		"scale": ZombieModels.aim_scale(zombie.look()),
+	}
 
 
 func position_of(zombie_id: int) -> Vector3:
@@ -273,6 +306,8 @@ func _step(targets: Dictionary) -> Array[Dictionary]:
 		zombie.stagger_cooldown_left = maxf(zombie.stagger_cooldown_left - STEP, 0.0)
 		if zombie.mode == ZombieBody.Mode.DYING:
 			zombie.mode_time += STEP
+		elif zombie.halted:
+			ZombieBrain.hold(zombie)
 		else:
 			_think(zombie, STEP, targets, events)
 	PerfProbe.end(&"sim.think", began)
@@ -523,7 +558,8 @@ func _keep_outside_the_boards() -> void:
 
 
 func _ground_speed(zombie: ZombieBody) -> float:
-	return rounds.speed_on_ground(zombie.speed, zombie.lit) if rounds != null else zombie.speed
+	var speed := zombie.speed * zombie.slow
+	return rounds.speed_on_ground(speed, zombie.lit) if rounds != null else speed
 
 
 ## Puts the sim on a map with storeys (`storey`, 0 for none) and the way it sees walls (`sight`).

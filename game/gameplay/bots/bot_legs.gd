@@ -158,7 +158,9 @@ func step(
 	base = _avoid_players(here, base, crew, intent.run)
 	base = _avoid_dead(here, base, dead)
 	_watch_the_gap(delta, here, base, crew)
-	# Giving way to a person who walks at the bot.
+	# Giving way to a person who walks at the bot, but not into the bot's own live grenade.
+	steering.keep_out = intent.keep_out
+	steering.keep_out_reach = intent.keep_out_reach
 	var given := _give_way(delta, here, crew)
 	var direction := given if given != Vector3.ZERO else base
 	var progress := _progress(here, base, intent, given)

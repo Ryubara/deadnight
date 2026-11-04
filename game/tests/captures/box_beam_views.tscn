@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/captures/box_beam_views.gd" id="views"]
+
+[node name="BoxBeamViews" type="Node"]
+script = ExtResource("views")

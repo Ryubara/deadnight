@@ -40,14 +40,16 @@ func forget() -> void:
 
 
 ## A heading away from what the bot knows of, with a pull toward `anchor` (or home). `blasts` are
-## the live grenades it stands in reach of; `holding` and `following` are the order in force. Zero
-## when it knows of nothing or is boxed in.
+## the live grenades it stands in reach of (a heading that ends nearer to one than the bot is, from
+## within `blast_reach` metres of it, is no way out, #872); `holding` and `following` are the order
+## in force. Zero when it knows of nothing or is boxed in.
 func heading(
 	here: Vector3,
 	beliefs: BotBeliefs,
 	anchor: Vector3,
 	play: BotPlayState,
 	blasts: Array[Vector3],
+	blast_reach: float,
 	holding: bool,
 	following: bool
 ) -> Vector3:
@@ -63,6 +65,8 @@ func heading(
 	# A grenade about to go off is a threat that stands still (its blast is what to keep out of).
 	for point in blasts:
 		threats.append({"position": point, "speed": 0.0})
+	_steering.keep_out = blasts
+	_steering.keep_out_reach = blast_reach
 	if threats.is_empty():
 		last = Vector3.ZERO
 		return Vector3.ZERO

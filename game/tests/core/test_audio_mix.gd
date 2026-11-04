@@ -223,11 +223,15 @@ func test_the_ui_hook_plays_the_cue_s_sound() -> void:
 
 
 func test_hover_and_focus_in_the_same_moment_make_one_sound() -> void:
-	UIAudio.play(&"hover")
-	UIAudio.play(&"focus")
+	var ticket: Button = auto_free(Button.new())
+	add_child(ticket)
+	UiSounds.tag(ticket, &"ticket")
+	UIInputMode.pointer = true
+	UIAudio.play(&"hover", ticket)
+	UIAudio.play(&"focus", ticket)
 	assert_int(_audio.budget_2d().active_count()).is_equal(1)
 	# A press and the screen change that follows it both sound.
-	UIAudio.play(&"press")
+	UIAudio.play(&"press", ticket)
 	UIAudio.play(&"push")
 	assert_int(_audio.budget_2d().active_count()).is_equal(3)
 
