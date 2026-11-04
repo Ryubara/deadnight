@@ -153,6 +153,10 @@ func _ready() -> void:
 	return_api = null
 	if challenge_path != "":
 		night.challenge_board = ChallengeBoard.open(challenge_path)
+		# Under the root, like the profile's: the last round's write is sent after this screen has gone.
+		night.challenge_uplink = ChallengeUplink.new(
+			TogetherApi.new(get_tree().root, TogetherScreen.backend_url())
+		)
 	if profile_path != "":
 		night.profile_store = ProfileStore.open(profile_path, TogetherApi.signed_in)
 		# Under the root: the last round's write is sent after this screen has gone.
