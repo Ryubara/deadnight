@@ -14,13 +14,9 @@ static var _shipped: LightTuning = null
 @export_group("Lamps (the rules read these)")
 ## Ground within this of a lit lamp is lit: the dead there keep to their round's pace.
 @export_range(1.0, 20.0, 0.5, "suffix:m") var lamp_reach := 6.0
-## A failing tank changes a lamp's state every this many ticks (60 a second: 5 is about 12 times a
-## second).
-@export_range(1, 60, 1, "suffix:ticks") var flicker_ticks := 5
-## How much light a lamp keeps when the tank is nearly dry ...
+## How much light a lamp keeps when the tank is nearly dry; the dips of its warning flicker
+## (`FailingBattery.brownout`) go below it.
 @export_range(0.0, 1.0, 0.01) var sag_floor := 0.35
-## ... and the share it keeps in the dropouts of a flicker.
-@export_range(0.0, 1.0, 0.01) var dropout := 0.12
 
 @export_group("Failing battery (the back lot's lights, FailingBattery)")
 ## How much of its light a lamp gives on average: dimmed ...

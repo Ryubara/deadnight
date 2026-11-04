@@ -47,7 +47,7 @@ func _ready() -> void:
 		return
 	UITokens.active_changed().connect(_on_tokens_changed)
 	mouse_entered.connect(_on_mouse_entered)
-	focus_entered.connect(UIAudio.play.bind(&"focus"))
+	focus_entered.connect(UIAudio.play.bind(&"focus", self))
 	toggled.connect(_on_toggled)
 	_update_targets()
 	for spring in [_on, _hover, _focus]:
@@ -116,13 +116,17 @@ func _draw() -> void:
 
 
 func _on_mouse_entered() -> void:
-	UIAudio.play(&"hover")
+	UIAudio.play(&"hover", self)
 	if not disabled:
 		grab_focus()
 
 
-func _on_toggled(_pressed: bool) -> void:
-	UIAudio.play(&"press")
+func ui_sound_role() -> StringName:
+	return &"toggle"
+
+
+func _on_toggled(on: bool) -> void:
+	UIAudio.play(&"on" if on else &"off", self)
 	set_process(true)
 
 
