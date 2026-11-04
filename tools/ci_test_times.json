@@ -492,7 +492,7 @@
     "weapons/test_weapon_state.gd": 0.2,
     "weapons/test_weapon_upgrade.gd": 0.1,
     "world/smallmap/test_smallmap_bot_machines.gd": 16.8,
-    "world/smallmap/test_smallmap_bot_night.gd": 117.4,
+    "world/smallmap/test_smallmap_bot_night.gd": 170.0,
     "world/smallmap/test_smallmap_buys.gd": 4.2,
     "world/smallmap/test_smallmap_counter.gd": 11.2,
     "world/smallmap/test_smallmap_economy.gd": 2.0,
