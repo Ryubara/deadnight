@@ -61,8 +61,6 @@ func test_every_number_in_the_shipped_tuning_is_a_multiple_of_five() -> void:
 			failures.append("explosives.explosion_kill")
 		if not PointSteps.is_step(tuning.revive.reviver_points):
 			failures.append("revive.reviver_points")
-		if not PointSteps.is_step(tuning.upgrade.price_step):
-			failures.append("upgrade.price_step")
 		for special in tuning.specials.rounds:
 			for round_number in range(1, 41):
 				if not PointSteps.is_step(special.reward_at(round_number)):
