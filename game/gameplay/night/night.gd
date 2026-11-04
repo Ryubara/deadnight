@@ -930,6 +930,7 @@ func _make_autopilot() -> void:
 			ShopItem.Kind.TONIC:
 				if item.health_bonus > 0.0:
 					autopilot.tonic_price = item.price
+					autopilot.tonic_id = item.id
 	autopilot.wanted.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
 			return autopilot.prices_of_goods[a] < autopilot.prices_of_goods[b]
