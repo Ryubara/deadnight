@@ -141,18 +141,21 @@ func shift_colour(slot: StringName, steps: int) -> void:
 	colours[slot] = posmod(int(colours[slot]) + steps, LookCatalog.palette(slot).size())
 
 
-## A copy with every option this player has not unlocked put back to the slot's first option.
+## A copy with every option this player has not unlocked put back to the first one they may wear
+## in that slot (the first of the slot is the free "None" for headwear, eyewear and neckwear, and
+## the first of a ladder slot's starting pieces for the rest), and every colour to the first they
+## may use.
 func without_locked(unlocks: LookUnlocks) -> CharacterLook:
 	var out := duplicate_look()
 	for slot in LookCatalog.part_slots():
 		var index := LookCatalog.option_index(slot, parts[slot])
 		var option: Dictionary = LookCatalog.options(slot)[index]
 		if not unlocks.is_unlocked(slot, option["id"], option["gate"]):
-			out.parts[slot] = LookCatalog.options(slot)[0]["id"]
+			out.parts[slot] = LookCatalog.first_open(slot, unlocks)
 	for slot in LookCatalog.colour_slots():
 		var entry: Dictionary = LookCatalog.palette(slot)[colours[slot]]
 		if not unlocks.is_unlocked(slot, entry["id"], entry["gate"]):
-			out.colours[slot] = 0
+			out.colours[slot] = LookCatalog.first_open_colour(slot, unlocks)
 	return out
 
 

@@ -251,11 +251,16 @@ func test_the_play_panel_shows_todays_dailies_and_asks_for_the_three_routes() ->
 	assert_array(_actions).is_equal([&"together", &"quick_join", &"solo"])
 
 
+## A profile at the top of the ladder, for the tests that put a preset on the soldier whole.
+func _top_level_profile() -> String:
+	return MenuProfile.to_json("Ann", MenuProfile.xp_at(LevelCurve.MAX_LEVEL), 1250, {"rifle": 900})
+
+
 func test_the_loadout_panel_shows_the_saved_look_weapon_and_mastery() -> void:
 	var look := CharacterLook.from_preset(3)
 	LookStore.save_look(look)
 	Settings.set_value(SettingsService.SHOWCASE_WEAPON, "shotgun")
-	var shell := await _open()
+	var shell := await _open(false, _top_level_profile())
 	shell.show_tab(MenuTab.Id.LOADOUT)
 	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
 	assert_str(String(panel.weapons()[panel.selector().selected])).is_equal("shotgun")
@@ -271,23 +276,37 @@ func test_the_loadout_panel_shows_the_saved_look_weapon_and_mastery() -> void:
 
 func test_a_change_in_the_wardrobe_shows_on_the_stage_and_leaving_keeps_it() -> void:
 	LookStore.save_look(CharacterLook.from_preset(1))
-	var shell := await _open()
+	var shell := await _open(false, _top_level_profile())
 	shell.show_tab(MenuTab.Id.LOADOUT)
 	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
 	panel.wardrobe.apply_preset(5)
 	assert_bool(shell.view.stage.hero.look.equals(CharacterLook.from_preset(5))).is_true()
 	shell.show_tab(MenuTab.Id.PLAY)
 	assert_bool(shell.view.stage.hero.look.equals(CharacterLook.from_preset(5))).is_true()
-	assert_bool(LookStore.load_look().equals(CharacterLook.from_preset(5))).is_true()
+	(
+		assert_bool(
+			LookStore.load_look(LookUnlocks.at_level(LevelCurve.MAX_LEVEL)).equals(
+				CharacterLook.from_preset(5)
+			)
+		)
+		. is_true()
+	)
 
 
 func test_leaving_the_loadout_tab_writes_the_look_the_stage_then_keeps() -> void:
-	var shell := await _open()
+	var shell := await _open(false, _top_level_profile())
 	shell.show_tab(MenuTab.Id.LOADOUT)
 	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
 	panel.wardrobe.apply_preset(4)
 	shell.show_tab(MenuTab.Id.PLAY)
-	assert_bool(LookStore.load_look().equals(CharacterLook.from_preset(4))).is_true()
+	(
+		assert_bool(
+			LookStore.load_look(LookUnlocks.at_level(LevelCurve.MAX_LEVEL)).equals(
+				CharacterLook.from_preset(4)
+			)
+		)
+		. is_true()
+	)
 	assert_bool(shell.view.stage.hero.look.equals(CharacterLook.from_preset(4))).is_true()
 
 
@@ -297,16 +316,23 @@ func test_the_shop_shows_the_balance_the_gated_items_and_marked_placeholders() -
 	var panel := shell.panel(MenuTab.Id.SHOP) as ShopPanel
 	assert_str(panel.balance_text()).is_equal("You have 1,250 stubs")
 	var rows := panel.rows()
-	assert_int(rows.size()).is_equal(LookCatalog.PALETTE_GATES.size() + ShopPanel.CATEGORIES.size())
+	# The cloth palette's gated colours, once (the three cloth channels share them).
+	var gated := LookCatalog.palette_gates().keys().filter(
+		func(key: String) -> bool: return key.begins_with("primary/")
+	)
+	assert_int(gated.size()).is_equal(10)
+	assert_int(rows.size()).is_equal(gated.size() + ShopPanel.CATEGORIES.size())
 	var real := 0
 	for row in rows:
 		if not row.placeholder:
 			real += 1
 		else:
 			assert_str(row.note).is_equal("Coming")
-	assert_int(real).is_equal(LookCatalog.PALETTE_GATES.size())
-	# Billing 7 has not reached the level-10 colour; it asks for it by name.
-	assert_str(rows[0].note).is_equal("Billing 10")
+	assert_int(real).is_equal(gated.size())
+	# The profile is level 7: a colour it has reached is "Yours", the others ask for their level.
+	for i in gated.size():
+		var need := LookUnlocks.level_of(LookCatalog.palette_gates()[gated[i]])
+		assert_str(rows[i].note).is_equal("Yours" if need <= 7 else "Level %d" % need)
 
 
 func test_the_challenges_panel_shows_dailies_orders_and_milestones_and_filters_by_family() -> void:

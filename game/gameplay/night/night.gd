@@ -207,6 +207,10 @@ func start(
 	var table := p_rules_tuning if p_rules_tuning != null else load(GameRules.DEFAULT_TUNING_PATH)
 	server = NightServer.new(world, p_seed, night_tuning, world.rules_for(table), match_settings)
 	rules_tuning = server.rules.tuning
+	# The one at this machine wears what their profile's level opens (a look a test or a flag gave
+	# is let through whole: no level is known for it).
+	if own_look == null:
+		server.player_levels[PLAYER_ID] = LookUnlocks.saved().level
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
 	bot_orders.sender = link.send
 	state = ClientState.new()

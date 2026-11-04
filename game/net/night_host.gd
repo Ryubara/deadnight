@@ -28,8 +28,7 @@ signal built
 ## (`final` false, `round_number` the one that ended) and once at the night's end (`final` true).
 ## Never once per kill. `seats` are `XpAward.take_report`'s entries. The `GameServer` queues them.
 signal report_ready(round_number: int, final: bool, seats: Array)
-## A seat with an account sat down and its challenge board has not been read this night: the
-## `GameServer` reads it from the backend, once, and answers with `board_arrived`.
+## A seat's account sat down: the `GameServer` reads its board once and answers `board_arrived`.
 signal board_wanted(user: String)
 ## An embedded room's night began and everyone has gone: the `GameServer` ends and frees it.
 signal emptied
@@ -80,8 +79,7 @@ var log_enabled := true
 var xp_awards := true
 ## False: the room follows no challenge board (the measurement's arm without the tracker).
 var challenge_awards := true
-## What the players are asked and the day it is for them; unset, the shipped catalogue and the
-## server's UTC day. A test sets them.
+## What the players are asked and its day; unset, the shipped catalogue and UTC. Tests set them.
 var challenge_catalog: ChallengeCatalog
 var challenge_clock: ChallengeClock
 ## The seconds the connection rules (a peer's rates, the hello, a seat held for a returning player)
@@ -456,6 +454,8 @@ func _free_seat(player_id: int) -> void:
 			_collect([{"type": &"account_left", "player_id": player_id}])
 		server.xp.release(player_id)
 		server.challenges.release(player_id)
+		# The seat has no account now (a bot has no level, and wears its cast look whole).
+		server.player_levels.erase(player_id)
 		var inherited := _bot_inherits(player_id)
 		if inherited.is_empty():
 			_collect(server.apply({"type": NightServer.LEAVE, "player_id": player_id}))
@@ -625,6 +625,8 @@ func register_account(player_id: int, user: String, account: Dictionary = {}) ->
 	server.xp.register(player_id, user, int(account.get("xp", 0)), server.rules.round_number)
 	if not server.xp.has_seat(player_id):
 		return
+	# What the seat may wear is held to the level the ticket's XP gives (#1065).
+	server.player_levels[player_id] = server.xp.levels()[player_id]
 	if not seated:
 		# Everyone already here learns this seat's level (the joiner reads the others' in its WELCOME).
 		var level: int = server.xp.levels()[player_id]
@@ -634,8 +636,7 @@ func register_account(player_id: int, user: String, account: Dictionary = {}) ->
 		board_wanted.emit(user)
 
 
-## The backend's answer to a `board_wanted` (`status` 0: none). A seat whose board did not come is
-## not followed, and its board is never written.
+## The backend's answer to `board_wanted` (`status` 0: none). No board: not followed, not written.
 func board_arrived(user: String, status: int, envelope: Variant) -> void:
 	if server != null:
 		server.challenges.arrived(user, status, envelope)
