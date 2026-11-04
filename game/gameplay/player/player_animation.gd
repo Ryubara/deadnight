@@ -888,9 +888,9 @@ func _advance_repair(delta: float) -> void:
 
 
 func _advance_drink(delta: float) -> void:
-	var passed := _drink.advance(delta, self)
-	if passed.y > passed.x:
-		_emit_events(DrinkLayer.CLIP, passed.x, passed.y)
+	var before := _drink.advance(delta, self)
+	if _drink.time > before:
+		_emit_events(DrinkLayer.CLIP, before, _drink.time)
 	if _drink.ended():
 		stop_drink()
 

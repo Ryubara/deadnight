@@ -71,12 +71,12 @@ func stop(spilled: bool) -> bool:
 
 
 ## Moves the clip on by `delta` at the drink's pace and eases the layer; steps what was thrown.
-## Returns the clip's seconds passed, (from, to), for its events (the same twice when none).
-func advance(delta: float, tree: AnimationTree) -> Vector2:
-	var passed := Vector2(time, time)
+## Returns where the clip was before (its events lie between that and `time`). Not a `Vector2`:
+## its 32-bit floats rounded 2.4999999 up to the clip's end, so its `done` came a step early.
+func advance(delta: float, tree: AnimationTree) -> float:
+	var before := time
 	if drinking:
 		time = minf(time + delta * _scale, _length)
-		passed.y = time
 		tree.set(SEEK_PARAMETER, time)
 	var target := 1.0 if drinking else 0.0
 	blend = lerpf(blend, target, 1.0 - exp(-BLEND_RATE * delta))
@@ -84,7 +84,7 @@ func advance(delta: float, tree: AnimationTree) -> Vector2:
 		blend = target
 	tree.set(BLEND_PARAMETER, blend)
 	bottle.step(delta)
-	return passed
+	return before
 
 
 ## Whether the clip has reached its end.
