@@ -125,6 +125,11 @@ func _ally(camera: Camera3D, id: int, here: Vector3) -> Dictionary:
 	marker["dead"] = player.get("dead", false)
 	marker["bleed"] = ceili(float(player.get("bleed", 0.0)))
 	marker["revive"] = snappedf(float(player.get("revive", 0.0)), 0.01)
+	# The level and icon beside the name (0 for none: a bot, no backend, or the viewer turned them
+	# off).
+	var shown := _hud_state.level_of(_hud_state.team.get(id, {}))
+	marker["level"] = shown.x
+	marker["icon"] = shown.y
 	return marker
 
 

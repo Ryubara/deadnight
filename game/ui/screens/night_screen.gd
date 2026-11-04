@@ -376,6 +376,22 @@ func _on_night_over(_round_reached: int) -> void:
 		LEAVE_ONLINE if _has_lobby() else LEAVE_ALONE
 	)
 	_end.set_left(night.state.over_left())
+	_show_report()
+
+
+## The night report on the board: what the night paid, from the night's own events, and again when
+## the server tells more (the last round's XP can come after the end).
+func _show_report() -> void:
+	if night.report == null:
+		return
+	_end.show_report(night.report.model())
+	if not night.report.changed.is_connected(_on_report_changed):
+		night.report.changed.connect(_on_report_changed)
+
+
+func _on_report_changed() -> void:
+	if _end.visible and not _left:
+		_end.show_report(night.report.model())
 
 
 func _process(_delta: float) -> void:

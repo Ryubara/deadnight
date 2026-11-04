@@ -48,6 +48,7 @@ var _perks: PerkTuning
 var _economy: EconomyTuning
 ## Units a whole can adds, by shop item: what the card says a can is worth.
 var _can_units: Dictionary[StringName, int] = {}
+var _settings: SettingsService
 
 
 ## `hud` is in the tree or about to be; `state` is the client's; `tuning` is read once, for the
@@ -59,7 +60,8 @@ func _init(
 	state: ClientState,
 	tuning: RulesTuning,
 	looks: LookRegistry = null,
-	words: MapWords = null
+	words: MapWords = null,
+	settings: SettingsService = null
 ) -> void:
 	_hud = hud
 	_state = state
@@ -90,6 +92,15 @@ func _init(
 	state.event_received.connect(_on_event)
 	if looks != null:
 		looks.changed.connect(_on_look.bind(looks))
+	# The viewer's choice to see levels beside names, now and when they change it in the pause menu.
+	_settings = settings if settings != null else Settings
+	hud.state.show_levels = bool(_settings.get_value(SettingsService.SHOW_LEVELS))
+	_settings.changed.connect(_on_setting)
+
+
+func _on_setting(key: StringName, value: Variant) -> void:
+	if key == SettingsService.SHOW_LEVELS:
+		_hud.state.show_levels = bool(value)
 
 
 ## A look arrived or changed: the HUD hears it as the `player_look` event it knows, for every

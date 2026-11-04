@@ -119,14 +119,15 @@ var hud: Hud
 ## tests leave it empty, so they never touch the save). The night counts into it as it plays.
 var challenge_board: ChallengeBoard
 var challenges: ChallengeSession
-## Writes the board to the account at round ends; set like the board, and used by a night that runs
-## here only (online the game server writes the board).
+## Writes the board to the account at round ends, in a night that runs here (online, the server).
 var challenge_uplink: ChallengeUplink
 ## The player's profile file, set before `start` by the screen a person plays on (like the board).
 ## The night adds its XP to it as it plays, for a player with an account (a Guest one counts);
 ## online the server awards.
 var profile_store: ProfileStore
 var progress: ProgressSession
+## What the night report shows (`ReportTracker`), made with the client state.
+var report: ReportTracker
 ## Sends the profile's queued writes to the account; null keeps them on this machine until a night
 ## has one. (A Callable does not keep its object alive: the night holds the uplink.)
 var profile_uplink: ProfileUplink
@@ -213,6 +214,7 @@ func start(
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
 	_track_challenges(true)
+	report = ReportTracker.follow(state, NightTally.fuel_items_of(rules_tuning))
 	_track_progress()
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks, world.layout.words())
@@ -261,6 +263,7 @@ func start_remote(
 	bot_orders.sender = link.send
 	state = ClientState.new()
 	_track_challenges()
+	report = ReportTracker.follow(state, NightTally.fuel_items_of(rules_tuning))
 	var failure := {"reason": ""}
 	var welcome := {}
 	online.welcomed.connect(func(snapshot: Dictionary) -> void: welcome["snapshot"] = snapshot)
@@ -382,13 +385,11 @@ func _last_frame(events: Array) -> Dictionary:
 
 
 ## Counts the night into the player's challenges, when there is a board to count into. `runs_here`:
-## the rules run in this process, so this night's board is written to the account (online it is the
-## server's).
+## the rules run in this process, so its board is written to the account (online, the server's).
 func _track_challenges(runs_here: bool = false) -> void:
 	if challenge_board != null:
 		challenges = ChallengeSession.new(challenge_board, rules_tuning)
-		if runs_here:
-			challenges.uplink = challenge_uplink
+		challenges.uplink = challenge_uplink if runs_here else null
 		challenges.attach(state)
 		if hud != null:
 			_challenge_link = ChallengeHudLink.new(challenges, hud)

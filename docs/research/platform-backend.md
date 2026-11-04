@@ -299,7 +299,10 @@ yet, and the ledger holds the same facts.
 
 **The ticket** carries `level`, `icon` (`level_NN`, a file of `game/assets/ui/levels/`) and `xp`, read from the stored
 profile when the ticket is minted, never from the client; an account with no profile, or one that does not read, is
-level 1. The stub game server passes them on in its welcome.
+level 1. The stub game server passes them on in its welcome. The lobby's member list carries the same `level` and `icon`
+for each member (`ProgressService.knownLevel`, read when the member joins and moved by every report), so the lobby shows
+the tag the ticket will carry; a Guest account's is its own like any other. How the game server shows them:
+[the level and icon beside a name](multiplayer.md#the-level-and-icon-beside-a-name-1077).
 
 What the game server must send, and when: [the game server's tally](../design/progression.md#who-awards-xp-and-live-xp)
 (#1059) posts one report a seat at each round's end (`kind: round`, `round: n`) and one at the night's end (`kind:
