@@ -292,6 +292,13 @@ static func snapshot(top: Control) -> Dictionary:
 			rules.settings, rules.settings.break_for(rules.tuning.rounds)
 		)
 		data["night_map"] = night_screen.night.world.map_info.id
+	elif night_screen.night.world != null:
+		# A night on a game server: the rules and the map its WELCOME carried (Deadnight #944).
+		var held := night_screen.night.match_settings
+		data["night_rules"] = MatchSettingsPanel.text_for(
+			held, held.break_for(night_screen.night.rules_tuning.rounds)
+		)
+		data["night_map"] = night_screen.night.world.map_info.id
 	# The menu is open, and what the engine says the mouse is (2 is captured: a browser's pointer
 	# lock), so a browser test sees the first Esc open the menu.
 	data["paused"] = night_screen.night.is_paused()

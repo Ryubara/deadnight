@@ -328,6 +328,12 @@ func _enter(mode: int) -> void:
 				tree.set(
 					ZombieRig.BOSS_ATTACK_SCALE_PARAMETER, ZombieRig.BOSS_HIT_SECONDS / _telegraph
 				)
+			elif ZombieModels.crawls(look):
+				# A crawler grabs from the floor: its own clip, never the walker's standing punch.
+				state = ZombieRig.STATE_CRAWL_ATTACK
+				tree.set(
+					ZombieRig.CRAWL_ATTACK_SCALE_PARAMETER, ZombieRig.CRAWL_HIT_SECONDS / _telegraph
+				)
 		ZombieBody.Mode.STAGGER:
 			state = ZombieRig.STATE_STAGGER
 		ZombieBody.Mode.DYING:

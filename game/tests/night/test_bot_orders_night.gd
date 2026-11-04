@@ -232,6 +232,82 @@ func test_under_follow_the_bots_stay_with_the_person_who_gave_the_order() -> voi
 	night.dispose()
 
 
+## A flank bot's place is ground it can walk to inside the lot, and within the band of the person
+## (#953): the person stops by the field's north fence, and the place 11 m to their side used to be
+## the slab beyond it (the walk ends 3 m short, and the bot stood still), or behind the breaker post
+## (the walk runs through the post, and the bot stood still).
+func test_a_flank_bot_is_sent_only_to_ground_it_can_walk_to_inside_the_lot() -> void:
+	var night := await _night(3)
+	var walker := night.walkers[0]
+	var home := Autopilot.HOME
+	_place(night, PERSON, home)
+	for id in [2, 3, 4]:
+		_place(night, id, home + Vector3(float(id - 3) * 2.0, 0.0, 4.0))
+	night.run(60 * 25)
+	_give(night, BotOrders.FOLLOW, _where(night, PERSON))
+	# The loop of the follow test as far as the north-west corner, where the person stops.
+	var stops: Array[Vector3] = [home + Vector3(8.0, 0.0, -6.0), home + Vector3(-8.0, 0.0, -10.0)]
+	for stop in stops:
+		walker.goto(stop)
+		for _t in 60 * 40:
+			night.tick()
+			if walker.arrived():
+				break
+		assert_bool(walker.arrived()).is_true()
+	var seen := 0
+	var flank_ticks := {2: 0, 3: 0, 4: 0}
+	var near := 0
+	var total := 0
+	for t in 60 * 40:
+		night.tick()
+		if t < 60 * 5:
+			continue
+		var person := _where(night, PERSON)
+		for id in [2, 3, 4]:
+			var bot := _bot(night, id)
+			total += 1
+			if _flat(_where(night, id), person) <= FOLLOW_NEAR:
+				near += 1
+			if bot.intent.note != "flank":
+				continue
+			flank_ticks[id] += 1
+			var goal: Vector3 = bot.intent.goal
+			if goal == Vector3.INF:
+				continue  # at its place.
+			seen += 1
+			(
+				assert_bool(night.world.bounds.is_out(goal))
+				. override_failure_message("flank goal %s is outside the lot" % goal)
+				. is_false()
+			)
+			(
+				assert_float(_flat(goal, person))
+				. override_failure_message(
+					"flank goal %s is %.1f m from the person" % [goal, _flat(goal, person)]
+				)
+				. is_less_equal(BotRoles.FLANK_LIMIT + 0.5)
+			)
+			(
+				assert_bool(bot.legs.path.probe(_where(night, id), goal, 0.0))
+				. override_failure_message("flank goal %s is not ground the walk reaches" % goal)
+				. is_true()
+			)
+	(
+		assert_int(flank_ticks.values().max())
+		. override_failure_message("no bot flanked: %s" % flank_ticks)
+		. is_greater(60 * 5)
+	)
+	assert_int(seen).is_greater(0)
+	# Held at its place or on its way to it, a flank stays with the person.
+	var share := float(near) / float(total)
+	(
+		assert_float(share)
+		. override_failure_message("within %d m: %.2f" % [FOLLOW_NEAR, share])
+		. is_greater(0.9)
+	)
+	night.dispose()
+
+
 func test_a_follow_whose_person_has_gone_is_a_roam() -> void:
 	var night := await _night(2)
 	_place(night, PERSON, Autopilot.HOME)
