@@ -7,8 +7,9 @@ Plain Python, no dependencies; run it from the repository root and commit the sc
 The map is indoors (the maintainer's decision, 2026-11-02); through its windows, doors and broken walls the players
 see Deadnight's own world in the distance: the yard's wire fence and bare trees, a pole line, and to the north the
 drive-in itself, its screen lit, cars parked in rows, the marquee and a neon sign, a wreck burning. Nothing here is
-walked or collides. Metres, Y up, x east, z south, the building's middle at the origin; the lot's screen is north, as
-on the drive-in lot, so the moon sits over it. Every repeated model is one MultiMesh (one draw for all its copies);
+walked or collides. Metres, Y up, x east, z south, the building's middle at the origin; the lot's screen is north in
+this scene's own frame, as on the drive-in lot. The second map places the scene turned half a circle, so on that map
+the drive-in lies south of the building, in front of the hall's window, and the yard is one level all round (#917). Every repeated model is one MultiMesh (one draw for all its copies);
 `Backdrop` (game/world/smallmap/backdrop.gd) fills the glTF ones and keeps the haze in step with the fog. Placements
 come from a fixed seed, so the scene does not change from one run to the next. Notes: docs/research/maps/small-map-art.md.
 """
@@ -23,9 +24,6 @@ OUT = Path("game/world/smallmap/backdrop.tscn")
 # is the level's (the greybox); the backdrop starts at its fence. Change these to the greybox's and run again.
 BUILDING_HALF = (14.5, 10.5)
 YARD_HALF = (31.0, 27.0)
-BANK_TOP = (
-    3.4  # the greybox's bank north of the building: its top is the upper floor's level, so the north fence stands on it
-)
 GATE = 3.0  # a gap in the north fence, closed by barbed coils, where the road to the drive-in leaves
 
 # The drive-in, north: the screen's middle at x 0 (its shader maps the panel from world x, so it stays on x 0).
@@ -265,13 +263,13 @@ def build():
             x, z = x0 + dx * 2 * i, z0 + dz * 2 * i
             if z0 == z1 == -hz and abs(x + 1.0) < GATE:
                 continue
-            runs.append(xf(x, z, along(dx, dz), BANK_TOP if z0 == z1 == -hz else 0.0))
-        posts.append(xf(x1, z1, 0.0, BANK_TOP if z1 == -hz else 0.0))
+            runs.append(xf(x, z, along(dx, dz), 0.0))
+        posts.append(xf(x1, z1, 0.0, 0.0))
     for x in (-GATE - 1.0, GATE - 1.0):
-        posts.append(xf(x, -hz, 0.0, BANK_TOP))
+        posts.append(xf(x, -hz, 0.0, 0.0))
     sc.multi("WireFence", "Yard", runs, "haze_kit", mesh="wire_fence_far")
     sc.multi("FencePosts", "Yard", posts, "haze_kit", mesh="fence_post")
-    coils = [xf(-1.0, -hz - 0.6, 0.0, BANK_TOP), xf(1.0, -hz - 0.6, 0.0, BANK_TOP)]
+    coils = [xf(-1.0, -hz - 0.6, 0.0, 0.0), xf(1.0, -hz - 0.6, 0.0, 0.0)]
     for x, z in ((-hx + 4, -hz - 0.7), (hx - 6, -hz - 0.7), (hx + 0.7, 6.0), (-hx - 0.7, -8.0), (8.0, hz + 0.7)):
         yaw = 90.0 if abs(abs(x) - hx) < 1.0 else 0.0
         coils.append(xf(x, z, yaw))

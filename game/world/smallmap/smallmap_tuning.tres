@@ -91,7 +91,7 @@ pool_weights = PackedFloat32Array(4, 3, 2, 1, 0.5, 0.5, 1, 1, 2, 2, 1.5, 2, 1.5,
 
 [sub_resource type="Resource" id="Windows"]
 script = ExtResource("3_barr")
-ids = Array[StringName]([&"start_1", &"start_2", &"start_3", &"start_4", &"start_5", &"side_1", &"side_2", &"side_breach", &"upper_a1", &"upper_a2", &"upper_b1", &"upper_b2"])
+ids = Array[StringName]([&"start_1", &"start_4", &"side_1", &"side_2", &"side_breach", &"upper_a1", &"upper_a2"])
 boards = 5
 seconds_per_board = 1.2
 
