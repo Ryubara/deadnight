@@ -142,6 +142,10 @@ func _check_far(
 	for mesh_name: String in meshes:
 		var mi: MeshInstance3D = meshes[mesh_name]
 		var fi: MeshInstance3D = far.get(mesh_name)
+		if mesh_name.begins_with("mouth__"):  # no far mesh: one mesh at every distance
+			if fi != null or mi.visibility_range_end != 0.0:
+				_fail("%s: %s does not show at every distance" % [p.id, mesh_name])
+			continue
 		if fi == null:
 			_fail("%s: %s has no far mesh" % [p.id, mesh_name])
 			continue

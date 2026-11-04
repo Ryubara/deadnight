@@ -150,6 +150,37 @@ func test_her_preset_picks_her_and_randomize_keeps_her() -> void:
 		assert_str(String(_screen.look.body())).is_equal("female")
 
 
+func test_the_mouth_row_sits_under_the_face_row_free_and_saved() -> void:
+	var slots := LookCatalog.choosable_part_slots()
+	assert_int(slots.find(&"mouth")).is_equal(slots.find(&"head") + 1)
+	var selector := _screen.selector(&"mouth")
+	assert_int(selector.options.size()).is_equal(LookCatalog.options(&"mouth").size())
+	assert_bool("locked" in ",".join(selector.options)).is_false()
+	# The player's own way: focus the row and press right, and the turntable follows at once.
+	selector.grab_focus()
+	await _key(KEY_RIGHT)
+	var second: Dictionary = LookCatalog.options(&"mouth")[1]
+	assert_str(String(_screen.look.parts[&"mouth"])).is_equal(String(second["id"]))
+	var mesh := "mouth__%s" % second["id"]
+	assert_bool((_screen.preview().model.find_child(mesh, true, false) as Node3D).visible).is_true()
+	_screen.save()
+	assert_str(String(LookStore.load_look(LookUnlocks.new()).parts[&"mouth"])).is_equal(
+		String(second["id"])
+	)
+
+
+func test_a_preset_keeps_its_mouth_and_randomize_reaches_every_mouth() -> void:
+	_screen.choose("part:mouth", LookCatalog.option_index(&"mouth", &"teeth"))
+	_screen.apply_preset(1)
+	assert_str(String(_screen.look.parts[&"mouth"])).is_equal("smile")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var seen := {}
+	for _i in 200:
+		seen[CharacterLook.randomized(rng, _screen.unlocks).parts[&"mouth"]] = true
+	assert_int(seen.size()).is_equal(LookCatalog.options(&"mouth").size())
+
+
 func test_every_choosable_slot_has_a_strip() -> void:
 	for slot in LookCatalog.choosable_part_slots():
 		assert_object(_screen.selector(slot)).is_not_null()
@@ -189,7 +220,7 @@ func test_the_gamepad_walks_down_the_rows_and_back_up() -> void:
 	var first := _screen.selector(&"head")
 	first.grab_focus()
 	await _pad(JOY_BUTTON_DPAD_DOWN)
-	assert_object(_screen.get_viewport().gui_get_focus_owner()).is_same(_screen.selector(&"hair"))
+	assert_object(_screen.get_viewport().gui_get_focus_owner()).is_same(_screen.selector(&"mouth"))
 	await _pad(JOY_BUTTON_DPAD_UP)
 	assert_object(_screen.get_viewport().gui_get_focus_owner()).is_same(first)
 

@@ -9,8 +9,8 @@ the build.
 So every texture states its settings and Detect 3D is off:
 
 - palettes and atlases (the default for every texture): lossless (`compress/mode=0`), no mipmaps, Detect 3D off;
-- the textures in `TILING`, which repeat across large surfaces and alias without mipmaps: lossless, mipmaps on,
-  Detect 3D off.
+- the textures in `TILING`, which repeat across large surfaces or are shown far under their size and alias without
+  mipmaps: lossless, mipmaps on, Detect 3D off.
 
 A new texture that is neither a palette nor a tiling texture (a normal map, a 2D sprite sheet that wants compression)
 gets its own entry in `RULES` before it is committed.
@@ -41,6 +41,8 @@ RULES: list[tuple[str, dict[str, str]]] = [
     ("game/assets/lot/textures/*", TILING),
     # The small map's chalk lettering is read from across a room at a slant: mipmaps keep it from sparkling.
     ("game/assets/smallmap/chalk_messages.*", TILING),
+    # The level icons are drawn at 24 px from 64 px cells: without mipmaps the name tags sparkle.
+    ("game/assets/ui/level_atlas/*", TILING),
 ]
 
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".svg", ".tga", ".bmp", ".exr", ".hdr", ".ktx2")

@@ -13,9 +13,10 @@ extends RefCounted
 ## end and never reordered or removed. A change that cannot follow that rule bumps the version.
 ## A slot with fewer than two parts is not shown on the customization screen.
 ##
-## The character (#678) is the `body` part slot, the last on the wire: `male` is the Soldier as
-## built, `female` shows her variant of the face, torso and legs (`SoldierLook.visible_meshes`), so
-## every other choice fits both. It has a row of its own at the top of the screen, not a part row.
+## The character (#678) is the `body` part slot: `male` is the Soldier as built, `female` shows her
+## variant of the face, mouth, torso and legs (`SoldierLook.visible_meshes`), so every other choice
+## fits both. It has a row of its own at the top of the screen, not a part row. The `mouth` slot
+## (#1061) came after it on the wire, and is free to everyone: nothing in `PART_GATES` names it.
 
 const CATALOG_PATH := "res://assets/characters/soldier_parts/parts.json"
 
@@ -31,7 +32,10 @@ const PART_TITLES := {
 	&"neck": "Neckwear",
 	&"arm": "Armwear",
 	&"body": "Character",
+	&"mouth": "Mouth",
 }
+## Rows that do not follow the wire's order: this slot's row comes right after that slot's.
+const ROW_AFTER := {&"mouth": &"head"}
 ## Screen titles of the colour channels.
 const COLOUR_TITLES := {
 	&"skin": "Skin",
@@ -118,12 +122,16 @@ static func option_index(slot: StringName, id: StringName) -> int:
 
 
 ## The slots that give the player a real choice (two parts or more), the character's apart (it
-## has its own row).
+## has its own row), in the order of the screen's rows.
 static func choosable_part_slots() -> Array[StringName]:
 	var out: Array[StringName] = []
 	for slot in part_slots():
-		if slot != BODY_SLOT and options(slot).size() > 1:
-			out.append(slot)
+		if slot == BODY_SLOT or options(slot).size() < 2 or ROW_AFTER.has(slot):
+			continue
+		out.append(slot)
+		for moved: StringName in ROW_AFTER:
+			if ROW_AFTER[moved] == slot:
+				out.append(moved)
 	return out
 
 
