@@ -269,6 +269,129 @@ of the table).
 
 Plots and a recording with sound of both walks are on the pull request.
 
+## The progression sounds (#1062)
+
+The popups of the progression ([design](../design/progression.md)) play **live, in the middle of a fight**. Five
+cues, made here by recipes (`tools/audio/progress_recipes.py`: noise, sines, sawtooth stacks, no sample and no
+audio of any game; the record scratch is a style reference only), in the bank `ui_progress.tres` (deferred, on the
+`UI` bus, so the Settings slider "Interface sounds" at 0 is mute for all of them), played by cue name with no
+source: `UIAudio.play(&"level_up")` and the rest (`UiSoundTable.PROGRESS_CUES`, a row of the role `any`). Issues 1063
+(voice lines) and 1064 (popups) use these names.
+
+| Cue (sound) | What it is | Length | Peak in the mix, menu | Weight |
+| --- | --- | ---: | ---: | --- |
+| `challenge_done` (`ui_challenge_done`) | **a record scratch**: a voiced, buzzy source read at the speed of a hand (forward fast, back, forward with a snap, then the platter let go to coast to a stop), so its pitch and loudness follow the hand, with the groove's hiss, a crackle of dust and the needle's landing; silence after it for the voice line | 0.58 s | -12.6 | 4 commit |
+| `level_up` (`ui_level_up`) | a **snare roll** that quickens and swells (0.4 s) into a short **brass** call: the bugle's 2:3:4 steps of the harmonic series over G3, two short and one held, three detuned sawtooths and a pulse, a slow attack, a low-pass that opens, a little vibrato once held, a low drum under the held note, the slap-back of a far wall | 1.09 s | -10.3 | 5 moment |
+| `tier_up` (`ui_tier_up`) | the same **bigger**: a 0.75 s roll, a low drum hit at its start and again under the call, a stab of the G triad and then the chord a fourth up, held (five voices) | 1.90 s | -10.0 | 5 moment |
+| `unlock` (`ui_unlock`) | the menu's ticket punch and one soft bell (880 Hz) | 0.35 s | -13.2 | 4 commit |
+| `card_earned` (`ui_card_earned`) | an unlock with a rustle of paper before it | 0.50 s | -12.8 | 4 commit |
+
+**What the issue asked and what was built differently**, and why:
+
+- **Peaks.** The issue's table gives the peaks of a menu (the commit's -13, a level up 2 dB over it, a tier up the
+  loudest menu sound). They hold in a menu (above). They could not hold in a fight: at those levels a level up
+  stood **4 dB over a groan from 6 m in its band and 2.4 dB over a soldier's urgent line, and was louder than a
+  pistol shot in loudness** (LUFS-M -18.5 against -24.5): a brass note is sustained, a shot is a click, so equal
+  peaks are not equal loudness. So **while a night runs every progression cue is 10 dB under its menu level**
+  (`UiSounds.FIGHT_DB`, set by `NightSounds` for as long as the night is in the tree; the rows carry `fight`). The
+  popups carry the picture; the sound is a garnish in a fight and the whole moment in a menu.
+- **"The tier up, 6 dB under a pistol shot"** cannot hold in peak next to "the loudest menu sound" and "2 dB over
+  the commit" (the pistol at the muzzle peaks at -10.0, the tier up at -10.0 in a menu). It is read in K-weighted
+  loudness: in a night the tier up's loudest 400 ms is **3.9 LU under** the pistol's, the level up's 4.0, the
+  scratch's 5.9.
+- **Ducking.** None: the cues duck nothing. A sting ducks the Effects and Ambience buses (`DUCK_BUSES`), and a
+  level up that lowered the guns would hide exactly what the player needs; the cue goes under the guns instead
+  (the trim above). The UI bus is not ducked either.
+- **The bus rules** (`ui_sounds.gd`, `sound_mix_default.tres`): the fanfares share the group `ui_fanfare` (one
+  voice; a tier up, priority 96, takes a level up's place), the scratch is `ui_scratch` (one voice), the unlocks
+  `ui_unlock` (three voices). UI sounds are 2D, so they take their voices from the flat pool, and no burst of
+  gunfire (the 3D pool) can take one (`test_progress_sounds.gd` plays a level up in the middle of 60 shots and
+  tails). A level up asked for **while a tier up sounds is not played** (the tier up includes it). A moment that
+  starts while one of another group still sounds (a scratch with a level up) goes **6 dB under** it. Unlocks that
+  come within two seconds of the last climb the **pentatonic scale** (0, +2, +4, +7 semitones, then hold at +7),
+  each step 1 dB quieter, so the tails of a fast run add up to less than a level up; a card and an unlock share
+  the stack.
+
+### Measured levels
+
+`tools/audio/progress_levels.py levels` on the recording of `tests/captures/audio_progress_levels.tscn` (every cue
+through the real service and its rules, the buses at the default settings; no bus has an effect, so two recordings
+added are both played together). Every gate passes; the numbers are pinned in
+`tests/core/progress_sound_levels.json`, which `tests/core/test_progress_sounds.gd` holds the files to (it reads
+the files again, in GDScript, for the length, the peak with the trims, the K-weighted loudness and the first 50
+ms, and agrees with the recording within 1 dB or 1.5 LU).
+
+| Cue | Peak | LUFS-M (loudest 400 ms) | First 50 ms | Centroid | Over the menu bed (-42.3) | In a night, LUFS-M | Under the pistol (-24.5) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| challenge done | -12.6 | -20.4 | 3.2 % | 2.7 kHz | +21.9 LU | -30.4 | 5.9 LU |
+| level up | -10.3 | -18.5 | 0.1 % | 3.3 kHz | +23.8 LU | -28.5 | 4.0 LU |
+| tier up | -10.0 | -18.4 | 0.3 % | 2.4 kHz | +23.9 LU | -28.4 | 3.9 LU |
+| unlock | -13.2 | -26.7 | 27 % | 1.7 kHz | +15.6 LU | -36.7 | 12.2 LU |
+| card earned | -12.8 | -26.2 | 0.4 % | 2.0 kHz | +16.1 LU | -36.2 | 11.7 LU |
+
+(The share of an unlock in its first 50 ms is a fragile number: its bell starts at 45 ms, so a 5 ms shift of the
+start moves it by ten points.) For scale, same recording: the night's beds alone -30.0 LUFS-M, a burst of the
+automatic rifle -17.4, of the heavy gun -16.8, a groan from 6 m -22.1 (from 2 m -18.9), a shriek -15.7, a
+soldier's urgent line -17.5, a footstep of your own -39.6. In a night the level up (-28.5) stands 1.5 LU over the
+beds and well under all the rest: it is a cue, not a sound that competes. No sample clips and no cue is over -10
+dBFS.
+
+- **Does it hide a shot, a groan or a warning?** For each cue and each sound, the sound's loudest moment in its
+  own band (the band that holds 80 percent of its energy; 10 ms for a pistol shot, which is a click, 50 ms for the
+  rest) minus the cue's loudest moment in that band: the worst alignment there is. Gate **6 dB**, at the night's
+  level. The narrowest margin of all cues is **+6.0 dB** (the level up against a groan from 6 m; against the
+  pistol +13.2, a groan from 2 m +10.2, the shriek +16.3, the grenade's beep +16.5, the soldier's lines +12.4 and
+  +11.7). The first set of levels (the menu's peaks in a night) failed many of these cells, the groan from 6 m by
+  10 dB. Bands: the shot 70 Hz to 2.1 kHz, the groan 200 Hz to 1.4 kHz, the shriek 1.4 to 2.1 kHz, the beep 1.1 to
+  2.2 kHz, a soldier's line 100 Hz to 2.4 kHz.
+- **Over a burst of automatic fire.** Each of the scratch, the level up and the tier up started at every 50 ms of
+  a 1.5 s burst of three weapons: the peak of the sum is **-7.4 dBFS at most** (no clipped sample; the gate is
+  -1), and the cue stands out of the burst in **2 to 6 third-octave bands** (200 Hz to 6.3 kHz) by 2.4 to 6.3 dB
+  at the most: a brass note is a few narrow peaks over a broad wash, and a tone is heard in noise when it stands
+  out in its own band. The unlock and the card are not made to be heard over a burst (nothing is sound-only; the
+  popup is the picture), so they are not gated for it.
+- **Eight unlocks.** In two seconds (every 0.25 s) the sum peaks at **-13.6**, at the popups' own 0.15 s at
+  **-11.8**, both under the level up's -10.3.
+- **Moments close together.** A scratch and a level up asked for together peak at -12.6, a level up then a tier up
+  0.3 s later at -10.0 (the tier takes the level up's voice), a tier up then a level up at -9.7 (the level up is
+  not played), a tier up and a scratch at -10.0: all under the ceiling of -9.
+
+### Listened to by description
+
+Nobody listened; the maintainer judges them by ear. What they are, from the spectrograms and the recipes:
+
+- **The scratch.** Three strokes in 0.6 s: a fast forward stroke, a stroke back, a longer forward stroke that ends
+  by coasting to a stop, each a vowel-like buzz that sweeps up in pitch and brightness as the hand speeds up and
+  falls to silence where it reverses (two dips, at 0.15 s and 0.27 s), with a thin hiss and dust on top. It is the
+  *gesture* of a turntable scratch (a record dragged back and forth, ending with a platter let go), made from an
+  oscillator read at a changing speed; there is no record, no beat and no voice in it, and it follows no
+  recording's pitch or rhythm. It is shorter and drier than a musical scratch: a signal that something was done,
+  with room after it for the voice line.
+- **The level up.** About 0.4 s of a snare that quickens (from 14 to 30 strokes a second) and swells, then three
+  brass notes (the second, third and fourth steps of a bugle: G4, D5, G5) with a low drum under the last, held for
+  a third of a second and let go into the echo of a far wall. Honourable and military, not triumphant: a call, not
+  a tune. How it differs from any known fanfare: it has no melody to recognise (the notes are the harmonic series,
+  as on any bugle) and no sample.
+- **The tier up.** The same with a longer roll (0.75 s), a deep drum at its start and under the call, and a chord
+  of five brass voices that rises a fourth and holds: fuller and slower.
+- **A risk.** A fast snare roll is a little like automatic fire. The roll is a darker, rounder drum (a head near
+  200 Hz and wires near 4 kHz) at most 85 percent of the brass's level, and 10 dB under the menu level in a night;
+  whether it is ever taken for a gun is for the ear.
+
+**Not tested** (only a person can say): whether the scratch and the call are pleasing, whether the fanfare in a
+fight is too quiet, and how a real speaker colours them. The night's trim, `UiSounds.FIGHT_DB`, is the one number
+to change (and the pin to renew with `progress_levels.py --pin`) if the ear says so; the gates will say what it
+costs.
+
+### Tools and tests
+
+`tools/audio/progress_recipes.py` (the sounds), `tools/audio/progress_levels.py` (the recording and its gates),
+`tests/captures/audio_progress_levels.tscn` (the recording: `gds godot -- --path game
+res://tests/captures/audio_progress_levels.tscn --write-movie <abs>/m.avi --fixed-fps 60 --resolution 160x90`,
+then `ffmpeg -i m.avi -vn -c:a pcm_s32le m.wav`), `tests/core/test_progress_sounds.gd` (files, pin and rules),
+`tests/core/menu_sound_levels.json` (the targets, also read by `test_menu_sound_levels.gd`, which walks every row
+of the table), `tests/night/test_night_sounds.gd` (the night turns the trim on and off).
+
 ## Tests and tools
 
 - `tests/core/test_ui_sounds.gd` (the rules: gap, burst cap, touch, pointer and keys, after a heavier sound, slider

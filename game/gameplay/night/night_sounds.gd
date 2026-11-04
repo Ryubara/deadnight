@@ -37,6 +37,8 @@ func setup(state: ClientState, world: NightWorld) -> void:
 	_world = world
 	Audio.occluder_mask = OCCLUDER_MASK
 	state.event_received.connect(_on_event)
+	# The popups' sounds are quieter in a fight, so they never hide a shot, a groan or a warning.
+	Audio.ui.in_night = true
 	for id in NIGHT_BEDS:
 		Audio.start_bed(id)
 	# The score comes and goes with the rounds: made ready now, behind the loading screen.
@@ -70,6 +72,7 @@ func _add_footsteps() -> void:
 
 func _exit_tree() -> void:
 	Audio.occluder_mask = 0
+	Audio.ui.in_night = false
 	# A finished night leaves nothing of its own playing (the service outlives it).
 	for id in NIGHT_BEDS:
 		Audio.stop_bed(id)

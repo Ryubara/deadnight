@@ -15,6 +15,7 @@ const BUS_AMBIENCE := &"Ambience"
 ## The bank files the game loads, one family of sounds each. A new bank is listed here.
 const BANKS: Array[String] = [
 	"res://core/audio/banks/ui_menu.tres",
+	"res://core/audio/banks/ui_progress.tres",
 	"res://core/audio/banks/ui.tres",
 	"res://core/audio/banks/weapons.tres",
 	"res://core/audio/banks/firearms_2.tres",
