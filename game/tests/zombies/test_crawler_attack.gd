@@ -1,8 +1,10 @@
 extends GdUnitTestSuite
-## A crawler attacks from the floor (#971): it used to play the walker's standing `Punch`, so its
-## body rose to the height of a walker to strike and dropped again. It has an attack of its own now:
-## a clip that coils on the arms, throws the body along the floor and grabs at the ankles; a reach
-## shorter than the walker's, a longer telegraph; and a body that never leaves the crawl's height.
+## A crawler does everything from the floor (#971, #1000): it used to play the walker's standing
+## clips (`Punch`, `HitReact`, `Death`), so its body rose to the height of a walker to strike, to
+## flinch from a shot and to die. It has a clip of its own for each now: an attack that coils on the
+## arms, throws the body along the floor and grabs at the ankles (a reach shorter than the walker's
+## and a longer telegraph), a flinch on its hands and a fall to the floor; and a body that never
+## leaves the crawl's height in any of them, measured through the view and the real night.
 
 ## The most a crawler's highest point may stand over what its own crawl reaches, metres.
 const CRAWL_TOP_SLACK := 0.05
@@ -129,6 +131,28 @@ func test_the_attack_clip_never_rises_above_the_crawls_own_height() -> void:
 	probe.free_model()
 
 
+func test_the_flinch_and_the_fall_never_rise_above_the_crawls_own_height() -> void:
+	var probe := ZombieMeshProbe.make(self, &"crawler")
+	probe.use_extra_clips()
+	var crawl_top := _top_of(probe, &"Crawl")
+	var stagger_top := _top_of(probe, &"extra/Crawl_Stagger")
+	var death_top := _top_of(probe, &"extra/Crawl_Death")
+	assert_float(stagger_top).is_less_equal(crawl_top + CRAWL_TOP_SLACK)
+	assert_float(death_top).is_less_equal(crawl_top + CRAWL_TOP_SLACK)
+	# The walker's clips on this body are what it used to play: far higher (1.66 and 1.81 m).
+	assert_float(_top_of(probe, &"HitReact")).is_greater(crawl_top * 1.5)
+	assert_float(_top_of(probe, &"Death")).is_greater(crawl_top * 2.0)
+	probe.free_model()
+
+
+func test_the_flinch_is_as_long_as_the_staggers_it_plays_in() -> void:
+	var probe := ZombieMeshProbe.make(self, &"crawler")
+	probe.use_extra_clips()
+	var stagger := ZombieTuning.shipped().stagger_seconds
+	assert_float(probe.length_of(&"extra/Crawl_Stagger")).is_equal_approx(stagger, 0.05)
+	probe.free_model()
+
+
 func test_the_grab_reaches_to_the_edge_of_the_blow() -> void:
 	var probe := ZombieMeshProbe.make(self, &"crawler")
 	probe.use_extra_clips()
@@ -182,6 +206,64 @@ func test_the_attack_ends_back_in_the_crawl() -> void:
 	assert_str(String(_playback(view).get_current_node())).is_equal("crawl")
 
 
+func test_a_crawler_that_is_hit_or_dies_plays_its_own_clip_and_a_walker_the_walkers() -> void:
+	for case: Array in [
+		[&"crawler", ZombieBody.Mode.STAGGER, "crawl_stagger"],
+		[&"crawler", ZombieBody.Mode.DYING, "crawl_die"],
+		[&"walker", ZombieBody.Mode.STAGGER, "stagger"],
+		[&"walker", ZombieBody.Mode.DYING, "die"],
+	]:
+		var view := _view(case[0])
+		view.apply(_entry(case[0], case[1]), 0.016)
+		view.advance_animation()
+		assert_str(String(_playback(view).get_current_node())).is_equal(case[2])
+
+
+func test_a_walker_that_loses_its_legs_in_a_blast_flinches_on_the_floor() -> void:
+	# The blast's path: the sim staggers the walker and its look becomes the crawler's.
+	var view := _view(&"walker")
+	view.apply(_entry(&"walker", ZombieBody.Mode.CHASE), 0.016)
+	view.dress(ZombieModels.scene(&"crawler"), &"crawler")
+	view.apply(_entry(&"crawler", ZombieBody.Mode.STAGGER), 0.016)
+	view.advance_animation()
+	assert_str(String(_playback(view).get_current_node())).is_equal("crawl_stagger")
+
+
+## Every action a zombie takes (`ZombieBody.Mode`) for the body that lies on the floor: the highest
+## bone the view's skeleton reaches while it plays, stepped by hand, never stands over the crawl's
+## own. The list of actions is the enum's, so a new one is measured the day it is added. Tearing
+## boards is not one of them: a crawler cannot tear (`ZombieSim._work_the_boards` sends it under).
+func test_every_action_of_a_crawler_stays_within_the_crawls_height() -> void:
+	var crawl_top := _top_through(&"crawler", ZombieBody.Mode.CHASE)
+	assert_float(crawl_top).is_greater(0.0)
+	for mode: int in ZombieBody.Mode.values():
+		var top := _top_through(&"crawler", mode)
+		(
+			assert_float(top)
+			. override_failure_message(
+				(
+					"a crawler in mode %s reached %.2f m (%.2f m crawling)"
+					% [ZombieBody.Mode.keys()[mode], top, crawl_top]
+				)
+			)
+			. is_less_equal(crawl_top + BONE_SLACK)
+		)
+	# The same walk over the walker shows the measure sees a body stand up.
+	assert_float(_top_through(&"walker", ZombieBody.Mode.STAGGER)).is_greater(crawl_top * 1.5)
+
+
+## The highest bone of a `look`'s view over two seconds in `mode`, stepped by hand.
+func _top_through(look: StringName, mode: int) -> float:
+	var view := _view(look)
+	view.apply(_entry(look, mode), 0.016)
+	var top := -INF
+	for _i in 120:
+		view.tree.advance(ZombieSim.STEP)
+		top = maxf(top, _highest_bone(view))
+	view.queue_free()
+	return top
+
+
 # --- The real night: the body stays down while it attacks ---
 
 
@@ -227,6 +309,51 @@ func test_a_crawler_in_the_real_night_never_rises_above_its_crawl_while_it_attac
 		)
 		. is_less_equal(crawl_top + BONE_SLACK)
 	)
+	night.queue_free()
+
+
+func test_a_crawler_in_the_real_night_never_rises_above_its_crawl_when_hit_and_when_it_dies(
+) -> void:
+	var night := await NightFixture.start(
+		self, Night.Mode.MANUAL, NightFixture.only_tuning(&"crawler"), 7
+	)
+	night.view.horde.throttle.set_process(false)
+	var id := NightFixture.first_of_type(night, &"crawler")
+	assert_int(id).is_greater_equal(0)
+	var body: ZombieBody = night.server.sim.zombies[id]
+	var player_at := night.state.position()
+	body.position = Vector3(player_at.x, body.position.y, player_at.z - 6.0)
+	var tops := {}
+	var ticks := 0
+	var killed := false
+	for _i in 600:
+		night.tick()
+		ticks += 1
+		var view := night.view.horde.view_of(id)
+		if view == null or body.mode == ZombieBody.Mode.EMERGING:
+			continue
+		if ticks % 120 == 0 and body.mode == ZombieBody.Mode.CHASE:
+			night.server.sim.react_to_hit(id)
+		if ticks == 480 and not killed:
+			killed = true
+			night.server.sim.begin_death(id)
+		view.accumulated = Night.STEP
+		view.advance_animation()
+		var mode_name: String = ZombieBody.Mode.keys()[body.mode]
+		tops[mode_name] = maxf(tops.get(mode_name, -INF), _highest_bone(view))
+	for mode_name: String in ["CHASE", "STAGGER", "DYING"]:
+		assert_bool(tops.has(mode_name)).override_failure_message("never in " + mode_name).is_true()
+	for mode_name: String in tops:
+		(
+			assert_float(tops[mode_name])
+			. override_failure_message(
+				(
+					"its body rose to %.2f m in %s (%.2f m crawling)"
+					% [tops[mode_name], mode_name, tops["CHASE"]]
+				)
+			)
+			. is_less_equal(tops["CHASE"] + BONE_SLACK)
+		)
 	night.queue_free()
 
 
