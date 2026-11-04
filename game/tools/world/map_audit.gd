@@ -3,16 +3,17 @@ extends SceneTree
 ##
 ## - the dead's spawn points: inside a solid or off the floor, in view of the players' start, how
 ##   far from the nearest breach (a `Barricade`), and the nearest lamp;
-## - the shop spots (a press reaches a flat distance of `use_reach`, with no wall test): for each,
+## - the shop spots (a press reaches a flat distance of `spot_reach`, with no wall test): for each,
 ##   how many standing places within reach have a wall between them and the spot.
 ##
 ##   godot --headless --path game -s res://tools/world/map_audit.gd -- \
 ##     --scene=res://world/drive_in_greybox.tscn --out=<absolute>.json
 
-const REACH := 3.2
 const GRID := 0.5
 const EYE := 1.0
 const WORLD := 1
+## A shop spot's reach (`NightTuning.spot_reach`, from its marker).
+var _reach := NightTuning.shipped().spot_reach
 
 var _space: PhysicsDirectSpaceState3D
 var _scene: Node3D
@@ -114,11 +115,11 @@ func _spots() -> Array:
 		var total := 0
 		var blocked := 0
 		var worst := []
-		var x := -REACH
-		while x <= REACH:
-			var z := -REACH
-			while z <= REACH:
-				if Vector2(x, z).length() <= REACH:
+		var x := -_reach
+		while x <= _reach:
+			var z := -_reach
+			while z <= _reach:
+				if Vector2(x, z).length() <= _reach:
 					var floor_y := _floor_y(Vector3(at.x + x, at.y + 0.5, at.z + z))
 					if floor_y != INF and absf(floor_y - at.y) < 0.6:
 						var spot_eye := Vector3(at.x + x, floor_y + EYE, at.z + z)

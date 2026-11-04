@@ -67,10 +67,11 @@ func _play() -> void:
 	var crane_at: Vector3 = _night.view.crane.crane.global_position
 	var standing := at["position"] as Vector3
 	var toward := crane_at - standing
-	# Two metres back from the glass, still in reach of the spot, so the whole crane is in frame.
+	# Back from the glass and to one side, still in reach of the spot (`spot_reach`, 1.5 m), so the
+	# whole crane is in frame.
 	var flat := Vector3(toward.x, 0.0, toward.z).normalized()
-	var side := Vector3(flat.z, 0.0, -flat.x) * 1.2
-	_night.player().teleport(standing - flat * 1.6 + side + Vector3(0.0, 0.1, 0.0))
+	var side := Vector3(flat.z, 0.0, -flat.x) * 0.9
+	_night.player().teleport(standing - flat * 1.0 + side + Vector3(0.0, 0.1, 0.0))
 	_yaw = atan2(-toward.x, -toward.z)
 	_night.player().camera_rig.yaw = _yaw
 	_night.player().camera_rig.pitch = SHOULDER_PITCH

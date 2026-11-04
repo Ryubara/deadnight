@@ -374,6 +374,7 @@ func add_body(spawn: Vector3, local_input: bool, drawn: bool = true) -> Player:
 	var body := PLAYER_SCENE.instantiate() as Player
 	body.local_input = local_input
 	body.capture_mouse = local_input
+	body.dead = DeadField.new()
 	if not drawn:
 		body.strip_model()
 	if not local_input:

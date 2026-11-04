@@ -1994,3 +1994,11 @@ Measured (`bots_soak.tscn --map=small_indoor`, Regular, seeds 1 to 5, headless; 
 
 A lone bot that buys the tonics lasts twice the rounds it did: the machines are what the economy's late points are for.
 `test_smallmap_bot_night.gd` holds the solo night over seeds 1, 3, 4 and 7 (it flaked on a seed picked to pass).
+
+## Walking round the dead (#914)
+
+The dead stop a body now, so a path that runs through a standing zombie is a way nowhere. `BotLegs._avoid_dead` bends the
+way round a zombie the bot believes in (`BotClient._dead_near`: within 2.4 m, ahead, its middle within 1 m of the way),
+on the side the way leans (by seat when it is dead ahead), and slows the pace as the gap closes; the stuck ladder still
+climbs if a body is held anyway. Bots alone barely meet the dead at rounds up to 9 (held 0.04 percent of the time, the same
+rounds as with the dead off): [The player and the dead](dead-contact.md#the-variants-and-the-numbers).
