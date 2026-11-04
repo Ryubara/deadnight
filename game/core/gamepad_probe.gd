@@ -40,8 +40,17 @@ static func in_frame() -> bool:
 		var framed: Variant = JavaScriptBridge.eval(
 			"(function(){try{return window.top!==window}catch(e){return true}})()"
 		)
-		_framed = 1 if framed == true else 0
+		_framed = 1 if truthy(framed) else 0
 	return _framed == 1
+
+
+## What the page answered as a yes or a no. The engine's web runtime hands a script's `true` back as
+## the integer 1 (an `int`, not a `bool`), and `framed == true` on an `int` is an invalid operation
+## that a release build stops the function at without a word: the answer was never kept, so the
+## page was asked again at every read (about 5 evals a second in every page, #983). `bool(...)`
+## takes both, and `null` (a script with no value) as no.
+static func truthy(answer: Variant) -> bool:
+	return answer != null and bool(answer)
 
 
 ## The page's own report as a dictionary (empty off the web, outside a frame, or when the page has
