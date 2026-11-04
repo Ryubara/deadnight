@@ -1,10 +1,10 @@
 extends GdUnitTestSuite
-## The ladder of wearables and colours (#1065): `unlocks.json` is the one source of what each level
-## opens; the catalogue reads it into its gates, a look wearing what the level does not open is
-## repaired on load, and the server drops it from a client that does not have it. Weapons and tonics
-## are never in it.
+## The ladder of wearables and colours (#1065): `unlocks.json` (the one table of what each level
+## gives, the popups' and the maps' too) says what each level opens; the catalogue reads it into its
+## gates, a look wearing what the level does not open is repaired on load, and the server drops it
+## from a client that does not have it. Weapons and tonics are never in it.
 
-const LADDER_PATH := "res://assets/characters/soldier_parts/unlocks.json"
+const LADDER_PATH := "res://gameplay/progression/unlocks.json"
 const PARTS_PATH := "res://assets/characters/soldier_parts/parts.json"
 ## The slots that carry the ladder's wearables; every other slot is free forever.
 const WEARABLE_SLOTS: Array[StringName] = [
@@ -34,6 +34,31 @@ func _json(path: String) -> Dictionary:
 	return json.data
 
 
+## The wardrobe's rows of the table: `parts` (`slot`, `id`, `level`, `available`) and `colours`
+## (`id`, `level`); the starting pieces have no row.
+func _ladder() -> Dictionary:
+	var json := JSON.new()
+	assert_int(json.parse(FileAccess.get_file_as_string(LADDER_PATH))).is_equal(OK)
+	var parts: Array[Dictionary] = []
+	var colours: Array[Dictionary] = []
+	for row: Dictionary in json.data:
+		if row["slot"] == "colour":
+			colours.append({"id": row["item"], "level": int(row["level"])})
+		elif row.has("part"):
+			(
+				parts
+				. append(
+					{
+						"slot": String(row["part"]).get_slice("/", 0),
+						"id": String(row["part"]).get_slice("/", 1),
+						"level": int(row["level"]),
+						"available": row["available"],
+					}
+				)
+			)
+	return {"parts": parts, "colours": colours}
+
+
 func _write_profile(level: int) -> void:
 	var profile := Profile.new()
 	profile.xp = LevelCurve.xp_for(level)
@@ -41,38 +66,43 @@ func _write_profile(level: int) -> void:
 
 
 func test_the_ladder_is_the_design_pages_table() -> void:
-	var ladder := _json(LADDER_PATH)
+	var ladder := _ladder()
 	var parts: Array = ladder["parts"]
-	var starting := parts.filter(func(e: Dictionary) -> bool: return int(e["level"]) == 1)
-	var locked := parts.filter(func(e: Dictionary) -> bool: return int(e["level"]) > 1)
-	# Two of each of the six wearables to start with, and 26 more up the ladder.
-	assert_int(starting.size()).is_equal(12)
-	assert_int(locked.size()).is_equal(26)
+	var art := _json(PARTS_PATH)["slots"] as Dictionary
+	# 26 wearables up the ladder, and two of each of the six to start with (a model with no row).
+	assert_int(parts.size()).is_equal(26)
 	for slot in WEARABLE_SLOTS:
-		var here := starting.filter(func(e: Dictionary) -> bool: return e["slot"] == String(slot))
-		assert_int(here.size()).override_failure_message("two %s to start" % slot).is_equal(2)
+		var on_ladder := parts.filter(func(e: Dictionary) -> bool: return e["slot"] == String(slot))
+		var starting := 0
+		for id: String in art[slot]["parts"]:
+			var listed := on_ladder.any(func(e: Dictionary) -> bool: return e["id"] == id)
+			if id != "none" and not listed:
+				starting += 1
+		assert_int(starting).override_failure_message("two %s to start" % slot).is_equal(2)
+	# Ten colours of the 16 up the ladder, and the six that are not on it to start with.
 	var colours: Array = ladder["colours"]
-	assert_int(colours.size()).is_equal(16)
-	var starting_colours := (
-		colours
-		. filter(func(e: Dictionary) -> bool: return int(e["level"]) == 1)
-		. map(func(e: Dictionary) -> String: return e["id"])
+	assert_int(colours.size()).is_equal(10)
+	var names: Array = _json(PARTS_PATH)["palette_names"]["cloth"]
+	var on_ladder_names := colours.map(func(e: Dictionary) -> String: return e["id"])
+	var starting_colours := names.filter(
+		func(n: String) -> bool: return not on_ladder_names.has(n.replace(" ", "_"))
 	)
 	assert_array(starting_colours).contains_exactly(STARTING_COLOURS)
 	for entry: Dictionary in parts + colours:
-		assert_int(int(entry["level"])).is_between(1, LevelCurve.MAX_LEVEL)
+		assert_int(int(entry["level"])).is_between(2, LevelCurve.MAX_LEVEL)
 
 
 func test_only_wearables_and_cloth_are_on_the_ladder() -> void:
-	var ladder := _json(LADDER_PATH)
+	var ladder := _ladder()
 	for entry: Dictionary in ladder["parts"]:
 		(
 			assert_bool(StringName(entry["slot"]) in WEARABLE_SLOTS)
 			. override_failure_message("%s is not a wearable slot" % entry["slot"])
 			. is_true()
 		)
+	var names: Array = _json(PARTS_PATH)["palette_names"]["cloth"]
 	for entry: Dictionary in ladder["colours"]:
-		assert_str(entry["palette"]).is_equal("cloth")
+		assert_bool(names.has(String(entry["id"]).replace("_", " "))).is_true()
 	# Nothing free is gated: face, hair, character, mouth, armband, skin and hair colour.
 	for slot in FREE_SLOTS:
 		for option: Dictionary in LookCatalog.options(slot):
@@ -129,27 +159,21 @@ func test_the_gate_words_say_the_level_and_for_a_player_where_they_stand() -> vo
 
 func test_what_the_art_has_and_what_the_ladder_promises_agree() -> void:
 	var art := _json(PARTS_PATH)["slots"] as Dictionary
-	var ladder := _json(LADDER_PATH)["parts"] as Array
-	var named := {}
-	for entry: Dictionary in ladder:
-		named["%s/%s" % [entry["slot"], entry["id"]]] = entry
+	# The table says a piece is available exactly when the parts have a model for it: a drawn piece
+	# whose row still says no is never earned by anyone (the level popups skip it), a row that says
+	# yes without a model dresses nobody.
+	for entry: Dictionary in _ladder()["parts"]:
 		var slot_parts: Dictionary = art[entry["slot"]]["parts"]
-		if entry["available"] and not slot_parts.has(entry["id"]):
-			fail(
+		(
+			assert_bool(entry["available"])
+			. override_failure_message(
 				(
-					"%s/%s says it is available and the parts have no model for it"
-					% [entry["slot"], entry["id"]]
+					"%s/%s: the row says %s and the parts say %s"
+					% [entry["slot"], entry["id"], entry["available"], slot_parts.has(entry["id"])]
 				)
 			)
-	# A model of a wearable slot is on the ladder (the free "None" apart).
-	for slot in WEARABLE_SLOTS:
-		for id: String in art[slot]["parts"]:
-			if id != "none":
-				(
-					assert_bool(named.has("%s/%s" % [slot, id]))
-					. override_failure_message("%s/%s has a model and no level" % [slot, id])
-					. is_true()
-				)
+			. is_equal(slot_parts.has(entry["id"]))
+		)
 	# A piece with no model yet is listed for the grid by its icon, and only that.
 	for slot in WEARABLE_SLOTS:
 		for waiting: Dictionary in LookCatalog.pending(slot):
@@ -160,7 +184,7 @@ func test_what_the_art_has_and_what_the_ladder_promises_agree() -> void:
 
 
 func test_every_wearable_the_ladder_names_has_an_icon() -> void:
-	for entry: Dictionary in _json(LADDER_PATH)["parts"]:
+	for entry: Dictionary in _ladder()["parts"]:
 		(
 			assert_bool(ItemIcons.has(StringName(entry["slot"]), StringName(entry["id"])))
 			. override_failure_message("no icon for %s/%s" % [entry["slot"], entry["id"]])

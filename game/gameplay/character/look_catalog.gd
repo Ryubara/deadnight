@@ -58,10 +58,12 @@ const ARMBAND_COLOURS: Array[Color] = [
 	Color("f2f2f2"),
 ]
 
-## The ladder: which wearables and colours a level opens, written beside the parts
-## (`unlocks.json`, #1065). A part or a colour that it does not name, or names at level 1, is free:
+## The ladder: which wearables and colours a level opens, the rows of the progression table
+## (`gameplay/progression/unlocks.json`, #1065). A part or colour it does not name is free:
 ## it has no gate.
-const UNLOCKS_PATH := "res://assets/characters/soldier_parts/unlocks.json"
+const UNLOCKS_PATH := "res://gameplay/progression/unlocks.json"
+## The palette the ladder's colours belong to (the three cloth channels share it).
+const CLOTH := "cloth"
 ## The slot that holds the character, and its two choices.
 const BODY_SLOT := &"body"
 const MALE := &"male"
@@ -76,7 +78,7 @@ static var _presets: Array[Dictionary] = []
 static var _part_gates: Dictionary = {}
 static var _palette_gates: Dictionary = {}
 static var _pending: Dictionary = {}
-static var _ladder_parts: Array = []
+static var _ladder_parts: Array[Dictionary] = []
 
 
 ## The part slots, in wire order.
@@ -278,33 +280,51 @@ static func _load() -> void:
 		)
 
 
-## Reads `unlocks.json` into the two gate tables, by the ids of `parts.json` and its palette names.
-## The palette's names are read here (`_data` is already set) so a colour is found by name.
+## Reads the ladder (`unlocks.json`: one row `{level, slot, item, available}` per reward, shared
+## with the level popups and the maps) into the two gate tables. A wearable's row carries `part`,
+## its catalogue key ("torso/rolled"), and a `label` when the art is not drawn; a `colour` row's
+## `item` is a name of the cloth palette. Every other row is not the wardrobe's.
 static func _read_unlocks() -> void:
 	_part_gates.clear()
 	_palette_gates.clear()
 	_pending.clear()
+	_ladder_parts.clear()
 	var json := JSON.new()
 	if json.parse(FileAccess.get_file_as_string(UNLOCKS_PATH)) != OK:
 		push_error("LookCatalog: cannot read %s" % UNLOCKS_PATH)
 		return
-	var ladder: Dictionary = json.data
-	_ladder_parts = ladder.get("parts", [])
-	for entry: Dictionary in _ladder_parts:
-		if int(entry["level"]) > 1:
-			_part_gates["%s/%s" % [entry["slot"], entry["id"]]] = {"level": int(entry["level"])}
-	for entry: Dictionary in ladder.get("colours", []):
-		if int(entry["level"]) <= 1:
-			continue
-		var source: String = entry["palette"]
-		for channel_name: String in _data["channels"]:
-			if _data["channels"][channel_name] != source:
-				continue
-			var at: int = (_data["palette_names"][source] as Array).find(
-				entry["id"].replace("_", " ")
+	for row: Dictionary in json.data:
+		var level := int(row["level"])
+		if row["slot"] == "colour":
+			_read_colour_row(String(row["item"]), level)
+		elif row.has("part"):
+			var key := String(row["part"])
+			if level > 1:
+				_part_gates[key] = {"level": level}
+			(
+				_ladder_parts
+				. append(
+					{
+						"slot": StringName(key.get_slice("/", 0)),
+						"id": StringName(key.get_slice("/", 1)),
+						"level": level,
+						"label": row.get("label", ""),
+					}
+				)
 			)
-			if at >= 0:
-				_palette_gates["%s/%d" % [channel_name, at]] = {"level": int(entry["level"])}
+
+
+## A colour of the cloth palette that a level opens, on each of the channels that use the palette.
+static func _read_colour_row(item: String, level: int) -> void:
+	if level <= 1:
+		return
+	for channel_name: String in _data["channels"]:
+		var source: String = _data["channels"][channel_name]
+		if source != CLOTH:
+			continue
+		var at: int = (_data["palette_names"][source] as Array).find(item.replace("_", " "))
+		if at >= 0:
+			_palette_gates["%s/%d" % [channel_name, at]] = {"level": level}
 
 
 ## The ladder's wearables of `slot` that `parts` (the slot's entries of `parts.json`) lacks.
@@ -313,14 +333,16 @@ static func _pending_of(slot: StringName, parts: Dictionary) -> Array:
 	for entry: Dictionary in _ladder_parts:
 		if StringName(entry["slot"]) != slot or parts.has(entry["id"]):
 			continue
-		var label: String = entry.get("label", String(entry["id"]).capitalize())
+		var label: String = (
+			entry["label"] if entry["label"] != "" else String(entry["id"]).capitalize()
+		)
 		(
 			out
 			. append(
 				{
 					"id": StringName(entry["id"]),
 					"label": label,
-					"label_female": entry.get("label_female", label),
+					"label_female": label,
 					"gate": {"level": int(entry["level"])},
 				}
 			)

@@ -342,11 +342,10 @@ to win the night; the edge is audited with a seeded bot night so it stays inside
   pieces only, so a new player has a quick start. Equipping a costume sets the look; the player may then change any
   part they own.
 - **Built (#1065):** `LookUnlocks` asks a gate `{"level": n}`, and the part and palette gates are read from
-  `unlocks.json` beside `parts.json` (`LookCatalog.part_gates()`, `palette_gates()`). The saved look and the wire format
-  are unchanged (an index per part); a look wearing something the player does not own is repaired on load, and the game
-  server drops it for a player whose level it knows (the local player's, from their profile; a remote player's level
-  waits for the ticket to carry it). The grid, the silhouettes and the hover words are on
-  [Customization](customization.md#the-screen).
+  `unlocks.json` (the same table, extended with a `part` key on each wearable's row; `LookCatalog.part_gates()`,
+  `palette_gates()`). The saved look and the wire format are unchanged (an index per part); a look wearing something
+  the player does not own is repaired on load, and the game server drops it for a player whose level it knows. The
+  grid, the silhouettes and the hover words are on [Customization](customization.md#the-screen).
 
 ![The wardrobe grid](../research/progression-grid.png)
 

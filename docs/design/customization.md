@@ -92,10 +92,11 @@ animation tree and the weapon mount work as before; until a look arrives a body 
 - **Identical looks are told apart, the same way everywhere.** `LookResolver` walks the players by id; a look already
   taken has its main colour moved on three palette places (more, if that is taken too). It needs no message: every client
   reaches the same answer from the same looks, whatever order they arrived in.
-- **Locked options show as silhouettes.** A gate is `{"level": n}` (the account level that opens it) or `{"order": name}`
-  (a challenge's reward, none yet). The table is `unlocks.json` beside `parts.json`, read by `LookCatalog`
-  (`part_gates()`, `palette_gates()`): a part or colour it does not name, or names at level 1, is free. A preset may wear
-  gated pieces (costumes, #1066, will be made of them); one put on a player is repaired by what they own.
+- **Locked options show as silhouettes.** A gate is `{"level": n}` (the account level that opens it) or
+  `{"order": name}` (a challenge's reward, none yet). The table is the ladder's `unlocks.json`
+  (`game/gameplay/progression/`, the one table the level popups and the maps read too), read by `LookCatalog`
+  (`part_gates()`, `palette_gates()`): a part or colour it does not name is free. A preset may wear gated pieces
+  (costumes, #1066, will be made of them); one put on a player is repaired by what they own.
 - **A look is repaired to what its wearer owns.** `CharacterLook.without_locked` puts a piece the player does not own back
   to **the first piece of the slot that they may wear** (a vest, sneakers, trousers, no hat) and a colour to the first
   they may use (black), on load (`LookStore.load_look`, the level read from the profile file), on Save, and on the server
@@ -112,7 +113,7 @@ animation tree and the weapon mount work as before; until a look arrives a body 
 | `game/net/look_wire.gd`, `look_server.gd`, `look_registry.gd` | the messages, the server side, the client table |
 | `game/ui/screens/customize_screen.gd`, `look_preview.gd` | the wardrobe: the tabs, the pages, the detail line |
 | `game/ui/wardrobe/wardrobe_cell.gd`, `wardrobe_tab.gd`, `item_icons.gd` | a cell of the grid, a tab of the strip, the drawings |
-| `game/assets/characters/soldier_parts/unlocks.json` | the ladder: what each level opens |
+| `game/gameplay/progression/unlocks.json` | the ladder: what each level gives (the wardrobe's rows are the wearables and `colour`) |
 
 ## The parts
 
@@ -125,10 +126,10 @@ colour, and the two are never confused because only the seat's is emissive and f
 
 Saved and sent looks refer to parts by index (wire) or by id (save). Parts and palette entries are only ever added at
 the end, as the catalogue page says. The web preset includes `*.json` in its export filter, and CI opens the wardrobe
-in a browser ([web export](../research/web-export.md)). What a locked entry asks for is `unlocks.json`: `parts` (slot, id,
-level, `available`, and a `label` for a piece with no model yet) and `colours` (palette, name, level). `available` says
-whether the art existed when the line was written: the catalogue goes by `parts.json` (a model there is a model), and a
-test fails for a line that says available with no model, for a model with no line, and for a piece with no icon. A new
-piece is a line in `unlocks.json`, an entry in `parts.json` and a drawing in `ItemIcons`. The seven pieces of wave two
-(#1078) are already lines with `available: false` and the ids the art should use: `feet/skates`, `legs/skirt`,
-`torso/creature`, `feet/rubber`, `headwear/creature`, `neck/filmstrip` and `torso/varsity`.
+in a browser ([web export](../research/web-export.md)). What a locked entry asks for is a row of `unlocks.json`
+(`{level, slot, item, available}`): a wearable's row also has `part`, its key in the catalogue (`torso/rolled`), and a
+`label` while the art is not drawn; a `colour` row's `item` is a name of the cloth palette. A piece or colour with no row
+is free (the starting ones). `available` is true exactly when `parts.json` has a model for the piece, and a test fails
+otherwise, and for a row with no icon. A new piece is a row in `unlocks.json`, an entry in `parts.json` and a drawing in
+`ItemIcons`. The seven pieces of wave two (#1078) are already rows with `available: false` and the ids the art
+should use: `feet/skates`, `legs/skirt`, `torso/creature`, `feet/rubber`, `headwear/creature`, `neck/filmstrip` and `torso/varsity`.
