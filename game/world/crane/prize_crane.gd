@@ -65,6 +65,16 @@ const GLASS := Color(0.55, 0.8, 0.9, 0.16)
 ## The board's light: warm, bright behind the prize so it stands out as a shape.
 const BOARD_LIGHT := Color(1.0, 0.86, 0.55)
 const BEAM_HEIGHT := 36.0
+## The beam's radii at its foot and at `BEAM_HEIGHT`: a beam cut short by a ceiling keeps the same
+## taper, so it is the same cone seen through a shorter window.
+const BEAM_FOOT_RADIUS := 0.95
+const BEAM_TOP_RADIUS := 0.18
+## The beam fades out over this many metres before the first solid over the crane, or over this
+## share of a shorter beam, so it ends in light and not at a cut.
+const BEAM_SOFT_END := 1.5
+const BEAM_SOFT_SHARE := 0.6
+## The shortest beam (m): a ceiling that touches the marquee leaves a glow too thin to see.
+const BEAM_MIN := 0.05
 ## The beam's edge fades as the facing of its wall to the eye to this power (a flat additive wall
 ## has a rim), and the beam nearer the camera than this (metres) fades out.
 const BEAM_RIM_POWER := 2.0
@@ -97,6 +107,7 @@ var _cable: MeshInstance3D
 var _claw: Node3D
 var _prongs: Array[Node3D] = []
 var _beam: MeshInstance3D
+var _beam_length := BEAM_HEIGHT
 var _light: OmniLight3D
 var _sparks: CPUParticles3D
 var _red := StandardMaterial3D.new()
@@ -156,6 +167,39 @@ func dud_visible() -> bool:
 
 func beam_visible() -> bool:
 	return _beam.visible
+
+
+## How long the beam is now (m), from the top of the marquee.
+func beam_length() -> float:
+	return _beam_length
+
+
+## The beam's length over a crane that stands at `stand` (its floor point): up to the first solid
+## over the marquee, or `BEAM_HEIGHT` where there is none (the sky). A ray, so a crane asks once
+## when it is placed, never a frame.
+static func beam_length_over(space: PhysicsDirectSpaceState3D, stand: Vector3) -> float:
+	var foot := stand + Vector3.UP * MARQUEE_TOP
+	var query := PhysicsRayQueryParameters3D.create(
+		foot, foot + Vector3.UP * BEAM_HEIGHT, PhysicsLayers.WORLD
+	)
+	var hit := space.intersect_ray(query)
+	if hit.is_empty():
+		return BEAM_HEIGHT
+	return clampf((hit["position"] as Vector3).y - foot.y, BEAM_MIN, BEAM_HEIGHT)
+
+
+## Cuts the beam to `length` metres from the top of the marquee, the same cone shorter and softly
+## ending: one mesh and one uniform, never drawn any differently.
+func set_beam_length(length: float) -> void:
+	_beam_length = clampf(length, BEAM_MIN, BEAM_HEIGHT)
+	var cone := _beam.mesh as CylinderMesh
+	cone.height = _beam_length
+	cone.top_radius = lerpf(BEAM_FOOT_RADIUS, BEAM_TOP_RADIUS, _beam_length / BEAM_HEIGHT)
+	_beam.position.y = MARQUEE_TOP + _beam_length / 2.0
+	_beam_material.set_shader_parameter(&"cut", _beam_length)
+	_beam_material.set_shader_parameter(
+		&"soft_end", minf(BEAM_SOFT_END, _beam_length * BEAM_SOFT_SHARE)
+	)
 
 
 ## How far the board is out of the front: 0 in, 1 all the way out toward the player.
@@ -707,10 +751,16 @@ uniform float strength = 1.0;
 // rim reads as a solid column from the shoulder camera (#854).
 uniform float rim_power = 0.0;
 uniform float near_fade = 0.0;
-varying float up;
-void vertex() { up = clamp(0.5 + VERTEX.y / %f, 0.0, 1.0); }
+// The beam is cut at `cut` metres (the first solid over the crane) and fades out over the last
+// `soft_end` of it. `rise` is the height over the foot; the brightness falls as if the beam ran
+// the whole way up, so a cut beam is the same light as the open one, shorter.
+uniform float cut = %f;
+uniform float soft_end = 0.5;
+varying float rise;
+void vertex() { rise = VERTEX.y + cut * 0.5; }
 void fragment() {
-	float fade = pow(1.0 - up, 1.4);
+	float fade = pow(1.0 - clamp(rise / %f, 0.0, 1.0), 1.4);
+	fade *= smoothstep(cut, cut - soft_end, rise);
 	float face = abs(dot(normalize(NORMAL), normalize(VIEW)));
 	float soft = pow(face, rim_power);
 	if (near_fade > 0.0) {
@@ -720,15 +770,15 @@ void fragment() {
 	ALPHA = tint.a * fade * strength * soft;
 }
 """
-		% BEAM_HEIGHT
+		% [BEAM_HEIGHT, BEAM_HEIGHT]
 	)
 	_beam_material = ShaderMaterial.new()
 	_beam_material.shader = shader
 	_beam_material.set_shader_parameter(&"rim_power", BEAM_RIM_POWER)
 	_beam_material.set_shader_parameter(&"near_fade", BEAM_NEAR_FADE)
 	var cone := CylinderMesh.new()
-	cone.top_radius = 0.18
-	cone.bottom_radius = 0.95
+	cone.top_radius = BEAM_TOP_RADIUS
+	cone.bottom_radius = BEAM_FOOT_RADIUS
 	cone.height = BEAM_HEIGHT
 	cone.radial_segments = 16
 	cone.rings = 1

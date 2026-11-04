@@ -68,8 +68,8 @@ func _wall() -> void:
 	var spot := _spot(&"wall", &"weapon_shotgun")
 	var standing := spot["position"] as Vector3
 	_night.player().teleport(standing + Vector3(0.0, 0.1, 0.0))
-	# The weapon hangs on the wall ahead of the marker: the sign above it is at its place.
-	var sign_at := _night.world.greybox.get_node("ShopProps/ShotgunSign") as Node3D
+	# The weapon hangs on the wall ahead of the marker: the silhouette above it is at its place.
+	var sign_at := _night.world.greybox.get_node("ShopProps/ShotgunSilhouette") as Node3D
 	_face(sign_at.global_position, standing)
 	await _hold(HOLD)
 	_stage("wall card: the shotgun replaces the revolver")
