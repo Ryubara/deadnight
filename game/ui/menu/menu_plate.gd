@@ -68,7 +68,7 @@ func _init(compact := false, width := 0.0) -> void:
 ## Shows `profile`.
 func show_profile(profile: MenuProfile) -> void:
 	_name.text = profile.display_name.to_upper()
-	_level.text = "BILLING %d" % profile.level()
+	_level.text = "LEVEL %d" % profile.level()
 	_stubs.text = "%s STUBS" % MenuNav.grouped(profile.stubs)
 	_ring.fraction = profile.level_fraction()
 	_ring.queue_redraw()

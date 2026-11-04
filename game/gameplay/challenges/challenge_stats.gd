@@ -15,6 +15,8 @@ const BOARDS := &"boards_repaired"
 const DOORS := &"doors_bought"
 const BUYS := &"buys"
 const FUEL_CANS := &"fuel_cans"
+## Teammates the player got up from being down (not themselves).
+const REVIVES := &"revives"
 ## Points taken in (what the HUD shows as gains), without the starting purse.
 const POINTS := &"points_earned"
 ## Rounds that ended while the player was in the lot, down or not: playing always counts.
@@ -34,6 +36,7 @@ const FIXED: Array[StringName] = [
 	DOORS,
 	BUYS,
 	FUEL_CANS,
+	REVIVES,
 	POINTS,
 	ROUNDS,
 	ROUND,
