@@ -481,8 +481,11 @@ overwritten (an old client cannot wipe progress); a damaged file is set aside as
 every number is small (a count or a seed under 2^31), so none needs the backend's string rule for 64-bit values; a
 night saves at the end of every round and at the end of the night, so a quit loses at most the round in progress. Only
 a night a person plays writes the save (bots, captures and tests have no board). **Online, the server awards (rule
-9)**: the same `NightTally` and `ChallengeTracker` run on the game server, following every player and announcing what
-is done (#1076), and the client's board becomes a cache; a signed-in solo night runs it locally.
+9)**: the same `NightTally` and `ChallengeTracker` run on the game server, following every signed-in seat and announcing
+what is done (built, #1076: [how it works](../research/progression.md#the-game-server-follows-the-challenges-1076)).
+The server reads the account's board from the backend once, when the seat sits down, and writes it back in each round's
+report; the client's local board is a cache that keeps counting as it did, and the in-night prompt shows the server's
+word. A signed-in solo night runs it locally.
 
 ### The progress prompt in the night
 

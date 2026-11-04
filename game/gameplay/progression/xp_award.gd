@@ -108,6 +108,12 @@ func has_seat(player_id: int) -> bool:
 	return _seats.has(player_id)
 
 
+## The account a seat holds (`""` for a seat with none).
+func user_of(player_id: int) -> String:
+	var seat: Seat = _seats.get(player_id)
+	return "" if seat == null else seat.user
+
+
 ## Whether any account sits in the night, or left with something not yet reported.
 func has_accounts() -> bool:
 	return not _seats.is_empty() or not _departed.is_empty()

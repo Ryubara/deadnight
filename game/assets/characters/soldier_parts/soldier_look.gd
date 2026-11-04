@@ -97,8 +97,9 @@ static func far_meshes(model: Node) -> Dictionary:
 	return out
 
 
-## The mesh names a look shows (headwear that covers the head hides the hair, and a one-piece top
-## with legs of its own, `hides_legs`, the trousers). The female Soldier
+## The mesh names a look shows (headwear that covers the head hides the hair, a mask over the whole
+## of it, `hides_eyewear`, the glasses too, and a one-piece top with legs of its own, `hides_legs`,
+## the trousers). The female Soldier
 ## (#678, the `body` slot) shows her variant of every part that has one (`<slot>__<part>__female`:
 ## her face, torso and legs), so every outfit fits both.
 static func visible_meshes(look: Dictionary) -> Array[String]:
@@ -113,6 +114,8 @@ static func visible_meshes(look: Dictionary) -> Array[String]:
 		if part.mesh == null or (slot == "hair" and headwear.get("hides_hair", false)):
 			continue
 		if slot == "legs" and torso.get("hides_legs", false):
+			continue
+		if slot == "eyewear" and headwear.get("hides_eyewear", false):
 			continue
 		if variant != "" and part.has(variant):
 			out.append(String(part[variant].mesh))

@@ -14,6 +14,9 @@ extends Node
 ## XP; 1: every tick), `grind=K` (besides the bots, K kills a second are made at the rules, spread
 ## over the four seats: the same events a hit makes, to see the award at rates the bots do not
 ## reach), `out=PATH` for the JSON. Not part of the play.
+## `challenges=1|0` (the challenge tracker follows each account's board, on by default): the
+## `challenge_progress` and `challenge_done` events, their bytes, the tracker's time and the
+## report's size are in the line too (#1076).
 
 const SECRET := "bench-ticket-secret-of-32-characters!"
 const SERVER_ID := "gs-bench"
@@ -34,7 +37,23 @@ var _level_events := 0
 var _xp_events := 0
 var _xp_bytes := 0
 var _bins: Array[Dictionary] = []
-var _bin := {"kills": 0, "xp_events": 0, "xp_bytes": 0, "wire": 0, "alive": 0, "frames": 0}
+var _bin := {
+	"kills": 0,
+	"xp_events": 0,
+	"xp_bytes": 0,
+	"ch_events": 0,
+	"ch_bytes": 0,
+	"wire": 0,
+	"alive": 0,
+	"frames": 0
+}
+var _ch_events := 0
+var _ch_done := 0
+var _ch_bytes := 0
+var _ch_usec := 0
+var _ch_advances := 0
+var _report_bytes := 0
+var _report_max := 0
 var _xp_usec := 0
 var _apply_usec := 0
 var _apply_count := 0
@@ -66,8 +85,15 @@ func _run() -> void:
 	_server.clock = _game_seconds
 	_server.rules_tuning = AutopilotRun.tuning()
 	_server.verifier = TicketVerifier.new(SECRET, SERVER_ID)
-	_server.report_sender = func(_path: String, _body: Dictionary) -> int:
+	_server.challenge_awards = _args.get_int("challenges", 1) == 1
+	# The backend holds no board yet for any account: each starts a fresh one.
+	_server.board_reader = func(_user: String) -> Dictionary:
+		return {"status": 404, "json": ChallengeAward.NO_BOARD}
+	_server.report_sender = func(_path: String, body: Dictionary) -> int:
 		_posts += 1
+		var size := JSON.stringify(body).length()
+		_report_bytes += size
+		_report_max = maxi(_report_max, size)
 		return 200
 	_world().add_child(_server)
 	while not _server.listener.is_listening():
@@ -210,6 +236,13 @@ func _on_client_event(event: Dictionary) -> void:
 			var size := var_to_bytes(event).size()
 			_xp_bytes += size
 			_bin["xp_bytes"] += size
+		&"challenge_progress", &"challenge_done":
+			_ch_events += 1
+			_ch_done += 1 if event["type"] == &"challenge_done" else 0
+			var size := var_to_bytes(event).size()
+			_ch_bytes += size
+			_bin["ch_events"] += 1
+			_bin["ch_bytes"] += size
 		&"level_up", &"tier_up", &"unlock_earned":
 			_level_events += 1
 			var size := var_to_bytes(event).size()
@@ -221,6 +254,8 @@ func _on_client_event(event: Dictionary) -> void:
 func _sample() -> void:
 	var taken := PerfProbe.take()
 	_xp_usec += int(taken["usec"].get(&"server.xp", 0))
+	_ch_usec += int(taken["usec"].get(&"server.challenges", 0))
+	_ch_advances += int(taken["counts"].get(&"challenge.advance", 0))
 	_apply_usec += int(taken["usec"].get(&"event.xp_gained", 0))
 	_apply_count += int(taken["counts"].get(&"ev.xp_gained", 0))
 	_bin["frames"] += 1
@@ -230,7 +265,16 @@ func _sample() -> void:
 		_bin["wire"] = wire - _wire_before
 		_wire_before = wire
 		_bins.append(_bin)
-		_bin = {"kills": 0, "xp_events": 0, "xp_bytes": 0, "wire": 0, "alive": 0, "frames": 0}
+		_bin = {
+			"kills": 0,
+			"xp_events": 0,
+			"xp_bytes": 0,
+			"ch_events": 0,
+			"ch_bytes": 0,
+			"wire": 0,
+			"alive": 0,
+			"frames": 0
+		}
 
 
 func _publish(xp_on: bool) -> void:
@@ -240,7 +284,9 @@ func _publish(xp_on: bool) -> void:
 	for ms in ticks:
 		total += ms
 	var seconds := float(_bins.size())
-	var peak := {"kills": 0, "xp_events": 0, "xp_bytes": 0, "wire": 0}
+	var peak := {
+		"kills": 0, "xp_events": 0, "xp_bytes": 0, "ch_events": 0, "ch_bytes": 0, "wire": 0
+	}
 	var alive_sum := 0.0
 	var wire_sum := 0
 	for bin in _bins:
@@ -249,6 +295,8 @@ func _publish(xp_on: bool) -> void:
 		alive_sum += float(bin["alive"]) / maxf(bin["frames"], 1)
 		wire_sum += bin["wire"]
 	var rounds_played := _rounds_ended
+	var board := _room.server.challenges.profile_of(ACCOUNT_USER % 1)
+	var board_bytes := 0 if board == null else ChallengeSave.to_json(board).length()
 	# The night ends: the room reports what is left (the night's report) and the writes are counted.
 	_client.link.close()
 	var waited := 0
@@ -279,6 +327,20 @@ func _publish(xp_on: bool) -> void:
 		"xp_bytes_per_s_mean": snappedf(_xp_bytes / maxf(seconds, 1.0), 0.1),
 		"xp_bytes_per_s_peak": peak["xp_bytes"],
 		"progress_events_other": _level_events,
+		"challenges": _server.challenge_awards,
+		"challenge_events": _ch_events,
+		"challenge_done": _ch_done,
+		"challenge_events_per_s_mean": snappedf(_ch_events / maxf(seconds, 1.0), 0.01),
+		"challenge_events_per_s_peak": peak["ch_events"],
+		"challenge_bytes_per_s_mean": snappedf(_ch_bytes / maxf(seconds, 1.0), 0.1),
+		"challenge_bytes_per_s_peak": peak["ch_bytes"],
+		"challenge_advances": _ch_advances,
+		"challenge_server_us_total": _ch_usec,
+		"challenge_server_us_per_kill": snappedf(float(_ch_usec) / maxf(_kills, 1), 0.01),
+		"challenge_server_us_per_tick": snappedf(float(_ch_usec) / maxf(ticks.size(), 1), 0.01),
+		"board_json_bytes": board_bytes,
+		"report_bytes_total": _report_bytes,
+		"report_bytes_max": _report_max,
 		"wire_bytes_in_per_s_mean": snappedf(wire_sum / maxf(seconds, 1.0), 1.0),
 		"wire_bytes_in_per_s_peak": peak["wire"],
 		"xp_server_us_total": _xp_usec,
