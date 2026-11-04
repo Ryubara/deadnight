@@ -32,6 +32,11 @@ const PRESS_TICKS := 4
 ## Metres of ground beside a downed player a reviver may stand on.
 const REVIVE_SPOKE := 0.8
 
+## Breaches with no floor in reach on their own side, so no clear point shows the prompt:
+## `upper_b1` opens over the side stair's well (#824; #900 moves it onto the floor). Each comes off
+## the list the moment a clear point shows it.
+const NO_FLOOR_IN_REACH: Array[String] = ["breach upper_b1"]
+
 ## The map review's ray audit (#833): pairs of a shop spot's hand point and a place within reach
 ## behind a wall, the nearest two for each spot that has any. The grid above is coarse (half a
 ## metre); these are the exact places the audit found, the worst at 1.2 m.
@@ -240,7 +245,7 @@ func _spot_things() -> Array[Dictionary]:
 			"%s %s #%d" % [kind, id, index],
 			"%s:%s" % [kind, id if kind != &"ammo" else &""],
 			at,
-			_night.server.tuning.use_reach,
+			_night.server.tuning.spot_reach,
 			[at],
 			_spot_matches(kind, id)
 		)
@@ -346,6 +351,16 @@ func _breach_things() -> Array[Dictionary]:
 	return out
 
 
+## Whether the door at `slab` has a stand on each side (it is bought from both).
+static func _both_sides(slab: Vector3, stands: Array[Vector3]) -> bool:
+	var sides := {}
+	for stand in stands:
+		if Vector2(stand.x - slab.x, stand.z - slab.z).length() <= UseSight.STAND_NEAR:
+			var out := Vector2(stand.x - slab.x, stand.z - slab.z)
+			sides[Vector2i(signi(roundi(out.x)), signi(roundi(out.y)))] = true
+	return sides.size() >= 2
+
+
 func _door_thing(door_id: StringName, slab: Vector3, stands: Array[Vector3]) -> Dictionary:
 	var floor_point := slab - Vector3(0.0, UseOffers.DOOR_MIDDLE, 0.0)
 	var thing := _thing(
@@ -357,7 +372,8 @@ func _door_thing(door_id: StringName, slab: Vector3, stands: Array[Vector3]) -> 
 		_is.bind(&"door", door_id)
 	)
 	thing["skin"] = UseSight.MOUNT_SKIN
-	thing["needs_wall"] = true
+	# A door bought from both sides has no back; with a 2.5 m reach (#908) no wall may be near it.
+	thing["needs_wall"] = not _both_sides(slab, stands)
 	# The slab is the thing and the line ends in its middle: the hand's height is the slab's.
 	thing["lift"] = slab.y - floor_point.y
 	# A door is bought from the open ground in front of it only.
@@ -549,11 +565,13 @@ func _walk(thing: Dictionary, all: Array[Dictionary]) -> Array[String]:
 			_clear_total += 1
 			if cell["flat"] <= NEAR and prompt.is_empty():
 				problems.append("%s: no prompt at the clear point %s" % [name, point])
-	if thing["front_any"] and not offered_in_front:
+	if thing["front_any"] and not offered_in_front and not NO_FLOOR_IN_REACH.has(thing["name"]):
 		problems.append("%s: no clear point of its reach shows the prompt" % name)
 	_blocked_total += blocked.size()
 	_walls_with_far_side += 1 if thing["wall_weapon"] and not blocked.is_empty() else 0
 	_walls += 1 if thing["wall_weapon"] else 0
+	if thing["front_any"] and offered_in_front and NO_FLOOR_IN_REACH.has(thing["name"]):
+		problems.append("%s: offered now, take it off NO_FLOOR_IN_REACH" % name)
 	if blocked.is_empty() and thing["needs_wall"]:
 		problems.append("%s: no point of its reach is behind a wall (nothing to test)" % name)
 	# The press at the far side changes nothing.
@@ -612,8 +630,10 @@ func _walk_all(scene_path: String) -> void:
 	_report(problems)
 	assert_int(_blocked_total).is_greater(0)
 	assert_int(_clear_total).is_greater(0)
-	# Most wall weapons hang on a wall with ground behind it; the sampler found it for these.
-	assert_int(_walls_with_far_side).is_greater(_walls / 2)
+	# A spot's reach is 1.5 m from its marker since #908, and the marker 1 to 1.35 m out from its
+	# wall: a wall weapon's reach now ends about at its wall, so the far side of a wall is tested on
+	# the breaches, doors and posts, and on the map review's exact places (`AUDIT_LOT`).
+	print("wall weapons with ground in reach behind: %d of %d" % [_walls_with_far_side, _walls])
 
 
 func test_the_lot_gives_no_prompt_and_takes_no_press_through_a_wall() -> void:

@@ -106,13 +106,13 @@ func test_the_cooldown_is_each_players_own_and_not_the_weapons() -> void:
 	assert_array(WeaponsFixture.of(shot, &"shot_fired")).has_size(1)
 
 
-func test_two_blows_kill_a_round_one_zombie_and_pay_the_melee_price() -> void:
+func test_one_blow_kills_a_round_one_zombie_and_pays_the_melee_price() -> void:
+	# Round 1's dead have 50 health and the blow is 50 in every zone (#897); the hits for the
+	# later rounds are in test_quick_melee_hits_to_kill.gd.
 	var before := _rules.points_of(1)
-	_blow(1)
-	_stand(ceili(_quick.fire_interval * 60.0) + 2)
-	var events := _blow(2)
+	var events := _blow(1)
 	assert_array(WeaponsFixture.of(events, &"target_killed")).has_size(1)
-	assert_int(_rules.points_of(1) - before).is_equal(5 + 130)
+	assert_int(_rules.points_of(1) - before).is_equal(130)
 
 
 func test_a_bad_aim_is_refused() -> void:

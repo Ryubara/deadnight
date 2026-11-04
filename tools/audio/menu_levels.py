@@ -224,7 +224,18 @@ def tour_stats(mix: np.ndarray, rate: int, log: Path) -> dict:
         "seconds": round(seconds, 1),
         "marks": marks,
         "silent_seconds_over_3": _silent_stretches(mix, rate),
+        "quietest_block_db": _quietest_block(mix, rate),
     }
+
+
+def _quietest_block(mix: np.ndarray, rate: int, skip_s: float = 4.0) -> float:
+    """The peak of the quietest 100 ms of the walk after its first seconds (the sign's): what the room never goes under.
+    A menu with no ambience falls to the digital floor between its sounds, one with a bed holds the bed's level."""
+    block = int(0.1 * rate)
+    start = int(skip_s * rate)
+    n = (mix.shape[-1] - start) // block
+    peaks = np.abs(mix[:, start : start + n * block]).reshape(mix.shape[0], n, block).max(axis=(0, 2))
+    return round(db(peaks.min()), 1)
 
 
 def _silent_stretches(mix: np.ndarray, rate: int, floor_db: float = -60.0, minimum: float = 3.0) -> int:
@@ -278,6 +289,7 @@ def main() -> None:
     b.add_argument("log", type=Path)
     b.add_argument("--before", nargs=2, type=Path, metavar=("WAV", "LOG"))
     b.add_argument("--plot", type=Path)
+    b.add_argument("--labels", nargs=2, metavar=("BEFORE", "AFTER"), help="the titles of the two rows of the plot")
     args = parser.parse_args()
     if args.cmd == "levels":
         mix, rate = read_stereo(args.wav)
@@ -293,11 +305,12 @@ def main() -> None:
             args.json.write_text(json.dumps(table, indent=1, sort_keys=True), encoding="utf-8")
         sys.exit(1 if failed or clipped else 0)
     mix, rate = read_stereo(args.wav)
-    runs = [("After: the menus with their sounds", mix, rate, args.log)]
+    before_label, after_label = args.labels or ("Before: the same walk, on main", "After: the menus with their sounds")
+    runs = [(after_label, mix, rate, args.log)]
     stats = {"after": tour_stats(mix, rate, args.log)}
     if args.before:
         bmix, brate = read_stereo(args.before[0])
-        runs.insert(0, ("Before: the same walk, on main", bmix, brate, args.before[1]))
+        runs.insert(0, (before_label, bmix, brate, args.before[1]))
         stats["before"] = tour_stats(bmix, brate, args.before[1])
     for name, s in stats.items():
         marks = s.pop("marks")

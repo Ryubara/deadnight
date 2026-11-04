@@ -76,7 +76,7 @@ the real command, its own model drawn).
 | `fifty_cal` | `fifty_cal`, the .50 calibre rifle | **Crane** only (1.5) | 220 / 0.9 s, pierces 4 |
 | `pump_870` | `pump_870`, the Popper | **Crane** only (2) | 22 x 6 / 0.65 s |
 | `service_pistol` twice (#797) | `dual_pistols`, the Dual Pistols | **Crane** only (2.5), on both maps | 17 / 0.15 s, a hand each shot |
-| none: not a weapon | `quick_melee` (`QUICK_MELEE`, not in `IDS`) | Every player, on `V`; never carried, bought or won | 40 / 0.6 s, 1.6 m |
+| none: not a weapon | `quick_melee` (`QUICK_MELEE`, not in `IDS`) | Every player, on `V`; never carried, bought or won | 50 / 0.6 s, 1.6 m, every zone |
 | `hammer` | none | A tool: the repair clip's prop, not a weapon (see below) | |
 | `grenade` | none (`frag.tres` is its own system) | Thrown, not a crane prize: the start (2) and the shop's grenades | 150 blast |
 
@@ -162,13 +162,20 @@ weapon: it is not in the catalogue's `IDS`, nobody buys, carries or wins it, and
 
 | | Quick melee | Crowbar | Baseball bat | Fire axe |
 | --- | ---: | ---: | ---: | ---: |
-| Per blow (body) | 40 | 45 | 60 | 150 |
+| Per blow (body) | 50 | 45 | 60 | 150 |
 | Interval | 0.6 s | 0.55 s | 0.4 s | 0.9 s |
-| Damage a second | 67 | 82 | 150 | 167 |
+| Damage a second | 83 | 82 | 150 | 167 |
 | Reach, thickness | 1.6 m, 0.4 | 1.9 m, 0.4 | 1.8 m, 0.45 | 1.8 m, 0.4 |
 | Targets in one blow | 1 | 2 | 4 | 2 |
-| Head, limb | x1.5, x0.75 | x1.5, x0.75 | x1.5, x0.75 | x2.5, x0.7 |
+| Head, limb | x1, x1 (flat) | x1.5, x0.75 | x1.5, x0.75 | x2.5, x0.7 |
 
+- **A flat blow (#897).** It does 50 in every zone, so a blow is worth the same wherever it lands. The sweep leaves the
+  eye at 1.55 m with a 0.4 m thickness, and a walker's head sphere is at 1.62 m, so the sweep met the *head* on every
+  blow at every reach and every aim (measured in the real night, rounds 1 to 9): 40 x 1.5 = 60, which killed round 1
+  (50 health) *and* round 2 (58) in one blow, and the tables and the simulator, which read the body, said 40. The
+  blow is now the number it shows, and the head bonus is not hidden in the sweep. The bat, the axe and the crowbar keep
+  their zone multipliers (the sweep still crowns them: their real blow is the head's). See
+  [hits to kill](#hits-to-kill-by-round).
 - **Server:** `CombatAction.quick_melee` (a bit in the command's flags, `NetWire.F_MELEE`, protocol 11) is swept from
   the head along the view with `defs/quick_melee.tres` exactly as a melee weapon's blow is, through the same rewind,
   and hurts as a `melee` hit: the zombie takes the damage, the kill pays the melee price (130). A fixed cooldown of
@@ -188,6 +195,35 @@ weapon: it is not in the catalogue's `IDS`, nobody buys, carries or wins it, and
   (`BotIntent.quick_melee_ok`).
 - **On a phone** it is the MELEE button of the [touch controls](touch-controls.md) (#588).
 
+### Hits to kill by round
+
+The maintainer's rule: **one blow on round 1, more from round 2** ("melee attacks with V should not be one tapping
+zombies after round 1", [#897](https://github.com/Ryubara/deadnight/issues/897)). A walker has `health_for_round`
+health (50 + 8 a round to round 8, then x1.16 a round); a blow is 50 flat. Blows to kill a walker, from the real night
+(`tests/weapons/test_quick_melee_hits_to_kill.gd`, `tests/night/test_night_quick_melee.gd`):
+
+| Round | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Walker health | 50 | 58 | 66 | 74 | 82 | 90 | 98 | 106 | 123 | 143 |
+| **Blows (V)** | **1** | **2** | **2** | **2** | **2** | **2** | **2** | **3** | **3** | **3** |
+| Seconds to kill (0.6 s apart) | 0 | 0.6 | 0.6 | 0.6 | 0.6 | 0.6 | 0.6 | 1.2 | 1.2 | 1.2 |
+| Before (head x1.5 = 60) | 1 | 1 | 2 | 2 | 2 | 2 | 2 | 2 | 3 | 3 |
+
+- **Why 50.** The blow must be at least round 1's health (50) and under round 2's (58), so any number from 50 to 57
+  gives this table; the lowest keeps the free blow the weakest it can be. A test holds the blow between the two, so
+  retuning the health curve fails it loudly. The count is the health's: every 50 health costs a blow, so it climbs on
+  its own as the dead toughen, like the rest of the round curve.
+- **Why flat.** A person swinging from the eye cannot choose the zone (it is the head every time), so a head bonus is
+  a hidden x1.5; a flat blow gives the same count on the head, the chest and the legs, near and far (tested), and
+  makes the simulator's body-zone worth the real one.
+- **The lighter dead.** A runner (x0.55, from round 4) has 41, 45, 49 and 54 health on rounds 4 to 7, so one blow
+  still kills it on rounds 4 to 6; a crawler (x0.7, from round 6) has 63 and up, two blows; a brute (x3, from round 8)
+  takes 7 to 9. A blow cannot both fell round 1's walker and leave a round-4 runner standing, so the runner stays the
+  fast, thin one.
+- **The worth the simulator and the bots see.** `WeaponWorth.melee_rate` of the blow, in health a second against the
+  round's walker: 83 (round 1), 48, 55, 62, 68, 75, 82 (round 7), 59, 68, 79 (round 10). It dips at each step up in
+  blows (rounds 2 and 8). A free hand takes a weapon only above 1.5 times that.
+
 ## Carrying weapons
 
 A player carries **two weapons** (`WeaponCatalog.CARRY_LIMIT`), melee ones included: there is no melee slot, and the
@@ -203,8 +239,10 @@ Buying a weapon at the wall or taking a prize from the crane with both hands ful
 with its magazine and reserve (and its re-cut). The replaced weapon is not dropped on the ground: it is gone, and it
 is in the pool again, so the wall sells it again (shotgun, rifle) and the crane can give it again (every crane weapon,
 the revolver and the crowbar too). The card of a wall weapon and of a prize on offer says **REPLACES <weapon>** before
-the points are paid or the prize is taken. A weapon the player already carries is not offered; the wall sells its
-rounds.
+the points are paid or the prize is taken, and the press that takes it is one made once that card has been up 0.4 s
+(`NightTuning.replace_settle`), never one that carries on a repair (#908,
+[spacing and the press](../research/use-reach.md#spacing-and-the-press-908)). A weapon the player already carries is
+not offered; the wall sells its rounds.
 
 Two parts keep it true, each with the weapon in hand as the one given up: the rules (`WeaponCarry`; `PlayerState.weapons`
 is the carried list in shop ids, the start weapons in it, and `weapon_released` names what went) and the combat server
