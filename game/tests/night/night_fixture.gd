@@ -32,12 +32,9 @@ static func seat(
 	rules_tuning: RulesTuning = null,
 	seed_value: int = 7,
 	shopping: bool = false,
-	scene: PackedScene = null,
-	indexed: bool = true
+	scene: PackedScene = null
 ) -> SeatedNight:
-	return await SeatedNight.start(
-		parent, players, rules_tuning, seed_value, shopping, scene, indexed
-	)
+	return await SeatedNight.start(parent, players, rules_tuning, seed_value, shopping, scene)
 
 
 ## Runs `count` ticks of a night driven by hand, sending `command` before each one.

@@ -61,8 +61,7 @@ static func start(
 	rules_tuning: RulesTuning = null,
 	seed_value: int = 7,
 	shopping: bool = false,
-	scene: PackedScene = null,
-	indexed: bool = true
+	scene: PackedScene = null
 ) -> SeatedNight:
 	var night := SeatedNight.new()
 	night.world = NightWorld.new()
@@ -95,13 +94,9 @@ static func start(
 	# before that step runs: after one await a hand-ticked body is still outside the index and its
 	# `move_and_slide` costs ten times what it does once indexed (0.24 ms against 0.02 ms for a body
 	# standing still; a tick of four players 3.7 ms against 1.6 ms). The second await returns after the
-	# step. The night plays the same for one bot (the bands' counts of shots, hits and blows are the
-	# same); with several bodies it can play differently, because the bodies are then solid to each
-	# other and to grenades' casts, as they are in the game: `indexed` false keeps the bodies out of
-	# the index for a suite that has not been made to pass on the bodies in (the grenade soak).
+	# step. The night plays the same (the bands' counts of shots, hits and blows are the same).
 	await parent.get_tree().physics_frame
-	if indexed:
-		await parent.get_tree().physics_frame
+	await parent.get_tree().physics_frame
 	return night
 
 

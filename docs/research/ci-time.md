@@ -100,14 +100,14 @@ alone, before and after in the same session; a runner is 1.5 to 3 times slower p
 | --- | --- | --- | --- |
 | `rules/test_balance_targets` | 97.5 | 58.5 | the three "the gate can fail" tests run two small cells, not six; the climb test runs two cells, not three (below) |
 | `night/test_bot_bands` | 110.4 | 74.2 | the seated night's bodies are indexed (below); every seed and second kept |
-| `night/test_bot_grenade_soak` | 90.2 | 90.2 | left as it was (below) |
+| `night/test_bot_grenade_soak` | 90.2 | 39.0 | the same; 3 seeds of 120 s kept |
 | `world/test_midway_fence_reach` | 93.5 | 81.6 | a hop stops settling once the state is a fixed point; the same 21,423 hops |
 | `world/smallmap/test_smallmap_bot_night` | 79.0 | 42.7 | a night stops when it has shown what its test asks for |
 | `night/test_bot_orders_night` | 68.2 | 64.2 | waits for the map's answer after a door, not 12 or 60 frames; the indexed bodies |
 | `night/test_bot_soak` | 53.6 | 25.5 | the indexed bodies |
 | `night/test_bot_combat` | 55.8 | 44.1 | the indexed bodies |
 | `night/test_bot_own_ammo` | 47.0 | 30.6 | the indexed bodies; waits for the map's answer after the door |
-| Total | 694.2 | 512.0 | 182 s (26 %); 233 s (34 %) once the grenade soak is fixed (#1024) |
+| Total | 694.2 | 460.8 | 233 s (34 %) |
 
 `net/test_room_eight` (real sockets) was left alone, as the issue said.
 
@@ -115,14 +115,14 @@ alone, before and after in the same session; a runner is 1.5 to 3 times slower p
 but the signal fires before that iteration's step, so the bodies were still outside the physics index and
 `move_and_slide` cost 0.24 ms for a body standing still instead of 0.02 ms: a tick of four players 3.7 ms, 1.6 ms with a
 second await (`SeatedNight.start`). The bands' counts of shots, hits and blows are the same either way. The 917 tests of
-the `night` folder and the 1,518 of `bots`, `zombies`, `world` and `rules` pass with it on Windows, and 5 of the 6 CI
-shards on Linux.
+the `night` folder and the 1,518 of `bots`, `zombies`, `world` and `rules` pass with it.
 
-**The grenade soak found a bug and was left as it was.** With the bodies indexed the shard that runs the soak failed:
-on seed 11 a bot's grenade took 25.5 % of the bot's health (the limit is 10 %). Locally, 2 of 20 seeds read 23 % and 5 %
-with the bodies indexed and none above 4.7 % without. The soak's hand-ticked bodies had passed through each other and
-through every cast. The soak keeps its bodies unindexed (`SeatedNight.start(..., indexed := false)`) and its old
-speed until #1024 is fixed; the second await stays in every other suite, where the same 917 and 1,518 tests pass.
+**The grenade soak showed a bot hazard with the bodies indexed, and #1021 fixed it.** On the first CI run of this change
+the shard that runs the soak failed: on seed 11 a bot's grenade took 25.5 % of the bot's health (the limit is 10 %).
+Locally 2 of 20 seeds read 23 % and 5 % with the bodies indexed and none above 4.7 % without; after #1021 (bots throwing
+into posts at their own feet) merged, 0 of 20 read above 1 % with them indexed. The soak's hand-ticked bodies had passed
+through each other and through every cast, so a night that is not bit-identical from run to run (it depends on what ran
+before it in the process) can hold a hazard that the unindexed bodies hid.
 
 **The statistics keep their counts.** No seed, second or night count of a statistic was cut. What was cut:
 
