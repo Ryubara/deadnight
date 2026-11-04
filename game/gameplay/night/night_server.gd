@@ -88,6 +88,7 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"element_burst",
 	&"element_arc",
 	&"fire_patch_started",
+	&"element_burn",
 	&"fire_rejected",
 ]
 ## What the grenade server answers that is worth sending on (its answer also repeats the rules'

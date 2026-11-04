@@ -4,24 +4,25 @@
 # the long ones to round 10 and prints the numbers for the design page).
 extends GdUnitTestSuite
 
-## Game seconds of the solo night, and of the night of four on the whole map. The solo bot buys the
-## first link and then its first gun (the overlay saves for the shotgun, and a bot with only its
-## start gun is offered nothing after a gun it can pay for), by 107 s on 12 of 14 seeds and by 225 s
-## on all; before, the two stairs came first and the gun in the break of round 4, which a night lost
-## on one seed of four (#910). A bot starts no errand with a dead within 12 m, so the
-## night still runs past the breaks of rounds 5 and 6: the weapon is bought in one of several
-## breaks.
-const SOLO_SECONDS := 330.0
+## Game seconds of the night of four on the whole map (the solo night's are in `SoloBotNight`).
 const FOUR_SECONDS := 150.0
 ## Game seconds in which four bots on the shut map have bought every link (round 4 at the latest).
 const FOUR_LINKS_SECONDS := 210.0
 const FRAME_EVERY := 30
-## A night that has shown everything its test asks for runs on this many game seconds more (the
-## cap on the dead alive is read to the end) and stops: the asked-for things are events, and an
-## event that has happened stays happened. With the full 330 s the solo bot has shown them all by
-## 130 s on the four seeds (round 4 at 123 to 128 s, the weapon at 75 to 127 s), and the three links
-## of the team by 60 s.
-const GRACE_SECONDS := 30.0
+## The solo night is judged as a rate over these seeds (`SoloBotNight`), not on pinned seeds: the
+## night is chaotic, so a change that moves one hit moves the nights after it on every seed, and a
+## seed picked on the night it passed went red on changes that did nothing wrong (#821, #890, #910,
+## #1038). Measured on main (`tests/captures/smallmap_solo_sweep.tscn`, seeds 1 to 100, 2026-11-04,
+## at 40365bce): the solo bot failed on 5 of 100 (seeds 38, 40, 50, 64, 84: downed in round 3 or 4
+## at 87 to 135 s, three of them without a gun), none of these 10 seeds.
+const SOLO_SEEDS := 10
+## Nights the solo bot may fail of those 10. At the 5% of main a change that only reshuffles the
+## nights puts 4 or more of 10 down 0.1% of the time (binomial; 1.8% at the 11% that the 95% bound
+## of main's 5 of 100 allows; the ten blocks of ten seeds of the sweep had 0 to 2), a bot that
+## stops buying fails all 10, and one that fails half of the nights is caught 83% of the time. A
+## tighter rate is the sweep's to measure (a night is 4.6 s: 100 seeds are two minutes on four
+## processes), not a suite's: ten nights are already 46 s of this file.
+const SOLO_FAILURES_ALLOWED := 3
 
 var _seated: SeatedNight
 var _links: Array[StringName] = []
@@ -89,41 +90,25 @@ func _on_event(event: Dictionary) -> void:
 			_rounds_started = maxi(_rounds_started, int(event["round"]))
 
 
-## The seeds the solo night is held over: the one night that flaked (a bot that bought no weapon
-## because it paced the stair landing between two sellers of the shotgun, #821) was a matter of the
-## seed, so the test holds on every one of these and not on one picked to pass.
-func test_a_bot_alone_buys_a_link_and_a_weapon_holds_the_windows_and_reaches_round_4(
-	seed_value: int, test_parameters := [[1], [3], [4], [7]]
-) -> void:
-	assert_object(test_parameters).is_not_null()
-	await _play(1, SOLO_SECONDS, false, seed_value, _solo_has_shown_it, GRACE_SECONDS)
-	var rules := _seated.server.rules
+## A bot alone buys the first link and a weapon, tears four windows' boards, holds the dead to 24
+## at once and reaches round 4 on all but a few seeds of `SOLO_SEEDS`.
+func test_a_bot_alone_buys_a_link_and_a_weapon_and_reaches_round_4_on_nearly_every_seed() -> void:
+	var failed: Array[String] = []
+	for seed_value in range(1, SOLO_SEEDS + 1):
+		var night := SoloBotNight.new(seed_value)
+		await night.play(self)
+		if not night.failures().is_empty():
+			failed.append("seed %d: %s" % [seed_value, ", ".join(night.failures())])
 	(
-		assert_int(_rounds_started)
-		. override_failure_message("round %d" % _rounds_started)
-		. is_greater_equal(4)
+		assert_int(failed.size())
+		. override_failure_message(
+			(
+				"the solo bot failed %d of %d nights (at most %d): %s"
+				% [failed.size(), SOLO_SEEDS, SOLO_FAILURES_ALLOWED, " | ".join(failed)]
+			)
+		)
+		. is_less_equal(SOLO_FAILURES_ALLOWED)
 	)
-	assert_array(_links).contains([&"door_side"])
-	assert_int(_tears.size()).is_greater_equal(4)
-	var weapons := 0
-	for id: StringName in _buys:
-		var item := rules.tuning.economy.item(id)
-		if item.kind == ShopItem.Kind.WEAPON or item.kind == ShopItem.Kind.CRANE:
-			weapons += 1
-	assert_int(weapons).override_failure_message("bought %s" % [_buys]).is_greater_equal(1)
-	assert_int(_most_alive).is_less_equal(24)
-
-
-## Whether the solo night has shown everything its test asks for: round 4 begun, the first link
-## bought, four windows torn and a weapon bought.
-func _solo_has_shown_it() -> bool:
-	if _rounds_started < 4 or not _links.has(&"door_side") or _tears.size() < 4:
-		return false
-	for id: StringName in _buys:
-		var kind := _seated.server.rules.tuning.economy.item(id).kind
-		if kind == ShopItem.Kind.WEAPON or kind == ShopItem.Kind.CRANE:
-			return true
-	return false
 
 
 func test_four_bots_on_the_whole_map_hold_it_for_several_rounds() -> void:

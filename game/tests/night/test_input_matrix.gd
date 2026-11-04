@@ -115,6 +115,9 @@ func after_test() -> void:
 	_night.queue_free()
 	await get_tree().physics_frame
 	await get_tree().physics_frame
+	# The screens the router was left with (`_enter_night` resets it to the main menu): a menu that
+	# stays up under the next suite swallows its mouse motion, and its look reads none (#1039).
+	await RouterFixture.clear(get_tree())
 
 
 ## What the human controller must have read into the night's command while `action` was held.

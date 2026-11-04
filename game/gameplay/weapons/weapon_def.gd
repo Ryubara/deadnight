@@ -124,6 +124,9 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 
 ## Which re-cut this copy has had: 0 as shipped, 1 after `upgraded`. Not saved with the file.
 var tier: int = 0
+## Bolts fewer a kind that takes several (`ZombieType.freeze_bolts`) needs to take the status; 0 as
+## shipped, set by a re-cut (`RecutProfile.freeze_bolts_less`). Not saved with the file.
+var freeze_bolts_less: int = 0
 
 
 ## This weapon re-cut: a copy with the numbers of its `RecutProfile` (more damage in the pellets and
@@ -149,6 +152,7 @@ func upgraded(spec: UpgradeTuning) -> WeaponDef:
 		copy.reload_time = cut.reload_time
 	copy.splash_radius = splash_radius * cut.burst_radius_multiplier
 	copy.element = cut.element
+	copy.freeze_bolts_less = cut.freeze_bolts_less
 	return copy
 
 

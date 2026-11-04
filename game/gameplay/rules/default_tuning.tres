@@ -21,6 +21,7 @@
 [ext_resource type="Resource" path="res://gameplay/weapons/elements/defs/explosive.tres" id="16_expl"]
 [ext_resource type="Resource" path="res://gameplay/weapons/elements/defs/shock.tres" id="17_shock"]
 [ext_resource type="Resource" path="res://gameplay/weapons/elements/defs/ground_fire.tres" id="18_gfire"]
+[ext_resource type="Resource" path="res://gameplay/weapons/elements/defs/fire.tres" id="19_fire"]
 
 [sub_resource type="Resource" id="Resource_jrviv"]
 script = ExtResource("1_skww1")
@@ -599,6 +600,7 @@ weapon = &"pump_870"
 damage_multiplier = 1.75
 magazine_multiplier = 1.5
 reserve_multiplier = 1.5
+element = ExtResource("19_fire")
 
 [sub_resource type="Resource" id="Resource_recut_dual_pistols"]
 script = ExtResource("15_recut")
@@ -622,6 +624,7 @@ damage_multiplier = 1.75
 magazine_multiplier = 1.5
 reserve_multiplier = 1.5
 burst_radius_multiplier = 1.27
+freeze_bolts_less = 1
 
 [sub_resource type="Resource" id="Resource_upgt1"]
 script = ExtResource("12_upgr1")

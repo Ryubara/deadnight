@@ -385,6 +385,7 @@ func _build_view(camera: Camera3D) -> void:
 		state, camera, LookTimings.telegraphs(rules_tuning), LookTimings.board_seconds(rules_tuning)
 	)
 	view.barricade_points = _barricade_points()
+	view.horde.gates.assign(world.gates().values())
 	view.bodies = _body_of
 	view.repair_interval = _repair_seconds
 	view.show_lamps(world.greybox, rules_tuning.fuel)

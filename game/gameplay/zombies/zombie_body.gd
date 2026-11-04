@@ -91,7 +91,7 @@ func hit_target() -> Dictionary:
 		"yaw": yaw,
 		"scale": profile.hit_scale(),
 		"weak": profile.weak,
-		"pose": ZombiePose.hit_set(look(), mode, tearing, move_speed),
+		"pose": ZombiePose.hit_set(look(), mode, tearing, move_speed, climbing),
 	}
 
 

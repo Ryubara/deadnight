@@ -32,7 +32,8 @@ The order, prices and layout are in [the lot](map.md); which map a night is play
 ## Between nights
 
 What carries over from one night to the next, and what never does, is in the [permanent progression
-design](progression.md): a night always starts equal, and growth is choice, mastery and identity, never strength.
+design](progression.md): a night's economy always starts equal, and growth is choice, mastery and identity plus a
+slight kit (the maintainer's 2026-11-04 decision; [how slight](../research/weapon-progression.md)).
 
 ## Looks
 
