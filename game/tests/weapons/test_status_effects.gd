@@ -297,6 +297,49 @@ func test_a_re_cut_freeze_gun_blooms_wider() -> void:
 	assert_float(ray.upgraded(spec).splash_radius).is_equal(ray.splash_radius)
 
 
+func test_the_re_cut_bloom_reaches_a_zombie_the_plain_one_leaves_standing() -> void:
+	# A zombie 3 m beside the one the bolt hits: its body is about 2.5 m from the burst, outside the
+	# plain bloom (2.2 m) and inside the re-cut one (2.8 m).
+	_places[2] = Vector3(3.0, 0, 0)
+	_stand(2)
+	var plain_events := _fire(1)
+	var burst := WeaponsFixture.of(plain_events, &"projectile_burst")[0]
+	var reach := Hitbox.distance_from(burst["point"], _places[2], 0.0)
+	assert_float(reach).is_between(2.3, 2.7)
+	var plain := WeaponsFixture.of(plain_events, &"status_applied")
+	assert_array(plain.filter(func(e: Dictionary) -> bool: return e["target_id"] == 2)).is_empty()
+	_run(3.5)
+	_server.apply(CombatAction.upgrade_weapon(1, &"freeze_gun"))
+	_stand(2)
+	var cut := WeaponsFixture.of(_fire(2), &"status_applied")
+	assert_array(cut.filter(func(e: Dictionary) -> bool: return e["target_id"] == 2)).has_size(1)
+
+
+func test_the_re_cut_freezes_a_brute_a_bolt_sooner_and_never_below_one_bolt() -> void:
+	var spec := UpgradeTuning.shipped()
+	var freeze := WeaponCatalog.get_def(&"freeze_gun")
+	assert_int(freeze.freeze_bolts_less).is_equal(0)
+	assert_int(freeze.upgraded(spec).freeze_bolts_less).is_equal(1)
+	# A brute (three bolts): the plain gun slows it twice and freezes it on the third; the re-cut
+	# slows it once and freezes it on the second.
+	_kind().freeze_bolts = 3
+	_server.apply(CombatAction.upgrade_weapon(1, &"freeze_gun"))
+	var first := WeaponsFixture.of(_fire(1), &"status_applied")
+	assert_str(String(first[0]["status"])).is_equal("chilled")
+	_cool()
+	var second := WeaponsFixture.of(_fire(2), &"status_applied")
+	assert_str(String(second[0]["status"])).is_equal("frozen")
+	assert_bool(_server.statuses.shatterable(1)).is_true()
+
+
+func test_the_re_cut_still_freezes_an_ordinary_zombie_on_its_first_bolt() -> void:
+	# One bolt fewer than one is still one: the walker is frozen by the first, as before.
+	assert_int(_kind().freeze_bolts).is_equal(1)
+	_server.apply(CombatAction.upgrade_weapon(1, &"freeze_gun"))
+	var applied := WeaponsFixture.of(_fire(1), &"status_applied")
+	assert_str(String(applied[0]["status"])).is_equal("frozen")
+
+
 # --- Kinds that cannot be frozen (bosses) ---
 
 

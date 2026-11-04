@@ -3,7 +3,7 @@
 How a player dresses their character and how the others see it. The look itself (slots, parts, colour channels,
 presets) is defined in [Characters](characters.md); this page is the screen, the saved form,
 the wire form and the rules that keep teammates readable. Cosmetics only: nothing here changes a night
-([progression](progression.md#the-cast-and-the-marquee-cosmetic-identity)).
+([progression](progression.md#wardrobe-costumes-and-the-locks): the grid, `???` locks, costumes and mouths).
 
 ## The screen
 

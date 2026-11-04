@@ -106,8 +106,9 @@ tier]`, the second wire change of #281).
 
 ## The re-cut plan for seventeen weapons (#785)
 
-**Built in [#794](https://github.com/Ryubara/deadnight/issues/794)**, except what the notes under the table say waits
-for the status system of [#788](https://github.com/Ryubara/deadnight/issues/788). The research
+**Built in [#794](https://github.com/Ryubara/deadnight/issues/794)**, the pump's fire and the freeze gun's wider band
+in [#820](https://github.com/Ryubara/deadnight/issues/820) on the status system of
+[#788](https://github.com/Ryubara/deadnight/issues/788). The research
 ([the roster](../research/weapon-roster.md#the-upgrade-station-what-the-genre-does-and-what-ours-does)) found no reason
 to change the re-cut: it stayed **1,500 points (+1,500 per weapon already re-cut; 5,000 flat since #909), x1.75
 damage, x1.5 magazine and reserve limit, filled, once a weapon**. What the plan adds is which weapons it goes on,
@@ -139,10 +140,22 @@ what each one becomes, and the **elements**.
 An element is one `ElementDef` (`gameplay/weapons/elements/defs/<id>.tres`, listed in `ElementCatalog`) that a
 profile names (`RecutProfile.element`); `WeaponDef.upgraded` puts it on the re-cut copy, and the combat server reads it
 from the weapon in the shooter's hand (`ElementPlay`). **Burning** (a damage over time with a duration) is the one more
-status the status system of [#788](https://github.com/Ryubara/deadnight/issues/788) adds; the **blast** and the **arc**
+status the status system of [#788](https://github.com/Ryubara/deadnight/issues/788) took (`burning`, wire 3): the fire
+element names it (`ElementDef.burn_dps`, `burn_seconds`, `burn_tick_seconds`, `burn_status`); the **blast** and the **arc**
 are instant extra hits made by the combat server on the hit's own event; the burning ground is a patch the server
 keeps for the lure's seconds. None needs a new rules action: every damage is one more `hit` for the zombie it hits, so
 the pay (`max_paid_hits` too) and the rounds' health stay the rules'.
+
+**Fire, as built (#820).** A hit of the re-cut pump sets every zombie it hit and left standing burning
+(`CombatServer._ignite`): the `burning` status for 3 s, and a hit of 15 every 0.5 s for the shooter (`damage_dealt`
+with `element` `fire`, no blood), so the rules pay and kill as for any hit. **Not stacking**: a second hit begins the 3
+s again and takes the fire over, it never adds a second one (so a stream of shells on one zombie burns 30 a second, not
+60). A frozen zombie takes no burn (a hit would shatter it) until it thaws; a zombie that dies of something else drops
+its burn. The clients get `element_burn` (`shooter_id`, `weapon_id`, `element`, `target_id`, `seconds`) and draw
+`ElementFx.burn`: flames and embers that follow the zombie's view and die down with the seconds, one fire a zombie; the
+snapshot's status byte draws the orange shell. `WeaponWorth` (the bots' and the simulator's value) reads it: against a
+health the burn finishes what the pull left (the health to fight for is 90 less); without one it counts for the
+seconds before the next pull restarts it (30 a second for the 0.65 s between shells).
 
 **On the wire.** Three events, all plain data in the combat answer (no wire version: new keys and new event types
 need none): `element_burst` (`point`, `radius`, `element`), `element_arc` (`from`, `to`: one point for each zombie
@@ -176,7 +189,7 @@ simulator's worth of each is in [the research](../research/weapon-roster.md#what
 | Pump 870 | 38.5 x 6 | 9 | 63 (99) | 2 / 2 | **fire** |
 | Dual pistols | 29.75 | 36 | 108 (180) | 10 / 5 | **shock** |
 | Ray gun | 525, blast 280 | 15 | 60 (90) | 1 / 1 | numbers only: a body kill to round 19, a head kill to 22; the blast's 3.0 m does not grow |
-| Freeze gun | 52.5 | 9 | 36 (54) | none | numbers only, **and the freeze's one-bolt band grows from 10 rounds to 20** and the bloom from 2.2 m to 2.8 m (a wonder weapon's "more devastating effect", never an element) |
+| Freeze gun | 52.5 | 9 | 36 (54) | none | numbers only, **and the freeze's one-bolt band grows** and the bloom from 2.2 m to 2.8 m (a wonder weapon's "more devastating effect", never an element). The plan's "10 rounds to 20" was written for a freeze that took more bolts by round; the maintainer made it by kind (a brute 3), so the band is the bolts a kind needs: **a re-cut bolt freezes a brute on the second**, never below one (`RecutProfile.freeze_bolts_less`, 1) |
 
 - **Wonder weapons get no element**: the ray gun and the freeze gun are the strongest weapons and the rule keeps
   elements for the weakest. Their re-cut is numbers, as the genre's (doubled damage, a bigger magazine).

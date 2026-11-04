@@ -1,3 +1,4 @@
+# gdlint:disable=max-public-methods
 extends GdUnitTestSuite
 ## The elements of the re-cut (docs/design/upgrades.md, "The four elements"), on the server: what
 ## a hit of a re-cut weapon does besides its own damage, for how long, and who it spares. Each test
@@ -271,6 +272,183 @@ func test_the_fire_kills_what_burns_in_it_and_pays_the_shooter() -> void:
 	assert_array(killed).has_size(1)
 	assert_int(killed[0]["shooter_id"]).is_equal(1)
 	assert_int(_rules.players[1].kills).is_equal(1)
+
+
+# --- Fire rounds ---
+
+
+## A zombie that outlasts the burn, so the count of its hits is the fire's length.
+func _tough(index: int) -> void:
+	_rules._zombies[_ids[index]].health = 100000.0
+
+
+func _burn_hits(events: Array[Dictionary], index: int) -> Array[Dictionary]:
+	return _damage_of(events, _ids[index]).filter(
+		func(event: Dictionary) -> bool: return event["element"] == &"fire"
+	)
+
+
+func _total(hits: Array[Dictionary]) -> float:
+	var total := 0.0
+	for hit in hits:
+		total += hit["damage"]
+	return total
+
+
+func test_the_pump_re_cut_carries_fire_rounds_of_thirty_a_second_for_three_seconds() -> void:
+	var spec := UpgradeTuning.shipped()
+	var cut := spec.profile_of(&"pump_870")
+	assert_bool(cut.has_element()).is_true()
+	var fire := cut.element
+	assert_str(String(fire.id)).is_equal("fire")
+	assert_bool(fire.has_burn()).is_true()
+	assert_float(fire.burn_dps).is_equal(30.0)
+	assert_float(fire.burn_seconds).is_equal(3.0)
+	assert_float(fire.burn_total()).is_equal(90.0)
+	assert_bool(fire.bleeds).is_false()
+	assert_bool(fire.has_blast() or fire.has_arc() or fire.has_ground()).is_false()
+	assert_str(cut.card_line(WeaponCatalog.get_def(&"pump_870"))).contains("FIRE ROUNDS")
+	assert_str(fire.card_line()).contains("BURNING, 30 A SECOND FOR 3 S")
+	# The burn is the pump's alone: no other re-cut carries one.
+	for id in spec.weapon_ids():
+		if id != &"pump_870" and spec.profile_of(id).has_element():
+			assert_bool(spec.profile_of(id).element.has_burn()).is_false()
+
+
+func test_a_re_cut_pump_hit_sets_the_zombie_burning_for_three_seconds() -> void:
+	_arm(&"pump_870", {0: Vector3.ZERO})
+	_tough(0)
+	var events := _fire(CHEST)
+	var applied := WeaponsFixture.of(events, &"status_applied")
+	assert_array(applied).has_size(1)
+	assert_str(String(applied[0]["status"])).is_equal("burning")
+	assert_float(applied[0]["seconds"]).is_equal(3.0)
+	assert_int(applied[0]["wire"]).is_equal(StatusCatalog.get_def(&"burning").wire)
+	assert_bool(applied[0]["halts"]).is_false()
+	assert_float(applied[0]["speed_scale"]).is_equal(1.0)
+	var burn := WeaponsFixture.of(events, &"element_burn")
+	assert_array(burn).has_size(1)
+	assert_int(burn[0]["target_id"]).is_equal(_ids[0])
+	assert_str(String(burn[0]["element"])).is_equal("fire")
+	assert_float(burn[0]["seconds"]).is_equal(3.0)
+	assert_bool(_server.statuses.has(_ids[0], &"burning")).is_true()
+
+
+func test_a_plain_pump_burns_nothing() -> void:
+	_server.apply(CombatAction.give_weapon(1, &"pump_870"))
+	var placed := {_ids[0]: Vector3.ZERO}
+	WeaponsFixture.step(_server, placed, 2)
+	_tough(0)
+	var events := _fire(CHEST)
+	assert_array(WeaponsFixture.of(events, &"damage_dealt")).is_not_empty()
+	assert_array(WeaponsFixture.of(events, &"element_burn")).is_empty()
+	assert_bool(_server.statuses.any(_ids[0])).is_false()
+
+
+func test_the_burn_takes_ninety_in_hits_of_fifteen_and_then_ends() -> void:
+	var placed := _arm(&"pump_870", {0: Vector3.ZERO})
+	_tough(0)
+	var events := _fire(CHEST)
+	_run(4.0, placed, events)
+	var burns := _burn_hits(events, 0)
+	assert_int(burns.size()).is_equal(6)
+	for hit in burns:
+		assert_float(hit["damage"]).is_equal_approx(15.0, 0.001)
+		assert_bool(hit["melee"]).is_false()
+	assert_float(_total(burns)).is_equal_approx(90.0, 0.001)
+	var ended := WeaponsFixture.of(events, &"status_ended")
+	assert_array(ended).has_size(1)
+	assert_str(String(ended[0]["status"])).is_equal("burning")
+	assert_bool(_server.statuses.any(_ids[0])).is_false()
+	# Nothing burns after the seconds are up.
+	var later: Array[Dictionary] = []
+	_run(2.0, placed, later)
+	assert_array(_burn_hits(later, 0)).is_empty()
+
+
+func test_a_second_hit_restarts_the_burn_and_never_stacks_a_second_fire() -> void:
+	var placed := _arm(&"pump_870", {0: Vector3.ZERO})
+	_tough(0)
+	var events := _fire(CHEST)
+	_run(1.0, placed, events)
+	var second := _fire(CHEST)
+	events.append_array(second)
+	assert_array(WeaponsFixture.of(second, &"element_burn")).has_size(1)
+	# Still one burning status, with the three seconds begun again.
+	assert_float(_server.statuses.left(_ids[0], &"burning")).is_greater(2.8)
+	_run(5.0, placed, events)
+	# One fire all along: 30 a second from the first hit to three seconds after the second (4 s,
+	# not the 6 s two stacked fires would burn), in hits of 15.
+	var total := _total(_burn_hits(events, 0))
+	assert_float(total).is_between(30.0 * 3.8, 30.0 * 4.3)
+
+
+func test_every_zombie_the_shot_hits_burns_and_the_burn_is_the_shooters() -> void:
+	var placed := _arm(&"pump_870", {0: Vector3.ZERO, 1: Vector3(0.3, 0, 0), 2: Vector3(9, 0, 0)})
+	_tough(0)
+	_tough(1)
+	var events := _fire(CHEST)
+	_run(4.0, placed, events)
+	assert_float(_total(_burn_hits(events, 0))).is_equal_approx(90.0, 0.001)
+	# The one far off to the side was not hit, so it does not burn.
+	assert_array(_burn_hits(events, 2)).is_empty()
+	for event in _burn_hits(events, 0):
+		assert_int(event["shooter_id"]).is_equal(1)
+
+
+func test_the_burn_kills_and_pays_the_shooter() -> void:
+	var placed := _arm(&"pump_870", {0: Vector3.ZERO})
+	_tough(0)
+	var events := _fire(CHEST)
+	# What the shell left standing is finished by the fire: 40 health is under three burns.
+	_rules._zombies[_ids[0]].health = 40.0
+	var points := _rules.points_of(1)
+	_run(3.5, placed, events)
+	var killed := WeaponsFixture.of(events, &"target_killed")
+	assert_array(killed).has_size(1)
+	assert_int(killed[0]["shooter_id"]).is_equal(1)
+	assert_int(_rules.players[1].kills).is_equal(1)
+	assert_int(_rules.points_of(1)).is_greater(points)
+	assert_bool(_server.statuses.any(_ids[0])).is_false()
+	assert_int(_burn_hits(events, 0).size()).is_equal(3)
+
+
+func test_a_zombie_the_shell_kills_is_not_set_alight() -> void:
+	_arm(&"pump_870", {0: Vector3.ZERO})
+	var events := _fire(CHEST)
+	assert_array(WeaponsFixture.of(events, &"target_killed")).has_size(1)
+	assert_array(WeaponsFixture.of(events, &"element_burn")).is_empty()
+	assert_bool(_server.statuses.any(_ids[0])).is_false()
+
+
+func test_a_frozen_burning_zombie_takes_no_burn_until_it_thaws() -> void:
+	var placed := _arm(&"pump_870", {0: Vector3.ZERO})
+	_tough(0)
+	_fire(CHEST)
+	_server.statuses.apply(_ids[0], StatusCatalog.get_def(&"frozen"), 1.0)
+	var during: Array[Dictionary] = []
+	_run(0.9, placed, during)
+	assert_array(_burn_hits(during, 0)).is_empty()
+	assert_array(WeaponsFixture.of(during, &"zombie_removed")).is_empty()
+
+
+func test_a_burn_dies_with_the_zombie_that_dies_of_something_else() -> void:
+	var placed := _arm(&"pump_870", {0: Vector3.ZERO})
+	_tough(0)
+	_fire(CHEST)
+	_rules.apply(RulesAction.hit(1, _ids[0], &"body", RulesFixture.KILLING_DAMAGE))
+	var later: Array[Dictionary] = []
+	_run(4.0, placed, later)
+	assert_array(WeaponsFixture.of(later, &"damage_dealt")).is_empty()
+
+
+func test_the_burn_events_are_plain_data_a_client_can_receive() -> void:
+	_arm(&"pump_870", {0: Vector3.ZERO})
+	_tough(0)
+	for event in WeaponsFixture.of(_fire(CHEST), &"element_burn"):
+		var sent := bytes_to_var(var_to_bytes(event)) as Dictionary
+		assert_int(sent["target_id"]).is_equal(_ids[0])
+		assert_str(String(sent["element"])).is_equal("fire")
 
 
 # --- Plain data ---

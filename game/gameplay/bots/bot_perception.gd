@@ -153,14 +153,15 @@ func _sees(eye: Vector3, zombie: Dictionary) -> bool:
 	var look: StringName = zombie.get("look", ZombieModels.DEFAULT)
 	var mode: int = zombie.get("mode", ZombieBody.Mode.CHASE)
 	var yaw := float(zombie.get("yaw", 0.0))
+	var climbing: bool = zombie.get("climbing", false)
 	var base: Vector3 = zombie["position"]
 	rays_last += 1
-	if _level.clear(eye, base + ZombiePose.aim_offset(look, mode, yaw, Hitbox.BODY)):
+	if _level.clear(eye, base + ZombiePose.aim_offset(look, mode, yaw, Hitbox.BODY, climbing)):
 		return true
 	if rays_last >= _profile.rays_per_think:
 		return false
 	rays_last += 1
-	return _level.clear(eye, base + ZombiePose.aim_offset(look, mode, yaw, Hitbox.HEAD))
+	return _level.clear(eye, base + ZombiePose.aim_offset(look, mode, yaw, Hitbox.HEAD, climbing))
 
 
 func _sighted(zombie: Dictionary) -> void:
@@ -174,6 +175,7 @@ func _sighted(zombie: Dictionary) -> void:
 			"velocity": Vector3.ZERO,
 			"look": zombie.get("look", ZombieModels.DEFAULT),
 			"mode": zombie["mode"],
+			"climbing": zombie.get("climbing", false),
 			"status": zombie.get("status", 0),
 			"yaw": zombie.get("yaw", 0.0),
 			"episode": zombie.get("episode", 0),
