@@ -64,7 +64,7 @@ func add_row(row: Control) -> void:
 		var above := _rows[_rows.size() - 2]
 		start = maxf(start, above.position.y + above.get_combined_minimum_size().y + gap)
 	row.position.y = start
-	row.self_modulate.a = 0.0
+	_fade(row, 0.0)
 
 
 ## Takes `row` out and frees it. The rows below it slide up into the space.
@@ -82,7 +82,7 @@ func take_row(row: Control) -> void:
 	if row.minimum_size_changed.is_connected(resized):
 		row.minimum_size_changed.disconnect(resized)
 	remove_child(row)
-	row.self_modulate.a = 1.0
+	_fade(row, 1.0)
 	if UIMotion.reduced:
 		_snap()
 
@@ -128,15 +128,24 @@ func advance(delta: float) -> void:
 		row.position.y = goal if absf(y - goal) <= SNAP else y
 		var entered := minf(float(_enter[row]) + delta / ENTER_TIME, 1.0)
 		_enter[row] = entered
-		row.self_modulate.a = entered
+		_fade(row, entered)
 	var height := lerpf(_height, target_height(), fraction)
 	_set_height(target_height() if absf(height - target_height()) <= SNAP else height)
+
+
+## A row's fade-in, by its own `self_modulate` (the feed fades rows out by `modulate`). A `HudLabel`
+## fades its outline with it.
+func _fade(row: Control, alpha: float) -> void:
+	if row is HudLabel:
+		(row as HudLabel).set_enter_alpha(alpha)
+	else:
+		row.self_modulate.a = alpha
 
 
 func _snap() -> void:
 	for row in _rows:
 		_enter[row] = 1.0
-		row.self_modulate.a = 1.0
+		_fade(row, 1.0)
 		row.position.y = target_y(row)
 	_set_height(target_height())
 

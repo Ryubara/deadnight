@@ -150,6 +150,7 @@ func _drag_event(
 func stray_mouse_motion(relative: Vector2) -> void:
 	var event := InputEventMouseMotion.new()
 	event.relative = _window().basis_xform(relative)
+	event.screen_relative = relative  # the player turns by these pixels, whatever the window
 	event.position = _window() * Vector2(500.0, 500.0)
 	Input.parse_input_event(event)
 	await _suite.get_tree().process_frame

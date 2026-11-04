@@ -96,3 +96,12 @@ func test_the_worst_second_is_the_slowest_run_of_a_second_of_frames() -> void:
 	# A round shorter than a second is one run.
 	assert_float(AutopilotRun.worst_second([8.0, 12.0] as Array[float])).is_equal(10.0)
 	assert_float(AutopilotRun.worst_second([] as Array[float])).is_equal(0.0)
+
+
+func test_a_late_round_with_bots_is_asked_for_by_arguments() -> void:
+	var asked := NetArgs.new(
+		PackedStringArray(["--autopilot", "--bots=3", "--startround=12", "--ceiling=desktop"])
+	)
+	var settings := AutopilotRun.settings_from(asked)
+	assert_int(settings.bots).is_equal(3)
+	assert_int(AutopilotRun.settings_from(NetArgs.new(PackedStringArray())).bots).is_equal(0)

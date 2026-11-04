@@ -17,8 +17,12 @@ var _ring: MenuLook.Ring
 var _ring_number: Label
 
 
-func _init(compact := false) -> void:
+## `width` (when it is more than 0) is the plate's own width: the tab bar's end leaves less than
+## `COMPACT_WIDTH` on the narrowest phone canvas (960 units).
+func _init(compact := false, width := 0.0) -> void:
 	var plate_size := Vector2(COMPACT_WIDTH if compact else SIZE.x, SIZE.y)
+	if width > 0.0:
+		plate_size.x = minf(plate_size.x, width)
 	custom_minimum_size = plate_size
 	size = plate_size
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -29,14 +33,22 @@ func _init(compact := false) -> void:
 	_name = MenuLook.label("", 30, MenuLook.PAPER_INK, &"wide")
 	_name.position = Vector2(24.0, 2.0)
 	_name.size = Vector2(plate_size.x - RING_ZONE - 40.0, 38.0)
+	# A name of sixteen wide letters is longer than the room before the ring: it ends in an
+	# ellipsis instead of running over the ring.
+	_name.clip_text = true
+	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	add_child(_name)
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override(&"separation", 12)
 	line.position = Vector2(24.0, 40.0)
+	line.size = Vector2(plate_size.x - RING_ZONE - 40.0, 28.0)
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(line)
 	_level = MenuLook.label("", MenuLook.SIZE_CAPTION, MenuLook.RED, &"wide")
 	_stubs = MenuLook.label("", MenuLook.SIZE_CAPTION, MenuLook.PAPER_MUTED, &"wide")
+	_stubs.clip_text = true
+	_stubs.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_stubs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	line.add_child(_level)
 	line.add_child(_stubs)
 	_ring = MenuLook.Ring.new()

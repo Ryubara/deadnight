@@ -186,7 +186,7 @@ func test_the_back_lots_own_lamps_burn_failing_and_nothing_else_does() -> void:
 		"BackLot/Lamps/Lamp15/Light",
 		"BackLot/Lamps/Lamp16/Light",
 		"BackLot/Lamps/Lamp17/Light",
-		"BackLot/Lamps/NeonSign",
+		"BackLot/Lamps/NeonSign/Light",
 	]
 	assert_array(failing).is_equal(expected)
 	# The plaza's kiosk is on the same circuit and burns steady.
@@ -239,23 +239,80 @@ func test_the_flicker_is_only_the_picture_the_dead_see_a_lit_lot() -> void:
 
 func test_a_sign_follows_the_flicker_through_the_lamp_it_follows() -> void:
 	_switch_back_lot(true)
-	var sign_light := _lot.get_node("BackLot/Lamps/NeonSign") as Light3D
-	var follower := LightFollower.new()
-	_lot.add_child(follower)
-	follower.light_path = follower.get_path_to(sign_light)
-	follower._ready()
-	# A sign placed in the scene reads the lamp's energy before the lamps touch it.
-	follower.set("_base_energy", 1.8)
+	var sign_node := _lot.get_node("BackLot/Lamps/NeonSign") as LotNeonSign
 	var levels := PackedFloat32Array()
 	for tick in range(0, int(60.0 * RATE)):
 		_lamps.refresh(tick)
-		follower.advance(0.0)
-		levels.append(follower.level)
+		sign_node.advance(0.0)
+		levels.append(sign_node.level)
 	assert_float(_max_of(levels)).is_less_equal(1.0)
 	assert_float(_min_of(levels)).is_greater(0.0)
 	assert_float(_max_of(levels) - _min_of(levels)).is_greater(0.3)
 	# It follows the lamp and so shares the flash budget.
 	assert_int(most_flashes_in_a_second(levels)).is_less_equal(MOST_FLASHES_A_SECOND)
+
+
+## What the eye gets from the sign is the tubes' light, the flicker times the buzz (`LotNeonSign`):
+## the buzz's dips and ripple must not take the sign over the flash budget the lamps keep.
+func test_the_signs_tubes_keep_the_flash_budget_with_their_buzz() -> void:
+	_switch_back_lot(true)
+	var sign_node := _lot.get_node("BackLot/Lamps/NeonSign") as LotNeonSign
+	var tubes := sign_node.get_node("Frame/Tubes") as MeshInstance3D
+	var material := tubes.material_override as StandardMaterial3D
+	var full := LightTuning.current().neon_tube_energy
+	# A full tank, and the tank's brownout (the last tenth: the lamp's sag, never a second flicker).
+	for share: float in [1.0, 0.07, 0.04, 0.015]:
+		_lamps.fuel = _fuel.capacity * share
+		var seen := PackedFloat32Array()
+		for tick in int((SECONDS if share == 1.0 else 300.0) * RATE):
+			_lamps.refresh(tick)
+			sign_node.advance(1.0 / RATE)
+			seen.append(material.emission_energy_multiplier / full)
+		assert_float(_min_of(seen)).override_failure_message("tank %s" % share).is_greater(0.0)
+		(
+			assert_int(most_flashes_in_a_second(seen))
+			. override_failure_message("tank %s" % share)
+			. is_less_equal(MOST_FLASHES_A_SECOND)
+		)
+
+
+func test_the_sign_is_dark_with_its_circuit_off_and_burns_with_it_on() -> void:
+	var sign_node := _lot.get_node("BackLot/Lamps/NeonSign") as LotNeonSign
+	var halo := sign_node.get_node("Halo") as MeshInstance3D
+	var tubes := sign_node.get_node("Frame/Tubes") as MeshInstance3D
+	_switch_back_lot(false)
+	_lamps.refresh(0)
+	sign_node.advance(0.0)
+	assert_float(sign_node.level).is_equal(0.0)
+	assert_bool(halo.visible).is_false()
+	(
+		assert_float((tubes.material_override as StandardMaterial3D).emission_energy_multiplier)
+		. is_equal(0.0)
+	)
+	_switch_back_lot(true)
+	sign_node.advance(0.0)
+	assert_float(sign_node.level).is_greater(0.0)
+	assert_bool(halo.visible).is_true()
+	(
+		assert_float((tubes.material_override as StandardMaterial3D).emission_energy_multiplier)
+		. is_greater(0.0)
+	)
+
+
+func test_the_sign_replaced_the_orange_block_and_costs_four_draws() -> void:
+	var sign_node := _lot.get_node("BackLot/Lamps/NeonSign") as LotNeonSign
+	assert_str(sign_node.text).is_equal("OVERFLOW")
+	# The four tubes are one mesh: the board, the tubes, the word and the halo are the sign's draws.
+	assert_int(sign_node.get_node("Frame").get_child_count()).is_equal(1)
+	var drawn := 0
+	for node in sign_node.find_children("*", "GeometryInstance3D", true, false):
+		drawn += 1
+	assert_int(drawn).is_equal(4)
+	var board := _lot.get_node("BackLot/SignBoard") as CSGBox3D
+	assert_str(board.material.resource_name).is_equal("backlot_wall")
+	# Its halo is the face's: nothing shows from behind the board.
+	var halo := (sign_node.get_node("Halo") as MeshInstance3D).material_override as ShaderMaterial
+	assert_bool(halo.get_shader_parameter(&"front_only")).is_true()
 
 
 func test_a_low_tank_dims_the_failing_lights_without_adding_a_strobe() -> void:

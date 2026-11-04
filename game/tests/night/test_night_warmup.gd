@@ -233,3 +233,39 @@ func test_the_check_notices_a_particle_system_the_warm_up_never_drew() -> void:
 	var absent := night.warmup.ledger.missing(DrawLedger.strings_of(night))
 	assert_array(absent).contains(["particles|" + DrawLedger.process_key(process)])
 	night.queue_free()
+
+
+func test_a_grenades_trail_draws_nothing_the_warm_up_did_not() -> void:
+	# The first throw of a night (#936): its trail's dots, one multimesh over a shared material.
+	var night := await _warmed_night()
+	night.view.show_grenades(GrenadesFixture.def())
+	var from := night.player().global_position + Vector3(0.0, 1.5, 0.0)
+	(
+		night
+		. view
+		. draw_event(
+			{
+				"type": &"grenade_thrown",
+				"grenade_id": 901,
+				"thrower_id": 1,
+				"position": from,
+				"velocity": Vector3(0.0, 3.0, -9.0),
+				"fuse_left": 3.0,
+			}
+		)
+	)
+	var views := night.view.find_children("*", "GrenadeView", true, false)
+	assert_int(views.size()).is_equal(1)
+	for _i in 8:
+		(views[0] as GrenadeView).follow(1.0 / 60.0)
+	assert_int(views[0].find_children("*", "GrenadeTrail", true, false).size()).is_equal(1)
+	var drawn := DrawLedger.strings_of(night)
+	var absent := night.warmup.ledger.missing(drawn)
+	(
+		assert_array(absent)
+		. override_failure_message(
+			"The first grenade drew these and the warm-up did not:\n%s" % "\n".join(absent)
+		)
+		. is_empty()
+	)
+	night.queue_free()
