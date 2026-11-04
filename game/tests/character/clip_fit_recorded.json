@@ -17,28 +17,5 @@
   "Swing_Melee": {
    "armbands": 0.05
   }
- },
- "menu 0": {
-  "fifty_cal": {
-   "right arm": 0.037
-  },
-  "freeze_gun": {
-   "right arm": 0.036
-  },
-  "m249": {
-   "right arm": 0.036
-  },
-  "m4a1": {
-   "right arm": 0.03
-  },
-  "mp5": {
-   "right arm": 0.039
-  },
-  "pump_870": {
-   "right arm": 0.035
-  },
-  "smg": {
-   "right arm": 0.036
-  }
  }
 }

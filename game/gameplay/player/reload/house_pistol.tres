@@ -14,7 +14,7 @@ weapon_turn = Vector3(35, -30, -15)
 chest_lean = 4
 chest_turn = 25
 left = 1
-left_point = Vector3(0.05, -0.12, 0.04)
+left_point = Vector3(-0.07, -0.26, 0.1)
 
 [sub_resource type="Resource" id="Key_2"]
 script = ExtResource("1_key")
@@ -24,7 +24,7 @@ weapon_turn = Vector3(35, -30, -15)
 chest_lean = 4
 chest_turn = 25
 left = 1
-left_point = Vector3(0.05, -0.12, 0.04)
+left_point = Vector3(-0.07, -0.26, 0.1)
 left_on_part = true
 
 [sub_resource type="Resource" id="Key_3"]
@@ -35,7 +35,7 @@ weapon_turn = Vector3(35, -30, -15)
 chest_lean = 4
 chest_turn = 25
 left = 1
-left_point = Vector3(0.05, -0.12, 0.04)
+left_point = Vector3(-0.07, -0.26, 0.1)
 left_on_part = true
 part = 1
 
@@ -47,7 +47,7 @@ weapon_turn = Vector3(35, -30, -15)
 chest_lean = 4
 chest_turn = 25
 left = 1
-left_point = Vector3(0.05, -0.12, 0.04)
+left_point = Vector3(-0.07, -0.26, 0.1)
 left_on_part = true
 part = 1
 part_shown = false
@@ -62,7 +62,7 @@ chest_lean = 6
 chest_turn = 25
 left = 1
 left_space = 1
-left_point = Vector3(-0.2, 0.05, -0.05)
+left_point = Vector3(-0.32, 0.18, -0.2)
 part = 1
 part_shown = false
 ammo = true
@@ -75,7 +75,7 @@ weapon_turn = Vector3(35, -30, -15)
 chest_lean = 4
 chest_turn = 25
 left = 1
-left_point = Vector3(0.05, -0.12, 0.04)
+left_point = Vector3(-0.07, -0.26, 0.1)
 left_on_part = true
 part = 1
 part_shown = false
@@ -89,7 +89,7 @@ weapon_turn = Vector3(35, -30, -15)
 chest_lean = 4
 chest_turn = 25
 left = 1
-left_point = Vector3(0.05, -0.12, 0.04)
+left_point = Vector3(-0.07, -0.26, 0.1)
 left_on_part = true
 part = 1
 
@@ -101,7 +101,7 @@ weapon_turn = Vector3(35, -30, -15)
 chest_lean = 4
 chest_turn = 25
 left = 1
-left_point = Vector3(0.05, -0.12, 0.04)
+left_point = Vector3(-0.07, -0.26, 0.1)
 left_on_part = true
 
 [sub_resource type="Resource" id="Key_9"]

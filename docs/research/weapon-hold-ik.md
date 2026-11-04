@@ -30,6 +30,35 @@ size came from `model length x scale x 0.8` against the Soldier's bounds. Tests 
 | The right hand gets its orientation from the kit hold | `hand_basis = weapon_basis * kit_hold_basis.inverse()`: the weapon sits in the fist exactly as the kit's does, whatever the arm does |
 | Toe in to the crosshair | The camera is over the shoulder; a parallel barrel misses the camera ray's point 12 m ahead by 3.7 degrees. Aiming the barrel at that point costs at most 5 degrees off the ray and ends the miss |
 
+## The reload and the shouldered hold out of the body (#987)
+
+Measured with `tests/captures/clip_arms_tour.tscn -- --measure --every=1` (the real player, every gun, the pose after
+the IK, every tick of the reload; mm, kit scale, deepest vertex over the tolerance of 30; rolled sleeves / jacket):
+
+| Beat, check | Before | After |
+| --- | --- | --- |
+| Reload, left arm | 94-125 / 95-120 | none |
+| Reload, right arm | 33-96 / 33-101 | none |
+| Fire, right arm (the long guns) | 30-53 / 30-45 | none |
+| Menu holds, right arm (long sleeve) | 30-39 recorded | none |
+
+- **The issue's "right hand into the trunk" was the other arm.** `ClipFit`'s arm checks join the body and the other
+  arm. Split by target, no right hand went into the trunk: it went 33-101 mm into the left hand and forearm. Split a
+  check by target before tuning a pose.
+- **The left hand in the body had four causes:** the belt point inside the hips (half width 0.32 kit); a straight line
+  from a gun at the right to the belt on the left, through the belly; the hold's pole (`side + down`) lying along the
+  hanging arm, so the elbow flipped between ticks and turned in; the hand left bent as on the fore-end, the fingers in
+  the thigh. Straightening alone took 94-125 down to 56-99; the elbow's own pole took the rest.
+- **The two hands:** the fists are about 0.25 kit wide, so a left hand on a magazine's middle or a drum's centre is in
+  the right fist. The hand takes the far end: the bottom of the magazine (M4, MP5, .50), the low front of the drum, not
+  the hand further along the barrel (a search found that too, and it left the drum held by nothing). A push of the left
+  hand off the right arm by the bones' lines changed nothing and went: the arm is at full stretch there, and what
+  matters is which side of the gun the hand is on.
+- **The hold:** the grip moved out 5 cm (the pump 8) cleared what a shot's kick did; elbows at 1.6 of the shoulder width
+  instead of 1.0 only took 53 to 43 and left the pump at 50, so `ELBOW_OUT_TWO_HANDED` stayed.
+- **The tour's reload started in a hop:** `teleport` put the player 5 cm up and the reload began in the landing (hips
+  0.5 kit up, then 0.1 down). The tour now settles first.
+
 ## Not done
 
 - The shoulder camera sees every gun end-on in the aim pose (a fist and a barrel tip); see [Weapons in the hands](../design/weapon-hold.md#which-weapon-is-which).
