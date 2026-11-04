@@ -1,4 +1,5 @@
 # gdlint: disable=max-public-methods
+# gdlint:disable=max-file-lines
 class_name PlayerAnimation
 extends AnimationTree
 ## Drives the Soldier's clips (docs/design/animation.md is the spec) from the player's movement.
@@ -14,6 +15,8 @@ extends AnimationTree
 ##          body by a Blend2 filtered to the upper bones.
 ##   repair: Repair_Board looping over the upper layer while the player puts boards back at a
 ##          breach (its own file, added to the library here), timed by the rules' events.
+##   drink: Drink_Perk over that while the player drinks a perk (its own file, #912), at the pace
+##          of the rules' drink, with the perk's bottle in the hand (`PerkBottle`).
 ##   downed: kneeling at a revive, or down, over all of that (DownedPose, #504).
 ##   full:  a full-body OneShot over both (HitReact, Death).
 ## Loops, the upper bones and the event frames come from clips.json, written by the build script.
@@ -214,6 +217,8 @@ var _carry_on := false
 ## The downed and revive layers (#504), and where the kneel loop is for its `press` events.
 var _down := DownedPose.new()
 var _revive_time := 0.0
+## The perk drink's layer and its bottle (#912).
+var _drink: DrinkLayer
 
 
 func _ready() -> void:
@@ -232,6 +237,7 @@ func _ready() -> void:
 	SoldierClipFile.add(library, _spec, SPRINT_GLB, SPRINT_SPEC, SprintCarry.CLIPS)
 	SoldierClipFile.add(library, _spec, QuickStrike.GLB, QuickStrike.SPEC, QuickStrike.CLIPS)
 	SoldierClipFile.add(library, _spec, DualClips.GLB, DualClips.SPEC, DualClips.CLIPS)
+	SoldierClipFile.add(library, _spec, DrinkLayer.GLB, DrinkLayer.SPEC, [DrinkLayer.CLIP])
 	var revive_specs := DownedPose.add_clips(anim_player)
 	_spec["clips"].merge(revive_specs)
 	if revive_specs.has(String(DownedPose.CRAWL_CLIP)):
@@ -255,6 +261,7 @@ func _ready() -> void:
 	_hammer.visible = false
 	_mount.add_child(_hammer)
 	_build_grenade()
+	_drink = DrinkLayer.new(_mount)
 	_reload = ReloadView.new(skeleton)
 	self.anim_player = get_path_to(anim_player)
 	tree_root = _build_tree(SoldierClipFile.skeleton_track_path(anim_player))
@@ -285,6 +292,7 @@ func _process(delta: float) -> void:
 	_advance_aim_move(follow, delta)
 	_advance_events(delta)
 	_advance_repair(delta)
+	_advance_drink(delta)
 	_advance_downed(speed, delta)
 	_advance_carry(delta, on_floor)
 	_reload.step(delta, _hands, _weapon != null and _weapon.visible)
@@ -322,6 +330,7 @@ func sprint_carry_wanted(on_floor: bool) -> bool:
 		and action_clip == &""
 		and not reloading()
 		and not is_repairing()
+		and not _drink.drinking
 		and not _down.downed
 		and not _down.reviving
 	)
@@ -567,6 +576,37 @@ func repair_time() -> float:
 	return _repair_time
 
 
+## The player drinks a perk (the rules' `drink_started`): `Drink_Perk` plays over the arms for the
+## drink's `seconds` with the bottle of `tonic_id` in the hand (`DrinkLayer`). A repair or a reload
+## stops; the gun is away from the clip's `weapon_hidden` to its `weapon_visible`. Never while down.
+func drink(tonic_id: StringName, seconds: float) -> void:
+	if _down.downed or not _spec["clips"].has(String(DrinkLayer.CLIP)):
+		return
+	stop_repair()
+	cancel_reload()
+	_drink.start(tonic_id, seconds, _clip_seconds(DrinkLayer.CLIP), self)
+	_emit_events(DrinkLayer.CLIP, -1.0, 0.0)
+
+
+## The drink ends at once: `spilled` (the drinker went down) drops the bottle where it is.
+func stop_drink(spilled := false) -> void:
+	if _drink.stop(spilled):
+		_weapon_visible(true)
+
+
+func is_drinking() -> bool:
+	return _drink.drinking
+
+
+## The drink's layer (its weight, its clip's place) and the perk's bottle, for tests and captures.
+func drink_layer() -> DrinkLayer:
+	return _drink
+
+
+func bottle() -> PerkBottle:
+	return _drink.bottle
+
+
 ## Down (`player_downed`) or up again (`player_revived`): the body eases into the downed pose or out
 ## of it (DownedPose). Going down drops a repair, a reload and a revive, and puts the weapon away.
 func set_downed(downed: bool) -> void:
@@ -576,6 +616,7 @@ func set_downed(downed: bool) -> void:
 	if downed:
 		stop_repair()
 		cancel_reload()
+		stop_drink(true)
 		_down.reviving = false
 	_weapon_visible(not downed)
 
@@ -669,7 +710,7 @@ func _set_class(new_class: StringName, hold: WeaponHold) -> void:
 	_offhand = _held.offhand
 	_weapon_grip = _held.grip
 	if _weapon != null:
-		_weapon.visible = not is_repairing()
+		_weapon.visible = not is_repairing() and not _drink.holds_weapon
 	if _offhand != null:
 		_offhand.visible = _weapon.visible
 
@@ -691,6 +732,8 @@ func _advance_grip(delta: float) -> void:
 	var grip: HandGrip = null
 	if _hammer.visible:
 		grip = _hammer_grip
+	elif _drink.bottle.visible:
+		grip = _drink.bottle.grip
 	elif _grenade.visible:
 		grip = _grenade_grip
 	elif _weapon != null and _weapon.visible:
@@ -719,6 +762,7 @@ func _advance_shoulder(delta: float) -> void:
 	var hands_free := (
 		(action_clip == &"" or String(action_clip).begins_with("Fire_"))
 		and not is_repairing()
+		and not _drink.drinking
 		and not _down.downed
 		and not _down.reviving
 	)
@@ -759,7 +803,13 @@ func _advance_shoulder(delta: float) -> void:
 ## the hands hold nothing.
 func _weapon_visible(shown: bool) -> void:
 	if _weapon != null:
-		_weapon.visible = shown and not is_repairing() and not _down.downed and not _down.reviving
+		_weapon.visible = (
+			shown
+			and not is_repairing()
+			and not _drink.holds_weapon
+			and not _down.downed
+			and not _down.reviving
+		)
 		if _offhand != null:
 			_offhand.visible = _weapon.visible
 
@@ -837,6 +887,14 @@ func _advance_repair(delta: float) -> void:
 	set(REPAIR_BLEND_PARAMETER, _repair_blend)
 
 
+func _advance_drink(delta: float) -> void:
+	var before := _drink.advance(delta, self)
+	if _drink.time > before:
+		_emit_events(DrinkLayer.CLIP, before, _drink.time)
+	if _drink.ended():
+		stop_drink()
+
+
 ## The downed and kneel layers, and the kneel loop's `press` events while the revive is held.
 func _advance_downed(speed: float, delta: float) -> void:
 	_down.advance(self, speed, delta)
@@ -893,6 +951,8 @@ func _emit_events(clip: StringName, from: float, to: float, skip: String = "") -
 			var at := frame / fps
 			if at > from and at <= to:
 				if event == "weapon_visible":
+					if clip == DrinkLayer.CLIP:
+						_drink.holds_weapon = false
 					_weapon_visible(true)
 				elif event == "weapon_hidden":
 					_weapon_visible(false)
@@ -903,6 +963,8 @@ func _emit_events(clip: StringName, from: float, to: float, skip: String = "") -
 					_grenade.visible = false
 				elif event == GRENADE_DONE_EVENT:
 					_weapon_visible(true)
+				elif clip == DrinkLayer.CLIP:
+					_drink.on_event(event, _player)
 				clip_event.emit(clip, StringName(event))
 
 
@@ -969,7 +1031,7 @@ func _build_tree(skeleton_path: String) -> AnimationNodeBlendTree:
 	tree.connect_node(&"repair_scale", 0, &"repair_seek")
 	tree.connect_node(&"repair", 0, &"action")
 	tree.connect_node(&"repair", 1, &"repair_scale")
-	tree.connect_node(&"split", 1, &"repair")
+	tree.connect_node(&"split", 1, DrinkLayer.add_nodes(tree, &"repair"))
 	tree.connect_node(&"full", 0, _down.add_nodes(tree, &"split"))
 	tree.connect_node(&"full", 1, &"full_clip")
 	tree.connect_node(&"output", 0, &"full")

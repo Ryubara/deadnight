@@ -1,6 +1,7 @@
 class_name FilmOverlay
 extends ColorRect
-## Grain, vignette and projector flicker over everything (it sits on a layer above the router).
+## Grain, vignette and projector flicker over everything (the last node of the router's layer,
+## #883).
 
 const SHADER := preload("res://ui/skin/film_grain.gdshader")
 

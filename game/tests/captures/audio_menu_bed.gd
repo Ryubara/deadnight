@@ -1,16 +1,18 @@
 extends Node
-## The menu's ambience bed alone, through the real service and the buses at the default settings
-## (#926): the bed starts, plays `SECONDS`, is stopped and is given its fade out. The mix of the
-## recording is the bed, which `tools/audio/menu_speakers.py` puts through a laptop's and a phone's
-## speaker next to the hints of `audio_menu_levels.tscn`. Prints what starting it cost (the first
-## start reads the two files), `BED <seconds> <event>` for its beats, and how many beds still run
-## after the fade out, and what mixing the two streams costs a frame (`BED_MIX_COST_MS`).
+## The menu's ambience and music alone, through the real service and the buses at the default
+## settings (#926): the bed starts, plays `SECONDS`, is stopped and is given its fade out. The mix
+## of the recording is the bed, which `tools/audio/menu_speakers.py` puts through a laptop's and a
+## phone's speaker next to the hints of `audio_menu_levels.tscn`. Prints what starting it cost
+## (the first start reads the files), `BED <seconds> <event>` for its beats, and how many beds
+## still run after the fade out, and what mixing the streams costs a frame
+## (`BED_MIX_COST_MS`).
 ##
 ## `gds godot -- --path game res://tests/captures/audio_menu_bed.tscn --write-movie <abs>/bed.avi
 ## --fixed-fps 60 --resolution 160x90`, then `ffmpeg -i bed.avi -vn -c:a pcm_s32le bed.wav`.
 
 const FPS := 60.0
-const SECONDS := 30.0
+## Long enough for the bells' loop (113 s) to be heard whole, and a stay the length of a coffee.
+const SECONDS := 120.0
 const FADE_OUT_WAIT := 2.6
 const MIX_SECONDS := 20.0
 

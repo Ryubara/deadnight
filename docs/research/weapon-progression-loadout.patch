@@ -1,0 +1,193 @@
+diff --git a/game/tools/balance/balance_batch.gd b/game/tools/balance/balance_batch.gd
+--- a/game/tools/balance/balance_batch.gd
++++ b/game/tools/balance/balance_batch.gd
+@@ -84,6 +84,10 @@ static func _add(cell: Dictionary, night: Dictionary, rules: GameRules) -> void:
+ 		cell["head_kills"][r] += record.get("head_kills", 0)
+ 		cell["special"][r] = String(record["special"])
+ 	cell["dry_rounds"] += night["dry_rounds"]
++	var wk: Dictionary = cell.get("weapon_kills", {})
++	for weapon_id: StringName in night.get("weapon_kills", {}):
++		wk[String(weapon_id)] = wk.get(String(weapon_id), 0) + night["weapon_kills"][weapon_id]
++	cell["weapon_kills"] = wk
+ 	cell["runs"] += night["runs"]
+ 	if night["died"]:
+ 		cell["died_in"][night["rounds_reached"]] += 1
+@@ -98,6 +102,13 @@ static func _add(cell: Dictionary, night: Dictionary, rules: GameRules) -> void:
+ 		)
+ 	var players := float(rules.players.size())
+ 	for player: PlayerState in rules.players.values():
++		var pp: Dictionary = cell.get("pp", {})
++		var row: Array = pp.get(player.id, [0.0, 0.0, 0.0])
++		row[0] += float(player.points_earned)
++		row[1] += float(player.kills)
++		row[2] += float(player.downs)
++		pp[player.id] = row
++		cell["pp"] = pp
+ 		cell["spent_total"] += float(player.points_spent) / players
+ 		cell["earned_total"] += float(player.points_earned) / players
+
+diff --git a/game/tools/balance/balance_cli.gd b/game/tools/balance/balance_cli.gd
+--- a/game/tools/balance/balance_cli.gd
++++ b/game/tools/balance/balance_cli.gd
+@@ -30,6 +30,7 @@ func _init() -> void:
+ 	var failed := TuningOverrides.apply(tuning, _specs(OS.get_cmdline_user_args()))
+ 	if not failed.is_empty():
+ 		push_error("no such tuning: %s" % ", ".join(failed))
++	SimLoadout.parse(String(args.get("loadout", "")), String(args.get("equipped", "")), int(args.get("players", "1")))
+ 	var cell := BalanceBatch.run_cell(
+ 		tuning,
+ 		StringName(args.get("skill", "average")),
+diff --git a/game/tools/balance/night_sim.gd b/game/tools/balance/night_sim.gd
+--- a/game/tools/balance/night_sim.gd
++++ b/game/tools/balance/night_sim.gd
+@@ -215,9 +215,10 @@ func _target_of(zombie: SimZombie) -> SimPlayer:
+
+
+ func _blow(zombie: SimZombie, target: SimPlayer) -> void:
+-	var land := 1.0 - skill.dodge
++	var land := 1.0 - (skill.dodge + SimLoadout.v(target.id, "dodge"))
+ 	if zombie.telegraph > 0.0:
+ 		land = minf(land, 1.0) * exp(-zombie.telegraph * skill.read)
++	land *= SimLoadout.v(target.id, "land", 1.0)
+ 	if _rng.randf() >= land:
+ 		return
+ 	target.health -= zombie.damage
+@@ -274,17 +275,18 @@ func _shoot(player: SimPlayer) -> void:
+ 		if player.reload_left > 0.0:
+ 			return
+ 		arm.reload()
+-		player.carry = minf(-player.reload_left, step) * skill.uptime
++		player.carry = minf(-player.reload_left, step) * (skill.uptime + SimLoadout.v(player.id, "uptime"))
+ 		player.reload_left = 0.0
+ 	else:
+-		player.carry += step * skill.uptime
++		player.carry += step * (skill.uptime + SimLoadout.v(player.id, "uptime"))
+ 	if player.stun > 0.0:
+ 		player.carry = 0.0
+ 		return
+ 	var melee := SimWeapons.is_melee(weapon)
+ 	var interval := SimWeapons.interval(weapon)
+ 	if not melee:
+-		interval *= PerkEffects.fire_interval_scale(rules, player.id)
++		interval *= PerkEffects.fire_interval_scale(rules, player.id) * SimLoadout.v(player.id, "interval", 1.0)
++	arm.mag_scale = SimLoadout.v(player.id, "mag", 1.0)
+ 	while player.carry >= interval and not _over:
+ 		var zombie := _pick_melee(player) if melee else _pick_target(player)
+ 		if zombie == null:
+@@ -302,6 +304,7 @@ func _shoot(player: SimPlayer) -> void:
+ 				player.reload_left = (
+ 					SimWeapons.reload_seconds(weapon)
+ 					* PerkEffects.reload_time_scale(rules, player.id)
++					* SimLoadout.v(player.id, "reload", 1.0)
+ 				)
+ 				_shock(player)
+ 			else:
+@@ -446,22 +449,33 @@ func _pick_target(player: SimPlayer) -> SimZombie:
+
+
+ func _fire_at(player: SimPlayer, zombie: SimZombie) -> void:
++	var kills_before: int = rules.players[player.id].kills
++	_fire_at_inner(player, zombie)
++	var gained: int = rules.players[player.id].kills - kills_before
++	if gained > 0:
++		var wk: Dictionary = _result.get("weapon_kills", {})
++		wk[player.weapon] = wk.get(player.weapon, 0) + gained
++		_result["weapon_kills"] = wk
++
++
++func _fire_at_inner(player: SimPlayer, zombie: SimZombie) -> void:
+ 	zombie.shots += 1
+-	if _rng.randf() >= skill.accuracy * zombie.hit_chance:
++	if _rng.randf() >= (skill.accuracy + SimLoadout.v(player.id, "accuracy")) * zombie.hit_chance:
+ 		return
+ 	var zone := &"body"
+ 	var roll := _rng.randf()
+ 	if zombie.boss:
+ 		if roll < skill.weak_spot_rate:
+ 			zone = &"weak"
+-	elif roll < skill.head_rate:
++	elif roll < skill.head_rate + SimLoadout.v(player.id, "head"):
+ 		zone = &"head"
+-	elif roll < skill.head_rate + skill.limb_rate:
++	elif roll < skill.head_rate + SimLoadout.v(player.id, "head") + skill.limb_rate:
+ 		zone = &"limb"
+ 	if zombie.first_hit < 0.0:
+ 		zombie.first_hit = _clock
+ 	var melee := SimWeapons.is_melee(player.weapon)
+ 	var damage := SimWeapons.damage_of(_held_arm(player).def(), zone, maxf(zombie.distance, 0.0))
++	damage *= SimLoadout.v(player.id, "melee" if melee else "damage", 1.0)
+ 	_splash(player, zombie)
+ 	_handle(rules.apply(RulesAction.hit(player.id, zombie.id, zone, damage, melee)))
+
+@@ -649,7 +663,7 @@ func _between_rounds() -> void:
+ ## rules own both; a re-cut is applied where it is bought, `_buy_upgrade`).
+ func _refresh(player: SimPlayer) -> void:
+ 	var owned: PlayerState = rules.players[player.id]
+-	player.max_health = owned.max_health
++	player.max_health = owned.max_health + SimLoadout.v(player.id, "health")
+ 	var carried: Array[StringName] = []
+ 	for shop_id in owned.weapons:
+ 		var weapon_id := WeaponCatalog.catalog_id(shop_id)
+@@ -662,6 +676,7 @@ func _refresh(player: SimPlayer) -> void:
+ 			player.arms.erase(weapon_id)
+ 	# A player reloads in the break, for free.
+ 	for arm: SimArm in player.arms.values():
++		arm.mag_scale = SimLoadout.v(player.id, "mag", 1.0)
+ 		arm.reload()
+ 	player.weapon = SimWeapons.best_armed(player.arms, _health())
+ 	player.reload_left = 0.0
+@@ -924,6 +939,7 @@ class SimArm:
+ 	var mag: int = 0
+ 	var reserve: int = 0
+ 	var _def: WeaponDef
++	var mag_scale: float = 1.0
+
+ 	static func of(weapon_id: StringName) -> SimArm:
+ 		var arm := SimArm.new()
+@@ -949,7 +965,7 @@ class SimArm:
+
+ 	## A reload: the magazine fills from the reserve, as far as the reserve goes.
+ 	func reload() -> void:
+-		var moved := mini(def().magazine_size - mag, reserve)
++		var moved := mini(roundi(def().magazine_size * mag_scale) - mag, reserve)
+ 		mag += moved
+ 		reserve -= moved
+
+diff --git a/game/tools/balance/sim_loadout.gd b/game/tools/balance/sim_loadout.gd
+new file mode 100644
+--- /dev/null
++++ b/game/tools/balance/sim_loadout.gd
+@@ -0,0 +1,33 @@
++class_name SimLoadout
++extends RefCounted
++## Research only (#1055): a permanent loadout laid over chosen players of a simulated night.
++## `--loadout=damage=1.1:reload=0.8` names the numbers, `--equipped=2,3` the player ids that carry them
++## (default: all). Keys: damage, melee, interval, reload, mag (multipliers); accuracy, head, dodge, uptime,
++## health (added).
++
++static var _by_player: Dictionary = {}
++
++
++static func parse(loadout: String, equipped: String, players: int) -> void:
++	_by_player = {}
++	if loadout.is_empty():
++		return
++	var numbers := {}
++	for pair in loadout.split(":"):
++		var parts := pair.split("=")
++		numbers[parts[0]] = float(parts[1])
++	var ids: Array = []
++	if equipped.is_empty():
++		for id in range(1, players + 1):
++			ids.append(id)
++	else:
++		for id in equipped.split(","):
++			ids.append(int(id))
++	for id in ids:
++		_by_player[id] = numbers
++
++
++static func v(player_id: int, key: String, default: float = 0.0) -> float:
++	if not _by_player.has(player_id):
++		return default
++	return float(_by_player[player_id].get(key, default))

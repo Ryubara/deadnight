@@ -39,11 +39,16 @@ func _stand_at(night: Night, item: StringName) -> Dictionary:
 	return night.state.me()["prompt"]
 
 
-func _press_use(night: Night) -> void:
+func _press(night: Night) -> void:
 	var command := NightCommand.new()
 	command.use = true
 	NightFixture.run(night, 1, command)
 	NightFixture.run(night, 3)
+
+
+func _press_use(night: Night) -> void:
+	_press(night)
+	NightFixture.drink_down(night)  # a perk bought is had when its drink ends (#912)
 
 
 ## Walks to the machine of `item`, presses use and returns the prompt it showed before.
@@ -72,6 +77,28 @@ func test_on_default_the_fifth_machine_says_the_limit_and_sells_nothing() -> voi
 	_press_use(night)
 	assert_int(night.state.points()).is_equal(points)
 	assert_int(_perks_of(night)).is_equal(limit)
+
+
+func test_the_last_perk_still_in_the_hand_already_fills_the_limit_and_nothing_is_sold() -> void:
+	var night := await _start(false)
+	var ids := PerkEffects.tonic_ids(night.server.rules.tuning.economy)
+	var limit := night.server.rules.tuning.economy.max_tonics
+	for i in limit - 1:
+		_buy_at_machine(night, ids[i])
+	# The last one is bought and not yet drunk (#912): the card at the next machine says the
+	# limit, and a press there is the full hands' refusal, with nothing paid.
+	_stand_at(night, ids[limit - 1])
+	_press(night)
+	assert_bool(night.server.is_drinking(1)).is_true()
+	var prompt := _stand_at(night, ids[limit])
+	assert_str(String(prompt["kind"])).is_equal("tonic_full")
+	var points := night.state.points()
+	_press(night)
+	assert_int(night.state.points()).is_equal(points)
+	assert_int(_perks_of(night)).is_equal(limit - 1)
+	NightFixture.drink_down(night)
+	assert_int(_perks_of(night)).is_equal(limit)
+	assert_int(night.state.points()).is_equal(points)
 
 
 func test_on_unlimited_every_machine_sells_and_the_frame_and_badges_show_all_six() -> void:

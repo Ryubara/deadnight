@@ -5,12 +5,18 @@ extends Node
 ## --quit-after 420 -- --mode=explosive`. Three zombies (health 900, so they stand to be seen) stand
 ## in a row ahead of the player. `--mode=` picks the element: `explosive` (the re-cut revolver's
 ## shot on the middle zombie bursts on the two beside it), `shock` (the same shot arcs to them) or
-## `ground` (the re-cut flare gun sets the ground alight under the row).
+## `ground` (the re-cut flare gun sets the ground alight under the row), `fire` (the re-cut pump's
+## shell sets the zombies it hits burning: flames follow them for the three seconds), `freeze` (the
+## plain freeze gun's bolt on the middle zombie of a row three metres apart: only it freezes) and
+## `freeze_cut` (the same row, re-cut: the bloom reaches the two beside it). `--spread=` sets the
+## metres between the zombies of the row.
 
 const SECOND := 60
 ## Where the row stands, metres ahead of the player along the lane the view looks down.
 const AHEAD := 4.5
 const SPREAD := 1.3
+## The row's spread for the freeze modes: over the plain bloom's radius, under the re-cut one's.
+const FREEZE_SPREAD := 3.0
 ## Metres of open lane wanted from the shoulder camera on.
 const LANE := 16.0
 
@@ -19,12 +25,17 @@ var _ids: Array[int] = []
 ## The way the player looks (radians of view yaw): along the open lane found on the lot.
 var _yaw := 0.0
 var _mode := "explosive"
+var _spread := SPREAD
 
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--mode="):
 			_mode = arg.trim_prefix("--mode=")
+		elif arg.begins_with("--spread="):
+			_spread = float(arg.trim_prefix("--spread="))
+	if _mode.begins_with("freeze") and _spread == SPREAD:
+		_spread = FREEZE_SPREAD
 	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
 	var layer := CanvasLayer.new()
 	layer.add_child(hud)
@@ -53,10 +64,15 @@ func _ready() -> void:
 	await _wait(SECOND * 3)
 	_stand_the_row()
 	await _wait(SECOND)
-	if _mode == "ground":
-		await _flare()
-	else:
-		await _revolver()
+	match _mode:
+		"ground":
+			await _flare()
+		"fire":
+			await _pump()
+		"freeze", "freeze_cut":
+			await _freezer()
+		_:
+			await _revolver()
 	get_tree().quit()
 
 
@@ -118,7 +134,7 @@ func _stand_the_row() -> void:
 		var body: ZombieBody = _night.server.sim.zombies[_ids[i]]
 		var forward := Vector3(-sin(_yaw), 0.0, -cos(_yaw))
 		var across := Vector3(forward.z, 0.0, -forward.x)
-		body.position = from + forward * AHEAD + across * (i - 1) * SPREAD
+		body.position = from + forward * AHEAD + across * (i - 1) * _spread
 		body.yaw = atan2(-forward.x, -forward.z)
 		body.speed = 0.0
 		# Not at the fence's boards (a zombie that came for a breach is pushed back to it).
@@ -175,6 +191,41 @@ func _flare() -> void:
 	await _wait(3)
 	_button(MOUSE_BUTTON_LEFT, false)
 	for _second in 6:
+		_hold_the_row()
+		await _wait(SECOND)
+
+
+## One shell of the re-cut pump at the middle zombie; the flames are watched for the whole burn.
+func _pump() -> void:
+	_give_recut(&"pump_870")
+	await _wait(SECOND)
+	_hold_the_row()
+	_aim_at(_middle() + Vector3(0.0, 1.2, 0.0))
+	await _wait(SECOND / 3)
+	_button(MOUSE_BUTTON_LEFT, true)
+	await _wait(3)
+	_button(MOUSE_BUTTON_LEFT, false)
+	for _second in 5:
+		_hold_the_row()
+		await _wait(SECOND)
+
+
+## One bolt of the freeze gun (re-cut in `freeze_cut`) at the middle zombie of a wide row, then the
+## ice is watched.
+func _freezer() -> void:
+	if _mode == "freeze_cut":
+		_give_recut(&"freeze_gun")
+	else:
+		_night.server.combat.apply(CombatAction.give_weapon(_night.PLAYER_ID, &"freeze_gun"))
+		_night.server.combat.apply(CombatAction.equip(_night.PLAYER_ID, &"freeze_gun"))
+	await _wait(SECOND)
+	_hold_the_row()
+	_aim_at(_middle() + Vector3(0.0, 1.0, 0.0))
+	await _wait(SECOND / 3)
+	_button(MOUSE_BUTTON_LEFT, true)
+	await _wait(3)
+	_button(MOUSE_BUTTON_LEFT, false)
+	for _second in 3:
 		_hold_the_row()
 		await _wait(SECOND)
 

@@ -8,6 +8,14 @@ extends Resource
 ## What a player who goes down loses of the perks they have had.
 enum Loss { NONE, LAST, ALL }
 
+@export_group("The drink")
+## How long a perk takes to drink (the clip `Drink_Perk` is played over it): the price is paid
+## at the machine and the perk is had when the drink ends. Meanwhile the hands are full: no
+## shot, reload, swap, blow, throw, repair, revive or purchase. A blow does not stop it; going
+## down spills it (the perk is not had and the price is not given back). 0 gives the perk at
+## once.
+@export_range(0.0, 10.0, 0.1, "suffix:s") var drink_seconds: float = 2.5
+
 @export_group("Fire and reload")
 ## Faster fire: the wait between shots is divided by this (1.33 is a quarter shorter). A melee
 ## weapon is swung at its own pace.

@@ -21,8 +21,8 @@ func _unlimited() -> MatchSettings:
 
 
 ## A round-one night with rich players under `settings`.
-func _rules(settings: MatchSettings) -> GameRules:
-	var rules := RulesFixture.make_rules(1, 7, null, settings)
+func _rules(settings: MatchSettings, players := 1, tuning: RulesTuning = null) -> GameRules:
+	var rules := RulesFixture.make_rules(players, 7, tuning, settings)
 	RulesFixture.into_round_one(rules)
 	rules.apply(RulesAction.grant_points(1, 50000))
 	return rules
@@ -48,6 +48,54 @@ func test_the_limit_holds_on_default() -> void:
 	assert_int(RulesFixture.buy(rules, 1, PERKS[4])).is_equal(GameRules.BuyResult.LIMIT_REACHED)
 	assert_int(rules.players[1].points).is_equal(points)
 	assert_int(rules.players[1].tonics.size()).is_equal(rules.tuning.economy.max_tonics)
+
+
+## The last perk of the limit bought and not yet drunk (#912): the bottle in the hand counts.
+func _drinking_the_last_one(rules: GameRules) -> void:
+	for i in rules.tuning.economy.max_tonics - 1:
+		assert_int(RulesFixture.buy(rules, 1, PERKS[i])).is_equal(GameRules.BuyResult.OK)
+	var last := PERKS[rules.tuning.economy.max_tonics - 1]
+	assert_bool(rules.apply(RulesAction.buy(1, last)).is_empty()).is_false()
+	assert_bool(PerkPlay.is_drinking(rules.players[1])).is_true()
+
+
+func test_the_bottle_in_the_hand_counts_and_full_hands_are_refused_before_the_limit() -> void:
+	var rules := _rules(MatchSettings.new())
+	var limit := rules.tuning.economy.max_tonics
+	_drinking_the_last_one(rules)
+	assert_int(PerkPlay.held(rules.players[1])).is_equal(limit)
+	assert_int(rules.players[1].tonics.size()).is_equal(limit - 1)
+	# Full hands come first in the till's order: the player is told to finish the drink, and the
+	# limit is what they meet once it is down.
+	var points := rules.players[1].points
+	var denied := RulesFixture.first(
+		rules.apply(RulesAction.buy(1, PERKS[limit])), &"purchase_denied"
+	)
+	assert_int(denied["result"]).is_equal(GameRules.BuyResult.DRINKING)
+	assert_int(rules.players[1].points).is_equal(points)
+	RulesFixture.drink_down(rules, 1)
+	assert_int(rules.players[1].tonics.size()).is_equal(limit)
+	assert_int(RulesFixture.buy(rules, 1, PERKS[limit])).is_equal(GameRules.BuyResult.LIMIT_REACHED)
+
+
+func test_a_spilled_drink_leaves_the_limit_room_for_one_perk_not_two() -> void:
+	# Two players, so one going down does not end the night; the perks had are kept (the drink
+	# alone is what the down spills).
+	var tuning := RulesFixture.tuning()
+	tuning.perks.lost_on_down = PerkTuning.Loss.NONE
+	var rules := _rules(MatchSettings.new(), 2, tuning)
+	var limit := rules.tuning.economy.max_tonics
+	_drinking_the_last_one(rules)
+	rules.apply(RulesAction.set_downed(1, true))
+	assert_bool(PerkPlay.is_drinking(rules.players[1])).is_false()
+	rules.apply(RulesAction.set_downed(1, false))
+	var kept := rules.players[1].tonics.size()
+	assert_int(PerkPlay.held(rules.players[1])).is_equal(kept)
+	assert_int(kept).is_equal(limit - 1)
+	# Buying back up to the limit stops at it: no path adds a perk past it.
+	for perk in PERKS:
+		RulesFixture.buy(rules, 1, perk)
+	assert_int(rules.players[1].tonics.size()).is_equal(limit)
 
 
 func test_the_limit_lifts_on_unlimited_and_a_perk_is_still_bought_once() -> void:
@@ -103,14 +151,17 @@ func test_a_configure_action_sets_the_limit_before_the_night_only() -> void:
 
 
 ## The most perks the simulator's player owns after `shop`, with the usual list replaced by every
-## perk.
+## perk. The simulator shops in the break (a tonic is drunk down there before the next purchase,
+## `NightSim._drink_out`: #912), so the night is left at its first break (the intro), not started,
+## and that break is long enough to drink every perk (a short one ends and the shopping with it).
 func _simulated_perks(settings: MatchSettings) -> int:
-	var sim := NightSim.new(
-		RulesFixture.tuning(), SimSkill.named(SimSkill.STRONG), 1, 3, 0.25, settings
-	)
+	var tuning := RulesFixture.tuning()
+	tuning.rounds.intro_seconds = PERKS.size() * tuning.perks.drink_seconds + 5.0
+	var sim := NightSim.new(tuning, SimSkill.named(SimSkill.STRONG), 1, 3, 0.25, settings)
 	sim.skill.shopping.assign(PERKS)
 	sim.skill.saves_for.clear()
-	RulesFixture.into_round_one(sim.rules)
+	sim.rules.apply(RulesAction.start())
+	assert_int(sim.rules.phase).is_equal(GameRules.Phase.BREAK)
 	sim.rules.apply(RulesAction.grant_points(1, 50000))
 	sim._shop(sim._players[1])
 	return sim.rules.players[1].tonics.size()

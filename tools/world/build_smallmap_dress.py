@@ -281,7 +281,7 @@ PERK_SCALE = (
 # spot is. The soda against the hall's west wall; each perk cooler at the back of its own alcove (#917: never two side by
 # side), two in the side room and three upstairs (the dearest, farthest from the start); the re-cut bench upstairs.
 MACHINES = [
-    ("Soda", "soda_fountain", None, "tonic_hearty", "perk", "start", 0.0, (0.5, 8.5), 90, (1.0, 2.4, 1.6), 1.2),
+    ("Soda", "soda_fountain", None, "tonic_hearty", "perk", "start", 0.0, (0.5, 9.6), 90, (1.0, 2.4, 1.6), 1.2),
     (
         "PerkLoad",
         "perk_machine",
@@ -416,9 +416,10 @@ COUNTER_TOP = 1.5
 # What lies about, by room: (kind, piece, where, yaw, floor). `solid` pieces carry the fixture's hidden collision and sit
 # against a wall or in a corner (the walking mesh goes round them); the rest are walked over and have none.
 CLUTTER = [
-    # the hall: filing cabinets on the west wall, a tipped table between two windows, chunks under the windows
-    ("solid", "filing_cabinet", (0.3, 0.0, 13.2), 90),
-    ("solid", "filing_cabinet", (0.3, 0.0, 13.8), 90),
+    # the hall: filing cabinets on the south wall by the shop wall's corner (the pistol's plaque is above that corner of
+    # the west wall, #994), a tipped table between two windows, chunks under the windows
+    ("solid", "filing_cabinet", (2.2, 0.0, 14.2), 180),
+    ("solid", "filing_cabinet", (2.8, 0.0, 14.2), 180),
     ("solid", "table_tipped", (15.6, 0.0, 6.0), 270),
     ("solid", "chair", (14.9, 0.0, 6.6), 235),
     ("walk", "rubble_a", (4.0, 0.0, 13.8), 30),
@@ -438,7 +439,7 @@ CLUTTER = [
     ("walk", "rubble_b", (-5.0, 0.0, -3.9), 10),
     ("walk", "rubble_a", (14.8, 0.0, -2.6), 300),
     ("walk", "helmet", (12.4, 0.0, -2.3), 120),
-    # upstairs: a tipped table by the bat, cabinets, a rack by the cabinet, chunks inside the windows
+    # upstairs: a tipped table by the locker, cabinets, a rack by the cabinet, chunks inside the windows
     ("solid", "table_tipped", (15.3, 3.4, 3.9), 270),
     ("solid", "filing_cabinet", (14.4, 3.4, 0.25), 0),
     ("solid", "filing_cabinet", (15.0, 3.4, 0.25), 0),

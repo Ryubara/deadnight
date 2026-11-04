@@ -48,6 +48,7 @@ func _press_use(night: Night) -> void:
 	command.use = true
 	NightFixture.run(night, 1, command)
 	NightFixture.run(night, 3)
+	NightFixture.drink_down(night)  # a perk bought is had when its drink ends (#912)
 
 
 ## A press of reload, and the ticks it takes to reach the server and answer.
@@ -61,6 +62,7 @@ func _reload(night: Night) -> void:
 func _buy(night: Night, item: StringName) -> void:
 	night.server.buy(1, item)
 	NightFixture.run(night, 2)
+	NightFixture.drink_down(night)
 
 
 func test_every_machine_offers_its_perk_with_name_price_and_effect_and_a_press_buys_it() -> void:

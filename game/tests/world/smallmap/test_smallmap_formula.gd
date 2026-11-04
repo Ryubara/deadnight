@@ -99,7 +99,7 @@ func test_row_14_the_side_rooms_racks_make_a_25_to_36_metre_loop() -> void:
 	_holds(14)
 
 
-func test_row_15_windows_are_two_three_and_two() -> void:
+func test_row_15_windows_are_two_two_and_two() -> void:
 	_holds(15)
 
 

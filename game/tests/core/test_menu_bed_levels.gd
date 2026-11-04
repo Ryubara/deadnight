@@ -1,18 +1,19 @@
 extends GdUnitTestSuite
-## The menu's ambience bed sits under the menu's hints on every speaker (#926), and it costs the
-## night's loading nothing. `tools/audio/menu_speakers.py` puts a recording of the bed and of
-## every hint through a laptop speaker and a phone speaker and writes `menu_bed_levels.json`: the
-## trims it ran at, the hints' levels, and the worst margins it found. This test pins those: a
-## trim or a hint level that changed since asks for the check to be run again, and the margins it
-## found have to be the kit's (a hint 10 dB over the bed's momentary loudness is plain; in the
-## hints' own band 6 dB over the bed's loud moments). The load: the bed plays the Ogg files the
-## night already loads, so the night's warm-up has nothing more to read or decode, and the files
-## are small.
+## The menu's ambience and music sit under the menu's hints on every speaker (#926, #979), and they
+## cost the night's loading nothing. `tools/audio/menu_speakers.py` puts a recording of the five
+## beds and of every hint through a laptop speaker and a phone speaker and writes
+## `menu_bed_levels.json`: the trims it ran at, the hints' levels, and the worst margins it found.
+## This test pins those: a trim or a hint level that changed since asks for the check to be run
+## again, and the margins it found have to be the kit's (a hint 10 dB over the bed's momentary
+## loudness is plain; in the hints' own band 6 dB over the bed's loud moments). The load: the
+## projector and the crickets are the Ogg files the night already loads, so the night's warm-up has
+## nothing more to read or decode for them; the music and the wind are three small streams that only
+## the menu reads.
 
 const PIN := "res://tests/core/menu_bed_levels.json"
 const TARGETS := "res://tests/core/menu_sound_levels.json"
-## The bed's two files together; the night's own beds are the same files.
-const MAX_BED_BYTES := 400 * 1024
+## The bed's five files together (the music and the wind are 1.5 MB of it).
+const MAX_BED_BYTES := 2 * 1024 * 1024
 
 
 func _pin() -> Dictionary:
@@ -80,15 +81,20 @@ func test_the_bed_is_quieter_than_every_hint_and_than_the_nights_own_beds() -> v
 	assert_float(float(worst["phone"]["bed_lufs_m"])).is_less(float(worst["laptop"]["bed_lufs_m"]))
 
 
-func test_the_bed_is_small_and_has_no_file_the_night_does_not_load() -> void:
+func test_the_bed_is_small_and_only_the_music_and_the_wind_are_files_of_its_own() -> void:
 	var bytes := 0
 	var night := {}
 	for id: StringName in [&"bed_crickets", &"bed_projector"]:
 		night[SoundCatalog.get_def(id).path_for(1)] = true
+	var own: Array[StringName] = []
 	for id in MenuAmbience.BEDS:
 		var path := SoundCatalog.get_def(id).path_for(1)
-		assert_bool(night.has(path)).override_failure_message(path).is_true()
+		if not night.has(path):
+			own.append(id)
 		bytes += FileAccess.get_file_as_bytes(path).size()
+	assert_array(own).contains_exactly_in_any_order(
+		[&"bed_menu_pad", &"bed_menu_bells", &"bed_menu_wind"]
+	)
 	assert_int(bytes).is_less(MAX_BED_BYTES)
 
 
@@ -100,7 +106,9 @@ func test_the_nights_warm_up_has_nothing_more_to_read_or_decode_for_the_bed() ->
 	for id: StringName in [&"bed_crickets", &"bed_projector"]:
 		loaded += audio.preload_sound_for_night(id)
 	assert_int(loaded).is_equal(2)
-	for id in MenuAmbience.BEDS:
+	# The menu's crickets and motor are those two files: nothing more for the night to read. The
+	# music and the wind are menu-only streams, never decoded to samples (they are not in the night).
+	for id: StringName in [&"bed_menu_projector", &"bed_menu_crickets"]:
 		assert_int(audio.preload_sound_for_night(id)).override_failure_message(id).is_equal(0)
 	assert_int(audio.decode_pending()).is_equal(0)
 	audio.free()
