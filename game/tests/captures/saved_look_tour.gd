@@ -8,7 +8,8 @@ extends Node
 ##         --fixed-fps 10 --quit-after 120
 ##
 ## Prints `SHOT <name> <frame>` for the wardrobe seen from the front and the back and for the night:
-## the frames to read.
+## the frames to read. `-- --look=<spec>` dresses it in another look (`soldier_turntable.gd`'s form:
+## `10:torso=usher,neck=lanyard/primary=7,accent=10`).
 
 const MENU := "res://ui/screens/main_menu.tscn"
 const WARDROBE := "res://ui/screens/customize_screen.tscn"
@@ -19,6 +20,7 @@ const PROFILE := "user://saved_look_capture_profile.json"
 ## Frames the wardrobe and the night each stand before the shot.
 const SETTLE_FRAMES := 25
 const SHOT_FRAMES := 25
+const LOOK_SPEC := preload("res://tests/captures/soldier_turntable.gd")
 
 
 func _ready() -> void:
@@ -39,6 +41,9 @@ func _ready() -> void:
 
 ## A look no preset has: a red letterman jacket, a cream cap and trousers, yellow trim.
 func _look() -> CharacterLook:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--look="):
+			return LOOK_SPEC.parse_look(arg.substr(7))
 	var look := CharacterLook.from_preset(2)
 	look.parts[&"torso"] = &"letterman"
 	look.parts[&"headwear"] = &"ballcap"

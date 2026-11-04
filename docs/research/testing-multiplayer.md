@@ -64,6 +64,15 @@ runs against a deployed backend, or a local one: `node spikes/backend/src/main.t
 uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/lobby.py <web URL or build/web> <backend address> <out folder>
 ```
 
+`tools/web_smoke/guest_account.py` proves a Guest account lasts (#1080) against a backend of its own: a guest signs in
+from the web build, a save is written to the account, the page is reloaded and the probe reads the same account and
+save back; a second browser with empty storage is a new account. It serves the build on `127.0.0.1:8087` (list it in
+`CORS_ORIGINS`):
+
+```text
+uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/guest_account.py <web URL or build/web> <backend address> <out folder>
+```
+
 `tools/web_smoke/online.py` joins one game server by its address (the developer path) and plays a night, reading the
 page's probe (`players`, `alive`, `rtt_ms`) every second:
 

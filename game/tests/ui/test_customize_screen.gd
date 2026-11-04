@@ -138,7 +138,7 @@ func test_the_character_choice_switches_to_her_and_everything_follows() -> void:
 		assert_bool((model.find_child("torso__jacket__female", true, false) as Node3D).visible)
 		. is_true()
 	)
-	assert_bool((model.find_child("torso__jacket", true, false) as Node3D).visible).is_false()
+	assert_object(model.find_child("torso__jacket", true, false)).is_null()
 	# And back: his crew cut, his presets.
 	var him := _screen.cell("part:body", 0)
 	await _click(him, him.size * 0.5)

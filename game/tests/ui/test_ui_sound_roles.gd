@@ -307,7 +307,11 @@ func test_no_cue_is_sent_without_its_source() -> void:
 	# Every `UIAudio.play` in the game's and the addon's code names who made it: a cue with no
 	# source is a control that plays by its cue alone and slips past the table.
 	var bare := RegEx.new()
-	bare.compile('UIAudio\\.play(?:\\.bind)?\\(&"\\w+"\\)')
+	# The progression cues have no control to name: the popups play them by their cue alone.
+	var cues := "|".join(
+		UiSoundTable.PROGRESS_CUES.map(func(cue: StringName) -> String: return String(cue))
+	)
+	bare.compile('UIAudio\\.play(?:\\.bind)?\\(&"(?!(?:%s)")\\w+"\\)' % cues)
 	var unnamed := PackedStringArray()
 	for root in ["res://ui", "res://addons/gds_ui", "res://core"]:
 		for path in _scripts(root):

@@ -40,5 +40,10 @@
   "smg": {
    "right arm": 0.036
   }
+ },
+ "ladder": {
+  "Strafe_Left": {
+   "left arm": 0.0405
+  }
  }
 }

@@ -146,6 +146,23 @@ func test_every_ankle_is_closed_with_every_trousers_and_shoes() -> void:
 	assert_array(fails).is_empty()
 
 
+## A one-piece top wears its own legs (`hides_legs`, #1078): they meet the shoes in place of the
+## trousers, and the suite above does not see them.
+func test_every_ankle_of_a_one_piece_top_is_closed_with_every_shoes() -> void:
+	var fails: Array[String] = []
+	for body in BODIES:
+		for torso in _options(&"torso"):
+			if not SoldierLook.catalog().slots.torso.parts[String(torso)].get("hides_legs", false):
+				continue
+			for feet in _options(&"feet"):
+				var fit := _dress({&"torso": torso, &"feet": feet}, body)
+				var where := []
+				for spec: Array in ANKLES:
+					where.append([_place(fit, spec), ANKLE_RADIUS])
+				fails.append_array(await _check("%s %s/%s" % [body, torso, feet], fit, where))
+	assert_array(fails).is_empty()
+
+
 func test_every_wrist_and_shoulder_is_closed_with_every_top_and_armwear() -> void:
 	var fails: Array[String] = []
 	for body in BODIES:
