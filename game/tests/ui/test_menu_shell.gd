@@ -228,7 +228,7 @@ func test_back_from_a_panel_goes_to_the_tab_bar() -> void:
 func test_the_plate_shows_the_profile() -> void:
 	var shell := await _open()
 	assert_str(shell.plate.name_text()).is_equal("ANN")
-	assert_str(shell.plate.level_text()).is_equal("BILLING 7")
+	assert_str(shell.plate.level_text()).is_equal("LEVEL 7")
 	assert_str(shell.plate.stubs_text()).is_equal("1,250 STUBS")
 	assert_float(shell.plate.level_fraction()).is_equal_approx(
 		90.0 / MenuProfile.xp_to_next(7), 0.0001
@@ -350,7 +350,7 @@ func test_the_more_panel_has_settings_credits_and_quit_and_asks_for_them() -> vo
 
 func test_an_empty_profile_is_a_new_player_everywhere() -> void:
 	var shell := await _open(false, "{}")
-	assert_str(shell.plate.level_text()).is_equal("BILLING 1")
+	assert_str(shell.plate.level_text()).is_equal("LEVEL 1")
 	assert_str(shell.plate.stubs_text()).is_equal("0 STUBS")
 	shell.show_tab(MenuTab.Id.SHOP)
 	assert_str((shell.panel(MenuTab.Id.SHOP) as ShopPanel).balance_text()).is_equal(

@@ -19,6 +19,18 @@ var _fuel_items: Array[StringName]
 var _changes: Array[Dictionary] = []
 
 
+## The shop ids that sell fuel in `tuning` (`fuel_can` when it has none), for `_init`.
+static func fuel_items_of(tuning: RulesTuning) -> Array[StringName]:
+	var fuel: Array[StringName] = []
+	if tuning != null:
+		for item in tuning.economy.items:
+			if item.kind == ShopItem.Kind.FUEL:
+				fuel.append(item.id)
+	if fuel.is_empty():
+		fuel.append(&"fuel_can")
+	return fuel
+
+
 ## `fuel_items` are the shop ids that sell fuel (the tuning's, so a rename needs no edit here).
 func _init(fuel_items: Array[StringName] = [&"fuel_can"]) -> void:
 	_fuel_items = fuel_items
@@ -66,6 +78,8 @@ func observe(event: Dictionary) -> Array[Dictionary]:
 			_add(int(event["player_id"]), ChallengeStats.BOARDS)
 		&"purchase_made":
 			_on_purchase(event)
+		&"player_revived":
+			_on_revived(event)
 		&"points_changed":
 			_on_points(event)
 		&"round_started":
@@ -122,6 +136,13 @@ func _on_purchase(event: Dictionary) -> void:
 		_add(id, ChallengeStats.DOORS)
 	if _fuel_items.has(item):
 		_add(id, ChallengeStats.FUEL_CANS)
+
+
+func _on_revived(event: Dictionary) -> void:
+	var reviver := int(event.get("reviver_id", 0))
+	if reviver > 0 and reviver != int(event["player_id"]):
+		_join(reviver)
+		_add(reviver, ChallengeStats.REVIVES)
 
 
 func _on_points(event: Dictionary) -> void:

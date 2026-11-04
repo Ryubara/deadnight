@@ -26,6 +26,27 @@ const LEVEL_JITTER_DB := 0.8
 ## at the top.
 const TICK_PITCH_LOW := -3.0
 const TICK_PITCH_HIGH := 5.0
+## The progression cues (#1062), which come from the popups and the server's events in the middle
+## of a fight. Unlock sounds that come within this long of the last one climb the pentatonic
+## scale, one step of `UNLOCK_STEPS` (semitones over the sound's own pitch) for each, and stay on
+## the last.
+const UNLOCK_WINDOW := 2.0
+const UNLOCK_STEPS: Array[float] = [0.0, 2.0, 4.0, 7.0]
+## Each step of a run is this many dB quieter than the one before it, so the tails of a quick run
+## of eight never add up to more than a level up.
+const UNLOCK_STEP_DB := -1.0
+## A moment (the scratch, the level up, the tier up) that starts while a moment of another group
+## still sounds goes under it by this many dB, so the two never add up to much more than the
+## louder one. A moment of the same group (a tier up over a level up) takes the other's voice
+## instead, at its own level.
+const MOMENT_UNDER_DB := -6.0
+## In a night (`in_night`) the progression cues are this many dB under their table levels: a
+## fight is full of sounds that must stay clear, and at this level a cue stays 6 dB or more under
+## a shot, a groan, a shriek, a beep and a soldier's urgent line in their own band and is still
+## heard over a burst of automatic fire (`tools/audio/progress_levels.py`,
+## `docs/research/menu-sfx.md#the-progression-sounds-1062`). In a menu they play at the table's
+## level.
+const FIGHT_DB := -10.0
 ## The meta a plain control carries to name its role, and the one a commit button is marked with.
 const ROLE_META := &"ui_sound_role"
 ## The meta a source of a `tab` cue carries: +1 when the tab chosen is further on, -1 when behind.
@@ -36,6 +57,12 @@ const DIRECTION_META := &"ui_sound_direction"
 var misses: Array[String] = []
 ## Every sound `handle` started: id, for tests and the capture's log.
 var started: Array[StringName] = []
+## The pitch (semitones) and the level (dB over the sound's own) of the sound `handle` started last.
+var last_pitch := 0.0
+var last_extra_db := 0.0
+## A night is running: the progression cues (rows with `fight`) are `FIGHT_DB` quieter. The night
+## sets it when it starts and clears it when it ends.
+var in_night := false
 
 var _audio: AudioService
 var _last_hint := -1.0e9
@@ -43,6 +70,10 @@ var _hint_times: Array[float] = []
 var _last_strong := -1.0e9
 var _last_tick := -1.0e9
 var _last_by_sound := {}
+var _unlock_step := -1
+var _last_unlock := -1.0e9
+## The moments that still sound: sound id to {ends, group}.
+var _moments := {}
 
 
 func _init(audio: AudioService) -> void:
@@ -131,6 +162,16 @@ func handle(cue: StringName, source: Object = null) -> bool:
 		float(a_row.get("db", 0.0)) + _audio.random_range(-LEVEL_JITTER_DB, LEVEL_JITTER_DB)
 	)
 	var pitch := _pitch_for(cue, source)
+	if a_row.get("moment", false):
+		var under := _moment_under(id, a_row, now)
+		if is_inf(under):
+			return false
+		extra_db += under
+	if in_night and a_row.get("fight", false):
+		extra_db += FIGHT_DB
+	if a_row.get("stack", false):
+		pitch += _stack_pitch(now)
+		extra_db += UNLOCK_STEP_DB * _unlock_step
 	_last_by_sound[id] = now
 	if weight >= UiSoundTable.MOVE:
 		_last_strong = now
@@ -140,8 +181,41 @@ func handle(cue: StringName, source: Object = null) -> bool:
 		_last_hint = now
 		_hint_times.append(now)
 	started.append(id)
+	last_pitch = pitch
+	last_extra_db = extra_db
 	_audio.play(id, null, extra_db, pitch)
 	return true
+
+
+## What a moment goes under, in dB (0 when nothing else sounds, `-INF` when it is redundant: a
+## level up while the tier up that includes it sounds), and notes that it sounds from now on.
+func _moment_under(id: StringName, a_row: Dictionary, now: float) -> float:
+	for other: StringName in a_row.get("over", []):
+		if _is_sounding(other, now):
+			return -INF
+	var group := SoundCatalog.get_def(id).group
+	var under := 0.0
+	for other: StringName in _moments:
+		if other != id and _is_sounding(other, now) and _moments[other]["group"] != group:
+			under = MOMENT_UNDER_DB
+	_moments[id] = {"ends": now + float(a_row.get("seconds", 0.0)), "group": group}
+	return under
+
+
+func _is_sounding(id: StringName, now: float) -> bool:
+	return _moments.has(id) and now < float(_moments[id]["ends"])
+
+
+## The semitones an unlock sound is raised by: the first of a run is at its own pitch, each one that
+## follows within `UNLOCK_WINDOW` of the last a step higher, and the fourth and every one after it
+## the top step. A run ends two seconds after its last sound.
+func _stack_pitch(now: float) -> float:
+	if now - _last_unlock > UNLOCK_WINDOW:
+		_unlock_step = 0
+	else:
+		_unlock_step = mini(_unlock_step + 1, UNLOCK_STEPS.size() - 1)
+	_last_unlock = now
+	return UNLOCK_STEPS[_unlock_step]
 
 
 ## A hover follows a pointer that moved (on a touch screen there is none, and after a key the mouse
