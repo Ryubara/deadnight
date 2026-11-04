@@ -132,7 +132,7 @@ func test_the_character_row_switches_to_her_and_everything_follows() -> void:
 		assert_bool((model.find_child("torso__jacket__female", true, false) as Node3D).visible)
 		. is_true()
 	)
-	assert_bool((model.find_child("torso__jacket", true, false) as Node3D).visible).is_false()
+	assert_object(model.find_child("torso__jacket", true, false)).is_null()
 	# And back: his crew cut, his presets.
 	await _key(KEY_LEFT)
 	assert_str(String(_screen.look.body())).is_equal("male")

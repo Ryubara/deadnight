@@ -12,6 +12,8 @@ also writes one `<preset>.glb` per starting look (only its parts, its colours ba
 render_sheet.py; `--preview-mouths` also writes `<preset>__<mouth>.glb` for each mouth of the presets named (and each
 worn by the other character, `<preset>_<body>__<mouth>.glb`), for render_soldier_heads.py. The look schema and the part list are in docs/design/characters.md.
 
+The ladder's pieces (#1078) are in soldier_ladder.py.
+
 Additive to build_soldier.py: the same clean-up and the same clips (soldier_clips.py, imported, never changed), so
 the skeleton and the clips match soldier.glb bone for bone. The parts come from the kit Soldier's own meshes, split
 by bone weight and material into head, torso, legs and feet and recoloured per part (the variants recipe of the kit
@@ -35,6 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kitlib
 import soldier_arms
 import soldier_clips as sc
+import soldier_ladder
 from palette_import import ensure_import
 
 BUDGET = 6000  # style bible: player character, gameplay LOD
@@ -66,6 +69,8 @@ FIXED = {
     "lips": "#b4504c",  # the `open` mouth's tongue (#1061; her mouth until #895)
     "blush": "#e08c7c",  # her cheeks on the "Rosy" face
     "mouth": "#2a1414",  # #895: the mouth, dark like the eyes so it reads on every skin tone at night
+    "lens_red": "#c8332e",  # #1078: the Cinema glasses' two lenses
+    "lens_cyan": "#37a6c4",
 }
 PALETTES = {
     "skin": ["#f1c9a5", "#d9a77a", "#b89359", "#a68450", "#8a5a3b", "#5e3b26"],
@@ -121,7 +126,7 @@ def swatch_cells():
         cells[c] = (2 * i, 0)
         cells[c + "_shade"] = (2 * i + 1, 0)
     for i, name in enumerate(FIXED):
-        cells[name] = (i, 1)
+        cells[name] = (i % (ATLAS_W // SWATCH_PX), 1 + i // (ATLAS_W // SWATCH_PX))  # past a full row, the next one
     return cells
 
 
@@ -152,6 +157,7 @@ SLOTS = {
             "ballcap": "Ball cap",
             "papercap": "Paper cap",
             "ranger": "Ranger hat",
+            "visor": "Projectionist's visor",  # #1078: the ladder's pieces, appended (a part is an index on the wire)
         },
     },
     "torso": {
@@ -163,18 +169,44 @@ SLOTS = {
             "rolled": "Rolled sleeves",
             "tank": "Tank top",
             "letterman": "Letter jacket",
+            "usher": "Usher's jacket",
+            "coveralls": "Coveralls",
         },
     },
     "legs": {
         "default": "trousers",
-        "parts": {"trousers": "Trousers", "cuffed": "Cuffed jeans", "shorts": "Shorts", "striped": "Striped"},
+        "parts": {
+            "trousers": "Trousers",
+            "cuffed": "Cuffed jeans",
+            "shorts": "Shorts",
+            "striped": "Striped",
+            "overalls": "Overalls",
+        },
     },
-    "feet": {"default": "boots", "parts": {"boots": "Boots", "sneakers": "Sneakers", "shoes": "Shoes"}},
+    "feet": {
+        "default": "boots",
+        "parts": {"boots": "Boots", "sneakers": "Sneakers", "shoes": "Shoes", "saddle": "Saddle shoes"},
+    },
     "eyewear": {
         "default": "none",
-        "parts": {"none": "None", "sunglasses": "Sunglasses", "glasses": "Glasses", "goggles": "Goggles"},
+        "parts": {
+            "none": "None",
+            "sunglasses": "Sunglasses",
+            "glasses": "Glasses",
+            "goggles": "Goggles",
+            "cinema": "Cinema glasses",
+        },
     },
-    "neck": {"default": "none", "parts": {"none": "None", "scarf": "Scarf", "bowtie": "Bow tie"}},
+    "neck": {
+        "default": "none",
+        "parts": {
+            "none": "None",
+            "scarf": "Scarf",
+            "bowtie": "Bow tie",
+            "lanyard": "Press lanyard",
+            "bolo": "Bolo tie",
+        },
+    },
     "arm": {"default": "none", "parts": {"none": "None", "armband": "Armband"}},
     # The character (#678). No mesh of its own: `female` shows the `<slot>__<part>__female` variant of every part that
     # has one (BODY_VARIANTS), so every outfit fits both.
@@ -196,10 +228,17 @@ SLOTS = {
     },
 }
 HIDES_HAIR = {"helmet", "ballcap", "ranger"}
+HIDES_LEGS = {"coveralls"}  # a one-piece: its legs are part of the top, so the look's trousers do not show
 BODY_SLOT = "body"
 FEMALE = "female"
 # The slots whose every part has a female variant: her face, and the torso and legs shaped by female_shape.
 BODY_VARIANTS = ("head", "torso", "legs", "mouth")
+# Parts of other slots with a variant of her own: what hangs on her chest (soldier_ladder.female_neck).
+HER_NECK = ("lanyard", "bolo")
+HER_NECK_RIGID = 0.25  # an island of a neck piece smaller than this moves whole
+# The ladder's pieces (#1078): the build holds each to the budgets in the place of its slot's part in every preset.
+LADDER_PARTS = (("torso", "usher"), ("torso", "coveralls"), ("legs", "overalls"), ("feet", "saddle"),
+                ("eyewear", "cinema"), ("headwear", "visor"), ("neck", "lanyard"), ("neck", "bolo"))  # fmt: skip
 # What the face choices are called on her: no beard; freckles and rosy cheeks instead.
 # Slots with no far mesh: a mouth is one of the small pieces a collapse would cut to slivers, and a copy of each would be
 # 16 more hidden mesh nodes on every body in the night, so one mesh shows at every distance.
@@ -606,7 +645,7 @@ def torso_rule(kind):
         collar = t.mat == "Character_Main" and t.bone in ("Head", "Neck")
         if t.mat == "Skin":
             return "skin"
-        if collar and t.size < 100 and kind in LOW_COLLAR:
+        if collar and t.size < 100 and kind in OPEN_COLLAR:
             return None  # the tall collar's lip and front flap: laid on the neck they turned inside out (#895)
         if kind == "vest":
             return {"Character_Main": "primary", "DarkGrey": "darkgrey", "Black": "secondary"}.get(t.mat, "grey")
@@ -614,10 +653,12 @@ def torso_rule(kind):
             return None  # closed boxes on the vest: the vest is whole underneath
         if t.mat == "DarkGrey":
             return "primary_shade"
-        if kind == "jacket":
+        if kind in ("jacket", "usher"):
             if cuff or collar:
                 return "accent"
             return "primary"
+        if kind == "coveralls":
+            return "primary_shade" if cuff or collar else "primary"
         if kind == "letterman":
             if cuff or collar:
                 return "primary_shade"
@@ -643,11 +684,13 @@ def torso_rule(kind):
 def legs_rule(kind):
     def rule(t):
         if t.mat == "DarkGrey":
-            return "leather"  # the belt
+            return "primary_shade" if kind == "coveralls" else "leather"  # the belt
         cuff = t.size < 40
         if kind == "trousers":
             return "secondary"
-        if kind == "cuffed":
+        if kind == "coveralls":  # the legs of the one-piece, in the top's colour
+            return "primary_shade" if cuff else "primary"
+        if kind in ("cuffed", "overalls"):
             return "secondary_shade" if cuff else "secondary"
         if kind == "striped":
             return "secondary"  # the stripe is cut in afterwards (cut_stripe): faces by centre zigzag
@@ -670,6 +713,8 @@ def feet_rule(kind):
             if top or (not sole and t.centre.z > 0.13):
                 return "secondary"  # the trousers come down over a low shoe
             return "black" if sole else "leather"
+        if kind == "saddle":  # the sock's line and the saddle are cut in afterwards (soldier_ladder.saddle_shoes)
+            return "leather" if sole else "white"
         raise ValueError(kind)
 
     return rule
@@ -677,6 +722,7 @@ def feet_rule(kind):
 
 # Open-necked torsos fold the kit's tall collar down: its verts above the chin line drop and pull in.
 LOW_COLLAR = {"shirt", "rolled", "tank"}
+OPEN_COLLAR = LOW_COLLAR | {"coveralls"}  # the same collar on long sleeves: its wrists keep the kit's cuffs
 
 # The hand's vertices (main bone a finger's, as the grip test reads them) never move: the weapon grips (#507) were
 # solved on the kit's hand. Pushed in with the bare arm, every hand of a short-sleeved top floated 15-20 mm off its
@@ -770,14 +816,22 @@ def push_faces(me, amounts, hands, elbow=False):
             me.vertices[vi].co += d
 
 
-def body_part(body, tags, region, rule, name, mat, arm, push=(), low_collar=False):
+def body_part(body, tags, region, rule, name, mat, arm, push=(), low_collar=False, bare_wrists=False, also=None):
+    """A part from the kit body: the faces of `region` by `rule`, and of a second region by `also` ((region, rule))."""
     o = body.copy()
     o.data = body.data.copy()
     o.name = o.data.name = name
     bpy.context.collection.objects.link(o)
     me = o.data
     uv = me.uv_layers.active.data
-    keys = [rule(t) if region_of(t) == region else None for t in tags]
+
+    def key_of(t):
+        where = region_of(t)
+        if where == region:
+            return rule(t)
+        return also[1](t) if also and where == also[0] else None
+
+    keys = [key_of(t) for t in tags]
     for p, key in zip(me.polygons, keys):
         if key:
             u = uv_of(key)
@@ -786,7 +840,7 @@ def body_part(body, tags, region, rule, name, mat, arm, push=(), low_collar=Fals
     hands = hand_vertices(o)
     if push:
         push_skin(me, keys, push, hands)
-    if region == "torso" and not low_collar:
+    if region == "torso" and not bare_wrists:
         slim_forearms(me, tags, hands)
     if region == "torso":
         sink_collar_foot(o, tags)
@@ -808,7 +862,7 @@ def body_part(body, tags, region, rule, name, mat, arm, push=(), low_collar=Fals
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
     if collar:
         line_collar(bm, collar, lining)
-    if low_collar:
+    if bare_wrists:
         for side in (-1, 1):
             bridge_wrist(bm, side)
     for f in bm.faces:
@@ -1954,6 +2008,8 @@ def part_entry(s, p, label, tris, tris_far, female):
     }
     if s == "headwear" and p in HIDES_HAIR:
         entry["hides_hair"] = True
+    if s == "torso" and p in HIDES_LEGS:
+        entry["hides_legs"] = True
     if s == "hair" and p in HAIR_BODY:
         entry["body"] = HAIR_BODY[p]
     if (s, p) in female:
@@ -1998,7 +2054,9 @@ def main():
                 mat,
                 arm,
                 PUSH.get((slot, pid), ()),
-                low_collar=slot == "torso" and pid in LOW_COLLAR,
+                low_collar=slot == "torso" and pid in OPEN_COLLAR,
+                bare_wrists=slot == "torso" and pid in LOW_COLLAR,
+                also=("legs", legs_rule(pid)) if slot == "torso" and pid in HIDES_LEGS else None,
             )
             if slot == "torso":
                 cap_neck_hole(parts[slot, pid])
@@ -2066,9 +2124,12 @@ def main():
     parts["torso", "vest"] = join(join(parts["torso", "vest"], pads[0]), pads[1])
     parts["torso", "vest"].name = parts["torso", "vest"].data.name = "torso__vest"
     parts.update(build_pieces(arm, mat))
+    parts.update(soldier_ladder.build(sys.modules[__name__], parts, arm, mat))
     for slot in ("torso", "legs"):
         for pid in SLOTS[slot]["parts"]:
             female[slot, pid] = female_copy(parts[slot, pid], arm)
+    for pid in HER_NECK:
+        female["neck", pid] = soldier_ladder.female_neck(parts["neck", pid], sys.modules[__name__], arm, HER_NECK_RIGID)
 
     missing = [
         (s, p)
@@ -2077,7 +2138,8 @@ def main():
         if p != "none" and s != BODY_SLOT and (s, p) not in parts
     ]
     assert not missing, f"parts with no mesh: {missing}"
-    assert set(female) == {(s, p) for s in BODY_VARIANTS for p in SLOTS[s]["parts"]}, "a part has no female variant"
+    wanted = {(s, p) for s in BODY_VARIANTS for p in SLOTS[s]["parts"]} | {("neck", p) for p in HER_NECK}
+    assert set(female) == wanted, "a part has no female variant"
     # Every mesh by its node name: `<slot>__<part>`, and hers `<slot>__<part>__female`.
     by_name = {f"{s}__{p}": o for (s, p), o in parts.items()}
     by_name.update({f"{s}__{p}__{FEMALE}": o for (s, p), o in female.items()})
@@ -2086,10 +2148,11 @@ def main():
     def shown(lk):
         """The mesh names a look shows (SoldierLook.visible_meshes)."""
         hide_hair = lk["parts"]["headwear"] in HIDES_HAIR
+        hide_legs = lk["parts"]["torso"] in HIDES_LEGS
         her = lk["parts"].get(BODY_SLOT) == FEMALE
         out = []
         for s, p in lk["parts"].items():
-            if s == BODY_SLOT or p == "none" or (s == "hair" and hide_hair):
+            if s == BODY_SLOT or p == "none" or (s == "hair" and hide_hair) or (s == "legs" and hide_legs):
                 continue
             out.append(f"{s}__{p}__{FEMALE}" if her and (s, p) in female else f"{s}__{p}")
         return out
@@ -2109,6 +2172,14 @@ def main():
         return [with_mouth(lk2, m) for lk2 in worn_both(lk) for m in SLOTS["mouth"]["parts"]]
 
     looks_checked = {f"{pid}/{i}": lk2 for pid, _n, lk in PRESETS for i, lk2 in enumerate(every_mouth(lk))}
+    # Each of the ladder's pieces in the place of its slot's part in every preset, on both, with every mouth: held to
+    # the budgets, not to the far ratio, which stays solved over the presets so a new piece does not recut every far mesh.
+    ladder_looks = {
+        f"{pid}+{part}/{i}": lk2
+        for pid, _n, lk in PRESETS
+        for slot, part in LADDER_PARTS
+        for i, lk2 in enumerate(every_mouth({**lk, "parts": {**lk["parts"], slot: part}}))
+    }
     # The far ratio is solved over every look as built, as worn by the other character and with every mouth (the
     # mouths and her face pieces are kept whole, so they count as they are).
     whole_tris = {name: kitlib.tris(o) for name, o in extras_of.items()}
@@ -2138,6 +2209,11 @@ def main():
             assert t <= BUDGET, f"{who}: {t} tris over the {BUDGET} budget"
             assert t_far <= FAR_BUDGET, f"{who}: {t_far} far tris over {FAR_BUDGET}"
         presets.append({"id": pid, "name": name, **lk, "tris": look_sum(lk, tris), "tris_far": look_sum(lk, tris_far)})
+
+    for key, lk2 in ladder_looks.items():
+        t, t_far = look_sum(lk2, tris), look_sum(lk2, tris_far)
+        assert t <= BUDGET, f"{key}: {t} tris over the {BUDGET} budget"
+        assert t_far <= FAR_BUDGET, f"{key}: {t_far} far tris over {FAR_BUDGET}"
 
     finish_pose(arm, factor)
     meshes = list(by_name.values()) + list(far_by_name.values())
@@ -2177,6 +2253,8 @@ def main():
     print("PARTS", json.dumps({"clips": n_clips, "bones": len(arm.data.bones), "tris": tris}))
     print("PRESETS", json.dumps({p["id"]: p["tris"] for p in presets}))
     print("WORST", json.dumps([max(look_sum(lk, c) for lk in looks_checked.values()) for c in (tris, tris_far)]))
+    ladder = [(k, look_sum(lk, tris), look_sum(lk, tris_far)) for k, lk in ladder_looks.items()]
+    print("LADDER", json.dumps({"near": max(ladder, key=lambda x: x[1]), "far": max(ladder, key=lambda x: x[2])}))
     print("FAR", json.dumps({"ratio": round(far_ratio, 3), "presets": {p["id"]: p["tris_far"] for p in presets},
                              "parts": tris_far}))  # fmt: skip
 
