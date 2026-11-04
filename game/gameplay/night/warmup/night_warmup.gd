@@ -269,7 +269,7 @@ func _load_here(paths: Array[String]) -> void:
 
 
 func _load_sounds() -> void:
-	var ids := SoundCatalog.ids()
+	var ids := SoundCatalog.ids_for_night()
 	var at := 0
 	while at < ids.size():
 		var until := Time.get_ticks_msec() + SOUND_BUDGET_MSEC

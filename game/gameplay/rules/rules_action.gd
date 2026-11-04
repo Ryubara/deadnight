@@ -26,6 +26,8 @@ const SET_CIRCUIT := &"set_circuit"
 const GRANT_POINTS := &"grant_points"
 const USE_GRENADE := &"use_grenade"
 const EXPLOSION := &"explosion"
+## A person's client began (`begin` true) or ended its helicopter drop (`ArrivalPlay`).
+const ARRIVAL := &"arrival"
 
 ## Where a hit landed. `ZONE_HEAD` and `ZONE_WEAK` change what the rules pay; the weapon has already
 ## applied its zone multiplier to the damage, and the rules add the type's own `weak_multiplier` for
@@ -62,6 +64,7 @@ const REQUIRED := {
 	SEAT_PERSON: {"player_id": TYPE_INT},
 	SEAT_BOT: {"player_id": TYPE_INT},
 	SET_DOWNED: {"player_id": TYPE_INT, "downed": TYPE_BOOL},
+	ARRIVAL: {"player_id": TYPE_INT, "begin": TYPE_BOOL},
 	REVIVE: {"player_id": TYPE_INT, "target_id": TYPE_INT},
 	BLOW: {"player_id": TYPE_INT, "damage": TYPE_FLOAT},
 	HIT:
@@ -129,6 +132,11 @@ static func seat_person(player_id: int) -> Dictionary:
 ## `unknown_player` when the seat is no person's.
 static func seat_bot(player_id: int) -> Dictionary:
 	return {"type": SEAT_BOT, "player_id": player_id}
+
+
+## The drop of `player_id` begins or, with `begin` false, ends (`ArrivalPlay`).
+static func arrival(player_id: int, begin: bool) -> Dictionary:
+	return {"type": ARRIVAL, "player_id": player_id, "begin": begin}
 
 
 static func remove_player(player_id: int) -> Dictionary:
