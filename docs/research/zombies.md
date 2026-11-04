@@ -400,6 +400,52 @@ Proof: `game/tests/zombies/test_zombie_strand.gd` (the counting, on a pathing th
 `game/tests/night/test_zombie_stranded.gd` (in the real lot: a zombie put in the pocket at (4.0, -0.5, -52.8) reaches the
 person; without the fix it stands there).
 
+### A round that waits on its last dead (#950)
+
+The performance sweep's two 30-minute solo nights (the autopilot and three bots, 1x) had rounds with one to three dead
+standing for a minute or more, once seven minutes (round 16, minute 23 to the end). The soak says why in a day of
+nights: `bots_soak.tscn --person --bots=3 --tail=30 --detail` prints, every few seconds of a long round, each dead's
+place, mode, target, path (`--detail`: its points, its gate, whether it tears, whether each player has a line to it,
+the boards of its gate), and `SoakWatch` counts the seconds a round stands down to its last three (`tail_longest`, a
+gate at 150 s) and the longest round (`round_longest`). Two causes, neither a bot's fault, and a net under them:
+
+| Found | What it was | Fix | Proof |
+| --- | --- | --- | --- |
+| Small map, `small_indoor` seed 16 round 3: one dead for 147 s (the nights then went on to 188 s and 198 s) | A walker at the left jamb of window `upper_b2`, 1.0 m from the gap's middle, ATTACK, tearing a board in 1.2 s; the person stood at the same jamb on the inside and put one back every 1.0 s (the autopilot mends when it has nothing to shoot, and the jamb is between them: `sight` 0.4 m). `board_torn` and `board_repaired` rose together, 11 apart, boards at 5 | `ZombieSim` counts the seconds a zombie tears at one gate without getting through (`siege_seconds`); at `SIEGE_SECONDS` (30) it says `zombie_burst` and `ZombieDirector` tears every board that stands (`ZombieRulesPort.tear_all`). A hit on it starts the count over | `test_zombie_siege.gd`; `test_round_tail.gd` (seated night, the person and the dead where the soak found them: stalls on `main`, ends in 30 to 40 s with the fix) |
+| Lot, seed 4 round 4: six dead for seven minutes (the rounds ran on to the 3-minute stop) | The person hugged two parked cars (`Row1/Car03`, `Car04`), 7 m from the six. The target is off the mesh, `map_get_path` snaps it to the nearest mesh point, and that flips from one side of the car to the other as the person moves a metre: west route 10 m, east route 29 m, `path` of 6 to 11 points one second and 20 to 23 the next. Every repath (0.25 s) turned them round; they walked up and down at full speed, never stranded (the gap was under 1.2 m) | `ZombieSim._keeps_its_route`: a new route 6 m longer than what is left of the old one is not taken while the old one still ends within 3.5 m of the target and there is more than 1 m of it left to walk | `test_zombie_route.gd` |
+| The net | Anything else that stops the last dead being fought: a pocket, a jamb, a roost | With the marked few left (`mark_last`) and no blow struck, no damage done and no kill for 45 s (`ZombieDirector.RESCUE_AFTER`), each of them rises at the spawn point nearest the people that is 25 m or more from them and not at the breach it stood at (`ZombieDirector._watch_the_tail`; `director.rescued` counts them) | `test_zombie_rescue.gd` (the wait, a hit putting it off, more than the marked few left, a break) |
+
+Where the person stood in the soak, (8.2, 3.5, -7.4), is not where the first version of the seated test put it (the
+window's repair spot, 9.0): the autopilot there shot the dead at once and the test passed on `main` too. A test of a stall
+takes its coordinates from the log.
+
+Soak, before and after (regular bots and a person stand-in, three bots, `--stall-minutes=6`, seeds 11 to 18 and 21 to
+28 on each map, the commit before the change against this one with only the soak's own instruments on both; a night
+is not repeatable by seed, so these are sets, not pairs). The round is the active stretch, the tail the stretch with
+three dead or fewer left:
+
+| | Nights | Longest round, max / median | Longest tail, max / median | Tails over 150 s | Stopped as stalled |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Small map, before | 16 | 242 s / 84 s | 198 s / 56 s | 2 | 0 |
+| Small map, after | 16 | 91 s / 70 s | 63 s / 41 s | 0 | 0 |
+| Lot, before | 16 | 360 s / 143 s | 120 s / 57 s | 0 | 1 |
+| Lot, after | 16 | 208 s / 137 s | 126 s / 63 s | 0 | 0 |
+| Veteran bots, small map, before (seeds 31, 32) | 2 | 360 s / 210 s | 320 s / 178 s | 1 | 1 |
+| Veteran bots, small map, after (seeds 31, 32) | 2 | 63 s / 61 s | 36 s / 26 s | 0 | 0 |
+| Veteran bots, lot, before (seeds 31, 32, and a third night of 31) | 3 | 348 s / 117 s | 55 s / 44 s | 0 | 1 |
+| Veteran bots, lot, after (seeds 31, 32) | 2 | 360 s / 270 s | 96 s / 76 s | 0 | 1 |
+
+The veteran small-map night before the change stood 320 s on its last three dead in round 6 (its tail lines were not
+printed, so its cause is not read; it is the kind the siege and the rescue are for). The one stopped veteran night after
+the change (the lot, round 19, 360 s) is a late round of 18 dead against bots that are down or dry (`end` of the report:
+every gun at 0), a long fight, not a last dead stood on. The third lot night before the change (round 9, 348 s, 44 s of
+tail; a debug run with the tail printed) shows the cars' flips: paths of 4 to 12 points one second and 34 to 37 the next.
+The lot's longest tails (120 to 126 s) are boss rounds (round 5) in which the stand-in person has an empty pistol and
+the two headliners follow it at a walk while the bots are elsewhere: a fight that is long, not stuck (the dead are
+closing on a person every second); the gate is set above it. The rescue never fired in the nights that report it (the
+16 of seeds 21 to 28 and the 4 veteran ones: `rescued` is 0 in each): the siege and the route fix took the two causes
+found, and the net is proved by its test only.
+
 ## Left open
 
 - Browser and weak-machine measurement of the full scene: done in the browser (Chrome with a GPU, and the processor

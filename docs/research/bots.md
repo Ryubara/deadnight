@@ -1408,6 +1408,7 @@ to four bots on an idle machine (a game minute takes 5 to 8 s).
 | Hold: within 3 m of the spot for 92% of the time under the stance | Not on a trip for a revive, a ping, a dodge or an errand; the 1% stuck share is not asked of a bot holding a spot, which walks a few seconds a night |
 | No rejected-buy loop | The same item refused to the same bot twice inside 29 s |
 | No round that will not end | A round over 8 game minutes. New in this phase: see below |
+| No round standing on its last dead (#950) | The seconds a round is down to its marked last three (`ZombieTuning.mark_last`) or fewer: no more than 150 (`GATE_TAIL_SECONDS`; a boss round with a dry stand-in takes 120 on its own). `tail_longest` and `round_longest` are in every `SOAKNIGHT` line, and `--tail=SECONDS --detail` prints where each dead is, its path and gate, who has a line to it and the boards, [read in zombies.md](zombies.md#a-round-that-waits-on-its-last-dead-950) |
 | Parity | The median round within 1.5 of the simulator cell's, and a Kolmogorov distance of the two curves under 0.2 |
 
 The gates that need people (`--person`) are only asked of the cells that have one.

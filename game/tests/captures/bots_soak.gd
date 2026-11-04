@@ -19,9 +19,12 @@ extends Node
 ## which no new night starts, default 0: none), `--watch=SEAT` (a line a second of what that seat
 ## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke;
 ## `--watch=far` is a line for each bot beyond 20 m of a person up), `--tune=NAME:VALUE,...`
-## (profile fields moved for a sweep: a number, true or false, or a list `a|b|c`), `--map=ID` (a map
-## of `MapRegistry`, played by its scene and its rules overlay; default the lot) and `--quiet` (no
-## trace line a minute).
+## (profile fields moved for a sweep: a number, true or false, or a list `a|b|c`), `--tail=SECONDS`
+## (a round that has gone on this long prints a `TAIL` line every `--every` ticks: where each zombie
+## is, its mode, target and path gap, and where each player is and what it holds; with `--detail`
+## also each zombie's path, gate, whether it tears, who has a line to it and the boards of its
+## gate), `--map=ID` (a map of `MapRegistry`, played by its scene and its rules overlay; default the
+## lot) and `--quiet` (no trace line a minute).
 ## Prints `SOAKNIGHT {json}` for each night and `SOAKCELL {json}` at the end.
 
 const STEP := Night.STEP
@@ -154,6 +157,7 @@ func _play(seed_value: int) -> Dictionary:
 			and ticks - round_began >= int(float(_args["tail"]) * 60.0)
 		):
 			_print_tail(night, ticks)
+			print("TAILBOARDS torn=%d repaired=%d" % [watch.boards_torn, watch.boards_repaired])
 		# The navigation server takes a bought door's mesh in only on a physics frame.
 		if ticks % FRAME_EVERY == 0:
 			await get_tree().physics_frame
@@ -274,7 +278,7 @@ func _print_tail(night: SeatedNight, ticks: int) -> void:
 	)
 	for zombie: ZombieBody in night.server.sim.zombies.values():
 		line += (
-			" Z%d(%s %.1f,%.1f y%.1f m%d tgt%d path%d)"
+			" Z%d(%s %.1f,%.1f y%.1f m%d tgt%d path%d gap%.1f)"
 			% [
 				zombie.id,
 				zombie.profile.type,
@@ -283,9 +287,40 @@ func _print_tail(night: SeatedNight, ticks: int) -> void:
 				zombie.position.y,
 				zombie.mode,
 				zombie.target_id,
-				zombie.path.size()
+				zombie.path.size(),
+				zombie.path_gap
 			]
 		)
+		if _args.has("detail"):
+			var points := ""
+			for point in zombie.path:
+				points += "(%.1f,%.1f)" % [point.x, point.z]
+			var seen := ""
+			for pid: int in night.frame["players"]:
+				var eye := night.server.body_of(pid).global_position + Vector3(0.0, 1.5, 0.0)
+				var aim := zombie.position + Vector3(0.0, 1.1, 0.0)
+				seen += " P%d:%.1f" % [pid, float(night.level.sight.call(eye, aim))]
+			line += " sight%d[%s]" % [zombie.id, seen]
+			var mending := ""
+			for pid: int in night.frame["players"]:
+				if night.server.is_repairing(pid):
+					mending += " P%d" % pid
+			line += (
+				" boards=%d mending[%s]"
+				% [night.server.rules.barricades.boards_of(zombie.gate_id), mending]
+			)
+			line += (
+				" Zpath%d[%s] gate=%s v=(%.2f,%.2f) idx=%d tear=%s"
+				% [
+					zombie.id,
+					points,
+					zombie.gate_id,
+					zombie.velocity.x,
+					zombie.velocity.z,
+					zombie.path_index,
+					zombie.tearing
+				]
+			)
 	for id: int in night.frame["players"]:
 		var body := night.server.body_of(id)
 		var note := ""
@@ -294,11 +329,12 @@ func _print_tail(night: SeatedNight, ticks: int) -> void:
 				note = String(bot.intent.note)
 		var me: Dictionary = night.frame["players"][id]
 		line += (
-			" P%d(%.1f,%.1f %s %s%s)"
+			" P%d(%.1f,%.1f y%.1f %s %s%s)"
 			% [
 				id,
 				body.global_position.x,
 				body.global_position.z,
+				body.global_position.y,
 				note,
 				str(me.get("arms", {})),
 				" down" if me.get("downed", false) else ""

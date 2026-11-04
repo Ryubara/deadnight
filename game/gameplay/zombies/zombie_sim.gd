@@ -45,6 +45,18 @@ const STRAND_GAP := 3.0
 const STRAND_FAR := 12.0
 const STRAND_SECONDS := 12.0
 
+## A zombie that has pulled at one breach's boards this many seconds without getting through (a
+## player puts them back as fast as it tears them, out of the line of fire past a jamb) bursts
+## them: the sim says `zombie_burst` and the director tears the rest. One dead held at a window
+## for ever kept a round going for minutes with its last dead standing (#950).
+const SIEGE_SECONDS := 30.0
+
+## See `_keeps_its_route`: how much longer a new route has to be, how near the target the old one
+## has to end, and how little of it may be left for the zombie to go on along it.
+const ROUTE_FLIP := 6.0
+const ROUTE_KEEP := 3.5
+const ROUTE_ARRIVED := 1.0
+
 var tuning: ZombieTuning
 ## Used for the speed of a zombie off lit ground; without it light changes nothing.
 var rounds: RoundTuning
@@ -315,6 +327,8 @@ func _think(
 	zombie.tearing = false
 	if zombie.gate_id != &"":
 		_work_the_boards(zombie, delta, events)
+	if not zombie.tearing:
+		zombie.siege_seconds = 0.0
 	zombie.position += (zombie.velocity + zombie.push) * delta
 	_settle_on_ground(zombie, delta)
 	zombie.push = zombie.push.move_toward(Vector3.ZERO, tuning.push_decay * delta)
@@ -457,6 +471,10 @@ func _work_the_boards(zombie: ZombieBody, delta: float, events: Array[Dictionary
 	if zombie.mode != ZombieBody.Mode.ATTACK:
 		return
 	zombie.tearing = true
+	zombie.siege_seconds += delta
+	if zombie.siege_seconds >= SIEGE_SECONDS:
+		zombie.siege_seconds = 0.0
+		events.append({"type": &"zombie_burst", "zombie_id": zombie.id, "gate_id": zombie.gate_id})
 	zombie.tear_progress += delta * zombie.profile.barrier_speed
 	if zombie.tear_progress >= board_seconds:
 		zombie.tear_progress -= board_seconds
@@ -576,12 +594,49 @@ func _repath(zombie: ZombieBody, delta: float, has_target: bool, target_pos: Vec
 		interval *= tuning.repath_far_factor
 	zombie.repath_left = interval
 	var began := PerfProbe.begin()
-	zombie.path = pathing.find_path(zombie.position, target_pos)
+	var path := pathing.find_path(zombie.position, target_pos)
 	PerfProbe.end(&"sim.path", began)
+	if _keeps_its_route(zombie, path, target_pos):
+		zombie.path_gap = _flat(zombie.path[-1], target_pos)
+		return
+	zombie.path = path
 	zombie.path_index = 0
 	zombie.path_gap = _flat(zombie.path[-1], target_pos) if not zombie.path.is_empty() else INF
 	if lit_probe.is_valid():
 		zombie.lit = lit_probe.call(zombie.position)
+
+
+## Whether the zombie goes on along the route it has, and not the one just found. A target that
+## stands where the walking mesh is not (between two parked cars, against a wall) is reached at the
+## nearest point of the mesh, and which point that is changes as the target shuffles a metre: the
+## way round the other side of the obstacle is 20 m longer, and a dead that turned back at every
+## repath walked up and down between the two for ever while the round waited for it (#950). A new
+## route that is `ROUTE_FLIP` metres longer than what is left of the old one is not taken while the
+## old one still ends within `ROUTE_KEEP` of the target; one that is nearly walked is let go.
+func _keeps_its_route(zombie: ZombieBody, found: PackedVector3Array, target_pos: Vector3) -> bool:
+	if zombie.path.is_empty() or found.is_empty():
+		return false
+	if _flat(zombie.path[-1], target_pos) > ROUTE_KEEP:
+		return false
+	var left := _length_left(zombie)
+	return left >= ROUTE_ARRIVED and _length_of(found) > left + ROUTE_FLIP
+
+
+## Metres of the zombie's path still to walk, from where it stands.
+func _length_left(zombie: ZombieBody) -> float:
+	var path := zombie.path
+	var index := mini(zombie.path_index, path.size() - 1)
+	var length := _flat(zombie.position, path[index])
+	for i in range(index + 1, path.size()):
+		length += _flat(path[i - 1], path[i])
+	return length
+
+
+func _length_of(path: PackedVector3Array) -> float:
+	var length := 0.0
+	for i in range(1, path.size()):
+		length += _flat(path[i - 1], path[i])
+	return length
 
 
 ## The next point of the path not yet reached; the target itself when there is no path.

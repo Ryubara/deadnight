@@ -227,3 +227,16 @@ outline is the silhouette's edge, a few pixels wide at any distance, with no glo
 is drawn only where the zombie is hidden (a zombie half behind a car is outlined below the car's edge only; one
 in the open has none). It clears when the round ends or a zombie dies. How it is built, what it costs and the
 choices to retune (colour, width, N) are on the [research page](../research/outline.md).
+
+### A round never waits on them (#950)
+
+Two rules keep the last dead from holding a round open, whatever stops the people reaching them
+([why, and the numbers](../research/zombies.md#a-round-that-waits-on-its-last-dead-950)):
+
+- **The siege.** A dead that has pulled at one window's boards for 30 s (`ZombieSim.SIEGE_SECONDS`) without getting
+  through, because a hand puts them back as fast as it tears them, bursts them: every board that stands comes off and it
+  walks in. A hit on it starts the count over.
+- **The rescue.** With only the marked few left (`mark_last`) and nothing happening to them for 45 s
+  (`ZombieDirector.RESCUE_AFTER`: no blow struck, no damage done, no kill), each rises again at the spawn point
+  nearest the people that is 25 m or more from them and not at the breach it stood at, and walks in as a new one
+  does. The dead that are being fought are never moved.
