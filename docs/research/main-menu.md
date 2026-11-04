@@ -10,7 +10,7 @@ skin lives in `game/ui/skin/` and the screens in `game/ui/screens/`; the addon i
 | `deadnight_tokens.tres` | A `UITokens` resource set in the project setting `gds_ui/tokens`: darker surfaces, a neon red `hot`, a bigger display size. Everything else is the addon's default palette |
 | `NeonSign` | The title: hollow glass tubes drawn with `draw_string_outline` (three wide low-alpha strokes for glow, a coloured tube, a white-hot core, a radial halo texture). Ignition and the failing tube are pure functions of an accumulated clock, so captures repeat |
 | `NightSky` + `drive_in_night.gdshader` | The lot at night in one procedural pass: stars, treeline, the big screen throwing light, parked cars, the projector's beam. Colours come from the tokens; one backdrop for every screen |
-| `FilmOverlay` + `film_grain.gdshader` | Grain, vignette, flicker and a scratch, on a `CanvasLayer` (110) above the router (100) so it covers screens and transitions alike |
+| `FilmOverlay` + `film_grain.gdshader` | Grain, vignette, flicker and a scratch, the last node of the router's own `CanvasLayer` (100), after its screens and its transition, so it covers both (a layer of its own was a canvas pass and a fence the web page kept, #883) |
 | `MainMenu` | Play irises open, Settings slides, Credits burns; Quit is left out when `OS.has_feature("web")` |
 | `CreditsList` | A resource of lines (`# Heading`, then names) that the credits screen reads |
 
