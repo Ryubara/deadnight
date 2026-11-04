@@ -314,6 +314,7 @@ func test_mouse_motion_turns_the_camera() -> void:
 	var pitch_before := _rig.pitch
 	var event := InputEventMouseMotion.new()
 	event.relative = Vector2(100.0, 50.0)
+	event.screen_relative = event.relative
 	_player._unhandled_input(event)  # the headless run does not transport real input events
 	var turn := _tuning.mouse_radians_per_pixel
 	assert_float(_rig.yaw).is_equal_approx(yaw_before - turn * 100.0, 0.001)  # right is clockwise

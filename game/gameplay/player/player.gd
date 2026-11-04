@@ -133,7 +133,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and mouse_enabled() and not TouchLook.is_stray(event):
 		if look_locked:
 			return
-		camera_rig.look_mouse((event as InputEventMouseMotion).relative)
+		# Screen pixels, not the stretched `relative` (#928, `MouseMotion`).
+		camera_rig.look_mouse(MouseMotion.pixels(event as InputEventMouseMotion))
 	elif event.is_action_pressed(&"pause") and capture_mouse and _controls_enabled:
 		set_controls_enabled(false)
 	elif event is InputEventMouseButton and event.pressed and capture_mouse:
