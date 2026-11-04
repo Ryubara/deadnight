@@ -8,6 +8,7 @@ extends Node
 ##       --map=lot --out=<abs folder> [--only=<prefix>] [--dark]
 ##
 ## `--map` is `lot` or `small`. `--dark` switches every circuit off first (the generator dead).
+## `--spot=name:x:y:z:yaw:pitch` (repeated) walks those spots in place of the map's own list.
 ## `--only` runs the spots whose name starts with the prefix. Spots are `[name, feet, yaw degrees,
 ## pitch degrees]`; yaw 0 looks at -Z (north on the lot, the screen), 180 at +Z, 90 at -X (west),
 ## -90 at +X.
@@ -131,6 +132,7 @@ var _dark := false
 var _plan := false
 var _chain := ""
 var _doors := "all"
+var _spots: Array = []
 
 
 func _ready() -> void:
@@ -149,6 +151,10 @@ func _ready() -> void:
 			_chain = argument.trim_prefix("--chain=")
 		elif argument.begins_with("--doors="):
 			_doors = argument.trim_prefix("--doors=")
+		elif argument.begins_with("--spot="):
+			var parts := argument.trim_prefix("--spot=").split(":")
+			var feet := Vector3(float(parts[1]), float(parts[2]), float(parts[3]))
+			_spots.append([parts[0], feet, float(parts[4]), float(parts[5])])
 	DirAccess.make_dir_recursive_absolute(_out)
 	var tuning: RulesTuning = load(GameRules.DEFAULT_TUNING_PATH).duplicate(true)
 	# No dead: the first wave waits past the end of the walk.
@@ -175,7 +181,8 @@ func _ready() -> void:
 		await _plans()
 		get_tree().quit()
 		return
-	for spot: Array in LOT_SPOTS if _map == "lot" else SMALL_SPOTS:
+	var spots: Array = LOT_SPOTS if _map == "lot" else SMALL_SPOTS
+	for spot: Array in _spots if not _spots.is_empty() else spots:
 		if _only != "" and not String(spot[0]).begins_with(_only):
 			continue
 		await _visit(spot)
