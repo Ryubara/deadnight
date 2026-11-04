@@ -370,7 +370,11 @@ func is_lit(point: Vector3) -> bool:
 ## A body for one player, driven by the server (its own physics step is off). `drawn` false makes
 ## a body that is only physics (a game server draws nothing): the Soldier's model, skeleton and
 ## animation are left out, which is most of a body's nodes and all of its per-frame work.
-func add_body(spawn: Vector3, local_input: bool, drawn: bool = true) -> Player:
+## `viewless` makes a body no one looks through (a bot's, one that draws nothing): its camera rig is
+## not run in every drawn frame (`Player.make_viewless`).
+func add_body(
+	spawn: Vector3, local_input: bool, drawn: bool = true, viewless: bool = false
+) -> Player:
 	var body := PLAYER_SCENE.instantiate() as Player
 	body.local_input = local_input
 	body.capture_mouse = local_input
@@ -381,6 +385,9 @@ func add_body(spawn: Vector3, local_input: bool, drawn: bool = true) -> Player:
 		# Only the person's own body owns the current camera: a bot's, which enters the tree after
 		# it, would take the view (#702).
 		body.release_view()
+	if viewless:
+		# No one looks through it (a bot's, a body that draws nothing): its rig is not run either.
+		body.make_viewless()
 	add_child(body)
 	body.teleport(spawn)
 	body.set_physics_process(false)

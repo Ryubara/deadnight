@@ -17,6 +17,7 @@ const DOCUMENTED := {
 		"damage",
 		"knockback",
 		"telegraph_seconds",
+		"reach",
 		"barrier_speed",
 		"hit_chance",
 	],
