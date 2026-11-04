@@ -55,34 +55,27 @@ jobs:
           echo "vendor: $(cat /sys/devices/virtual/dmi/id/sys_vendor 2>/dev/null) / $(cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null)"
           echo "cpu: $(grep -m1 'model name' /proc/cpuinfo) cores: $(nproc)"
           mount | grep ' / ' || true
-      - name: The art folder alone, then with files taken out while it still leaks
+      - name: Shard 5 as one explicit sorted list of its test scripts (what a script-by-script deal runs), then as folders
         if: steps.who.outputs.go == 'true'
         run: |
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
           cd repos/deadnight/game
-          mkdir -p ../../../diag ../../../parked
-          leaks() { # log name -> prints the ObjectDB count line, empty when clean
-            timeout 300 "$godot" --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests/art -c --ignoreHeadlessMode --verbose > "../../../diag/$1.log" 2>&1 || true
-            grep -a -E "ObjectDB instances were leaked" "../../../diag/$1.log" | head -1 | sed 's/^[0-9T:.Z-]* //'
-          }
-          for n in 1 2 3; do echo "art whole, try $n: $(leaks "art_whole_$n")"; done
-          echo "--- the tail of the art log, without the loading lines"
-          grep -a -v -E "Loading resource|Completed load|Leaked instance|Resource still in use|Orphan StringName" ../../../diag/art_whole_1.log | tail -60
-          i=0
-          for f in $(ls tests/art/*.gd | grep -v test_weapon_muzzle | sort); do
-            i=$((i + 1))
-            mv "$f" ../../../parked/ ; [ -f "$f.uid" ] && mv "$f.uid" ../../../parked/
-            r=$(leaks "step_$i")
-            if [ -n "$r" ]; then
-              echo "taken out for good: $f ($r)"
+          mkdir -p ../../../diag
+          read -r -a folders < <(python3 ../tools/ci_test_shards.py --root . --shard 5)
+          files=()
+          for ((i = 1; i < ${#folders[@]}; i += 2)); do
+            e="${folders[$i]#res://}"
+            if [ -d "$e" ]; then
+              while IFS= read -r f; do files+=(-a "res://$f"); done < <(find "$e" -name 'test_*.gd' | LC_ALL=C sort)
             else
-              echo "needed (clean without it): $f"
-              mv ../../../parked/"$(basename "$f")" tests/art/; [ -f ../../../parked/"$(basename "$f").uid" ] && mv ../../../parked/"$(basename "$f").uid" tests/art/
+              files+=(-a "res://$e")
             fi
           done
-          echo "left in tests/art:"
-          ls tests/art/*.gd
-          echo "final: $(leaks final)"
+          echo "explicit scripts: $(( ${#files[@]} / 2 ))"
+          timeout 1200 "$godot" --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd "${files[@]}" -c --ignoreHeadlessMode --verbose > ../../../diag/explicit.log 2>&1 || true
+          echo "explicit: $(grep -a -E 'ObjectDB instances were leaked' ../../../diag/explicit.log | head -1 || true) / $(grep -a -m1 'Total execution' ../../../diag/explicit.log || true)"
+          timeout 1200 "$godot" --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd "${folders[@]}" -c --ignoreHeadlessMode --verbose > ../../../diag/folders.log 2>&1 || true
+          echo "folders: $(grep -a -E 'ObjectDB instances were leaked' ../../../diag/folders.log | head -1 || true) / $(grep -a -m1 'Total execution' ../../../diag/folders.log || true)"
       - name: Keep the leak lists
         if: always() && steps.who.outputs.go == 'true'
         run: grep -h -E "leaked at exit|still in use|Leaked instance|Resource still in use" diag/*.log > diag/leaks.txt || true
