@@ -66,17 +66,6 @@ const SWATCHES := {
 	&"lens_red": [14, 1],
 	&"lens_cyan": [15, 1],
 }
-## The level each opens at (`unlocks.json`, the design page's table).
-const LEVELS := {
-	&"torso/usher": 18,
-	&"torso/coveralls": 36,
-	&"legs/overalls": 31,
-	&"feet/saddle": 28,
-	&"eyewear/cinema": 24,
-	&"headwear/visor": 33,
-	&"neck/lanyard": 19,
-	&"neck/bolo": 34,
-}
 const BODIES: Array[StringName] = [&"male", &"female"]
 
 
@@ -143,7 +132,7 @@ func test_every_piece_is_named_and_on_the_ladder_at_its_level() -> void:
 		var option := _option(slot, id)
 		assert_str(option["label"]).is_equal(PIECES[key])
 		# The ladder's locks are the wardrobe grid's (#1065), from `unlocks.json`.
-		assert_dict(option["gate"]).is_equal({"level": LEVELS[key]})
+		assert_dict(option["gate"]).is_equal({"level": RUNGS[key][0]})
 
 
 ## The art is drawn, so each piece's row says so: a player who reaches its level is told.
