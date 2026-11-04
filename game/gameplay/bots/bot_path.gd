@@ -252,7 +252,7 @@ func _query(here: Vector3, to: Vector3, now: float) -> Status:
 	_made_at = now
 	queries += 1
 	var start := NavigationServer3D.map_get_closest_point(map, here)
-	var found := NavigationServer3D.map_get_path(map, start, target, true)
+	var found := NavigationServer3D.map_get_path(map, start, target, true, NavLayers.WALK)
 	if found.is_empty():
 		empty_answers += 1
 		block(to, now)
@@ -338,7 +338,7 @@ func probe(here: Vector3, to: Vector3, now: float) -> bool:
 		return false
 	queries += 1
 	var start := NavigationServer3D.map_get_closest_point(map, here)
-	var found := walkable(NavigationServer3D.map_get_path(map, start, target, true))
+	var found := walkable(NavigationServer3D.map_get_path(map, start, target, true, NavLayers.WALK))
 	return not found.is_empty() and _flat(found[found.size() - 1], target) <= REACHED_SHORT
 
 
@@ -353,7 +353,7 @@ func walk_length(here: Vector3, to: Vector3, now: float) -> float:
 		return INF
 	queries += 1
 	var start := NavigationServer3D.map_get_closest_point(map, here)
-	var found := NavigationServer3D.map_get_path(map, start, target, true)
+	var found := NavigationServer3D.map_get_path(map, start, target, true, NavLayers.WALK)
 	if found.is_empty() or _flat(found[found.size() - 1], target) > REACHED_SHORT:
 		return INF
 	var length := 0.0

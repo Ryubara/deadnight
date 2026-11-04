@@ -159,7 +159,7 @@ func _map_answers() -> bool:
 	var spawns := layout.start_spawns()
 	var from := spawns[0].global_position
 	var to := spawns[1].global_position
-	var way := NavigationServer3D.map_get_path(map(), from, to, true)
+	var way := NavigationServer3D.map_get_path(map(), from, to, true, NavLayers.DEAD)
 	return not way.is_empty() and way[way.size() - 1].distance_to(to) < NAV_REACHED
 
 
@@ -262,7 +262,7 @@ func _walkable(area: String) -> bool:
 
 ## Whether the map walks from `from` to `to` (a path that ends within `NAV_REACHED` of it).
 func _reaches(from: Vector3, to: Vector3) -> bool:
-	var way := NavigationServer3D.map_get_path(map(), from, to, true)
+	var way := NavigationServer3D.map_get_path(map(), from, to, true, NavLayers.DEAD)
 	return not way.is_empty() and _flat(way[way.size() - 1], to) < NAV_REACHED
 
 
