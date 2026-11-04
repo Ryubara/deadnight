@@ -188,6 +188,13 @@ func test_a_played_night_ends_and_the_profile_reads_back() -> void:
 	assert_int(state.points_earned - tuning.economy.start_points).is_equal(
 		progress.tally.count(state.player_id, ChallengeStats.POINTS)
 	)
+	# The local rules tell the player their XP as events, as a game server would, and the totals
+	# agree with the profile's own count (the one-off awards and the challenges' XP included).
+	NightFixture.run(night, 2)
+	assert_int(night.server.xp.night_xp(state.player_id)).is_equal(progress.xp())
+	assert_int(state.xp_events).is_greater(0)
+	assert_int(state.account_xp).is_equal(progress.xp())
+	assert_int(state.levels[state.player_id]).is_equal(LevelCurve.level_of(progress.xp()))
 	# A round ended, so the file holds the night so far, at most one round behind.
 	assert_int(progress.credited()).is_greater(0)
 	assert_int(progress.credited()).is_less_equal(progress.xp())
@@ -205,5 +212,7 @@ func test_a_played_night_ends_and_the_profile_reads_back() -> void:
 func test_a_night_without_a_store_never_touches_a_profile() -> void:
 	var night := await NightFixture.start(self, Night.Mode.AUTOPILOT)
 	assert_object(night.progress).is_null()
+	# And awards no XP: nobody in it holds an account.
+	assert_array(night.server.xp.seats()).is_empty()
 	NightFixture.run(night, 30)
 	night.queue_free()
