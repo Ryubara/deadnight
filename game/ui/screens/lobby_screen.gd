@@ -357,6 +357,15 @@ func seat_texts() -> Array[String]:
 	return out
 
 
+## The level each seat row shows (0 for none: a bot, an open seat, or levels turned off), for tests.
+func seat_levels() -> Array[int]:
+	var out: Array[int] = []
+	for row in _seat_rows:
+		var level := row["level"] as Label
+		out.append(int(level.text) if (row["badge"] as Control).visible and level.text != "" else 0)
+	return out
+
+
 ## Reads the code again (the timer does this every two seconds in a preview): the state, the round
 ## and whether there is room move on while the screen is open.
 func refresh_preview() -> void:
@@ -604,6 +613,10 @@ func _show_seats() -> void:
 	var names: Array = []
 	var hosts: Array = []
 	var away: Array = []
+	# Each member's `Vector2i(level, icon)` as the backend reads it from their profile (zero for
+	# none), when the viewer wants levels shown.
+	var levels: Array[Vector2i] = []
+	var show_levels := bool(Settings.get_value(SettingsService.SHOW_LEVELS))
 	var max_players := NightHost.MAX_PLAYERS
 	if mode == Mode.LIVE:
 		max_players = int(lobby.get("maxPlayers", NightHost.MAX_PLAYERS))
@@ -611,6 +624,8 @@ func _show_seats() -> void:
 			names.append(str(member["name"]))
 			hosts.append(bool(member.get("host", false)))
 			away.append(bool(member.get("away", false)))
+			var tag := LevelCurve.member_tag(member.get("level"), member.get("icon"))
+			levels.append(tag if show_levels else Vector2i.ZERO)
 	else:
 		max_players = int(preview.get("maxPlayers", NightHost.MAX_PLAYERS))
 		for who: Variant in preview.get("names", []):
@@ -625,6 +640,8 @@ func _show_seats() -> void:
 		var row := _seat_rows[i]
 		(row["box"] as Control).visible = i < max_players
 		(row["number"] as Label).text = str(i + 1)
+		var held: Vector2i = levels[i] if i < levels.size() else Vector2i.ZERO
+		_show_level(row, held)
 		if i >= names.size() and i >= bot_from and i < max_players:
 			(row["name"] as Label).text = NightBots.name_for(i + 1, bots_skill())
 			(row["name"] as Label).modulate.a = 1.0
@@ -642,21 +659,65 @@ func _show_seats() -> void:
 			(row["tag"] as Label).text = ""
 
 
+## The icon and the level of a seat's row, the badge before the name (`LevelTag`): gone for a bot,
+## an open seat or a seat without a level, and then the name starts right after the seat number.
+func _show_level(row: Dictionary, held: Vector2i) -> void:
+	var badge := row["badge"] as Control
+	badge.visible = held.x > 0
+	var level := row["level"] as Label
+	level.text = str(held.x) if held.x > 0 else ""
+	if held.x > 0:
+		LevelTag.set_icon(row["icon"] as TextureRect, held.y)
+
+
 func _make_seat_row() -> Dictionary:
 	var box := HBoxContainer.new()
 	box.add_theme_constant_override(&"separation", _tokens.space_md)
 	var number := _label("", UILabel.Style.BODY)
 	number.custom_minimum_size.x = SEAT_NUMBER_WIDTH
+	# The seat's player: badge (icon, level), then the name, with the gaps of `LevelTag`.
+	var who := HBoxContainer.new()
+	who.name = &"Who"
+	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	who.add_theme_constant_override(&"separation", int(LevelTag.NAME_GAP))
+	var badge := HBoxContainer.new()
+	badge.name = &"Badge"
+	badge.add_theme_constant_override(&"separation", int(LevelTag.ICON_GAP))
+	badge.visible = false
+	var icon := LevelTag.icon_rect(1)
+	icon.name = &"Icon"
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var level := _label("", UILabel.Style.BODY)
+	level.name = &"Level"
+	level.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	var seat_name := _label("", UILabel.Style.BODY)
+	seat_name.name = &"Name"
 	seat_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	seat_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	var tag := _label("", UILabel.Style.OVERLINE)
 	tag.custom_minimum_size.x = TAG_WIDTH
+	badge.add_child(icon)
+	badge.add_child(level)
+	who.add_child(badge)
+	who.add_child(seat_name)
 	box.add_child(number)
-	box.add_child(seat_name)
+	box.add_child(who)
 	box.add_child(tag)
 	_seats.add_child(box)
-	return {"box": box, "number": number, "name": seat_name, "tag": tag}
+	# Two digits of room, so the names of the people start on one line (a level of 55 is whole).
+	level.custom_minimum_size.x = LevelTag.level_room(
+		level.get_theme_font(&"font"), level.get_theme_font_size(&"font_size")
+	)
+	return {
+		"box": box,
+		"number": number,
+		"who": who,
+		"badge": badge,
+		"icon": icon,
+		"name": seat_name,
+		"level": level,
+		"tag": tag
+	}
 
 
 func _set_enabled(enabled: bool) -> void:

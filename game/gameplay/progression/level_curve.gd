@@ -11,6 +11,8 @@ extends RefCounted
 
 const MAX_LEVEL := 55
 const TIER_SIZE := 5
+## What a lobby member's `icon` starts with: `level_07`, the file name of the ladder's icon.
+const ICON_PREFIX := "level_"
 ## XP to leave each level of a tier, tier by tier (levels 1-5, 6-10, ... 51-55). Level 55 is the
 ## last, so the last tier's four paying levels (51 to 54) are the only ones that cost 590.
 const TIER_COSTS: Array[int] = [85, 135, 185, 235, 290, 340, 390, 440, 490, 540, 590]
@@ -34,6 +36,45 @@ const TIER_NAMES: Array[String] = [
 @warning_ignore("integer_division")
 static func tier_of(level: int) -> int:
 	return (clampi(level, 1, MAX_LEVEL) - 1) / TIER_SIZE
+
+
+## What a server says of a seat's level, as `Vector2i(level, icon)` (the level 1 to `MAX_LEVEL`, the
+## icon the same range): from a level alone (the server's `levels`: the icon is the level's own), a
+## `Vector2i`, or a pair `[level, icon]` of numbers. `Vector2i.ZERO` for anything else, a level
+## outside the ladder too, since a client must not index outside the atlas with a server's word. An
+## icon outside the ladder follows the level.
+static func seat_tag(held: Variant) -> Vector2i:
+	var pair := Vector2i.ZERO
+	if typeof(held) == TYPE_INT or typeof(held) == TYPE_FLOAT:
+		pair = Vector2i(int(held), int(held))
+	elif typeof(held) == TYPE_VECTOR2I:
+		pair = held
+	elif typeof(held) == TYPE_ARRAY and (held as Array).size() == 2:
+		var level: Variant = held[0]
+		var icon: Variant = held[1]
+		if (
+			(typeof(level) == TYPE_INT or typeof(level) == TYPE_FLOAT)
+			and (typeof(icon) == TYPE_INT or typeof(icon) == TYPE_FLOAT)
+		):
+			pair = Vector2i(int(level), int(icon))
+	if pair.x < 1 or pair.x > MAX_LEVEL:
+		return Vector2i.ZERO
+	return Vector2i(pair.x, pair.x if pair.y < 1 or pair.y > MAX_LEVEL else pair.y)
+
+
+## The level and icon of a lobby member as the backend lists them (`level`, and `icon` as the file
+## name `level_07`), as `Vector2i(level, icon)`; `Vector2i.ZERO` when the level is missing or not a
+## whole number of the ladder. The icon follows the level when it is missing or wrong.
+static func member_tag(level: Variant, icon_name: Variant) -> Vector2i:
+	if typeof(level) != TYPE_FLOAT and typeof(level) != TYPE_INT:
+		return Vector2i.ZERO
+	if float(level) != float(int(level)):
+		return Vector2i.ZERO
+	var icon := int(level)
+	var named := str(icon_name)
+	if named.begins_with(ICON_PREFIX) and named.substr(ICON_PREFIX.length()).is_valid_int():
+		icon = named.substr(ICON_PREFIX.length()).to_int()
+	return seat_tag(Vector2i(int(level), icon))
 
 
 ## The name of the tier a level is in.

@@ -45,6 +45,8 @@ var countdown_text := ""
 var headings: Array[String] = []
 var rows_text: Array[Array] = []
 var row_ids: Array[int] = []
+## The level each row shows (0 for none), in row order.
+var row_levels: Array[int] = []
 ## The way out: Leave online, Back alone.
 var leave_button: UIButton
 
@@ -145,6 +147,10 @@ func show_results(state: HudState, caption: String, leave_text: String) -> void:
 func refresh(state: HudState) -> void:
 	for id: int in state.team:
 		_members[id] = (state.team[id] as Dictionary).duplicate()
+		# What the board draws is what this viewer's setting allows (and no level for a bot).
+		var shown := state.level_of(state.team[id])
+		_members[id]["level"] = shown.x
+		_members[id]["icon"] = shown.y
 	_round = state.round_number
 	_clock = state.night_clock
 	title_text = TITLE
@@ -225,9 +231,11 @@ func _rebuild() -> void:
 	_grid.add_child(_heading_row())
 	rows_text.clear()
 	row_ids.clear()
+	row_levels.clear()
 	for id in ids.slice(0, NightHost.MAX_PLAYERS):
 		var cells := _cells(id)
 		row_ids.append(id)
+		row_levels.append(int(_members[id].get("level", 0)))
 		rows_text.append(cells)
 		_grid.add_child(_player_row(id, cells, height))
 	_ticket.update_minimum_size()
@@ -287,12 +295,17 @@ func _player_row(id: int, cells: Array[String], height: float) -> Control:
 	chip_slot.add_child(chip)
 	row.add_child(chip_slot)
 	for i in cells.size():
+		var shown := Vector2i(int(member.get("level", 0)), int(member.get("icon", 0)))
+		var room := _width(i) - (HudLevelCell.taken(shown) if i == 0 else 0.0)
 		var label := HudStyle.clip(HudStyle.label("", HudStyle.MEDIUM, _tokens.ink, i > 0))
-		label.custom_minimum_size = Vector2(_width(i), height)
+		label.custom_minimum_size = Vector2(room, height)
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		label.horizontal_alignment = (
 			HORIZONTAL_ALIGNMENT_LEFT if i == 0 else HORIZONTAL_ALIGNMENT_RIGHT
 		)
-		HudStyle.set_fitted(label, cells[i], HudStyle.MEDIUM, _width(i) - float(HudStyle.SM))
-		row.add_child(label)
+		HudStyle.set_fitted(label, cells[i], HudStyle.MEDIUM, room - float(HudStyle.SM))
+		if i == 0:
+			row.add_child(HudLevelCell.wrap(label, shown, _tokens.ink, height))
+		else:
+			row.add_child(label)
 	return wash

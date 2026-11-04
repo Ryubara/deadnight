@@ -5,6 +5,12 @@ extends Control
 ## one the player wears in the lot), with the name small at its left and the points at its right.
 ## A downed player's portrait is dimmed, their box darkened and the name says DOWN.
 ##
+## A player with a level shows the badge of `LevelTag` before the name: icon, the level right beside
+## it, a little padding, then the name (a bot, or a viewer who turned levels off, shows the name
+## alone). In any of the three sizes the name gives way first, ending in an ellipsis; the badge and
+## the points are never cut. The badge is one block at the left of the points box, so whatever
+## comes to sit behind the box later has its place at the box's left edge.
+##
 ## The two texts share one baseline (the bottom of the numerals' capitals), so a small name and a
 ## big number read as one line; the numbers of every box end on the same vertical line.
 
@@ -40,20 +46,29 @@ var number_text: String:
 		return _number.text
 ## The colour the name and the number are drawn in.
 var ink := Color.BLACK
+## The level and icon shown, `Vector2i(level, icon)`; zero for none.
+var shown_level := Vector2i.ZERO
+## Where the icon, the level and the name sit in the box on the last layout, box coordinates, for
+## tests: {"icon": Rect2, "level": Rect2, "name": Rect2}; empty without a level.
+var badge_parts: Dictionary = {}
 
 var _tokens := UITokens.active()
 var _shown_seat := -1
 var _shown_look: Dictionary = {}
 var _name := HudStyle.clip(HudStyle.label("", HudStyle.SMALL, Color.BLACK, false, 1.0))
 var _number := HudStyle.clip(HudStyle.label("0", HudStyle.MEDIUM, Color.BLACK, true))
+var _icon := LevelTag.icon_rect(1)
+var _level := HudStyle.clip(HudStyle.label("", HudStyle.SMALL, Color.BLACK, false, 1.0))
 
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_number.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	for node in [portrait, _name, _number]:
+	_icon.visible = false
+	_level.visible = false
+	for node in [portrait, _icon, _level, _name, _number]:
 		add_child(node)
-	for label in [_name, _number]:
+	for label in [_name, _level, _number]:
 		# Dark ink on the seat's colour needs no outline or shadow.
 		(label as HudLabel).halo_size = 0
 		(label as Label).add_theme_color_override(&"font_shadow_color", Color.TRANSPARENT)
@@ -95,6 +110,17 @@ func number_size() -> Vector2:
 	return _number.size
 
 
+## The x where the number ends, box coordinates: the same in every box of a size, whatever sits
+## before the name.
+func number_right() -> float:
+	return _number.position.x + _number.size.x
+
+
+## Where the name starts and ends, box coordinates.
+func name_rect() -> Rect2:
+	return Rect2(_name.position, _name.size)
+
+
 ## The box's own height.
 static func height_for(local: bool, small := false) -> float:
 	if local:
@@ -103,10 +129,14 @@ static func height_for(local: bool, small := false) -> float:
 
 
 ## Fills the box from one entry of the party (`HudState.team`).
-func show_player(id: int, member: Dictionary, local: bool, small := false) -> void:
+## `level` is `Vector2i(level, icon)` as the viewer is to see it (`HudState.level_of`).
+func show_player(
+	id: int, member: Dictionary, local: bool, small := false, level := Vector2i.ZERO
+) -> void:
 	player_id = id
 	is_local = local
 	compact = small and not local
+	shown_level = level if level.x > 0 else Vector2i.ZERO
 	downed = bool(member["downed"])
 	var seat := int(member.get("seat", 0))
 	colour = LookCatalog.armband_colour(seat)
@@ -122,13 +152,20 @@ func show_player(id: int, member: Dictionary, local: bool, small := false) -> vo
 	portrait.downed = downed
 	_set_colour(_name, _tokens.danger if downed else ink)
 	_set_colour(_number, ink)
+	_set_colour(_level, ink)
+	_icon.visible = shown_level.x > 0
+	_level.visible = shown_level.x > 0
+	if shown_level.x > 0:
+		LevelTag.set_icon(_icon, shown_level.y)
+		HudStyle.set_text(_level, str(shown_level.x))
+	_icon.modulate.a = 0.55 if downed else 1.0
 	var tag := "DEAD" if bool(member["dead"]) else "DOWN"
 	HudStyle.set_text(_name, tag if downed else HudState.name_of(member))
 	HudStyle.set_fitted(
 		_number,
 		str(member["points"]),
 		HudStyle.POINTS if local else (HudStyle.TEXT if compact else HudStyle.MEDIUM),
-		_box().size.x - 2.0 * PADDING - NAME_ROOM,
+		_box().size.x - 2.0 * PADDING - NAME_ROOM - _badge_taken(),
 		HudStyle.MIN_TEXT
 	)
 	_layout()
@@ -153,6 +190,14 @@ func _box() -> Rect2:
 	return Rect2(left, 0.0, maxf(size.x, custom_minimum_size.x) - left, h)
 
 
+## What the badge and the gap before the name take from the box's line; nothing without a level.
+func _badge_taken() -> float:
+	if shown_level.x < 1:
+		return 0.0
+	var font := _name.get_theme_font(&"font")
+	return LevelTag.taken(LevelTag.level_room(font, _name.get_theme_font_size(&"font_size")))
+
+
 func _layout() -> void:
 	var box := _box()
 	portrait.position = Vector2.ONE * FRAME
@@ -167,15 +212,35 @@ func _layout() -> void:
 		+ (number_font.get_ascent(number_px) - number_font.get_descent(number_px)) * 0.5
 	)
 	var wide := HudStyle.text_width(number_font, _number.text, number_px) + 2.0
-	_number.size = Vector2(minf(wide, box.size.x - 2.0 * PADDING - NAME_ROOM), _line(_number))
+	_number.size = Vector2(
+		minf(wide, box.size.x - 2.0 * PADDING - NAME_ROOM - _badge_taken()), _line(_number)
+	)
 	_number.position = Vector2(
 		box.end.x - PADDING - _number.size.x, baseline - number_font.get_ascent(number_px)
 	)
 	var name_left := box.position.x + PADDING
+	badge_parts = {}
+	if shown_level.x > 0:
+		var room := LevelTag.level_room(name_font, name_px)
+		var icon := Rect2(
+			name_left,
+			box.position.y + (box.size.y - LevelTag.ICON) * 0.5,
+			LevelTag.ICON,
+			LevelTag.ICON
+		)
+		_icon.position = icon.position
+		_icon.size = icon.size
+		var level_at := icon.end.x + LevelTag.ICON_GAP
+		_level.size = Vector2(room, _line(_level))
+		_level.position = Vector2(level_at, baseline - name_font.get_ascent(name_px))
+		name_left = level_at + room + LevelTag.NAME_GAP
+		badge_parts = {"icon": icon, "level": Rect2(_level.position, _level.size)}
 	_name.size = Vector2(
 		maxf(_number.position.x - name_left - float(HudStyle.SM), 0.0), _line(_name)
 	)
 	_name.position = Vector2(name_left, baseline - name_font.get_ascent(name_px))
+	if shown_level.x > 0:
+		badge_parts["name"] = Rect2(_name.position, _name.size)
 
 
 ## A label's own line height.

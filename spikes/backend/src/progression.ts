@@ -213,6 +213,8 @@ const WRITE_ATTEMPTS = 8;
 export class ProgressService {
   private readonly store: Store;
   private readonly now: () => number;
+  /** The level each account was last known at, so a lobby's member list (which is built without waiting) can show it. */
+  private readonly known = new Map<string, number>();
 
   constructor(store: Store, now: () => number = Date.now) {
     this.store = store;
@@ -233,7 +235,14 @@ export class ProgressService {
   async claimsFor(userId: string): Promise<{ level: number; icon: string; xp: number }> {
     const profile = profileOf(await this.store.getSave(userId, PROFILE_SLOT));
     const level = levelOf(profile.xp);
+    this.known.set(userId, level);
     return { level, icon: iconOf(level), xp: profile.xp };
+  }
+
+  /** The level and icon an account was last seen at (a ticket, a lobby join, a report), or null when this process has not seen it yet. */
+  knownLevel(userId: string): { level: number; icon: string } | null {
+    const level = this.known.get(userId);
+    return level === undefined ? null : { level, icon: iconOf(level) };
   }
 
   /**
@@ -353,6 +362,7 @@ export class ProgressService {
     reason: Record<string, unknown>,
     board: SeatResult["board"],
   ): SeatResult {
+    this.known.set(userId, levelOf(profile.xp));
     return {
       userId,
       status,

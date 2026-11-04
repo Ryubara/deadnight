@@ -408,6 +408,32 @@ as 0, and a ticket or snapshot with it is taken by a build that does not know it
 `player_added` event carries `bot`, a `bot_replaced` event says a person took a bot's seat, and each player of the
 snapshot has `bot`. The bots' names ride the WELCOME's `names` like any seat's. See [rounds](../design/rounds.md#bots).
 
+## The level and icon beside a name (#1077)
+
+Each person's level reaches every client from the server's XP tally (`XpAward`, #1114), not from a message a client
+sends: the ticket the backend signs carries the account's `xp` ([platform backend](platform-backend.md#progression-the-profile-slot-round-reports-and-the-xp-clamp)),
+`TicketVerifier.account_of` reads it and `NightHost.register_account` seats it, and the level is what the tally computes
+from the total. It goes out as **keys of what was already sent**, so the protocol stays 15: the WELCOME's snapshot has
+`levels` (player id to level, people with an account only), an `account_seated` event (`player_id`, `level`) tells the
+others when an account sits, `level_up` (`player_id`, `level`, `total`) when a total crosses a level, and
+`account_left` when it leaves. A bot never has an account, so **bots never have a level**; a person with no account (a
+server with no backend) shows the name alone. The icon is the ladder icon of the level (`level_NN`). A client says
+nothing about its level: the HELLO carries only the ticket, and every other message is a fixed layout of numbers the
+server reads, so there is nothing to forge; a ticket changed after signing fails its signature
+(`test_level_tags_online.gd`). **What it costs:** the `levels` key in a WELCOME and one `account_seated` a join, a few
+bytes a seat (the tally's own cost is in #1114's measurements).
+
+The HUD keeps the pair in `HudState.team` (`level`, `icon`; `HudState.set_player_level` writes it from the WELCOME and
+those three events), and `HudState.level_of(member)` is what every part reads:
+zero for a bot, a seat with none and every seat when the viewer turned **Player levels** off (Settings, Accessibility,
+`accessibility/show_levels`, on by default). The order everywhere is **icon, level right beside it, a little padding,
+then the name** (the maintainer's correction on #1115), with the two gaps `LevelTag.ICON_GAP` and `LevelTag.NAME_GAP`
+shared by every place that shows it. The tag over a head is `HudMarkers._tag`: icon (24 px from the 64 px atlas),
+level, name, kept inside the screen like any other word, its rectangle in `HudMarkers.tags` and the parts in
+`HudMarkers.tag_parts`; the bottom-left boxes (`HudPlayerBox`, all three sizes), the scoreboard and the night report
+(`HudLevelCell`) and the lobby's seat list lay out the same badge; the lobby reads them from the backend's member list
+(`level`, `icon` on each member, from the profile as the ticket reads it). A row with no level is the name alone.
+
 ## Revives
 
 A teammate's revive (#486, [Revive](../design/revive.md)) is made of what is already on the wire. The hold is the
