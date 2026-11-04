@@ -423,13 +423,15 @@ the weapon and counting the pixels that change (`tests/captures/reload_sheet.tsc
 
 | Weapon | Before (#383 tilt), mid-reload | After, mid-reload | After, most |
 | --- | --- | --- | --- |
-| Tommy gun | 0 | 6,684 | 6,808 |
-| Lever rifle | 284 | 8,676 | 9,352 |
+| Tommy gun | 0 | 7,840 | 8,630 |
+| Lever rifle | 284 | 6,630 | 8,280 |
 | Double-barrel | 336 | 7,332 | 9,076 |
 | Revolver | 740 | 3,688 | 4,280 |
 | Flare gun | 888 | 2,680 | 5,124 |
 
-(the median of the frames from 20 to 70 % of the reload, in pixels of the 2.07 million on screen.) So every reload
+(the median of the frames from 20 to 70 % of the reload, in pixels of the 2.07 million on screen; the Tommy gun and
+lever rifle rows were measured again after #987, which turned the rifle's gun muzzle up and moved its left hand to the
+fore-end, so it reads smaller than it did; runs differ by about 30 pixels.) So every reload
 carries the weapon **out to the right of the head and up**, turns its working side to the camera, and turns the chest
 the left shoulder forward so the short left arm still reaches it.
 
