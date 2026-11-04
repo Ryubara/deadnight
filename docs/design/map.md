@@ -84,7 +84,8 @@ Rules the greybox is built to:
   the concession and the booth, and every door but the road's sold, and fails on a standing place inside a closed
   area or on top of a wall; it also replays the old hops. (The walking-mesh test above still reads the jump, 1.1
   m; the map review's [#848](https://github.com/Ryubara/deadnight/issues/848) moves it to 1.25 m.)
-- Zombies spawn only in open areas, and always in the field.
+- Zombies spawn only in open areas, and always in the field. Every spawn point is behind a boarded breach, in the
+  field's fence, in an outer wall of the yard, the back lot or the plaza, or in a bay of the midway (#849, below).
 - Every purchased area adds at least one loop, so buying a door always buys somewhere to run.
 
 ## Shop spots
@@ -162,7 +163,7 @@ and a small one, a dumpster, crates, tyres), so nothing of the lot lies past it 
 | The marquee | the east wall, `(12.4, 50.6)` |
 | The perk machine | against the south wall at `(0, 57.2)`, facing the gate; its block, `Road/PerkMachine`, runs to the wall |
 | The wreck | nose-in at `(-9, 55.7)`: its headlights are the `battery` circuit, the only light on the lot with the tank dry, shining up the court |
-| Zombie spawns | three, in the plaza: `(-14, 50)`, `(-13.5, 55)` and `(13.5, 55)`; the dead appear at its far end, past the booths |
+| Zombie spawns | three, on two aprons outside the plaza's side walls: two behind the west breach at `(-16, 49.5)`, one behind the east breach at `(16, 49.5)` (#849) |
 
 The machine sells the hearty tonic (`perk` spot kind, [the machines](upgrades.md)) until the perks of #687 land, which
 gives it a perk found nowhere else on the lot. Until then it is a second soda fountain, and a player who has the tonic is
@@ -293,13 +294,13 @@ above reaches further than 6 m, so the picture looks lighter than the rule is; t
 were read off that capture by eye (a third of the field, four fifths of the yard), which the measurement did not
 bear out.
 
-The dead come in at the field's breaches ([below](#the-fences-breaches)), each with a dim lamp over its spawn, and the
-next lamp 11 to 23 m away. Under a lit lamp they keep to their round's pace and out of its 6 m they are 25% faster: the
-light does not slow the dead, it only withholds the speed-up, which is why every lamp costs fuel
+The dead come in at the field's breaches ([below](#the-fences-breaches)) at the start, each with a dim lamp over its
+spawn, and the next lamp 11 to 23 m away. Under a lit lamp they keep to their round's pace and out of its 6 m they are
+25% faster: the light does not slow the dead, it only withholds the speed-up, which is why every lamp costs fuel
 ([rounds](rounds.md#why-these-numbers)). So the rule at a breach is: **the breach is dimly lit, the field is dark**. The
-dead are seen coming out of the apron, and for their first 6 m they walk at their round's pace, then they are fast.
-When the generator dies the lamps go with it: the field is dark but for the screen, the yard goes black, and the only
-fuel is across the lot.
+dead are seen coming out of the apron, and for their first 6 m they walk at their round's pace, then they are fast. The
+later areas' breaches ([below](#the-later-areas-breaches-849)) have no lamp of their own. When the generator dies the
+lamps go with it: the field is dark but for the screen, the yard goes black, and the only fuel is across the lot.
 
 ### The apron lamps
 
@@ -319,6 +320,34 @@ The dead come in at six gaps in the field's fence, 4 m wide: two in the west fen
 (`Field/BreachNW`, `NE`, `W`, `E`, `N`, `N2`, the ids in the rules' tuning). Outside each gap is a walled apron 8 m
 deep and 12 m wide, closed on three sides (nobody walks off the map through a torn fence), where the dead appear out
 of the dark: the field's zombie spawns stand on the aprons, not in the field.
+
+### The later areas' breaches (#849)
+
+Every area the doors open has its own: the dead of the midway, the yard, the back lot and the plaza come in by boarded
+gaps like the field's, not at bare fences. Ten more `Barricade`s with the same five boards, the same tearing and the
+same repair from the inside, ids in the rules' tuning after the field's six:
+
+| Area | Breaches (id, where) | Spawn points |
+| --- | --- | ---: |
+| Midway | `mid_w`, `mid_e`: a bay in each south corner, a 7 m wall across the corner at z 33 with a 4 m gap at x -12.5 and 12.5, the court's fence and the plaza's closing the other sides | 2, 3.5 m behind the boards, in the bay |
+| Generator yard | `yard_e1`, `yard_e2` in the east wall at z 6 and 30, `yard_s` in the south wall at x 36 | 3, one on each apron |
+| Back lot | `back_w1`, `back_w2` in the west wall at z 10 and 34, `back_s` in the south wall at x -36 | 3 |
+| Ticket plaza | `plaza_w`, `plaza_e` in the side walls at z 49.5 | 3: two on the west apron, one on the east |
+
+The yard's, the back lot's and the plaza's gaps open on an apron like the field's (8 m deep, 12 m wide, walled in) and
+the dead rise 4 m outside the wall. The midway has no outer wall, so its apron is the bay inside the court: floor and
+walls the court's own, the spawn 3.5 m behind its boards. The count of spawn points an area has, and so the share of
+the pool each open area holds (the table below), did not change, only where they stand: now every one is behind boards
+(`test_later_breaches.gd`). A torn breach is a way in for a player too, into a walled apron or bay and no further: the
+aprons' walls are the perimeter's 3.0 m and `tools/world/map_escape_probe.gd` ran with them (#849). The plaza's
+breaches are in its side walls, not the end wall, so nothing walkable lies past the end wall (`test_drive_in_opening_order.gd`).
+
+The phone's draw-call budget ([#728](https://github.com/Ryubara/deadnight/issues/728)): the later aprons are behind the
+perimeter and are drawn only within 35 m of the camera, their boards within 45 m (`range_end` in the generator,
+`metadata/board_view_end` on the `Barricade`); the field's are drawn as before. Across 49 camera spots that is 13.8 more
+draw calls on average (+4 %) in the scene alone, against 31 with everything drawn, and 4 more (227.4 to 231.4, +1.8 %)
+in a night with the batching of the lot's still meshes ([measured](../research/later-breaches.md#numbers)). Every
+`Barricade` makes its five drawn copies of torn boards when it is built, so a tear mid-fight adds no node.
 
 Across each gap are five boards (a `Barricade` node, `world/drive_in/barricade.gd`, with a `Board` per child). The
 boards follow the rules' `board_torn` and `board_repaired`, one at a time from the top down and back up from the
@@ -478,12 +507,12 @@ A new door adds its area's spawns to the pool, and a spawn is chosen by an equal
 | Area | Spawns | Metres from the nearest lamp | Boards to tear |
 | --- | ---: | --- | --- |
 | Field (the six aprons) | 6 | 0.5 (the apron's dim lamp); the next lamp 11 to 23 | yes, five at each breach |
-| Midway (with the concession) | 2 | 3 and 5 | no |
-| Generator yard | 3 | 14 to 19 | no |
-| Back lot | 3 | 5 to 13 | no |
-| Ticket plaza | 3 | 4 to 17 | no |
+| Midway (with the concession), two bays | 2 | 2 and 6 | yes, five |
+| Generator yard, three aprons | 3 | 18 to 22 | yes, five |
+| Back lot, three aprons | 3 | 14 to 19 | yes, five |
+| Ticket plaza, two aprons | 3 | 10 to 16 | yes, five |
 
-| Doors bought | Spawns in the pool | At the field's breaches |
+| Doors bought | Spawns in the pool | Of them at the field's breaches |
 | --- | ---: | ---: |
 | none | 6 | 100% |
 | concession | 8 | 75% |
@@ -491,10 +520,12 @@ A new door adds its area's spawns to the pool, and a spawn is chosen by an equal
 | and the back lot | 14 | 43% |
 | and the plaza | 17 | 35% |
 
-So buying a door moves the dead toward the light, and off the boards: a spawn inside an area has nothing to tear, and
-it is 3 to 19 m from a lamp where a breach is 0.5 m from its dim one and 11 to 23 m from the next. A team that opens
-every area has the field's breaches as a third of the pressure. That is the closing in: the lot opens outward and the
-dead open with it.
+Before #849 only the field's were behind boards, so this share was the share of the pool with a wall to tear down, and
+a spawn inside an area was bare ground 3 to 19 m from a lamp. Now every spawn is behind five boards, and what buying a
+door changes is where the dead stand: nearer the area the players are in, behind that area's own boards, and away from
+the field. The field's breaches are 0.5 m from a dim lamp and 11 to 23 m from the next; the later ones have none of
+their own. A team that opens every area has the field's breaches as a third of the pressure. That is the closing in:
+the lot opens outward and the dead open with it.
 
 ### Proposed, not built
 
@@ -539,8 +570,9 @@ the lit ground at least 30 m from every spawn that is open, which is little:
 | The back lot's lit edge | 79 m² | centre (-22, 0), by the field's posts | after the back lot |
 
 The yard (7 m²) and the midway (1 m²) have specks, the booth and the plaza none: the yard's door puts three spawns in
-the safest ground, 14 to 19 m from its lamps. A team that goes deeper than the stand has little to put a downed player
-down in. (`lot_report.gd` prints these; the six apron lamps are 0.5 m from their spawns and change none of them.)
+the safest ground, 18 to 22 m from its lamps (outside its east and south walls now). A team that goes deeper than
+the stand has little to put a downed player down in. (`lot_report.gd` prints these; the six apron lamps are 0.5 m from
+their spawns and change none of them.)
 
 ### How the team shares the loops
 
@@ -584,7 +616,7 @@ and the field's stalls have painted lines.
 | Node | Holds |
 | --- | --- |
 | `Field`, `Concession`, `Midway`, `ProjectionBooth`, `GeneratorYard`, `BackLot`, `Road` (the ticket plaza; the node and the door keep the old name) | an area: ground, walls, props, `Lamps`, `ZombieSpawns`, a hidden `Label` |
-| `Field/Breach*`, `Field/Apron*` | a breach's boards (a `Barricade` with `metadata/barricade_id`) and the walled apron outside it; each field spawn marker carries the `barricade_id` of the breach it lies outside |
+| `Field/Breach*`, `Field/Apron*`; `<Area>/Breach*`, `<Area>/Apron*` | a breach's boards (a `Barricade` with `metadata/barricade_id`) and the walled apron outside it (the midway's bays have the wall, `Midway/Pocket*`, and no apron); every spawn marker carries the `barricade_id` of the breach it lies behind |
 | `Field/PlayerSpawns` | eight markers on the apron below the screen, two rows of four, 3 m apart |
 | `Doors` | the `LotDoors` script: `bind(rules)` opens a door when the rules sell it; signal `door_opened(door_id)` |
 | `Field/ParkingLines` | the painted lines between the stalls: one `MultiMesh`, no collision |

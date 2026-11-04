@@ -95,13 +95,17 @@ func test_the_plaza_is_shut_by_walls_higher_than_the_perimeter() -> void:
 	assert_float(end.global_position.z).is_equal(PLAZA.end.y)
 
 
-func test_the_plazas_dead_come_from_inside_it() -> void:
+func test_the_plazas_dead_come_from_behind_its_two_side_breaches() -> void:
+	# Three points on two aprons just outside the side walls (#849), none past the end wall.
 	add_child(_lot)
 	var spawns := _lot.get_node("Road/ZombieSpawns").get_children()
 	assert_int(spawns.size()).is_equal(3)
 	for spawn: Node3D in spawns:
 		var at := Vector2(spawn.global_position.x, spawn.global_position.z)
-		assert_bool(PLAZA.grow(-1.0).has_point(at)).override_failure_message(str(at)).is_true()
+		assert_bool(PLAZA.grow(-1.0).has_point(at)).override_failure_message(str(at)).is_false()
+		assert_bool(PLAZA.grow(10.0).has_point(at)).override_failure_message(str(at)).is_true()
+		assert_float(at.y).is_less(PLAZA.end.y)
+		assert_str(String(spawn.get_meta(&"barricade_id"))).starts_with("plaza_")
 
 
 ## The farthest south (largest z) a drawn thing reaches. A CSG box by its size, a model by its box.

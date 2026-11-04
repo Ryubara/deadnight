@@ -54,6 +54,10 @@ const BOARD_HALF := 2.05
 var barricade_id: StringName = &""
 ## Half the length of this barricade's boards (`BOARD_HALF` unless the scene says otherwise).
 var board_half := BOARD_HALF
+## Metres from the camera beyond which the boards are not drawn (`metadata/board_view_end`; 0 draws
+## them at any distance, as the field's are). The later areas' breaches set it to spare a phone's
+## draw calls (#728).
+var view_end := 0.0
 
 var _boards: Array[StaticBody3D] = []
 var _up: int = 0
@@ -76,17 +80,22 @@ func _ready() -> void:
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	barricade_id = StringName(get_meta(&"barricade_id", ""))
 	board_half = float(get_meta(&"board_half", BOARD_HALF))
+	view_end = float(get_meta(&"board_view_end", 0.0))
 	for child in get_children():
 		if child is StaticBody3D:
 			_boards.append(child)
 			var mesh := child.get_node_or_null(^"Mesh") as MeshInstance3D
 			_meshes.append(mesh)
+			if mesh != null:
+				mesh.visibility_range_end = view_end
 			_mesh_rest.append(mesh.transform if mesh != null else Transform3D.IDENTITY)
 	_up = _boards.size()
+	_make_pool()
 	var in_barricade: Array[Transform3D] = []
 	for i in _boards.size():
 		in_barricade.append(_boards[i].transform * _mesh_rest[i])
 	_outline = BoardOutline.new()
+	_outline.visibility_range_end = view_end
 	_outline.set_boards(_meshes, in_barricade)
 	add_child(_outline)
 	_outline.show_missing(_up)
@@ -227,23 +236,32 @@ func _land(copy: MeshInstance3D) -> void:
 	_flying.erase(copy)
 
 
-## A free copy from the pool (made the first time, at most `FLYING_MAX`), or the oldest in the air.
+## The pool of drawn copies: `FLYING_MAX` empty hidden meshes made when the breach is built, so a
+## tear in a night makes no node (`test_kill_allocations.gd`: the later areas' dead tear boards in
+## the middle of a fight, and a node entering the tree is a hitch in the browser). A copy has its
+## mesh and material set when it is taken.
+func _make_pool() -> void:
+	for i in FLYING_MAX:
+		var copy := MeshInstance3D.new()
+		copy.name = "Torn%d" % i
+		copy.visible = false
+		add_child(copy)
+		_copies.append(copy)
+
+
+## A free copy from the pool, or the oldest in the air.
 func _take_copy(mesh: MeshInstance3D) -> MeshInstance3D:
 	var copy: MeshInstance3D = null
 	for candidate in _copies:
 		if not candidate in _flying:
 			copy = candidate
 			break
-	if copy == null and _copies.size() < FLYING_MAX:
-		copy = MeshInstance3D.new()
-		copy.name = "Torn%d" % _copies.size()
-		copy.cast_shadow = mesh.cast_shadow
-		add_child(copy)
-		_copies.append(copy)
 	if copy == null:
 		copy = _flying[0]
 		_land(copy)
+	copy.cast_shadow = mesh.cast_shadow
 	copy.mesh = mesh.mesh
+	copy.visibility_range_end = view_end
 	copy.material_override = mesh.material_override
 	_flying.append(copy)
 	return copy
