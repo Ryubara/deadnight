@@ -46,6 +46,8 @@ func test_a_headshot_hit_pays_double() -> void:
 
 
 func test_a_headshot_kill_pays_the_headshot_kill_and_removes_the_zombie() -> void:
+	# The rifle: no start pistol kills a round-one walker with one head shot (#898).
+	_server.apply(CombatAction.give_weapon(1, &"rifle"))
 	var before := _rules.points_of(1)
 	var events := _fire(Vector3(0, 1.62, 0))
 	assert_int(_rules.points_of(1) - before).is_equal(65)
@@ -71,6 +73,7 @@ func test_a_melee_kill_pays_the_melee_price() -> void:
 
 
 func test_the_rules_own_the_health_so_a_dead_zombie_pays_nothing_more() -> void:
+	_server.apply(CombatAction.give_weapon(1, &"rifle"))
 	_fire(Vector3(0, 1.62, 0))
 	var before := _rules.points_of(1)
 	WeaponsFixture.step(_server, {_zombie: Vector3.ZERO}, 30)

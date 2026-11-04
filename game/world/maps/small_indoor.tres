@@ -1,6 +1,39 @@
-[gd_resource type="Resource" script_class="MapInfo" format=3]
+[gd_resource type="Resource" script_class="MapInfo" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://world/maps/map_info.gd" id="1_info"]
+[ext_resource type="Script" path="res://gameplay/night/end/end_shot.gd" id="2_shot"]
+
+[sub_resource type="Resource" id="Shot_hall_east"]
+script = ExtResource("2_shot")
+lens_from = Vector3(15.2, 2.5, 13.8)
+lens_to = Vector3(15.2, 2.5, 8.8)
+look_from = Vector3(4, 1, 6)
+look_to = Vector3(5, 1, 3)
+fov = 70.0
+
+[sub_resource type="Resource" id="Shot_hall_west"]
+script = ExtResource("2_shot")
+lens_from = Vector3(1, 2.5, 13.8)
+lens_to = Vector3(1, 2.5, 8)
+look_from = Vector3(12, 1, 4)
+look_to = Vector3(11, 1, 6)
+fov = 70.0
+
+[sub_resource type="Resource" id="Shot_rewind"]
+script = ExtResource("2_shot")
+lens_from = Vector3(-5.3, 2.5, -7.2)
+lens_to = Vector3(-5.3, 2.5, -1)
+look_from = Vector3(8, 1, -4)
+look_to = Vector3(12, 1, -4)
+fov = 70.0
+
+[sub_resource type="Resource" id="Shot_rewind_east"]
+script = ExtResource("2_shot")
+lens_from = Vector3(15.2, 2.5, -1.4)
+lens_to = Vector3(12.6, 2.5, -1.4)
+look_from = Vector3(0, 1, -5)
+look_to = Vector3(-3, 1, -5)
+fov = 70.0
 
 [resource]
 script = ExtResource("1_info")
@@ -13,3 +46,4 @@ area_m2 = 600
 min_players = 1
 max_players = 8
 shipped = true
+end_shots = Array[ExtResource("2_shot")]([SubResource("Shot_hall_east"), SubResource("Shot_hall_west"), SubResource("Shot_rewind"), SubResource("Shot_rewind_east")])

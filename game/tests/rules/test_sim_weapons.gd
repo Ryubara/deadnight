@@ -43,7 +43,7 @@ func test_sustained_damage_counts_the_reload_and_the_health_the_blows_must_beat(
 	# is 95 and the shotgun 152 a pull), so on raw damage alone they now beat the submachine gun.
 	assert_str(SimWeapons.best(owned)).is_equal("weapon_shotgun")
 	var none: Array[StringName] = []
-	assert_str(SimWeapons.best(none)).is_equal("pistol")
+	assert_str(SimWeapons.best(none)).is_equal("house_pistol")
 
 
 func test_a_blow_that_overshoots_the_health_is_worth_no_more_than_the_health() -> void:

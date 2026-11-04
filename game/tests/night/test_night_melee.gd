@@ -57,6 +57,7 @@ func _zombie_in_reach() -> ZombieBody:
 	var flat := Vector3(command.dir.x, 0.0, command.dir.z).normalized()
 	body.position = _night.state.position() + flat * REACH_AHEAD
 	body.velocity = Vector3.ZERO
+	_night.server.sim.touch()
 	return body
 
 
@@ -75,6 +76,7 @@ func test_the_attack_button_swings_the_crowbar_and_hurts_a_zombie_in_reach() -> 
 	for _i in 12:
 		zombie.position = spot
 		zombie.velocity = Vector3.ZERO
+		_night.server.sim.touch()
 		NightFixture.run(_night, 1, _controller.command(_night.player(), 1))
 		swung = swung or animation.action_clip == &"Swing_Melee"
 	_button(false)
@@ -100,6 +102,7 @@ func test_a_zombie_out_of_reach_is_not_hurt() -> void:
 	for _i in 12:
 		zombie.position = spot
 		zombie.velocity = Vector3.ZERO
+		_night.server.sim.touch()
 		NightFixture.run(_night, 1, _controller.command(_night.player(), 1))
 	_button(false)
 	assert_int(_count(&"damage_dealt")).is_equal(0)

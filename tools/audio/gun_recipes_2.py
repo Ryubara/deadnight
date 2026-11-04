@@ -7,7 +7,8 @@ their noise and not their note), a tail (`tail_<gun>`), an equip (`equip_<gun>`)
 the steps of its own reload (`reload_<gun>_<step>`). Synthesised, nothing sampled; the rules every firearm follows
 (pitch, level, loudness against the night, headroom) are `docs/research/gun-audio.md`.
 
-The gun ids are the catalogue's (#793): `ppsh`, `m249`, `m4a1`, `fifty_cal`, `mp5`, `pump_870`, `dual_pistols`.
+The gun ids are the catalogue's (#793): `ppsh`, `m249`, `m4a1`, `fifty_cal`, `mp5`, `pump_870`, `dual_pistols`, and
+the start pistol's (#898): `house_pistol`.
 """
 
 from __future__ import annotations
@@ -153,6 +154,25 @@ REPORTS = {
         gain_body=0.4,
         gain_sub=0.25,
     ),
+    # The start pistol (#898): one 9 mm self-loader, a small flat pop, lighter than the revolver's boom and than the
+    # dual pistols' pair (one gun, one report): a short sharp crack over a thin thump, little body under it.
+    "house_pistol": Report(
+        1900,
+        0.009,
+        (3900, 520),
+        0.09,
+        (225, 100),
+        0.07,
+        90,
+        0.08,
+        0.3,
+        mid_hz=520,
+        mid_len=0.05,
+        gain_crack=0.65,
+        gain_boom=2.3,
+        gain_body=0.35,
+        gain_sub=0.2,
+    ),
 }
 
 TAILS = {
@@ -163,6 +183,7 @@ TAILS = {
     "mp5": Tail(0.3, 0.18, 3700, gain_echo=0.28),
     "pump_870": Tail(0.85, 0.25, 2800, gain_echo=0.45),
     "dual_pistols": Tail(0.45, 0.2, 3600, gain_echo=0.33),
+    "house_pistol": Tail(0.4, 0.19, 3700, gain_echo=0.3),
 }
 
 
@@ -220,6 +241,11 @@ def dry_dual_pistols(rng: np.random.Generator) -> np.ndarray:
     return dsp.place(mix, _dry(rng, 1950, 0.02), _jv(rng, 0.05, 0.2), 0.8)
 
 
+def dry_house_pistol(rng: np.random.Generator) -> np.ndarray:
+    """One hammer falling on an empty chamber: a single small click."""
+    return _dry(rng, 1750, 0.02, weight=0.1)
+
+
 # ---- the equip -----------------------------------------------------------------------------------------------------
 
 
@@ -269,6 +295,11 @@ def equip_dual_pistols(rng: np.random.Generator) -> np.ndarray:
     """Two pistols drawn, one a moment after the other."""
     mix = dsp.place(None, _equip(rng, 220, 0.5, 1500, 0.05, 0.025), 0.0, 1.0)
     return dsp.place(mix, _equip(rng, 235, 0.5, 1650, 0.05, 0.025), _jv(rng, 0.07, 0.2), 0.85)
+
+
+def equip_house_pistol(rng: np.random.Generator) -> np.ndarray:
+    """A pistol drawn: the holster's rustle, the grip in the palm and the safety checked."""
+    return _equip(rng, 225, 0.5, 1550, 0.05, 0.025)
 
 
 # ---- the reloads -------------------------------------------------------------------------------------------------------
@@ -457,6 +488,23 @@ def reload_dual_slide(rng: np.random.Generator) -> np.ndarray:
     return dsp.fade(mix, 0.001, 0.03)
 
 
+def reload_house_mag_out(rng: np.random.Generator) -> np.ndarray:
+    """The magazine released and dropped into the palm: a release click, a slide, a light thump."""
+    return dsp.fade(_mag(rng, True, 1.2, 0.5, 0.025), 0.001, 0.02)
+
+
+def reload_house_mag_in(rng: np.random.Generator) -> np.ndarray:
+    """The new magazine pushed home: a slide and the seat's clack."""
+    return dsp.fade(_mag(rng, False, 1.2, 0.5, 0.03), 0.001, 0.02)
+
+
+def reload_house_slide(rng: np.random.Generator) -> np.ndarray:
+    """The slide let go: a bright snap of the frame."""
+    mix = dsp.place(None, _metal_click(rng, _jv(rng, 1150, 0.04), ring=0.035), 0.0, 1.0)
+    mix = dsp.place(mix, _thud(rng, _jv(rng, 190, 0.06), 0.05), 0.0, 0.5)
+    return dsp.fade(mix, 0.001, 0.03)
+
+
 # ---- registry ---------------------------------------------------------------------------------------------------
 
 EQUIP = {
@@ -467,6 +515,7 @@ EQUIP = {
     "mp5": equip_mp5,
     "pump_870": equip_pump_870,
     "dual_pistols": equip_dual_pistols,
+    "house_pistol": equip_house_pistol,
 }
 DRY = {
     "ppsh": dry_ppsh,
@@ -476,6 +525,7 @@ DRY = {
     "mp5": dry_mp5,
     "pump_870": dry_pump_870,
     "dual_pistols": dry_dual_pistols,
+    "house_pistol": dry_house_pistol,
 }
 
 # (sound name, recipe, file peak dB). The steps are never louder than the first guns' loudest step (the SMG's
@@ -502,6 +552,9 @@ RELOADS = [
     ("reload_dual_mag_out", reload_dual_mag_out, -5.0),
     ("reload_dual_mag_in", reload_dual_mag_in, -4.0),
     ("reload_dual_slide", reload_dual_slide, -4.0),
+    ("reload_house_mag_out", reload_house_mag_out, -5.0),
+    ("reload_house_mag_in", reload_house_mag_in, -4.0),
+    ("reload_house_slide", reload_house_slide, -4.0),
 ]
 
 REGISTRY: list[Entry] = [

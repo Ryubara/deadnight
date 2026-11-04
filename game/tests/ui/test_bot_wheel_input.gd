@@ -94,10 +94,13 @@ func _send(event: InputEvent, pressed: bool) -> void:
 
 
 ## A mouse move of `relative` canvas units, alone and at once (the engine adds a motion waiting in
-## the buffer to the next one, under the first one's device).
+## the buffer to the next one, under the first one's device). The wheel's pointer reads `relative`
+## and the look reads `screen_relative` (#928), so a real move carries both: with only `relative`
+## the view would stay still for the wrong reason.
 func _mouse_move(relative: Vector2) -> void:
 	var motion := InputEventMouseMotion.new()
 	motion.relative = relative
+	motion.screen_relative = relative
 	motion.position = Vector2(960.0, 540.0)
 	Input.flush_buffered_events()
 	get_viewport().push_input(motion, true)

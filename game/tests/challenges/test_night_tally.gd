@@ -49,10 +49,12 @@ func _step(server: CombatServer, positions: Dictionary) -> void:
 
 func test_a_headshot_kill_counts_the_kill_the_head_the_weapon_and_the_type() -> void:
 	var lot := _lot()
+	# The rifle: no start pistol kills a round-one walker with one head shot (#898).
+	_feed((lot["server"] as CombatServer).apply(CombatAction.give_weapon(1, &"rifle")))
 	_shoot(lot, 1, HEAD)
 	assert_int(_tally.count(1, ChallengeStats.KILLS)).is_equal(1)
 	assert_int(_tally.count(1, ChallengeStats.KILLS_HEAD)).is_equal(1)
-	assert_int(_tally.count(1, ChallengeStats.weapon_kills(&"pistol"))).is_equal(1)
+	assert_int(_tally.count(1, ChallengeStats.weapon_kills(&"rifle"))).is_equal(1)
 	assert_int(_tally.count(1, ChallengeStats.type_kills(&"walker"))).is_equal(1)
 	assert_int(_tally.count(1, ChallengeStats.KILLS_BLAST)).is_equal(0)
 	assert_int(_tally.count(1, ChallengeStats.KILLS_MELEE)).is_equal(0)

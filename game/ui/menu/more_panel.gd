@@ -21,9 +21,8 @@ var _buttons := {}
 
 func _ready() -> void:
 	var column := VBoxContainer.new()
-	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	column.add_theme_constant_override(&"separation", 10)
-	add_child(column)
+	hold(column)
 	for route: Array in ROUTES:
 		if route[0] == &"quit" and not has_quit():
 			continue

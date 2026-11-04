@@ -5,6 +5,7 @@ extends RefCounted
 
 const DIR := "res://gameplay/weapons/defs/"
 const IDS: Array[StringName] = [
+	&"house_pistol",
 	&"pistol",
 	&"smg",
 	&"shotgun",
@@ -25,7 +26,7 @@ const IDS: Array[StringName] = [
 ]
 
 ## The weapon every player starts the night with.
-const START_WEAPON := &"pistol"
+const START_WEAPON := &"house_pistol"
 
 ## The blow every player has on its own button (#411): a knife-like swing with whatever is in hand.
 ## It is a definition like the others (`defs/quick_melee.tres`, the server's sweep and cooldown) but
@@ -45,6 +46,11 @@ static var _re_cut: Dictionary[StringName, WeaponDef] = {}
 ## The catalogue id behind a shop or crane id (`weapon_rifle`), or the id itself (`rifle`).
 static func catalog_id(shop_or_catalog_id: StringName) -> StringName:
 	return StringName(String(shop_or_catalog_id).trim_prefix(SHOP_PREFIX))
+
+
+## Whether `id` is a weapon of the catalogue (or the quick melee), by catalogue id.
+static func has(id: StringName) -> bool:
+	return id in IDS or id == QUICK_MELEE
 
 
 static func get_def(id: StringName) -> WeaponDef:

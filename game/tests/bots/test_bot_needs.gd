@@ -4,7 +4,7 @@
 # nearest locker. The scenarios in the lot are in `test_bot_own_ammo.gd`.
 extends GdUnitTestSuite
 
-const PISTOL := &"pistol"
+const PISTOL := &"house_pistol"
 const SHOTGUN := &"shotgun"
 const CROWBAR := &"crowbar"
 const AMMO := BotNeeds.Need.AMMO
@@ -116,7 +116,7 @@ func test_no_gun_short_is_no_need() -> void:
 
 
 func test_a_reserve_under_the_floor_of_magazines_is_low() -> void:
-	var arms := {PISTOL: [10, 25, 0], CROWBAR: [0, 0, 0]}
+	var arms := {PISTOL: [15, 40, 0], CROWBAR: [0, 0, 0]}
 	assert_int(BotNeeds.ammo_level(arms, 3)).is_equal(LOW)
 	# The rookie keeps a floor of two: the same reserve is enough.
 	assert_int(BotNeeds.ammo_level(arms, 2)).is_equal(NONE)
