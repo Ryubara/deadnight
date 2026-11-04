@@ -48,6 +48,8 @@ WALK_LEG_S = 4.0
 WALK_KEYS = ("w", "d", "s", "a")  # a square, so the player does not stand facing one wall
 SAMPLE_SECONDS = 1.0
 MENU_FRAME_SECONDS = 3.0
+# The idle menu is followed for this many seconds more, counting what the engine asks of WebGL in each frame (#989).
+MENU_TRACE_SECONDS = 9.0
 KEY_HOLD_MS = 150
 # The game publishes its state every 0.25 s: a key pressed shows in `window.deadnight` within that.
 FOCUS_PUBLISH_MS = 400
@@ -138,6 +140,55 @@ LINKS_PER_FRAME_JS = """
 }
 """
 
+# The WebGL calls counted in each page frame by TRACE_JS: the name of the counter and the methods it adds up.
+COUNTED_GL_CALLS = {
+    "draws": ["drawArrays", "drawElements", "drawArraysInstanced", "drawElementsInstanced", "drawRangeElements"],
+    "clears": ["clear", "clearBufferfv", "clearBufferiv", "clearBufferuiv", "clearBufferfi"],
+    "blits": ["blitFramebuffer"],
+    "fbo_binds": ["bindFramebuffer"],
+    "programs": ["useProgram"],
+    "uploads": ["texImage2D", "texSubImage2D", "bufferData", "bufferSubData", "texStorage2D"],
+}
+
+# Follows `seconds` of page frames and counts, in each, the WebGL calls of COUNTED_GL_CALLS. The calls are wrapped for
+# this time only and put back after it (a wrapper on every draw of the night would slow the night the gate times):
+# [{names, rows: [[ms since the start, ms since the frame before, ...a count for each name]]}.
+TRACE_JS = """
+([seconds, counted]) => new Promise((resolve) => {
+  const proto = WebGL2RenderingContext.prototype;
+  const names = Object.keys(counted);
+  const now = {};
+  const originals = [];
+  for (const name of names) {
+    now[name] = 0;
+    for (const method of counted[name]) {
+      const original = proto[method];
+      if (!original) continue;
+      originals.push([method, original]);
+      proto[method] = function (...args) {
+        now[name] += 1;
+        return original.apply(this, args);
+      };
+    }
+  }
+  const rows = [];
+  const origin = performance.now();
+  let last = origin;
+  function frame(at) {
+    rows.push([at - origin, at - last, ...names.map((name) => now[name])]);
+    for (const name of names) now[name] = 0;
+    last = at;
+    if (at - origin < seconds * 1000) {
+      requestAnimationFrame(frame);
+    } else {
+      for (const [method, original] of originals) proto[method] = original;
+      resolve({names, rows});
+    }
+  }
+  requestAnimationFrame(frame);
+})
+"""
+
 PROBE_JS = """
 () => {
   const d = window.deadnight;
@@ -204,6 +255,30 @@ def stats(deltas: list[float]) -> dict:
         "p95_ms": round(ordered[int(len(ordered) * 0.95)], 1),
         "max_ms": round(ordered[-1], 1),
     }
+
+
+def trace(page: Page, seconds: float) -> dict:
+    """Follows the page for `seconds` and reports the frame time second by second and, per frame, how many WebGL calls
+    of each kind the engine made. The counts do not depend on the machine, so a slower run with the same counts is a
+    slower runner, and a run with other counts drew something else (docs/research/web-export.md, "The idle menu")."""
+    recorded = page.evaluate(TRACE_JS, [seconds, COUNTED_GL_CALLS])
+    return summarise_trace(recorded["names"], recorded["rows"], seconds)
+
+
+def summarise_trace(names: list[str], rows: list[list[float]], seconds: float) -> dict:
+    seconds_mean_ms = []
+    for start in range(int(seconds)):
+        part = [row[1] for row in rows if start * 1000 <= row[0] < (start + 1) * 1000]
+        seconds_mean_ms.append(round(statistics.fmean(part), 1) if part else None)
+    per_frame = {
+        name: {
+            "mean": round(statistics.fmean(row[2 + i] for row in rows), 1),
+            "min": min(row[2 + i] for row in rows),
+            "max": max(row[2 + i] for row in rows),
+        }
+        for i, name in enumerate(names)
+    }
+    return {"frames": len(rows), "mean_ms_each_second": seconds_mean_ms, "gl_calls_per_frame": per_frame}
 
 
 def probing(url: str) -> str:
@@ -437,6 +512,8 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     result["stage_level"] = probe(page).get("stage")
     page.screenshot(path=out / "menu.png")
     result["menu_frames"] = stats(page.evaluate(FRAME_TIMES_JS, MENU_FRAME_SECONDS))
+    # What follows the three seconds the gate reads: a longer trace and what the engine draws in a frame (#989).
+    result["menu_trace"] = trace(page, MENU_TRACE_SECONDS)
 
     # The wardrobe (the Loadout tab) reads parts.json, which only reaches the build through the export filter.
     menu_item(page, "Loadout")

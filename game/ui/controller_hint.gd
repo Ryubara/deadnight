@@ -6,7 +6,7 @@ extends Control
 ## (#479). In a frame it reads the page every half second (`GamepadProbe.hint`); in a tab, on the
 ## desktop, it never reads and never shows (a player's page crosses the bridge about never, #983).
 
-## The canvas layer it sits on: above the router, below the "turn your phone" prompt (105).
+## The canvas layer it once sat on (104); it now shares the router's (#883).
 const LAYER := 104
 const EVERY := 0.5
 
