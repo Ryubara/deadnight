@@ -24,7 +24,9 @@ const FIREARMS: Array[String] = [
 	"fifty_cal",
 	"pump_870",
 ]
-const NOT_FIREARMS: Array[String] = ["baseball_bat", "fire_axe", "grenade", "hammer", "crowbar"]
+const NOT_FIREARMS: Array[String] = [
+	"baseball_bat", "fire_axe", "grenade", "hammer", "crowbar", "perk_bottle"
+]
 const MUZZLE := "Muzzle"
 ## How far the marker may sit from the bounding box's front face along the barrel (metres).
 const FACE_TOLERANCE := 0.01

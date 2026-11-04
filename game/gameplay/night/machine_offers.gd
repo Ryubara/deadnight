@@ -94,11 +94,11 @@ static func _tonic(server: NightServer, player_id: int, item_id: StringName) -> 
 	var item := rules.tuning.economy.item(item_id)
 	if item == null:
 		return {}
-	var tonics := rules.players[player_id].tonics
-	if tonics.has(item_id):
+	var player := rules.players[player_id]
+	if player.tonics.has(item_id):
 		return {"kind": &"tonic_owned", "id": item_id, "name": item.display_name}
 	var limit := rules.settings.tonic_limit(rules.tuning.economy)
-	if tonics.size() >= limit:
+	if PerkPlay.held(player) >= limit:
 		return {
 			"kind": &"tonic_full",
 			"id": item_id,

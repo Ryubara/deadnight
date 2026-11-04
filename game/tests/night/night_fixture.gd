@@ -37,6 +37,19 @@ static func seat(
 	return await SeatedNight.start(parent, players, rules_tuning, seed_value, shopping, scene)
 
 
+## Runs the night until `player_id`'s perk drink under way is down (#912: the perk is had at its
+## end, `PerkTuning.drink_seconds` after the purchase), at most a few seconds of ticks. Returns the
+## ticks it took (0 when no drink was under way).
+static func drink_down(night: Night, player_id: int = 1) -> int:
+	var ticks := 0
+	while night.server.is_drinking(player_id) and ticks < 600:
+		run(night, 1)
+		ticks += 1
+	if ticks > 0:
+		run(night, 2)  # the drink's end reaches the client
+	return ticks
+
+
 ## Runs `count` ticks of a night driven by hand, sending `command` before each one.
 static func run(night: Night, count: int, command: NightCommand = null) -> void:
 	for _i in count:

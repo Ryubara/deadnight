@@ -2055,7 +2055,13 @@ Measured (`bots_soak.tscn --map=small_indoor`, Regular, seeds 1 to 5, headless; 
 | four bots, after | 11, 13, 10, 15, 14 | tonics in 4 of 5 nights, re-cuts in 2 | 2.4 s |
 
 A lone bot that buys the tonics lasts twice the rounds it did: the machines are what the economy's late points are for.
-`test_smallmap_bot_night.gd` holds the solo night over seeds 1, 3, 4 and 7 (it flaked on a seed picked to pass).
+`test_smallmap_bot_night.gd` holds the solo night as a rate (#1044): it plays seeds 1 to 10 and allows 3 failures
+(a night fails when it buys no first link or no weapon, tears under four windows, stays under round 4 or is downed first).
+It held four pinned seeds before, and those went red on changes that only moved hits (#821, #890, #910, #1038). Main
+(40365bce) fails 5 of 100 seeds (38, 40, 50, 64, 84: the bot is downed in round 3 or 4 at 87 to 135 s, three without a
+gun); ten-seed blocks of it fail 0 to 2. `tests/captures/smallmap_solo_sweep.tscn` plays any range of seeds
+(`-- --from=1 --to=25`, about 5 s a night, at most four processes at once) for the next measurement. With the bot's
+purchases other than the links removed, 10 of 10 nights fail.
 
 ## Walking round the dead (#914)
 
