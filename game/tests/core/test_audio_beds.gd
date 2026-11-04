@@ -88,7 +88,15 @@ func test_stop_all_silences_the_beds_at_once() -> void:
 
 
 func test_the_beds_files_are_whole_loops() -> void:
-	for id: StringName in [&"bed_crickets", &"bed_highway", &"bed_projector", &"bed_score"]:
+	for id: StringName in [
+		&"bed_crickets",
+		&"bed_highway",
+		&"bed_projector",
+		&"bed_score",
+		&"bed_menu_pad",
+		&"bed_menu_bells",
+		&"bed_menu_wind",
+	]:
 		var def := SoundCatalog.get_def(id)
 		var stream := load(def.path_for(1)) as AudioStreamOggVorbis
 		var seconds := stream.get_length()

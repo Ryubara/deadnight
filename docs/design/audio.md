@@ -127,7 +127,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | The till | `till_ring` | the shop's cash register (key thump, ratchet, bell) from `purchase_made`, where the buyer stands |
 | The soldiers | `vox_<moment>_<n>` | 115 takes of 21 moments, played by `SoldierVoice`: see [The soldiers' voices](#the-soldiers-voices); they replace the synthesised `player_hurt` and `player_downed` |
 | Stings | `round_start`, `round_end`, `special_round` | stereo, on Music; `round_start` ducks Effects 9 dB; `special_round` (3.5 s, on the rules' `special_round_announced`, a higher priority so it takes the one sting voice from the `round_end` that is still sounding) 9 dB for 2.2 s |
-| Beds | `bed_crickets`, `bed_highway`, `bed_projector`, `bed_score`, `bed_tension`; the menu's `bed_menu_crickets`, `bed_menu_projector` | loops under everything, see below; the menu's two are the night's files under quieter trims ([the menu's ambience bed](../research/menu-sfx.md#the-ambience-bed-926)) |
+| Beds | `bed_crickets`, `bed_highway`, `bed_projector`, `bed_score`, `bed_tension`; the menu's `bed_menu_pad`, `bed_menu_bells`, `bed_menu_wind`, `bed_menu_projector`, `bed_menu_crickets` | loops under everything, see below; the menu's projector and crickets are the night's files under quieter trims ([the menu's ambience bed](../research/menu-sfx.md#the-ambience-bed-926)), its pad, bells and wind are three loops of 76, 113 and 47 s that never come back together ([the menu's music](../research/menu-music.md)) |
 | The wind | `bed_wind`, `wind_gust`, `wind_creak`, `wind_rattle`, `wind_flap` | a quiet base layer and gusts that come and go at random, with a detail now and then: see [The wind](#the-wind) |
 | The second map | `bed_room_tone`, `bed_roof_wind`, `yard_wind`, `yard_fire`, `yard_wire`, `yard_road`, `yard_rattle`, `debris_clear`, `step_wood`, `step_own_wood` | the depot's room tone, the wind under its roof and the cold yard heard through its windows, the debris blocker coming off a stair and feet on wood: [the second map's sound](../research/maps/small-map-audio.md) |
 
@@ -157,6 +157,17 @@ footstep (14 to 22 dB), so they are felt when they stop rather than heard.
   rate is half the original, the same insects with every other chirp gone. The score is now 5.9 dB over them by trim.
   Why the first cut fell short, and the numbers:
   [the crickets, cut again](../research/audio.md#the-crickets-cut-again-781).
+
+### The menu's music
+
+The main menu has music and a wind (maintainer, #979: "something that people can listen to and stay there for a while
+without getting annoyed. Not too loud"). `MenuAmbience` starts five beds with the menu: a **pad** (76 s) and **bells**
+(113 s) on the Music bus, a **wind** (47 s, in the mids) with #926's projector and crickets on the Ambience bus, so
+Settings, Audio has a slider for each half. The three new loops are synthesised in `tools/audio/menu_recipes.py`, dark
+(nothing to speak of over 1.5 kHz), without a pulse or a hook, in D dorian over a held D and A, and share no factor in
+their lengths, so they come back together only after about 4.7 days. The whole sits under the menu's hints on a laptop
+and a phone speaker model (a hint at least 10 dB over its loudest 400 ms, 11 on the worst). What it is built from and
+what it measures: [the menu's music](../research/menu-music.md).
 
 ### The wind
 

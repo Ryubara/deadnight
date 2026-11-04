@@ -12,24 +12,27 @@
   "ui_tick|0.0": -25.0
  },
  "trims": {
-  "bed_menu_crickets": -31.0,
-  "bed_menu_projector": -25.0
+  "bed_menu_bells": -37.0,
+  "bed_menu_crickets": -38.0,
+  "bed_menu_pad": -31.0,
+  "bed_menu_projector": -31.0,
+  "bed_menu_wind": -33.0
  },
  "worst": {
   "flat": {
-   "bed_lufs_m": -42.4,
-   "in_band_db": 6.2,
-   "over_bed_db": 10.9
+   "bed_lufs_m": -42.3,
+   "in_band_db": 12.9,
+   "over_bed_db": 10.8
   },
   "laptop": {
-   "bed_lufs_m": -45.7,
-   "in_band_db": 7.5,
-   "over_bed_db": 16.0
+   "bed_lufs_m": -45.0,
+   "in_band_db": 14.3,
+   "over_bed_db": 15.3
   },
   "phone": {
-   "bed_lufs_m": -49.5,
-   "in_band_db": 8.5,
-   "over_bed_db": 19.8
+   "bed_lufs_m": -52.4,
+   "in_band_db": 15.2,
+   "over_bed_db": 22.7
   }
  }
 }
