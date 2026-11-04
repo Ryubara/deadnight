@@ -478,7 +478,7 @@ static func _legs(id: StringName) -> Array:
 				_shape(_oval(40, 36, 3, 3), GOLD),
 				_shape(_oval(60, 36, 3, 3), GOLD),
 			]
-		&"skirt":
+		&"swing":
 			return [
 				_shape(
 					[36, 16, 64, 16, 92, 80, 80, 86, 66, 80, 50, 88, 34, 80, 20, 86, 8, 80], PINK
@@ -602,7 +602,7 @@ static func _neck(id: StringName) -> Array:
 				_shape(_oval(50, 62, 12, 12), GOLD),
 				_shape([46, 74, 54, 74, 56, 94, 44, 94], BLACK),
 			]
-		&"filmstrip":
+		&"film":
 			var shapes := [_shape([12, 24, 88, 24, 90, 46, 62, 52, 38, 52, 10, 46], CHARCOAL)]
 			shapes.append(_shape([52, 48, 78, 48, 82, 90, 56, 90], CHARCOAL))
 			for x in [20, 34, 48, 62, 76]:

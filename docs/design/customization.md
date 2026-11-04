@@ -132,5 +132,5 @@ in a browser ([web export](../research/web-export.md)). What a locked entry asks
 `label` while the art is not drawn; a `colour` row's `item` is a name of the cloth palette. A piece or colour with no row
 is free (the starting ones). `available` is true exactly when `parts.json` has a model for the piece, and a test fails
 otherwise, and for a row with no icon. A new piece is a row in `unlocks.json`, an entry in `parts.json` and a drawing in
-`ItemIcons`. The seven pieces of wave two (#1078) are already rows with `available: false` and the ids the art
-should use: `feet/skates`, `legs/skirt`, `torso/creature`, `feet/rubber`, `headwear/creature`, `neck/filmstrip` and `torso/varsity`.
+`ItemIcons`. The ids are the catalogue's, not the row's `item` (`top/ushers_jacket` is `torso/usher`, `trousers/swing_skirt`
+is `legs/swing`, `neck/film_strip_scarf` is `neck/film`): the `part` key is the map.
