@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tools/bench/xp_horde_bench.gd" id="1"]
+
+[node name="XpHordeBench" type="Node"]
+script = ExtResource("1")

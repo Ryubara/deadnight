@@ -6,7 +6,9 @@
 and `perf_sampler.gd`): one row a second of the monitors and counts of a night. The budget (default `budget.json`
 beside this file) names, for one case, the most each count may reach while the crowd stands, how much a count may
 grow over the steady seconds (a leak), and how many times a fixed piece of GDScript (`calibration_ms`) one frame may
-cost; how many times a tick a counted piece of work (`PerfProbe.count`) happens. A count is the same on every machine at the same seed, so it is held tight; a time is held as a ratio of the
+cost; how many times a tick a counted piece of work (`PerfProbe.count`) happens, and how many times the calibration a
+timed piece of work (`PerfProbe.end`, a row's `labels_ms`) takes a frame. A count is the same on every machine at the same
+seed, so it is held tight; a time is held as a ratio of the
 calibration, which a slow runner and a busy machine both scale, so it is held loose and is a regression catcher, not
 a frame-rate promise (docs/research/performance.md).
 
@@ -77,6 +79,15 @@ def judge(report: dict, budget: dict) -> tuple[list[str], list[str]]:
         lines.append(f"{key}: {per_tick:.2f} a tick (limit {limit})")
         if per_tick > limit:
             broken.append(f"{key} happens {per_tick:.2f} times a tick, over its limit {limit}")
+    for label, limit in budget.get("max_label_ratio_of_calibration", {}).items():
+        # A piece of work timed by `PerfProbe` (a row's `labels_ms`: the mean milliseconds a frame), held as a
+        # ratio of the calibration like the frame is.
+        calibration = statistics.median(row["calibration_ms"] for row in rows)
+        spent = statistics.median(row.get("labels_ms", {}).get(label, 0.0) for row in rows)
+        ratio = spent / calibration
+        lines.append(f"{label}: median {ratio:.4f} times the calibration {calibration:.1f} ms (limit {limit})")
+        if ratio > limit:
+            broken.append(f"{label} is {ratio:.4f} times the calibration, over its limit {limit}")
     for key, limit in budget.get("max_ratio_of_calibration", {}).items():
         calibration = statistics.median(row["calibration_ms"] for row in rows)
         ratio = statistics.median(row[key] for row in rows) / calibration

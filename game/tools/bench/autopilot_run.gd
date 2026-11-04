@@ -25,6 +25,9 @@ extends Node
 ##   `frames=0`   keep no row per frame (a long run's memory is what it measures)
 ##   `labels=0`   with `sample=1`, rows without the labelled times and counts (a long run)
 ##   `sample=1`   a `PerfSampler` row each second (monitors, counts, labelled times) in the report
+##   `xp=1`       every player (the bots too: only here) holds an account, so the night awards XP
+##                as a game server would and the XP's counts and time are in the rows
+##                (`xp.gained`, `server.xp`; tools/perf/budget.json holds them)
 ##   `map=ID`     the map of the night (`MapRegistry`: `drive_in`, `small_indoor`; default the lot)
 ##   `seconds=S`  stop after S seconds of night whatever round it is (default 600)
 ##   `out=PATH`   on a desktop: write the report there and quit
@@ -61,6 +64,7 @@ var _ablated := false
 var _sampler: PerfSampler
 var _jumped := false
 var _hud_probed := false
+var _accounts: Dictionary[int, bool] = {}
 ## False for a long run (`frames=0`): the per-frame rows would be the growth being measured.
 var _keep_frames := true
 
@@ -109,6 +113,8 @@ func _process(delta: float) -> void:
 	if _args.get_int("hudprobe") == 1 and not _hud_probed and night.state.zombies.size() >= 60:
 		_hud_probed = true
 		_probe_hud(UIRouter.top())
+	if _args.get_int("xp") == 1:
+		_register_accounts(night)
 	_played += delta
 	if _keep_frames:
 		_rows.append([delta * 1000.0, night.state.round_number(), night.state.zombies.size()])
@@ -249,6 +255,15 @@ func _start_at_round(night: Night) -> void:
 	var points := _args.get_int("points", 20000)
 	for id: int in rules.players:
 		(rules.players[id] as PlayerState).points = points
+
+
+## Gives every player of the night an account the moment they sit down (`xp=1`).
+func _register_accounts(night: Night) -> void:
+	var rules := night.server.rules
+	for id: int in rules.players:
+		if not _accounts.has(id):
+			_accounts[id] = true
+			night.server.xp.register(id, "bench-%d" % id, 300, rules.round_number)
 
 
 ## Draw calls of the frame with each part of the HUD hidden in turn (`hudprobe=1`), printed as

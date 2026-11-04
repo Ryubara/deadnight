@@ -262,7 +262,7 @@ test("a lobby service drops an absent member and counts the round, with no HTTP 
   clock.now = DEFAULT_LOBBY_LIMITS.memberAwayMs + 1;
   lobbies.view(made.id, "ann"); // Ann is there, Bo has not been heard from
   assert.deepEqual(lobbies.get(made.id).members.map((m) => m.userId), ["ann"]);
-  const started = lobbies.start(made.id, "ann");
+  const started = lobbies.start(made.id, "ann", 1);
   lobbies.setRound(started.match!.id, 3);
   assert.equal(lobbies.get(made.id).round, 3);
   lobbies.setRound("unknown-match", 9); // ignored, as setPlayers does
