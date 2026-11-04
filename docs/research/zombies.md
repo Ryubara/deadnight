@@ -64,6 +64,14 @@ or at the type's telegraph with the same 0.75 s of recovery after it, and only i
 - **Coincident zombies part along a direction taken from their two ids** (not a random draw, not the clock) and the
   pushes on one zombie add up to at most `separation_max_speed` (4 m/s). Before, an exact overlap divided a unit
   vector by 0.001 and threw the pair 66 m in one tick; the old test offset the zombies by 0.01 m and never reached it.
+- **The separation grid makes nothing (#933).** `SeparationGrid` sorts the standing zombies once a step: each is one
+  `int` (its cell key times 65536, plus its place in the crowd) in a `PackedInt64Array` the engine sorts, so the three
+  columns of cells a zombie reads are three runs of the list that `bsearch` finds. No `Array` per cell, no hash node,
+  no `zombies.values()` copy in the step; the arrays grow to the biggest crowd and are reused. It pushes exactly as the
+  grid of `Array`s did (the same sums in the same order, positions bit for bit; `SeparationReference` in the tests is the
+  old pass, kept as the oracle) because a zombie reads the places the ones before it in the crowd already moved to.
+  120 dead: the pass held 6 KB at its peak, now 0; `sim.separate` 385 to 334 us a step spread over 30 m and 1365 to
+  1170 us piled in 3 m (`tools/bench/separation_cost.gd`, the same file runs on both commits).
 - **A hit needs a zombie the sim holds.** `take_hit` rejects an id that is still waiting for room (the rules know it,
   the sim does not): no damage, no kill, no points.
 - **Animation:** one `AnimationLibrary` (`zombie`: Idle, Walk, Run, Punch, HitReact, Death, and `Tear_Boards`,
