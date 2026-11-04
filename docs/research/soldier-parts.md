@@ -239,3 +239,20 @@ What broke on the way:
   `test_sprint_start_blend.gd` failed first.
 - The seat's armband on the right upper arm sank 8 mm deeper in her Sprint_Rifle (`test_soldier_clip_fit.gd`: 44 mm,
   recorded 36): the carry's right elbow now bends out twice as far as the IK's (`SPRINT_RIGHT_OUT`).
+
+## The wardrobe's cost in the night
+
+Every catalogue mesh used to stand in every dressed soldier, hidden, and eight soldiers are alive in a night: four bodies
+and four HUD portraits, each in a SubViewport that draws one picture. The late-round budget's `mesh_instances` walks the
+tree, SubViewports too, so each mesh in the file cost eight. Peaks in the same CI step (limit 2,600):
+
+| Build | Meshes a soldier | Peak |
+| --- | --- | --- |
+| Main before the mouths (#1088) | 94 | 2,402 |
+| Main with the mouths | 110 | 2,534 |
+| Wave one without the mouths | 120 | 2,610 |
+| Wave one with the mouths | 136 | 2,728 |
+| With `SoldierLook.trim` | 11 to 15 | 1,734 (local; the unfixed build reads 2,718 here) |
+
+The peak moves by about 10 between runs: the crowd's own meshes differ. Freed, not set aside: a node out of the tree is
+an orphan, and the budget holds those to 2.

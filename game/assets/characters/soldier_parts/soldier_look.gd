@@ -131,11 +131,13 @@ static func body_variant(look: Dictionary) -> String:
 
 
 ## Shows the look's parts, hides the rest and gives every part one material with the look's
-## colours; each shown part swaps to its far mesh past `FAR_FROM`. Returns the triangle count of
-## what is shown up close (`far_triangles` counts the far ones).
+## colours; each shown part swaps to its far mesh past `FAR_FROM`. A part `trim` took out comes
+## back first. Returns the triangle count of what is shown up close (`far_triangles` counts the
+## far ones).
 static func apply(model: Node, look: Dictionary) -> int:
 	var lk := normalized(look)
 	var show := visible_meshes(lk)
+	_restore(model, show)
 	var material := make_material(lk.colours)
 	var tris := 0
 	var meshes := part_meshes(model)
@@ -153,6 +155,46 @@ static func apply(model: Node, look: Dictionary) -> int:
 			mi.visibility_range_end = FAR_FROM
 			fi.visibility_range_begin = FAR_FROM
 	return tris
+
+
+## Frees every mesh `look` does not wear, near and far. A hidden mesh still costs a node and a
+## mesh instance, and the model holds every part of the catalogue, so a soldier in the night would
+## pay for the whole wardrobe (tools/perf/budget.json). Freed and not set aside: a node out of the
+## tree is an orphan, and the budget holds those too.
+static func trim(model: Node, look: Dictionary) -> void:
+	var show := visible_meshes(look)
+	var far := far_meshes(model)
+	var near := part_meshes(model)
+	for mesh_name: String in near:
+		if show.has(mesh_name):
+			continue
+		(near[mesh_name] as Node).free()
+		if far.has(mesh_name):
+			(far[mesh_name] as Node).free()
+
+
+## Takes the meshes in `wanted` that `model` no longer holds from a fresh copy of the file, near and
+## far, so a trimmed body can change its look. A model that has them all costs nothing here.
+static func _restore(model: Node, wanted: Array[String]) -> void:
+	var held := part_meshes(model)
+	var missing: Array[String] = []
+	for mesh_name: String in wanted:
+		if not held.has(mesh_name):
+			missing.append(mesh_name)
+	if missing.is_empty():
+		return
+	var skeleton := model.find_child("Skeleton3D", true, false)
+	var source: Node3D = (load(MODEL) as PackedScene).instantiate()
+	var near := part_meshes(source)
+	var far := far_meshes(source)
+	for mesh_name: String in missing:
+		for mesh: Node in [near.get(mesh_name), far.get(mesh_name)]:
+			if mesh != null:
+				mesh.owner = null
+				mesh.get_parent().remove_child(mesh)
+				skeleton.add_child(mesh)
+				mesh.owner = model
+	source.free()
 
 
 ## The triangles a dressed model shows past `FAR_FROM`.

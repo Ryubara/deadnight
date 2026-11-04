@@ -162,6 +162,11 @@ Draw calls: one per visible part (5-7) with one shared material per character, n
 (#139) is a copy of every part in the same file: `SoldierLook.apply` shows the far mesh of each shown part with the
 same material and swaps them by visibility ranges at `SoldierLook.FAR_FROM` (18 m, the zombies' distance).
 
+The file holds every part of the catalogue (136 meshes after wave one), and a hidden mesh still costs a node and a mesh
+instance. So `CharacterAssembler.dress` keeps what the look wears and frees the rest (`SoldierLook.trim`, 11 to 15 meshes
+a soldier); `SoldierLook.apply` takes a part it needs back from a fresh copy of the file, about 2 ms, on a look change
+only. A dressed soldier's mesh count does not grow with the wardrobe (`test_soldier_worn_meshes.gd`).
+
 ## The starting looks
 
 Directions from a 1958 drive-in's staff and crowd, all original: his eight, then her four (#678), after his so a
