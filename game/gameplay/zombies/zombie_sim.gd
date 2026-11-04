@@ -354,7 +354,7 @@ func _think(
 		target_pos,
 		waypoint,
 		_ground_speed(zombie),
-		_can_swing(zombie.position, target_pos)
+		_can_swing(zombie.position, target_pos, zombie.profile.reach_in(tuning))
 	)
 	if not strike.is_empty():
 		strike["type"] = &"zombie_struck"
@@ -571,12 +571,12 @@ func set_floors(height: float, probe: Callable) -> void:
 ## Whether a zombie at `a` may swing at a target at `b`: on a flat map, within `reach_height` (the
 ## lot's roost floor is over the heads of the dead under it); else within half a storey in height
 ## and, when the target is near enough to be struck, with no wall between them.
-func _can_swing(a: Vector3, b: Vector3) -> bool:
+func _can_swing(a: Vector3, b: Vector3, reach: float) -> bool:
 	if storey <= 0.0:
 		return absf(a.y - b.y) <= tuning.reach_height
 	if absf(a.y - b.y) > storey * 0.5:
 		return false
-	if not sight.is_valid() or _flat(a, b) > tuning.reach + tuning.strike_slack + SWING_SLACK:
+	if not sight.is_valid() or _flat(a, b) > reach + tuning.strike_slack + SWING_SLACK:
 		return true
 	var lift := Vector3(0.0, SWING_HEIGHT, 0.0)
 	return float(sight.call(a + lift, b + lift)) < 0.0

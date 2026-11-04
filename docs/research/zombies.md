@@ -66,9 +66,11 @@ or at the type's telegraph with the same 0.75 s of recovery after it, and only i
   vector by 0.001 and threw the pair 66 m in one tick; the old test offset the zombies by 0.01 m and never reached it.
 - **A hit needs a zombie the sim holds.** `take_hit` rejects an id that is still waiting for room (the rules know it,
   the sim does not): no damage, no kill, no points.
-- **Animation:** one `AnimationLibrary` (`zombie`: Idle, Walk, Run, Punch, HitReact, Death, and `Tear_Boards` and `Sprint`
-  from the extra clips' file) built once from the model and added to every model's player (the rig-sharing recipe); one
-  `AnimationTree` per zombie with a state machine (move = Idle/Walk/Run/Sprint blended by speed, attack, stagger, die, tear).
+- **Animation:** one `AnimationLibrary` (`zombie`: Idle, Walk, Run, Punch, HitReact, Death, and `Tear_Boards`,
+  `Sprint` and `Crawl_Attack` from the extra clips' file) built once from the model and added to every model's
+  player (the rig-sharing recipe); one `AnimationTree` per zombie with a state machine (move = Idle/Walk/Run/Sprint
+  blended by speed, attack, crawl attack (a crawler's own: it never plays the standing punch, #971), stagger, die,
+  tear).
   Every tree is advanced by hand by `AnimationThrottle` (every frame within 14 m, every 3rd to 24 m, every 6th beyond,
   every 12th off screen). A view starts its walk at a
   phase taken from its id, so a crowd does not step together.

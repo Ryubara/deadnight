@@ -29,6 +29,9 @@ func test_the_numbers_are_the_game_tunings() -> void:
 	var rules := RulesFixture.tuning()
 	var boss: ZombieType = rules.roster.type_of(&"headliner")
 	assert_float(BotDodge.BOSS_WINDUP).is_equal(boss.telegraph_seconds)
+	var crawler: ZombieType = rules.roster.type_of(&"crawler")
+	assert_float(BotDodge.CRAWLER_WINDUP).is_equal(crawler.telegraph_seconds)
+	assert_float(crawler.reach + tuning.strike_slack).is_less_equal(BotDodge.REACH + BotDodge.SLACK)
 	assert_int(BotBeliefs.START_GRENADES).is_equal(rules.explosives.start_grenades)
 
 
