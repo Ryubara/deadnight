@@ -27,6 +27,7 @@ const BANKS: Array[String] = [
 	"res://core/audio/banks/smallmap.tres",
 	"res://core/audio/banks/energy.tres",
 	"res://core/audio/banks/wind.tres",
+	"res://core/audio/banks/perks.tres",
 ]
 
 static var _defs := {}

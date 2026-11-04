@@ -43,6 +43,7 @@ func _drink(night: Night, item: StringName) -> void:
 	press.use = true
 	NightFixture.run(night, 1, press)
 	NightFixture.run(night, 3)
+	NightFixture.drink_down(night)  # the perk is had, and its badge shows, when the drink ends (#912)
 
 
 ## Takes the local player down with one blow, as the zombies would.

@@ -118,7 +118,9 @@ On main the sweep failed 133 combinations (the Pit crew's neck: 48 rays); now no
 against `ConcavePolygonShape3D` pairs (both sides, front only) on layers no game body uses; a shape's faces front the
 way the mesh draws them. New faces reach the broadphase only after two physics steps (with one, a sample met the
 last pose's surface), so the suites step physics at 480 Hz. A clip that does not key the fingers keeps whatever the
-last clip left: the sampler resets the bones before each sample.
+last clip left: the sampler resets the bones before each sample. The sampler loads the player's clip files by name
+(`ClipFit.add_player_clips`): a new clip file is added there in the same change, or the clip is measured only when an
+earlier suite has put it in the library every model shares (the perk drink, #912, passed alone and failed in CI's run).
 
 The arms in the clips were not all clean: the dual pistols' hands through each other in the equip and the quick melee,
 the revive's hands through each other, the downed hand through the thigh and the crawl's knee through it, the strikes'

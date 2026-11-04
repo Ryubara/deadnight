@@ -32,6 +32,8 @@ const FUEL_BUY_BELOW := 35.0
 const REPLACE_GAIN := WeaponWorth.REPLACE_GAIN
 ## Seconds per tick while the shopper waits at the crane in a break.
 const CRANE_STEP := 0.25
+## Seconds per tick while the shopper drinks a tonic down in a break.
+const DRINK_STEP := 0.25
 ## Prizes the simulator does not play (#788): the freeze is not modelled, and the ray gun's blast on
 ## a crowd and its dear rounds are, but its hurt to its shooter is not, so a shopper that won one
 ## would be worth more than it is. They are out of the crane's pool here, so the gate stays the
@@ -774,8 +776,17 @@ func _buy(player: SimPlayer, item_id: StringName, rounds: int = -1) -> int:
 				return 1 if _play_crane(player, event["price"]) else 0
 			if item_id == &"upgrade_weapon":
 				player.arms[weapon].upgrade(rules.tuning.upgrade)
+			_drink_out(player)
 			return int(event["detail"].get("rounds", 1))
 	return 0
+
+
+## A tonic bought is drunk before anything else is bought (#912: the counter refuses a second
+## purchase from a player with a bottle in the hand), so the shopper in the break stands and
+## drinks it down, as at the machine, and the break's clock runs meanwhile (as for the crane).
+func _drink_out(player: SimPlayer) -> void:
+	while rules.phase == GameRules.Phase.BREAK and PerkPlay.is_drinking(rules.players[player.id]):
+		_handle(rules.apply(RulesAction.tick(DRINK_STEP)))
 
 
 ## Whether the shop sells this item as a weapon.

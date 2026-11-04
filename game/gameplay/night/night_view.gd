@@ -103,6 +103,26 @@ func show_repair(player_id: int) -> void:
 		animation.board_repaired(repair_interval.call())
 
 
+## The player who bought a perk drinks it (`drink_started`): the drink clip with the perk's bottle,
+## over the drink's seconds (every client draws every player's drink from the same event, #912).
+## `spilled` (`drink_spilled`, the drinker went down) drops the bottle instead.
+func show_drink(player_id: int, tonic_id: StringName, seconds: float) -> void:
+	var animation := _animation_of(player_id)
+	if animation != null:
+		animation.drink(tonic_id, seconds)
+
+
+func show_drink_spilled(player_id: int) -> void:
+	var animation := _animation_of(player_id)
+	if animation != null:
+		animation.stop_drink(true)
+
+
+func _animation_of(player_id: int) -> PlayerAnimation:
+	var body: Node3D = bodies.call(player_id)
+	return body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+
+
 ## The shooter's Soldier plays the attack of the weapon he fired: a swing for a melee weapon, the
 ## fire clip (and its recoil) for a gun. Every client draws every player's attack from the same
 ## `shot_fired` event. A dual weapon's shot is for `hand` (0 the right, 1 the left): that gun kicks.
@@ -259,6 +279,10 @@ func _on_event(event: Dictionary) -> void:
 			show_reload_stopped(event["shooter_id"])
 		&"shock_burst":
 			_show_shock(event)
+		&"drink_started":
+			show_drink(event["player_id"], StringName(event["item_id"]), event["seconds"])
+		&"drink_spilled":
+			show_drink_spilled(event["player_id"])
 		&"damage_dealt":
 			began = PerfProbe.begin()
 			if event["melee"]:

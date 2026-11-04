@@ -10,6 +10,10 @@ const GATE := &"win"
 const SILL := 0.9
 const THICK := 0.56
 const TARGETS := {1: Vector3(20.0, 0.0, 0.0)}
+## The height of the upper floor over the ground window, on a map with floors (the second map's
+## 3.4 m storey and its floor's top). A straight-line path ends at the target, which stands on the
+## floor by the baker's lift (`ZombieSim.NAV_LIFT`).
+const UPPER := 3.45
 
 var _barricades: BarricadeState
 
@@ -189,3 +193,66 @@ func test_a_zombie_swinging_at_the_sill_is_not_drawn_climbing() -> void:
 		)
 	)
 	assert_bool(view.is_climbing()).is_false()
+
+
+# --- A window acts on its own storey only (#1030) ---
+
+
+func _upstairs(sim: ZombieSim, from: Vector3, gate: StringName = &"") -> ZombieBody:
+	sim.storey = 3.4
+	var zombie := sim.spawn(1, 1.0, from, 0.0, null, gate)
+	zombie.enter(ZombieBody.Mode.CHASE)
+	return zombie
+
+
+func test_a_gate_acts_on_a_body_on_its_own_storey_only() -> void:
+	var gate := _gate()
+	var over := Vector3(-0.3, UPPER, 0.0)
+	assert_bool(gate.climbs(Vector3(-0.3, 0.0, 0.0))).is_true()
+	assert_bool(gate.climbs(over)).is_false()
+	assert_float(gate.lift_at(over)).is_equal(0.0)
+	assert_bool(gate.spans(over)).is_false()
+	assert_bool(gate.is_at(over)).is_false()
+	assert_bool(gate.is_at(Vector3(-0.5, 0.0, 0.0))).is_true()
+	assert_vector(gate.keep_in_opening(over)).is_equal(over)
+	# The band is the gate's own height: an upper window acts on the upper floor, not under it.
+	var upper := ZombieGate.new(
+		GATE, Vector3(0.0, UPPER, 0.0), Vector3.RIGHT, 2.05, SILL, THICK, 2.0
+	)
+	assert_bool(upper.climbs(Vector3(-0.3, UPPER, 0.0))).is_true()
+	assert_bool(upper.climbs(Vector3(-0.3, UPPER + SILL * 0.5, 0.0))).is_true()
+	assert_bool(upper.climbs(Vector3(-0.3, 0.0, 0.0))).is_false()
+	assert_bool(upper.is_at(Vector3(-0.5, 0.0, 0.0))).is_false()
+
+
+func test_a_dead_walking_the_upper_floor_over_a_torn_window_is_not_lifted() -> void:
+	var sim := _sim()
+	var zombie := _upstairs(sim, Vector3(0.0, UPPER, -6.0))
+	var targets := {1: Vector3(0.0, UPPER + ZombieSim.NAV_LIFT, 6.0)}
+	var climbing_ticks := 0
+	var highest := 0.0
+	var lowest := INF
+	for _i in int(14.0 / ZombieSim.STEP):
+		sim.tick(ZombieSim.STEP, targets)
+		climbing_ticks += 1 if zombie.climbing else 0
+		highest = maxf(highest, zombie.position.y)
+		lowest = minf(lowest, zombie.position.y)
+	# It walked the whole of the window's width, along the wall, and was never drawn climbing.
+	assert_float(zombie.position.z).is_greater(2.5)
+	assert_int(climbing_ticks).is_equal(0)
+	assert_bool(zombie.climbing).is_false()
+	assert_float(highest).is_equal_approx(UPPER, 0.001)
+	assert_float(lowest).is_equal_approx(UPPER, 0.001)
+
+
+func test_a_dead_upstairs_does_not_stop_at_the_boards_of_the_window_under_it() -> void:
+	_barricades.boards[GATE] = 3
+	var sim := _sim()
+	# Its gate is the one under it (a dead that was told to come for it), and it is a floor over it.
+	var zombie := _upstairs(sim, Vector3(-3.0, UPPER, 0.0), GATE)
+	zombie.speed = 2.0
+	var events := ZombieFixture.run(sim, 6.0, {1: Vector3(20.0, UPPER + ZombieSim.NAV_LIFT, 0.0)})
+	assert_float(zombie.position.x).is_greater(3.0)
+	assert_int(ZombieFixture.count(events, &"zombie_tore")).is_equal(0)
+	assert_bool(zombie.tearing).is_false()
+	assert_float(zombie.position.y).is_equal_approx(UPPER, 0.001)
