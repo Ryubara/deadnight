@@ -29,6 +29,9 @@ const GAINS_OFFSET := Vector2(48.0, 4.0)
 const CHALLENGE_TOP := 0.36
 ## Space kept between the gains and the ammo card they must stay clear of.
 const GAINS_GAP := 9.0
+## Half the box round the middle of the screen that the popup cards stay out of (the reticle, its
+## hit markers and the point gains under it), canvas units.
+const CENTRE_CLEAR := 80.0
 
 ## Scene-tree names of the parts, by the variable that holds each.
 const PART_NAMES := {
@@ -48,6 +51,7 @@ const PART_NAMES := {
 	&"prompt": "Prompt",
 	&"gains": "Gains",
 	&"challenge": "Challenge",
+	&"popups": "Popups",
 	&"reticle": "Reticle",
 	&"crosshair": "Crosshair",
 	&"damage": "Damage",
@@ -102,6 +106,9 @@ var marquee := HudMarquee.new()
 var prompt := HudPrompt.new()
 var gains := HudGains.new()
 var challenge := HudChallenge.new()
+## The cards of the progression (a level, a tier, an unlock, a finished challenge), under the
+## banner.
+var popups := PopupLane.new()
 var reticle := HudReticle.new()
 var crosshair := HudCrosshair.new()
 var damage := HudDamage.new()
@@ -142,18 +149,26 @@ func _ready() -> void:
 	_stack([points, health], 0.0, 1.0, margin, -margin, gap)
 	_stack([slots, ammo], 1.0, 1.0, -margin, -margin, gap)
 	_stack([banner, marquee, boss_bar], 0.5, 0.0, 0.0, margin, gap)
+	# The lane stands under whichever of the banner, the marquee and the boss bar is up, and eases
+	# to its place when one comes or goes.
+	popups.above = [banner, marquee, boss_bar]
+	add_child(popups)
 	_stack([prompt], 0.5, 1.0, 0.0, -margin, gap)
 	_home_slots()
 	_hold_perks()
 	_stack([gains], 0.5, 0.5, GAINS_OFFSET.x, GAINS_OFFSET.y, gap)
 	(gains.get_parent() as Control).grow_horizontal = Control.GROW_DIRECTION_END
 	_place_challenge(margin)
+	popups.mode_changed.connect(_on_popups_mode)
+	_on_popups_mode()
 	# Last, so it draws over every other part.
 	_centre(scoreboard)
 	for part in all_parts():
 		part.bind(state)
 	resized.connect(_fit_gains)
+	resized.connect(_fit_popups)
 	_fit_gains()
+	_fit_popups()
 
 
 ## Keeps the cards inside the platform's safe area (a phone's notch, rounded corners and home bar),
@@ -175,6 +190,7 @@ func set_safe_insets(insets: Vector4) -> void:
 		overlay.offset_bottom = insets.w
 	for entry in _columns:
 		_place(entry)
+	_fit_popups()
 
 
 ## The overlays that fill the whole screen, whatever the cards keep clear of.
@@ -247,8 +263,8 @@ func _home_slots() -> void:
 ## or the canvas changes, so the badges follow its rectangle instead of a number.
 func _hold_perks() -> void:
 	add_child(perks)
-	# The card's column is placed after the card is (its own rectangle moves last), so the badges are
-	# put once the layout has settled, whichever of them moved.
+	# The card's column is placed after the card is (its own rectangle moves last), so the badges
+	# are put once the layout has settled, whichever of them moved.
 	for moving: Control in [health, health.get_parent(), perks]:
 		moving.item_rect_changed.connect(_queue_perks)
 	resized.connect(_queue_perks)
@@ -271,6 +287,19 @@ func _place_perks() -> void:
 	var at := Vector2(x, card.end.y - perks.size.y) - origin
 	if not perks.position.is_equal_approx(at):
 		perks.position = at
+
+
+## The cards of the popup lane stop above the box round the middle of the screen.
+func _fit_popups() -> void:
+	# The middle of the screen, not of the cards' area: the safe insets move the one from the other.
+	var middle := get_global_rect().position.y + size.y * 0.5 - (_insets.y - _insets.w) * 0.5
+	popups.limit_y = middle - CENTRE_CLEAR
+
+
+## The lane shows a finished challenge as a card, so the prompt on the left edge leaves finishes to
+## it, unless the player turned the cards off: then the prompt says it.
+func _on_popups_mode() -> void:
+	challenge.finish_in_lane = popups.mode != PopupLane.Mode.OFF
 
 
 ## Keeps the challenge prompt a gap under the left column's last card when that card reaches past
@@ -323,6 +352,7 @@ func all_parts() -> Array[HudPart]:
 		prompt,
 		gains,
 		challenge,
+		popups,
 		scoreboard
 	]
 
@@ -345,7 +375,8 @@ func boxed_parts() -> Array[Control]:
 		boss_bar,
 		prompt,
 		gains,
-		challenge
+		challenge,
+		popups
 	]
 
 
@@ -392,8 +423,8 @@ func _place(entry: Dictionary) -> void:
 	column.anchor_right = at
 	column.anchor_top = ay
 	column.anchor_bottom = ay
-	# A column on the middle of the screen (the point gains beside the reticle) stays on the screen's
-	# middle, not on the middle of the cards' area.
+	# A column on the middle of the screen (the point gains beside the reticle) stays on the
+	# screen's middle, not on the middle of the cards' area.
 	var shift := Vector2.ZERO
 	if ax == 0.5 and ay == 0.5:
 		shift = Vector2(_insets.x - _insets.z, _insets.y - _insets.w) * 0.5

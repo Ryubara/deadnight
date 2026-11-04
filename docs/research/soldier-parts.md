@@ -133,12 +133,18 @@ crawl and his SMG carry (31-38 mm); the IK's reload and long-gun hold are not (#
 a long sleeve's right forearm 30-39 mm into the chest (recorded, at most 4 cm); her rolled sleeves (the maintainer's
 look) are clean with every weapon.
 
+A sampled pose stays where it was sampled (#1143): `ClipFit.pose` pauses the player after the seek. A playing
+clip went on with the real time of the physics frames `prepare_sets` awaits, so `BodyFit.bone_point` (the live
+skeleton) was a later pose than the surface read before the wait: the swing skirt's `10 Run leg` read 0.142-0.144 m
+on the pull requests and 0.1348 m every time once held (the recorded 0.137 stands).
+
 ## The ladder's pieces (#1078)
 
-Wave one of the fifteen wearables of [the ladder](../design/progression.md#wardrobe-costumes-and-the-locks), in
+The fifteen wearables of [the ladder](../design/progression.md#wardrobe-costumes-and-the-locks), in two waves, in
 `tools/blender/soldier_ladder.py`, appended to their slots (a part is an index on the wire). All are original ideas
-from a drive-in's staff and a B-movie crowd: a bellhop's jacket, card 3-D glasses, a booth operator's eyeshade, a press
-pass, a string tie, bib overalls, a mechanic's one-piece and two-tone oxfords.
+from a drive-in's staff and a B-movie crowd. Wave one: a bellhop's jacket, card 3-D glasses, a booth operator's eyeshade,
+a press pass, a string tie, bib overalls, a mechanic's one-piece and two-tone oxfords. Wave two is
+[below](#wave-two).
 
 | Piece | How it is made | Where it fits |
 | --- | --- | --- |
@@ -188,9 +194,67 @@ Coveralls and in Usher's jacket on her; her plain jacket does the same (40.49 mm
 under `ladder`. No test measures a top's folds against the bib worn over it: that was looked at (Idle, Run_Gun and
 Reload_Rifle on both bodies).
 
-`unlocks.json` does not exist yet (the wardrobe grid, #1065, adds it): until then these pieces are free like every
-other, and their levels are on the design page (Usher's jacket 18, Press lanyard 19, Cinema glasses 24, Saddle shoes
-28, Overalls 31, Projectionist's visor 33, Bolo tie 34, Coveralls 36).
+The pieces are free like every other until the wardrobe grid (#1065) reads their gates; each has its row in
+`gameplay/progression/unlocks.json`, `available` since its art landed, named in the table's own words
+(`test_every_piece_is_earned_at_its_level` holds which row is which part).
+
+### Wave two
+
+Roller skates (38), Swing skirt (40), Creature tee (44), Rubber boots (46), Creature mask (48), Film-strip scarf (50) and
+Varsity gold (52). The tee and the mask share one creature, invented here: a wide toad's skull, bulging eyes, a jagged
+grin and a crest of fins; it borrows from no film.
+
+| Piece | How it is made | Where it fits |
+| --- | --- | --- |
+| Roller skates | the kit's foot with its sole sheared up 8 cm, dying out at the ankle (z 0.19); a metal plate, four 8-sided wheels half outside the sole, a toe stop | the ankle is every shoe's, so every trouser leg meets it as it meets the boots |
+| Rubber boots | the kit's ankle cut off (z 0.125) and the foot widened 28 % and lengthened 12 %, a closed shaft over the trouser leg, a turned band, a pull tab, the top painted dark as the inside | the shaft is a tube the leg comes out of, so the bare shin needs nothing of its own |
+| Swing skirt | the Overalls' waist over the top's hem, a pleated wall (flat facets), a band at the hem, a lining up to a roof in the hips; the legs cut at z 0.62 and capped, bobby socks | one closed shell; the legs under it are knees and shins |
+| Creature tee | the shirt's rule, a printed head on a sheet above her chest's fullest line, three fins down the spine for the shoulder camera | prints rest on `front_over`, so they ride the shirt's folds |
+| Varsity gold | the letter jacket's collar, a gold body (two new fixed swatches, so it is gold on everyone), sleeves in the look's colour with one white stripe cut in, a star on the chest and a big one on the back | the stars are seated point by point (`seated_star`) |
+| Creature mask | a closed 14-sided shell (half width 0.43, z 1.605-2.215), eyes, brows, a mouth with mismatched teeth, seven crest fins, ear fans, gill slits; `hides_hair` and `hides_eyewear` | wider than the jaw and a tall collar's top; the floor is closed, the neck comes out of it |
+| Film-strip scarf | a thick band tilted onto the shoulders, two ends down the chest; each frame is one quad showing `film`, the atlas's one patterned swatch; her own variant | a tall collar's funnel comes out of the band |
+
+Numbers they rest on (kit metres at rest, front -Y):
+
+| Measured | Value |
+| --- | --- |
+| Room per slot, in every preset, both bodies, every mouth | near / far: feet 1,056 / 396, legs 854 / 367, torso 2,968 / 867, neck 354 / 234, headwear 354 / 234 (608 / 328 hiding the hair, 959 / 444 hiding the eyewear too) |
+| The leg | straight tubes: x 0.04-0.336 either side, y -0.147 to 0.167, trousers end at z 0.187; the knee at z 0.56 |
+| The foot | x 0.121-0.293 either side at the sole, z -0.023 to 0.195 |
+| The head | x +-0.34, y -0.388 to 0.309, up to z 2.193; glasses reach x +-0.31 at y -0.405, outside any shell that fits the head |
+| `film` swatch | cell (2, 2): a fixed 16 px tile (sprocket holes, a moon over a dark lot); the sprocket holes in faces would have passed the neck's far room of 234 |
+
+What broke on the way:
+
+- **The boot's shaft had a slit at the ankle**, with the trouser leg showing. Three changes to the rays that fit it did
+  nothing: the shaft was blended to the foot up to z 0.26, so a bent ankle left it behind while the hem went with the
+  shin. It stays on the shin down past the hem (z 0.16), and only the ring in the foot bends.
+- **A knee through the skirt could not be measured as a vertex inside it**: its wall is thin. A ray from the hips to
+  the vertex over-counted too (0.6 m on a 0.4 m thigh): the wall folds near the hips. A place on the wall now counts when
+  nothing lies between it and the leg's own line.
+- **The thigh's share is a trade**: at 85 % a raised thigh showed through the wall; with all of it past z 0.74 the skirt
+  opened in a V to the waist. What works is to take the thighs away: the legs stop just under the skirt, and the hem
+  takes 95 % of the thigh's turn, growing from nothing at the hips.
+- **The wall's top ring on the bare Hips bone parted from the waist** in every pose: it borrows the same skin as the waist.
+- **`tube` closed both ends**, which put a dark floor across the hem; the roof then faced up, a back face from under the
+  skirt, once the hips were gone from behind it.
+- **The rim of a curved `panel` was inside out** on top (the mask's mouth): each face was turned away from the rim's
+  middle, which is the wrong way on a curve. The rim is wound by its own order now. The ear fans' outlines were
+  clockwise (`test_every_part_is_closed_on_both_bodies` caught both).
+- **Rings laid over a sleeve stood clear of it**: the arm is thinner than the shoulder. Stripes are cut in
+  (`cut_sleeve`); each cut crosses the long sleeve faces, so one wide stripe fits and two did not (6,009 near).
+- **A flat star lost its points under the curve of the back.** It is seated point by point, and the chest star sits
+  above her chest's fullest line, where it fell between the jacket's vertices.
+
+The clips (`test_soldier_ladder_clips.gd`, a suite of its own so the shards stay even): the mask and the film stay out of
+the shoulders in every clip. Recorded in `clip_fit_recorded.json`, with caps in the test: `ladder two`, a forearm 92 mm
+under the mask's rim at the top of `Grenade_Throw` and a hand 47 mm into the skirt's flare in `Run`; `skirt`, the wall in
+a knee up to 139 mm at full stride (16 sides cannot hold it; it reads as the skirt riding over the knee) and a hand up to
+93 mm under the flare in `Sprint_Pistol`. Hair and hats are held to the shoulder camera (`test_hair_and_the_camera.gd`):
+the mask passes.
+
+Not covered by a test: a top's folds against the skirt's waist, as with the bib. In `Duck` the top's hem shows through in
+small patches. Looked at in Idle, Run and Duck, the far level at 24 m (the crest thins out, the silhouette holds).
 
 ## The arm's length (#978)
 

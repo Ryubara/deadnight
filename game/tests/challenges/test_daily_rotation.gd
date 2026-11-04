@@ -76,7 +76,7 @@ func test_neighbouring_days_differ() -> void:
 	assert_int(same).is_equal(0)
 
 
-func test_the_day_turns_at_the_players_midnight() -> void:
+func test_the_day_turns_at_midnight_and_a_test_can_ask_for_another_zone() -> void:
 	var before_midnight := ChallengeClock.fixed(float(DAY + 1) * 86400.0 - 30.0)
 	var after_midnight := ChallengeClock.fixed(float(DAY + 1) * 86400.0 + 30.0)
 	assert_int(before_midnight.day()).is_equal(DAY)
@@ -88,7 +88,7 @@ func test_the_day_turns_at_the_players_midnight() -> void:
 	assert_int(west.day()).is_equal(DAY - 1)
 
 
-func test_time_to_the_next_refresh_counts_down_to_local_midnight() -> void:
+func test_time_to_the_next_refresh_counts_down_to_midnight_utc() -> void:
 	var noon := ChallengeClock.fixed(float(DAY) * 86400.0 + 12.0 * 3600.0)
 	assert_int(noon.seconds_to_refresh()).is_equal(12 * 3600)
 	var late := ChallengeClock.fixed(float(DAY) * 86400.0 + 86400.0 - 90.0)

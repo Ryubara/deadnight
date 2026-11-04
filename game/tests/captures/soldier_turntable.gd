@@ -4,12 +4,12 @@ extends Node3D
 ## (`10:torso=jacket,neck=scarf/primary=5,accent=1`), and `;` parts two looks. The pose is the
 ## menu's (`--pose=menu`: the idle with the showcase weapon in the hands, `MenuHero`, the night's
 ## hold) or a clip at a time (`--pose=Run_Gun@0.3`), and `--zoom` frames the whole body, the head
-## and neck, the hands, the chest or the feet.
+## and neck, the hands, the chest, the hips or the feet.
 ## The camera looks a little down, as the menu's does. Not part of the game.
 ##
 ##     gds godot -- --path game res://tests/captures/soldier_turntable.tscn --resolution 1600x900
 ##         -- --out=<folder>/sheet.png "--looks=10;0;3:torso=tank" [--pose=menu] [--weapon=rifle]
-##         [--turns=8] [--zoom=body|head|hands|chest|feet] [--cell=240] [--probe] [--far]
+##         [--turns=8] [--zoom=body|head|hands|chest|hips|feet] [--cell=240] [--probe] [--far]
 ##
 ## `--weapon=none` stands the soldier in the pose with empty hands. `--probe` marks in red every
 ## place where the eye sees through the body (`BodyFit.see_through` all over it) and prints them.
@@ -25,6 +25,7 @@ const ZOOMS := {
 	"head": [1.3, 0.42],
 	"hands": [1.05, 0.42],
 	"chest": [0.92, 0.3],
+	"hips": [0.6, 0.36],
 	"feet": [0.2, 0.3],
 }
 const ELEVATION := 0.12

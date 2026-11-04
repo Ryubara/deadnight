@@ -103,6 +103,8 @@ func observe(event: Dictionary) -> Array[Dictionary]:
 			_add(int(event["player_id"]), ChallengeStats.BOARDS)
 		&"purchase_made":
 			_on_purchase(event)
+		&"player_downed":
+			_add(int(event["player_id"]), ChallengeStats.DOWNS)
 		&"player_revived":
 			_on_revived(event)
 		&"points_changed":

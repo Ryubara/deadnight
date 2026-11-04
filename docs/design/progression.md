@@ -153,7 +153,7 @@ today (`NightTally`), except where marked. A kill pays through its points, so XP
 | Headliner | 50 a boss brought down | yes (`kills:boss`) | |
 | Rescue | 40 a revive, up to 5 a night | one tally line (`player_revived` names the reviver) | solo has none; no solo penalty |
 | Opening night | 50, once, "your ticket is punched on the way in" | a flag | the first bar is not empty; the first level comes in about a minute |
-| **First game of the day** | 100, once a local day (the day number the dailies use) | `bonus_day` in the profile | **New.** Credited when that day's first round ends, so it pays for playing; a missed day owes nothing. First guess |
+| **First game of the day** | 100, once a day (the day number the dailies use, UTC's) | `bonus_day` in the profile | **New.** Credited when that day's first round ends, so it pays for playing; a missed day owes nothing. First guess |
 | Dailies, orders | 25, 50, 100 and 75, 200, 600 | yes (built) | paid as XP; the stub amounts are dropped |
 
 Capped at **1,500 XP a night** (about twice the strong four-player night's 766), and the backend's clamp below. There
@@ -412,7 +412,7 @@ decision stands, and what keeps it from becoming a chore is in the table.
 
 | Family | Size | Refresh | Counts | Shown |
 | --- | --- | --- | --- | --- |
-| **Daily** | One short, one medium, one long a day (under a night to a few nights) | Expires at the player's midnight: the date picks the next three, at zero | From the moment it is on the board | Home panel and Challenges tab |
+| **Daily** | One short, one medium, one long a day (under a night to a few nights) | Expires at the reset, 00:00 UTC ([the day](#the-day-the-dailies-follow)): the date picks the next three, at zero | From the moment it is on the board | Home panel and Challenges tab |
 | **Order** (Concession Order) | Three open; short, medium or long (days to weeks) | Never. A finished order is replaced when the night ends; the player may swap any one at any time | Total or best night, per order | Challenges tab; the home panel shows the nearest to done |
 | **Milestone** | A ladder of lifetime steps per stat (kills, nights, rounds, best round, headshots, boards, doors, grenade kills, melee kills, headliners, fuel cans, points) | Never; the rung is derived from the lifetime total | Lifetime | Challenges tab; a step reached shows in the night |
 
@@ -426,7 +426,7 @@ steps, enough of every tier and group for a day to be varied.
 
 | Rule | Value | Why |
 | --- | --- | --- |
-| A day | Local midnight to local midnight (UTC where the platform gives no offset). The day is a whole number; the rotation is a function of it | A test can set any day; the same date gives the same dailies for friends in one call |
+| A day | **UTC midnight to UTC midnight**, for the player's machine and the game server alike ([the day](#the-day-the-dailies-follow)). The day is a whole number; the rotation is a function of it | A test can set any day; the same date gives the same dailies for friends in one call, and a board is one board for the client and the server |
 | The deal | One short, one medium, one long. Two of one group never share a day. A challenge dealt the day before is passed over | A day is varied; a returning player sees different things |
 | Rotation memory | Worked out from the first day of a 30-day block, so a day needs no stored history; only a block's first day can repeat the day before | A pure function: no state, no drift between devices |
 | Expiry | Every daily leaves at the reset, done or not; the new three start at zero, even one dealt again. A player away for a month sees three dailies and nothing else | No debt, no backlog, no catching up |
@@ -470,20 +470,68 @@ node.
 | `milestones()` | Each ladder: `text` (the next step), `value`, `rung`, `rungs`, `target` (0 when done), `fraction` toward the next step, `done` |
 | `seconds_to_refresh()`, `refresh_text()` | Time to the next dailies, "6 h 12 min" |
 | `swap_order(slot)`, `refresh()`, signal `changed` | The one write the menu makes; `refresh()` when the screen is shown again |
+| `reload()`, `watch_file()` | Take the file again when another writer replaced it (the account's board read at sign-in, a night that ended); a watching board does it by itself and says `changed` |
 
 ### The save
 
 Facts only, in the platform backend's envelope (`{revision, schemaVersion, data}`, [save
 format](../research/platform-backend.md#save-format)): the day the dailies were dealt for, each daily's day and
 progress, each order's progress, the order seed and its draw count, the lifetime totals by stat, how many dailies and
-orders were ever finished. Today it is the file `user://challenges.json`; the backend's `challenges` slot takes the
-same text for a signed-in account (#1075). The rules: `schemaVersion` is 1; a newer version is never read or
-overwritten (an old client cannot wipe progress); a damaged file is set aside as `.broken` and play starts fresh;
-every number is small (a count or a seed under 2^31), so none needs the backend's string rule for 64-bit values; a
-night saves at the end of every round and at the end of the night, so a quit loses at most the round in progress. Only
+orders were ever finished. A signed-in account's board is the backend's `challenges` slot, and the file
+`user://challenges.json` is its cache ([signed in](#the-board-signed-in)). The rules: `schemaVersion` is 1; a newer
+version is never read or overwritten (an old client cannot wipe progress); a damaged file is set aside as `.broken`
+and play starts fresh; every number is small (a count or a seed under 2^31), so none needs the backend's string rule
+for 64-bit values; a night saves at the end of every round and at the end of the night, so a quit loses at most the
+round in progress. Only
 a night a person plays writes the save (bots, captures and tests have no board). **Online, the server awards (rule
-9)**: the same `NightTally` and `ChallengeTracker` run on the game server, following every player and announcing what
-is done (#1076), and the client's board becomes a cache; a signed-in solo night runs it locally.
+9)**: the same `NightTally` and `ChallengeTracker` run on the game server, following every signed-in seat and announcing
+what is done (built, #1076: [how it works](../research/progression.md#the-game-server-follows-the-challenges-1076)).
+The server reads the account's board from the backend once, when the seat sits down, and writes it back in each round's
+report; the client's local board is a cache that keeps counting as it did, and the in-night prompt shows the server's
+word. A signed-in solo night runs it locally.
+
+### The board, signed in
+
+Built in #1124 (`ChallengeUplink`, `game/net/challenge_uplink.gd`; how it works is in [the research
+page](../research/progression.md#the-challenge-board-signed-in-1124)).
+
+- **The slot is the account's board; the file is its cache.** The file's envelope names the `account` it is the cache of
+  and the `accountRevision` the slot was at, beside `data` (so what the backend holds is exactly the board).
+- **Read at sign-in, one request** (`GET /saves/challenges`): the account's board replaces the cache, so a night
+  another machine or the game server played shows in the menu, which follows its file while it is open. An account
+  with no board yet takes the board of this machine when no other account owns it (a player's nights before sign-in
+  are kept), with orders of its own; if another account owns the file it gets a fresh one. A damaged file is set aside
+  and replaced; a file, or a slot, from a newer game is left alone.
+- **Written at a solo night's round ends and at its end** (`PUT /saves/challenges`): the whole board on the revision it
+  follows. A stale revision (409) is read again and the board written on the latest. **Nothing is merged**: the later
+  round end wins, so a second machine playing at the same time can lose a round of the first. Only one writer plays a
+  board at a time in practice, and merging counters from two histories would invent progress. A board the account does
+  not own (another account's cache, or one that never heard of an account which already has a board) is never written.
+- **Online the game server writes the board** in its round reports, so an online night starts no uplink.
+- **New accounts are dealt different orders.** A fresh board's order seed is made from the account id
+  (`ChallengeProfile.seed_of`, FNV-1a, the same wherever the board is first made); `fresh()` gave every account seed 1,
+  so every new board was dealt the same three orders.
+
+### The day the dailies follow
+
+**Decision (#1124, the engineer's, for the maintainer to overrule): the day is UTC's, for the client and the game
+server.** A board is one board, dealt and counted by both. The client dealt for its local day and the server for UTC's,
+so a player behind UTC (the Americas) playing in the evening, after UTC midnight, would have the server deal a new set
+over the dailies the client dealt and counted for the local day: the evening's progress gone at a time the player's
+own day had not turned. What was weighed:
+
+| Option | Loses a daily in a zone behind UTC? | Cost |
+| --- | --- | --- |
+| The server deals for UTC, the client for local (before) | **Yes**, every evening after UTC midnight | none, and it is the bug |
+| **UTC for both** (chosen) | No: one day for the client and the server, one reset each 24 hours | The reset is not the player's midnight: 00:00 UTC is 16:00 to 20:00 in the Americas, 01:00 to 03:00 in Europe, 09:00 in Japan. "Resets in 3 h" on the board is true |
+| The client's local day sent with the ticket, and the game server dealing for each seat's own day | No | A claim in the ticket the backend signs (the client's word), a per-seat day in the tracker, and a protocol change; a client could pick the day. The board of a player with two machines in two zones still has one day |
+| The server follows whatever day the board holds | Only if the client writes the board before every join | An extra write per join, and a stale board counts yesterday's dailies |
+
+UTC for both is also the backend's own date (`bonusDay` is a UTC day number, which a local day could miss by one), needs
+no new field or claim, and cannot be forged. The price is that the reset lands in the evening for some players; the
+dailies are an offer for the 24 hours that follow, whatever hour they start at, and nothing is lost to a mismatch. If the
+maintainer wants the player's own midnight, the way is the ticket's day (third row); `ChallengeClock` still takes an
+offset for it.
 
 ### The progress prompt in the night
 
@@ -640,6 +688,19 @@ nobody keeps (no account at all) is counted by the client with the same `XpRules
 "your night, unsaved" with the XP it would have paid, no bar and "no account: this night was not saved". The
 players' rows are untouched by it (the icon and level beside a name are #1077's).
 
+**Built (#1069).** The credits are a second ticket under the players' ticket on the end board
+(`HudCredits`): a line for every player with their crew title, what it was for, their name and the XP the night paid
+them (nothing where the server told none: a bot, or a night nobody keeps). `NightCredits.award` is a pure function of
+what `NightTally` counted: the titles of `crew_titles.json` are handed out in the order of the file (the rarer deeds
+first, so the top scorer does not take them all), each to the player with the most of its stat among those without a
+title, a tie to the lower seat, a stat of zero to no one; a player has at most one, and the rest are Extras, so a solo
+night has its credit too. The titles name only stats the night counts: Special Effects (headliners felled), Stunt
+Coordinator (revives), Best Boy (fuel cans), Location Manager (doors opened), Key Grip (boards mended), Stunt Double
+(times down; `NightTally` now counts `downs` from `player_downed`) and Executive Producer (points earned). A client
+counts them for every player in `CrewTracker` (only those stats, and only a boss kill of the horde) and reads each
+seat's XP from the `xp_gained` every client hears; `ReportTracker` owns it, so the Night itself gains no line. The rows
+of the two tickets share the screen's height, to a floor, so eight players fit the smallest canvas.
+
 ## Popups, motion and sound
 
 ![Popup storyboard](../research/progression-popups.png)
@@ -678,6 +739,22 @@ players' rows are untouched by it (the icon and level beside a name are #1077's)
   still audible. Nothing is sound-only: the cards are the picture. This replaces the first proposal's ticket punch and
   bells for level and tier cues.
 
+### Built (#1064)
+
+The lane is `PopupLane` (`game/ui/hud/`), a HUD part in the night and an overlay of the router's layer in the
+menus (`MenuPopups`); how it works, and what the tests measure, is
+[the research page](../research/popup-lane.md). The choices the design page left open:
+
+- **The tier is the level's card made longer** (one card for the moment, with the marquee's bulbs chasing along its
+  edges), not a second card.
+- **Punch holes** are the levels left to the next unlock (one more punched for each level nearer, eight at most);
+  **the next unlock** reads like everywhere a level sits beside a name: its icon, its level, a little padding, its name.
+- **The lane never goes over the crosshair.** Under a round banner (and a boss bar) there is room for fewer cards on a
+  small canvas: the rest wait, in order, until the banner leaves or a card does.
+- **A finished challenge** is a card of the lane (so the prompt on the left edge says only the steps) unless the player
+  turned the cards off: then the prompt says the finish as before.
+- **Setting:** `Level-up popups` in Settings, Accessibility: All, Big ones only (level, tier, challenge), Off.
+
 ## Voice lines
 
 The maintainer: **new voice lines for progression events, heard by all clients**, **multiple celebration lines for
@@ -689,8 +766,10 @@ already makes a voice from a server event, and a teammate's level up is heard by
 combat chatter but not urgent lines (hurt, downed, a boss, a warning). **Made (#1063, 2026-11-04)**: 24 takes in each
 voice on the free tier, at the maintainer's word ("go ahead and get them going, I'll get the package with commercial
 rights in a moment"); they are **not licensed for commercial use** and are regenerated under the commercial plan before
-release ([#252](https://github.com/Ryubara/deadnight/issues/252)). The server events are wired to them when #1059 lands
-([research](../research/audio.md#the-progression-voice-lines-1063)).
+release ([#252](https://github.com/Ryubara/deadnight/issues/252)). The server's `level_up`, `tier_up` and
+`unlock_earned` and the challenge tracker's `challenge_done` (#1135) are wired to them for every client
+([research](../research/audio.md#the-progression-voice-lines-1063),
+[sound design](audio.md#the-soldiers-voices)).
 
 ## Level icons
 

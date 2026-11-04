@@ -10,6 +10,9 @@ extends RefCounted
 ##   board.seconds_to_refresh(), board.refresh_text()   the time until the next dailies
 ##   board.swap_order(slot)   changes an order (free, unlimited) and saves
 ##   board.refresh()          call when the menu is shown again: a new day deals new dailies
+##   board.reload()           reads the file again when something else wrote it (the account's board
+##                            read at sign-in, a night that ended); `watch_file()` does it by itself
+##                            when `ChallengeUplink` replaces the file
 ##
 ## A daily or order: `{id, text, progress, target, fraction (0..1), done, tier, reward}`; an order
 ## also has `slot` and `pillar`. A daily expires at the next refresh, done or not. A milestone:
@@ -18,6 +21,10 @@ extends RefCounted
 ## `tier` is "short", "medium" or "long". `reward` is a placeholder dictionary (nothing pays yet).
 
 signal changed
+
+## The boards that asked to follow their file (`watch_file`), weakly: a menu that is gone is not
+## kept.
+static var _watching: Array[WeakRef] = []
 
 var catalog: ChallengeCatalog
 var clock: ChallengeClock
@@ -45,6 +52,45 @@ static func open(
 	board.profile = read["profile"] if read["profile"] != null else ChallengeProfile.fresh()
 	board.refresh()
 	return board
+
+
+## Follows the file: when the account's board replaces it (`file_replaced`), this board reads it and
+## says `changed`. The menu's board does; a night's board never does (its tracker holds the
+## profile).
+func watch_file() -> void:
+	_watching = _watching.filter(func(ref: WeakRef) -> bool: return ref.get_ref() != null)
+	_watching.append(weakref(self))
+
+
+## Tells the boards watching `file_path` that it was written by someone else.
+static func file_replaced(file_path: String) -> void:
+	for ref in _watching:
+		var board := ref.get_ref() as ChallengeBoard
+		if board != null and board.path == file_path:
+			board.reload()
+
+
+## Takes the file's board when it is not the one held (another board or the sign-in wrote it).
+## A file that cannot be used (damaged, or a newer game's) changes nothing.
+func reload() -> void:
+	var read := ChallengeSave.read(path)
+	if read["problem"] == ChallengeSave.NEWER_VERSION:
+		problem = ChallengeSave.NEWER_VERSION
+		return
+	var found: ChallengeProfile = read["profile"]
+	if found == null or _same(found, profile):
+		return
+	problem = ChallengeSave.NO_PROBLEM
+	profile = found
+	refresh()
+
+
+static func _same(a: ChallengeProfile, b: ChallengeProfile) -> bool:
+	return (
+		JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict())
+		and a.account == b.account
+		and a.account_revision == b.account_revision
+	)
 
 
 ## Deals the day if it turned, settles finished orders, and saves what changed.

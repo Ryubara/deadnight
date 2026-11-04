@@ -1,8 +1,9 @@
 class_name PingAim
 extends RefCounted
-## What a person's ping key marks: the thing the crosshair is on, else the place it lands. Pure
-## functions of the camera ray and what the client knows, so a test needs no window. The result is
-## the `ping` action the server validates (`NightServer.ping`); the server re-checks every claim.
+## What a person's ping key marks: the thing the crosshair is on, else the place it lands. `pick` is
+## a pure function of the camera ray and what the client knows, so a test needs no window. The
+## result is the `ping` action the server validates (`NightServer.ping`), and it re-checks every
+## claim.
 
 ## Metres from the camera ray that a zombie or a downed teammate counts as under the crosshair.
 const RAY_RADIUS := 1.2
@@ -10,6 +11,32 @@ const RAY_RADIUS := 1.2
 const SNAP := 4.0
 ## The ray's reach when it lands on nothing.
 const REACH := 40.0
+
+
+## What the ping key marks for `aim`: the ray cast through `space`, and what the client knows of the
+## night (`world`, `state`), put to `pick`.
+static func request(
+	aim: NightCommand, world: NightWorld, state: ClientState, space: PhysicsDirectSpaceState3D
+) -> Dictionary:
+	var landed := Vector3.INF
+	var cast := PhysicsRayQueryParameters3D.create(
+		aim.origin, aim.origin + aim.dir * REACH, CameraProbe.PLAYER_MASK | PhysicsLayers.BODY
+	)
+	var hit := space.intersect_ray(cast)
+	if not hit.is_empty():
+		landed = hit["position"]
+	var shut := {}
+	var index := 0
+	for door_id in world.door_ids():
+		if not state.frame.get("doors", []).has(door_id):
+			shut[index] = world.door_points(door_id)
+		index += 1
+	var ammo: Array[Vector3] = []
+	for spot in world.shop_spots():
+		if spot["kind"] == &"ammo":
+			ammo.append(spot["position"])
+	var players: Dictionary = state.frame.get("players", {})
+	return pick(aim.origin, aim.dir, state.zombies, players, state.player_id, shut, ammo, landed)
 
 
 ## `door_points` is {door index: [points]} of the doors still shut; `ammo_spots` the spots that sell

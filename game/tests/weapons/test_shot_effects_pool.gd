@@ -43,6 +43,9 @@ func _fight_frame(index: int) -> void:
 
 
 func test_a_long_fight_adds_no_node_and_holds_no_more_resources() -> void:
+	# Sounds an earlier suite left playing end during the count, each freeing its playback in a
+	# frame of its own: a fall that hides a leak of as many objects (#1138).
+	assert_bool(await QuietCount.settle(get_tree())).is_true()
 	for i in WARM_FRAMES:
 		await _fight_frame(i)
 	var nodes_before := _added
