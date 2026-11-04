@@ -88,7 +88,7 @@ the random spread of every play (a level jitter of +-0.8 dB is on every play too
 | A hint just after a press, a tab or a screen change | the sound already made covers it; the focus moves by itself |
 | The sign's flicker every 4.7 s | a sound that repeats on a timer is noise; revisit with an ambience bed (no menu music exists) |
 | The panel sliding in | the tab sound already went with it |
-| Purchase and unlock | the Shop buys nothing yet (a real row's press only shows a note, an ordinary press); when buying lands its event is the till (`till_ring`, #?) |
+| Purchase and unlock | the Shop buys nothing yet (a real row's press only shows a note, an ordinary press); when buying lands its event is the till (`till_ring`) |
 
 Not in the table because it does not exist yet: a menu **music** bed (the menu is silent between sounds) and a menu
 **ambience** (the drive-in's crickets and the projector). Both would make the menu feel alive more than any click;
@@ -186,6 +186,6 @@ Plots and a recording with sound of both walks are on the pull request.
   same *peak* as a click they are 8 to 10 LU louder, so the first set of levels (equal peaks by rung) had the screen
   change louder than the press that caused it and the commit louder than a pistol shot. The ladder is read on both the
   peak and the loudness now.
-- **Open:** a human's ears on a laptop speaker and a phone (whether a hint at -27 dBFS is plain; it is one number in the
-  bank); a menu ambience and music bed; the shop's purchase sound when buying exists; the lobby's ready and countdown
-  sounds (the lobby has no countdown today).
+- **Open** (#926 holds the ears, the bed and the lobby's sounds): a human's ears on a laptop speaker and a phone
+  (whether a hint at -27 dBFS is plain; it is one number in the bank); a menu ambience and music bed; the shop's
+  purchase sound when buying exists; the lobby's ready and countdown sounds (the lobby has no countdown today).
