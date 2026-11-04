@@ -242,6 +242,17 @@ func clamped() -> MatchSettings:
 	return out
 
 
+## A copy with the map the host's level opens: a map the level does not open falls back to the
+## default (`MapRegistry.fit_host`). The server applies it to the rules of a ticket, from the level
+## the backend signed in, so a client's settings message cannot unlock a map.
+func fit_host(host_level: int) -> MatchSettings:
+	var out := MatchSettings.from_dict(to_dict())
+	if out == null:
+		out = MatchSettings.new()
+	out.map = MapRegistry.fit_host(map, host_level)
+	return out
+
+
 ## The most alive at once a host may ask for: the rules' ceiling (the crowd the lot stands).
 static func _alive_ceiling() -> int:
 	return RoundTuning.new().alive_cap_ceiling

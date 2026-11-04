@@ -52,3 +52,10 @@ the query it builds. A page that must stay plain passes `smoke.serve(folder, pro
 proxies for `create_object`, a wrapped `eval`) and fails the web job above `--max-per-second` (1: a plain page
 publishes nothing and makes no evals, #983); `--probe` shows the
 probes' own traffic. `heap_soak.py --plain` soaks the page a player opens. Numbers: `docs/research/web-heap.md`.
+
+`tools/web_smoke/arrival_web.py` plays the helicopter drop of a player's arrival (#1057): Solo from the menu on either map
+(`--map`), a phone-sized page (`--size 844x390`), a skip (`--skip`), or a late join to a game server of this machine with
+a bot in the night (`--late --godot <the pinned Godot>`); it counts the WebGL calls through the show and after it
+(`smoke.trace`) and fails on a console error, a show that never began or ended, or a HUD that did not give way. A page that
+asks for the probes does not play the show unless it has `?arrival` (`--unasked` checks that it does not). Numbers:
+[the arrival](arrival.md).

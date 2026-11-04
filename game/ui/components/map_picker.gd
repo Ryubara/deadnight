@@ -6,7 +6,10 @@ extends GridContainer
 ## and the d-pad walk the cards (Up and Down between rows, Left and Right along one), Accept or a
 ## click or a tap chooses the card in focus, and a card that is not built yet (`MapCard.is_locked`)
 ## can be focused and read but chooses nothing: the picker says `blocked` and keeps the choice it
-## had.
+## had. So does a card the host's level does not open (`level`, `MapCard.is_level_locked`): it shows
+## `???` and what unlocks it, and only the host's picker decides (a guest's picker is read-only and
+## shows the map the lobby is on, whatever the guest's level: a guest below a map's level still
+## plays a hosted night there).
 ##
 ## A row of `MatchSettingsPanel`, so Solo and a room host's lobby show the same picker. It holds
 ## only the id of the map; the panel puts it into the `MatchSettings` it hands out.
@@ -22,6 +25,14 @@ const GAP := 8
 
 var cards: Array[MapCard] = []
 var selected_id := MapRegistry.DEFAULT
+## The level of the person choosing, which decides which cards are open; the local player's by
+## default (`PlayerLevel`).
+var level := PlayerLevel.local():
+	set(value):
+		level = value
+		for card in cards:
+			card.player_level = level
+		_keep_choice_open()
 
 var _editable := true
 
@@ -35,6 +46,7 @@ func _init() -> void:
 		card.info = info
 		card.name = info.id
 		card.set_width(WIDTH)
+		card.player_level = level
 		card.pressed.connect(_on_pressed.bind(card))
 		add_child(card)
 		cards.append(card)
@@ -45,7 +57,9 @@ func _ready() -> void:
 	_link_focus()
 
 
-## Marks `id` as the choice without saying `chosen`. An id that cannot be played marks the default.
+## Marks `id` as the choice without saying `chosen`. An id that cannot be played marks the default
+## (a map the level does not open is marked all the same, to show a lobby's map to a guest; a picker
+## that can be edited drops back to the default when it takes the choice, `set_editable`).
 func set_selected(id: String) -> void:
 	selected_id = id if MapRegistry.is_playable(id) else MapRegistry.DEFAULT
 	for card in cards:
@@ -68,6 +82,7 @@ func card_for(id: String) -> MapCard:
 ## A guest sees the host's map and cannot change it.
 func set_editable(on: bool) -> void:
 	_editable = on
+	_keep_choice_open()
 	for card in cards:
 		card.focus_mode = Control.FOCUS_ALL if on else Control.FOCUS_NONE
 		card.mouse_filter = Control.MOUSE_FILTER_STOP if on else Control.MOUSE_FILTER_IGNORE
@@ -75,6 +90,13 @@ func set_editable(on: bool) -> void:
 
 func is_editable() -> bool:
 	return _editable
+
+
+## A host cannot sit on a map their level does not open (a lobby handed down by a higher host, or
+## the level changing): the choice falls back to the default map.
+func _keep_choice_open() -> void:
+	if _editable and not MapRegistry.is_open(selected_id, level):
+		set_selected(MapRegistry.DEFAULT)
 
 
 ## The phone's form: cards without a picture, two to a row, a little over a tap target high.
@@ -115,7 +137,7 @@ func last_card() -> Control:
 func _on_pressed(card: MapCard) -> void:
 	if not _editable:
 		return
-	if card.is_locked():
+	if card.blocks():
 		blocked.emit(card.info)
 		return
 	if card.info.id == selected_id:

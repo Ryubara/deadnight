@@ -16,6 +16,7 @@ listed and not built is shown as a locked "coming soon" card (a `MapInfo` with `
 | `scene_path` | The scene `NightWorld` builds: the lot's node layout (doors, spawns, lamps, switches, fuel), or a scene `MapLayout` reads (the second map's) |
 | `preview_path` | The card's picture, 16:9 (`assets/ui/maps/`); none draws the locked card's hatched stub |
 | `area_m2`, `min_players`, `max_players` | What the card says: `13,200 m² · 1 to 8 players` |
+| `unlock_level` | The account level that opens the map: the drive-in 1, the back rooms **10** (see [Levels open maps](#levels-open-maps)) |
 | `shipped` | False while the map is not built: listed, locked, never loaded (both maps are shipped; the suites use a stub, `StubMaps`) |
 
 `MapRegistry.of(id)` is the map to load: an id nobody knows, or a map that is not playable yet, is the drive-in lot,
@@ -42,6 +43,32 @@ spawn groups and saved meshes is read through `MapLayout` ([the second map](smal
 The small indoor map's entry (`small_indoor.tres`) has `scene_path`, a picture (`assets/ui/maps/small_indoor_preview.png`),
 `max_players = 8` (the room's seats, as the lot) and `shipped = true`; its id is in `PLAYABLE_MAPS` of the backend.
 
+## Levels open maps
+
+Decision 17 of [the progression plan](progression.md#maps) (the maintainer, 2026-11-04: "Maps locked by levels: yes",
+"Host's level decides the map", and for the back rooms "it's not too early. Level 10 is fine."). `MapInfo.unlock_level`
+is data, so moving a map is one line in its `.tres`; `MapRegistry.RESERVED_UNLOCKS` keeps the rungs 25 and 40 for maps
+three and four. With the 8-hour curve level 10 comes after about half an hour of play.
+
+- **The host's level decides.** The picker of the person who hosts (Solo's Play screen, a room host's lobby) offers a map
+  only when that person's level opens it (`MapPicker.level`, from `PlayerLevel.local()`, the cached profile: a Guest
+  account is a real account with a level). A card the level does not open is [hidden](#the-picker); a press, Enter or
+  A on it chooses nothing and plays the refusal (`map_card_locked`). Solo's Start also fits the choice to the level
+  (`MatchSettings.fit_host`), and a picker that takes the host role holding a map the level does not open falls back to
+  the lot.
+- **A guest below the level still plays there.** A guest's picker is read only and shows the map the lobby is on by name,
+  whatever the guest's level; the night loads it from the WELCOME as any map.
+- **The server checks the host's level from the ticket, never from a client's message.** The backend signs the lobby
+  host's level into every ticket of the match (`hostLevel`; every ticket carries the host's, so the order the players
+  arrive in decides nothing). `TicketVerifier.admit` reads it and applies `MatchSettings.fit_host`: a ticket whose rules
+  name a map the host's level does not open opens the room on the drive-in lot (the other rules stand) and the game
+  server logs `map_locked`. A claim that is there but damaged counts as level 1, so it never opens a map. **A ticket
+  with no `hostLevel` (a backend from before levels) leaves the host's choice**: the check starts to bite when the backend
+  signs the claim (the backend's profile slot, #1075, and the follow-up that signs `hostLevel` into tickets). A client
+  cannot change a room's rules over the net (`NightHost.configure_match` is the server's).
+- **In a browser test** a page that asks for the probes sets `window.deadnight_player_level` before the game starts
+  (`tools/web_smoke/smoke.py give_level`), because a fresh build has no profile and so every player is level 1.
+
 ## The choice is a match setting
 
 `MatchSettings.map` (key `map`, a String) goes wherever the other settings go: the rules' snapshot, so every WELCOME
@@ -65,8 +92,15 @@ A card is a ticket drawn as the menu's are (`MenuLook.draw_ticket`, the cream pa
 perforated stub, `MenuItemButton`'s amber outline for the focus or the pointer): the preview on the stub, the name in
 the display face, the size and the players under it, and `SELECTED` in red on the chosen card (with a red outline). A
 map that is not built (none is today; the suites use a stub) is on shaded paper with a hatched stub, a padlock and a
-COMING SOON stamp; it takes the focus (a keyboard can read it) but a press chooses nothing (`MapPicker.blocked`). A
-phone held sideways gets the compact card: no picture, 74 units high, the name over one line of facts.
+COMING SOON stamp; it takes the focus (a keyboard can read it) but a press chooses nothing (`MapPicker.blocked`).
+
+A map the level does not open yet is a **hidden card**, in the look the wardrobe uses for what is locked (#1065): the
+name is `???`, the stub is the map's picture as a dark silhouette under a padlock and a `LEVEL 10` stamp, and under the
+name it says `Level 10`. With the focus or the pointer on it, it says what to do ("Reach level 10 to host a night on this
+map."), and the pointer's tip says the same; a screen reader gets "Locked map, Reach level 10 to host a night on this
+map." and never the name. It takes the focus, and a press chooses nothing and plays the refusal. The card of the map
+the lobby is on is never hidden. A phone held sideways gets the compact card: no picture, 74 units high, the name over
+one line of facts (the hidden card's two lines are `Level 10` and, on focus, `Reach level 10` / `to host here.`).
 
 | Input | What it does |
 | --- | --- |
@@ -88,5 +122,8 @@ A guest's lobby shows the host's choice and cannot move it (`set_editable(false)
 Proof: `tests/world/test_map_registry.gd`, `test_map_night.gd` (a stub map and the second map built by the world, the
 solo night, and the lot for a map that cannot be played), `tests/net/test_map_choice_net.gd` (a room on the stub map and
 on the second map over a real socket, and a client built on the wrong map builds again), `tests/ui/test_map_picker.gd`
-(keyboard, gamepad and touch, on stub maps, and the second map's card chosen), `spikes/backend/test/rooms.test.ts`, and
+(keyboard, gamepad and touch, on stub maps, the second map's card chosen, and the hidden card below level 10: focus, Enter,
+A, a click and a tap refused, the level rising, a guest below it seeing the lobby's map), `tests/net/test_ticket_verifier.gd`
+and `tests/net/test_map_unlock_net.gd` (a level-3 host, a level-12 host and a guest of either, over a real socket),
+`tests/progression/test_player_level.gd`, `spikes/backend/test/rooms.test.ts`, and
 the captures in the pull request.

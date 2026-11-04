@@ -50,6 +50,10 @@ budgets, palette) are in the [style bible](style.md).
 How big a weapon is, where the stock, the grip and the support hand sit, and where the barrel points: [Weapons in the
 hands](weapon-hold.md).
 
+## Arriving
+
+How a player comes into a night, by helicopter on their own screen, and how the server keeps them safe meanwhile: [the arrival](arrival.md).
+
 ## Shots on screen
 
 What a shot looks like and how the view answers it: [Shot feedback](shot-feedback.md) (the toon muzzle flash and the

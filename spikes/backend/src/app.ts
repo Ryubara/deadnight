@@ -11,6 +11,7 @@ import { GameServerRegistry } from "./servers.ts";
 import { checkSave, SaveRejected } from "./saves.ts";
 import { RevisionConflict, type Store, type User } from "./store.ts";
 import { signToken, verifyToken } from "./tokens.ts";
+import { NIGHT_CAP, PROFILE_SLOT, ProgressService } from "./progression.ts";
 
 export const SESSION_TTL_SECONDS = 60 * 60;
 export const TICKET_TTL_SECONDS = 60;
@@ -55,6 +56,8 @@ export interface Deps {
 declare module "fastify" {
   interface FastifyRequest {
     userId: string;
+    /** When the session was issued (seconds since the epoch): where the XP clamp counts from for a first write. */
+    sessionIat: number;
   }
 }
 
@@ -102,6 +105,7 @@ export function buildApp(deps: Deps): FastifyInstance {
       disableRequestLogging: (request) => request.url === "/health" || request.url.startsWith("/internal/"),
     }),
   });
+  const progress = new ProgressService(store, deps.now);
   const lobbies = new LobbyService({
     allocate: (matchId) => registry.allocate(matchId),
     release: (matchId) => void registry.release(matchId),
@@ -150,6 +154,7 @@ export function buildApp(deps: Deps): FastifyInstance {
     const claims = token ? verifyToken(config.sessionSecret, "session", token) : null;
     if (!claims) return reply.code(401).send({ error: "unauthorized" });
     request.userId = claims.sub;
+    request.sessionIat = claims.iat;
   };
 
   const requireGameServer = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
@@ -418,6 +423,8 @@ export function buildApp(deps: Deps): FastifyInstance {
       serverId: server.id,
       jti: randomUUID(),
       name: seat.name,
+      // What the seat's level is seen by in the night: from the stored profile, never the client's word.
+      ...(await progress.claimsFor(seat.userId)),
       // Every ticket of a match carries the same rules; the game server applies them when the first one opens the room.
       ...(lobby.settings ? { settings: lobby.settings } : {}),
     });
@@ -458,6 +465,9 @@ export function buildApp(deps: Deps): FastifyInstance {
     async (request) => {
       const { revision, schemaVersion, data } = request.body;
       checkSave(schemaVersion, data);
+      // The profile is the one slot the backend reads: it must read, take nothing away and not rise faster than a
+      // person can play (docs/research/platform-backend.md#progression).
+      if (request.params.slot === PROFILE_SLOT) return progress.soloWrite(request.userId, request.body, request.sessionIat);
       return store.putSave(request.userId, request.params.slot, { schemaVersion, data }, revision);
     },
   );
@@ -501,6 +511,71 @@ export function buildApp(deps: Deps): FastifyInstance {
       for (const [matchId, players] of Object.entries(request.body.players ?? {})) lobbies.setPlayers(matchId, players);
       for (const [matchId, round] of Object.entries(request.body.rounds ?? {})) lobbies.setRound(matchId, round);
       return reply.code(204).send();
+    },
+  );
+
+  // A game server's report of one round (or of the night's end): each seat's XP, which the backend adds to the seat's
+  // profile once. The key is (match, kind, round, user), so a retry pays nothing; the answer says per seat what was
+  // paid, so a server that lost the answer can post the same report again. Never called per kill.
+  app.post<{
+    Params: { matchId: string };
+    Body: {
+      kind: "round" | "night";
+      round: number;
+      seats: {
+        userId: string;
+        xp: number;
+        openingNight?: boolean;
+        bonusDay?: number;
+        done?: string[];
+        lines?: Record<string, number>;
+      }[];
+    };
+  }>(
+    "/internal/matches/:matchId/report",
+    {
+      onRequest: requireGameServer,
+      schema: {
+        params: { type: "object", properties: { matchId: { type: "string", minLength: 1, maxLength: 64 } } },
+        body: {
+          type: "object",
+          required: ["kind", "round", "seats"],
+          properties: {
+            kind: { type: "string", enum: ["round", "night"] },
+            round: { type: "integer", minimum: 0, maximum: 10000 },
+            seats: {
+              type: "array",
+              maxItems: 64,
+              items: {
+                type: "object",
+                required: ["userId", "xp"],
+                properties: {
+                  userId: { type: "string", minLength: 1, maxLength: 64 },
+                  xp: { type: "integer", minimum: 0, maximum: NIGHT_CAP },
+                  openingNight: { type: "boolean" },
+                  bonusDay: { type: "integer", minimum: 0, maximum: 1_000_000 },
+                  done: { type: "array", maxItems: 100, items: { type: "string", minLength: 1, maxLength: 64 } },
+                  lines: {
+                    type: "object",
+                    maxProperties: 32,
+                    propertyNames: { pattern: "^[a-z0-9_:-]{1,32}$" },
+                    additionalProperties: { type: "integer", minimum: 0, maximum: 1_000_000_000 },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request) => {
+      const { kind, round, seats } = request.body;
+      const results = await progress.applyReport(request.params.matchId, kind, round, seats);
+      request.log.info(
+        { matchId: request.params.matchId, kind, round, paid: results.filter((r) => r.status === "paid").length, seats: seats.length },
+        "round report",
+      );
+      return { matchId: request.params.matchId, kind, round, seats: results };
     },
   );
 

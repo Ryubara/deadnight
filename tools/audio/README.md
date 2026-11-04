@@ -86,5 +86,9 @@ built from `weapon_recipes.py`'s `report` and `tail` and listed by `generate.py`
 `equip_` and `dry_` plus the gun id, and `reload_<gun>_<step>`.
 `docs/research/gun-audio.md#the-second-batch-of-firearms-790`.
 
+The helicopter drop's sounds (#1057) are `arrival_recipes.py` (`heli_loop`, a seamless 4 s loop of a piston helicopter's
+rotor beat, wash and engine; `rope_slide`; `drop_land`), in `game/assets/audio/arrival/`, played by the arrival show from
+the `on_demand` `arrival` bank (nothing loads it until a show plays). `docs/design/arrival.md`.
+
 The perk drink (#912) is `drink_recipes.py` (`drink_open`, `drink_gulp`, `drink_discard`), in `game/assets/audio/perks/`,
 played by the drink clip's events from the deferred `perks` bank (`docs/design/animation.md#drink`).
