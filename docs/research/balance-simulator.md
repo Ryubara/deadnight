@@ -120,19 +120,19 @@ The start weapon went from the revolver (24 a hit, 86 a second) to the House Pis
 ([the table](../design/weapons.md#the-house-pistol-and-the-hit-zones-898)). The simulator and the bots start with it
 (`SimWeapons.START`, `WeaponCatalog.START_WEAPON`, `start_weapons`); no range, health or price of
 the night was changed. Gate cells
-(60 nights each, seed 4000, medians; baseline from a detached checkout of `main` at 69d92354, the same checkout's run before
-the change; the other columns are the branch at the same commit with the change uncommitted):
+(60 nights each, seed 4000, medians; the baseline is a detached checkout of `main` at d1056635 run before the
+change, the House Pistol row is the branch merged with the same `main`; an earlier run on the first `main` of the branch,
+69d92354, read 5 / 13 / 15 / 16 / 18 / 18 and 5 / 11 / 15 / 16 / 18 / 18 with the pistol, with a spread of 0.8 or 0.6):
 
 | Cell | weak x1 | average x1 | average x2 | average x4 | average x8 | strong x1 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Range | 4 to 9 | 8 to 14 | 11 to 16 | 12 to 17 | 14 to 20 | 12 to 19 |
-| `main` | 5 | 13 | 15 | 16 | 18 | 18 |
-| House Pistol start (spread 0.8) | 5 | 11 | 15 | 16 | 18 | 18 |
-| House Pistol start (shipped, spread 0.6) | 5 | 11 | 15 | 16 | 18 | 18 |
+| `main` (d1056635) | 5 | 11 | 14 | 16 | 17 | 17 |
+| House Pistol start | 5 | 10 | 12 | 15 | 18 | 14 |
 
-Only the average solo player moves (two rounds earlier, still inside its range): the extra shots a round-1 and round-2
-walker takes cost it time before the first wall weapon, which the rest of the cells do not feel (more players share the
-shots; the strong player and the weak one are bounded by other things). Nothing was retuned. 60 nights a cell is the CI
+The cost is the opening: the extra shots a round-1 to round-5 walker takes cost every player time and rounds before the
+first wall weapon, so the solo and small-party medians move down (average one to two rounds, strong solo three) and all
+six stay inside their ranges. Nothing was retuned. 60 nights a cell is the CI
 gate's sample, not the nightly run's hundred.
 
 ## The re-cut and the tonic (#281)
