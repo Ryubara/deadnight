@@ -43,9 +43,6 @@ const STEP := 1.0 / 60.0
 const PLAYER_ID := 1
 ## The fixed seed of tests, benches and tours: a night that must play the same each time.
 const SEED := 1958
-## How far past the low-tank line (a fraction of a full tank) the bot waits before it lights an
-## area again.
-const SWITCH_RESUME_MARGIN := 0.15
 ## The server's events that move the Soldier's grenade clips.
 const GRENADE_CLIP_EVENTS: Array[StringName] = [
 	&"cook_started", &"throw_started", &"grenade_dropped", &"grenade_exploded"
@@ -912,57 +909,7 @@ func _make_autopilot() -> void:
 	var level := BotLevel.new(_sight.callable(), world.is_lit, rules_tuning.rounds, world.map())
 	bot = BotClient.new(state, BotProfile.autopilot(), SEED, link.send, level)
 	bot.legacy = autopilot
-	var tuning: RulesTuning = rules_tuning
-	for item in tuning.economy.items:
-		if item.kind == ShopItem.Kind.DOOR:
-			autopilot.prices[item.id] = item.price
-			autopilot.order.append(item.id)
-	autopilot.spots = world.shop_spots()
-	for item in tuning.economy.items:
-		match item.kind:
-			ShopItem.Kind.WEAPON, ShopItem.Kind.CRANE:
-				autopilot.prices_of_goods[item.id] = item.price
-				autopilot.wanted.append(item.id)
-				if item.kind == ShopItem.Kind.CRANE:
-					autopilot.crane_pool.assign(item.pool)
-			ShopItem.Kind.AMMO:
-				autopilot.ammo_prices[item.weapon] = item.price
-			ShopItem.Kind.UPGRADE:
-				autopilot.recut_price = item.price
-			ShopItem.Kind.TONIC:
-				if item.health_bonus > 0.0:
-					autopilot.tonic_price = item.price
-					autopilot.tonic_id = item.id
-	autopilot.wanted.sort_custom(
-		func(a: StringName, b: StringName) -> bool:
-			return autopilot.prices_of_goods[a] < autopilot.prices_of_goods[b]
-	)
-	autopilot.whole_boards = tuning.barricades.boards
-	autopilot.switches.capacity = tuning.fuel.capacity
-	autopilot.switches.save_below = tuning.fuel.low_fraction
-	autopilot.switches.resume_above = tuning.fuel.low_fraction + SWITCH_RESUME_MARGIN
-	for circuit_id in world.switches.circuit_ids():
-		autopilot.switches.goals[circuit_id] = world.switches.standing_point(circuit_id)
-		autopilot.switches.doors[circuit_id] = world.switches.door_of(circuit_id)
-	autopilot.revive.reach = (
-		(night_tuning if night_tuning != null else NightTuning.shipped()).revive_reach
-	)
-	autopilot.revive.seconds = tuning.health.revive_seconds
-	autopilot.fuel.capacity = tuning.fuel.capacity
-	autopilot.fuel.refuel_at = tuning.fuel.low_fraction
-	autopilot.fuel.fill_to = tuning.fuel.low_fraction + SWITCH_RESUME_MARGIN
-	for item in tuning.economy.items:
-		if item.kind == ShopItem.Kind.FUEL:
-			autopilot.fuel.item = item
-	for id in world.fuel.ids():
-		autopilot.fuel.goals[id] = world.fuel.standing_point(id)
-		autopilot.fuel.doors[id] = world.fuel.door_of(id)
-	for id in world.barricade_ids():
-		autopilot.repair_goals[id] = world.repair_spot(id)
-	for door_id in autopilot.order:
-		var points := world.door_points(door_id)
-		if not points.is_empty():
-			autopilot.door_goals[door_id] = points[0]
+	AutopilotSetup.configure(autopilot, world, rules_tuning, night_tuning)
 
 
 ## The shoulder camera looks where the bot looks: the bot's yaw arrives in steps, and the rig

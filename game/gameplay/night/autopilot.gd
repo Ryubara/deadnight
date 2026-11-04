@@ -34,6 +34,19 @@ const PLAN_EVERY := 30
 const SWAP_EVERY := 20
 ## Metres a path may end short of a spot for the spot to count as reachable.
 const REACHABLE := 2.5
+## Metres of height within which it counts as being at a goal (a locker on the floor above, a
+## metre or two over its head, is not arrived at), and the metres of walk a metre of height counts
+## for when it picks the nearest spot (the floors are far apart by the stairs).
+const ARRIVE_HEIGHT := 1.5
+const RISE_WEIGHT := 8.0
+## How hard a flight bends toward home, and toward the shop when the gun in hand is nearly out
+## (1.0 would be as hard as the flight itself).
+const HOME_PULL := 0.35
+const SHOP_PULL := 0.8
+## Metres within which a zombie is a threat for the choice of the weapon in hand: an empty gun is
+## put away for a blade only with one this near, and with none the gun to buy rounds for is taken
+## up.
+const THREAT_RANGE := 12.0
 ## It melees a zombie this close.
 const MELEE_RANGE := 1.9
 
@@ -114,7 +127,7 @@ func decide(delta: float) -> NightCommand:
 		wish = _flee(here, near["position"])
 	elif melee and not near.is_empty():
 		wish = _toward(here, near["position"])
-	elif kind != &"door":
+	elif not _buying_door(kind, prompt):
 		wish = _toward(here, _destination())
 	wish = _unstuck(wish, here, delta)
 	if wish != Vector3.ZERO:
@@ -126,7 +139,8 @@ func decide(delta: float) -> NightCommand:
 		_aim(command, here, target)
 		var close := _flat(here, target["position"]) < MELEE_RANGE
 		command.fire = not state.me().get("reloading", false) and (close or not melee)
-	if _swap_wait == 0 and _wants_swap(held):
+	var threatened := not near.is_empty() and _flat(here, near["position"]) < THREAT_RANGE
+	if _swap_wait == 0 and (_wants_swap(held, threatened) or _wants_refill_gun(held, threatened)):
 		command.swap = true
 		_swap_wait = SWAP_EVERY
 	var dry: bool = state.me().get("ammo", 0) <= 0 and state.me().get("reserve", 0) > 0
@@ -161,6 +175,12 @@ func decide(delta: float) -> NightCommand:
 	elif kind == &"fuel":
 		command.use = fuel.wants_use(prompt, state.frame, state.points())
 	return command
+
+
+## Whether it stands at a door it can pay for (it holds still to buy it): at a door it cannot pay
+## for it walks on, or a person who is dry and short of a door's price would stand there for good.
+func _buying_door(kind: StringName, prompt: Dictionary) -> bool:
+	return kind == &"door" and state.points() >= int(prompt.get("price", BIG_PRICE))
 
 
 ## Walks to a downed teammate and holds `use` beside them: no shooting, reloading or swapping (the
@@ -199,9 +219,39 @@ func _low_on_rounds(held: WeaponDef) -> bool:
 	return held != null and not held.is_melee() and _rounds_of(held.id) <= held.magazine_size
 
 
+## The firearm to buy rounds for: the one in hand when it is nearly out; when the hand holds a blade
+## (a gun that ran dry was put away for it), the carried firearm that is. Null for none: a gun that
+## has rounds in hand needs no trip.
+func _refill_gun(held: WeaponDef) -> WeaponDef:
+	if held == null:
+		return null
+	if not held.is_melee():
+		return held if _low_on_rounds(held) else null
+	var gun: WeaponDef = null
+	var fewest := INF
+	for id: StringName in state.me().get("arms", {}):
+		var def := WeaponCatalog.get_def(id)
+		if def == null or def.is_melee() or not ammo_prices.has(id):
+			continue
+		var rounds := _rounds_of(id)
+		if rounds <= def.magazine_size and rounds < fewest:
+			gun = def
+			fewest = rounds
+	return gun
+
+
+## Whether to take the gun that needs rounds back in hand from a blade: nothing threatens, and it
+## can pay for them (rounds are bought for the gun in hand).
+func _wants_refill_gun(held: WeaponDef, threatened: bool) -> bool:
+	if threatened or held == null or not held.is_melee():
+		return false
+	var gun := _refill_gun(held)
+	return gun != null and state.points() >= int(ammo_prices.get(gun.id, BIG_PRICE))
+
+
 ## Swap away from a melee weapon or an empty gun to one that can shoot; from an empty gun to the
 ## melee weapon when nothing else can.
-func _wants_swap(held: WeaponDef) -> bool:
+func _wants_swap(held: WeaponDef, threatened: bool = true) -> bool:
 	if held == null:
 		return false
 	if not held.is_melee() and _rounds_of(held.id) > 0:
@@ -210,12 +260,19 @@ func _wants_swap(held: WeaponDef) -> bool:
 	if arms.size() < 2:
 		return false
 	var other_has_rounds := false
+	var other_is_melee := false
 	for id: StringName in arms:
-		if id != held.id and not WeaponCatalog.get_def(id).is_melee() and _rounds_of(id) > 0:
+		if id == held.id:
+			continue
+		if WeaponCatalog.get_def(id).is_melee():
+			other_is_melee = true
+		elif _rounds_of(id) > 0:
 			other_has_rounds = true
 	if held.is_melee():
 		return other_has_rounds
-	return true
+	# An empty gun goes to a gun that can shoot, or to a blade when something is near, and not to
+	# another empty gun (it would swap back and forth for as long as it stays dry).
+	return other_has_rounds or (other_is_melee and threatened)
 
 
 ## Whether it wants to buy what the prompt offers: a weapon or a crane prize it can afford with
@@ -238,7 +295,7 @@ func _plan_shopping(here: Vector3) -> Dictionary:
 	for spot in spots:
 		if not _is_goal(spot, held):
 			continue
-		var apart := _flat(here, spot["position"])
+		var apart := _flat(here, spot["position"]) + RISE_WEIGHT * absf(here.y - spot["position"].y)
 		if apart < best_apart and _reachable(here, spot["position"]):
 			best = spot
 			best_apart = apart
@@ -249,7 +306,8 @@ func _is_goal(spot: Dictionary, held: WeaponDef) -> bool:
 	var kind: StringName = spot["kind"]
 	var points := state.points()
 	if kind == &"ammo":
-		return _low_on_rounds(held) and points >= int(ammo_prices.get(held.id, BIG_PRICE))
+		var gun := _refill_gun(held)
+		return gun != null and points >= int(ammo_prices.get(gun.id, BIG_PRICE))
 	if kind == MachineOffers.UPGRADE_SPOT:
 		return recut_price > 0 and _recut_wanted(held) and points >= recut_price + AMMO_MONEY
 	if kind == MachineOffers.PERK_SPOT:
@@ -265,9 +323,8 @@ func _is_goal(spot: Dictionary, held: WeaponDef) -> bool:
 		if state.me().get("arms", {}).has(weapon):
 			# Owned: the wall sells its rounds, but only when that is the gun in hand.
 			return (
-				held != null
-				and held.id == weapon
-				and _low_on_rounds(held)
+				_refill_gun(held) != null
+				and _refill_gun(held).id == weapon
 				and points >= int(ammo_prices.get(weapon, BIG_PRICE))
 			)
 	var pointless := kind == &"wall" and not _worth_taking(WeaponCatalog.catalog_id(id))
@@ -346,7 +403,11 @@ func _waiting_on_crane() -> bool:
 
 func _reachable(here: Vector3, goal: Vector3) -> bool:
 	var path := NavigationServer3D.map_get_path(map, here, goal, true, NavLayers.WALK)
-	return not path.is_empty() and _flat(path[path.size() - 1], goal) < REACHABLE
+	return (
+		not path.is_empty()
+		and _flat(path[path.size() - 1], goal) < REACHABLE
+		and absf(path[path.size() - 1].y - goal.y) < ARRIVE_HEIGHT
+	)
 
 
 ## What comes before a door: a fuel can when the tank is low and it can pay for one, then rounds
@@ -355,7 +416,7 @@ func _urgent_goal() -> Vector3:
 	var cans := fuel.next_goal(state.frame, state.position(), state.points())
 	if cans != Vector3.INF:
 		return cans
-	if not _shopping.is_empty() and _low_on_rounds(_held()):
+	if not _shopping.is_empty() and _refill_gun(_held()) != null:
 		return _shopping["position"]
 	return Vector3.INF
 
@@ -432,14 +493,19 @@ func _clear(here: Vector3, zombie: Dictionary) -> bool:
 func _flee(here: Vector3, from: Vector3) -> Vector3:
 	var away := here - from
 	away.y = 0.0
-	# Bend back toward home so it circles the field instead of running into a corner.
-	var home := HOME - here
-	home.y = 0.0
-	return (away.normalized() + home.normalized() * 0.35).normalized()
+	# Bend back toward home so it circles the field instead of running into a corner; with a gun
+	# nearly out, bend toward the shop it has planned instead, so the chase leads to rounds (#998).
+	var bend := HOME - here
+	var pull := HOME_PULL
+	if not _shopping.is_empty() and _refill_gun(_held()) != null:
+		bend = _shopping["position"] - here
+		pull = SHOP_PULL
+	bend.y = 0.0
+	return (away.normalized() + bend.normalized() * pull).normalized()
 
 
 func _toward(here: Vector3, goal: Vector3) -> Vector3:
-	if _flat(here, goal) < ARRIVED:
+	if _flat(here, goal) < ARRIVED and absf(here.y - goal.y) < ARRIVE_HEIGHT:
 		return Vector3.ZERO
 	var next := goal
 	for point in NavigationServer3D.map_get_path(map, here, goal, true, NavLayers.WALK):
