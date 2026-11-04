@@ -18,37 +18,19 @@ const ROOM := 0.4
 const SPOKES := 8
 const FLOOR_SLACK := 0.3
 
-## The second map's pairs that its rework (#917: one window a wall, the upper windows on a patio,
-## each perk in its own corridor) moves apart; nothing else may overlap, and each pair comes off
-## this list as the rework fixes it. The worst is the locker 1.45 m from the upper window
-## `upper_a2`, with the bat on the wall beside both.
-const SMALL_PENDING_917: Array[String] = [
+## The second map's pairs that still overlap after its rework (#917, landed as #964, which left 7
+## of the 26 pairs listed here and added one). Nothing else may overlap, and each pair comes off
+## this list as the map fixes it (#994). The worst is the Swift Rescue alcove 3.2 m from the window
+## `side_1`: the window cannot move 1.3 m along its wall, so one of them has to go.
+const SMALL_PENDING: Array[String] = [
 	"ammo (12.0, 3.4, 3.2) | breach upper_a2",
 	"ammo (5.0, 0.0, -1.6) | door door_stairs_start",
-	"ammo (6.0, 3.4, -1.6) | tonic_third_holster (8.6, 3.4, -1.7)",
-	"ammo (8.0, 0.0, 13.1) | breach start_1",
-	"ammo (8.0, 0.0, 13.1) | breach start_2",
-	"breach side_1 | breach side_2",
 	"breach side_1 | breach side_breach",
-	"breach side_2 | breach side_breach",
-	"breach start_2 | breach start_5",
-	"breach start_3 | breach start_4",
-	"breach start_4 | breach start_5",
-	"crane_play (10.5, 0.0, -5.9) | tonic_swift_rescue (7.6, 0.0, -6.3)",
-	"door door_side | breach start_3",
 	"door door_stairs_side | breach side_breach",
-	"tonic_double_shot (12.6, 3.4, -6.4) | breach upper_b2",
-	"tonic_double_shot (12.6, 3.4, -6.4) | tonic_reload_shock (15.4, 3.4, -6.4)",
+	"tonic_swift_rescue (-1.5, 0.0, -0.4) | breach side_1",
 	"weapon_baseball_bat (14.7, 3.4, 2.3) | ammo (12.0, 3.4, 3.2)",
-	"weapon_baseball_bat (14.7, 3.4, 2.3) | breach upper_a2",
 	"weapon_crowbar (1.4, 0.0, 6.0) | tonic_hearty (1.7, 0.0, 8.5)",
-	"weapon_fire_axe (14.7, 3.4, -4.0) | tonic_double_shot (12.6, 3.4, -6.4)",
-	"weapon_fire_axe (14.7, 3.4, -4.0) | tonic_reload_shock (15.4, 3.4, -6.4)",
-	"weapon_flare_gun (1.3, 3.4, 2.3) | breach upper_a1",
 	"weapon_pistol (1.4, 0.0, 11.0) | tonic_hearty (1.7, 0.0, 8.5)",
-	"weapon_shotgun (5.0, 3.4, -6.5) | breach upper_b2",
-	"weapon_smg (5.5, 0.0, -6.4) | tonic_quick_load (2.9, 0.0, -6.3)",
-	"weapon_smg (5.5, 0.0, -6.4) | tonic_swift_rescue (7.6, 0.0, -6.3)",
 ]
 
 var _night: SeatedNight
@@ -155,4 +137,4 @@ func test_lot_use_zones_do_not_overlap() -> void:
 
 
 func test_small_map_use_zones_do_not_overlap() -> void:
-	await _check(SMALL, SMALL_PENDING_917)
+	await _check(SMALL, SMALL_PENDING)
