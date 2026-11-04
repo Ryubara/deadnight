@@ -1,6 +1,6 @@
 class_name LoadoutPanel
 extends MenuPanel
-## The Loadout tab: the wardrobe's pickers (the customize screen, embedded) beside a showcase
+## The Loadout tab: the wardrobe's grid (the customize screen, embedded) beside a showcase
 ## weapon row, with the soldier on the stage showing every change at once. The showcase weapon is
 ## cosmetic: it is what the menu's soldier holds, and a night starts with the starter program
 ## whatever is chosen.
@@ -35,7 +35,11 @@ func _ready() -> void:
 	if not context.compact:
 		column.add_child(weapon_box)
 	wardrobe = (load(CUSTOMIZE) as PackedScene).instantiate() as CustomizeScreen
-	wardrobe.params = {"embedded": true}
+	wardrobe.params = {
+		"embedded": true,
+		"compact": context.compact,
+		"unlocks": LookUnlocks.at_level(context.profile.level()),
+	}
 	wardrobe.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	wardrobe.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_child(wardrobe)
@@ -144,7 +148,7 @@ func _fit_for_fingers() -> void:
 		var size := label.get_theme_font_size(&"font_size")
 		label.add_theme_font_size_override(&"font_size", maxi(size, MenuLook.SIZE_CAPTION))
 	for node in wardrobe.find_children("*", "", true, false):
-		if node is UIOptionSelector or node is UIButton or node is ChoiceStrip:
+		if node is UIOptionSelector or node is UIButton:
 			var control := node as Control
 			control.custom_minimum_size.y = maxf(control.custom_minimum_size.y, MenuLook.TAP_TARGET)
 	_weapon_selector.custom_minimum_size.y = maxf(

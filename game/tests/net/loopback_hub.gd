@@ -17,7 +17,12 @@ var _to_server: Array = []
 var _next_id := 1
 
 
+## `unlocks_for` is the server's answer to "what may this player wear"; without one every player
+## has the whole wardrobe (a test of the lock gives one).
 func _init(unlocks_for: Callable = Callable()) -> void:
+	if not unlocks_for.is_valid():
+		unlocks_for = func(_id: int) -> LookUnlocks:
+			return LookUnlocks.at_level(LevelCurve.MAX_LEVEL)
 	server = LookServer.new(_send_down, unlocks_for)
 
 

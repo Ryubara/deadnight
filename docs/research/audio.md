@@ -590,6 +590,22 @@ soldiers above; the lines are in `tools/audio/soldier_voice.json` and `soldier_v
   shots -17.8 (male run) and -17.7 (female run), the beds -36.2: a cheer sits 5.9 to 6.0 LU under the gunfire and 12.5 LU
   over the beds, the soldier's usual place (5 and 10.6 LU for the first capture). The female run plays the night's lines
   with her take set through a wrapper on `SoldierVoice.play` (the night's player is the male character).
-- **Still to do.** The wiring of the server's events (`level_up`, `tier_up`, `unlock_earned`, `challenge_done` of
-  #1059) to
-  `celebrate`, and the four-client test, wait for #1059. No agent listens; the maintainer's ear decides the takes.
+- **Wired to the server's events (#1063).** `SoldierVoice` hears `level_up`, `tier_up` and `unlock_earned` of `XpAward`
+  on every client (`ClientState.event_received`) and cheers the player the event names: flat for the player at the
+  screen, from where the soldier stands for a teammate. The events of one player come together (a level, its tier, what
+  it unlocks), so `NightSoundTuning.cheer_window` (0.25 s) holds them and one cheer is said: the tier over an item
+  (`SoldierVoiceCatalog.CHEER_OF_SLOT`: a card, an emblem or frame, else an unlock) over the level, so a level that
+  gives an item is cheered for the item. Players who level up in the same window are cheered one after the other from a
+  queue (the first version asked the director for each at once and the second was dropped:
+  [kit lesson](https://github.com/Ryubara/gdstudio/pull/599)). A bot has no level and no event. `challenge_done` is not
+  wired: the challenge tracker's event (#1076) was not on main; its moment and takes exist, and it is one row of
+  `SoldierVoiceCatalog.CHEER_OF_EVENT` once the event does.
+- **Tests.** `tests/net/test_progression_voice_online.gd`: four clients over a real WebSocket, a level up of player 1
+  is played by all four (hers flat, the others where she stands) once each, and a level that opens a tier and gives an
+  item is one tier cheer on every client. `tests/night/test_soldier_voice.gd`: the slot table, a burst of events as one
+  cheer, two players one after the other, a cheer held behind a reload, a downed player's dropped.
+- **In a night.** `audio_progression_voice.tscn --mode=fight --account=420 --told=0` plays a night where the account
+  holds 420 XP and the night pays the rest: the rules told level 6, its tier and its unlock together at 4.07 s and the
+  soldier said `tier_up` take 1 at 4.27 s (0.2 s later); level 7 and its unlock at 38.40 s gave `unlock` take 1 at
+  38.60 s (the director's history is in the pull request). One cheer each. No agent
+  listens; the maintainer's ear decides the takes.

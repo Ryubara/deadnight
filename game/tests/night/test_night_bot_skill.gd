@@ -50,10 +50,9 @@ func test_each_bot_is_dressed_in_its_own_look_on_the_server() -> void:
 		assert_str(held.key()).is_equal(BotRoster.look_for(MatchSettings.SKILL_ROOKIE, id).key())
 		keys[held.key()] = true
 	assert_int(keys.size()).is_equal(3)
-	# The person keeps the look of their own seat.
-	assert_str((night.server.looks.looks[1] as CharacterLook).key()).is_equal(
-		CharacterLook.from_preset(0).key()
-	)
+	# The person keeps the look of their own seat, in what their level owns (the ladder, #1065).
+	var own := CharacterLook.from_preset(0).without_locked(LookUnlocks.saved())
+	assert_str((night.server.looks.looks[1] as CharacterLook).key()).is_equal(own.key())
 	await _free(night)
 
 
