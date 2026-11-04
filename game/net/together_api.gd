@@ -29,6 +29,8 @@ const TEXTS := {
 	"no_server": "All the servers are busy. Try again in a minute.",
 	"already_in_lobby": "You are in another night already.",
 	"bad_settings": "Those rules are not ones the game takes. Change them and try again.",
+	"rules_unsupported":
+	"This server is out of date and takes none of these rules. Ask whoever runs it to update it.",
 	"not_member": "You were away for too long, so the room moved on. Make a night or join again.",
 	"not_host": "Only the host can start the night.",
 	"already_started": "The night has started already.",
@@ -180,6 +182,15 @@ func set_settings(lobby: Dictionary, settings: MatchSettings) -> Dictionary:
 	var answer := await _call(
 		"PUT", "/lobbies/%s/settings" % lobby["id"], settings.clamped().to_dict()
 	)
+	return rules_answer(answer)
+
+
+## What the host is told of the backend's answer to a change of the rules. A backend from before the
+## rules has no such route (the web framework's own "Not Found", where a lobby that is gone says
+## `not_found`): said as what it is, not as a failure to try again.
+static func rules_answer(answer: Dictionary) -> Dictionary:
+	if not answer["ok"] and answer.get("error") == "Not Found":
+		return _failed("rules_unsupported")
 	return {"ok": true, "lobby": answer} if answer["ok"] else answer
 
 
@@ -325,13 +336,17 @@ func _call(
 		out["ok"] = true
 		return out
 	var reason := "network"
+	var detail := ""
 	if status != 0:
 		reason = (
 			str((json as Dictionary).get("error", "bad_request"))
 			if typeof(json) == TYPE_DICTIONARY
 			else "bad_request"
 		)
-	return _failed(reason)
+		# What the backend names about the refusal (the setting it does not take).
+		if typeof(json) == TYPE_DICTIONARY:
+			detail = str((json as Dictionary).get("detail", ""))
+	return _failed(reason, detail)
 
 
 func _has_session() -> bool:
@@ -347,9 +362,8 @@ func _keep(token: String, user: Dictionary) -> void:
 		_user = user
 
 
-static func _failed(reason: String) -> Dictionary:
-	return {
-		"ok": false,
-		"error": reason,
-		"text": TEXTS.get(reason, "Something went wrong (%s). Try again." % reason),
-	}
+static func _failed(reason: String, detail := "") -> Dictionary:
+	var text: String = TEXTS.get(reason, "Something went wrong (%s). Try again." % reason)
+	if detail != "":
+		text += " (%s)" % detail
+	return {"ok": false, "error": reason, "text": text, "detail": detail}

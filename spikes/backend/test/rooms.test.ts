@@ -362,3 +362,34 @@ test("the bot skill rides the settings: 0 to 2 whole numbers are kept and signed
   assert.deepEqual(verifyToken(config.ticketSecret, "ticket", answer.ticket)?.settings, chosen);
   await app.close();
 });
+
+test("a setting the backend does not know is refused by name, on the change and on the start, never dropped (#944)", async () => {
+  const { app, guest, call } = await platform();
+  const host = await guest("host");
+  const lobby = (await call("POST", "/lobbies", host.headers, {})).json();
+  const good = { count_multiplier: 2, max_alive: 0, break_seconds: 0 };
+  const asked = { ...good, perk_limit: 3, a_modifier: true };
+  const put = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, asked);
+  assert.equal(put.statusCode, 400);
+  assert.equal(put.json().error, "bad_settings");
+  assert.equal(put.json().detail, "unknown setting a_modifier, perk_limit");
+  // The start does the same, and the lobby is still waiting with nothing kept.
+  const start = await call("POST", `/lobbies/${lobby.id}/start`, host.headers, { settings: asked });
+  assert.equal(start.statusCode, 400);
+  assert.equal(start.json().detail, "unknown setting a_modifier, perk_limit");
+  const after = (await call("GET", `/lobbies/${lobby.id}`, host.headers)).json();
+  assert.equal(after.state, "open");
+  assert.equal(after.settings, null);
+  // A value out of its bounds names its setting too.
+  const bad = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, { ...good, bots: 9 });
+  assert.equal(bad.json().detail, "bad bots");
+  await app.close();
+});
+
+test("the health answer lists the settings this backend takes, so the deploy can compare them with the game's", async () => {
+  const { app } = await platform();
+  const health = (await app.inject({ method: "GET", url: "/health" })).json();
+  assert.equal(health.status, "ok");
+  assert.deepEqual([...health.settingsKeys].sort(), ["bot_skill", "bots", "break_seconds", "count_multiplier", "map", "max_alive"]);
+  await app.close();
+});
