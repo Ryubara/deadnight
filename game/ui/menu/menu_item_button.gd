@@ -46,6 +46,7 @@ var _width := 560.0
 
 
 func _init() -> void:
+	UiSounds.wire(self)
 	flat = true
 	focus_mode = Control.FOCUS_ALL
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -55,6 +56,14 @@ func _init() -> void:
 	mouse_entered.connect(_on_hover)
 	mouse_exited.connect(queue_redraw)
 	resized.connect(queue_redraw)
+
+
+## What kind of ticket this is, for the menu's sounds: a way to start is torn and punched, a row
+## that is not there yet is refused, any other is punched.
+func ui_sound_role() -> StringName:
+	if placeholder:
+		return &"ticket_soon"
+	return &"ticket_start" if admit else &"ticket"
 
 
 ## Sets the width the row asks for.

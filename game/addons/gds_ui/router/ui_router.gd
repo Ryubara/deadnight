@@ -138,7 +138,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var screen := top() as UIScreen
 	if screen != null and not screen.allow_back:
 		return
-	UIAudio.play(&"back")
+	UIAudio.play(&"back", self)
 	pop()
 	get_viewport().set_input_as_handled()
 
@@ -186,7 +186,7 @@ func _do_push(
 	if incoming == null:
 		return
 	var outgoing := top()
-	UIAudio.play(&"push")
+	UIAudio.play(&"push", self)
 	await _run(outgoing, incoming, kind, false)
 	if not is_instance_valid(incoming):
 		# Lost mid-transition: the screen underneath stays, as if the push never happened.
@@ -212,7 +212,7 @@ func _do_pop(requested: int) -> void:
 	)
 	_kinds.erase(outgoing)
 	var incoming := top()
-	UIAudio.play(&"pop")
+	UIAudio.play(&"pop", self)
 	await _run(outgoing, incoming, kind, true)
 	if is_instance_valid(outgoing):
 		outgoing.queue_free()

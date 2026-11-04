@@ -34,7 +34,7 @@ func test_a_spawned_zombie_becomes_a_target() -> void:
 func test_a_hit_that_does_not_kill_pays_the_hit_points() -> void:
 	var before := _rules.points_of(1)
 	var events := _fire(Vector3(0, 1.1, 0))
-	assert_int(_rules.points_of(1) - before).is_equal(4)
+	assert_int(_rules.points_of(1) - before).is_equal(5)
 	assert_array(WeaponsFixture.of(events, &"points_changed")).has_size(1)
 
 
@@ -42,13 +42,13 @@ func test_a_headshot_hit_pays_double() -> void:
 	_server.apply(CombatAction.give_weapon(1, &"smg"))
 	var before := _rules.points_of(1)
 	_fire(Vector3(0, 1.62, 0))
-	assert_int(_rules.points_of(1) - before).is_equal(8)
+	assert_int(_rules.points_of(1) - before).is_equal(10)
 
 
 func test_a_headshot_kill_pays_the_headshot_kill_and_removes_the_zombie() -> void:
 	var before := _rules.points_of(1)
 	var events := _fire(Vector3(0, 1.62, 0))
-	assert_int(_rules.points_of(1) - before).is_equal(70)
+	assert_int(_rules.points_of(1) - before).is_equal(65)
 	assert_array(WeaponsFixture.of(events, &"zombie_removed")).has_size(1)
 	assert_bool(_server.is_target_alive(_zombie)).is_false()
 

@@ -17,7 +17,9 @@ const AT_START := 0.3
 ## A step of a body longer than this (metres) in one tick is a move the server made.
 const JUMP := 10.0
 ## One place past each wall of the lot: its north fence and aprons, both sides, the back lot and the
-## yard, the road's sides and its end, the far corners.
+## yard, the road's sides and its end, the far corners. The later areas' breaches have aprons of
+## their own (#849: south of the yard and the back lot to x 30 to 42, beside the plaza to x 16 to
+## 24), part of the map, so the places here stand beyond them.
 const LOT_OUTSIDE: Array[Vector3] = [
 	Vector3(0.0, 0.0, -57.0),
 	Vector3(-36.0, 0.0, -64.0),
@@ -28,10 +30,10 @@ const LOT_OUTSIDE: Array[Vector3] = [
 	Vector3(66.0, 0.0, -34.0),
 	Vector3(-66.0, 0.0, 20.0),
 	Vector3(66.0, 0.0, 20.0),
-	Vector3(-40.0, 0.0, 42.0),
-	Vector3(40.0, 0.0, 42.0),
-	Vector3(20.0, 0.0, 50.0),
-	Vector3(-20.0, 0.0, 50.0),
+	Vector3(-52.0, 0.0, 42.0),
+	Vector3(52.0, 0.0, 42.0),
+	Vector3(30.0, 0.0, 50.0),
+	Vector3(-30.0, 0.0, 50.0),
 	Vector3(0.0, 0.0, 62.0),
 	Vector3(120.0, 0.0, 120.0),
 	Vector3(-120.0, 0.0, -120.0),

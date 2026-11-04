@@ -5,6 +5,8 @@ extends RefCounted
 ## tuning, so the card never says what the machine will not do.
 
 const RECUT_NAME := "Re-cut bench"
+## The bench's answer for a weapon that was re-cut already: the rule, not just the fact (#909).
+const RECUT_DONE := "ALREADY RE-CUT. A WEAPON CAN BE RE-CUT ONCE"
 const TONIC_NAME := "Tonic"
 
 
@@ -27,7 +29,7 @@ static func show(
 				_gain(spec, StringName(prompt["weapon"]))
 			)
 		&"recut_done":
-			_put(state, &"recut_info", RECUT_NAME, 0, "THIS WEAPON IS ALREADY RE-CUT")
+			_put(state, &"recut_info", RECUT_NAME, 0, RECUT_DONE)
 		&"recut_none":
 			_put(state, &"recut_info", RECUT_NAME, 0, "NOTHING TO RE-CUT IN YOUR HAND")
 		&"tonic":

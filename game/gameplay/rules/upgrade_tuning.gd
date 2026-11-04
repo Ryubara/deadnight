@@ -1,7 +1,8 @@
 class_name UpgradeTuning
 extends Resource
 ## What the re-cut costs and what it does to each weapon. The shop sells it as the item
-## `upgrade_weapon` (the price is the item's, like every price); the machine in the lot
+## `upgrade_weapon` (the price is the item's, like every price: 5,000 flat, whoever buys it and
+## however many weapons they have re-cut, #909); the machine in the lot
 ## (`docs/design/upgrades.md`) is where a player buys it for the weapon in hand. What a re-cut does
 ## is one `RecutProfile` per weapon (`profiles`): its numbers, its name and, for the weakest guns,
 ## its element. `WeaponDef.upgraded` applies it in the combat server and in the balance simulator
@@ -13,9 +14,6 @@ const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
 ## profile cannot be re-cut: the melee weapons have no magazine to grow, and a new firearm is not
 ## re-cut until it has a row here.
 @export var profiles: Array[RecutProfile] = []
-## Added to the item's price for each weapon the buyer has already re-cut, so the first is
-## the bargain and a bench full of re-cut weapons is a rich player's.
-@export_range(0, 10000, 50, "or_greater", "suffix:pts") var price_step: int = 1500
 ## Put before the name of a re-cut weapon whose profile gives none ("Re-Cut Revolver").
 @export var name_prefix: String = "Re-Cut "
 

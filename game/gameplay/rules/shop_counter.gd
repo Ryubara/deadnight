@@ -48,13 +48,10 @@ static func quote(
 	return result
 
 
-## What this player pays for the item at the start of the quote: its price this round, and for a
-## re-cut the step for each weapon they have re-cut already.
-static func price(rules: GameRules, item: ShopItem, player: PlayerState) -> int:
-	var cost := item.price_at(rules.round_number)
-	if item.kind == ShopItem.Kind.UPGRADE:
-		cost += rules.tuning.upgrade.price_step * (player.upgraded.size() + player.recuts_lost)
-	return cost
+## What this player pays for the item at the start of the quote: its price this round. A re-cut
+## is the same price for everyone and every weapon (#909); a weapon is re-cut once (`_check`).
+static func price(rules: GameRules, item: ShopItem, _player: PlayerState) -> int:
+	return item.price_at(rules.round_number)
 
 
 ## Hands over what was bought; returns what the event's `detail` should say.
@@ -123,7 +120,7 @@ static func _check(rules: GameRules, player: PlayerState, bought: Quote) -> Game
 				result = GameRules.BuyResult.LIMIT_REACHED
 			else:
 				bought.grenades_added = mini(int(item.amount), room)
-				bought.price = ceili(float(bought.price) * bought.grenades_added / item.amount)
+				bought.price = item.part_price(rules.round_number, bought.grenades_added)
 		ShopItem.Kind.AMMO:
 			# The weapon's reserve is the combat server's: the buyer says how many rounds fit
 			# (none given: all of them) and the rules price exactly those.

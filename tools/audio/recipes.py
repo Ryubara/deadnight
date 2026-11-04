@@ -22,25 +22,7 @@ def _jv(rng: np.random.Generator, centre: float, spread: float = 0.08) -> float:
     return centre * (1.0 + rng.uniform(-spread, spread))
 
 
-# ---- UI: a projector booth's clicks and a film-leader whoosh ----------------------------------------------------
-
-
-def _blip(freq: float, seconds: float, partial: float = 0.0) -> np.ndarray:
-    n = dsp.samples(seconds)
-    tone = dsp.sine(freq, n) + partial * dsp.sine(freq * 2.01, n)
-    return tone * dsp.attack_decay(n, 0.002, seconds * 0.5)
-
-
-def ui_hover(rng: np.random.Generator) -> np.ndarray:
-    return dsp.fade(_blip(1900, 0.05, 0.3)) * 0.5
-
-
-def ui_focus(rng: np.random.Generator) -> np.ndarray:
-    return dsp.fade(_blip(1250, 0.07, 0.5)) * 0.6
-
-
-def ui_tick(rng: np.random.Generator) -> np.ndarray:
-    return dsp.fade(_blip(2600, 0.025, 0.2)) * 0.5
+# ---- UI: the film-leader whoosh (the menu's clicks are in ui_recipes.py) -------------------------------------
 
 
 def _clack(rng: np.random.Generator, body: float, length: float = 0.09) -> np.ndarray:
@@ -51,17 +33,9 @@ def _clack(rng: np.random.Generator, body: float, length: float = 0.09) -> np.nd
     return thump * 0.9 + click * 0.8
 
 
-def ui_press(rng: np.random.Generator) -> np.ndarray:
-    return dsp.fade(_clack(rng, 150))
-
-
-def ui_back(rng: np.random.Generator) -> np.ndarray:
-    return dsp.fade(_clack(rng, 105, 0.11)) * 0.9
-
-
 def _whoosh(rng: np.random.Generator, rising: bool, seconds: float) -> np.ndarray:
     n = dsp.samples(seconds)
-    lo, hi = (500, 4200) if rising else (4200, 500)
+    lo, hi = (450, 3000) if rising else (3000, 450)
     centre = np.linspace(lo, hi, n)
     noise = dsp.filt(dsp.white(rng, seconds), "band", centre, centre * 0.8)
     swell = np.sin(np.linspace(0, np.pi, n)) ** 1.5
@@ -413,13 +387,8 @@ def grenade_blast(rng: np.random.Generator) -> np.ndarray:
 
 
 REGISTRY: list[Entry] = [
-    Entry("ui", "hover", 1, ui_hover, -12.0),
-    Entry("ui", "focus", 1, ui_focus, -10.0),
-    Entry("ui", "press", 1, ui_press, -4.0),
-    Entry("ui", "back", 1, ui_back, -5.0),
-    Entry("ui", "push", 1, ui_push, -6.0),
-    Entry("ui", "pop", 1, ui_pop, -6.0),
-    Entry("ui", "tick", 1, ui_tick, -12.0),
+    Entry("ui", "push", 2, ui_push, -6.0),
+    Entry("ui", "pop", 2, ui_pop, -6.0),
     Entry("guns", "dry_fire", 1, dry_fire, -6.0),
     Entry("steps", "asphalt", 8, step_asphalt, -6.0),
     Entry("steps", "gravel", 8, step_gravel, -6.0),

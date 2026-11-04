@@ -169,7 +169,7 @@ func test_a_deferred_sound_waits_in_a_line_and_is_made_while_the_night_runs() ->
 	assert_bool(service._pcm.has(path)).is_true()
 	assert_bool(service._pcm.has(other.path_for(1))).is_true()
 	# A sound outside the deferred banks is decoded at once.
-	var plain := &"ui_press"
+	var plain := &"points_tick"
 	assert_bool(SoundCatalog.get_def(plain).deferred).is_false()
 	service.preload_sound_for_night(plain)
 	assert_bool(service._pcm.has(SoundCatalog.get_def(plain).path_for(1))).is_true()
