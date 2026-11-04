@@ -168,6 +168,7 @@ class FamilyChip:
 	var label_text := ""
 
 	func _init(text_value: String) -> void:
+		UiSounds.wire(self)
 		label_text = text_value
 		name = text_value
 		accessibility_name = text_value
@@ -182,6 +183,9 @@ class FamilyChip:
 		focus_exited.connect(queue_redraw)
 		mouse_entered.connect(queue_redraw)
 		mouse_exited.connect(queue_redraw)
+
+	func ui_sound_role() -> StringName:
+		return &"chip"
 
 	func _draw() -> void:
 		var lit := active or has_focus() or is_hovered()

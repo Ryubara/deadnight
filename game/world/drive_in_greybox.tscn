@@ -15,6 +15,7 @@
 [ext_resource type="PackedScene" path="res://world/drive_in/projector_beam.tscn" id="beam"]
 [ext_resource type="PackedScene" path="res://world/drive_in/glow_pane.tscn" id="pane"]
 [ext_resource type="Script" path="res://world/drive_in/model_glow.gd" id="model_glow"]
+[ext_resource type="Script" path="res://world/shop/wall_silhouette.gd" id="silhouette"]
 [ext_resource type="PackedScene" path="res://world/drive_in/wreck.tscn" id="wreck"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/barrel.tscn" id="prop_barrel"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/barrel_spill.tscn" id="prop_barrel_spill"]
@@ -1096,21 +1097,6 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.060, 
 [node name="Light" parent="Field/Lamps/Lamp12"]
 light_cull_mask = 5
 
-[node name="Lamp13" parent="Field/Lamps" instance=ExtResource("lamp")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -18.371, -0.029, 16.652)
-
-[node name="Lamp14" parent="Field/Lamps" instance=ExtResource("lamp")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -40.100, -0.029, 24.079)
-
-[node name="Lamp15" parent="Field/Lamps" instance=ExtResource("lamp")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -44.570, -0.030, -1.204)
-
-[node name="Lamp16" parent="Field/Lamps" instance=ExtResource("lamp")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -21.597, 0.563, -1.204)
-
-[node name="Lamp17" parent="Field/Lamps" instance=ExtResource("lamp")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -18.371, -0.029, 34.691)
-
 [node name="Lamp18" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 65.461, 0.563, -21.897)
 dim = 0.4
@@ -1610,11 +1596,83 @@ omni_range = 9
 
 [node name="ZombieSpawns" type="Node3D" parent="Midway"]
 
-[node name="SpawnSW" type="Marker3D" parent="Midway/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -14.000, 0.000, 36.000)
+[node name="PocketW0" type="CSGBox3D" parent="Midway"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.250, 1.500, 33.000)
+use_collision = true
+collision_layer = 3
+size = Vector3(1.5, 3, 0.4)
+material = ExtResource("midway_wall")
 
-[node name="SpawnSE" type="Marker3D" parent="Midway/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.000, 0.000, 36.000)
+[node name="PocketW1" type="CSGBox3D" parent="Midway"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -9.750, 1.500, 33.000)
+use_collision = true
+collision_layer = 3
+size = Vector3(1.5, 3, 0.4)
+material = ExtResource("midway_wall")
+
+[node name="BreachPocketWGap" type="Node3D" parent="Midway"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -12.500, 0.000, 33.000)
+script = ExtResource("barricade")
+metadata/barricade_id = "mid_w"
+metadata/board_view_end = 45
+
+[node name="Board1" parent="Midway/BreachPocketWGap" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+
+[node name="Board2" parent="Midway/BreachPocketWGap" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="Midway/BreachPocketWGap" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="Midway/BreachPocketWGap" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="Midway/BreachPocketWGap" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="SpawnW" type="Marker3D" parent="Midway/ZombieSpawns"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -12.500, 0.000, 36.500)
+metadata/barricade_id = "mid_w"
+
+[node name="PocketE0" type="CSGBox3D" parent="Midway"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 9.750, 1.500, 33.000)
+use_collision = true
+collision_layer = 3
+size = Vector3(1.5, 3, 0.4)
+material = ExtResource("midway_wall")
+
+[node name="PocketE1" type="CSGBox3D" parent="Midway"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 15.250, 1.500, 33.000)
+use_collision = true
+collision_layer = 3
+size = Vector3(1.5, 3, 0.4)
+material = ExtResource("midway_wall")
+
+[node name="BreachPocketEGap" type="Node3D" parent="Midway"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 12.500, 0.000, 33.000)
+script = ExtResource("barricade")
+metadata/barricade_id = "mid_e"
+metadata/board_view_end = 45
+
+[node name="Board1" parent="Midway/BreachPocketEGap" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+
+[node name="Board2" parent="Midway/BreachPocketEGap" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="Midway/BreachPocketEGap" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="Midway/BreachPocketEGap" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="Midway/BreachPocketEGap" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="SpawnE" type="Marker3D" parent="Midway/ZombieSpawns"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.500, 0.000, 36.500)
+metadata/barricade_id = "mid_e"
 
 [node name="Label" type="Label3D" parent="Midway" groups=["area_labels"]]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.6, 14)
@@ -1807,17 +1865,38 @@ size = Vector3(46, 0.4, 13)
 material = ExtResource("yard_ground")
 
 [node name="FenceE0" type="CSGBox3D" parent="GeneratorYard"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, 17.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, 0.000)
 use_collision = true
 collision_layer = 3
-size = Vector3(0.4, 3, 42)
+size = Vector3(0.4, 3, 8)
+material = ExtResource("yard_wall")
+
+[node name="FenceE1" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, 18.000)
+use_collision = true
+collision_layer = 3
+size = Vector3(0.4, 3, 20)
+material = ExtResource("yard_wall")
+
+[node name="FenceE2" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, 35.000)
+use_collision = true
+collision_layer = 3
+size = Vector3(0.4, 3, 6)
 material = ExtResource("yard_wall")
 
 [node name="FenceS0" type="CSGBox3D" parent="GeneratorYard"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 39.000, 1.200, 38.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 25.000, 1.200, 38.000)
 use_collision = true
 collision_layer = 3
-size = Vector3(46, 2.4, 0.4)
+size = Vector3(18, 2.4, 0.4)
+material = ExtResource("yard_wall")
+
+[node name="FenceS1" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 50.000, 1.200, 38.000)
+use_collision = true
+collision_layer = 3
+size = Vector3(24, 2.4, 0.4)
 material = ExtResource("yard_wall")
 
 [node name="CageN0" type="CSGBox3D" parent="GeneratorYard"]
@@ -1933,14 +2012,164 @@ halo_energy = 1.2
 
 [node name="ZombieSpawns" type="Node3D" parent="GeneratorYard"]
 
-[node name="SpawnNE" type="Marker3D" parent="GeneratorYard/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 60.000, 0.000, -2.000)
+[node name="BreachYardE1" type="Node3D" parent="GeneratorYard"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, 6.000)
+script = ExtResource("barricade")
+metadata/barricade_id = "yard_e1"
+metadata/board_view_end = 45
 
-[node name="SpawnSE" type="Marker3D" parent="GeneratorYard/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 60.000, 0.000, 36.000)
+[node name="Board1" parent="GeneratorYard/BreachYardE1" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
 
-[node name="SpawnS" type="Marker3D" parent="GeneratorYard/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 28.000, 0.000, 36.000)
+[node name="Board2" parent="GeneratorYard/BreachYardE1" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="GeneratorYard/BreachYardE1" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="GeneratorYard/BreachYardE1" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="GeneratorYard/BreachYardE1" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="ApronYardE1" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, -0.200, 6.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 0.4, 12)
+material = ExtResource("breach_ground")
+
+[node name="ApronYardE1End" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 70.200, 1.500, 6.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(0.4, 3, 12)
+material = ExtResource("yard_wall")
+
+[node name="ApronYardE1SideA" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, 1.500, 0.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 3, 0.4)
+material = ExtResource("yard_wall")
+
+[node name="ApronYardE1SideB" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, 1.500, 12.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 3, 0.4)
+material = ExtResource("yard_wall")
+
+[node name="SpawnYardE1" type="Marker3D" parent="GeneratorYard/ZombieSpawns"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, 0.000, 6.000)
+metadata/barricade_id = "yard_e1"
+
+[node name="BreachYardE2" type="Node3D" parent="GeneratorYard"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, 30.000)
+script = ExtResource("barricade")
+metadata/barricade_id = "yard_e2"
+metadata/board_view_end = 45
+
+[node name="Board1" parent="GeneratorYard/BreachYardE2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+
+[node name="Board2" parent="GeneratorYard/BreachYardE2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="GeneratorYard/BreachYardE2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="GeneratorYard/BreachYardE2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="GeneratorYard/BreachYardE2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="ApronYardE2" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, -0.200, 30.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 0.4, 12)
+material = ExtResource("breach_ground")
+
+[node name="ApronYardE2End" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 70.200, 1.500, 30.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(0.4, 3, 12)
+material = ExtResource("yard_wall")
+
+[node name="ApronYardE2SideA" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, 1.500, 24.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 3, 0.4)
+material = ExtResource("yard_wall")
+
+[node name="ApronYardE2SideB" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, 1.500, 36.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 3, 0.4)
+material = ExtResource("yard_wall")
+
+[node name="SpawnYardE2" type="Marker3D" parent="GeneratorYard/ZombieSpawns"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, 0.000, 30.000)
+metadata/barricade_id = "yard_e2"
+
+[node name="BreachYardS" type="Node3D" parent="GeneratorYard"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 36.000, 0.000, 38.000)
+script = ExtResource("barricade")
+metadata/barricade_id = "yard_s"
+metadata/board_view_end = 45
+
+[node name="Board1" parent="GeneratorYard/BreachYardS" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+
+[node name="Board2" parent="GeneratorYard/BreachYardS" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="GeneratorYard/BreachYardS" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="GeneratorYard/BreachYardS" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="GeneratorYard/BreachYardS" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="ApronYardS" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, -0.200, 42.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(12, 0.4, 8)
+material = ExtResource("breach_ground")
+
+[node name="ApronYardSEnd" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 1.500, 46.200)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(12, 3, 0.4)
+material = ExtResource("yard_wall")
+
+[node name="ApronYardSSideA" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 30.000, 1.500, 42.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(0.4, 3, 8)
+material = ExtResource("yard_wall")
+
+[node name="ApronYardSSideB" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 42.000, 1.500, 42.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(0.4, 3, 8)
+material = ExtResource("yard_wall")
+
+[node name="SpawnYardS" type="Marker3D" parent="GeneratorYard/ZombieSpawns"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 0.000, 42.000)
+metadata/barricade_id = "yard_s"
 
 [node name="Label" type="Label3D" parent="GeneratorYard" groups=["area_labels"]]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 39, 0.6, 31)
@@ -1974,17 +2203,38 @@ size = Vector3(46, 0.4, 14)
 material = ExtResource("backlot_ground")
 
 [node name="FenceW0" type="CSGBox3D" parent="BackLot"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, 17.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, 2.000)
 use_collision = true
 collision_layer = 3
-size = Vector3(0.4, 3, 42)
+size = Vector3(0.4, 3, 12)
+material = ExtResource("backlot_wall")
+
+[node name="FenceW1" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, 22.000)
+use_collision = true
+collision_layer = 3
+size = Vector3(0.4, 3, 20)
+material = ExtResource("backlot_wall")
+
+[node name="FenceW2" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, 37.000)
+use_collision = true
+collision_layer = 3
+size = Vector3(0.4, 3, 2)
 material = ExtResource("backlot_wall")
 
 [node name="FenceS0" type="CSGBox3D" parent="BackLot"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -39.000, 1.200, 38.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -50.000, 1.200, 38.000)
 use_collision = true
 collision_layer = 3
-size = Vector3(46, 2.4, 0.4)
+size = Vector3(24, 2.4, 0.4)
+material = ExtResource("backlot_wall")
+
+[node name="FenceS1" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -25.000, 1.200, 38.000)
+use_collision = true
+collision_layer = 3
+size = Vector3(18, 2.4, 0.4)
 material = ExtResource("backlot_wall")
 
 [node name="Wrecks" type="Node3D" parent="BackLot"]
@@ -2063,6 +2313,34 @@ material = ExtResource("neon")
 
 [node name="Lamps" type="Node3D" parent="BackLot"]
 metadata/circuit = "back_lot"
+metadata/flicker = "failing_battery"
+
+[node name="Lamp13" parent="BackLot/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -18.371, -0.029, 16.652)
+away = Vector3(-1.0000, 0, 0.0000)
+pool_half = 4.69
+aim_tilt = 32.0
+
+[node name="Lamp14" parent="BackLot/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -40.100, -0.029, 24.079)
+
+[node name="Lamp15" parent="BackLot/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -44.570, -0.030, -1.204)
+away = Vector3(0.0000, 0, 1.0000)
+pool_half = 5.54
+aim_tilt = 32.0
+
+[node name="Lamp16" parent="BackLot/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -21.597, 0.563, -1.204)
+away = Vector3(-0.7071, 0, 0.7071)
+pool_half = 4.28
+aim_tilt = 47.0
+
+[node name="Lamp17" parent="BackLot/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -18.371, -0.029, 34.691)
+away = Vector3(-0.7071, 0, -0.7071)
+pool_half = 3.62
+aim_tilt = 47.0
 
 [node name="NeonSign" type="OmniLight3D" parent="BackLot/Lamps" groups=["powered_light"]]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -47.000, 3.500, 33.500)
@@ -2072,14 +2350,164 @@ omni_range = 12
 
 [node name="ZombieSpawns" type="Node3D" parent="BackLot"]
 
-[node name="SpawnNW" type="Marker3D" parent="BackLot/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -60.000, 0.000, -2.000)
+[node name="BreachBackW1" type="Node3D" parent="BackLot"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, 10.000)
+script = ExtResource("barricade")
+metadata/barricade_id = "back_w1"
+metadata/board_view_end = 45
 
-[node name="SpawnSW" type="Marker3D" parent="BackLot/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -60.000, 0.000, 36.000)
+[node name="Board1" parent="BackLot/BreachBackW1" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
 
-[node name="SpawnS" type="Marker3D" parent="BackLot/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -30.000, 0.000, 36.000)
+[node name="Board2" parent="BackLot/BreachBackW1" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="BackLot/BreachBackW1" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="BackLot/BreachBackW1" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="BackLot/BreachBackW1" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="ApronBackW1" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, -0.200, 10.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 0.4, 12)
+material = ExtResource("breach_ground")
+
+[node name="ApronBackW1End" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -70.200, 1.500, 10.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(0.4, 3, 12)
+material = ExtResource("backlot_wall")
+
+[node name="ApronBackW1SideA" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, 1.500, 4.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 3, 0.4)
+material = ExtResource("backlot_wall")
+
+[node name="ApronBackW1SideB" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, 1.500, 16.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 3, 0.4)
+material = ExtResource("backlot_wall")
+
+[node name="SpawnBackW1" type="Marker3D" parent="BackLot/ZombieSpawns"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, 0.000, 10.000)
+metadata/barricade_id = "back_w1"
+
+[node name="BreachBackW2" type="Node3D" parent="BackLot"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, 34.000)
+script = ExtResource("barricade")
+metadata/barricade_id = "back_w2"
+metadata/board_view_end = 45
+
+[node name="Board1" parent="BackLot/BreachBackW2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+
+[node name="Board2" parent="BackLot/BreachBackW2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="BackLot/BreachBackW2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="BackLot/BreachBackW2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="BackLot/BreachBackW2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="ApronBackW2" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, -0.200, 34.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 0.4, 12)
+material = ExtResource("breach_ground")
+
+[node name="ApronBackW2End" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -70.200, 1.500, 34.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(0.4, 3, 12)
+material = ExtResource("backlot_wall")
+
+[node name="ApronBackW2SideA" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, 1.500, 28.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 3, 0.4)
+material = ExtResource("backlot_wall")
+
+[node name="ApronBackW2SideB" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, 1.500, 40.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 3, 0.4)
+material = ExtResource("backlot_wall")
+
+[node name="SpawnBackW2" type="Marker3D" parent="BackLot/ZombieSpawns"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, 0.000, 34.000)
+metadata/barricade_id = "back_w2"
+
+[node name="BreachBackS" type="Node3D" parent="BackLot"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -36.000, 0.000, 38.000)
+script = ExtResource("barricade")
+metadata/barricade_id = "back_s"
+metadata/board_view_end = 45
+
+[node name="Board1" parent="BackLot/BreachBackS" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+
+[node name="Board2" parent="BackLot/BreachBackS" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="BackLot/BreachBackS" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="BackLot/BreachBackS" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="BackLot/BreachBackS" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="ApronBackS" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, -0.200, 42.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(12, 0.4, 8)
+material = ExtResource("breach_ground")
+
+[node name="ApronBackSEnd" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, 1.500, 46.200)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(12, 3, 0.4)
+material = ExtResource("backlot_wall")
+
+[node name="ApronBackSSideA" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -42.000, 1.500, 42.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(0.4, 3, 8)
+material = ExtResource("backlot_wall")
+
+[node name="ApronBackSSideB" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -30.000, 1.500, 42.000)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(0.4, 3, 8)
+material = ExtResource("backlot_wall")
+
+[node name="SpawnBackS" type="Marker3D" parent="BackLot/ZombieSpawns"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, 0.000, 42.000)
+metadata/barricade_id = "back_s"
 
 [node name="Label" type="Label3D" parent="BackLot" groups=["area_labels"]]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, -39, 0.6, 12)
@@ -2089,7 +2517,7 @@ no_depth_test = true
 modulate = Color(1, 1, 1, 1)
 outline_modulate = Color(0, 0, 0, 1)
 outline_size = 48
-text = "6  BACK LOT  (dark)"
+text = "6  BACK LOT  (dim)"
 font_size = 110
 
 [node name="Road" type="Node3D" parent="."]
@@ -2121,17 +2549,45 @@ size = Vector3(14, 2.6, 0.4)
 material = ExtResource("road_wall")
 
 [node name="SideW0" type="CSGBox3D" parent="Road"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.000, 2.100, 48.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.000, 2.100, 42.750)
 use_collision = true
 collision_layer = 3
-size = Vector3(0.4, 4.2, 20)
+size = Vector3(0.4, 4.2, 9.5)
+material = ExtResource("road_wall")
+
+[node name="SideW1" type="CSGBox3D" parent="Road"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.000, 3.600, 49.500)
+use_collision = true
+collision_layer = 3
+size = Vector3(0.4, 1.2, 4)
+material = ExtResource("road_wall")
+
+[node name="SideW2" type="CSGBox3D" parent="Road"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.000, 2.100, 54.750)
+use_collision = true
+collision_layer = 3
+size = Vector3(0.4, 4.2, 6.5)
 material = ExtResource("road_wall")
 
 [node name="SideE0" type="CSGBox3D" parent="Road"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.000, 2.100, 48.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.000, 2.100, 42.750)
 use_collision = true
 collision_layer = 3
-size = Vector3(0.4, 4.2, 20)
+size = Vector3(0.4, 4.2, 9.5)
+material = ExtResource("road_wall")
+
+[node name="SideE1" type="CSGBox3D" parent="Road"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.000, 3.600, 49.500)
+use_collision = true
+collision_layer = 3
+size = Vector3(0.4, 1.2, 4)
+material = ExtResource("road_wall")
+
+[node name="SideE2" type="CSGBox3D" parent="Road"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.000, 2.100, 54.750)
+use_collision = true
+collision_layer = 3
+size = Vector3(0.4, 4.2, 6.5)
 material = ExtResource("road_wall")
 
 [node name="FenceEnd0" type="CSGBox3D" parent="Road"]
@@ -2221,14 +2677,115 @@ spot_angle = 28
 
 [node name="ZombieSpawns" type="Node3D" parent="Road"]
 
-[node name="SpawnPlaza" type="Marker3D" parent="Road/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -14.000, 0.000, 50.000)
+[node name="BreachPlazaW" type="Node3D" parent="Road"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -16.000, 0.000, 49.500)
+script = ExtResource("barricade")
+metadata/barricade_id = "plaza_w"
+metadata/board_view_end = 45
+
+[node name="Board1" parent="Road/BreachPlazaW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+
+[node name="Board2" parent="Road/BreachPlazaW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="Road/BreachPlazaW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="Road/BreachPlazaW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="Road/BreachPlazaW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="ApronPlazaW" type="CSGBox3D" parent="Road"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -20.000, -0.200, 49.500)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 0.4, 12)
+material = ExtResource("breach_ground")
+
+[node name="ApronPlazaWEnd" type="CSGBox3D" parent="Road"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.200, 1.500, 49.500)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(0.4, 3, 12)
+material = ExtResource("road_wall")
+
+[node name="ApronPlazaWSideA" type="CSGBox3D" parent="Road"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -20.000, 1.500, 43.500)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 3, 0.4)
+material = ExtResource("road_wall")
+
+[node name="ApronPlazaWSideB" type="CSGBox3D" parent="Road"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -20.000, 1.500, 55.500)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 3, 0.4)
+material = ExtResource("road_wall")
+
+[node name="SpawnPlazaW" type="Marker3D" parent="Road/ZombieSpawns"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -20.000, 0.000, 47.900)
+metadata/barricade_id = "plaza_w"
+
+[node name="SpawnPlazaW2" type="Marker3D" parent="Road/ZombieSpawns"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -20.000, 0.000, 51.100)
+metadata/barricade_id = "plaza_w"
+
+[node name="BreachPlazaE" type="Node3D" parent="Road"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 16.000, 0.000, 49.500)
+script = ExtResource("barricade")
+metadata/barricade_id = "plaza_e"
+metadata/board_view_end = 45
+
+[node name="Board1" parent="Road/BreachPlazaE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+
+[node name="Board2" parent="Road/BreachPlazaE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="Road/BreachPlazaE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="Road/BreachPlazaE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="Road/BreachPlazaE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="ApronPlazaE" type="CSGBox3D" parent="Road"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 20.000, -0.200, 49.500)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 0.4, 12)
+material = ExtResource("breach_ground")
+
+[node name="ApronPlazaEEnd" type="CSGBox3D" parent="Road"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 24.200, 1.500, 49.500)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(0.4, 3, 12)
+material = ExtResource("road_wall")
+
+[node name="ApronPlazaESideA" type="CSGBox3D" parent="Road"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 20.000, 1.500, 43.500)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 3, 0.4)
+material = ExtResource("road_wall")
+
+[node name="ApronPlazaESideB" type="CSGBox3D" parent="Road"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 20.000, 1.500, 55.500)
+use_collision = true
+visibility_range_end = 35
+size = Vector3(8, 3, 0.4)
+material = ExtResource("road_wall")
 
 [node name="SpawnPlazaE" type="Marker3D" parent="Road/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 13.500, 0.000, 55.000)
-
-[node name="SpawnPlazaSW" type="Marker3D" parent="Road/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -13.500, 0.000, 55.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 20.000, 0.000, 49.500)
+metadata/barricade_id = "plaza_e"
 
 [node name="Label" type="Label3D" parent="Road" groups=["area_labels"]]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.6, 52)
@@ -2574,14 +3131,10 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.200, 
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
-[node name="ShotgunSign" type="Label3D" parent="ShopProps"]
+[node name="ShotgunSilhouette" type="Node3D" parent="ShopProps"]
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -8.200, 1.600, -4.340)
-pixel_size = 0.006
-text = "SHOTGUN"
-font_size = 72
-outline_size = 24
-modulate = Color(0.1, 0.07, 0.02, 1)
-outline_modulate = Color(1, 0.9, 0.6, 1)
+script = ExtResource("silhouette")
+shop_id = &"weapon_shotgun"
 
 [node name="SpotShotgun" type="Marker3D" parent="ShopSpots"]
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -8.200, 0.000, -5.600)
@@ -2593,14 +3146,10 @@ transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 10.260, 
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
-[node name="GrenadeSign" type="Label3D" parent="ShopProps"]
+[node name="GrenadeSilhouette" type="Node3D" parent="ShopProps"]
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 10.340, 1.600, 3.000)
-pixel_size = 0.006
-text = "GRENADES"
-font_size = 56
-outline_size = 24
-modulate = Color(0.1, 0.07, 0.02, 1)
-outline_modulate = Color(1, 0.9, 0.6, 1)
+script = ExtResource("silhouette")
+shop_id = &"grenades"
 
 [node name="SpotGrenades" type="Marker3D" parent="ShopSpots"]
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 11.400, 0.000, 3.000)
@@ -2612,14 +3161,10 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.000, 
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
-[node name="RifleSign" type="Label3D" parent="ShopProps"]
+[node name="RifleSilhouette" type="Node3D" parent="ShopProps"]
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -4.000, 1.600, 21.660)
-pixel_size = 0.006
-text = "RIFLE"
-font_size = 72
-outline_size = 24
-modulate = Color(0.1, 0.07, 0.02, 1)
-outline_modulate = Color(1, 0.9, 0.6, 1)
+script = ExtResource("silhouette")
+shop_id = &"weapon_rifle"
 
 [node name="SpotRifle" type="Marker3D" parent="ShopSpots"]
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -4.000, 0.000, 20.400)
@@ -3158,7 +3703,7 @@ transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -12.300,
 transform = Transform3D(0.8192, 0, 0.5736, 0, 1, 0, -0.5736, 0, 0.8192, -12.200, 0.000, 16.800)
 
 [node name="ContainerSmall1" parent="Midway/Dressing" instance=ExtResource("prop_container_small")]
-transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 10.700, 0.000, 29.200)
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 8.900, 0.000, 26.000)
 
 [node name="Planks1" parent="Midway/Dressing" instance=ExtResource("prop_planks")]
 transform = Transform3D(0.5000, 0, 0.8660, 0, 1, 0, -0.8660, 0, 0.5000, 12.600, 0.000, 27.000)
@@ -3266,7 +3811,7 @@ transform = Transform3D(0.9962, 0, 0.0872, 0, 1, 0, -0.0872, 0, 0.9962, -15.300,
 transform = Transform3D(0.9848, 0, -0.1736, 0, 1, 0, 0.1736, 0, 0.9848, -14.650, 0.000, 30.300)
 
 [node name="Tires2" parent="Midway/Dressing" instance=ExtResource("prop_tires")]
-transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -15.300, 0.000, 33.000)
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -15.300, 0.000, 37.000)
 
 [node name="Barrel10" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 15.300, 0.000, 25.000)
@@ -3299,7 +3844,7 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.000, 
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 0.000, 35.600)
 
 [node name="Pallet4" parent="Midway/Dressing" instance=ExtResource("prop_pallet")]
-transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, -10.500, 0.000, 33.800)
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, -7.600, 0.000, 33.600)
 
 [node name="Crate10" parent="Midway/Dressing" instance=ExtResource("prop_crate")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 9.800, 0.000, 17.000)
@@ -3320,13 +3865,13 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -11.400,
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -12.500, 0.000, 25.000)
 
 [node name="Pallet5" parent="Midway/Dressing" instance=ExtResource("prop_pallet")]
-transform = Transform3D(0.3420, 0, 0.9397, 0, 1, 0, -0.9397, 0, 0.3420, 12.000, 0.000, 33.400)
+transform = Transform3D(0.3420, 0, 0.9397, 0, 1, 0, -0.9397, 0, 0.3420, 7.600, 0.000, 33.600)
 
 [node name="Box7" parent="Midway/Dressing" instance=ExtResource("prop_box")]
-transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, 11.000, 0.000, 34.800)
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, 8.600, 0.000, 31.600)
 
 [node name="Pipes1" parent="Midway/Dressing" instance=ExtResource("prop_pipes")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -12.000, 0.000, 31.500)
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -15.100, 0.000, 14.200)
 
 [node name="Sign1" parent="Midway/Dressing" instance=ExtResource("prop_sign")]
 transform = Transform3D(-0.9397, 0, -0.3420, 0, 1, 0, 0.3420, 0, -0.9397, 4.200, 0.000, 36.200)

@@ -102,7 +102,6 @@ func save() -> void:
 	LookStore.save_look(look)
 	saved = look.duplicate_look()
 	_refresh_status()
-	UIAudio.play(&"press")
 
 
 ## Makes the working look the saved one in memory and leaves the file write to the caller (the

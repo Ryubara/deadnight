@@ -106,7 +106,8 @@ func test_the_generators_running_light_follows_the_tank() -> void:
 	assert_bool(halo.visible).is_true()
 	# The brown-out: the light sags and drops out with the yard's lamps.
 	var failing := {}
-	for tick in 200:
+	# (an event comes about every 3.6 s: look over 20 s)
+	for tick in 1200:
 		_frame(_fuel.capacity * _fuel.brownout_fraction * 0.5, tick)
 		failing[snappedf(material.emission_energy_multiplier, 0.001)] = true
 	assert_int(failing.size()).is_greater(1)

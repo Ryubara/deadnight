@@ -89,6 +89,20 @@ BOARD_PITCH = 0.6
 APRON_DEPTH = 8.0
 APRON_WIDTH = 12.0
 SPAWN_OUTSIDE = 4.0  # the dead appear this far outside the fence line
+# The later areas' breaches (#849): each area's dead come in by boarded gaps like the field's. (id, x, z) of each gap's
+# middle on the wall it cuts; the yard's and the back lot's are in the outer walls, the plaza's in its two sides, and
+# the midway, which has no outer wall, has a pocket in each south corner (`pocket`, a walled bay with a gap on the court).
+# Each is (id, x, z, the way in as (x, z)).
+YARD_BREACHES = [("yard_e1", 62, 6, (-1, 0)), ("yard_e2", 62, 30, (-1, 0)), ("yard_s", 36, 38, (0, -1))]
+BACK_BREACHES = [("back_w1", -62, 10, (1, 0)), ("back_w2", -62, 34, (1, 0)), ("back_s", -36, 38, (0, -1))]
+PLAZA_BREACHES = [("plaza_w", -16, 49.5, (1, 0)), ("plaza_e", 16, 49.5, (-1, 0))]
+MIDWAY_POCKETS = [("mid_w", -12.5), ("mid_e", 12.5)]
+# Phone budget (#728): the later aprons are behind the perimeter wall and are drawn only within APRON_VIEW_END metres of
+# the camera (they show through a torn gap), their boards within BOARD_VIEW_END (the lot is 120 m across).
+APRON_VIEW_END = 35.0
+BOARD_VIEW_END = 45.0
+POCKET_WALL_Z = 33.0  # the pocket's wall across the court; the plaza's fence (z 38) closes its far side
+POCKET_SPAN = 7.0  # from the court's fence to the wall's free end: 4 m of gap and a pier either side
 # The breaker posts: (circuit, the shop door of the area it lights, where, the way its front faces as (x, z)).
 SWITCHES = [
     ("screen_lot", "", (0.0, 0.0, -46.2), (0.0, 1.0)),  # behind the players' spawns, in the avenue below the screen
@@ -163,6 +177,14 @@ FIELD_LAMPS = [
     (-56.5698, -0.03959632, -6.20401),
     (22.056038, 0, -8.007768),
 ]
+# The posts inside the back lot's fence (the numbers of FIELD_LAMPS) hang on the back lot's circuit, not the field's
+# (Deadnight #851: the lot is lit but dimmed, its lights failing like a dying battery).
+BACK_LOT_LAMP_NUMBERS = range(13, 18)
+# The back lot's walls a post can stand near: (the unit vector from inside towards the wall, the wall's coordinate on
+# that axis). A post within WALL_REACH of one aims its light away from it and shrinks its pool (`LampPost.away`).
+BACK_LOT_WALLS = [((1, 0, 0), -16.0), ((0, 0, -1), -4.0), ((0, 0, 1), 38.0), ((-1, 0, 0), -62.0)]
+LAMP_CONE = 30.0  # the half angle of an aimed post's light, degrees (`LampPost.AWAY_CONE`)
+WALL_REACH = 10.0  # a light of range 11 hung 3.9 m up reaches 10.3 m along the ground
 # The field's wrecks (x, z, yaw): the kit's Broken Car, whose block is one box 2.05 by 4.3 m and 1.3 m tall, over the
 # real body's reach (1.25 m), so it is run round and seen over, never stood on. Each flank has a straight row of four
 # end to end, a lap of 40 m and more round it (#855; `test_lot_loops.gd`), from the playground's swing frame or the
@@ -339,11 +361,47 @@ def group(name: str, parent: str) -> str:
     return name if parent == "." else f"{parent}/{name}"
 
 
-def lamps(parent: str, circuit: str, name: str = "Lamps") -> str:
+def lamps(parent: str, circuit: str, name: str = "Lamps", flicker: str = "") -> str:
     """A group of lamps on one circuit. Every light below it takes the circuit id from this node's metadata
-    (`LotLamps`): a generator circuit, `mains` (wired to the generator, no switch) or `battery` (not the generator's)."""
-    node(name, "Node3D", parent, {"metadata/circuit": f'"{circuit}"'})
+    (`LotLamps`): a generator circuit, `mains` (wired to the generator, no switch) or `battery` (not the generator's).
+    `flicker` names how the group's lights burn when they are on (`LotLamps`; `failing_battery`: dimmed and struggling,
+    `FailingBattery`); empty is steady."""
+    meta = {"metadata/circuit": f'"{circuit}"'}
+    if flicker:
+        meta["metadata/flicker"] = f'"{flicker}"'
+    node(name, "Node3D", parent, meta)
     return f"{parent}/{name}"
+
+
+def back_lot_post_props(at) -> dict[str, str]:
+    """What a back lot post near a wall needs so that its light and pool stay on its side (`LampPost.away`): the
+    direction away from the walls near it, and the pool's half size, the largest that fits when the pool is moved half
+    its size away from them."""
+    near = []
+    for (nx, _, nz), plane in BACK_LOT_WALLS:
+        d = (plane - at[0]) * nx if nx else (plane - at[2]) * nz
+        if 0 < d < WALL_REACH:
+            near.append(((nx, nz), d))
+    if not near:
+        return {}
+    ax = -sum(n[0] for n, _ in near)
+    az = -sum(n[1] for n, _ in near)
+    norm = math.hypot(ax, az)
+    ax, az = ax / norm, az / norm
+    half = 7.5
+    squarest = 1.0
+    for (nx, nz), d in near:
+        c = -(ax * nx + az * nz)  # how squarely the wall faces away from the aim
+        half = min(half, d / (1 - 0.5 * c))
+        squarest = min(squarest, c)
+    # The cone (half angle LAMP_CONE, as in `LampPost.AWAY_CONE`) tilted this far from straight down stays on this side
+    # of every wall near it: sin(tilt) * c >= sin(cone). Two degrees more than the least, so no edge touches the plane.
+    tilt = math.degrees(math.asin(math.sin(math.radians(LAMP_CONE)) / squarest)) + 2.0
+    return {
+        "away": f"Vector3({ax:.4f}, 0, {az:.4f})",
+        "pool_half": f"{half - 0.05:.2f}",
+        "aim_tilt": f"{tilt:.1f}",
+    }
 
 
 counter = {"n": 0}
@@ -426,6 +484,7 @@ def box(
     collide: bool = True,
     visible: bool = True,
     layers: int = GROUND_LAYER,
+    range_end: float = 0.0,
 ) -> None:
     if name in drivein_props.REPLACED:  # a drive-in prop stands here, with this block's collision
         return
@@ -439,6 +498,8 @@ def box(
         props["use_collision"] = "true"
         if layers != GROUND_LAYER:
             props["collision_layer"] = str(layers)
+    if range_end:  # drawn only within this many metres of the camera (#728: the aprons hide behind the perimeter)
+        props["visibility_range_end"] = f"{range_end:g}"
     props["size"] = vec(size)
     props["material"] = f'ExtResource("{mat}")'
     node(name, "CSGBox3D", parent, props)
@@ -456,6 +517,7 @@ def block(
     y0: float = 0.0,
     layers: int = GROUND_LAYER,
     visible: bool = True,
+    range_end: float = 0.0,
 ):
     """A solid axis-aligned box from corner coordinates."""
     box(
@@ -466,6 +528,7 @@ def block(
         mat,
         visible=visible,
         layers=layers,
+        range_end=range_end,
     )
 
 
@@ -634,32 +697,48 @@ def instance(parent: str, name: str, res: str, pos, rot_y: float = 0.0, props: d
     node_names.add(f"{parent}/{name}")
 
 
-def breach(field: str, tag: str, bx: float, bz: float) -> None:
+def breach(
+    field: str,
+    tag: str,
+    bx: float,
+    bz: float,
+    inward: tuple[float, float] | None = None,
+    bid: str | None = None,
+    mat: str = "field_fence",
+    apron: bool = True,
+    view_end: float = 0.0,
+    board_view_end: float = 0.0,
+) -> None:
     """The boards across one gap of the fence, and the walled apron outside it where the dead gather.
 
     The Barricade node stands in the gap on the fence line with its +Z pointing into the field (`Field/Breach*`); the
     boards are its children. The apron is ground the navigation mesh needs (the dead walk in over it), closed on three
-    sides so nobody walks off the map through a torn fence.
+    sides so nobody walks off the map through a torn fence. `view_end` hides the apron's drawing beyond that many
+    metres from the camera and `board_view_end` the boards' (0 draws them at any distance, the field's way).
     """
-    ix, iz = (1.0, 0.0) if bx == -62 else (-1.0, 0.0) if bx == 62 else (0.0, 1.0)
+    ix, iz = inward or ((1.0, 0.0) if bx == -62 else (-1.0, 0.0) if bx == 62 else (0.0, 1.0))
     rot = math.degrees(math.atan2(ix, iz))
     props = {
         "transform": xform((bx, 0, bz), rot),
         "script": 'ExtResource("barricade")',
-        "metadata/barricade_id": f'"{tag.lower()}"',
+        "metadata/barricade_id": f'"{bid or tag.lower()}"',
     }
+    if board_view_end:
+        props["metadata/board_view_end"] = f"{board_view_end:g}"
     node(f"Breach{tag}", "Node3D", field, props)
     for i in range(BOARDS):
         instance(
             f"{field}/Breach{tag}", f"Board{i + 1}", "board", (0.0, BOARD_FIRST + i * BOARD_PITCH, 0.03 * (-1) ** i)
         )
+    if not apron:
+        return
     # The apron: out from the fence line along -inward.
     ox, oz = -ix, -iz
     half = APRON_WIDTH / 2
     cx, cz = bx + ox * APRON_DEPTH / 2, bz + oz * APRON_DEPTH / 2
     if ox != 0:
         size = (APRON_DEPTH, 0.4, APRON_WIDTH)
-        box(field, f"Apron{tag}", size, (cx, -0.2, cz), "breach_ground")
+        box(field, f"Apron{tag}", size, (cx, -0.2, cz), "breach_ground", range_end=view_end)
         end = bx + ox * APRON_DEPTH
         block(
             field,
@@ -669,7 +748,8 @@ def breach(field: str, tag: str, bx: float, bz: float) -> None:
             bz - half,
             bz + half,
             PERIMETER_H,
-            "field_fence",
+            mat,
+            range_end=view_end,
         )
         for side, dz in (("A", -half), ("B", half)):
             block(
@@ -680,11 +760,12 @@ def breach(field: str, tag: str, bx: float, bz: float) -> None:
                 bz + dz - 0.2,
                 bz + dz + 0.2,
                 PERIMETER_H,
-                "field_fence",
+                mat,
+                range_end=view_end,
             )
     else:
         size = (APRON_WIDTH, 0.4, APRON_DEPTH)
-        box(field, f"Apron{tag}", size, (cx, -0.2, cz), "breach_ground")
+        box(field, f"Apron{tag}", size, (cx, -0.2, cz), "breach_ground", range_end=view_end)
         end = bz + oz * APRON_DEPTH
         block(
             field,
@@ -694,7 +775,8 @@ def breach(field: str, tag: str, bx: float, bz: float) -> None:
             min(end, end + oz * 0.4),
             max(end, end + oz * 0.4),
             PERIMETER_H,
-            "field_fence",
+            mat,
+            range_end=view_end,
         )
         for side, dx in (("A", -half), ("B", half)):
             block(
@@ -705,8 +787,60 @@ def breach(field: str, tag: str, bx: float, bz: float) -> None:
                 min(bz, end),
                 max(bz, end),
                 PERIMETER_H,
-                "field_fence",
+                mat,
+                range_end=view_end,
             )
+
+
+def apron_spawn(bx: float, bz: float, inward: tuple[float, float], along: float = 0.0) -> tuple[float, float, float]:
+    """Where the dead rise outside a gap: SPAWN_OUTSIDE out from the wall, `along` it from the gap's middle."""
+    ix, iz = inward
+    return (bx - ix * SPAWN_OUTSIDE - iz * along, 0.0, bz - iz * SPAWN_OUTSIDE + ix * along)
+
+
+def spawn_marker(group_path: str, name: str, at: tuple[float, float, float], bid: str) -> None:
+    """A zombie spawn point that names the breach its dead come in by (`NightWorld.spawn_gates`)."""
+    node(name, "Marker3D", group_path, {"transform": xform(at), "metadata/barricade_id": f'"{bid}"'})
+
+
+def pocket(area: str, bid: str, cx: float, tag: str) -> None:
+    """The midway's corner bay (#849): a wall across the corner with a gap closed by boards, the court's own fence and
+    the plaza's fence closing the other sides. The floor is the court's; the dead rise in the bay and tear the boards.
+    """
+    side = -1.0 if cx < 0 else 1.0
+    wall_end = side * 16.0  # the court's fence
+    free_end = wall_end - side * POCKET_SPAN
+    lo, hi = sorted((free_end, wall_end))
+    wall(
+        area,
+        f"Pocket{tag}",
+        "x",
+        POCKET_WALL_Z,
+        lo,
+        hi,
+        PERIMETER_H,
+        "midway_wall",
+        [(cx, BREACH_WIDTH, 0, PERIMETER_H)],
+    )
+    breach(area, f"Pocket{tag}Gap", cx, POCKET_WALL_Z, (0.0, -1.0), bid, apron=False, board_view_end=BOARD_VIEW_END)
+
+
+def gaps_on(table, fixed_axis: str, fixed: float, height: float) -> list[tuple[float, float, float, float]]:
+    """The gaps a table's breaches cut in the wall at `fixed_axis` = `fixed` (x for a side wall, z for a south one)."""
+    index = 1 if fixed_axis == "x" else 2
+    along = 2 if fixed_axis == "x" else 1
+    return [(b[along], BREACH_WIDTH, 0, height) for b in table if b[index] == fixed]
+
+
+def breaches_of(area: str, table, mat: str, spawns: dict[str, list[float]]) -> None:
+    """Boards and apron for each breach of `table`, and the dead's spawn points on each apron (`spawns`: id -> the
+    distances along the apron from the gap's middle, one marker each)."""
+    zs = group("ZombieSpawns", area)
+    for bid, bx, bz, inward in table:
+        tag = "".join(part.title() for part in bid.split("_"))
+        breach(area, tag, bx, bz, inward, bid, mat, view_end=APRON_VIEW_END, board_view_end=BOARD_VIEW_END)
+        for i, along in enumerate(spawns.get(bid, [0.0])):
+            spawn_marker(zs, f"Spawn{tag}{i + 1 if i else ''}", apron_spawn(bx, bz, inward, along), bid)
 
 
 def door(name: str, label_at) -> None:
@@ -745,6 +879,13 @@ def sign(parent: str, name: str, text: str, pos, yaw: float, size: int = 72) -> 
         "outline_modulate": "Color(1, 0.9, 0.6, 1)",
     }
     node(name, "Label3D", parent, props)
+
+
+def silhouette(parent: str, name: str, shop_id: str, pos, yaw: float) -> None:
+    """What a wall weapon's plaque shows instead of its name (#829): the weapon's silhouette, made at run time from its
+    own model (`WallSilhouette`, `SilhouetteMesh`). It sits where the sign was; the name and price are the prompt's."""
+    node(name, "Node3D", parent, {"transform": xform(pos, yaw), "script": 'ExtResource("silhouette")',
+                                   "shop_id": f'&"{shop_id}"'})  # fmt: skip
 
 
 def ammo_locker(name: str, centre: tuple[float, float], yaw: float = 0.0) -> None:
@@ -812,6 +953,7 @@ def build() -> None:
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/projector_beam.tscn" id="beam"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/glow_pane.tscn" id="pane"]')
     lines.append('[ext_resource type="Script" path="res://world/drive_in/model_glow.gd" id="model_glow"]')
+    lines.append('[ext_resource type="Script" path="res://world/shop/wall_silhouette.gd" id="silhouette"]')
     lines.append(f'[ext_resource type="PackedScene" path="{lot_props.WRECK}" id="wreck"]')
     lines.extend(lot_props.ext_resources())
     lines.extend(drivein_props.ext_resources())
@@ -924,9 +1066,10 @@ def build() -> None:
     lamps_f = lamps(field, "screen_lot")
     field_lamps_xz = [(x, z) for x, _, z in FIELD_LAMPS]
     for i, at in enumerate(FIELD_LAMPS, start=1):
-        props = {"dim": str(APRON_LAMP_DIM)} if i in APRON_LAMPS else None
-        instance(lamps_f, f"Lamp{i}", "lamp", at, props=props)
-        override_light(f"{lamps_f}/Lamp{i}/Light")
+        if i not in BACK_LOT_LAMP_NUMBERS:
+            props = {"dim": str(APRON_LAMP_DIM)} if i in APRON_LAMPS else None
+            instance(lamps_f, f"Lamp{i}", "lamp", at, props=props)
+            override_light(f"{lamps_f}/Lamp{i}/Light")
     omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
     # The projected picture (the face, the spill below it) follows the screen's lamp (LotScreen).
     instance(
@@ -1009,9 +1152,12 @@ def build() -> None:
     ml = lamps(mid, "concession")
     omni(ml, "Court", (-10, 3.6, 14), 1.2, 9, "#ffd9a0")
     omni(ml, "Court2", (11, 3.6, 36), 1.0, 9, "#ffd9a0")
+    # The south corners' dead rise in bays behind boarded gaps (#849); the bay is walled, the court's own floor.
     mz = group("ZombieSpawns", mid)
-    marker(mz, "SpawnSW", (-14, 0, 36))
-    marker(mz, "SpawnSE", (14, 0, 36))
+    for bid, cx in MIDWAY_POCKETS:
+        tag = "W" if cx < 0 else "E"
+        pocket(mid, bid, cx, tag)
+        spawn_marker(mz, f"Spawn{tag}", (cx, 0.0, POCKET_WALL_Z + SPAWN_OUTSIDE - 0.5), bid)
     label(mid, "Label", "3  MIDWAY", (0, 0.6, 14), 130)
 
     # --- Projection booth ------------------------------------------------------------------------------------------
@@ -1057,8 +1203,8 @@ def build() -> None:
     # --- Generator yard (east) ----------------------------------------------------------------------------------------
     yard = group("GeneratorYard", ".")
     cut_tiles(yard, "Ground", (16, 62), YARD_CUT_Z, "yard_ground")
-    wall(yard, "FenceE", "z", 62, -4, 38, PERIMETER_H, "yard_wall")
-    wall(yard, "FenceS", "x", 38, 16, 62, 2.4, "yard_wall")
+    wall(yard, "FenceE", "z", 62, -4, 38, PERIMETER_H, "yard_wall", gaps_on(YARD_BREACHES, "x", 62, PERIMETER_H))
+    wall(yard, "FenceS", "x", 38, 16, 62, 2.4, "yard_wall", gaps_on(YARD_BREACHES, "z", 38, 2.4))
     # The generator cage: 8 x 6 m, open on the west and east sides, roofless.
     wall(yard, "CageN", "x", 15, 36, 44, 3.0, "yard_wall")
     wall(yard, "CageS", "x", 21, 36, 44, 3.0, "yard_wall")
@@ -1086,17 +1232,14 @@ def build() -> None:
          "model_path": 'NodePath("../../GeneratorSet")', "amber_energy": "1.6", "cream_glow": "0.25",
          "steady": "true", "halo_size": "1.6", "halo_at": "Vector3(0.6, 4.68, 0)", "halo_energy": "1.2"},
     )  # fmt: skip
-    yz = group("ZombieSpawns", yard)
-    marker(yz, "SpawnNE", (60, 0, -2))
-    marker(yz, "SpawnSE", (60, 0, 36))
-    marker(yz, "SpawnS", (28, 0, 36))
+    breaches_of(yard, YARD_BREACHES, "yard_wall", {})
     label(yard, "Label", "5  GENERATOR YARD", (39, 0.6, 31), 110)
 
     # --- Back lot (west) --------------------------------------------------------------------------------------------
     back = group("BackLot", ".")
     cut_tiles(back, "Ground", (-62, -16), BACK_LOT_CUT_Z, "backlot_ground")
-    wall(back, "FenceW", "z", -62, -4, 38, PERIMETER_H, "backlot_wall")
-    wall(back, "FenceS", "x", 38, -62, -16, 2.4, "backlot_wall")
+    wall(back, "FenceW", "z", -62, -4, 38, PERIMETER_H, "backlot_wall", gaps_on(BACK_BREACHES, "x", -62, PERIMETER_H))
+    wall(back, "FenceS", "x", 38, -62, -16, 2.4, "backlot_wall", gaps_on(BACK_BREACHES, "z", 38, 2.4))
     wrecks = group("Wrecks", back)
     n = 0
     for row_z in (6, 14, 30):
@@ -1116,13 +1259,12 @@ def build() -> None:
     block(back, "ScrapStackA", -58, -52, 20, 26, 2.6, "backlot_prop")
     block(back, "ScrapStackB", -26, -20, 22, 28, 2.6, "backlot_prop")
     block(back, "SignBoard", -50, -44, 35.2, 35.8, 4.2, "neon", 0.0)
-    bk = lamps(back, "back_lot")
+    bk = lamps(back, "back_lot", flicker="failing_battery")
+    for i in BACK_LOT_LAMP_NUMBERS:
+        instance(bk, f"Lamp{i}", "lamp", FIELD_LAMPS[i - 1], props=back_lot_post_props(FIELD_LAMPS[i - 1]))
     omni(bk, "NeonSign", (-47, 3.5, 33.5), 1.8, 12, "#ff3a4a")
-    bz = group("ZombieSpawns", back)
-    marker(bz, "SpawnNW", (-60, 0, -2))
-    marker(bz, "SpawnSW", (-60, 0, 36))
-    marker(bz, "SpawnS", (-30, 0, 36))
-    label(back, "Label", "6  BACK LOT  (dark)", (-39, 0.6, 12), 110)
+    breaches_of(back, BACK_BREACHES, "backlot_wall", {})
+    label(back, "Label", "6  BACK LOT  (dim)", (-39, 0.6, 12), 110)
 
     # --- Road: the ticket plaza behind the last door, closed off at its south end (#686) -------------------------------
     # The lot used to run on into a road (a 124 m strip of asphalt, a roadblock, two wrecks) that was never finished and
@@ -1131,8 +1273,12 @@ def build() -> None:
     road = group("Road", ".")
     floor_tiles(road, "Plaza", -16, 16, 38, PLAZA_END, "road_ground")
     wall(road, "FenceS", "x", 38, -16, 16, 2.6, "road_wall", [(0, 4, 0, 2.6)])
-    wall(road, "SideW", "z", -16, 38, PLAZA_END, PLAZA_WALL_H, "road_wall")
-    wall(road, "SideE", "z", 16, 38, PLAZA_END, PLAZA_WALL_H, "road_wall")
+    # The breaches' gaps stop at the perimeter's 3.0 m and the taller wall closes over them, so nothing climbs out over
+    # the boards (#849).
+    plaza_gaps_w = gaps_on(PLAZA_BREACHES, "x", -16, PERIMETER_H)
+    plaza_gaps_e = gaps_on(PLAZA_BREACHES, "x", 16, PERIMETER_H)
+    wall(road, "SideW", "z", -16, 38, PLAZA_END, PLAZA_WALL_H, "road_wall", plaza_gaps_w)
+    wall(road, "SideE", "z", 16, 38, PLAZA_END, PLAZA_WALL_H, "road_wall", plaza_gaps_e)
     wall(road, "FenceEnd", "x", PLAZA_END, -16, 16, PLAZA_WALL_H, "road_wall")
     for sx in (-1, 1):
         tag = "W" if sx < 0 else "E"
@@ -1166,10 +1312,8 @@ def build() -> None:
     wreck_nose = PLAZA_END - 0.2 - 2.15 - 2.2  # the nose of the wreck, 2.2 m from its middle towards the plaza
     spot(hl, "WreckHeadlightL", (WRECK_X + 1, 1.0, wreck_nose), 0, 0, 2.5, 18, 28, "#fff2cc")
     spot(hl, "WreckHeadlightR", (WRECK_X - 1, 1.0, wreck_nose), 0, 0, 2.5, 18, 28, "#fff2cc")
-    rz = group("ZombieSpawns", road)
-    marker(rz, "SpawnPlaza", (-14, 0, 50))
-    marker(rz, "SpawnPlazaE", (13.5, 0, 55))
-    marker(rz, "SpawnPlazaSW", (-13.5, 0, 55))
+    # The plaza's three spawn points: two on the west apron, one on the east (the count is the plaza's own).
+    breaches_of(road, PLAZA_BREACHES, "road_wall", {"plaza_w": [-1.6, 1.6]})
     label(road, "Label", "7  TICKET PLAZA", (0, 0.6, 52), 110)
 
     # --- The drive-in's own props (tools/world/drivein_props.py): speaker posts, the counter, booths, the marquee ---
@@ -1179,22 +1323,22 @@ def build() -> None:
     # --- Shop spots: wall weapons, the prize crane and the ammunition lockers ---------------------------------------
     # The weapons on the walls sell what the rules' tuning prices (weapon_shotgun, weapon_rifle); the crane is
     # crane_play inside the stand; a locker sells the rounds of the weapon in hand. Each spot is a marker with the
-    # kind and the shop id as metadata (NightWorld.shop_spots), and the plaque beside it only names it.
+    # kind and the shop id as metadata (NightWorld.shop_spots), and the plaque beside it shows the weapon's silhouette.
     group("ShopSpots", ".")
     group("ShopProps", ".")
     # The shotgun, on the stand's front wall, field side: the first weapon a player can afford, in the open.
     box("ShopProps", "ShotgunPlaque", (1.7, 0.9, 0.12), (-8.2, 1.6, -4.26), "plaque", collide=False)
-    sign("ShopProps", "ShotgunSign", "SHOTGUN", (-8.2, 1.6, -4.34), 180)
+    silhouette("ShopProps", "ShotgunSilhouette", "weapon_shotgun", (-8.2, 1.6, -4.34), 180)
     shop_spot("SpotShotgun", "wall", "weapon_shotgun", (-8.2, 0, -5.6), 180)
     # The grenade rack, on the stand's east wall in the alley (the midway side, so it opens with the concession): a
-    # plaque like the weapons' that names it; the spot sells the grenades the shop table prices (`grenades`), as many
+    # plaque like the weapons' that shows it; the spot sells the grenades the shop table prices (`grenades`), as many
     # as fit the pack. The front wall is full: windows, the door, the shotgun and the concession's breaker post.
     box("ShopProps", "GrenadePlaque", (1.7, 0.9, 0.12), (10.26, 1.6, 3.0), "plaque", 90, collide=False)
-    sign("ShopProps", "GrenadeSign", "GRENADES", (10.34, 1.6, 3.0), 90, 56)
+    silhouette("ShopProps", "GrenadeSilhouette", "grenades", (10.34, 1.6, 3.0), 90)
     shop_spot("SpotGrenades", "rack", "grenades", (11.4, 0, 3.0), 90)
     # The rifle, on the booth's front wall, midway side.
     box("ShopProps", "RiflePlaque", (1.7, 0.9, 0.12), (-4.0, 1.6, 21.74), "plaque", collide=False)
-    sign("ShopProps", "RifleSign", "RIFLE", (-4.0, 1.6, 21.66), 180)
+    silhouette("ShopProps", "RifleSilhouette", "weapon_rifle", (-4.0, 1.6, 21.66), 180)
     shop_spot("SpotRifle", "wall", "weapon_rifle", (-4.0, 0, 20.4), 180)
     # The prize crane, inside the stand, beside the cabinet that was already there.
     shop_spot("SpotCrane", "crane", "crane_play", (-6.4, 0, 5.0), 270, crane_spot=0)

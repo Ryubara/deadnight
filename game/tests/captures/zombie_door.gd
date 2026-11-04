@@ -9,7 +9,7 @@ extends Node3D
 ##   `--saved=0`      with `rebake`, bake every mesh at run time instead of using the saved ones
 ##                    (`LotNavmeshes`): the zombies walk the same paths.
 
-const GREYBOX := preload("res://world/drive_in_greybox.tscn")
+const GREYBOX := "res://world/drive_in_greybox.tscn"
 const ZOMBIE_MODEL := "res://assets/zombie_kit/zombie.glb"
 const BUY_AT := 6.0
 const PLAYER_AT := Vector3(0, 0, 3)
@@ -36,7 +36,7 @@ var _args := {}
 
 func _ready() -> void:
 	_args = _parse_args()
-	var lot := GREYBOX.instantiate()
+	var lot := (load(GREYBOX) as PackedScene).instantiate()
 	add_child(lot)
 	_doors = lot.get_node("Doors")
 	# The stand's roof would hide the inside from this camera.
