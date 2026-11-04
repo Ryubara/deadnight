@@ -254,6 +254,7 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			_leave(action["player_id"])
 		SEAT_PERSON, RulesAction.SEAT_BOT:
 			rules.apply({"type": action["type"], "player_id": action["player_id"]})
+			_platform_of_seat(action["player_id"], action["type"] == SEAT_PERSON)
 		START_NIGHT:
 			rules.apply(RulesAction.start())
 		LOOK:
@@ -387,7 +388,8 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 	)
 	_dead_fields[player_id] = DeadField.new(dead_tuning)
 	_bodies[player_id].dead = _dead_fields[player_id]
-	crowd.join(player_id, OS.has_feature("web") if local else true)
+	if not bot:
+		crowd.join(player_id, OS.has_feature("web") if local else true)
 	looks.join(player_id)
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
@@ -400,6 +402,18 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 	# What the rules say the player starts with, the firearm last so it is the one in hand.
 	for shop_id in rules.players[player_id].weapons:
 		_combat(CombatAction.give_weapon(player_id, WeaponCatalog.catalog_id(shop_id)))
+
+
+## A seat changed hands: a bot has no screen, so it counts for nothing in the crowd's ceiling (the
+## ceiling follows the people's platforms, `CrowdCeiling`); a person who takes a bot's seat counts
+## as a browser until its client says what it is, like any remote person that joins.
+func _platform_of_seat(player_id: int, person: bool) -> void:
+	if not _bodies.has(player_id):
+		return
+	if person:
+		crowd.join(player_id, true)
+	else:
+		crowd.leave(player_id)
 
 
 func _leave(player_id: int) -> void:
