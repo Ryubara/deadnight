@@ -359,10 +359,11 @@ The rules decide, the lamps follow. The zombies' lit pace asks `GeneratorState` 
 `LotLamps.lit_at`: a lamp within 6 m whose circuit is on and whose tank has fuel), never a light node, so a server
 that draws nothing agrees with every client. The client's `LotLamps` mirrors `circuit_changed`, `fuel_empty`,
 `fuel_restored` and each frame's `fuel`: a circuit that goes off hides its lights and darkens its posts' bulbs; in the
-tank's last tenth (`brownout_fraction`) the lights sag and drop out in a flicker that is a function of the frame's
-tick and the lamp's number (no clock, no random draw), so a recording and a test see the same lights; at an empty tank
-they go out. Only the screen's glow outlasts the generator, at 30% (`afterglow`), and it lights no ground for the
-dead. The flicker is only the picture: the lit pace stays whole until the tank is empty.
+tank's last tenth (`brownout_fraction`) the lights sag and dip in the slow events of `FailingBattery.brownout` (a sag,
+a stutter, a dropout, one at most every 3.6 s, deeper the lower the tank, never more than three flashes a second), a
+function of the frame's tick and the lamp's number (no clock, no random draw), so a recording and a test see the same
+lights; at an empty tank they go out. Only the screen's glow outlasts the generator, at 30% (`afterglow`), and it
+lights no ground for the dead. The flicker is only the picture: the lit pace stays whole until the tank is empty.
 
 ![The lot from above: the start, every circuit on, a dry tank](map-circuits.png)
 
