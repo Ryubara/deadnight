@@ -753,7 +753,7 @@ combat chatter but not urgent lines (hurt, downed, a boss, a warning). **Made (#
 voice on the free tier, at the maintainer's word ("go ahead and get them going, I'll get the package with commercial
 rights in a moment"); they are **not licensed for commercial use** and are regenerated under the commercial plan before
 release ([#252](https://github.com/Ryubara/deadnight/issues/252)). The server's `level_up`, `tier_up` and
-`unlock_earned` are wired to them for every client; `challenge_done` waits for the challenge tracker (#1076)
+`unlock_earned` and the challenge tracker's `challenge_done` (#1135) are wired to them for every client
 ([research](../research/audio.md#the-progression-voice-lines-1063),
 [sound design](audio.md#the-soldiers-voices)).
 
