@@ -87,7 +87,7 @@ id = &"crane_play"
 kind = 2
 price = 425
 pool = Array[StringName]([&"weapon_shotgun", &"weapon_rifle", &"weapon_smg", &"weapon_flare_gun", &"weapon_baseball_bat", &"weapon_fire_axe", &"weapon_pistol", &"weapon_crowbar", &"weapon_pump_870", &"weapon_mp5", &"weapon_m4a1", &"weapon_ppsh", &"weapon_m249", &"weapon_fifty_cal", &"weapon_dual_pistols", &"weapon_ray_gun", &"weapon_freeze_gun"])
-pool_weights = PackedFloat32Array(4, 3, 2, 1, 0.5, 0.5, 1, 1, 2, 2, 1.5, 2, 1.5, 1.5, 0.5, 1.5, 1.5)
+pool_weights = PackedFloat32Array()
 
 [sub_resource type="Resource" id="Windows"]
 script = ExtResource("3_barr")

@@ -5,6 +5,9 @@
 # unreachable at once (the brain takes another), and a goal at the fence's own edge is walked to as
 # near as the body gets.
 #
+# Since #995 the walking mesh has no polygon across a barricade (`NavLayers`), so the path stops at
+# the boards' line before the walled-path check has anything to see; both stay.
+#
 # The probe sends one bot, whose brain wants a goal and nothing else (`GoalBrain`), to each place
 # from the field side, in the real lot with the boards up, and reads the longest stuck episode.
 extends GdUnitTestSuite
@@ -97,10 +100,12 @@ func test_a_goal_in_a_breach_pocket_is_marked_unreachable_and_the_bot_does_not_w
 			. override_failure_message("stuck for too long, %s" % label)
 			. is_less(LONGEST_STUCK)
 		)
+		# The walking mesh has no way across a barricade (#995), so a goal in a pocket is either
+		# marked unreachable at once or walked to as near as the mesh goes, never to the boards.
 		(
-			assert_int(result["walled"])
-			. override_failure_message("not marked unreachable, %s" % label)
-			. is_greater_equal(1)
+			assert_float(result["closest"])
+			. override_failure_message("walked up to the boards, %s" % label)
+			. is_greater(BotPath.REACHED_SHORT)
 		)
 		# It never got through the boards, nor stood in the pocket.
 		assert_float(_flat(result["end"], place["goal"])).is_greater(2.0)

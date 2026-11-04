@@ -345,7 +345,7 @@ func _waiting_on_crane() -> bool:
 
 
 func _reachable(here: Vector3, goal: Vector3) -> bool:
-	var path := NavigationServer3D.map_get_path(map, here, goal, true)
+	var path := NavigationServer3D.map_get_path(map, here, goal, true, NavLayers.WALK)
 	return not path.is_empty() and _flat(path[path.size() - 1], goal) < REACHABLE
 
 
@@ -442,7 +442,7 @@ func _toward(here: Vector3, goal: Vector3) -> Vector3:
 	if _flat(here, goal) < ARRIVED:
 		return Vector3.ZERO
 	var next := goal
-	for point in NavigationServer3D.map_get_path(map, here, goal, true):
+	for point in NavigationServer3D.map_get_path(map, here, goal, true, NavLayers.WALK):
 		if _flat(here, point) > 0.8:
 			next = point
 			break
