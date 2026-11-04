@@ -21,6 +21,11 @@ const GATE_HOLD_METRES := 3.0
 const GATE_HOLD_SHARE := 0.92
 const GATE_FOLLOW_METRES := 12.0
 const GATE_FOLLOW_SHARE := 0.95
+## Seconds a round may stand down to its marked last dead (`ZombieTuning.mark_last`) before the
+## night breaks the gate: a round with one dead left must not go on for minutes (#950). A boss round
+## with a dry stand-in for a person takes up to two minutes on its own; the stalls it found took 150
+## to 200 seconds and more.
+const GATE_TAIL_SECONDS := 150.0
 ## A zombie within this many metres of a bot, in its sight, counts as a threat it must not idle
 ## beside
 ## (the distance inside which a bot does no errand).
@@ -68,6 +73,9 @@ var order: StringName = BotOrders.ROAM
 var hold_spot := Vector3.INF
 
 var ticks := 0
+## Boards the dead tore off and the players put back, over the night (what a tail is made of).
+var boards_torn := 0
+var boards_repaired := 0
 var _seat: Dictionary = {}
 var _shot_now: Dictionary = {}
 var _hit_now: Dictionary = {}
@@ -84,6 +92,16 @@ var _spread_sum := 0.0
 var _spread_n := 0
 var _doors: Array[StringName] = []
 var _round_marks: Dictionary = {}
+## By round: the longest the round stood down to its last few dead, in seconds (a round that is
+## cut short counts to the cut), and the tick the present stretch began (-1 for none).
+var _round_tails: Dictionary = {}
+var _tail_began := -1
+var _tail_round := 0
+## By round: the seconds its active stretch lasted (a round cut short counts to the cut), and the
+## tick the present one began (-1 for none).
+var _round_lengths: Dictionary = {}
+var _active_began := -1
+var _active_round := 0
 ## By round: the damage the bots took, the downs, and what the bots carried when it began, so a
 ## night is read round by round against the simulator's own (`damage`, `died_in`).
 var _round_damage: Dictionary = {}
@@ -242,6 +260,10 @@ func hear(event: Dictionary) -> void:
 			_last_refusal[key] = at
 		&"door_opened":
 			_doors.append(event["door_id"])
+		&"board_torn":
+			boards_torn += 1
+		&"board_repaired":
+			boards_repaired += 1
 		&"round_started":
 			_round_marks[event["round"]] = float(night.server.tick_count) / 60.0
 			_round_kit[event["round"]] = _kit()
@@ -274,6 +296,7 @@ func tick() -> void:
 		if not team.is_empty():
 			hold_spot = team["at"]
 	_watch_bosses()
+	_watch_tail()
 	var humans := _humans_up()
 	var places: Array[Vector3] = []
 	for bot in night.host.bots:
@@ -305,6 +328,27 @@ func tick() -> void:
 		for j in range(i + 1, places.size()):
 			_spread_sum += Vector2(places[i].x - places[j].x, places[i].z - places[j].z).length()
 			_spread_n += 1
+
+
+## Counts the seconds a round stands down to its last few dead (the ones the screen outlines).
+func _watch_tail() -> void:
+	var rules := night.server.rules
+	if rules.phase != GameRules.Phase.ACTIVE:
+		_active_began = -1
+	else:
+		if _active_began < 0 or _active_round != rules.round_number:
+			_active_began = ticks
+			_active_round = rules.round_number
+		_round_lengths[_active_round] = float(ticks - _active_began) / 60.0
+	var left := rules.zombies_remaining()
+	if rules.phase != GameRules.Phase.ACTIVE or left < 1 or left > night.level.mark_last:
+		_tail_began = -1
+		return
+	if _tail_began < 0:
+		_tail_began = ticks
+		_tail_round = rules.round_number
+	var seconds := float(ticks - _tail_began) / 60.0
+	_round_tails[_tail_round] = maxf(float(_round_tails.get(_tail_round, 0.0)), seconds)
 
 
 ## The headliners' modes this tick: where their seconds go, and how many swings they begin.
@@ -761,13 +805,29 @@ func report() -> Dictionary:
 				}
 			)
 		)
+	var tail_round := 0
+	var tail_longest := 0.0
+	for tail_of: int in _round_tails:
+		if float(_round_tails[tail_of]) > tail_longest:
+			tail_longest = float(_round_tails[tail_of])
+			tail_round = tail_of
+	var longest_round := 0.0
+	for length_of: int in _round_lengths:
+		longest_round = maxf(longest_round, float(_round_lengths[length_of]))
 	return {
 		"round": rules.round_number,
 		"over": rules.phase == GameRules.Phase.OVER,
+		"round_longest": snappedf(longest_round, 0.1),
+		"round_tails": _round_tails,
+		"tail_longest": snappedf(tail_longest, 0.1),
+		"tail_round": tail_round,
 		"game_seconds": snappedf(float(ticks) / 60.0, 0.1),
 		"kills_total": _kills_total,
 		"doors": _doors.size(),
 		"relocated": night.server.director.relocated,
+		"rescued": night.server.director.rescued,
+		"boards_torn": boards_torn,
+		"boards_repaired": boards_repaired,
 		"denials": _denials,
 		"denial_loops": _loops,
 		"spread": snappedf(_spread_sum / maxf(float(_spread_n), 1.0), 0.1),
@@ -797,6 +857,13 @@ static func verdict(
 		broken.append("engine errors: %d" % int(night_report["errors"]))
 	if night_report.get("reason", "") == "stalled_round":
 		broken.append("a round that would not end (round %d)" % int(night_report["round"]))
+	if float(night_report.get("tail_longest", 0.0)) > GATE_TAIL_SECONDS:
+		broken.append(
+			(
+				"round %d stood %.0f s down to its last dead"
+				% [int(night_report["tail_round"]), float(night_report["tail_longest"])]
+			)
+		)
 	if int(night_report.get("denial_loops", 0)) > 0:
 		broken.append("rejected-buy loops: %d" % int(night_report["denial_loops"]))
 	for bot: Dictionary in night_report.get("bots", []):
