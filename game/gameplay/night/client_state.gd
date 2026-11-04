@@ -8,6 +8,8 @@ signal event_received(event: Dictionary)
 
 var player_id := 1
 var frame: Dictionary = {}
+## The dead of the latest frame, decoded once for the process (`ZombieCodec.decode_shared`): the
+## list and its entries are shared with every other client, so a reader never changes them.
 var zombies: Array[Dictionary] = []
 var over := false
 var round_reached := 0
@@ -50,7 +52,7 @@ func _apply(event: Dictionary) -> void:
 	match event["type"]:
 		&"frame":
 			frame = event
-			zombies = ZombieCodec.decode(event["zombies"])
+			zombies = ZombieCodec.decode_shared(event["zombies"])
 		&"player_named":
 			names[int(event["player_id"])] = str(event["name"])
 		&"round_started":
