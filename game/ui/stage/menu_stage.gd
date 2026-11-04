@@ -86,9 +86,11 @@ func clock() -> float:
 func advance(delta: float) -> void:
 	_clock += delta
 	rig.step(delta)
-	hero.rotation.y = rig.hero_yaw() + hero_turn
+	hero.face(rig.hero_yaw() + hero_turn)
+	# The soldier is posed on every step, a still's included (a step of 0 seconds): his arms aim
+	# along his front in the world, and the idle clip has to have been applied once.
+	hero.advance(delta if animated else 0.0)
 	if animated:
-		hero.advance(delta)
 		_screen_material.set_shader_parameter(&"phase", _clock)
 		for zombie in dead:
 			zombie.advance(delta)
@@ -102,7 +104,8 @@ func show_tab(tab: MenuTab.Id, cut := false) -> void:
 ## Dresses the soldier.
 func show_look(look: CharacterLook, weapon_id: StringName) -> void:
 	hero.show_look(look, weapon_id)
-	hero.rotation.y = rig.hero_yaw() + hero_turn
+	hero.face(rig.hero_yaw() + hero_turn)
+	hero.advance(0.0)
 
 
 func _add_environment() -> void:

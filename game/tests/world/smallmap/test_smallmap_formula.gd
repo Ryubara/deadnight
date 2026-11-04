@@ -99,7 +99,7 @@ func test_row_14_the_side_rooms_racks_make_a_25_to_36_metre_loop() -> void:
 	_holds(14)
 
 
-func test_row_15_windows_are_five_three_and_four() -> void:
+func test_row_15_windows_are_two_three_and_two() -> void:
 	_holds(15)
 
 
@@ -111,7 +111,7 @@ func test_row_17_the_players_start_4_to_7_metres_from_a_window() -> void:
 	_holds(17)
 
 
-func test_row_18_each_spawn_is_5_to_15_metres_out_and_reaches_its_room_only() -> void:
+func test_row_18_each_spawn_is_5_to_15_metres_out_in_by_its_window_to_its_room_only() -> void:
 	_holds(18)
 
 

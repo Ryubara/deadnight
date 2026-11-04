@@ -38,8 +38,9 @@ Where they stand and how they work is in [the lot](../design/map.md#the-breaker-
 - **A post is a `StaticBody3D`, not CSG**, so it does not need the navigation bake's care; the dead path round it. Its
   lamp is an emissive mesh with its own material (shared sub-resources would light every post together) and is no
   `powered_light`, so it never lights ground for the dead.
-- **The prompt's winner is the first match**: door, then breach, then post. A post stands more than `use_reach` from
-  every slab of every door (a test checks it), so the order never decides between two things a player stands at.
+- **No two reaches meet** (#908): a post stands 5.5 m or more from every slab of its door, and
+  `test_use_zone_spacing.gd` walks the floor; where two still meet, the one looked at wins
+  ([use reach](use-reach.md#spacing-and-the-press-908)).
 - **The bot's `use` is an edge, so it needs the circuit it sees**: frames carry `circuits`, and the bot only presses
   when the post is thrown the wrong way; the server also refuses a second throw within `switch_interval`.
 
