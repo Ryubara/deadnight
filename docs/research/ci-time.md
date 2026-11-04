@@ -89,6 +89,45 @@ The slowest suites on the runner (mean seconds): `rules/test_balance_targets` 16
 suite's time. All are seeded bot nights, a walk of the whole map or real sockets. Speed-up candidates are issues of their
 own (#1017 lists them).
 
+## The web job (#1111)
+
+The `web` job exports the game and runs eight browser probes (Playwright, headless Chromium). It takes 1,077 to 1,704 s
+on a runner, nearly all of it the probes (each 100 to 300 s; "Open the build in a browser" alone 190 to 307 s). It was
+limited to 30 minutes, and run 41887654023 was cancelled at the limit in its last probe because "Install the browser" had
+taken 471 s (the Azure Ubuntu mirror served font packages with 60 to 160 s gaps) against 13 to 153 s on `main`.
+
+- **The install is cached.** `playwright install-deps` fetches nine `.deb` files (fonts and libraries, 21 MB) and
+  `playwright install` the headless shell (108 MB). Both folders are restored by `actions/cache`: the browser under a key
+  of the Playwright version (`PLAYWRIGHT_VERSION`, a job variable that the install, the keys and every probe read, so a
+  cached browser is always the one the library asks for), the packages under a key of the runner image and the version,
+  with a restore key of any image: the images rotate every few days and even between two runs minutes apart (runs of
+  this pull request got `20261026.354.1` and `20261101.360.1`), and apt fetches again any package whose version it
+  wants and the cache lacks, so a stale entry costs time, never correctness. The restored files are copied into
+  `/var/cache/apt/archives` before `install-deps`; afterwards the files fetched now (found by change time: apt gives a
+  download the server's modification time, so `-newermt` misses them) and only the versions installed are kept, so an
+  entry does not collect old versions.
+- **Each install step has a limit of its own** (10 minutes), so a mirror that stalls ends red on "Install the browser's
+  system packages" or "Install the browser", not as a cancelled job at the end.
+- **The job has 40 minutes** and its last step (`tools/ci_shard_time.py web`, kept equal to the workflow's limit by
+  `ci_test_shards.py --self-test`) annotates past 30 minutes (the old limit), fails past 38, and names an install step
+  past 180 s in the annotation and the job summary. The slowest `main` run plus the 471 s install is 36 minutes:
+  annotated, still green.
+- **Measured on this pull request** (the mirror was fast on all three, 21 MB in 1 s, so the install itself gained
+  little; what changed is that the downloads that stalled once are gone):
+
+    | Run | Cache | Install-deps | Install browser | Job |
+    | --- | --- | --- | --- | --- |
+    | 41895393215 | cold (both) | 14 s, 21.1 MB fetched | 4 s, downloaded | 1,542 s |
+    | 41899862660 | browser warm, packages missed (image rotated) | 11 s | 0 s | 1,077 s |
+    | 41903192638 | both warm | 11 s, "Need to get 0 B/21.1 MB", 9 restored, 0 fetched | 0 s | 1,208 s |
+
+  The job's total moved by 465 s between runs while the install moved by 7 s: the probes ran at different speeds on
+  different runners, so the install is no longer what decides the limit, and none of the three needed more than 26 minutes.
+  `apt-get update` (12.7 MB of indexes) still goes to the mirror on every run; the 10-minute step limit covers it.
+- **A cache is saved by a run that ends green** and restored by the pull requests of the same repository from
+  `main`'s entries: the first `main` run after this merge saves them, every run after that starts warm.
+- **Left alone:** the probes themselves (about 1,100 s of the job) are not sped up here.
+
 ## What a fast test does
 
 1. **Tick by hand, back to back.** A suite that steps the player itself switches its `_physics_process` off once and

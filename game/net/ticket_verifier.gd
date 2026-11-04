@@ -25,9 +25,9 @@ const BAD := "bad ticket"
 const WRONG_SERVER := "ticket is for another server"
 const USED := "ticket already used"
 const BAD_SETTINGS := "ticket carries rules this server does not take"
-## `host_level` of a ticket that does not say (a backend from before levels): the host's level is
-## unknown, and the map the host chose stands.
-const NO_LEVEL := 0
+## `host_level` of a ticket that does not say (a backend from before levels, or an account with no
+## progress): level 1, so a ticket that holds no claim never opens a map that needs a level.
+const NO_LEVEL := 1
 ## Followed by the keys: the host chose a setting this build of the game server has not heard of.
 const UNKNOWN_SETTING := "ticket carries a setting this server does not know"
 
@@ -47,9 +47,9 @@ func _init(secret: String, server_id: String) -> void:
 ## `account` is `{xp}` (see `account_of`). `settings` is the `MatchSettings` the host chose, or null
 ## when the ticket has none (the usual rules). Rules this server cannot take (a value out of its
 ## bounds: the backend and the game disagree) refuse the ticket, loudly, instead of starting a night
-## with other rules than the host asked for. `host_level` is the claim (`NO_LEVEL` when absent);
-## `map_refused` names the map the host asked for and the level did not open ("" when the map
-## stands), which the server logs.
+## with other rules than the host asked for. `host_level` is the claim (`NO_LEVEL`, level 1, when
+## absent); `map_refused` names the map the host asked for and the level did not open ("" when the
+## map stands), which the server logs.
 func admit(ticket: String, now: int) -> Dictionary:
 	var claims := claims_of(ticket, now)
 	if claims.is_empty():
@@ -71,7 +71,7 @@ func admit(ticket: String, now: int) -> Dictionary:
 		if why != "":
 			return {"ok": false, "reason": why}
 		settings = MatchSettings.from_json(claims["settings"])
-		if host_level != NO_LEVEL and not MapRegistry.is_open(settings.map, host_level):
+		if not MapRegistry.is_open(settings.map, host_level):
 			map_refused = settings.map
 			settings = settings.fit_host(host_level)
 	for known: String in _used.keys():
@@ -103,9 +103,9 @@ static func _whole(value: Variant) -> int:
 	return 0
 
 
-## The level a ticket's `hostLevel` claim holds: `NO_LEVEL` when there is no claim; a whole number
-## from 1 up is that level (beyond the ladder, the top one); anything else that is claimed is level
-## 1, so a damaged claim never opens a map.
+## The level a ticket's `hostLevel` claim holds: `NO_LEVEL` (level 1) when there is no claim; a
+## whole number from 1 up is that level (beyond the ladder, the top one); anything else that is
+## claimed is level 1 too, so a missing or damaged claim never opens a map.
 static func _host_level(claim: Variant) -> int:
 	if claim == null:
 		return NO_LEVEL
