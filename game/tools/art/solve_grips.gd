@@ -4,7 +4,7 @@
 ## Rerun it after changing a model, its sockets or its hold's size, then the test
 ## `tests/player/test_hand_grips.gd`.
 ##
-##     godot --headless --path game -s res://tests/art/solve_grips.gd
+##     godot --headless --path game -s res://tools/art/solve_grips.gd
 ##         [-- --only revolver,crowbar] [--dry] [--dump <dir>] [--fingers]
 ## `--fingers` keeps each model's written hold and left hand and solves the right hand's fingers
 ## only: the sprint carries are built from the hold (`tools/blender/soldier_clips.py`), so a finger
