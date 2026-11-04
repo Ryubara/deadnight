@@ -15,6 +15,8 @@ const OPENS := {
 const SIDE_ROOM := Vector3(5.0, 0.0, -2.0)
 const UPSTAIRS_A := Vector3(11.0, 3.4, 2.3)
 const UPSTAIRS_B := Vector3(5.0, 3.4, -4.0)
+## The windows of each room (formula row 15, #917): the hall's open from the start.
+const WINDOWS := {"start": 2, "side": 3, "upstairs": 2}
 
 var _night: Night
 
@@ -153,7 +155,7 @@ func test_the_dead_of_a_room_rise_only_once_a_link_to_it_is_open() -> void:
 	var world := _night.world
 	# At the start only the hall's windows are open for the dead.
 	assert_array(world.open_areas()).is_equal(["start"] as Array[String])
-	assert_int(world.spawn_points().size()).is_equal(5)
+	assert_int(world.spawn_points().size()).is_equal(WINDOWS["start"])
 	rules.apply(RulesAction.grant_points(1, _price() * 3))
 	for id in LINKS:
 		RulesFixture.buy(rules, 1, id)
@@ -170,15 +172,13 @@ func test_the_dead_of_a_room_rise_only_once_a_link_to_it_is_open() -> void:
 
 
 ## The spawn points in the pool once the links up to and including `id` (in `LINKS` order) are open:
-## the hall's five, the side room's three (a door, or the stair that joins it) and the upstairs'
-## four.
+## the hall's, the side room's (a door, or the stair that joins it) and the upstairs'.
 func _spawns_after(id: StringName) -> int:
+	var all: int = WINDOWS["start"] + WINDOWS["side"] + WINDOWS["upstairs"]
 	match id:
 		&"door_side":
-			return 8
-		&"door_stairs_start":
-			return 12
-	return 12
+			return WINDOWS["start"] + WINDOWS["side"]
+	return all
 
 
 func test_every_link_has_one_slab_and_a_stand_on_each_side_within_reach_on_the_mesh() -> void:

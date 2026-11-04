@@ -85,7 +85,7 @@ static func _grenades(server: NightServer, player_id: int, item_id: StringName) 
 		"kind": &"grenades",
 		"id": item.id,
 		"count": count,
-		"price": ceili(float(item.price_at(rules.round_number)) * count / item.amount),
+		"price": item.part_price(rules.round_number, count),
 	}
 
 

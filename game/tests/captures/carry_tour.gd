@@ -94,9 +94,9 @@ func _crane() -> void:
 	var standing := crane_spot["position"] as Vector3
 	var crane_at: Vector3 = _night.view.crane.crane.global_position
 	var flat := Vector3(crane_at.x - standing.x, 0.0, crane_at.z - standing.z).normalized()
-	var side := Vector3(flat.z, 0.0, -flat.x) * 1.2
-	_night.player().teleport(standing - flat * 1.6 + side + Vector3(0.0, 0.1, 0.0))
-	_face(crane_at, standing - flat * 1.6 + side)
+	var side := Vector3(flat.z, 0.0, -flat.x) * 0.9
+	_night.player().teleport(standing - flat * 1.0 + side + Vector3(0.0, 0.1, 0.0))
+	_face(crane_at, standing - flat * 1.0 + side)
 	await _hold(HOLD)
 	await _press_use()
 	await _hold(SPIN_TICKS + 60)

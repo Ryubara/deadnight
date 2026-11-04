@@ -378,7 +378,7 @@ func _grenades(view: View, keep: int) -> Buy:
 	var count := mini(int(item.amount), _shop.max_grenades - view.grenades)
 	if view.grenades >= _profile.grenades_wanted or count <= 0:
 		return null
-	var price := ceili(float(item.price_at(view.round_number)) * count / item.amount)
+	var price := item.part_price(view.round_number, count)
 	var stand := nearest_by_walk(view, _shop.spots_by_kind(&"rack"))
 	if stand == Vector3.INF or view.points - price < keep:
 		return null

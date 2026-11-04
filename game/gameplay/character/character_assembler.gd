@@ -15,8 +15,9 @@ const ARMBAND_BONE := "UpperArm.R"
 const ARMBAND_NEXT := "LowerArm.R"
 const ARMBAND_NAME := "Armband"
 const ARMBAND_BONE_NODE := "ArmbandBone"
-## How far down the upper arm the band sits (0 the shoulder, 1 the elbow).
-const ARMBAND_ALONG := 0.5
+## How far down the upper arm the band sits (0 the shoulder, 1 the elbow). At the middle (0.5) it
+## sank up to 6 cm into the chest in the menu's pistol hold (#895, `ClipFit`).
+const ARMBAND_ALONG := 0.65
 ## Size of the band in metres: the ring's outer radius and its thickness, stretched along the arm.
 const ARMBAND_RADIUS := 0.085
 const ARMBAND_THICKNESS := 0.022
