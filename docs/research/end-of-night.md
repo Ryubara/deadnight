@@ -53,6 +53,33 @@ trackers describe, and nothing here is copied:
 
 ## The shots
 
-Each map holds its angles in its resource (`end_shots`). Every angle drifts a lens in a straight line while looking at a
-point (`EndShot`); the numbers are in metres of the map and are checked by `test_end_shots.gd` against the walls. See the
-resources for the numbers; the pictures are in the pull request that added them.
+Each map holds its angles in its resource (`end_shots`, `world/maps/drive_in.tres` and `small_indoor.tres`). Every angle
+drifts a lens in a straight line while looking at a point (`EndShot`); the numbers are in metres of the map (x east, z
+south) and are checked by `test_end_shots.gd` against the walls: the lens is never within 0.3 m of a solid along the
+drift (26 rays from it, since a point in a concave CSG wall is not reported by an overlap test), the view is open for
+1.5 m, a sphere swept along the drift is not stopped, and the look point is over the map. The pull-back from each of the
+eight starts of each map is checked the same way.
+
+- **The lot** is 120 m across and dark: the lens is 15 to 34 m up, outside the fences, so the walls never matter and
+  the lamps, the beam and the screen carry the picture (the outer slab, `Outskirts`, shows beyond the fence at the
+  bottom of a frame).
+- **The back rooms** are closed shells, dark outside (the first outside angle showed fog and fence posts and nothing of
+  the building), so all four angles are inside, at 2.5 m under a 3.2 m ceiling, in the hall (x 0 to 16, z 0 to 14.8)
+  and the rewind room (x -6.3 to 16.3, z -8.1 to 0). A pillar at x 14.1 stood within 1.5 m of the first draft of the
+  east rewind shot, which ran along z -4 (the row of pillars); the test caught it and the lens moved to z -1.4.
+- Authoring: `tests/captures/end_shots_tour.tscn` renders a map from `--cam=name:x,y,z,tx,ty,tz[,fov[,near]]` or every
+  authored shot at its start, middle and end; a near plane far out (`near` 56.4 from 60 m) cuts the roof away as a plan.
+- The whole sequence on both maps, desktop and phone, is `tests/captures/end_sequence_tour.tscn` (the real night
+  screen, the dead let loose, everyone down; it prints `closed after 150 frames`, the 15 s at 10 frames a second).
+
+## Tests
+
+`tests/night/test_end_camera.gd` (start on the lens, ease, walls, cuts, any frame rate),
+`tests/world/test_end_shots.gd` (both maps), `tests/night/test_end_of_night.gd` (a solo night through the real
+server: the stand-still, the clock 2, 1, 0, `night_closed` once, the counts in the frame),
+`tests/rules/test_end_tally.gd`, `tests/ui/test_hud_end_board.gd` (rows, order, a leaver's row kept, five canvases and
+a phone with its notch), `tests/ui/test_night_screen_end.gd` (the real Play and night screens to the end and back,
+the rules kept), `tests/net/test_end_of_night_online.gd` (the real backend and game server: clocks in step, a leaver,
+a host who leaves, a night everyone left, the night screen ending on the lobby screen with the rules),
+`tests/net/test_game_over_link.gd` (the client stays through the intermission, then leaves and reads no more) and the
+backend's `lifecycle.test.ts`.

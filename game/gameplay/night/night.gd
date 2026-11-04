@@ -121,7 +121,8 @@ var ticks_per_frame := 1
 var shoulder_camera := false
 ## The camera of the end of the night, once it is over (`NightEnding`).
 var end_camera: EndCamera
-## False before the night starts, while paused and after it is over.
+## False before the night starts, while paused and after it is over (the intermission is ticked
+## all the same, until the server closes the night).
 var running := false
 ## Draw and load everything the night uses once before it starts (`NightWarmup`), behind a loading
 ## screen. The game turns it on; a test that needs no pictures leaves it off, which saves seconds.
@@ -390,11 +391,11 @@ func _build_view(camera: Camera3D) -> void:
 
 ## The night ended: this client reads the server's intermission but plays no more (`NightEnding`).
 func _on_over(_round_reached: int) -> void:
+	running = false
 	NightEnding.begin(self)
 
 
-## The server closed the night: online the seat is left at once, not left unread ("Buffer payload
-## full").
+## The server closed the night: online the seat is left at once, not left unread.
 func _on_closed() -> void:
 	if remote:
 		_leave_server.call_deferred()
@@ -590,7 +591,7 @@ func _physics_process(_delta: float) -> void:
 	if (_warming or _leaving) and remote:
 		link.pump()
 	for _i in ticks_per_frame:
-		if not running:
+		if not running and not (state != null and state.over and not state.closed):
 			return
 		tick()
 

@@ -29,6 +29,10 @@ const NAME_WIDTH := 230.0
 const CHIP := Vector2(10.0, 34.0)
 const ROW_HEIGHT := 46.0
 const MIN_ROW_HEIGHT := 28.0
+## How much of the screen's height the dark at the top and at the bottom takes, and how dark it
+## is at its edge: the title and the clock read over any picture.
+const SCRIM_SHARE := 0.3
+const SCRIM_ALPHA := 0.6
 ## Height the title, the headings and the ticket's padding take, which the rows do not get.
 const CHROME_HEIGHT := 190.0
 ## A row of the local player is laid on a faint wash of the accent.
@@ -81,6 +85,25 @@ func _init() -> void:
 	_ticket.body.add_child(_grid)
 	across.add_child(_ticket)
 	resized.connect(_rebuild_later)
+
+
+func _draw() -> void:
+	var dark := Color(0.0, 0.0, 0.0, SCRIM_ALPHA)
+	var clear := Color(0.0, 0.0, 0.0, 0.0)
+	var band := size.y * SCRIM_SHARE
+	var top := PackedVector2Array(
+		[Vector2(0.0, 0.0), Vector2(size.x, 0.0), Vector2(size.x, band), Vector2(0.0, band)]
+	)
+	draw_polygon(top, PackedColorArray([dark, dark, clear, clear]))
+	var bottom := PackedVector2Array(
+		[
+			Vector2(0.0, size.y - band),
+			Vector2(size.x, size.y - band),
+			Vector2(size.x, size.y),
+			Vector2(0.0, size.y)
+		]
+	)
+	draw_polygon(bottom, PackedColorArray([clear, clear, dark, dark]))
 
 
 func _build_left() -> Control:

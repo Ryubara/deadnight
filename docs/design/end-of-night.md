@@ -28,7 +28,7 @@ stateDiagram-v2
     Night --> Over: last player down (game_over)
     Over --> Pullback: the same tick
     Pullback --> Angles: 4 s, ease out from the player's lens
-    Angles --> Angles: cut every 4.5 s, next angle
+    Angles --> Angles: cut every 3.5 s, next angle
     Angles --> Lobby: the server's clock reaches 0 (night_closed)
     Over --> Lobby: Leave (this player alone)
 ```
@@ -37,13 +37,16 @@ stateDiagram-v2
    still picture) and starts the **intermission clock**: 15 s, an `over_left` in every frame, whole seconds. The clock
    is the server's, so every client counts the same seconds whatever its own frame rate or link.
 2. **Pull-back (0 to 4 s).** The camera starts at this player's lens (position, orientation and field of view) and
-   eases out along the line from the lens to a point high behind the player, looking at where the player fell. A
-   critically damped move, so it has no first-frame jerk.
-3. **Angles (from 4 s).** Cuts, one every 4.5 s, between the map's authored shots; each shot is a slow drift (a start
-   and an end position, one look point) so no picture is still. Each shot is a cut, not a blend: the genre cuts.
-4. **The board.** Over all of it, on the right of the middle on a desktop and filling the width on a phone: the title,
-   *Round N*, and a row for each seat: name, points, kills, headshots, downs, revives, rounds. The standing is the
-   one at the moment of the end (a player who leaves later keeps their row).
+   eases out to a high place behind the player, looking at where the player fell. It is eased at both ends
+   (`smoothstep`), so it has no first-frame jerk. The place is the farthest of several ways (straight back and up, or
+   turned, or lower) that the walls leave: in the open the full pull, under a low ceiling a way along the room.
+3. **Angles (from 4 s).** Cuts, one every 3.5 s, between the map's authored shots (three in the 11 s that are left);
+   each shot is a slow drift (a start and an end position and a look point that drifts too) so no picture is still.
+   Each is a cut, not a blend: the genre cuts. Players do not all see the same angle first (the seat picks it).
+4. **The board.** Over all of it: the title, *Round N reached* and the night's clock on the left, a ticket on the right
+   with a row for each seat in order of points: name, points, kills, headshots (kills by a shot to the head), downs,
+   revives, rounds (the rounds the player stood at the end of). A dark band at the top and the bottom keeps the words
+   readable over any picture. A player who leaves later keeps their row.
 5. **The clock.** *Back to the lobby in 12* under the board, with **Leave** beside it.
 6. **Back.** At 0 the server says `night_closed`; every client closes its link and opens the lobby it came from
    (online) or its Play screen (alone).
@@ -55,13 +58,14 @@ view. They are written in the map's resource, in metres of the map, and a test c
 never inside a wall or solid prop along its whole drift (a swept ray from each start to each end and from the lens to
 its look point), is above the floor, and looks at something (the look point is inside the map's bounds). The two maps:
 
-- **The lot** (drive-in): the screen field from high over the screen looking at the cars; the concession and midway
-  from the roof line; the projector beam down the field; the ticket plaza closed court from over its wall.
-- **The back rooms**: from over the yard looking through the hall's south window; the hall from the ceiling corner (a
-  shot whose lens sits above the ceiling of the shell is out: the shell is closed, so the shots keep inside the rooms
-  or above the open terrace and yard); the rewind room along the pillars.
+- **The lot** (drive-in), four angles from high above it: the whole lot from over the ticket plaza with the screen
+  and the beam at the end of it; the cars and the screen from over the west fence; the generator yard from over the east
+  fence; the midway and the beam from over the concession.
+- **The back rooms**, four angles inside the rooms, lens just under the ceiling (the shell is closed and dark from
+  outside, so an outside shot shows nothing): the hall along its east wall, the hall along its west wall, the
+  rewind room from its west end, and the rewind room from its east end.
 
-Exact numbers: [research](../research/end-of-night.md#the-shots).
+Exact numbers: [research](../research/end-of-night.md#the-shots) and the maps' resources.
 
 ## Online
 
