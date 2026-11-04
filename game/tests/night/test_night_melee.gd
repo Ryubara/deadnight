@@ -116,3 +116,49 @@ func test_a_gun_shot_still_draws_its_flash_and_plays_the_fire_clip() -> void:
 	assert_int(_count(&"shot_fired")).is_greater(0)
 	assert_bool(fired).is_true()
 	assert_int(_lights()).is_greater(0)
+
+
+## The blows the real attack button lands on a walker of the round `round_number` (a fresh night
+## each), with `weapon` in hand, until the walker is dead or `limit` ticks have passed: the damage
+## of each blow and the health it left.
+func _blows_on(weapon: StringName, round_number: int, limit: int = 150) -> Array[Dictionary]:
+	_night.queue_free()
+	await get_tree().physics_frame
+	await before_test()
+	_night.server.rules.round_number = round_number - 1
+	_night.server.combat.apply(CombatAction.give_weapon(1, weapon))
+	NightFixture.run(_night, 3)
+	var zombie := _zombie_in_reach()
+	var spot := zombie.position
+	_button(true)
+	for _i in limit:
+		if _count(&"target_killed") > 0:
+			break
+		zombie.position = spot
+		zombie.velocity = Vector3.ZERO
+		NightFixture.run(_night, 1, _controller.command(_night.player(), 1))
+	_button(false)
+	return _heard.filter(func(e: Dictionary) -> bool: return e["type"] == &"damage_dealt")
+
+
+func test_the_crowbar_bat_and_axe_do_their_flat_damage_through_the_real_button() -> void:
+	# Through the real mouse button, the controller's camera ray, the sweep from the eye and the
+	# rules' health (#924): the crowbar's 55 leaves 3 of round two's 58, the bat's 60 and the axe's
+	# 150 (on round ten's 143) kill in one blow. Before, the head's x1.5 and x2.5 made them 68, 90
+	# and 375 whatever the crosshair was on.
+	var expected := {
+		&"crowbar": [2, 2, 55.0],
+		&"baseball_bat": [2, 1, 60.0],
+		&"fire_axe": [10, 1, 150.0],
+	}
+	for weapon: StringName in expected:
+		var plan: Array = expected[weapon]
+		var blows := await _blows_on(weapon, plan[0])
+		(
+			assert_int(blows.size())
+			. override_failure_message("%s: %d blows on round %d" % [weapon, blows.size(), plan[0]])
+			. is_greater_equal(plan[1])
+		)
+		assert_float(blows[0]["damage"]).is_equal(plan[2])
+		assert_int(_count(&"target_killed")).is_equal(1)
+		assert_int(blows.size()).is_equal(plan[1])

@@ -107,11 +107,12 @@ func test_a_player_out_of_rounds_falls_back_on_the_melee_weapon_that_kills_faste
 	var crowbar: Array[StringName] = [&"crowbar"]
 	var all: Array[StringName] = [&"crowbar", &"baseball_bat", &"fire_axe"]
 	# With only the crowbar, the crowbar against the tougher dead; a round-1 walker (50) falls to one
-	# quick melee blow, which the crowbar (two slow blows) does not beat.
+	# blow of either, and the crowbar's (55, 0.55 s apart) comes a little sooner than the quick
+	# melee's (50, 0.6 s apart). A round-2 walker (58) takes two of each: 1.1 s against 1.2 s.
 	assert_str(String(SimWeapons.best_armed(_melee_arms(crowbar), 66.0))).is_equal("crowbar")
-	assert_str(String(SimWeapons.best_armed(_melee_arms(crowbar), 50.0))).is_equal("quick_melee")
+	assert_str(String(SimWeapons.best_armed(_melee_arms(crowbar), 50.0))).is_equal("crowbar")
 	# Against nothing in particular the heavy axe does the most a second; a round-1 walker (50) falls
-	# to one quick bat blow sooner than to one slow axe blow or two crowbar blows; a round-10 one
+	# to one quick bat blow sooner than to one slow axe blow or one crowbar blow; a round-10 one
 	# (121) takes the crowbar three blows, the bat three quick ones and the axe a single one.
 	assert_str(String(SimWeapons.best_armed(_melee_arms(all)))).is_equal("fire_axe")
 	assert_str(String(SimWeapons.best_armed(_melee_arms(all), 50.0))).is_equal("baseball_bat")

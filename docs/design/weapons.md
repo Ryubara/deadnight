@@ -59,15 +59,15 @@ the real command, its own model drawn).
 | Model (`assets/weapons/`) | Definition | How it is obtained | Per hit / interval |
 | --- | --- | --- | --- |
 | `revolver` | `pistol`, the Revolver | **Start** (in hand) | 24 / 0.28 s |
-| `crowbar` | `crowbar` | The **crane** only (1); no longer a start weapon, the quick melee replaced it | 45 / 0.55 s |
+| `crowbar` | `crowbar` | The **crane** only (1); no longer a start weapon, the quick melee replaced it | 55 / 0.55 s, every zone |
 | `double_shotgun` | `shotgun`, the Double-barrel | **Wall** 900, and the **crane** (weight 4) | 21 x 8 / 0.3 s |
 | `lever_rifle` | `rifle`, the Hunting rifle | **Wall** 1,200, and the **crane** (3) | 95 / 0.5 s |
 | `tommy_gun` | `smg`, the Tommy gun | **Crane** only (2) | 14 / 0.075 s |
 | `flare_gun` | `flare_gun` | **Crane** only (1); becomes a lure (#439) | 90 + blast 60 / 0.8 s |
 | `ray_gun` | `ray_gun`, the Moonbeam Pistol | **Crane** only (1.5); [wonder weapons](#wonder-weapons-and-status-effects) | 300 + blast 160 / 0.45 s |
 | `freeze_gun` | `freeze_gun`, the Snow-Cone Gun | **Crane** only (1.5) | 30 + bloom freezes / 0.8 s |
-| `baseball_bat` | `baseball_bat` | **Crane** only (0.5) | 60 / 0.4 s, sweeps 4 |
-| `fire_axe` | `fire_axe` | **Crane** only (0.5) | 150 / 0.9 s, head x2.5 |
+| `baseball_bat` | `baseball_bat` | **Crane** only (0.5) | 60 / 0.4 s, sweeps 4, every zone |
+| `fire_axe` | `fire_axe` | **Crane** only (0.5) | 150 / 0.9 s, every zone |
 | `mp5` ([models](../research/weapon-models.md)) | `mp5`, the Usher SMG | **Crane** only (2) | 15 / 0.10 s |
 | `ppsh` | `ppsh`, the Reel Gun | **Crane** only (2) | 10 / 0.055 s |
 | `m4a1` | `m4a1`, the Matinee Carbine | **Crane** only (1.5) | 20 / 0.11 s |
@@ -112,9 +112,9 @@ to 28 m to half, range 45 m. A crane prize (weight 2.5) on both maps, no wall se
 **The bat and the axe** were models with no definition. They are melee weapons held as `Melee` (the Swing clip, no
 flash, a spark on a hit) with their own hold files, so each shows its own model. They are **found only in the prize
 crane, never at the start**, and a player carries two weapons with no separate melee slot ([#410](https://github.com/Ryubara/deadnight/issues/410)),
-so one in hand takes a slot a firearm could have had. That is why they are cut stronger than the crowbar (82 a second)
+so one in hand takes a slot a firearm could have had. That is why they are cut stronger than the crowbar (100 a second)
 and than the revolver (86): the bat is the crowd weapon (a quick blow that kills a round-1 walker, a sweep that hits
-four, 150 a second), the axe is the heavy one (one blow kills a walker of any round up to 10, a head blow x2.5, the
+four, 150 a second), the axe is the heavy one (one blow kills a walker of any round up to 10, in every zone, the
 slowest, 167 a second). Neither needs ammunition, which is what the slot buys, against a firearm's 190 a second that
 runs dry. They are not re-cut at the projector (the re-cut list is the firearms).
 
@@ -160,20 +160,21 @@ weapon: it is not in the catalogue's `IDS`, nobody buys, carries or wins it, and
 
 | | Quick melee | Crowbar | Baseball bat | Fire axe |
 | --- | ---: | ---: | ---: | ---: |
-| Per blow (body) | 50 | 45 | 60 | 150 |
+| Per blow (every zone) | 50 | 55 | 60 | 150 |
 | Interval | 0.6 s | 0.55 s | 0.4 s | 0.9 s |
-| Damage a second | 83 | 82 | 150 | 167 |
+| Damage a second | 83 | 100 | 150 | 167 |
 | Reach, thickness | 1.6 m, 0.4 | 1.9 m, 0.4 | 1.8 m, 0.45 | 1.8 m, 0.4 |
 | Targets in one blow | 1 | 2 | 4 | 2 |
-| Head, limb | x1, x1 (flat) | x1.5, x0.75 | x1.5, x0.75 | x2.5, x0.7 |
+| Head, limb | x1, x1 (flat) | x1, x1 (flat) | x1, x1 (flat) | x1, x1 (flat) |
 
 - **A flat blow (#897).** It does 50 in every zone, so a blow is worth the same wherever it lands. The sweep leaves the
   eye at 1.55 m with a 0.4 m thickness, and a walker's head sphere is at 1.62 m, so the sweep met the *head* on every
   blow at every reach and every aim (measured in the real night, rounds 1 to 9): 40 x 1.5 = 60, which killed round 1
   (50 health) *and* round 2 (58) in one blow, and the tables and the simulator, which read the body, said 40. The
-  blow is now the number it shows, and the head bonus is not hidden in the sweep. The bat, the axe and the crowbar keep
-  their zone multipliers (the sweep still crowns them: their real blow is the head's). See
-  [hits to kill](#hits-to-kill-by-round).
+  blow is now the number it shows, and the head bonus is not hidden in the sweep. The bat, the axe and the crowbar
+  had the same fault (#924): their tables said 60, 150 and 45 on the body, and the real blow was the head's, 90, 375 and
+  68 (the axe killed every walker to round 16 in one blow, not 10). They are flat too now (crowbar 55, bat 60, axe 150
+  in every zone). See [hits to kill](#hits-to-kill-by-round).
 - **Server:** `CombatAction.quick_melee` (a bit in the command's flags, `NetWire.F_MELEE`, protocol 11) is swept from
   the head along the view with `defs/quick_melee.tres` exactly as a melee weapon's blow is, through the same rewind,
   and hurts as a `melee` hit: the zombie takes the damage, the kill pays the melee price (130). A fixed cooldown of
@@ -187,8 +188,9 @@ weapon: it is not in the catalogue's `IDS`, nobody buys, carries or wins it, and
   bat and an axe are each the club. Every client draws every player's blow from the `quick_melee` event.
 - **Bat and axe are the strong melee.** They hit harder per blow and per second than the quick melee, so a slot spent
   on one is worth it (a test holds the bat and the axe to 1.5 times its damage a second, the axe to twice its blow, the
-  bat to more targets). The crowbar stays a slightly stronger blow than the quick melee, with a longer reach and two
-  targets, and is one of the crane's prizes.
+  bat to more targets). The crowbar is a slightly stronger blow than the quick melee (55 against 50; a test holds every
+  carried melee weapon at the quick melee's blow or more), with a longer reach and two targets, and is one of the
+  crane's prizes.
 - **Bots:** a bot with no round left and no melee weapon in hand stands and strikes what comes within reach
   (`BotIntent.quick_melee_ok`).
 - **On a phone** it is the MELEE button of the [touch controls](touch-controls.md) (#588).
@@ -196,31 +198,53 @@ weapon: it is not in the catalogue's `IDS`, nobody buys, carries or wins it, and
 ### Hits to kill by round
 
 The maintainer's rule: **one blow on round 1, more from round 2** ("melee attacks with V should not be one tapping
-zombies after round 1", [#897](https://github.com/Ryubara/deadnight/issues/897)). A walker has `health_for_round`
-health (50 + 8 a round to round 8, then x1.16 a round); a blow is 50 flat. Blows to kill a walker, from the real night
-(`tests/weapons/test_quick_melee_hits_to_kill.gd`, `tests/night/test_night_quick_melee.gd`):
+zombies after round 1", [#897](https://github.com/Ryubara/deadnight/issues/897)); every other melee weapon has the same
+table since #924. A walker has `health_for_round` health (50 + 8 a round to round 8, then x1.16 a round); a blow is flat
+(the same in every zone). Blows to kill a walker, from the real night (`tests/weapons/test_melee_hits_to_kill.gd`,
+`tests/weapons/test_quick_melee_hits_to_kill.gd`, `tests/night/test_night_melee.gd`,
+`tests/night/test_night_quick_melee.gd`):
 
 | Round | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Walker health | 50 | 58 | 66 | 74 | 82 | 90 | 98 | 106 | 123 | 143 |
-| **Blows (V)** | **1** | **2** | **2** | **2** | **2** | **2** | **2** | **3** | **3** | **3** |
-| Seconds to kill (0.6 s apart) | 0 | 0.6 | 0.6 | 0.6 | 0.6 | 0.6 | 0.6 | 1.2 | 1.2 | 1.2 |
-| Before (head x1.5 = 60) | 1 | 1 | 2 | 2 | 2 | 2 | 2 | 2 | 3 | 3 |
+| **Quick melee (V), 50** | **1** | **2** | **2** | **2** | **2** | **2** | **2** | **3** | **3** | **3** |
+| **Crowbar, 55** | **1** | **2** | **2** | **2** | **2** | **2** | **2** | **2** | **3** | **3** |
+| **Baseball bat, 60** | **1** | **1** | **2** | **2** | **2** | **2** | **2** | **2** | **3** | **3** |
+| **Fire axe, 150** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** |
+| Before #897: quick melee (60) | 1 | 1 | 2 | 2 | 2 | 2 | 2 | 2 | 3 | 3 |
+| Before #924: crowbar (68) | 1 | 1 | 1 | 2 | 2 | 2 | 2 | 2 | 2 | 3 |
+| Before #924: bat (90) | 1 | 1 | 1 | 1 | 1 | 1 | 2 | 2 | 2 | 2 |
+| Before #924: axe (375) | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
 
-- **Why 50.** The blow must be at least round 1's health (50) and under round 2's (58), so any number from 50 to 57
-  gives this table; the lowest keeps the free blow the weakest it can be. A test holds the blow between the two, so
+(The "before" rows are the real night, probed at 0.7, 1.1 and 1.5 m, aimed at the head, chest and legs, walking up
+and striking: every blow was in the head zone, so the blow was the table's number times the head's multiplier.)
+
+- **Why 50 for V.** The blow must be at least round 1's health (50) and under round 2's (58), so any number from 50 to
+  57 gives this table; the lowest keeps the free blow the weakest it can be. A test holds the blow between the two, so
   retuning the health curve fails it loudly. The count is the health's: every 50 health costs a blow, so it climbs on
   its own as the dead toughen, like the rest of the round curve.
-- **Why flat.** A person swinging from the eye cannot choose the zone (it is the head every time), so a head bonus is
-  a hidden x1.5; a flat blow gives the same count on the head, the chest and the legs, near and far (tested), and
-  makes the simulator's body-zone worth the real one.
-- **The lighter dead.** A runner (x0.55, from round 4) has 41, 45, 49 and 54 health on rounds 4 to 7, so one blow
+- **Why the crowbar is 55 and not its table's 45.** A weapon found in the crane and carried in a slot must not be worse
+  than the free blow on round 1, and 45 would have left a round-1 walker at 5 health after a crowbar blow that V
+  finishes. 55 is in the same bracket as V (50 to 57), so the crowbar is the same count with a faster swing, a longer
+  reach and two targets (100 a second against 83). A test holds each carried melee weapon at V's blow or more.
+- **The bat and the axe keep the numbers their tables always showed** (60, 150): the bat kills round 2 (58) in one blow
+  and then needs two, 150 a second with four targets; the axe kills a walker of any round to 10 (143) in one, as the
+  design said (the real blow of 375 killed to round 16).
+- **Why flat.** A person swinging from the eye cannot choose the zone (the sweep leaves the eye at 1.55 m with a 0.4
+  m thickness and the head sphere is at 1.62 m, so it is the head at every reach and every aim, whatever the
+  crosshair is on), so a head bonus is a hidden multiplier; a flat blow gives the same count on the head, the chest
+  and the legs, near and far (tested), and makes the simulator's body-zone worth the real one. The other way, fixing
+  the sweep so zones are reachable (a thinner sphere, a lower start), changes where every blow lands; it is not done.
+- **The lighter dead.** A runner (x0.55, from round 4) has 41, 45, 49 and 54 health on rounds 4 to 7, so one blow of V
   still kills it on rounds 4 to 6; a crawler (x0.7, from round 6) has 63 and up, two blows; a brute (x3, from round 8)
   takes 7 to 9. A blow cannot both fell round 1's walker and leave a round-4 runner standing, so the runner stays the
   fast, thin one.
 - **The worth the simulator and the bots see.** `WeaponWorth.melee_rate` of the blow, in health a second against the
-  round's walker: 83 (round 1), 48, 55, 62, 68, 75, 82 (round 7), 59, 68, 79 (round 10). It dips at each step up in
-  blows (rounds 2 and 8). A free hand takes a weapon only above 1.5 times that.
+  round's walker. V: 83 (round 1), 48, 55, 62, 68, 75, 82 (round 7), 59, 68, 79 (round 10). It dips at each step up
+  in blows (rounds 2 and 8). A free hand takes a weapon only above 1.5 times that. The crowbar's, the bat's and the
+  axe's are the same function of their definitions (a test holds each to the real night's blows).
+- **A melee hit is a head hit for the rules.** The zone is the head, so a hit that does not kill pays the headshot hit
+  (8 points, not the hit's), and the kill pays the melee kill (130) whatever the zone. Not changed here.
 
 ## Carrying weapons
 
@@ -318,9 +342,9 @@ way to the body or head right behind it.
 
 | Zone | Pistol | SMG | Shotgun (per pellet) | Rifle | Flare gun | Crowbar | Bat | Axe |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Head | x2.5 | x2.0 | x1.5 | x2.5 | x1.5 | x1.5 | x1.5 | x2.5 |
+| Head | x2.5 | x2.0 | x1.5 | x2.5 | x1.5 | x1.0 | x1.0 | x1.0 |
 | Body | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 |
-| Limb | x0.6 | x0.6 | x0.6 | x0.7 | x0.6 | x0.75 | x0.75 | x0.7 |
+| Limb | x0.6 | x0.6 | x0.6 | x0.7 | x0.6 | x1.0 | x1.0 | x1.0 |
 
 Damage of one hit is `damage x falloff(distance) x zone x 0.6^(bodies already passed)`. A shot that lands on one
 zombie with several pellets is one hit for the rules (one `hit` action carrying the damage, headshot
@@ -338,7 +362,7 @@ distance down to the floor and holds there to the range.
 | Double-barrel | 8 pellets, 6 degrees | 22 x 8 | 0.3 s | 2 / 16 (max 32) | 1.8 s | 8 to 22 m (35%) | 30 m |
 | Hunting rifle | hitscan, pierces 2 | 95 | 0.5 s | 8 / 40 (max 80) | 2.2 s | 40 to 90 m (80%) | 120 m |
 | Flare gun | projectile, lobbed | none: calls the dead (25 m, 8 s) | 0.8 s | 1 / 6 (max 12) | 2.0 s | none | 40 m |
-| Crowbar | melee sweep, 2 targets | 45 | 0.55 s | none | none | none | 1.9 m |
+| Crowbar | melee sweep, 2 targets | 55 | 0.55 s | none | none | none | 1.9 m |
 | Baseball bat | melee sweep, 4 targets | 60 | 0.4 s | none | none | none | 1.8 m |
 | Fire axe | melee sweep, 2 targets | 150 | 0.9 s | none | none | none | 1.8 m |
 | MP5 | hitscan, auto | 15 | 0.10 s | 30 / 120 (max 180) | 1.9 s | 12 to 34 m (55%) | 55 m |
@@ -357,8 +381,8 @@ Shots to kill at close range (head / body), against the health in [the rounds ta
 | Double-barrel | 1 / 1 | 1 / 1 | 1 / 1 | 587 | 147 |
 | Hunting rifle | 1 / 1 | 1 / 1 | 1 / 2 | 190 | 123 |
 | Flare gun | none | none | none | 0 | 0 |
-| Crowbar | 1 / 2 | 1 / 2 | 3 / 4 | 82 | 82 |
-| Baseball bat | 1 / 1 | 1 / 2 | 2 / 3 | 150 | 150 |
+| Crowbar | 1 / 1 | 2 / 2 | 3 / 3 | 100 | 100 |
+| Baseball bat | 1 / 1 | 2 / 2 | 3 / 3 | 150 | 150 |
 | Fire axe | 1 / 1 | 1 / 1 | 1 / 1 | 167 | 167 |
 | MP5 | 2 / 4 | 3 / 6 | 5 / 10 | 150 | 92 |
 | PPSh | 4 / 5 | 6 / 9 | 10 / 14 | 182 | 90 |
