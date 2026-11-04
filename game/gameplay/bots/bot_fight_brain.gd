@@ -797,7 +797,10 @@ func _throw(
 		or targets.is_empty()
 	):
 		return false
-	var throw := _grenadier.plan(here, targets, beliefs.grenades, now, kind == BotStance.Kind.LOW)
+	# A walking bot slides a few decimetres before it stands to throw: plan from where it stops.
+	var mine: Dictionary = beliefs.teammates.get(beliefs.me, {})
+	var stop := BotGrenadier.stop_point(here, mine.get("velocity", Vector3.ZERO))
+	var throw := _grenadier.plan(stop, targets, beliefs.grenades, now, kind == BotStance.Kind.LOW)
 	if throw == null:
 		return false
 	intent.throw_style = throw.style

@@ -373,7 +373,9 @@ func _track_challenges() -> void:
 func _build_view(camera: Camera3D) -> void:
 	view = NightView.new()
 	add_child(view)
-	view.setup(state, camera, _telegraphs(), _board_seconds())
+	view.setup(
+		state, camera, LookTimings.telegraphs(rules_tuning), LookTimings.board_seconds(rules_tuning)
+	)
 	view.barricade_points = _barricade_points()
 	view.bodies = _body_of
 	view.repair_interval = _repair_seconds
@@ -523,27 +525,6 @@ func _crane_point(spot: int) -> Variant:
 func _post_point(circuit_id: StringName) -> Variant:
 	var post := world.switches.post(circuit_id)
 	return post.global_position if post != null else null
-
-
-## Seconds each look's blow takes to land, for the looks of the types that telegraph it.
-func _telegraphs() -> Dictionary[StringName, float]:
-	var telegraphs: Dictionary[StringName, float] = {}
-	for type in rules_tuning.roster.types:
-		if type.telegraph_seconds > 0.0:
-			for look in type.looks:
-				telegraphs[look] = type.telegraph_seconds
-	return telegraphs
-
-
-## Seconds each look's type takes to pull one board off, for its tear clip (`ZombieView`).
-func _board_seconds() -> Dictionary[StringName, float]:
-	var seconds: Dictionary[StringName, float] = {}
-	var per_board := rules_tuning.barricades.seconds_per_board
-	for type in rules_tuning.roster.types:
-		if type.barrier_speed > 0.0:
-			for look in type.looks:
-				seconds[look] = per_board / type.barrier_speed
-	return seconds
 
 
 ## Where each breach's boards stand, for the effects of tearing and mending them.
