@@ -51,7 +51,7 @@ const LOST := {
 		"up the stairwell onto the next hall's wall base, above a slab",
 		"Start/Lamp3/Light|Ceilings/SideSlabS":
 		"up the stairwell onto the next hall's floor, a room's glow in another room",
-		"UpperA/Lamp6/Light|Side/WallS3": "the wall below, seen through the slab: it was a leak",
+		"UpperA/Lamp6/Light|Side/WallS1": "the wall below, seen through the slab: it was a leak",
 		"Start/Lamp1/Light|Roof/ParapetS":
 		"the terrace's railing, over the hall's roof: it would be a leak",
 		"Start/Lamp1/Light|Roof/ParapetW":

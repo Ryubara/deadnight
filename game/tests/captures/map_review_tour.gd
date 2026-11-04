@@ -120,6 +120,7 @@ const SMALL_SPOTS := [
 	["z11_upper_bat", Vector3(9.7, 3.4, -1.6), 180.0, -4.0],
 	["z12_upper_axe", Vector3(14.7, 3.4, -7.35), -90.0, -4.0],
 	["z13_upper_shotgun", Vector3(11.0, 3.4, -6.5), 0.0, -4.0],
+	["z14_side_south_west", Vector3(-3.0, 0, -2.6), 160.0, -4.0],
 ]
 
 var _night: Night
