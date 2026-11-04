@@ -29,14 +29,14 @@ they matter, and where each lands. Where this table differs from the earlier pla
 | 3 | **The climb scales upward**: "It shouldn't really be 9 minutes a level unless you're just averaging it out. It should scale upward like call of duty e.g. it takes longer to level up the higher you go. That way users can feel the first level up satisfaction early on" | [The curve](#the-curve), #1058 |
 | 4 | **300 or more kills a game** is the assumption (modifiers raise the count); the curve is measured at count multipliers 1, 2 and 5 | [The curve](#the-curve), research page |
 | 5 | **The game server awards XP, per kill, live**: "Game server is good. We'll see how much it stresses when we do it because XP is earned after every zombie kill and there can be hordes." A signed-in solo night stays on the player's machine, capped by the backend | [Who awards XP](#who-awards-xp-and-live-xp), #1059, #1075 |
-| 6 | **No offline XP**, **no rested XP**, **a first-game-of-the-day XP bonus**: yes; dailies pay XP | [Where XP comes from](#where-xp-comes-from), #1058 |
+| 6 | **No offline XP**, **no rested XP**, **a first-game-of-the-day XP bonus**: yes; dailies pay XP. **Only accounts earn XP, because the server tracks it; a Guest account is one**: "only signed in accounts earn XP since we only track XP on the server. But even \"Guest\" accounts will be tracked on server." A night with no account at all earns nothing. Guest accounts expire after 7 days unless used again (kept in the game's own storage, fine for the Discord Activity); built in #1080, a returning guest within 7 days is the same account | [Where XP comes from](#where-xp-comes-from), [Storage and trust](#storage-and-trust), #1058 |
 | 7 | **No account currency** for now ("Disabled; XP based"). In-night points for buying stay | [In one paragraph](#in-one-paragraph) |
 | 8 | **All weapons and tonics free** from the first night. **A higher level has a slightly better kit**: "yeah the higher level player would ideally have a slightly better kit but that's a reward for them playing more." | [Rules](#rules-we-hold-ourselves-to), [Combat bonuses](#combat-bonuses), #1055 |
 | 9 | **Popups in real time**, as soon as they trigger, during play; XP and milestones credit live, not at a round's end. "Animations for this stuff need to be good" | [Popups, motion and sound](#popups-motion-and-sound), #1064 |
 | 10 | **Sounds**: a record scratch of our own making when a challenge is done; an honourable, battlefield-like sound for a level up (snare and brass; bigger on a tier) | [Popups, motion and sound](#popups-motion-and-sound), #1062 |
 | 11 | **Progression voice lines**: several celebration lines for every progression event, male and female, ElevenLabs, heard by every client; they wait on the maintainer's credits and commercial licence | [Voice lines](#voice-lines), #1063 (blocked), #252 |
 | 12 | **Wardrobe**: a grid; locked names are `???` with a silhouette of the base icon and the unlock instructions on hover; **no fitting room**; mouths are free | [Wardrobe](#wardrobe-costumes-and-the-locks), #1065, #1061 |
-| 13 | **Costumes** in their own tab, in their default colours | [Wardrobe](#wardrobe-costumes-and-the-locks), #1066 |
+| 13 | **Costumes** in their own tab, each with a **"Default"** colour option, and the player's own colours from the palette they have unlocked ("costumes in their default colors will have a Default option, and the users will have the ability to choose their own colors") | [Wardrobe](#wardrobe-costumes-and-the-locks), #1066 |
 | 14 | **Plate frames**: part of levels 1 to 55, plus exclusive ones from challenges ("beat this map"); calling cards and emblems yes; **no title phrases, no ticket book, no applause** | [The plate](#plate-calling-cards-emblems-and-frames), #1070, #1071, #1072 |
 | 15 | **Poster sets**: "a great addition" | [Poster sets](#poster-sets), #1073 |
 | 16 | **Night report credits** yes | [The night report and credits](#the-night-report-and-credits), #1068, #1069 |
@@ -49,9 +49,8 @@ they matter, and where each lands. Where this table differs from the earlier pla
 
 **Open:** what prestige resets and which rewards are exclusive (after #1055); how slight the combat edge is (#1055);
 the extraction details (#1056, each point a choice); rarity (#1053); the voice lines wait on the credits and licence
-(#252); the sizes of the first-game bonus and the opening night (first guesses); whether level 10 for the second map is
-as wanted when it arrives in about half an hour ([The curve](#the-curve)); and a reading to confirm: "No offline XP"
-is taken to mean XP exists only for a signed-in account ([Storage and trust](#storage-and-trust)).
+(#252); the sizes of the first-game bonus and the opening night (first guesses; what they are is still with the
+maintainer).
 
 ## What changed from the earlier plan
 
@@ -66,7 +65,7 @@ the Marquee) was written before the request for a 55-level ladder. The maintaine
 | *Stubs*, a cosmetic currency | **No currency**: items by level and challenge directly | "Disabled; XP based" |
 | No daily first-win bonus | **A first-game-of-the-day XP bonus** | Approved. It is paid for finishing a round, never for logging in |
 | Rested XP replaces login rewards | **No rested XP** | Not wanted |
-| Offline and solo earn like a team, merged on sign-in | **No offline XP**; no merge | XP exists only for an account |
+| Offline and solo earn like a team, merged on sign-in | **No offline XP**; no merge | XP exists only for an account the server tracks, a Guest account included |
 | The client awards XP now, the server later | **The game server awards XP, per kill, live**; a signed-in solo night stays on the player's machine, capped by the backend | Approved |
 | Popups wait for the break between rounds | **Real time**, during play, in the lane under the round banner | Approved |
 | A level never locks you out ("no lock on level") | **Maps are locked by level; the host's level decides** | Approved; a guest below a map's level still plays it in a friend's night |
@@ -74,6 +73,13 @@ the Marquee) was written before the request for a 55-level ladder. The maintaine
 | Title phrases, ticket book, applause, fitting room, Bad Weather | **Dropped** | Not wanted (title phrases: the maintainer was unsure, dropping was recommended) |
 | Night Report lines *Lamps*, *Holdings*, *Mentor* and *Solo +10%*; the Night Report paying stubs | The simpler [XP lines](#where-xp-comes-from) (Rounds, Points, Upkeep, Headliner, Rescue, the bonuses) | The proposal replaced them and the maintainer approved the proposal's XP table; each line is a stat the night already counts |
 | 22 to 32 hours to level 55 (53,250 XP) | **About 8 hours** (18,010 XP), a rising curve | "Gotta make it short" |
+
+!!! note "Rules 1 and 2 are replaced for combat kit (2026-11-04)"
+    The maintainer approved a slightly better kit for players who have played more: "the higher level player would
+    ideally have a slightly better kit but that's a reward for them playing more". Weapons and tonics stay free for
+    everyone, and the night's economy, rounds and fuel stay the same for all. How slight, what resets on a prestige and
+    what stays: [Attachments, modifiers, skills, skins and prestige](../research/weapon-progression.md). The
+    level-1 and level-50 sentence above and rules 1 and 2 below are read with that page.
 
 ## What the research says
 
@@ -141,9 +147,9 @@ today (`NightTally`), except where marked. A kill pays through its points, so XP
 
 | Line | Pays | Counted today | Note |
 | --- | --- | --- | --- |
-| Rounds | 20 a round reached, 10 a round past round 20 | yes (`rounds`) | down or not: playing always counts |
+| Rounds | 20 a round reached, 10 a round past round 20 | yes (`round`, the best round started) | down or not: playing always counts; the round pays when it starts, so the night's last round counts |
 | Points | 1 XP per 100 points you earned yourself | yes (`points_earned`) | kills, headshots and bonuses are already in points, so no kill is stolen. The server adds each kill's points to a running tally as it happens |
-| Upkeep | 2 a board mended (up to 100), 15 a door opened, 15 a fuel can | yes | the lot's chores pay a little |
+| Upkeep | 2 a board mended (up to 100 XP, so 50 boards), 15 a door opened, 15 a fuel can | yes | the lot's chores pay a little |
 | Headliner | 50 a boss brought down | yes (`kills:boss`) | |
 | Rescue | 40 a revive, up to 5 a night | one tally line (`player_revived` names the reviver) | solo has none; no solo penalty |
 | Opening night | 50, once, "your ticket is punched on the way in" | a flag | the first bar is not empty; the first level comes in about a minute |
@@ -213,11 +219,16 @@ Reading it: the first level takes about a minute and the last one 15 to 22 minut
 average solo player reaches 55 in 8.5 hours of nights alone (about 7.5 with the lines the model leaves out), the
 strong in 7.8 and the slowest cell in 11. **Level 10, the second map, arrives after 24 to 34 minutes: about half an
 hour, the third night for an average solo player.** The maintainer asked to be told this (it "may arrive in under half
-an hour"): it does for the average and strong cells and for the cells with 300 or more kills. Keeping level 10 as
-asked, or moving the map to 12 or 15 (about 35 or 50 minutes), is one number in the map table; the choice is the
-maintainer's. At count x5 the simulator's bots die in the first rounds, so XP an hour is lower, not higher: a horde
-modifier is not a way to level faster here. Bots are not people: the curve is meant to be retuned from the first real
-nights' telemetry.
+an hour"): it does for the average and strong cells and for the cells with 300 or more kills. The maintainer
+answered that level 10 "is fine" and approved the curve ("The XP simulator is good"). At count x5
+the simulator's bots die in the first rounds, so XP an hour is lower, not higher: a horde modifier is not a way to
+level faster here. Bots are not people: the curve is meant to be retuned from the first real nights' telemetry.
+
+**Held by a test.** `test_xp_pace` reads the gate's cells (average solo, strong solo and average four at count
+multipliers 1, 2 and 5; 60 seeded nights each, seed 4000, [measured](../research/xp-curve.md)) and holds level 55
+between 7 and 11.5 hours for the nights that count 240 or more kills, level 10 between 20 and 40 minutes, the first
+level inside 3 minutes in every cell and the last level between 10 and 30 minutes and slower than every level before
+it, so a retune of the rounds or the economy that moves the pace, or a curve that goes flat, fails.
 
 ### The ladder
 
@@ -324,10 +335,12 @@ to win the night; the edge is audited with a seeded bot night so it stays inside
   gamepad or a phone, focus does what hover does. A locked item can be looked at but not worn: **no fitting room.**
   Face and body tabs carry no lock marks, so what is free is plain (#1065).
 - **Costumes have their own tab** (#1066): the twelve presets (greaser, usher, mechanic...) become costumes that wear
-  their pieces **in the costume's default colours** (a costume needs none of the colour unlocks; assumed from "default
-  colours"). A costume is dark with `???` and hover instructions until the player owns every piece, lit after. Four
-  costumes use starting pieces only, so a new player has a quick start. Equipping a costume sets the look; the player
-  may then change any part they own.
+  their pieces **in the costume's default colours**, and the colour picker offers a **"Default"** option (the costume's
+  own colours, free) beside the player's own colours from the palette they have unlocked ("costumes in their default
+  colors will have a Default option, and the users will have the ability to choose their own colors"). A costume is
+  dark with `???` and hover instructions until the player owns every piece, lit after. Four costumes use starting
+  pieces only, so a new player has a quick start. Equipping a costume sets the look; the player may then change any
+  part they own.
 - The code already has the seam: `LookUnlocks` asks a gate `{"billing": n}`; it becomes `{"level": n}`, and the part and
   palette gates (`PART_GATES`, `PALETTE_GATES`) are filled from `unlocks.json`. The saved look and the wire format are
   unchanged (an index per part); a look wearing something the player does not own is repaired on load, and the server
@@ -346,7 +359,7 @@ four when they exist. The picker shows a locked card dark with "Level 10" in the
 wardrobe. **The host's level decides the lot** (decision 17): a lobby whose host is below a map's level does not offer
 it; a guest below it plays a hosted night there as a visitor; the server checks the host's level from the ticket. The
 balance simulator already runs the back rooms (`--map=small_indoor`); a night there pays about 7 percent more XP an
-hour: not a loophole. Level 10 arrives after about half an hour ([the curve](#the-curve)); moving it is one number.
+hour: not a loophole. Level 10 arrives after about half an hour ([the curve](#the-curve)) and is confirmed; it is one number.
 
 ## Plate: calling cards, emblems and frames
 
@@ -606,7 +619,8 @@ solo-safe (no Together challenge in one). Build: #1073.
 The card at the end of a night: the lines of the report as they paid (Rounds, Points, Upkeep, Headliners, challenges,
 the first game of the day), the level bar toward the next level and what it gives ("next: a lanyard at 19"). XP is
 credited **live** during the night, so the report is the receipt: it repeats the level the popups announced, and never
-first-announces one (#1068). For a player with no account it says "Sign in to keep your XP". **Credits** (decision
+first-announces one (#1068). A Guest account earns and shows XP like any other; a night with no account at all earns
+nothing, and the report shows no XP. **Credits** (decision
 16, #1069): the night ends with a film's credits where each player gets a crew title for what they did most ("Key
 Grip: most boards mended", "Best Boy: most fuel cans", "Stunt Double: most times down") and a line of XP, chosen by
 rule from `NightTally`; solo gets a credit too.
@@ -682,7 +696,8 @@ The HUD's ally marker (`HudMarkers`, drawn in screen space) shows a name above a
 level**, the icon from the 64 px atlas at 24 px, in the same marker so it keeps its place rules. **Shown by default**
 (decision 18); a setting hides every level on the viewer's own screen. The level and icon ride with the name: in the
 ticket the backend signs, then in the WELCOME's names and the `player_named` event. **Bots have no level** and keep
-their usual difficulties (the earlier idea of a level near the lobby's average is dropped); a guest has none either.
+their usual difficulties (the earlier idea of a level near the lobby's average is dropped). A Guest account is an
+account and has a level like any other; only a bot has none.
 Also on the scoreboard, the lobby list and the night report. A name tag never shows a card or an emblem in the night.
 Build: #1077.
 
@@ -748,9 +763,11 @@ base on rounds reached and points per round.
   migrates. The challenge save keeps its own lifetime counters.
 - **Where:** the backend's saved progress (`PUT/GET /saves/:slot`, an envelope with a revision and a schema version,
   64 KiB; a profile is a few kilobytes): slot `profile`, and slot `challenges` for the board. **No offline XP:** XP
-  exists only for an account on the server, a Guest account included (the maintainer, 2026-11-04: "even Guest accounts
-  will be tracked on server"). A local file is a cache and a retry queue for that account's own writes, never a second
-  store, and **there is no merge of an offline save**. A night never waits on the backend: a failed write is sent again.
+  exists only for an account the server tracks, and **a Guest account is one** (the maintainer, 2026-11-04: "only
+  signed in accounts earn XP since we only track XP on the server. But even \"Guest\" accounts will be tracked on
+  server"). A local file is a cache and a retry queue for that account's own writes, never a second store, and **there
+  is no merge of an offline save**. A night with no account at all (the backend cannot be reached) earns nothing. A
+  night never waits on the backend: a failed write is sent again.
 - **A Guest account lasts 7 days without a sign-in** (built, #1080). The backend signs a guest in with a long-lived
   signed credential (`guestToken`) that the game keeps in its own storage (`user://guest_account.json`, the browser's
   IndexedDB on the web); the same account, with its saves, comes back each time it is signed in to within 7 days of
@@ -875,15 +892,12 @@ curve).
 | --- | --- | --- |
 | 1 | What does prestige reset, and which rewards are exclusive? | After #1055 |
 | 2 | How slight is the combat edge, and what is it (ammunition, reload, an attachment, a skill)? | After #1055 |
-| 3 | Is level 10 for the second map still right when it arrives after about half an hour? | Keep, or 12 to 15 (35 to 50 minutes): one number |
-| 4 | Is "No offline XP" read right: XP only for a signed-in account, nothing earned as a guest? | Yes: a guest's night says "Sign in to keep your XP" |
-| 5 | Are 50 XP for the opening night and 100 for the first game of the day the right size? | First guesses; tune from telemetry |
-| 6 | Do the voice lines wait for the new credits and the commercial licence? | Yes (#252, #1063 is blocked) |
-| 7 | Which rarity tiers, if any, and what do the top ones cost? | #1053 |
-| 8 | Extraction's quota, steps, last stand and what a win pays | #1056 |
-| 9 | Is a weekly bill (live operations) in scope, and who runs it? | Defer |
-| 10 | How do we treat the account of a young player (Discord's age rules, name plates, data retention)? | Word cards only; export and delete from day one |
-| 11 | Costumes wear their default colours: is a costume free of the colour unlocks? | Assumed yes |
+| 3 | Are 50 XP for the opening night and 100 for the first game of the day the right size? | First guesses; tune from telemetry |
+| 4 | Do the voice lines wait for the new credits and the commercial licence? | Yes (#252, #1063 is blocked) |
+| 5 | Which rarity tiers, if any, and what do the top ones cost? | #1053 |
+| 6 | Extraction's quota, steps, last stand and what a win pays | #1056 |
+| 7 | Is a weekly bill (live operations) in scope, and who runs it? | Defer |
+| 8 | How do we treat the account of a young player (Discord's age rules, name plates, data retention)? | Word cards only; export and delete from day one |
 
 ## Sources, and what we could not read
 

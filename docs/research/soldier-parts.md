@@ -66,9 +66,9 @@ learned:
   here too, and the controller only adds a clip a library lacks. `FILE_CLIPS` lists the 39 this file carries; they
   rebuilt sample for sample identical to the committed ones.
 - **Her looks moved the far ratio** (0.333 to 0.299) of every part: the ratio is now solved over his eight looks, and
-  every look of both is asserted against the far budget. Her face pieces are joined whole into her far heads (a
-  collapse cut the lashes to slivers that the glTF round trip dropped, so Godot counted fewer triangles than
-  `parts.json`).
+  every look of both is asserted against the far budget (every mouth too, since #1061: 0.269). Her face pieces are
+  joined whole into her far heads (a collapse cut the lashes to slivers that the glTF round trip dropped, so Godot
+  counted fewer triangles than `parts.json`).
 - **The first bob sat inside the collar** in the grenade throw (26 of its vertices, against 17 for his ponytail): its
   ends at z 1.66 were r 0.32, inside the collar's top (r 0.36 at z 1.68). Flared to r 0.40 at z 1.72: 13.
 - **A higher chest took the forearm of the sprint carries** (the shotgun carry laid it 14 mm deeper into her chest

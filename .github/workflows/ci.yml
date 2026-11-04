@@ -126,6 +126,9 @@ jobs:
       - name: Every texture import keeps palettes exact and Detect 3D off
         # Before the import as well: the committed .import files are what the maintainer's editor reads (issue #441).
         run: python3 repos/deadnight/tools/check_texture_imports.py --root repos/deadnight
+      - name: The level icons' SVGs and atlases agree
+        # A hash in the manifest for each: an SVG that changed without a new export fails here (issue #1060).
+        run: python3 repos/deadnight/tools/check_level_icons.py --root repos/deadnight
       - name: Make the workspace and fetch the pinned Godot and GdUnit4
         run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,gdunit4
       - name: Import the project

@@ -17,9 +17,35 @@ func test_messages_round_trip() -> void:
 
 func test_the_messages_are_small() -> void:
 	var look := CharacterLook.new()
-	# Version 2 (#678) added the character's slot: one byte more each way.
-	assert_int(LookWire.look(look).size()).is_less_equal(17)
-	assert_int(LookWire.player_look(1, 0, look).size()).is_less_equal(19)
+	# Version 3 (#1061) added the mouth's slot: one byte more each way.
+	assert_int(LookWire.look(look).size()).is_less_equal(18)
+	assert_int(LookWire.player_look(1, 0, look).size()).is_less_equal(20)
+
+
+func test_a_look_of_the_old_and_the_new_version_both_decode_and_pass_the_limits() -> void:
+	var look := CharacterLook.from_preset(6)
+	look.parts[&"mouth"] = &"grin"
+	var new := LookWire.look(look)
+	assert_str(String((LookWire.decode(new)["look"] as CharacterLook).parts[&"mouth"])).is_equal(
+		"grin"
+	)
+	var old := new.duplicate()
+	old[1] = 2
+	old.remove_at(2 + CharacterLook.wire_slots(3).find(&"mouth"))
+	assert_int(old.size()).is_equal(new.size() - 1)
+	var read: CharacterLook = LookWire.decode(old)["look"]
+	assert_str(String(read.parts[&"mouth"])).is_equal("smile")
+	assert_str(String(read.parts[&"hair"])).is_equal(String(look.parts[&"hair"]))
+	var limits := PeerLimits.new()
+	assert_int(limits.judge(new, 0.0)).is_equal(PeerLimits.Verdict.ACCEPT)
+	assert_int(limits.judge(old, 1.0)).is_equal(PeerLimits.Verdict.ACCEPT)
+	var down := LookWire.player_look(3, 1, look)
+	var old_down := down.duplicate()
+	old_down[3] = 2
+	old_down.remove_at(4 + CharacterLook.wire_slots(3).find(&"mouth"))
+	var decoded := LookWire.decode(old_down)
+	assert_int(decoded["seat"]).is_equal(1)
+	assert_str(String((decoded["look"] as CharacterLook).parts[&"mouth"])).is_equal("smile")
 
 
 func test_malformed_packets_decode_to_nothing() -> void:
@@ -170,4 +196,4 @@ func test_a_join_costs_a_handful_of_bytes() -> void:
 	var up := 0
 	for packet in hub.uplink:
 		up += packet.size()
-	assert_int(up).is_less_equal(17)
+	assert_int(up).is_less_equal(18)
