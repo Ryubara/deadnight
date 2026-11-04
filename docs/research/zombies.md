@@ -391,6 +391,14 @@ watch use the same width. Proof: `game/tests/zombies/test_zombie_gates.gd`, two 
 it (the dead beside the wall tears nothing, takes the far window's gate when it comes to it, walks through once that
 is open).
 
+A gate acts on its own storey only (#1030). `depth_of`, `along_of`, `spans`, `is_at` and `climbs` were asked on the
+flat, so on a map with floors a ground window's sill lifted the dead walking the upper floor over it: measured on the
+second map, a dead at 1 m/s along the north wall over `side_2` was drawn climbing 319 ticks of 400 and floated 0.46 m
+over its floor (0 ticks with the boards up). `ZombieGate.on_storey` is a height band from the sill's foot
+(`centre.y`): `BAND_BELOW` (1 m) under it to `BAND_ABOVE` (1 m) over the sill's top; `spans` (so `is_at` and
+`_gate_in_front_of`), `climbs` (so `lift_at`) and `keep_in_opening` use it. Proof: the last three tests of
+`game/tests/zombies/test_zombie_sill.gd`.
+
 ### Dead stranded in a pocket of the mesh (#770)
 
 The nightly soak's Follow nights ended three times by its "a round of eight minutes" stop with one dead walker alive:

@@ -98,6 +98,9 @@ func _until(condition: Callable, seconds: float = 30.0) -> bool:
 
 
 func _start_stack() -> void:
+	# A machine that cannot run the suite skips at once: no node, no 90 s wait for a backend (#1049).
+	if _why_not() != "":
+		return
 	var port := _free_port()
 	var env := {
 		"HOST": "127.0.0.1",

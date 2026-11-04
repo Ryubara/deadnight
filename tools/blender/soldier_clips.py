@@ -309,6 +309,9 @@ def build(arm):
     revive(arm, acts)
     sprint_carries(arm, acts, aim, up)
     dual(arm, up, idle, idle_mid, pistol)
+    import drink_clip  # it uses this module's helpers, so it is imported here, not at the top
+
+    drink_clip.drink(arm, up, idle, idle_mid, aim)
     return CLIPS
 
 
