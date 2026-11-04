@@ -96,6 +96,9 @@ each other and from the wall weapons, a locker 1.45 m from a window.
   board, a press buys nothing. A purchase that would replace a weapon carried takes a press made once its card (which
   names what goes) has been the prompt for `replace_settle` (0.4 s). Free uses (boards, breakers, revives) are never
   held back, and a weapon bought with a hand free is one press as before.
+- Bots use the same rules: at a stand a bot looks at what it buys (a door's slab, the thing in front of a spot's
+  marker), and it walks onto the stand itself while the card is not up (it used to stop half a metre short, which the
+  old 3.2 m reach forgave).
 
 **The test.** `game/tests/world/test_use_zone_spacing.gd` walks a 0.25 m grid of standing ground round every
 interactable of both maps, each zone grown by half the gap, and fails on a point inside two. The lot passes after three

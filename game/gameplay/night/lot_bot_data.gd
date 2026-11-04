@@ -55,6 +55,7 @@ static func shop(world: NightWorld, tuning: RulesTuning) -> BotShop:
 				if world.door_ids().has(item.id) and not world.door_stands(item.id).is_empty():
 					found.doors.append(item.id)
 					found.door_stands[item.id] = world.door_stands(item.id)
+					found.door_points[item.id] = world.door_points(item.id)
 			ShopItem.Kind.FUEL:
 				found.fuel_item = item
 	found.spots = world.shop_spots()
