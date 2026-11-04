@@ -27,6 +27,15 @@ var _model: Node3D
 ## nothing.
 var _outline: Outline
 var _boss := false
+## The status effect it is drawn under (the wire id of a `StatusDef`, 0 for none) and whether that
+## one holds it still: a frozen zombie keeps its pose, the animation is not advanced.
+var _status := 0
+var _held := false
+## Whether the tree has been advanced since the body was set going: a zombie that is first seen
+## frozen is posed once and then held.
+var _posed := false
+## The meshes the status shell is laid over (the model's near and far variants).
+var _meshes: Array[MeshInstance3D] = []
 ## The boss's lamp (its material, a copy of its own): dark once it is dead.
 var _lamp: StandardMaterial3D
 var _lamp_strength := 0.0
@@ -83,6 +92,7 @@ func setup(
 ## Takes the zombie off the lot and keeps its body for the next one of its look (`ZombieHorde` keeps
 ## the parked views): hidden, with nothing to draw, move or animate.
 func park() -> void:
+	set_status(0)
 	set_outlined(false)
 	visible = false
 	tree.active = false
@@ -94,6 +104,8 @@ func park() -> void:
 
 ## The next life of a parked body: no mode, gait or clip yet, so the first entry starts them.
 func _restart() -> void:
+	_posed = false
+	set_status(0)
 	tree.active = true
 	_mode = -1
 	_episode = -1
@@ -119,6 +131,12 @@ func dress(model_scene: PackedScene, p_look: StringName) -> void:
 	_model.scale = Vector3.ONE * ZombieModels.GAME_SCALE
 	add_child(_model)
 	_strip_for_crowd(_model)
+	_meshes.clear()
+	for node in _model.find_children("*", "MeshInstance3D", true, false):
+		_meshes.append(node as MeshInstance3D)
+	_status = 0
+	_held = false
+	_posed = false
 	_outline = Outline.new()
 	_outline.style = outline_style
 	_model.add_child(_outline)
@@ -136,6 +154,7 @@ func dress(model_scene: PackedScene, p_look: StringName) -> void:
 
 ## Moves and animates from one decoded entry. `delta` is the time since the last entry.
 func apply(entry: Dictionary, delta: float) -> void:
+	set_status(entry.get("status", 0))
 	_move_to(entry["position"], entry["yaw"])
 	var mode: int = entry["mode"]
 	var tearing: bool = entry.get("tearing", false)
@@ -247,6 +266,29 @@ func is_outlined() -> bool:
 	return _outline.enabled
 
 
+## Draws the zombie under the status effect with this wire id (`StatusDef.wire`, 0 for none): the
+## status's shell over the body, and a status that holds it keeps the pose as it is.
+func set_status(wire: int) -> void:
+	if wire == _status:
+		return
+	_status = wire
+	var def := StatusCatalog.by_wire(wire)
+	_held = def != null and def.halts
+	var shell := StatusLook.shell_for(wire)
+	for mesh in _meshes:
+		mesh.material_overlay = shell
+
+
+## The status effect it is drawn under (a `StatusDef` wire id), 0 for none.
+func status() -> int:
+	return _status
+
+
+## Whether a status holds it still: frozen.
+func is_held() -> bool:
+	return _held
+
+
 ## Whether the zombie is dead and falling (its entry's mode said so).
 func is_dying() -> bool:
 	return _mode == ZombieBody.Mode.DYING
@@ -254,6 +296,10 @@ func is_dying() -> bool:
 
 ## Spends the accumulated animation time.
 func advance_animation() -> void:
+	if _held and _posed:
+		accumulated = 0.0
+		return
+	_posed = true
 	tree.advance(accumulated)
 	accumulated = 0.0
 

@@ -5,15 +5,15 @@
 # against where the throwing bot stood when it went off, from the body, not from the server's own
 # events. The thrower is touched by no more than `BotGrenadier.HARMLESS_SHARE` of its health, and a
 # teammate by none (no `player_blasted` for them). The numbers are printed for the pull request.
-# How often the bots throw in a free soak depends on the night (and on the runner), so the proof
-# that they do throw is a scripted night: a bot, a pack that stands ten metres off and a person
-# well clear of it, as `test_bot_grenades.gd` does.
+# The bots keep no distance from their teammates (#872), so they throw often in a free soak (about
+# seven blasts a night); the scripted night (a bot, a pack that stands ten metres off and a person
+# off to the side, as `test_bot_grenades.gd` does) proves the throw itself.
 extends GdUnitTestSuite
 
 const STEP := Night.STEP
-const SEEDS := [11, 12]
+const SEEDS := [11, 12, 13]
 ## Game seconds each seeded night runs.
-const SECONDS := 90
+const SECONDS := 120
 ## Where the scripted pack stands, from home, how many, and where the person stands.
 const PACK_AT := Vector3(0.0, 0.0, -10.0)
 const PACK_SIZE := 4
@@ -105,11 +105,14 @@ func test_a_bot_throws_into_a_pack_and_hurts_no_one() -> void:
 	night.run(5)
 	var result := _empty_result()
 	_measure(night, result, 2)
+	var ticks := 0
 	for _tick in SCRIPTED_SECONDS * 60:
 		night.tick()
+		ticks += 1
 		if result["blasts"] > 0:
 			break
 	night.dispose()
+	print("grenade soak scripted night: first blast after %d ticks" % ticks)
 	(
 		assert_int(result["blasts"])
 		. override_failure_message(
@@ -128,8 +131,10 @@ func test_a_bot_throws_into_a_pack_and_hurts_no_one() -> void:
 ## teammate at all. (That
 ## they throw at all is the scripted night's to prove.)
 func test_the_bots_do_not_hurt_themselves_or_the_team_in_a_night() -> void:
+	var thrown := 0
 	for seed_value: int in SEEDS:
 		var result := await _night(seed_value)
+		thrown += result["blasts"]
 		print(
 			(
 				(
@@ -150,3 +155,5 @@ func test_the_bots_do_not_hurt_themselves_or_the_team_in_a_night() -> void:
 			. override_failure_message("seed %d" % seed_value)
 			. is_less_equal(BotGrenadier.HARMLESS_SHARE + 0.001)
 		)
+	# They do throw: three nights of three bots with packs in front of them make some blasts.
+	assert_int(thrown).is_greater(0)
