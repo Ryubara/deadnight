@@ -4,14 +4,18 @@ extends HudTicket
 ## credits): a line for each thing that paid, the night's total, and the level bar with what the
 ## next level gives. It draws a `NightReport` model and adds no number of its own. A night nobody
 ## keeps (no account at all) shows what it would have paid and says nothing was saved, with no bar.
-## The rows get less height on a short screen (`show_report`'s `room`), to a floor.
+## The rows get less height on a short screen (`show_report`'s `room`), to a floor, and the type
+## steps down with them: a label is as tall as its font, so a row cannot be shorter than its text.
 
 const WIDTH := 440.0
-const ROW := 30.0
-const MIN_ROW := 24.0
-## What the ticket takes besides its lines, the heading and the total (a row each): the rule, the
-## level and the bar, what is next, what was unlocked and the padding.
-const CHROME := 150.0
+## A row is as tall as the type it holds (`HudStyle.TEXT`); `MIN_ROW` is what `HudStyle.MIN_TEXT`
+## needs, the shortest a row is drawn.
+const ROW := 34.0
+const MIN_ROW := 28.0
+## How much a row loses on each try of `show_report`.
+const ROW_STEP := 2.0
+## The total's line stands this much taller than a row.
+const TOTAL_EXTRA := 11.0
 ## The most items the card names under "unlocked"; the rest is a count.
 const UNLOCKED_NAMED := 2
 const ICON := 32.0
@@ -44,20 +48,38 @@ func _init() -> void:
 	visible = false
 
 
-## Shows `model` (`NightReport.compose`), its rows sized to fit `room` canvas units of height.
+## Shows `model` (`NightReport.compose`), its rows sized to fit `room` canvas units of height: the
+## tallest rows (to `ROW`) that make the ticket no taller than `room`, and `MIN_ROW` when even those
+## are too tall (the caller then finds the rest of its room, `height`).
 func show_report(model: Dictionary, room: float = INF) -> void:
-	_model = model
-	var count := maxi((model["lines"] as Array).size(), 1) + 2
-	var height := ROW
-	if room < INF:
-		height = clampf((room - CHROME) / float(count), MIN_ROW, ROW)
-	var signature := "%s|%s" % [height, JSON.stringify(model)]
+	var signature := "%s|%s" % [room if room < INF else -1.0, JSON.stringify(model)]
 	if signature == _signature:
 		return
 	_signature = signature
-	row_height = height
+	_model = model
+	row_height = ROW
 	_rebuild()
+	while room < INF and row_height > MIN_ROW and height() > room:
+		row_height = maxf(row_height - ROW_STEP, MIN_ROW)
+		_rebuild()
 	visible = true
+
+
+## The height the ticket takes as it is drawn now.
+func height() -> float:
+	return get_combined_minimum_size().y
+
+
+## `label` with its type stepped down from `wanted` until the font is no taller than `allowed`
+## (to `HudStyle.MIN_TEXT`).
+func _stepped(label: Label, wanted: int, allowed: float) -> Label:
+	var font := label.get_theme_font(&"font")
+	var size_px := wanted
+	while size_px > HudStyle.MIN_TEXT and font.get_height(size_px) > allowed:
+		size_px -= 2
+	if size_px != wanted:
+		label.add_theme_font_size_override(&"font_size", size_px)
+	return label
 
 
 func _rebuild() -> void:
@@ -107,8 +129,10 @@ func _row(heading: String, value: String, ink: Color) -> Control:
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.custom_minimum_size.y = row_height
 	left.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(left)
-	var right := HudStyle.clip(HudStyle.label(value, HudStyle.TEXT, ink, true))
+	row.add_child(_stepped(left, HudStyle.TEXT, row_height))
+	var right := HudStyle.clip(
+		_stepped(HudStyle.label(value, HudStyle.TEXT, ink, true), HudStyle.TEXT, row_height)
+	)
 	right.custom_minimum_size = Vector2(VALUE_WIDTH, row_height)
 	right.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	right.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -132,8 +156,12 @@ func _total() -> Control:
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.custom_minimum_size.y = row_height + float(HudStyle.SM)
 	left.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(left)
-	var right := HudStyle.label(total_text, HudStyle.MEDIUM, _tokens.accent, true)
+	row.add_child(_stepped(left, HudStyle.TEXT, row_height))
+	var right := _stepped(
+		HudStyle.label(total_text, HudStyle.MEDIUM, _tokens.accent, true),
+		HudStyle.MEDIUM,
+		row_height + TOTAL_EXTRA
+	)
 	right.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	right.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(right)
@@ -169,7 +197,9 @@ func _add_level() -> void:
 	icon.custom_minimum_size = Vector2(ICON, ICON)
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	level.add_child(icon)
-	var name_label := HudStyle.label(level_text, HudStyle.TEXT, _tokens.ink, true)
+	var name_label := _stepped(
+		HudStyle.label(level_text, HudStyle.TEXT, _tokens.ink, true), HudStyle.TEXT, row_height
+	)
 	name_label.custom_minimum_size.y = ICON
 	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	level.add_child(name_label)

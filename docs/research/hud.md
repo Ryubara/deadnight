@@ -233,3 +233,17 @@ What building `HudChallenge` (the paper ticket that says a challenge moved) taug
   is a call of its own and ends the rect batch around it, and a label with an outline and a shadow is four. Draw a
   card's shapes with `HudShapes` (one triangle array) and make labels with `HudStyle.label` (`HudLabel`: two calls).
   See [The HUD's draw cost](hud-draw-cost.md).
+
+## The end board's left column at 1536 x 864 (#1145)
+
+The fullest night report (every line and the cap, levels crossed, items unlocked) made the left column 945 units
+tall on a 792-unit room: the title wrapped to two lines (179), the card was 511, the countdown's numerals 115, so
+Leave sat at y 950 (the calculation on #1069 was right; the card's own test passed because the card itself stayed
+inside the screen). The same board is also the phone at UI scale 1.25 (1872 x 864, a 24-unit bottom inset), which
+the canvas list lacked. Now: the title steps down to one line (`HudEndBoard._fit_title`, 54 high at 1536), the
+card measures itself and steps its rows from 34 to 28 with the type (`HudNightReport.show_report`: a row cannot
+be shorter than its font, so `MIN_ROW` is the height of `HudStyle.MIN_TEXT`), and the countdown steps from 84 to
+no less than 48 when the card is at its floor. At 1536 x 864 Leave ends at y 828 (the margin) with eight players,
+the fullest report and the credits. `tests/ui/test_end_board_fit.gd` (with `EndBoardFixtures`) checks every part
+of the column, and `tests/captures/end_board_fullest_capture.tscn` draws it (`--scale=1.25` is the 1536 x 864
+canvas in a 1920 x 1080 window).
