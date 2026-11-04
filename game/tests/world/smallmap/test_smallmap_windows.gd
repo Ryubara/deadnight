@@ -15,8 +15,8 @@ const SPAWN_TO := 15.0
 const BOARD_LAYER := 2
 ## Metres inside a window the player stands for the dead to come to it.
 const STAND_BEHIND := 2.5
-## The map's windows and breach (formula row 15: the hall 2, the side room 3, upstairs 3).
-const WINDOWS := 7
+## The map's windows and breach (formula row 15: the hall 2, the side room 2, upstairs 2).
+const WINDOWS := 6
 ## How far either side of a window its floor and the ground or deck outside are looked for, and how
 ## near the window's own floor height they must be (a step, not a drop or a stairwell).
 const ASIDE := 1.5
@@ -67,14 +67,15 @@ func test_seven_windows_are_barricades_of_five_boards_the_rules_list() -> void:
 		assert_int(_night.server.rules.barricades.boards_of(id)).is_equal(BOARDS)
 
 
-func test_the_windows_are_two_in_the_hall_three_in_the_side_room_and_two_upstairs() -> void:
-	# One a wall on the ground floor, a few upstairs (the maintainer, #917).
+func test_the_windows_are_two_in_the_hall_two_in_the_side_room_and_two_upstairs() -> void:
+	# One a wall on the ground floor, a few upstairs (the maintainer, #917); the side room's are
+	# one at each end, the breach and a window (#994).
 	await _start()
 	var counts := {}
 	for node in _night.world.greybox.find_children("*", "Barricade", true, false):
 		var room := String(node.get_parent().get_meta("room"))
 		counts[room] = int(counts.get(room, 0)) + 1
-	assert_dict(counts).is_equal({"start": 2, "side": 3, "upstairs": 2})
+	assert_dict(counts).is_equal({"start": 2, "side": 2, "upstairs": 2})
 
 
 func test_boards_are_solid_for_players_while_up_and_gone_when_torn() -> void:

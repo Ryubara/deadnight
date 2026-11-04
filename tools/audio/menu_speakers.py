@@ -47,6 +47,7 @@ from analyze import read_wav
 from menu_levels import db, first_over, k_weighted, momentary_max, parse
 
 BEDS_PATH = Path(__file__).resolve().parents[2] / "game" / "core" / "audio" / "banks" / "beds.tres"
+MENU_AMBIENCE_PATH = Path(__file__).resolve().parents[2] / "game" / "core" / "audio" / "menu_ambience.gd"
 TARGETS_PATH = Path(__file__).resolve().parents[2] / "game" / "tests" / "core" / "menu_sound_levels.json"
 HINTS = ("ui_hover|0.0", "ui_focus|0.0", "ui_tick|0.0", "ui_hover|-4.0", "ui_focus|-4.0")
 OVER_BED_MIN_DB = 10.0
@@ -178,11 +179,19 @@ def hint_report(mix: np.ndarray, rate: int, plays: list[tuple], bed: np.ndarray)
     return report
 
 
+def bed_ids() -> list[str]:
+    """The menu's bed sounds, as `MenuAmbience.BEDS` lists them (the music's two, the wind, the motor, the crickets)."""
+    text = MENU_AMBIENCE_PATH.read_text(encoding="utf-8")
+    block = re.search(r"const BEDS: Array\[StringName\] = \[(.*?)\]", text, re.DOTALL)
+    assert block, f"MenuAmbience.BEDS is not in {MENU_AMBIENCE_PATH}"
+    return re.findall(r'&"(bed_menu_\w+)"', block.group(1))
+
+
 def bed_trims() -> dict[str, float]:
-    """The trims (volume_db) of the menu's two bed sounds as `beds.tres` has them now."""
+    """The trims (volume_db) of the menu's bed sounds as `beds.tres` has them now."""
     text = BEDS_PATH.read_text(encoding="utf-8")
     out = {}
-    for sound in ("bed_menu_crickets", "bed_menu_projector"):
+    for sound in bed_ids():
         match = re.search(rf'id = &"{sound}".*?volume_db = (-?[\d.]+)', text, re.DOTALL)
         assert match, f"{sound} is not in {BEDS_PATH}"
         out[sound] = float(match.group(1))
