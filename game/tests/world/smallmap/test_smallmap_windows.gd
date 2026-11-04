@@ -204,6 +204,13 @@ func test_the_dead_come_in_through_every_window_to_the_room_it_opens_into() -> v
 				came_from[zombie.id] = zombie.gate_id
 			elif came_from.has(zombie.id):
 				var id: StringName = came_from[zombie.id]
+				# Over the sill and down the far side (#915): the floor is read where it is flat again.
+				var sill := _seated.world.barricade(id)
+				var flat_from := (
+					sill.thickness * 0.5 + ZombieGate.BODY_CLEARANCE + ZombieGate.CLIMB_RAMP
+				)
+				if sill.depth_of(zombie.position) < flat_from:
+					continue
 				if not through.has(id):
 					through[id] = zombie.position
 				# In, and put down at the door, so the next ones can rise (the cap is 24).
