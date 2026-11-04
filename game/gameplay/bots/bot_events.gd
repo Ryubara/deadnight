@@ -33,6 +33,7 @@ const PUBLIC: Array[StringName] = [
 	&"ping_cleared",
 	&"zombie_removed",
 	&"grenade_thrown",
+	&"grenade_bounced",
 	&"grenade_exploded",
 ]
 ## Heard only when they are about the bot itself (a purchase, its own gun, the blow it took).

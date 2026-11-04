@@ -14,6 +14,7 @@ const BUS_AMBIENCE := &"Ambience"
 
 ## The bank files the game loads, one family of sounds each. A new bank is listed here.
 const BANKS: Array[String] = [
+	"res://core/audio/banks/ui_menu.tres",
 	"res://core/audio/banks/ui.tres",
 	"res://core/audio/banks/weapons.tres",
 	"res://core/audio/banks/firearms_2.tres",
@@ -28,17 +29,6 @@ const BANKS: Array[String] = [
 	"res://core/audio/banks/wind.tres",
 	"res://core/audio/banks/perks.tres",
 ]
-
-## What `UIAudio` cues play (the gds_ui addon names the cues and ships no sounds).
-const UI_CUES := {
-	&"hover": &"ui_hover",
-	&"focus": &"ui_focus",
-	&"press": &"ui_press",
-	&"back": &"ui_back",
-	&"push": &"ui_push",
-	&"pop": &"ui_pop",
-	&"tick": &"ui_tick",
-}
 
 static var _defs := {}
 static var _mix: SoundMix = null

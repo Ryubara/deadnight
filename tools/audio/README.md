@@ -47,6 +47,14 @@ then the close sounds one at a time) and prints what `gun_levels.py` prints plus
 tail, bright band) and the close peaks; `--table game/tests/night/energy_levels.json` writes what
 `test_energy_audio_rules.gd` pins. `docs/research/gun-audio.md#the-energy-weapons-and-the-re-cut-layer-791` has the numbers.
 
+The menu's sounds (#894) are `ui_recipes.py` (a marquee bulb, a ticket punch and tear, a relay, a slide projector, a
+rocker switch, a shutter, the neon sign: 36 files, every one normalised to -6 dBFS, the levels are the bank's trims);
+`menu_levels.py` measures them: `levels` reads a recording of `game/tests/captures/audio_menu_levels.tscn` (every sound
+of the menu's table alone through the real service, at the default settings) against
+`game/tests/core/menu_sound_levels.json`, and `tour` reads a recording of `game/tests/captures/menu_sfx_tour.tscn` (a
+walk through the real menus) for the hint cap and the slider's tick gap, with `--before` another recording for a plot of
+both. `docs/research/menu-sfx.md`.
+
 The flare gun's report (#761) is limited the same way (`limit_crest`); `gun_levels.py --table` also writes
 a SHA-256 of every gun file it played, which `test_gun_audio_rules.gd` checks.
 

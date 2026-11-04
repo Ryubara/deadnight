@@ -57,6 +57,7 @@ func _ready() -> void:
 	note.custom_minimum_size.x = FIELD_WIDTH
 	box.add_child(note)
 	address = LineEdit.new()
+	UiSounds.wire_field(address)
 	address.text = PUBLIC_URL if OS.has_feature("web") else DEFAULT_URL
 	address.placeholder_text = DEFAULT_URL
 	address.custom_minimum_size.x = FIELD_WIDTH

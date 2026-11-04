@@ -8,6 +8,9 @@ extends RefCounted
 
 ## A weapon replaces another only when it is worth this many times more.
 const REPLACE_GAIN := 1.5
+## The health a freeze is rated against when no zombie is named (a round-10 walker's): a weapon
+## whose hit freezes needs two pulls to kill whatever it meets, so each pull is worth half of it.
+const SHATTER_HEALTH := 200.0
 
 
 ## The worth of `weapon` against zombies of `health` (0: the damage a second on the body at point
@@ -21,14 +24,28 @@ static func of(weapon: WeaponDef, health: float = 0.0) -> float:
 ## Damage a second on the body at point blank, reloads included. With a `health` it is the health
 ## of the zombies killed a second instead: shots land whole, so a blow that overshoots the health
 ## wastes the rest (a 95 damage rifle against 117 health needs two, and does no better than a
-## weapon of 60).
+## weapon of 60). A weapon whose hit freezes (`shatters`) kills in two pulls at most: the freeze,
+## and the hit on the frozen body (any weapon's, but the one in hand is the one rated).
 static func sustained_dps(weapon: WeaponDef, health: float = 0.0) -> float:
 	var cycle := float(weapon.magazine_size) * weapon.fire_interval + weapon.reload_time
 	var per_shot := _per_pull(weapon)
 	if health <= 0.0:
+		if shatters(weapon):
+			per_shot = maxf(per_shot, SHATTER_HEALTH / 2.0)
 		return per_shot * float(weapon.magazine_size) / cycle
 	var shots := ceilf(health / maxf(per_shot, 0.001))
+	if shatters(weapon):
+		shots = minf(shots, 2.0)
 	return health * float(weapon.magazine_size) / shots / cycle
+
+
+## Whether a hit of this weapon leaves the zombie in a status that any hit kills
+## (`StatusDef.shatters`).
+static func shatters(weapon: WeaponDef) -> bool:
+	if not weapon.has_status():
+		return false
+	var status := StatusCatalog.get_def(weapon.status)
+	return status != null and status.shatters
 
 
 ## Health of zombies a second a melee weapon kills at arm's length, a blow landing whole against a

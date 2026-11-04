@@ -81,7 +81,7 @@ legs are free. Not with a grenade cooking in the hand (the press is ignored: the
 | --- | --- | --- |
 | A blow | It hurts as ever; the drink goes on and the perk comes at its end | The genre's: buying a perk mid-fight is a risk you take, not a cancel button |
 | Going down (a blow or forced) | The drink is spilled (`drink_spilled`): no perk, no refund; the bottle falls from the hand | A drink not finished is not a perk had, whatever `lost_on_down` says; the down's own loss applies to the perks had |
-| The night snapshot | `drinking` and `drink_left` are in it (version 15): a restored night finishes the drink | |
+| The night snapshot | `drinking` and `drink_left` are in it (version 16): a restored night finishes the drink | |
 
 Tested in `tests/rules/test_perk_drink.gd` (the rules), `tests/night/test_night_perk_drink.gd` (a press at a machine,
 the buttons held through it, a blow and a down, a bot's drink), `tests/net/test_remote_drink.gd` (another client sees
@@ -126,7 +126,7 @@ machine stands against the plaza's south wall over the area's own hidden block (
 - **The bots** buy tonics they lack, up to the limit, and buy them again after a down (`BotEconomy`, the frame's `perks`
   bits); their lists are the simulator's.
 - **The balance gate** plays the modelled players buying them ([research](../research/perks.md)).
-- **The snapshot** is version 15 (`self_revives`, `self_revive_left`; `drinking`, `drink_left` for the drink).
+- **The snapshot** is version 16 (`self_revives`, `self_revive_left`; `drinking`, `drink_left` for the drink).
 - **The HUD** shows the perks had as [badges beside the health card](hud.md#the-perk-badges) (#707), read from the frame's
   `perks` bits, gone with a down that takes them; the DOWN card and the ring over the view say `GETTING YOURSELF UP` and
   count the seconds while the revive perk gets the holder up alone. The card at the machine and the feed ("LOST THEIR
