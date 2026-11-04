@@ -2,9 +2,10 @@
 
 The web smoke reads the menu's frames for three seconds (`menu_frames`) with the stage a still, and a still should cost
 nothing. This opens each build in a new Chromium (SwiftShader, as CI), lets the menu settle as the smoke does (click,
-2.5 s), then follows `--seconds` of the page's own `requestAnimationFrame` deltas and, in each frame, the WebGL calls
-the engine made (`smoke.trace`: draws, clears, framebuffer blits and bindings, texture uploads). The counts do not
-depend on the machine: a frame that draws the 3D stage again shows in them, a runner that is merely slow does not.
+2.5 s, the probe read and a screenshot), reads the smoke's own 3 s window (`menu_frames`), then follows `--seconds` of
+the page's own `requestAnimationFrame` deltas and, in each frame, the WebGL calls the engine made (`smoke.trace`:
+draws, clears, framebuffer blits and bindings, texture uploads). The counts do not depend on the machine: a frame that
+draws the 3D stage again shows in them, a runner that is merely slow does not.
 The browser processes' CPU seconds are read before and after (CDP `SystemInfo.getProcessInfo`); the GPU process runs
 SwiftShader's threads, which spin while they wait, so that figure says whether two builds ask the same of the CPU,
 not how much work a frame is. The builds take turns, `--pairs` times each, so a drifting machine hits both alike.
@@ -28,7 +29,18 @@ import time
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
-from smoke import LOAD_TIMEOUT_S, SOFTWARE_GL, VIEWPORT, serve, trace, wait_for
+from smoke import (
+    FRAME_TIMES_JS,
+    LOAD_TIMEOUT_S,
+    MENU_FRAME_SECONDS,
+    SOFTWARE_GL,
+    VIEWPORT,
+    probe,
+    serve,
+    stats,
+    trace,
+    wait_for,
+)
 
 SETTLE_MS = 2500
 
@@ -42,7 +54,7 @@ def process_cpu(cdp) -> dict[str, float]:
 
 
 def run_one(
-    build: Path, seconds: float, shot: Path | None, throttle: float, query: str, screen: str, flags: list[str]
+    build: Path, seconds: float, shot_path: Path, throttle: float, query: str, screen: str, flags: list[str]
 ) -> dict:
     server, port = serve(build)
     try:
@@ -59,11 +71,15 @@ def run_one(
             load_s = round(time.monotonic() - started, 2)
             page.mouse.click(5, 5)
             page.wait_for_timeout(SETTLE_MS)
+            # What the smoke does before its window (it reads the probe and takes a screenshot), then the window itself
+            # with no wrapped WebGL calls, so its `menu_frames` can be read beside the trace. A build whose menu is
+            # still busy answers differently with and without these two calls (#989).
+            probe(page)
+            page.screenshot(path=shot_path)
+            gate = stats(page.evaluate(FRAME_TIMES_JS, MENU_FRAME_SECONDS))
             cpu_before = process_cpu(browser_cdp)
             followed = trace(page, seconds)
             cpu_after = process_cpu(browser_cdp)
-            if shot:
-                page.screenshot(path=shot)
             state = page.evaluate("window.deadnight || {}")
             browser.close()
     finally:
@@ -76,6 +92,7 @@ def run_one(
             kind: round((cpu_after[kind] - cpu_before.get(kind, 0.0)) * 1000 / frames, 2) for kind in cpu_after
         },
         "mean_ms": round(seconds * 1000 / frames, 1),
+        "menu_frames": gate,
         **followed,
     }
 
@@ -99,11 +116,11 @@ def main() -> int:
     for n in range(args.pairs):
         order = builds if n % 2 == 0 else list(reversed(builds))
         for label, folder in order:
-            shot = args.out / f"{label}_{n}.png" if n == 0 else None
+            shot = args.out / f"{label}_{n}.png"
             result = run_one(folder, args.seconds, shot, args.throttle, args.query, args.screen, args.flag)
             results[label].append(result)
             print(
-                f"pair {n} {label}: load={result['load_to_menu_s']} frames={result['frames']} "
+                f"pair {n} {label}: load={result['load_to_menu_s']} gate_window={result['menu_frames']['mean_ms']} frames={result['frames']} "
                 f"mean={result['mean_ms']} each_second={result['mean_ms_each_second']} "
                 f"gl_per_frame={ {k: v['mean'] for k, v in result['gl_calls_per_frame'].items()} } "
                 f"cpu_ms_per_frame={result['cpu_ms_per_frame']}",
