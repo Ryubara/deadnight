@@ -9,10 +9,10 @@ extends RefCounted
 ## Not modelled: penetration, and the flare gun's splash on a crowd beyond the zombies on the same
 ## side.
 
-const START := &"pistol"
-## Carried from the first moment: the revolver in hand. The other hand is empty, and the quick melee
-## (#411) is every player's own blow, not a carried weapon.
-const START_ARMS: Array[StringName] = [&"pistol"]
+const START := &"house_pistol"
+## Carried from the first moment: the house pistol in hand. The other hand is empty, and the quick
+## melee (#411) is every player's own blow, not a carried weapon.
+const START_ARMS: Array[StringName] = [&"house_pistol"]
 
 static var _defs: Dictionary[StringName, WeaponDef] = {}
 

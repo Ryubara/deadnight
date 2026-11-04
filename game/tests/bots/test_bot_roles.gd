@@ -1,6 +1,6 @@
 # Roles as stances (bots plan, phase 5): the maintainer is whoever's turn it is, one bot flanks only
 # when a person keeps an anchor besides, a role is kept ten seconds, and the flank's place is 8 to
-# 14 m to the side of the way the people are going.
+# 10 m to the side of the way the people are going (inside the follow band).
 extends GdUnitTestSuite
 
 const HERE := Vector3.ZERO
@@ -110,7 +110,7 @@ func test_a_bot_that_leaves_loses_its_role() -> void:
 	assert_int(roles.role_of(4)).is_equal(BotRoles.Role.ANCHOR)
 
 
-func test_the_flank_holds_eight_to_fourteen_metres_to_the_side_of_the_heading() -> void:
+func test_the_flank_holds_eight_to_ten_metres_to_the_side_of_the_heading() -> void:
 	var walking := _people(1, Vector3(0, 0, -3.0))
 	var place := BotRoles.flank_centre(walking)
 	assert_float(Vector2(place.x, place.z).length()).is_between(
@@ -137,3 +137,24 @@ func test_the_flank_holds_only_while_the_people_stand_and_never_far_from_them() 
 	assert_float(Vector2(far.x, far.z).length()).is_equal_approx(BotRoles.FLANK_LIMIT, 0.001)
 	var near := Vector3(5, 0, 1)
 	assert_vector(BotRoles.within_limit(near, people)).is_equal(near)
+
+
+func test_the_flank_stays_inside_the_follow_band_with_the_slack_of_standing_at_its_place() -> void:
+	# A flank is still with the person: its farthest place is the band's far edge, and a bot standing
+	# at the edge of its place (`HOLD_RADIUS` and a half) is still within the 12 m the follow counts.
+	assert_float(BotRoles.FLANK_FAR).is_equal(BotFollow.CALM_BAND.y)
+	assert_float(BotRoles.FLANK_LIMIT).is_less_equal(BotFollow.CALM_BAND.y)
+	assert_float(BotRoles.FLANK_LIMIT + BotFightBrain.HOLD_RADIUS * 1.5).is_less_equal(12.0)
+
+
+func test_the_flank_has_places_on_both_sides_nearer_and_farther_to_try() -> void:
+	var people := _people(1, Vector3(0, 0, -3.0))
+	var choices := BotRoles.flank_choices(people)
+	assert_int(choices.size()).is_equal(4)
+	for place in choices:
+		assert_float(Vector2(place.x, place.z).length()).is_between(
+			BotRoles.FLANK_NEAR, BotRoles.FLANK_FAR
+		)
+	# The first is the place `flank_centre` names; another is across the group from it.
+	assert_vector(choices[0]).is_equal(BotRoles.flank_centre(people))
+	assert_float(choices[0].x * choices[1].x).is_less(0.0)

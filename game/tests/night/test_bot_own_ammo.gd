@@ -66,7 +66,7 @@ func _night(open: bool, profile: BotProfile = null) -> SeatedNight:
 	_bought.clear()
 	_said.clear()
 	night.on_event = func(event: Dictionary) -> void:
-		if event["type"] == &"purchase_made" and event["item_id"] == &"ammo_pistol":
+		if event["type"] == &"purchase_made" and event["item_id"] == &"ammo_house_pistol":
 			_bought.append(_where(night, BOT))
 		elif event["type"] == &"bot_say" and event["player_id"] == BOT:
 			_said.append(event["line"])
@@ -83,7 +83,7 @@ func _where(night: SeatedNight, id: int) -> Vector3:
 
 
 func _pistol(night: SeatedNight) -> Object:
-	return night.server.combat.state_of(BOT, &"pistol")
+	return night.server.combat.state_of(BOT, &"house_pistol")
 
 
 func _short(night: SeatedNight, reserve: int, magazine := 10) -> void:

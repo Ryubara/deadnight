@@ -110,6 +110,16 @@ fist at the rule's size), the muzzle and butt points of the model, and `grips/gr
 from them; it shows with the cook clip's `grenade_visible` event and goes with `release`. The capture
 (`weapon_hold_sheet.tscn -- --only=grenade`) adds a close view of the hand and one from the front.
 
+## The House Pistol
+
+`house_pistol` (#898, the start weapon) is held one-handed in the `Pistol` class at the service pistol's size
+(`holds/house_pistol.tres`: `model_scale` 1.95, `size_factor` 1.75; its model is the grip, trigger and magazine of the
+dual pistols' with its own slide and frame, so the hand fits the same way). Its grip is solved in `grips/house_pistol.tres`
+(`solve_grips.gd --only house_pistol`: trigger finger 1.0 mm, wrap 0.1 to 1.0 mm); `test_hand_grips.gd`,
+`test_menu_grips.gd` and `test_weapon_hold.gd` hold it. Its reload (`reload/house_pistol.tres`, 1.5 s) is the magazine
+kind: the left hand goes to the grip's foot, the magazine drops and goes to the belt, a new one is brought and seated, the
+hand racks the slide's rear. The sprint carry is the class's (`Sprint_Pistol`).
+
 ## The dual pistols
 
 `dual_pistols` is the first weapon held in both hands (#789): a pistol in each, the shots alternating. Its hold file

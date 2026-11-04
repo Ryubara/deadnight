@@ -118,7 +118,7 @@ static func _leave_out_the_unmodelled(tuning: RulesTuning) -> void:
 	for i in item.pool.size():
 		if not UNMODELLED.has(item.pool[i]):
 			pool.append(item.pool[i])
-			weights.append(item.pool_weights[i])
+			weights.append(item.weight_of(item.pool[i]))
 	item.pool = pool
 	item.pool_weights = weights
 
@@ -876,7 +876,7 @@ class SimPlayer:
 	var downed: bool = false
 	## Bled out: down until the round ends.
 	var dead: bool = false
-	var weapon: StringName = &"pistol"
+	var weapon: StringName = &"house_pistol"
 	## Every weapon carried (catalogue id to its magazine and reserve).
 	var arms: Dictionary[StringName, SimArm] = {}
 	## The blow every player has whatever they carry.

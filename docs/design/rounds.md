@@ -238,8 +238,9 @@ started. The defaults are today's game exactly, and every shipped test runs on t
   (`game/ui/components/match_settings_panel.gd`, built from `UIRow`, `UIOptionSelector` and `UISlider`): `settings()`
   reads it, `set_settings()` shows a value without a signal, `set_editable(false)` is the guest's read-only view of
   what the WELCOME carried (`MatchSettings.from_snapshot(welcome["snapshot"])`; `Night.match_settings` after
-  `start_remote`), and `changed` fires when a control moves. A dedicated server takes `--count`, `--max-alive`
-  `--break` and `--bots`.
+  `start_remote`), and `changed` fires when a control moves. A dedicated server takes one option for each setting
+  (`NetArgs.match_settings`): `--count`, `--max-alive`, `--break`, `--map`, `--bots` and `--bot-skill`; a value the game
+  does not take stops the server, and a ticket that names a setting the server does not know is refused by name.
 - **Bots.** <a id="bots"></a>`bots` (`MatchSettings.MAX_BOTS` = 7, one less than the seats: a person always holds
   one) is how many `BotClient`s the night seats beside the people. `NightBots` (`game/gameplay/night/night_bots.gd`) is
   the one place that decides, for Solo (`Night`) and a room (`NightHost`) alike. Solo seats the setting beside the
@@ -570,8 +571,8 @@ the third holster and the reload shock are in the simulator but on no modelled p
 research](../research/perks.md#what-the-gate-sees)). Grenades, repair, the fence's boards (the simulator keeps its
 own six-second barrier) and the doors' and spots' geometry (they only cost points) are not modelled either.
 
-**Ammunition and the shop** (#152). The players carry the revolver from the start and every weapon
-they buy or win with the reserve the weapon gives; rounds only come from the shop, at the shop's price for the
+**Ammunition and the shop** (#152). The players carry the House Pistol from the start (the revolver until #898) and every
+weapon they buy or win with the reserve the weapon gives; rounds only come from the shop, at the shop's price for the
 rounds that fit (`NightSim` asks the rules the same `buy` the night does). Between rounds a player, in order: buys
 fuel, buys rounds up to a reserve of `ammo_floor_mags` magazines for each weapon worth shooting (at least half the
 best one's sustained damage), buys the things they are saving for, and with what is left over (keeping the price of

@@ -103,7 +103,7 @@ func test_without_god_mode_a_blow_stays() -> void:
 
 func test_infinite_ammo_refills_every_carried_gun() -> void:
 	var play := await _start({"infinite_ammo": true})
-	var gun := play.night.server.combat.state_of(Night.PLAYER_ID, &"pistol")
+	var gun := play.night.server.combat.state_of(Night.PLAYER_ID, &"house_pistol")
 	gun.ammo = 0
 	gun.reserve = 0
 	play.night.tick()

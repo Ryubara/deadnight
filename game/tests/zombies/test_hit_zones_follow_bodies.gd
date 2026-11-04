@@ -121,7 +121,8 @@ func test_a_crawler_is_hit_in_the_poses_it_takes_when_it_strikes_and_staggers() 
 		[ZombieBody.Mode.ATTACK, &"extra/Crawl_Attack", 0.3],
 		[ZombieBody.Mode.ATTACK, &"extra/Crawl_Attack", 0.54],
 		[ZombieBody.Mode.ATTACK, &"extra/Crawl_Attack", 0.8],
-		[ZombieBody.Mode.STAGGER, &"HitReact", 0.25],
+		[ZombieBody.Mode.STAGGER, &"extra/Crawl_Stagger", 0.1],
+		[ZombieBody.Mode.STAGGER, &"extra/Crawl_Stagger", 0.25],
 	]:
 		var body := _body(&"crawler", case[0])
 		_check(_grid(probe, body, case[1], case[2]), &"crawler", "crawler %s" % case[1])

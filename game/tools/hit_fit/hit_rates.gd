@@ -15,6 +15,7 @@ const SHOOTER := Vector3(0.0, 1.55, 6.0)
 const ROWS := [
 	[&"crawler", ZombieBody.Mode.CHASE, &"Crawl", CRAWL_TIMES],
 	[&"crawler", ZombieBody.Mode.ATTACK, &"extra/Crawl_Attack", [0.1, 0.3, 0.54, 0.8]],
+	[&"crawler", ZombieBody.Mode.STAGGER, &"extra/Crawl_Stagger", [0.1, 0.25]],
 	[&"walker", ZombieBody.Mode.CHASE, &"Idle", [0.5]],
 	[&"walker", ZombieBody.Mode.CHASE, &"Walk", [0.0, 0.67]],
 	[&"walker", ZombieBody.Mode.CHASE, &"Run", [0.17, 0.5], 3.5],
