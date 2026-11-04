@@ -1,5 +1,5 @@
 import pg from "pg";
-import { RevisionConflict, type Save, type Store, type User } from "./store.ts";
+import { DuplicateLedger, type LedgerEntry, RevisionConflict, type Save, type Store, type User } from "./store.ts";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -8,6 +8,10 @@ CREATE TABLE IF NOT EXISTS users (
   name text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+-- When the account last signed in: a Guest account is deleted 7 days after it. Accounts made before this column
+-- count as seen at the time it is added.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen timestamptz NOT NULL DEFAULT now();
+CREATE INDEX IF NOT EXISTS users_last_seen ON users (last_seen);
 CREATE TABLE IF NOT EXISTS saves (
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   slot text NOT NULL,
@@ -17,7 +21,20 @@ CREATE TABLE IF NOT EXISTS saves (
   PRIMARY KEY (user_id, slot)
 );
 -- Saves written before the format was versioned are version 1 by definition.
-ALTER TABLE saves ADD COLUMN IF NOT EXISTS schema_version integer NOT NULL DEFAULT 1;`;
+ALTER TABLE saves ADD COLUMN IF NOT EXISTS schema_version integer NOT NULL DEFAULT 1;
+-- Why an account's XP moved, append only; its key is also a round report's idempotency key (a retry pays nothing).
+-- A solo client's write has the empty match, kind 'solo' and its new revision as the round.
+CREATE TABLE IF NOT EXISTS ledger (
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  match_id text NOT NULL,
+  kind text NOT NULL,
+  round integer NOT NULL,
+  xp integer NOT NULL,
+  reason jsonb NOT NULL,
+  at timestamptz NOT NULL,
+  PRIMARY KEY (user_id, match_id, kind, round)
+);
+CREATE INDEX IF NOT EXISTS ledger_user_kind_at ON ledger (user_id, kind, at DESC);`;
 
 export class PgStore implements Store {
   private readonly pool: pg.Pool;
@@ -33,19 +50,32 @@ export class PgStore implements Store {
     return new PgStore(pool);
   }
 
-  async upsertUser(discordId: string, name: string): Promise<User> {
+  async upsertUser(discordId: string, name: string, nowMs: number = Date.now()): Promise<User> {
     const { rows } = await this.pool.query(
-      `INSERT INTO users (discord_id, name) VALUES ($1, $2)
-       ON CONFLICT (discord_id) DO UPDATE SET name = EXCLUDED.name
-       RETURNING id, discord_id, name`,
-      [discordId, name],
+      `INSERT INTO users (discord_id, name, last_seen) VALUES ($1, $2, to_timestamp($3::double precision / 1000))
+       ON CONFLICT (discord_id) DO UPDATE SET name = EXCLUDED.name, last_seen = EXCLUDED.last_seen
+       RETURNING ${USER_COLUMNS}`,
+      [discordId, name, nowMs],
     );
     return toUser(rows[0]);
   }
 
   async getUser(id: string): Promise<User | null> {
-    const { rows } = await this.pool.query("SELECT id, discord_id, name FROM users WHERE id = $1", [id]);
+    const { rows } = await this.pool.query(`SELECT ${USER_COLUMNS} FROM users WHERE id = $1`, [id]);
     return rows[0] ? toUser(rows[0]) : null;
+  }
+
+  // The saves go with the user (ON DELETE CASCADE).
+  async deleteUser(id: string): Promise<void> {
+    await this.pool.query("DELETE FROM users WHERE id = $1", [id]);
+  }
+
+  async deleteIdleUsers(prefix: string, lastSeenAtOrBefore: number): Promise<number> {
+    const { rowCount } = await this.pool.query(
+      "DELETE FROM users WHERE starts_with(discord_id, $1) AND last_seen <= to_timestamp($2::double precision / 1000)",
+      [prefix, lastSeenAtOrBefore],
+    );
+    return rowCount ?? 0;
   }
 
   async getSave(userId: string, slot: string): Promise<Save | null> {
@@ -59,9 +89,52 @@ export class PgStore implements Store {
   async putSave(
     userId: string,
     slot: string,
+    incoming: { schemaVersion: number; data: Record<string, unknown> },
+    expectedRevision: number,
+    ledger?: LedgerEntry,
+  ): Promise<Save> {
+    if (!ledger) {
+      const written = await this.writeSave(this.pool, userId, slot, incoming, expectedRevision);
+      if (written) return written;
+      throw new RevisionConflict((await this.getSave(userId, slot))?.revision ?? 0);
+    }
+    // The entry and the save are one transaction: a crash between them neither pays without a record nor records
+    // without paying, and the entry's primary key is what makes a second report with the same key a no-op.
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const { rowCount } = await client.query(
+        `INSERT INTO ledger (user_id, match_id, kind, round, xp, reason, at)
+         VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7::double precision / 1000)) ON CONFLICT DO NOTHING`,
+        [ledger.userId, ledger.matchId, ledger.kind, ledger.round, ledger.xp, ledger.reason, ledger.at],
+      );
+      if (rowCount === 0) {
+        await client.query("ROLLBACK");
+        throw new DuplicateLedger();
+      }
+      const written = await this.writeSave(client, userId, slot, incoming, expectedRevision);
+      if (!written) {
+        await client.query("ROLLBACK");
+        throw new RevisionConflict((await this.getSave(userId, slot))?.revision ?? 0);
+      }
+      await client.query("COMMIT");
+      return written;
+    } catch (error) {
+      if (!(error instanceof DuplicateLedger) && !(error instanceof RevisionConflict)) await client.query("ROLLBACK").catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /** The revision-checked write of one save; null when the revision is not the stored one. */
+  private async writeSave(
+    db: { query: pg.Pool["query"] },
+    userId: string,
+    slot: string,
     { schemaVersion, data }: { schemaVersion: number; data: Record<string, unknown> },
     expectedRevision: number,
-  ): Promise<Save> {
+  ): Promise<Save | null> {
     const insert = expectedRevision === 0;
     const sql = insert
       ? `INSERT INTO saves (user_id, slot, revision, data, schema_version) VALUES ($1, $2, 1, $3, $4)
@@ -69,10 +142,35 @@ export class PgStore implements Store {
       : `UPDATE saves SET revision = revision + 1, data = $3, schema_version = $4, updated_at = now()
          WHERE user_id = $1 AND slot = $2 AND revision = $5 RETURNING revision`;
     const params = insert ? [userId, slot, data, schemaVersion] : [userId, slot, data, schemaVersion, expectedRevision];
-    const { rows } = await this.pool.query(sql, params);
-    if (rows[0]) return { revision: rows[0].revision, schemaVersion, data };
-    const current = await this.getSave(userId, slot);
-    throw new RevisionConflict(current?.revision ?? 0);
+    const { rows } = await db.query(sql, params);
+    return rows[0] ? { revision: rows[0].revision, schemaVersion, data } : null;
+  }
+
+  async getLedgerEntry(userId: string, matchId: string, kind: string, round: number): Promise<LedgerEntry | null> {
+    const { rows } = await this.pool.query(
+      `SELECT user_id, match_id, kind, round, xp, reason, (extract(epoch FROM at) * 1000)::double precision AS at_ms
+       FROM ledger WHERE user_id = $1 AND match_id = $2 AND kind = $3 AND round = $4`,
+      [userId, matchId, kind, round],
+    );
+    const row = rows[0];
+    if (!row) return null;
+    return { userId: row.user_id, matchId: row.match_id, kind: row.kind, round: row.round, xp: row.xp, reason: row.reason, at: Math.round(Number(row.at_ms)) };
+  }
+
+  async ledgerTotal(userId: string, matchId: string): Promise<number> {
+    const { rows } = await this.pool.query(
+      "SELECT COALESCE(SUM(xp), 0)::integer AS total FROM ledger WHERE user_id = $1 AND match_id = $2 AND kind <> 'solo'",
+      [userId, matchId],
+    );
+    return rows[0].total;
+  }
+
+  async lastLedgerAt(userId: string, kind: string): Promise<number | null> {
+    const { rows } = await this.pool.query(
+      "SELECT (extract(epoch FROM max(at)) * 1000)::double precision AS at_ms FROM ledger WHERE user_id = $1 AND kind = $2",
+      [userId, kind],
+    );
+    return rows[0]?.at_ms === null || rows[0]?.at_ms === undefined ? null : Math.round(Number(rows[0].at_ms));
   }
 
   async ping(): Promise<void> {
@@ -84,6 +182,9 @@ export class PgStore implements Store {
   }
 }
 
-function toUser(row: { id: string; discord_id: string; name: string }): User {
-  return { id: row.id, discordId: row.discord_id, name: row.name };
+// `last_seen` is read as epoch milliseconds (node-postgres would hand a Date, and a clock a test moves is a number).
+const USER_COLUMNS = "id, discord_id, name, (extract(epoch FROM last_seen) * 1000)::double precision AS last_seen_ms";
+
+function toUser(row: { id: string; discord_id: string; name: string; last_seen_ms: number }): User {
+  return { id: row.id, discordId: row.discord_id, name: row.name, lastSeen: Math.round(Number(row.last_seen_ms)) };
 }

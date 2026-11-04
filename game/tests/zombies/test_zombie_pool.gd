@@ -48,6 +48,8 @@ func _life(zombie_id: int, look: StringName, at: Vector3) -> void:
 
 
 func test_the_bodies_of_zombies_that_left_are_used_again_not_made_again() -> void:
+	# Sounds an earlier suite left queued on `Audio` are decoded during the frames below (#1093).
+	await AudioSettle.until_idle(get_tree())
 	await _life(1, &"walker", Vector3(3, 0, 3))
 	var nodes_before := _added
 	var objects := int(Performance.get_monitor(Performance.OBJECT_COUNT))

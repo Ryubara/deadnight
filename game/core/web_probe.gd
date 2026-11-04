@@ -214,6 +214,9 @@ static func snapshot(top: Control) -> Dictionary:
 		"room_code": "",
 		"room_status": "",
 		"naming": false,
+		# The account the run signed in to, and whether the credential of a visit before found it.
+		"account_id": TogetherApi.account_id(),
+		"account_returning": TogetherApi.returned_to_account(),
 		"lobby_seats": "",
 		"lobby_note": "",
 		"share_says": "",
