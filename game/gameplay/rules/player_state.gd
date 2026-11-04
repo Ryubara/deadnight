@@ -24,6 +24,8 @@ const SNAPSHOT_KEYS := {
 	"bleed_left": TYPE_FLOAT,
 	"self_revives": TYPE_INT,
 	"self_revive_left": TYPE_FLOAT,
+	"drinking": TYPE_STRING,
+	"drink_left": TYPE_FLOAT,
 	"points_earned": TYPE_INT,
 	"points_spent": TYPE_INT,
 }
@@ -65,6 +67,10 @@ var bleed_left: float = 0.0
 ## the one under way (0 when none is).
 var self_revives: int = 0
 var self_revive_left: float = 0.0
+## The tonic being drunk (bought, not yet had: `PerkPlay`), `&""` for none, and the seconds left
+## of the drink.
+var drinking: StringName = &""
+var drink_left: float = 0.0
 var points_earned: int = 0
 var points_spent: int = 0
 ## Whether a bot plays this seat. A person who joins takes a bot's seat as it stands (points,
@@ -108,6 +114,8 @@ func to_dict() -> Dictionary:
 		"bleed_left": bleed_left,
 		"self_revives": self_revives,
 		"self_revive_left": self_revive_left,
+		"drinking": String(drinking),
+		"drink_left": drink_left,
 		"points_earned": points_earned,
 		"points_spent": points_spent,
 		"bot": bot,
@@ -134,6 +142,8 @@ static func from_dict(data: Dictionary) -> PlayerState:
 	player.bleed_left = data["bleed_left"]
 	player.self_revives = data["self_revives"]
 	player.self_revive_left = data["self_revive_left"]
+	player.drinking = StringName(data["drinking"])
+	player.drink_left = data["drink_left"]
 	player.points_earned = data["points_earned"]
 	player.points_spent = data["points_spent"]
 	player.bot = bool(data.get("bot", false))

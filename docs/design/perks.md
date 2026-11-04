@@ -40,7 +40,8 @@ line** of what it does, and a press of use buys it, the same press as a door ([t
 The numbers on the card are the tuning's (`MachinePrompts.blurb`), so a retune changes the card too. A player who has
 the perk reads YOU HAVE HAD YOURS, one at the limit reads YOU CARRY 4 TONICS, THE MOST, and neither is charged. The feed
 says "drank the Double Shot Soda" for everyone to see; each machine also plays its pour (a bottle drops into the tray,
-the cap pops, the emblem flashes) on `purchase_made`, so every client sees it.
+the cap pops, the emblem flashes) on `purchase_made`, so every client sees it, and the buyer drinks the perk from a
+bottle in the machine's colours ([the drink](#rules)).
 
 ## Rules
 
@@ -68,6 +69,24 @@ mean the same thing by each.
   `shock_damage` as a blast (the rules pay and kill, `ExplosionPlay`), is held for `shock_stun_seconds` and shoved
   `shock_push` m/s. `shock_cooldown` apart, so a reload cancelled and started again is not a free shock.
   `shock_burst` carries where, how far and who was hit.
+
+**The drink** (#912). A perk is drunk before it is had: the price is paid at the machine, the buyer's Soldier drinks
+the bottle for `PerkTuning.drink_seconds` (2.5 s, the clip's length) and the perk is had when the drink ends
+(`PerkPlay`: `drink_started` at the purchase, `drink_finished` at the end; a health tonic's `player_healed` comes
+with it). Meanwhile the hands hold the bottle (`NightServer.is_drinking`): no shot, reload, swap, quick blow, throw,
+repair, revive or purchase (`use` does nothing; a buy that reaches the rules is `DRINKING`, FINISH YOUR DRINK); the
+legs are free. Not with a grenade cooking in the hand (the press is ignored: the drink would let go of it).
+
+| During the drink | What happens | Why |
+| --- | --- | --- |
+| A blow | It hurts as ever; the drink goes on and the perk comes at its end | The genre's: buying a perk mid-fight is a risk you take, not a cancel button |
+| Going down (a blow or forced) | The drink is spilled (`drink_spilled`): no perk, no refund; the bottle falls from the hand | A drink not finished is not a perk had, whatever `lost_on_down` says; the down's own loss applies to the perks had |
+| The night snapshot | `drinking` and `drink_left` are in it (version 15): a restored night finishes the drink | |
+
+Tested in `tests/rules/test_perk_drink.gd` (the rules), `tests/night/test_night_perk_drink.gd` (a press at a machine,
+the buttons held through it, a blow and a down, a bot's drink), `tests/net/test_remote_drink.gd` (another client sees
+it) and `tests/player/test_player_drink.gd` (the clip, the bottle and its colours). The clip and the bottle:
+[Animation, Drink](animation.md#drink).
 
 **The limit and the loss.** A player carries at most `economy.max_tonics`; a tonic is bought once. A player who
 **goes down loses** what `perks.lost_on_down` says (`PerkPlay`): the health the hearty tonic gave goes with it and
@@ -107,7 +126,7 @@ machine stands against the plaza's south wall over the area's own hidden block (
 - **The bots** buy tonics they lack, up to the limit, and buy them again after a down (`BotEconomy`, the frame's `perks`
   bits); their lists are the simulator's.
 - **The balance gate** plays the modelled players buying them ([research](../research/perks.md)).
-- **The snapshot** is version 14 (`self_revives`, `self_revive_left`).
+- **The snapshot** is version 15 (`self_revives`, `self_revive_left`; `drinking`, `drink_left` for the drink).
 - **The HUD** shows the perks had as [badges beside the health card](hud.md#the-perk-badges) (#707), read from the frame's
   `perks` bits, gone with a down that takes them; the DOWN card and the ring over the view say `GETTING YOURSELF UP` and
   count the seconds while the revive perk gets the holder up alone. The card at the machine and the feed ("LOST THEIR

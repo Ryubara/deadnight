@@ -30,6 +30,7 @@ func _use(night: Night) -> void:
 	command.use = true
 	NightFixture.run(night, 1, command)
 	NightFixture.run(night, 3)
+	NightFixture.drink_down(night)  # a perk bought is had when its drink ends (#912)
 
 
 func test_the_bench_offers_to_re_cut_the_revolver_in_hand_at_the_rules_price() -> void:

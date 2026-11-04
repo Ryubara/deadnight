@@ -61,3 +61,6 @@ The second batch of firearms (#790: PPSh, M249, M4A1, .50 calibre, MP5, 870 pump
 built from `weapon_recipes.py`'s `report` and `tail` and listed by `generate.py`; its sounds are `shot_`, `tail_`,
 `equip_` and `dry_` plus the gun id, and `reload_<gun>_<step>`.
 `docs/research/gun-audio.md#the-second-batch-of-firearms-790`.
+
+The perk drink (#912) is `drink_recipes.py` (`drink_open`, `drink_gulp`, `drink_discard`), in `game/assets/audio/perks/`,
+played by the drink clip's events from the deferred `perks` bank (`docs/design/animation.md#drink`).

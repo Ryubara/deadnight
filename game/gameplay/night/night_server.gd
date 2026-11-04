@@ -388,6 +388,11 @@ func _announce(event: Dictionary) -> void:
 	_outbox.append(event)
 
 
+## Whether this player is drinking a perk (`PerkPlay`): the hands are full until the drink is down.
+func is_drinking(player_id: int) -> bool:
+	return PerkPlay.is_drinking(rules.players.get(player_id))
+
+
 func _is_downed(player_id: int) -> bool:
 	var state: PlayerState = rules.players.get(player_id)
 	return state == null or state.downed
@@ -532,7 +537,7 @@ func _throw_of(player_id: int, delta: float) -> void:
 	var look := Vector3.ZERO
 	if command != null:
 		look = command.dir
-		if not _is_downed(player_id):
+		if not _is_downed(player_id) and not is_drinking(player_id):
 			motion = command.motion
 	var body := _bodies[player_id]
 	var launch := GrenadeThrower.launch(
@@ -663,6 +668,13 @@ func _act(player_id: int, delta: float) -> void:
 	if command == null or _is_downed(player_id):
 		_repairing[player_id] = &""
 		_revive.stop(player_id, &"down")
+		return
+	if is_drinking(player_id):
+		# The hands hold a perk's bottle (#912): no shot, reload, swap, blow, use, repair or revive
+		# until it is down. The legs are free.
+		_repairing[player_id] = &""
+		_revive.stop(player_id, &"released")
+		command.clear_edges()
 		return
 	if command.reload:
 		_combat(CombatAction.reload_weapon(player_id))
@@ -879,8 +891,12 @@ func _ammo_offer(player_id: int, weapon: StringName) -> Dictionary:
 func _use(player_id: int) -> void:
 	var target := use_target(player_id)
 	match target.get("kind"):
-		&"door", &"weapon", &"ammo", &"grenades", &"crane", &"recut", &"tonic":
+		&"door", &"weapon", &"ammo", &"grenades", &"crane", &"recut":
 			buy(player_id, target["id"])
+		&"tonic":
+			# Not with a grenade cooking in the hand: the drink would let go of it.
+			if not grenades.is_cooking(player_id):
+				buy(player_id, target["id"])
 		&"crane_take":
 			var held := MachineOffers.weapon_for(self, player_id)
 			rules.apply(RulesAction.crane_take(player_id, held))
