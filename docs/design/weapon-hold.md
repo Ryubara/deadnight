@@ -63,8 +63,12 @@ the arms in the gun pose at any value), and is switched off (`active`) once the 
 the clip's and switching off moves nothing:
 
 1. A two-handed gun's hold turns the chest (`stance_turn_deg`, 20-30 degrees) so the left shoulder comes forward, a
-   shooter's stance: the Soldier's arm is 0.66 m, and without it the fore-end was 0.70-0.81 m from his left shoulder,
-   so the left hand stopped short of it, inside the stock (#460).
+   shooter's stance: the Soldier's arm (upper arm and forearm) is 0.59 m since #978 (0.66 m with the kit's forearm,
+   #460), and without the turn the fore-end was 0.70-0.81 m from his left shoulder, so the left hand stopped short of
+   it, inside the stock. Its elbows bend out further than a one-handed gun's (`ELBOW_OUT_TWO_HANDED` 1.0 of the
+   shoulder width against `ELBOW_OUT` 0.45): with the shorter forearm the shouldered hold folded the right forearm
+   into the jacket. Ten degrees more stance reached the fore-ends too, but turned the seat's armband 2-3 cm deeper into
+   the chest when firing the long guns, so the stances stayed and step 4's slide does the rest.
 2. The weapon's world pose comes from the aim: the grip sits `grip_offset` from the right shoulder joint (right,
    up, forward is negative), the muzzle along the aim, up stays up. The stock's butt, `butt`, lands against the shoulder.
 3. The weapon's grip (`HandGrip.hold`, the kit's for a model with none) turns that pose into the right hand's
@@ -72,7 +76,11 @@ the clip's and switching off moves nothing:
 4. The left arm reaches the weapon's grip (`HandGrip.left_hand`: the hand bone's place and turn on the fore-end,
    solved from the model's `Support` socket), taken from where the weapon is after the right arm, not from its target,
    so both hands hold the same weapon; a hold with no grip reaches `support`. All of it is pure geometry on the
-   clip's pose: no clock, no randomness.
+   clip's pose: no clock, no randomness. Where the fore-end is still out of the left arm's reach (the view far down:
+   the chest bends over and the gun drops away from the left shoulder), the weapon slides back along its barrel until
+   the left hand reaches it (`WeaponHandsIK.PULL_*`, at most 12 cm, `pulled()`; `tests/art/measure_arms.tscn` prints
+   it per weapon and view pitch). Before #978 the hand stopped short there instead, off the fore-end by up to 13 mm at
+   40 degrees down.
 5. Firing kicks the weapon back 5 cm and up 4 degrees, dying away at 16 per second.
 
 **At the hip** the barrel is along the body (the body faces the movement; the camera's pitch still lifts it), turned
