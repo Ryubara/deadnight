@@ -27,7 +27,7 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 
 @export_group("Source")
 ## Where a wall may sell it (`WallTier`): 1 the sidearm and the hand weapons, 2 the older long guns,
-## 3 only the prize crane. A melee weapon is the box's whatever this says (`WallTier.tier_of`).
+## 3 only the prize crane.
 @export_enum("Hand:1", "Long:2", "Box:3") var wall_tier: int = 3
 ## The weight of this weapon in the prize crane's draw (`ShopItem.roll`); a map's box may list it
 ## or leave it out, and may set its own weights.
