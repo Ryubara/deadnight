@@ -2068,5 +2068,485 @@
     "source": "text-to-speech",
     "seconds": 6.09,
     "lufs_before": -22.1
+  },
+  "level_up_1.ogg": {
+    "event": "level_up",
+    "text": "[excited] Level up! Now we're cooking!",
+    "characters": 38,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2074,
+    "source": "text-to-speech",
+    "seconds": 2.47,
+    "lufs_before": -19.5,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "level_up_2.ogg": {
+    "event": "level_up",
+    "text": "[grinning] Climbing the ladder, one rung at a time!",
+    "characters": 51,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2075,
+    "source": "text-to-speech",
+    "seconds": 3.83,
+    "lufs_before": -20.1,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "level_up_3.ogg": {
+    "event": "level_up",
+    "text": "[laughs] Moving up in the world, folks!",
+    "characters": 39,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2076,
+    "source": "text-to-speech",
+    "seconds": 2.62,
+    "lufs_before": -19.2,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "tier_up_1.ogg": {
+    "event": "tier_up",
+    "text": "[shouting, triumphant] New rank! Hear that brass?!",
+    "characters": 50,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2077,
+    "source": "text-to-speech",
+    "seconds": 2.54,
+    "lufs_before": -18.5,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "tier_up_2.ogg": {
+    "event": "tier_up",
+    "text": "[whooping] Whoo! Straight up the chain of command!",
+    "characters": 50,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2078,
+    "source": "text-to-speech",
+    "seconds": 3.03,
+    "lufs_before": -19.3,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "tier_up_3.ogg": {
+    "event": "tier_up",
+    "text": "[proud] Look at me. Stripes and everything.",
+    "characters": 43,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2079,
+    "source": "text-to-speech",
+    "seconds": 2.87,
+    "lufs_before": -21.3,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "unlock_1.ogg": {
+    "event": "unlock",
+    "text": "[pleased] Ooh, something new. Don't mind if I do.",
+    "characters": 49,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2080,
+    "source": "text-to-speech",
+    "seconds": 3.58,
+    "lufs_before": -21.7,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "unlock_2.ogg": {
+    "event": "unlock",
+    "text": "[excited] Look what I just earned!",
+    "characters": 34,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2081,
+    "source": "text-to-speech",
+    "seconds": 1.62,
+    "lufs_before": -19.2,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "unlock_3.ogg": {
+    "event": "unlock",
+    "text": "[grins] Well, well. Look what I found.",
+    "characters": 38,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2082,
+    "source": "text-to-speech",
+    "seconds": 3.51,
+    "lufs_before": -22.2,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "challenge_done_1.ogg": {
+    "event": "challenge_done",
+    "text": "[laughs] Ha! Nailed it. Put it on the board!",
+    "characters": 44,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2083,
+    "source": "text-to-speech",
+    "seconds": 3.65,
+    "lufs_before": -20.1,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "challenge_done_2.ogg": {
+    "event": "challenge_done",
+    "text": "[smug] Challenge done. Easy as pie.",
+    "characters": 35,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2084,
+    "source": "text-to-speech",
+    "seconds": 2.73,
+    "lufs_before": -21.7,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "challenge_done_3.ogg": {
+    "event": "challenge_done",
+    "text": "[chuckles] Scratch that one off the list.",
+    "characters": 41,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2085,
+    "source": "text-to-speech",
+    "seconds": 2.43,
+    "lufs_before": -22.7,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "poster_set_1.ogg": {
+    "event": "poster_set",
+    "text": "[delighted] The whole set! Every poster on the wall!",
+    "characters": 52,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2086,
+    "source": "text-to-speech",
+    "seconds": 3.45,
+    "lufs_before": -21.1,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "poster_set_2.ogg": {
+    "event": "poster_set",
+    "text": "[proud] Full set. Hang 'em up, folks.",
+    "characters": 37,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2087,
+    "source": "text-to-speech",
+    "seconds": 2.24,
+    "lufs_before": -19.9,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "poster_set_3.ogg": {
+    "event": "poster_set",
+    "text": "[laughs] That's the last poster. Now it looks right.",
+    "characters": 52,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2088,
+    "source": "text-to-speech",
+    "seconds": 3.89,
+    "lufs_before": -21.1,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "card_1.ogg": {
+    "event": "card",
+    "text": "[pleased] A new calling card. Classy.",
+    "characters": 37,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2089,
+    "source": "text-to-speech",
+    "seconds": 2.68,
+    "lufs_before": -22.4,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "card_2.ogg": {
+    "event": "card",
+    "text": "[chuckles] Fresh card in the deck. Deal me in.",
+    "characters": 46,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2090,
+    "source": "text-to-speech",
+    "seconds": 3.37,
+    "lufs_before": -19.7,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "card_3.ogg": {
+    "event": "card",
+    "text": "[excited] New card! Hand 'em out!",
+    "characters": 33,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2091,
+    "source": "text-to-speech",
+    "seconds": 1.83,
+    "lufs_before": -19.0,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "emblem_1.ogg": {
+    "event": "emblem",
+    "text": "[proud] Got me a new emblem. Wear it loud.",
+    "characters": 42,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2092,
+    "source": "text-to-speech",
+    "seconds": 2.71,
+    "lufs_before": -18.4,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "emblem_2.ogg": {
+    "event": "emblem",
+    "text": "[grinning] Shiny new badge. Look at that shine.",
+    "characters": 47,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2093,
+    "source": "text-to-speech",
+    "seconds": 4.26,
+    "lufs_before": -22.6,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "emblem_3.ogg": {
+    "event": "emblem",
+    "text": "[pleased] Fancy frame, fancy me.",
+    "characters": 32,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2094,
+    "source": "text-to-speech",
+    "seconds": 2.52,
+    "lufs_before": -22.3,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "first_game_1.ogg": {
+    "event": "first_game",
+    "text": "[cheerful] First feature of the day. Let's go!",
+    "characters": 46,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2095,
+    "source": "text-to-speech",
+    "seconds": 2.55,
+    "lufs_before": -19.2,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "first_game_2.ogg": {
+    "event": "first_game",
+    "text": "[upbeat] Doors are open. First show's on me.",
+    "characters": 44,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2096,
+    "source": "text-to-speech",
+    "seconds": 2.43,
+    "lufs_before": -18.8,
+    "plan": "free",
+    "generated": "2026-11-04"
+  },
+  "first_game_3.ogg": {
+    "event": "first_game",
+    "text": "[laughs] Day's first game. Bonus time!",
+    "characters": 38,
+    "model_id": "eleven_v4",
+    "voice": "Brian",
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2097,
+    "source": "text-to-speech",
+    "seconds": 3.75,
+    "lufs_before": -21.2,
+    "plan": "free",
+    "generated": "2026-11-04"
   }
 }
