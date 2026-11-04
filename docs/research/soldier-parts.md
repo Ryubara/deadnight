@@ -133,6 +133,60 @@ crawl and his SMG carry (31-38 mm); the IK's reload and long-gun hold are not (#
 a long sleeve's right forearm 30-39 mm into the chest (recorded, at most 4 cm); her rolled sleeves (the maintainer's
 look) are clean with every weapon.
 
+## The ladder's pieces (#1078)
+
+Wave one of the fifteen wearables of [the ladder](../design/progression.md#wardrobe-costumes-and-the-locks), in
+`tools/blender/soldier_ladder.py`, appended to their slots (a part is an index on the wire). All are original ideas
+from a drive-in's staff and a B-movie crowd: a bellhop's jacket, card 3-D glasses, a booth operator's eyeshade, a press
+pass, a string tie, bib overalls, a mechanic's one-piece and two-tone oxfords.
+
+| Piece | How it is made | Where it fits |
+| --- | --- | --- |
+| Usher's jacket | the jacket's rule, a plastron cut down the front (x +-0.095) in `secondary`, six buttons, a braid on each sleeve, a half belt at the back for the shoulder camera | buttons at z 1.13-1.31: lower, her chest's underside turned them away |
+| Coveralls | the open collar on long sleeves, the kit's cuffs kept; the trunk and **the legs in one part** (`hides_legs`); a zip cut in, two pockets, a name patch and a crew oval lying along the back's slope | ankles swept against every shoe |
+| Overalls | the trousers' rule plus a waist over the top's hem, a bib, straps and brass clips, in `legs` | every top: on a tall collar the straps pass under its foot; the vest's pouches and pads are worn over the bib |
+| Saddle shoes | the kit's feet; the sock's line (z 0.135) and the saddle (y -0.112 to -0.016) cut in, white laces | every pair of trousers |
+| Cinema glasses | a card frame with a nose notch and red and cyan lenses (two new fixed swatches) | where the glasses sit: y `FRONT` - 0.035 |
+| Projectionist's visor | a band (r 0.40, z 2.05) above the brows, a peak angled down, a reel pin; it does not hide the hair | clears every cut; goggles rest on its peak (their lenses cross it, as they sink into the ball cap on main; no test measures head pieces against each other) |
+| Press lanyard, Bolo tie | a ring round the collar's foot; a card or a slide with two ends hanging at y -0.255; her own variant | the ring inside the vest's pads, what hangs in front of its pouches |
+
+Numbers they rest on (kit metres at rest, front -Y):
+
+| Measured | Value |
+| --- | --- |
+| Trunk under every top | front y -0.19 (waist) to -0.16 (chest), back y 0.18-0.22, x +-0.30 at z 1.0; her chest y -0.28 at x 0.1, z 1.16 |
+| The collars' foot | at z 1.46 the tall and the open collars both reach r 0.22-0.235 at the front and 0.15-0.16 at the back: one ring fits both |
+| The tall collar's flare | r 0.33 at z 1.6, over the shoulder: a ray down at x 0.33 lands on it, not on the sleeve (top z 1.51) |
+| Vest | pouches stand to y -0.233 (z 1.11-1.38, x +-0.24), pads from x 0.205 up to z 1.59 |
+| The top's hem | down to z 0.873 at the centre, 0.94 at the sides, y -0.198: below it a ray meets only the trousers |
+| The foot | y -0.246 to 0.094, up to z 0.195 at the ankle |
+
+What broke on the way:
+
+- **The straps and the bib stayed put and the top came through them.** Weights taken from the "trunk" by the bone that
+  leads each face skipped the chest's edges and the shoulders, which are weighted to the arms and move when the arms
+  hang. `borrow_skin` now picks faces by place and interpolates over the face it lands on (`poly_3d_calc`).
+- **A strap at its centre line sank under the humps beside it**: each point of a sheet rests on the highest of the
+  surface under its whole footprint (`Surface.front_over`, the straps' three rays across).
+- **The hem hung out under the waist**: each row of the waist takes the widest within its reach.
+- **Two prisms were inside out** and looked right: the far wall of a thin closed shape shows through its culled front
+  (the glasses' frame; the coveralls' oval, a half-moon). `test_every_part_is_closed_on_both_bodies` caught both;
+  `plate` takes an outline that is always counter-clockwise from the front.
+- **A braid on one bone floated off the sleeve** as the arm hung: the shoulder's faces close up. It borrows the sleeve's
+  weights, from the sleeve only (`on_sleeve`), and the ray that seats it starts under the collar's flare.
+- **The ladder's looks would have recut every far mesh** (ratio 0.284 to 0.235): the ratio stays solved over the
+  presets, and each new piece is asserted against the far budget instead.
+
+The arms (`test_the_ladders_clothes_keep_the_arms_out_of_the_body`, every clip at eight frames): the bib takes no arm
+past the tolerance on either body. One vertex of the left forearm goes 40 mm in at one frame of `Strafe_Left` in the
+Coveralls and in Usher's jacket on her; her plain jacket does the same (40.49 mm): the kit's long sleeve, recorded
+under `ladder`. No test measures a top's folds against the bib worn over it: that was looked at (Idle, Run_Gun and
+Reload_Rifle on both bodies).
+
+`unlocks.json` does not exist yet (the wardrobe grid, #1065, adds it): until then these pieces are free like every
+other, and their levels are on the design page (Usher's jacket 18, Press lanyard 19, Cinema glasses 24, Saddle shoes
+28, Overalls 31, Projectionist's visor 33, Bolo tie 34, Coveralls 36).
+
 ## The arm's length (#978)
 
 The maintainer saw the female Soldier's arms as too long ("maybe double check it for males as well"). Measured

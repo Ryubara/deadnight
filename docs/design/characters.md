@@ -32,7 +32,8 @@ writes the catalog `parts.json` beside the model, so this page, the file and the
   `primary`, `secondary` and `accent` into `palettes.cloth`). An index out of range wraps (`index % size`).
 - A preset is a look with an `id` and a `name`. A saved or sent look is the two dictionaries above; it is a few dozen
   bytes, so it travels in the lobby state as it is.
-- Headwear that covers the head (`hides_hair: true` in the catalog) hides the hair part; the look keeps its hair id.
+- Headwear that covers the head (`hides_hair: true` in the catalog) hides the hair part; the look keeps its hair id. A
+  one-piece top (`hides_legs: true`, the Coveralls) has legs of its own and hides the trousers the same way.
 - `body` is the character (below). A look saved before it existed has none and is his.
 
 ## Slots
@@ -41,12 +42,12 @@ writes the catalog `parts.json` beside the model, so this page, the file and the
 | --- | --- | --- |
 | head | Head, Neck | one closed head with its own neck, a buzz of hair, the kit's eyes and brows and a mouth (#895, [Character faces](../research/character-faces.md)): `plain`, `stubble`, `beard` |
 | hair | Head | `none`, `crew`, `pompadour`, `flattop`, `ponytail`, `bob`, `curls`, `bun` |
-| headwear | Head | `none`, `helmet` (the kit Soldier's), `pillbox`, `ballcap`, `papercap`, `ranger` |
-| torso | spine, arms, hands | `vest` (the kit Soldier's), `jacket`, `shirt`, `rolled`, `tank`, `letterman` |
-| legs | hips, legs | `trousers`, `cuffed`, `shorts`, `striped` |
-| feet | feet | `boots`, `sneakers`, `shoes` |
-| eyewear | Head | `none`, `sunglasses`, `glasses`, `goggles` |
-| neck | Neck | `none`, `scarf`, `bowtie` |
+| headwear | Head | `none`, `helmet` (the kit Soldier's), `pillbox`, `ballcap`, `papercap`, `ranger`, `visor` |
+| torso | spine, arms, hands | `vest` (the kit Soldier's), `jacket`, `shirt`, `rolled`, `tank`, `letterman`, `usher`, `coveralls` (with its own legs) |
+| legs | hips, legs (the bib: the trunk) | `trousers`, `cuffed`, `shorts`, `striped`, `overalls` |
+| feet | feet | `boots`, `sneakers`, `shoes`, `saddle` |
+| eyewear | Head | `none`, `sunglasses`, `glasses`, `goggles`, `cinema` |
+| neck | Neck, trunk | `none`, `scarf`, `bowtie`, `lanyard`, `bolo` |
 | arm | UpperArm.L | `none`, `armband` |
 | body | - | `male`, `female`: the character (no mesh of its own) |
 
@@ -147,9 +148,13 @@ other character, goes over 6,000 near or 2,000 far.
 | Head | his 824 (plain) and 922 (stubble, beard: the beard's edges are cut in); legs 500, feet 702 |
 | Helmet | 1,136 (the kit's, eyes and brows moved to the head); original hats 88-292, hair 44-278, eyewear 220-436, scarf 152, bow tie 84, armband 92 |
 | Hers | face 896 (Natural) and 968 (Freckles, Rosy); her torso and legs as many as his; bob 424, pin curls 448, bun 354 |
+| The ladder's pieces (#1078), near / far | Usher's jacket 3,025 / 786, Coveralls 3,424 / 952 (with its legs), Overalls 920 / 256, Saddle shoes 1,062 / 294, Cinema glasses 120 / 120, Projectionist's visor 212 / 212, Press lanyard 240 / 240, Bolo tie 240 / 240 |
 
-Only the presets are held to the budget: the heaviest possible look (vest, helmet, a beard, goggles, scarf, armband,
-striped trousers) is over it: 7,231 (6,824 before #895).
+The build and `test_soldier_ladder_parts.gd` also hold each of the ladder's pieces to both budgets in the place of its
+slot's part in every preset, on both bodies (worst 5,986 near, Pit crew in Overalls; 2,000 far, the Projectionist on
+her in the Press lanyard); the far ratio stays solved over the presets alone, so a new piece does not recut every far
+mesh. Other looks are not held to the budget: the heaviest possible look (vest, helmet, a beard, goggles, scarf,
+armband, striped trousers) is over it: 7,231 (6,824 before #895).
 
 Draw calls: one per visible part (5-7) with one shared material per character, near or far. The far level of detail
 (#139) is a copy of every part in the same file: `SoldierLook.apply` shows the far mesh of each shown part with the

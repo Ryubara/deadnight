@@ -105,6 +105,14 @@
    "mouth": [
     13,
     1
+   ],
+   "lens_red": [
+    14,
+    1
+   ],
+   "lens_cyan": [
+    15,
+    1
    ]
   }
  },
@@ -432,6 +440,13 @@
      "mesh_far": "headwear__ranger__far",
      "tris_far": 82,
      "hides_hair": true
+    },
+    "visor": {
+     "label": "Projectionist's visor",
+     "mesh": "headwear__visor",
+     "tris": 212,
+     "mesh_far": "headwear__visor__far",
+     "tris_far": 212
     }
    }
   },
@@ -515,6 +530,33 @@
       "mesh_far": "torso__letterman__female__far",
       "tris_far": 715
      }
+    },
+    "usher": {
+     "label": "Usher's jacket",
+     "mesh": "torso__usher",
+     "tris": 3025,
+     "mesh_far": "torso__usher__far",
+     "tris_far": 786,
+     "female": {
+      "mesh": "torso__usher__female",
+      "tris": 3025,
+      "mesh_far": "torso__usher__female__far",
+      "tris_far": 786
+     }
+    },
+    "coveralls": {
+     "label": "Coveralls",
+     "mesh": "torso__coveralls",
+     "tris": 3424,
+     "mesh_far": "torso__coveralls__far",
+     "tris_far": 952,
+     "hides_legs": true,
+     "female": {
+      "mesh": "torso__coveralls__female",
+      "tris": 3424,
+      "mesh_far": "torso__coveralls__female__far",
+      "tris_far": 960
+     }
     }
    }
   },
@@ -572,6 +614,19 @@
       "mesh_far": "legs__striped__female__far",
       "tris_far": 178
      }
+    },
+    "overalls": {
+     "label": "Overalls",
+     "mesh": "legs__overalls",
+     "tris": 920,
+     "mesh_far": "legs__overalls__far",
+     "tris_far": 256,
+     "female": {
+      "mesh": "legs__overalls__female",
+      "tris": 920,
+      "mesh_far": "legs__overalls__female__far",
+      "tris_far": 256
+     }
     }
    }
   },
@@ -598,6 +653,13 @@
      "tris": 702,
      "mesh_far": "feet__shoes__far",
      "tris_far": 199
+    },
+    "saddle": {
+     "label": "Saddle shoes",
+     "mesh": "feet__saddle",
+     "tris": 1062,
+     "mesh_far": "feet__saddle__far",
+     "tris_far": 294
     }
    }
   },
@@ -631,6 +693,13 @@
      "tris": 428,
      "mesh_far": "eyewear__goggles__far",
      "tris_far": 120
+    },
+    "cinema": {
+     "label": "Cinema glasses",
+     "mesh": "eyewear__cinema",
+     "tris": 120,
+     "mesh_far": "eyewear__cinema__far",
+     "tris_far": 120
     }
    }
   },
@@ -657,6 +726,32 @@
      "tris": 84,
      "mesh_far": "neck__bowtie__far",
      "tris_far": 84
+    },
+    "lanyard": {
+     "label": "Press lanyard",
+     "mesh": "neck__lanyard",
+     "tris": 240,
+     "mesh_far": "neck__lanyard__far",
+     "tris_far": 240,
+     "female": {
+      "mesh": "neck__lanyard__female",
+      "tris": 240,
+      "mesh_far": "neck__lanyard__female__far",
+      "tris_far": 240
+     }
+    },
+    "bolo": {
+     "label": "Bolo tie",
+     "mesh": "neck__bolo",
+     "tris": 240,
+     "mesh_far": "neck__bolo__far",
+     "tris_far": 240,
+     "female": {
+      "mesh": "neck__bolo__female",
+      "tris": 240,
+      "mesh_far": "neck__bolo__female__far",
+      "tris_far": 240
+     }
     }
    }
   },
