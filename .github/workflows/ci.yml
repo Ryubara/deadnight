@@ -88,7 +88,7 @@ jobs:
     # 15 to 20 minutes, #524; three took 12 to 15 each, #775): each shard takes about 7 minutes (about 6 of suites, one
     # of setup), and the limit is twice that. The jobs are `godot (1)` to `godot (6)`;
     # `build-ok` waits for all of them and is the one required name, so the ruleset does not list them.
-    timeout-minutes: 15
+    timeout-minutes: 22  # raised for #1016 only: shard 1 runs just over 15 until #1018 rebalances to eight shards
     strategy:
       fail-fast: false
       matrix:

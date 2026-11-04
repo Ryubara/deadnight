@@ -70,6 +70,17 @@ const SPRINT_CLIP := &"Sprint"
 ## beside the file): the view plays the clip at the pace that puts it on the type's telegraph.
 const CRAWL_ATTACK_CLIP := &"Crawl_Attack"
 const CRAWL_HIT_SECONDS := 13.0 / 24.0
+## The crawler's flinch when a shot hits it and its fall when it dies (Deadnight #1000): clips of
+## its own from the Crawl's first frame, because the walker's `HitReact` and `Death` stand the
+## body up (1.66 m and 1.81 m against the crawl's 0.85 m). The flinch is as long as the type's
+## stagger (0.4 s) and the fall is held on its last frame while it lies.
+const CRAWL_STAGGER_CLIP := &"Crawl_Stagger"
+const CRAWL_DEATH_CLIP := &"Crawl_Death"
+## Every clip of the extra clips' file, and the ones that loop (the rest play once).
+const EXTRA_CLIPS: Array[StringName] = [
+	TEAR_CLIP, SPRINT_CLIP, CRAWL_ATTACK_CLIP, CRAWL_STAGGER_CLIP, CRAWL_DEATH_CLIP
+]
+const EXTRA_LOOPING: Array[StringName] = [TEAR_CLIP, SPRINT_CLIP]
 
 const STATE_MOVE := &"move"
 const STATE_ROAR := &"roar"
@@ -78,6 +89,8 @@ const STATE_ATTACK := &"attack"
 const STATE_CRAWL_ATTACK := &"crawl_attack"
 const STATE_STAGGER := &"stagger"
 const STATE_DIE := &"die"
+const STATE_CRAWL_STAGGER := &"crawl_stagger"
+const STATE_CRAWL_DIE := &"crawl_die"
 const STATE_TEAR := &"tear"
 ## The tear state is the clip behind a seek and a time scale: their parameters.
 const TEAR_SEEK_PARAMETER := &"parameters/tear/seek/seek_request"
@@ -223,10 +236,10 @@ static func _build_library(
 		var animation := player.get_animation(clip).duplicate(true) as Animation
 		animation.loop_mode = Animation.LOOP_LINEAR if clip in looping else Animation.LOOP_NONE
 		library.add_animation(clip, animation)
-	for extra in [TEAR_CLIP, SPRINT_CLIP, CRAWL_ATTACK_CLIP]:
+	for extra in EXTRA_CLIPS:
 		var animation := _extra_clip(extra)
 		animation.loop_mode = (
-			Animation.LOOP_NONE if extra == CRAWL_ATTACK_CLIP else Animation.LOOP_LINEAR
+			Animation.LOOP_LINEAR if extra in EXTRA_LOOPING else Animation.LOOP_NONE
 		)
 		library.add_animation(extra, animation)
 	return library
@@ -258,6 +271,8 @@ static func _build_state_machine() -> AnimationNodeStateMachine:
 	machine.add_node(STATE_CRAWL_ATTACK, _scaled(_clip_node(CRAWL_ATTACK_CLIP), &"clip"))
 	machine.add_node(STATE_STAGGER, _clip_node(&"HitReact"))
 	machine.add_node(STATE_DIE, _clip_node(&"Death"))
+	machine.add_node(STATE_CRAWL_STAGGER, _clip_node(CRAWL_STAGGER_CLIP))
+	machine.add_node(STATE_CRAWL_DIE, _clip_node(CRAWL_DEATH_CLIP))
 	machine.add_node(STATE_TEAR, _tear_node(LIBRARY))
 	return machine
 

@@ -4,7 +4,8 @@ extends Node
 ## crawler's first place is set, a few metres in front of the player, who stands still and takes
 ## the blows.
 ## Arguments after `--`: `--seed=N`, `--seconds=S` (default 7), `--distance=M` (default 3.8),
-## `--side=M` (default 2), `--stagger` (a hit every 2.5 s), `--debug`.
+## `--side=M` (default 2), `--stagger` (a hit every 2.5 s), `--die=S` (it dies S seconds in),
+## `--debug`.
 
 var _args := {}
 var _night: Night
@@ -70,6 +71,10 @@ func _on_tick() -> void:
 		# A hit that does not kill: the crawler's stagger, for the clip it plays.
 		for id: int in _night.server.sim.zombies:
 			_night.server.sim.react_to_hit(id)
+	if _args.has("die") and _placed and _ticks == roundi(float(_args["die"]) * 60.0):
+		# The rules' kill: it falls where it is.
+		for id: int in _night.server.sim.zombies:
+			_night.server.sim.begin_death(id)
 	if _ticks % 60 == 0 and _args.has("debug"):
 		var rows := []
 		for body: ZombieBody in _night.server.sim.zombies.values():

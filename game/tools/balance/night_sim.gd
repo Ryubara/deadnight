@@ -118,7 +118,7 @@ static func _leave_out_the_unmodelled(tuning: RulesTuning) -> void:
 	for i in item.pool.size():
 		if not UNMODELLED.has(item.pool[i]):
 			pool.append(item.pool[i])
-			weights.append(item.pool_weights[i])
+			weights.append(item.weight_of(item.pool[i]))
 	item.pool = pool
 	item.pool_weights = weights
 

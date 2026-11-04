@@ -64,6 +64,17 @@ const REACH_SLACK := 1.0
 const UNDERARM_UP_TO := 4.0
 ## Samples of the arc checked for walls.
 const ARC_SAMPLES := 6
+## Seconds of its own speed a walking bot slides on after the order, before it stands to throw: it
+## brakes in about a fifth of a second, so it throws from `velocity * STOP_SECONDS` metres on from
+## where it thought (a runner: 0.5 to 1 m), and the throw is planned and checked from there (#1019).
+const STOP_SECONDS := 0.12
+## Metres either side of the arc that must be clear as well as its line, as far out as a blast
+## would still reach the bot: the grenade is thrown from a spot a few decimetres off the planned
+## one (the bot's slide, the hand's reach) and a thin post or a wall's corner on the line's edge
+## stops it at the bot's feet (#1019).
+const ARC_SPREAD := 0.3
+## The gap between the lines checked across the arc: under a thin post's width, none slips between.
+const ARC_SPREAD_STEP := 0.15
 
 ## The tables of flights by style (shared: the grenade is the same for every bot).
 static var _tables := {}
@@ -258,12 +269,32 @@ func arc_is_open(here: Vector3, throw: Throw, contacts: Array[Dictionary] = []) 
 			+ heading * (HAND_REACH + vx * t)
 			+ Vector3(0.0, maxf(def.hand_height + vy * t - 0.5 * def.gravity * t * t, 0.05), 0.0)
 		)
-		if not _level.clear(from, to):
+		if not _level.clear(from, to) or not _sides_clear(here, from, to, heading):
 			return false
 		if not contacts.is_empty() and _stopped_short(here, from, to, t, contacts):
 			return false
 		from = to
 	return true
+
+
+## Whether the strips `ARC_SPREAD` metres to either side of the segment `from` to `to` are clear
+## too, while the segment is within reach of a blast that would hurt the bot at `here`.
+func _sides_clear(here: Vector3, from: Vector3, to: Vector3, heading: Vector3) -> bool:
+	if _flat((from + to) * 0.5, here) > SAFE_FROM_SELF + THROW_MARGIN:
+		return true
+	var side := Vector3(-heading.z, 0.0, heading.x)
+	for offset in range(1, roundi(ARC_SPREAD / ARC_SPREAD_STEP) + 1):
+		var across := side * ARC_SPREAD_STEP * float(offset)
+		if not (
+			_level.clear(from + across, to + across) and _level.clear(from - across, to - across)
+		):
+			return false
+	return true
+
+
+## Where a bot moving at `velocity` stands when it has braked for a throw (`STOP_SECONDS`).
+static func stop_point(here: Vector3, velocity: Vector3) -> Vector3:
+	return here + Vector3(velocity.x, 0.0, velocity.z) * STOP_SECONDS
 
 
 ## Whether a zombie stops the grenade on the segment `from` to `to` (flown by `time`) nearer the
