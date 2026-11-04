@@ -4,6 +4,7 @@ extends Node
 ##   `--map=lot|small`   (default lot);
 ##   `--id=nw`           the entry whose boards are down (default: the map's first);
 ##   `--pack=N`          how many dead (default 3);
+##   `--look=crawler`    the type they are (default a walker);
 ##   `--view=front|side|outside` from inside facing the window (default), from beside it, or from
 ##                       outside behind the dead.
 ## Run with Movie Maker through the kit's `gds godot`:
@@ -50,6 +51,11 @@ func _ready() -> void:
 	player.teleport(stand + Vector3.UP * 0.05)
 	_night.server.sim.zombies.clear()
 	var sideways := inward.cross(Vector3.UP)
+	var profile: ZombieProfile = null
+	if _arg("look", "") != "":
+		var look := StringName(_arg("look", ""))
+		var sim := _night.server.sim
+		profile = ZombieProfile.from_type(tuning.roster.type_of(look), look, sim.tuning)
 	for i in int(_arg("pack", "3")):
 		var offset := (float(i) - 1.0) * SPACING * 0.5
 		var at := (
@@ -57,7 +63,7 @@ func _ready() -> void:
 			- inward * (OUT_START + float(i) * SPACING)
 			+ sideways * offset
 		)
-		var zombie := _night.server.sim.spawn(FIRST_ID + i, SPEED, at, 0.0, null, _id)
+		var zombie := _night.server.sim.spawn(FIRST_ID + i, SPEED, at, 0.0, profile, _id)
 		zombie.enter(ZombieBody.Mode.CHASE)
 		_pack.append(zombie.id)
 	_make_camera(barricade)
