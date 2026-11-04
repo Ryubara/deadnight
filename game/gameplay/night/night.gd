@@ -204,10 +204,11 @@ func start(
 	var player := server.body_of(PLAYER_ID)
 	var camera := player.camera_rig.camera()
 	if mode == Mode.AUTOPILOT and shoulder_camera:
-		camera.make_current()
+		player.look_through()
 		_make_autopilot()
 	elif mode == Mode.AUTOPILOT:
 		camera = _make_spectator()
+		player.make_viewless()
 		_make_autopilot()
 	_build_view(camera)
 	await _go()
@@ -270,7 +271,7 @@ func start_remote(
 		_body = world.add_body(spawn, mode == Mode.HUMAN)
 		camera = _body.camera_rig.camera()
 		if mode == Mode.AUTOPILOT:
-			camera.make_current()
+			_body.look_through()
 	else:
 		camera = _make_spectator()
 	if mode == Mode.AUTOPILOT:

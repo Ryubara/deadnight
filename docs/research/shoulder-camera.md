@@ -180,6 +180,19 @@ spawn, a bot downed and raised, the person downed and raised, a late seat, and t
 `tools/web_smoke/camera_owner.py` reads `view_is_players` from the page in the web job. Captures no longer need
 `make_current()` for this; the capture `game/tests/captures/camera_owner_tour.tscn` plays the real Solo flow with 3 bots.
 
+## A rig no one looks through (#938)
+
+A body no one looks through does not run its rig in every drawn frame: a bot's (the `bot` flag of its join), a body
+that draws nothing (a game server's), a puppet, and the autopilot's under the spectator camera
+(`Player.make_viewless()` -> `ThirdPersonCamera.rest()`). Its `Player.tick` tells the rig the look instead
+(`aim_along(head, command.yaw, command.pitch)`), which is all the weapon's pose reads; a bot's shot never read the rig
+(its command carries the origin and the direction). `Player.look_through()` makes a body the view again (the
+autopilot under the shoulder camera). The bodies a sweep passes through are a static list kept on `tree_entered` and
+`tree_exiting`, not a group lookup in every step. `game/tests/night/test_viewless_rigs.gd` counts the rigs that
+process in a built night (1 with a person and three bots, 0 under the spectator camera) and checks the rest's look and
+the list. The cost: kit page `docs/godot/camera.md` ("A rig no one looks through"). Before this, a bot's rig kept the
+spawn's yaw and pitch (0) for the whole night, and so did what read them.
+
 ## Things found the hard way
 
 - `PhysicsDirectSpaceState3D.cast_motion` ignores a body the sweep already starts inside, so every sweep must start

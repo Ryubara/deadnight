@@ -345,7 +345,9 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 	if _bodies.has(player_id):
 		return
 	_slots[player_id] = _bodies.size()
-	_bodies[player_id] = world.add_body(world.player_spawn(_slots[player_id]), local, drawn_bodies)
+	_bodies[player_id] = world.add_body(
+		world.player_spawn(_slots[player_id]), local, drawn_bodies, bot or not drawn_bodies
+	)
 	crowd.join(player_id, OS.has_feature("web") if local else true)
 	looks.join(player_id)
 	_shot_seq[player_id] = 0
