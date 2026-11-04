@@ -118,14 +118,15 @@ func _serve(args: NetArgs) -> void:
 	add_child(host)
 
 
-## The controller hint, "turn your phone" and the film (grain and vignette over everything) go in
-## the router's own canvas layer, after its screens and its transition, in that order. A canvas
-## layer is a canvas pass of its own, empty or not, and the Compatibility renderer ends each pass
-## with a fence sync whose WebGL id the web page keeps until it closes (#883): three layers of
-## overlays were three fences a frame, a third of the page's remaining heap growth.
+## The controller hint, "turn your phone", the menu's popup lane and the film (grain and vignette
+## over everything) go in the router's own canvas layer, after its screens and its transition, in
+## that order. A canvas layer is a canvas pass of its own, empty or not, and the Compatibility
+## renderer ends each pass with a fence sync whose WebGL id the web page keeps until it closes
+## (#883): three layers of overlays were three fences a frame, a third of the page's remaining heap
+## growth.
 func _add_overlays() -> void:
 	var film := FilmOverlay.new()
 	film.name = "Film"
-	for overlay: Node in [ControllerHint.new(), TouchRotatePrompt.new(), film]:
+	for overlay: Node in [ControllerHint.new(), TouchRotatePrompt.new(), MenuPopups.new(), film]:
 		UIRouter.add_child(overlay)
 		_overlays.append(overlay)

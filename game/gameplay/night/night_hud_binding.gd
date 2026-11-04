@@ -39,6 +39,8 @@ const CIRCUIT_NAMES := {
 
 var _hud: Hud
 var _state: ClientState
+## The popup lane's setting and sounds, held for as long as the night plays.
+var _popup_link: PopupLink
 ## What the map calls its links and breaches; null on the lot, whose words are the defaults above.
 var _words: MapWords
 var _weapon_names: Dictionary[StringName, String] = {}
@@ -88,6 +90,7 @@ func _init(
 	hud.state.configure(fuel.capacity, fuel.circuit_drain.keys(), fuel.start_circuits)
 	hud.state.special_schedule = HudSpecials.schedule_of(tuning.specials)
 	state.event_received.connect(_on_event)
+	_popup_link = PopupLink.new(hud.popups)
 	if looks != null:
 		looks.changed.connect(_on_look.bind(looks))
 

@@ -22,6 +22,9 @@ const SLIDE := 0.6
 const FLASH_RATE := 1.6
 
 var mode: Mode = Mode.ALL
+## The popup lane shows a finished challenge as a card (`Hud` sets it): this prompt then says only
+## the steps, so the finish is not told twice.
+var finish_in_lane := false
 var queue := ChallengePromptQueue.new()
 var card := HudChallengeCard.new()
 
@@ -47,6 +50,8 @@ func on_event(event: Dictionary) -> void:
 		or mode == Mode.OFF
 		or not ChallengePromptQueue.is_worth_showing(event)
 	):
+		return
+	if finish_in_lane and bool(event.get("completed", false)):
 		return
 	if mode == Mode.FINISHED_ONLY and not ChallengePromptQueue.is_milestone_or_completion(event):
 		return
