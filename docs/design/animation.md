@@ -320,9 +320,12 @@ library and plays it on a layer of its own over the repair (under a down), at th
 
 - **The motion:** the gun goes down (the aim pose to the lowered arms, as `Unequip`), the bottle comes up from the
   right hip to the chest, the left hand takes the cap and twists it off (`cap_off`), the bottle goes to the mouth from
-  his right, its bottom out to the right and raised 100 to 135 degrees from upright over two gulps, the head tipped
-  back a few degrees only (tipped back 20 degrees or more the kit's big head read in the game as pouring the bottle
-  over the helmet), then the arm flings the empty bottle out to the right (`discard`) and the gun comes back up.
+  his right, its bottom 45 degrees round to the right and raised 100 to 126 degrees from upright over two gulps, the
+  head tipped back a few degrees only (tipped back 20 degrees or more the kit's big head read in the game as pouring
+  the bottle over the helmet), then the arm flings the empty bottle out to the right (`discard`) and the gun comes
+  back up. Further round (58 degrees) and higher (135) the fist sank 60 mm into the head, and at the hip the fingers
+  50 mm into the hip (`test_soldier_clip_fit.gd`, which samples `Drink_Perk` with the player's other clips): now 13 mm
+  at most on both looks, every quarter frame, and the build's `ARMS` line is clear.
 - **How it is made:** in world space, like the sprint carries. Each key sets the bottle's lip and axis, the lip on
   the mouth while drinking (`MOUTH`, kit metres in `Idle` frame 0, carried by the Head bone so it follows the head);
   the right hand is turned the least way from the gun hold so the bottle, through its solved grip, points along the

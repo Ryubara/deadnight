@@ -37,17 +37,20 @@ MOUTH = Vector((0.0, -0.69, 1.46))
 # or more it read in the game as pouring the bottle over the helmet (the first capture).
 KEYS = [
     # frame, lip (or "mouth"), axis (or (tip, side)), elbow pole, spine {bone: (x, y, z)}
-    (8, (-0.33, -0.42, 0.98), (0.0, -0.25, 1.0), (-1.0, 0.4, -0.4), {}),
+    # At the hip the bottle is out from the side (the fingers sank 50 mm into the hip a few centimetres in).
+    (8, (-0.40, -0.50, 0.98), (0.0, -0.25, 1.0), (-1.0, 0.4, -0.4), {}),
     (13, (-0.08, -0.86, 1.22), (0.05, -0.05, 1.0), (-1.0, 0.1, -0.6), {"Head": (6, 0, 0)}),
     (17, (-0.08, -0.86, 1.22), (0.05, -0.05, 1.0), (-1.0, 0.1, -0.6), {"Head": (6, 0, 0)}),
     (21, (-0.16, -0.84, 1.36), (0.25, 0.45, 1.0), (-1.0, -0.1, -0.2), {"Head": (0, 0, 0)}),
     # On the mouth from his right: the bottom out to the right and raised, the elbow up and out, so from the camera
-    # over his right shoulder the bottle and the arm show beside the helmet.
-    (24, "mouth", (100, 58), (-1.0, 0.0, 0.1), {"Neck": (-2, 0, 0), "Head": (-3, 0, 0)}),
-    (30, "mouth", (124, 58), (-1.0, 0.1, 0.4), {"Torso": (-2, 0, 0), "Neck": (-4, 0, 0), "Head": (-6, 0, 0)}),
-    (33, "mouth", (120, 58), (-1.0, 0.1, 0.4), {"Torso": (-2, 0, 0), "Neck": (-3, 0, 0), "Head": (-4, 0, 0)}),
-    (37, "mouth", (132, 56), (-1.0, 0.1, 0.5), {"Torso": (-3, 0, 0), "Neck": (-5, 0, 0), "Head": (-8, 0, 0)}),
-    (41, "mouth", (135, 56), (-1.0, 0.1, 0.5), {"Torso": (-3, 0, 0), "Neck": (-5, 0, 0), "Head": (-9, 0, 0)}),
+    # over his right shoulder the bottle and the arm show beside the helmet. The bottom comes round 45 degrees, not
+    # 58, raised to 126 at most, not 135, and the elbow points back a little (pole y 0.2): further round and higher
+    # the fist sank 60 mm into the big head (ClipFit, #990); now 13 mm at most, the build's ARMS line clear.
+    (24, "mouth", (100, 45), (-1.0, 0.0, 0.1), {"Neck": (-2, 0, 0), "Head": (-3, 0, 0)}),
+    (30, "mouth", (118, 45), (-1.0, 0.2, 0.3), {"Torso": (-2, 0, 0), "Neck": (-4, 0, 0), "Head": (-6, 0, 0)}),
+    (33, "mouth", (114, 45), (-1.0, 0.2, 0.3), {"Torso": (-2, 0, 0), "Neck": (-3, 0, 0), "Head": (-4, 0, 0)}),
+    (37, "mouth", (120, 42), (-1.0, 0.2, 0.3), {"Torso": (-3, 0, 0), "Neck": (-5, 0, 0), "Head": (-8, 0, 0)}),
+    (41, "mouth", (122, 42), (-1.0, 0.2, 0.3), {"Torso": (-3, 0, 0), "Neck": (-5, 0, 0), "Head": (-9, 0, 0)}),
     (44, (-0.34, -0.72, 1.42), (-0.2, 0.6, 1.0), (-1.0, 0.2, -0.2), {"Head": (-2, 0, 0)}),
     (46, (-0.62, -0.42, 1.36), (-0.7, 0.4, 0.6), (-0.6, 0.8, -0.3), {"Torso": (2, 0, -6), "Head": (0, 0, -8)}),
 ]
