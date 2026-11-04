@@ -266,3 +266,58 @@ func test_a_low_tank_dims_the_failing_lights_without_adding_a_strobe() -> void:
 	assert_float(LotLamps.failing_brightness(true, 0.0, 10, 1)).is_equal(0.0)
 	assert_float(LotLamps.failing_brightness(false, 1.0, 10, 1)).is_equal(0.0)
 	assert_float(_max_of(series)).is_less(FailingBattery.level(0.0, 1) + 0.5)
+
+
+func test_the_tanks_brownout_never_flashes_more_than_three_times_a_second() -> void:
+	# Every level of the tank, a lamp from each part of the lot and the lamps together: what a
+	# viewer sees of a low tank is as safe as the failing battery.
+	var levels := [0.95, 0.8, 0.6, 0.4, 0.25, 0.1, 0.03]
+	for power in levels:
+		var mean := PackedFloat32Array()
+		mean.resize(int(SECONDS * RATE))
+		var lamps := [0, 1, 7, 19, 33, 58]
+		for lamp: int in lamps:
+			var series := PackedFloat32Array()
+			for tick in int(SECONDS * RATE):
+				series.append(LotLamps.brightness(true, power, tick, lamp))
+			(
+				assert_int(most_flashes_in_a_second(series))
+				. override_failure_message("power %.2f lamp %d" % [power, lamp])
+				. is_less_equal(MOST_FLASHES_A_SECOND)
+			)
+			for i in series.size():
+				mean[i] += series[i] / float(lamps.size())
+		(
+			assert_int(most_flashes_in_a_second(mean))
+			. override_failure_message("power %.2f, the lamps together" % power)
+			. is_less_equal(MOST_FLASHES_A_SECOND)
+		)
+
+
+func test_the_brownout_is_a_warning_that_grows_as_the_tank_empties() -> void:
+	# Healthy: steady. Then the deepest dip falls as the tank does, the sag lowers the lamps, and
+	# at empty they are out; a lamp is never brighter than the tank allows.
+	assert_float(FailingBattery.brownout(10.0, 3, 1.0)).is_equal(1.0)
+	assert_float(FailingBattery.brownout(10.0, 3, 0.0)).is_equal(0.0)
+	var deepest := {}
+	var steady := {}
+	for power in [0.9, 0.5, 0.1]:
+		var low := 1.0
+		var calm := 0
+		for tick in int(SECONDS * RATE):
+			var level := FailingBattery.brownout(float(tick) / RATE, 3, power)
+			low = minf(low, level)
+			if level > lerpf(LightTuning.current().sag_floor, 1.0, power) * 0.95:
+				calm += 1
+			assert_float(level).is_less_equal(lerpf(LightTuning.current().sag_floor, 1.0, power))
+		deepest[power] = low
+		steady[power] = float(calm) / (SECONDS * RATE)
+	# Relative to the sag at each level, the dips are deeper as the tank falls.
+	var sag := func(power: float) -> float:
+		return lerpf(LightTuning.current().sag_floor, 1.0, power)
+	assert_float(deepest[0.1] / sag.call(0.1)).is_less(deepest[0.5] / sag.call(0.5))
+	assert_float(deepest[0.5] / sag.call(0.5)).is_less(deepest[0.9] / sag.call(0.9))
+	# Most of the time is steady even at 10%: a warning, not a strobe.
+	assert_float(steady[0.1]).is_greater(0.5)
+	# The lamps, seen from the first drop, already show it: a dip below 90% of the sag at 90%.
+	assert_float(deepest[0.9] / sag.call(0.9)).is_less(0.9)

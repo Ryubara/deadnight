@@ -245,7 +245,7 @@ is the carried list in shop ids, the start weapons in it, and `weapon_released` 
 and keeps the other as the one put away, the hands take the new model). The purchase carries the released weapon, so
 the two never disagree even when the buyer names none (then the oldest goes).
 
-A re-cut goes with its weapon, but its price step stays (`recuts_lost`): a fresh copy can be re-cut again, and cycling
+A re-cut goes with its weapon: a fresh copy can be re-cut again, for the same 5,000 as any re-cut (#909), so cycling
 weapons does not make re-cuts cheaper.
 
 The simulator's players follow the rule (the 1.5 margin is an open question, below): they take a weapon only when it
@@ -382,7 +382,7 @@ damage, rounded up. "With reloads" is the sustained rate over a whole magazine a
   figure, so the bots aimed at the chest land 64 to 88% of their hits on it. The multipliers stay as the table says and
   the game was retuned around that ([rounds](rounds.md#the-headshot-retune-745)); whether to shrink the head zone is the
   maintainer's ([hit zones](../research/hit-zones.md#not-done-and-what-it-moves)).
-- **A weapon can be re-cut once** at the projector: x1.75 damage, x1.5 magazine and reserve limit, filled, for 1,500
+- **A weapon can be re-cut once** at the projector: x1.75 damage, x1.5 magazine and reserve limit, filled, for 5,000
   points ([the re-cut](upgrades.md)). The table above is the weapon as shipped; a re-cut one has its damage in the
   column multiplied and its magazine and reserve limit grown, and kills in fewer shots (a re-cut revolver, 42 a hit,
   kills a round-10 zombie in 3 body shots). This is what lets the health curve climb faster than the shipped weapons
@@ -590,7 +590,7 @@ puts it back in the pool as every weapon does.
 | Hits the shooter | **25% of the blast** inside 3.0 m (40 at the very centre); a teammate takes nothing (as the grenade's rule) | no |
 | The effect | none: it is a hard hit and a blast | everything in the bloom **freezes for 3 s** (below) |
 | Ammunition | 10 / 40 (60), reload 2.6 s, 0.45 s a shot | 6 / 24 (36), reload 3.0 s, 0.8 s a shot |
-| Re-cut (once, 1,500) | direct 525, blast 280, magazine 15, reserve 60 (90): a body kill to round 19, a head kill to 22 | magazine 9, reserve 36 (54), **the bloom 2.8 m** (`UpgradeTuning.bloom_multiplier`) |
+| Re-cut (once, 5,000) | direct 525, blast 280, magazine 15, reserve 60 (90): a body kill to round 19, a head kill to 22 | magazine 9, reserve 36 (54), **the bloom 2.8 m** (`UpgradeTuning.bloom_multiplier`) |
 
 **The freeze.** A frozen zombie stands still for **3 seconds**: it neither walks nor strikes, and it keeps what it was
 tearing. **Any hit on a frozen zombie kills it at once and shatters it** (any weapon of any player, a blast, a melee
@@ -618,7 +618,7 @@ prize is only a weapon the player lacks. (3) **They have a ceiling by round, not
 closes at round 15 body and 18 head (21 and 22 re-cut), then it needs two or three bolts a zombie; the freeze
 stays one bolt for an ordinary zombie and its ceiling is the brute's three; both are numbers in the data.
 (4) **Two weapon slots**: either one is a slot
-not holding a re-cut rifle, and the re-cut it takes is 1,500 or 3,000 the player does not spend on a perk. (5) **Bosses
+not holding a re-cut rifle, and the re-cut it takes is 5,000 the player does not spend on a perk. (5) **Bosses
 and special rounds keep their shape**: the freeze does not hold a headliner, and a Stampede or a Crawl Space still
 sends more than 30 bolts. (6) **The ray's blast hurts the shooter**: close shots are a choice.
 
@@ -730,12 +730,10 @@ can hurt a player; the grenade is its first user and the ray gun's splash on its
 - **Shown:** the thrower's red arc points at the blast; the feed says `YOUR OWN GRENADE HIT YOU  -42` on their own screen
   (a blast that does not down), and on a down `RUBY BLEW THEMSELVES UP` on every screen. The server's `player_hurt` and
   `player_downed` carry `harm` (`grenade`) and `by_id`.
-- **Bots** throw only where the blast takes under a tenth of their own health (`BotGrenadier.harmless_apart`, 5.8 m, so
-  6 m from the bot) and still keep 7.5 m from every teammate, which no longer protects anyone's health. The clearance
-  stays because taking it away doubled the throws per night (18 to 42 over six seeded nights) and the bots then hit
-  themselves with a third of them ([measured on the grenades page](../research/grenades.md#only-the-thrower-856)); a
-  follow-up fixes the short landings first. They do not yet back off from a live grenade of their own beyond the
-  existing dodge.
+- **Bots** throw only where the blast takes under a tenth of their own health (`BotGrenadier.harmless_apart`, 5.8 m,
+  planned 7 m from the bot) and keep no distance from their teammates, who take nothing. A bot keeps out of its own
+  live grenade: it steps out of reach, never retreats toward it, and stands and fights instead of walking on
+  ([measured on the grenades page](../research/grenades.md#the-bots-and-their-own-grenade-872)).
 
 A grenade is a sure kill only early: at 150 it kills a round-1 zombie (50) out to 6.0 m and a round-5 one (82) out to
 4.7 m; from round 12 (139) only near the centre of the blast, and no round-14 one (159) at all (the climb is 7% a round).

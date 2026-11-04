@@ -61,8 +61,9 @@ FIXED = {
     "metal": "#8f92a0",
     "eye": "#161616",
     "amber": "#d1ab46",
-    "lips": "#b4504c",  # the female Soldier's mouth (#678)
+    "lips": "#b4504c",  # the female Soldier's mouth until #895 (kept: a swatch's cell never moves)
     "blush": "#e08c7c",  # her cheeks on the "Rosy" face
+    "mouth": "#2a1414",  # #895: the mouth, dark like the eyes so it reads on every skin tone at night
 }
 PALETTES = {
     "skin": ["#f1c9a5", "#d9a77a", "#b89359", "#a68450", "#8a5a3b", "#5e3b26"],
@@ -573,24 +574,6 @@ def region_of(t):
 # --- kit-body parts: which faces, which swatch -----------------------------------------------------------------------
 
 
-def head_rule(kind):
-    def rule(t):
-        if t.mat == "Skin":
-            return "skin"
-        if t.mat == "Black":
-            beard = {"plain": "skin", "stubble": "skin_shade", "beard": "hair"}[kind]
-            if t.size >= 300:  # the hood over the skull reads as short hair; its front below the eyes is the beard
-                return beard if (t.centre.y < -0.15 and t.centre.z < 1.80) else "hair"
-            if t.size >= 40:  # the ring in front: brows above the eyes, the beard below
-                if t.centre.z > 2.0:
-                    return "hair"
-                return beard
-            return "eye"
-        return "grey"
-
-    return rule
-
-
 def torso_rule(kind):
     """Swatch per face, or None to delete it. Sleeve x is along the arm in the rest T-pose (elbow at |x| 0.54)."""
 
@@ -602,6 +585,8 @@ def torso_rule(kind):
         collar = t.mat == "Character_Main" and t.bone in ("Head", "Neck")
         if t.mat == "Skin":
             return "skin"
+        if collar and t.size < 100 and kind in LOW_COLLAR:
+            return None  # the tall collar's lip and front flap: laid on the neck they turned inside out (#895)
         if kind == "vest":
             return {"Character_Main": "primary", "DarkGrey": "darkgrey", "Black": "secondary"}.get(t.mat, "grey")
         if pouch:
@@ -619,12 +604,14 @@ def torso_rule(kind):
         upper = t.bone.startswith("UpperArm")  # the sleeve tube has one long face per side from shoulder to elbow
         if kind in ("shirt", "rolled"):
             if cuff:
-                return "skin"  # the cuff rings join the sleeve to the hand: deleting them leaves a gap
+                return None  # bare wrists: the rings go, a band of skin joins the sleeve to the hand (bridge_wrist)
             if sleeve:
                 return "primary" if upper else "skin"
             return "primary"
         if kind == "tank":
-            if cuff or sleeve or collar:
+            if cuff:
+                return None  # as the shirts' (bridge_wrist)
+            if sleeve or collar:
                 return "skin"
             return "primary"
         raise ValueError(kind)
@@ -695,6 +682,73 @@ PUSH = {  # (slot, part): [(swatch the push applies to, metres along the normal)
 }
 
 
+def weld_key(co):
+    return (round(co.x * 1e5), round(co.y * 1e5), round(co.z * 1e5))
+
+
+def push_taper(co):
+    """How much of the bare-skin push a rest-pose vertex takes: none at the wrist (the hand is never pushed: its
+    grips, #678) and at the ankle (the shoe's top is not), all of it a few centimetres away."""
+    if abs(co.x) > 0.5:  # an arm, along X at rest: the wrist seam is at |x| 0.83-0.89
+        return 1.0 - ramp(abs(co.x), 0.74, 0.83)
+    if co.z < 0.6:  # a shin: the ankle seam is at z 0.19-0.26
+        return ramp(co.z, 0.27, 0.36)
+    return 1.0
+
+
+def push_skin(me, keys, push, hands):
+    """Push the faces of a swatch along the normals by an amount, every copy of a vertex alike (#895)."""
+    amounts = {}
+    for p, key in zip(me.polygons, keys):
+        for swatch, amount in push:
+            if key == swatch:
+                amounts[p.index] = amount
+    push_faces(me, amounts, hands)
+
+
+# The long sleeves' forearms (#895): in the menu's carried holds of the long guns the right forearm crosses the
+# chest, and the kit sleeve's girth sank it up to 46 mm into the jacket; 20 mm slimmer it is 33-39 mm (the bare
+# forearms are pushed 25 mm), none of it at the elbow or in the cuff (drawn in, the cuffs bared the wrist's
+# openings).
+FOREARM_SLIM = -0.02
+
+
+def slim_forearms(me, tags, hands):
+    amounts = {
+        p.index: FOREARM_SLIM
+        for p, t in zip(me.polygons, tags)
+        if t.mat == "Black" and t.size >= 150 and t.bone.startswith("LowerArm")
+    }
+    push_faces(me, amounts, hands, elbow=True)
+
+
+def push_faces(me, amounts, hands, elbow=False):
+    """Push faces ({polygon index: metres}) along the normals, every copy of a vertex alike (#895).
+
+    The kit body is split at every material and normal seam, so a vertex is several vertices in one place: pushed
+    one by one along their own normals they parted and the arms and shins showed cracks all along. `elbow` also
+    tapers the push to nothing at the elbow (|x| 0.54 at rest)."""
+    copies = collections.defaultdict(list)
+    for v in me.vertices:
+        copies[weld_key(v.co)].append(v.index)
+    amount_at = {}
+    for pi, amount in amounts.items():
+        for vi in me.polygons[pi].vertices:
+            amount_at[weld_key(me.vertices[vi].co)] = amount
+    for k, amount in amount_at.items():
+        ids = copies[k]
+        if any(vi in hands for vi in ids):
+            continue
+        n = sum((me.vertices[vi].normal for vi in ids), Vector())
+        if n.length < 1e-9:
+            continue
+        co = me.vertices[ids[0]].co
+        taper = push_taper(co) * (ramp(abs(co.x), 0.56, 0.64) if elbow else 1.0)
+        d = n.normalized() * amount * taper
+        for vi in ids:
+            me.vertices[vi].co += d
+
+
 def body_part(body, tags, region, rule, name, mat, arm, push=(), low_collar=False):
     o = body.copy()
     o.data = body.data.copy()
@@ -710,46 +764,32 @@ def body_part(body, tags, region, rule, name, mat, arm, push=(), low_collar=Fals
                 uv[li].uv = u
     hands = hand_vertices(o)
     if push:
-        offs = collections.defaultdict(Vector)
-        for p, key in zip(me.polygons, keys):
-            for swatch, amount in push:
-                if key == swatch:
-                    for vi in p.vertices:
-                        offs[vi] = me.vertices[vi].normal * amount
-        for vi, d in offs.items():
-            if vi not in hands:
-                me.vertices[vi].co += d
-    if low_collar:  # bare forearms: the kit's wrist cuffs pull in to the arm (arm axis along X at y 0.017, z 1.393)
-        cuffs = {
-            vi
-            for p, t in zip(me.polygons, tags)
-            if t.mat == "Black" and t.size < 150 and abs(t.centre.x) > 0.8
-            for vi in p.vertices
-        }
-        for vi in cuffs - hands:
-            co = me.vertices[vi].co
-            co.y = 0.017 + (co.y - 0.017) * 0.72
-            co.z = 1.393 + (co.z - 1.393) * 0.72
-        verts = {
-            vi
-            for p, t in zip(me.polygons, tags)
-            if t.mat == "Character_Main" and t.bone in ("Head", "Neck")
-            for vi in p.vertices
-        }
-        for vi in verts:
-            co = me.vertices[vi].co
-            if co.z > 1.50:
-                co.z = 1.50 + (co.z - 1.50) * 0.45
-                co.x *= 0.95
-                co.y = 0.02 + (co.y - 0.02) * 0.95
+        push_skin(me, keys, push, hands)
+    if region == "torso" and not low_collar:
+        slim_forearms(me, tags, hands)
+    if region == "torso":
+        sink_collar_foot(o, tags)
+    if low_collar:
+        fit_low_collar(o, tags)
     me.materials.clear()
     me.materials.append(mat)
     bm = bmesh.new()
     bm.from_mesh(me)
     bm.faces.ensure_lookup_table()
+    collar = [
+        bm.faces[i]
+        for i, (k, t) in enumerate(zip(keys, tags))
+        if k is not None and region == "torso" and t.mat == "Character_Main" and t.bone in ("Head", "Neck")
+    ]
+    lining = "skin" if collar and keys[collar[0].index] == "skin" else "primary_shade"  # the tank's is bare skin
     gone = [bm.faces[i] for i, k in enumerate(keys) if k is None]
     bmesh.ops.delete(bm, geom=gone, context="FACES_ONLY")
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    if collar:
+        line_collar(bm, collar, lining)
+    if low_collar:
+        for side in (-1, 1):
+            bridge_wrist(bm, side)
     for f in bm.faces:
         f.material_index = 0
     bm.to_mesh(me)
@@ -758,6 +798,102 @@ def body_part(body, tags, region, rule, name, mat, arm, push=(), low_collar=Fals
         if m.type == "ARMATURE":
             m.object = arm
     return o
+
+
+# --- the bare wrist (#895) -------------------------------------------------------------------------------------------
+#
+# The kit hides the open end of the sleeve tube (|x| ~0.81) and the hand's open wrist (|x| ~0.89) under three cuff
+# rings. The bare-armed tops used to pull those rings in to the arm, which bared both openings: from the side the eye
+# looked into the hand and the forearm and out through them. They now drop the rings and join the two openings with
+# one band of skin.
+WRIST_X = (0.74, 0.95)  # |x| of the openings a bare wrist joins, at rest
+
+
+def open_loops(bm, keep):
+    """The open edge loops of a mesh whose copies of a vertex are welded by place: each a list of positions in
+    order, for the loops whose every vertex passes `keep(co)`."""
+    tmp = bm.copy()
+    bmesh.ops.remove_doubles(tmp, verts=tmp.verts[:], dist=1e-5)
+    seen, out = set(), []
+    for e in tmp.edges:
+        if not e.is_boundary or e in seen:
+            continue
+        loop, v, edge = [], e.verts[0], e
+        while edge not in seen:
+            seen.add(edge)
+            loop.append(v.co.copy())
+            v = edge.other_vert(v)
+            edge = next((x for x in v.link_edges if x.is_boundary and x not in seen), edge)
+        if all(keep(co) for co in loop):
+            out.append(loop)
+    tmp.free()
+    return out
+
+
+ARMHOLE_X, ARMHOLE_Z = (0.11, 0.22), (1.28, 1.50)  # the sleeve tubes' inner ends, inside the shoulders at rest
+
+
+def cap_armholes(o):
+    """Close the inner open end of each sleeve tube (|x| 0.135): inside the shoulder, but the front of the armpit
+    let a ray in under the collar and out through the tube (#895)."""
+    bm = bmesh.new()
+    bm.from_mesh(o.data)
+    loops = open_loops(bm, lambda co: ARMHOLE_X[0] < abs(co.x) < ARMHOLE_X[1] and ARMHOLE_Z[0] < co.z < ARMHOLE_Z[1])
+    by_place = {}
+    for v in bm.verts:
+        by_place.setdefault(weld_key(v.co), v)
+    uv = bm.loops.layers.uv.active
+    for lp in loops:
+        f = bm.faces.new([by_place[weld_key(p)] for p in lp])
+        f.normal_update()
+        side = 1 if sum(p.x for p in lp) > 0 else -1
+        if f.normal.x * side > 0:  # the cap faces the trunk's middle, out of the tube
+            f.normal_flip()
+        u = uv_of("primary_shade")
+        for loop in f.loops:
+            loop[uv].uv = u
+        bmesh.ops.triangulate(bm, faces=[f])
+    bm.to_mesh(o.data)
+    bm.free()
+    return len(loops)
+
+
+def bridge_wrist(bm, side):
+    """Join the sleeve tube's open end to the hand's open wrist on one side with a band of triangles."""
+    loops = open_loops(bm, lambda co: WRIST_X[0] < co.x * side < WRIST_X[1])
+    assert len(loops) == 2, f"wrist {side}: {len(loops)} open loops, expected the sleeve's end and the hand's"
+    loops.sort(key=lambda lp: sum(abs(c.x) for c in lp) / len(lp))
+    by_place = {}
+    for v in bm.verts:
+        by_place.setdefault(weld_key(v.co), v)
+    rings = []
+    for lp in loops:
+        c = sum(lp, Vector()) / len(lp)
+        ring = sorted(((math.atan2(p.z - c.z, p.y - c.y), by_place[weld_key(p)]) for p in lp), key=lambda a: a[0])
+        rings.append((c, ring))
+    (ca, a), (cb, b) = rings
+    uv = bm.loops.layers.uv.active
+    skin_uv = uv_of("skin")
+    i = j = 0
+    na, nb = len(a), len(b)
+    while i < na or j < nb:
+        va, vb = a[i % na][1], b[j % nb][1]
+        next_a = a[(i + 1) % na][0] + (2 * math.pi if i + 1 >= na else 0)
+        next_b = b[(j + 1) % nb][0] + (2 * math.pi if j + 1 >= nb else 0)
+        if j >= nb or (i < na and next_a <= next_b):
+            tri = (va, a[(i + 1) % na][1], vb)
+            i += 1
+        else:
+            tri = (va, b[(j + 1) % nb][1], vb)
+            j += 1
+        f = bm.faces.new(tri)
+        f.normal_update()
+        mid = f.calc_center_median()
+        axis = ca + (cb - ca) * ((mid.x - ca.x) / (cb.x - ca.x))
+        if f.normal.dot(mid - axis) < 0:
+            f.normal_flip()
+        for loop in f.loops:
+            loop[uv].uv = skin_uv
 
 
 # The Usher's trouser stripe (Deadnight #140): a band down the outer side of each leg, between two vertical planes
@@ -1042,12 +1178,13 @@ def build_pieces(arm, mat):
         gg.add(cyl(0.10, 0.09, 0.08, 10), "metal", at=(sx * 0.14, FRONT - 0.02, 2.11), rot=rx(90), bevel=0.012)
         gg.add(cyl(0.075, 0.075, 0.09, 10), "amber", at=(sx * 0.14, FRONT - 0.025, 2.11), rot=rx(90), bevel=0)
     P["eyewear", "goggles"] = gg.build("eyewear__goggles", "Head", arm, mat)
-    # Neck (Head: the collar ring under the chin is weighted to the head).
+    # Neck: on the Neck bone, which carries the open collars' band (#895; on Head, a strike's nod sank the bow tie
+    # 57 mm into the chest).
     P["neck", "scarf"] = (
         Piece()
         .add(cyl(0.39, 0.37, 0.12, 14), "accent", at=(0, 0.0, 1.47))
         .add(cube((0.14, 0.06, 0.26)), "accent_shade", at=(0.16, -0.37, 1.34), rot=ry(-12))
-        .build("neck__scarf", "Head", arm, mat)
+        .build("neck__scarf", "Neck", arm, mat)
     )
     bow = Piece()
     for sx in (-1, 1):
@@ -1055,7 +1192,7 @@ def build_pieces(arm, mat):
             cyl(0.085, 0.0, 0.14, 3), "accent", at=(sx * 0.075, -0.30, 1.43), rot=ry(-sx * 90) @ rx(90), bevel=0.008
         )
     bow.add(cube((0.06, 0.06, 0.06)), "accent_shade", at=(0, -0.31, 1.43), bevel=0.01)
-    P["neck", "bowtie"] = bow.build("neck__bowtie", "Head", arm, mat)
+    P["neck", "bowtie"] = bow.build("neck__bowtie", "Neck", arm, mat)  # #895: on Head it sank into the chest
     # Arm: a band round the left upper arm (the arm points along +X at rest; the sleeve is r 0.12 about y 0.02 z 1.39).
     P["arm", "armband"] = (
         Piece()
@@ -1179,34 +1316,6 @@ def eye_bounds(features, side):
     return min(xs), max(xs), top, y_top
 
 
-def her_face(kind, features, head, arm, mat):
-    """Lashes over each eye, a small mouth, and freckles (stubble's place) or rosy cheeks (beard's)."""
-    p = Piece()
-    for side in (-1, 1):
-        x0, x1, top, y_top = eye_bounds(features, side)
-        cx, w = (x0 + x1) / 2, x1 - x0
-        p.add(cube((w * 0.92, 0.022, 0.024)), "eye", at=(side * cx, y_top - 0.004, top + 0.004), bevel=0)
-        for i, (length, angle) in enumerate(((0.062, 30), (0.045, 58))):
-            a = math.radians(angle)
-            along = Vector((side * math.cos(a), 0, math.sin(a)))
-            bx, bz = side * (x1 - 0.004 - 0.022 * i), top - 0.002 + 0.012 * i
-            base = Vector((bx, face_surface(head, bx, bz) - 0.006, bz))
-            p.add(cube((length, 0.02, 0.02)), "eye", at=base + along * (length / 2), rot=ry(-side * angle), bevel=0)
-    mouth_z = 1.712
-    p.add(cube((0.10, 0.026, 0.03)), "lips", at=(0, face_surface(head, 0, mouth_z) + 0.004, mouth_z), bevel=0.009)
-    if kind == "stubble":  # freckles: three dots under each eye
-        for side in (-1, 1):
-            for dx, dz in ((0.14, 1.752), (0.175, 1.738), (0.21, 1.754)):
-                y = face_surface(head, side * dx, dz)
-                p.add(cube((0.016, 0.012, 0.016)), "skin_shade", at=(side * dx, y + 0.001, dz), bevel=0.0)
-    if kind == "beard":  # rosy cheeks
-        for side in (-1, 1):
-            y = face_surface(head, side * 0.19, 1.745)
-            p.add(cyl(0.04, 0.04, 0.012, 10), "blush", at=(side * 0.19, y + 0.002, 1.745), rot=rx(90),
-                  scale=(1.0, 0.62, 1.0), bevel=0.0)  # fmt: skip
-    return p.build("her_face", "Head", arm, mat)
-
-
 def shell(r, centre, scale, keep_y=None, keep_z=None, segs=16, rings=10):
     """A sphere scaled about `centre`, cut open where y < keep_y (the face) and below keep_z, the cuts closed:
     in world terms, so Piece.add gets it at the origin with no further scale."""
@@ -1259,6 +1368,376 @@ def her_hair(arm, mat, crown):
     return hair
 
 
+# --- the head (#895) -------------------------------------------------------------------------------------------------
+#
+# The kit head is a soldier's balaclava: a skin panel set back in a hood, a raised rim round the opening, and nothing
+# under the hood (its vest's tall collar closed it). Recoloured, the rim read as a mask from the chin up both cheeks,
+# and with an open-necked top the hood's open ring showed the inside of the head (#895). Each head is now one closed
+# shape: the hood's outside (the convex hull of the kit's hood, face panel and rim, so every hat, hair and pair of
+# glasses sits where it did), a quad sphere pushed out onto it, smooth, with a buzz of hair painted above a cut
+# hairline, and a neck down into the shoulders. The eyes and brows are the kit's; the mouth is new (MOUTH_STYLE).
+HEAD_SEGS = 6  # quads per cube edge of the head's quad sphere (216 quads; smooth-shaded, no facets show)
+HEAD_RELAX = 2  # smoothing passes over the head's shape
+HEAD_ON_HULL_Z = 1.72  # below this the head stays on the hull (the collar's top ring is on it)
+HEAD_INTO_COLLAR = 0.008
+NECK_R = 0.125  # the neck's radius: the kit trunk's own neck hole (r 0.12-0.13 at z 1.59) closes round it
+NECK_Z = (1.40, 1.66)  # from inside the shoulders to inside the head
+NECK_AXIS_Y = 0.003  # the Neck and Head bones' line
+HAIR_FRONT_Z = 2.03  # the buzz's line across the forehead (the brows' top is z 1.94)
+HAIR_TEMPLE_Y = -0.06  # behind this the hairline steps down at the temple
+HAIR_SIDE_Z, HAIR_SLOPE = 1.95, 0.5  # from the temple the line falls 0.5 m a metre towards the nape
+BEARD_Z, BEARD_BACK_Y, BEARD_SIDE_X = 1.74, 0.02, 0.27  # the jaw below the cheeks, and the sideburns up to the hair
+EYE_PROUD = 0.006  # how far the eyes' front stands out of the new face
+# The mouth (#895). The design and the two set aside are on docs/research/character-faces.md.
+MOUTH_STYLE = "smile"
+MOUTH_Z = 1.672  # its middle: between the eyes' bottom (1.748) and the chin
+MOUTH_W = {"male": 0.135, FEMALE: 0.115}  # wide enough to read as a mouth past 10 m on a phone
+MOUTH_DEPTH, MOUTH_PROUD = 0.012, 0.004  # into the head, and standing out of it
+
+
+def head_hull(body, tags):
+    """A bmesh of the convex hull of the kit head's faces (hood, face panel and rim) at rest."""
+    me = body.data
+    pts = {vi for p, t in zip(me.polygons, tags) if region_of(t) == "head" for vi in p.vertices}
+    bm = bmesh.new()
+    for vi in pts:
+        bm.verts.new(me.vertices[vi].co)
+    bmesh.ops.convex_hull(bm, input=bm.verts[:])
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    return bm
+
+
+def head_shape(hull):
+    """The head: a quad sphere pushed out from the hull's middle onto the hull. Returns a bmesh (no UVs yet)."""
+    from mathutils.bvhtree import BVHTree
+
+    tree = BVHTree.FromBMesh(hull)
+    lo = Vector([min(v.co[i] for v in hull.verts) for i in range(3)])
+    hi = Vector([max(v.co[i] for v in hull.verts) for i in range(3)])
+    centre = (lo + hi) / 2
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=2.0)
+    bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=HEAD_SEGS - 1, use_grid_fill=True)
+    for v in bm.verts:
+        d = v.co.normalized()
+        hit, _n, _i, _dist = tree.ray_cast(centre, d)
+        v.co = hit if hit is not None else centre + d * 0.3
+    # The hull is faceted where the kit rim's corners stood out (a kink on each cheek caught the light): relax it.
+    for _ in range(HEAD_RELAX):
+        bmesh.ops.smooth_vert(bm, verts=bm.verts[:], factor=0.5, use_axis_x=True, use_axis_y=True, use_axis_z=True)
+    # ...but not under the jaw: there the head stays on the hull, which passes through the hood's own bottom ring,
+    # the ring the tall collars' tops were built to meet (relaxed, the head left a gap inside the collar).
+    # The quad sphere's chords run a few millimetres inside the ring, so the jaw also stands HEAD_INTO_COLLAR out of
+    # the hull: inside a tall collar, past the top of its ring (a ray between them looked into the collar).
+    for v in bm.verts:
+        if v.co.z < HEAD_ON_HULL_Z:
+            d = (v.co - centre).normalized()
+            hit, _n, _i, _dist = tree.ray_cast(centre, d)
+            if hit is not None:
+                v.co = hit + d * HEAD_INTO_COLLAR * ramp(HEAD_ON_HULL_Z - v.co.z, 0.0, 0.06)
+    for f in bm.faces:
+        f.smooth = True
+    return bm
+
+
+def cut(bm, co, no, where=None):
+    """Bisect `bm` by a plane, only through the faces `where(face)` keeps (a cut through the whole head costs a
+    ring of triangles where no colour changes)."""
+    faces = [f for f in bm.faces if where is None or where(f)]
+    geom = list({v for f in faces for v in f.verts}) + list({e for f in faces for e in f.edges}) + faces
+    bmesh.ops.bisect_plane(bm, geom=geom, plane_co=co, plane_no=no)
+
+
+def spans(f, axis, lo, hi):
+    """Whether a face reaches into lo..hi along an axis (0 x, 1 y, 2 z)."""
+    vals = [v.co[axis] for v in f.verts]
+    return max(vals) >= lo and min(vals) <= hi
+
+
+def head_swatches(bm, kind):
+    """Cut the hairline (and the beard's edges) into the head and give each face its swatch: straight colour edges at
+    every angle (whole faces painted by their centre left teeth: #140)."""
+    cut(bm, (0, 0, HAIR_FRONT_Z), (0, 0, 1), lambda f: spans(f, 1, -1, HAIR_TEMPLE_Y))
+    cut(bm, (0, HAIR_TEMPLE_Y, 0), (0, 1, 0), lambda f: spans(f, 2, HAIR_SIDE_Z - 0.02, HAIR_FRONT_Z + 0.02))
+    side = Vector((0, HAIR_SLOPE, 1)).normalized()
+    cut(bm, (0, HAIR_TEMPLE_Y, HAIR_SIDE_Z), side, lambda f: spans(f, 1, HAIR_TEMPLE_Y, 1))
+    beard = {"plain": None, "stubble": "skin_shade", "beard": "hair"}.get(kind)
+    if beard:
+        cut(bm, (0, 0, BEARD_Z), (0, 0, 1), lambda f: spans(f, 1, -1, BEARD_BACK_Y))
+        cut(bm, (0, BEARD_BACK_Y, 0), (0, 1, 0), lambda f: spans(f, 2, 0, HAIR_SIDE_Z + 0.05))
+        for sx in (-1, 1):
+            cut(bm, (sx * BEARD_SIDE_X, 0, 0), (1, 0, 0),
+                lambda f: spans(f, 2, BEARD_Z, HAIR_SIDE_Z + 0.05) and spans(f, 1, -1, BEARD_BACK_Y))  # fmt: skip
+    out = {}
+    for f in bm.faces:
+        c = f.calc_center_median()
+        if c.z > HAIR_FRONT_Z or (c.y > HAIR_TEMPLE_Y and (c.z - HAIR_SIDE_Z) + HAIR_SLOPE * (c.y - HAIR_TEMPLE_Y) > 0):
+            out[f] = "hair"
+        elif beard and c.y < BEARD_BACK_Y and (c.z < BEARD_Z or abs(c.x) > BEARD_SIDE_X):
+            out[f] = beard
+        else:
+            out[f] = "skin"
+    return out
+
+
+def neck_shape(bm):
+    """The neck: an open tube (both ends are inside other shapes) added to `bm`; returns its new faces."""
+    tmp = bmesh.new()
+    bmesh.ops.create_cone(tmp, cap_ends=False, segments=12, radius1=NECK_R, radius2=NECK_R,
+                          depth=NECK_Z[1] - NECK_Z[0])  # fmt: skip
+    bmesh.ops.translate(tmp, verts=tmp.verts, vec=Vector((0, NECK_AXIS_Y, sum(NECK_Z) / 2)))
+    me = bpy.data.meshes.new("tmp")
+    tmp.to_mesh(me)
+    tmp.free()
+    start = len(bm.faces)
+    bm.from_mesh(me)
+    bpy.data.meshes.remove(me)
+    bm.faces.ensure_lookup_table()
+    faces = list(bm.faces)[start:]
+    for f in faces:
+        f.smooth = True
+    return faces
+
+
+def build_head(name, hull, kind, arm, mat):
+    """One head part (no eyes yet): the shape, its swatches, the neck; skinned to Head, the neck's foot to Neck."""
+    bm = head_shape(hull)
+    swatch = head_swatches(bm, kind)
+    for f in neck_shape(bm):
+        swatch[f] = "skin"
+    uv = bm.loops.layers.uv.new("UVMap")
+    for f, key in swatch.items():
+        u = uv_of(key)
+        for loop in f.loops:
+            loop[uv].uv = u
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new(name, me)
+    bpy.context.collection.objects.link(o)
+    o.parent = arm
+    o.matrix_parent_inverse = arm.matrix_world.inverted()
+    me.materials.append(mat)
+    head, neck = o.vertex_groups.new(name="Head"), o.vertex_groups.new(name="Neck")
+    lo, hi = 1.46, 1.57  # the Neck bone's length: below it the neck follows Neck, above it Head
+    for v in me.vertices:
+        w = min(max((v.co.z - lo) / (hi - lo), 0.0), 1.0)
+        if w > 0:
+            head.add([v.index], w, "REPLACE")
+        if w < 1:
+            neck.add([v.index], 1 - w, "REPLACE")
+    mod = o.modifiers.new("Armature", "ARMATURE")
+    mod.object = arm
+    return o
+
+
+def seat_features(features, head):
+    """Move the kit's eyes and brows straight forward so each eye's front stands EYE_PROUD out of the new face."""
+    me = features.data
+    shift = 0.0
+    for side in (-1, 1):
+        eye = [v.co for v in me.vertices if v.co.z < 1.89 and v.co.x * side > 0]
+        front = min(eye, key=lambda c: c.y)
+        surface = face_surface(head, front.x, front.z)
+        shift = min(shift, surface - EYE_PROUD - front.y)
+    for v in me.vertices:
+        v.co.y += shift
+    return shift
+
+
+def decal(p, outline, swatch, head, proud=MOUTH_PROUD, depth=MOUTH_DEPTH):
+    """A flat shape on the face: `outline` is (x, z) points round it (front view, counter-clockwise seen from the
+    front); its front stands `proud` out of the face at each point and its back is `depth` inside."""
+    bm = bmesh.new()
+    front, back = [], []
+    for x, z in outline:
+        y = face_surface(head, x, z)
+        front.append(bm.verts.new((x, y - proud, z)))
+        back.append(bm.verts.new((x, y + depth, z)))
+    n = len(outline)
+    bm.faces.new(list(reversed(front)))
+    bm.faces.new(back)
+    for i in range(n):
+        j = (i + 1) % n
+        bm.faces.new((front[i], front[j], back[j], back[i]))
+    # Outward by hand: recalc_face_normals turned this thin a shape inside out (the front culled away).
+    middle = sum((v.co for v in bm.verts), Vector()) / len(bm.verts)
+    bm.normal_update()
+    for f in bm.faces:
+        if f.normal.dot(f.calc_center_median() - middle) < 0:
+            f.normal_flip()
+    bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method="BEAUTY", ngon_method="BEAUTY")
+    me = bpy.data.meshes.new("tmp")
+    bm.to_mesh(me)
+    bm.free()
+    u = uv_of(swatch)
+    start = len(p.bm.faces)
+    p.bm.from_mesh(me)
+    bpy.data.meshes.remove(me)
+    p.bm.faces.ensure_lookup_table()
+    for f in list(p.bm.faces)[start:]:
+        for loop in f.loops:
+            loop[p.uv].uv = u
+    return p
+
+
+def mouth_outline(style, width, z=MOUTH_Z):
+    """The mouth seen from the front, (x, z) counter-clockwise. `smile`: an open half-moon, flat on top, round below;
+    `line`: a closed mouth, a bar whose corners turn up; `grin`: the half-moon, wider and shallower."""
+    hw = width / 2
+    if style in ("smile", "grin"):
+        deep = 0.056 if style == "smile" else 0.04
+        top = z + deep * 0.45
+        # From the right corner round the bottom to the left corner, then back along the top: the top line has
+        # points of its own so it follows the face's curve (a straight chord between the corners sank into it).
+        arc = [(hw * math.cos(a), top - deep * math.sin(a)) for a in (math.pi * i / 10 for i in range(11))]
+        return arc + [(-hw + width * i / 6, top) for i in range(1, 6)]
+    if style == "line":
+        n, thick, lift = 6, 0.026, 0.012
+        xs = [-hw + width * i / n for i in range(n + 1)]
+        lower = [(x, z - thick / 2 + lift * (2 * x / width) ** 2) for x in xs]
+        upper = [(x, z + thick / 2 + lift * (2 * x / width) ** 2) for x in reversed(xs)]
+        return lower + upper
+    raise ValueError(style)
+
+
+def face_extras(kind, female, features, head, arm, mat, style=MOUTH_STYLE):
+    """The parts of a face kept whole in the far level of detail: the mouth, and for her the lashes and the
+    freckles (stubble's place) or rosy cheeks (beard's)."""
+    p = Piece()
+    pts = mouth_outline(style, MOUTH_W[FEMALE if female else "male"])
+    decal(p, pts, "mouth", head)
+    if female:
+        add_lashes(p, features, head)
+        if kind == "stubble":  # freckles: three dots under each eye
+            for side in (-1, 1):
+                for dx, dz in ((0.14, 1.732), (0.175, 1.718), (0.21, 1.734)):
+                    y = face_surface(head, side * dx, dz)
+                    p.add(cube((0.016, 0.012, 0.016)), "skin_shade", at=(side * dx, y + 0.001, dz), bevel=0.0)
+        if kind == "beard":  # rosy cheeks
+            for side in (-1, 1):
+                y = face_surface(head, side * 0.2, 1.715)
+                p.add(cyl(0.04, 0.04, 0.012, 10), "blush", at=(side * 0.2, y + 0.002, 1.715), rot=rx(90),
+                      scale=(1.0, 0.62, 1.0), bevel=0.0)  # fmt: skip
+    return p.build("face_extras", "Head", arm, mat)
+
+
+def add_lashes(p, features, head):
+    """Her lashes: a lid line over each eye and two strokes out from its outer corner."""
+    for side in (-1, 1):
+        x0, x1, top, y_top = eye_bounds(features, side)
+        cx, w = (x0 + x1) / 2, x1 - x0
+        p.add(cube((w * 0.92, 0.022, 0.024)), "eye", at=(side * cx, y_top - 0.004, top + 0.004), bevel=0)
+        for i, (length, angle) in enumerate(((0.062, 30), (0.045, 58))):
+            a = math.radians(angle)
+            along = Vector((side * math.cos(a), 0, math.sin(a)))
+            bx, bz = side * (x1 - 0.004 - 0.022 * i), top - 0.002 + 0.012 * i
+            base = Vector((bx, face_surface(head, bx, bz) - 0.006, bz))
+            p.add(cube((length, 0.02, 0.02)), "eye", at=base + along * (length / 2), rot=ry(-side * angle), bevel=0)
+
+
+# --- the open-necked tops' collar (#895) -------------------------------------------------------------------------------
+#
+# The kit's tall collar folded down (verts above z 1.50 squashed to 45 %) stood off the shoulders as a thin ring with
+# the head's open ring above it, and moved with the head. Now its verts above COLLAR_FOOT are laid on a slope from the
+# shoulders up to a band that hugs the neck, and follow the Neck bone.
+COLLAR_FOOT = 1.45
+COLLAR_TOP_Z = 1.585
+COLLAR_HUG = NECK_R - 0.006  # the band's top edge: just inside the neck, so no gap shows between them
+
+
+def collar_verts(me, tags):
+    return {
+        vi
+        for p, t in zip(me.polygons, tags)
+        if t.mat == "Character_Main" and t.bone in ("Head", "Neck")
+        for vi in p.vertices
+    }
+
+
+def fit_low_collar(o, tags):
+    me = o.data
+    groups = {g.name: g for g in o.vertex_groups}
+    neck = groups.get("Neck") or o.vertex_groups.new(name="Neck")
+    names = [g.name for g in o.vertex_groups]
+    top = max(me.vertices[vi].co.z for vi in collar_verts(me, tags))
+    for vi in collar_verts(me, tags):
+        v = me.vertices[vi]
+        co = v.co
+        if co.z <= COLLAR_FOOT:
+            continue
+        t = ramp(co.z, COLLAR_FOOT, top)
+        d = Vector((co.x, co.y - NECK_AXIS_Y, 0))
+        r = d.length
+        if r > 1e-6:
+            r_new = r + (COLLAR_HUG - r) * t
+            d = d / r * r_new
+        co.x, co.y = d.x, NECK_AXIS_Y + d.y
+        co.z = COLLAR_FOOT + (COLLAR_TOP_Z - COLLAR_FOOT) * t
+        # The band follows the neck's foot, not the head (a head turn swung the old ring through the shoulders).
+        moved = 0.0
+        for g in v.groups:
+            if names[g.group] == "Head":
+                moved += g.weight
+                g.weight = 0.0
+        if moved:
+            neck.add([vi], moved, "ADD")
+
+
+def line_collar(bm, faces, swatch):
+    """Give the collar an inside: a copy of its faces turned round, in `swatch`. Single-sided, its inside was
+    culled, and a look down between the collar and the head saw out through it (#895)."""
+    res = bmesh.ops.duplicate(bm, geom=list(faces))
+    lining = [g for g in res["geom"] if isinstance(g, bmesh.types.BMFace)]
+    bmesh.ops.reverse_faces(bm, faces=lining)
+    uv = bm.loops.layers.uv.active
+    u = uv_of(swatch)
+    for f in lining:
+        for loop in f.loops:
+            loop[uv].uv = u
+
+
+COLLAR_SKIRT_Z = 1.43  # the kit collar's foot (z 1.406) stands off the shoulders: below this it sinks in
+COLLAR_SINK = 0.0
+
+
+def sink_collar_foot(o, tags):
+    """Pull the foot of the collar in towards the neck's line, into the shoulders (a ray under its edge looked into
+    the collar from below)."""
+    me = o.data
+    for vi in collar_verts(me, tags):
+        co = me.vertices[vi].co
+        if co.z < COLLAR_SKIRT_Z:
+            d = Vector((co.x, co.y - NECK_AXIS_Y, 0))
+            if d.length > COLLAR_SINK:
+                k = (d.length - COLLAR_SINK * ramp(COLLAR_SKIRT_Z - co.z, 0.0, 0.02)) / d.length
+                co.x, co.y = d.x * k, NECK_AXIS_Y + d.y * k
+
+
+def cap_neck_hole(o):
+    """Close the trunk's own neck hole (an open ring of r ~0.12 round the neck's foot, z ~1.54-1.59)."""
+    bm = bmesh.new()
+    bm.from_mesh(o.data)
+    edges = [
+        e
+        for e in bm.edges
+        if e.is_boundary and all(v.co.z > 1.5 and Vector((v.co.x, v.co.y - NECK_AXIS_Y)).length < 0.16 for v in e.verts)
+    ]
+    if edges:
+        res = bmesh.ops.holes_fill(bm, edges=edges, sides=0)
+        uv = bm.loops.layers.uv.active
+        u = uv_of("skin")
+        for f in res["faces"]:
+            f.normal_update()
+            if f.normal.z < 0:  # holes_fill faced it down, into the trunk
+                f.normal_flip()
+            for loop in f.loops:
+                loop[uv].uv = u
+    bm.to_mesh(o.data)
+    bm.free()
+    return len(edges)
+
+
 def join(base, extra):
     bpy.ops.object.select_all(action="DESELECT")
     base.select_set(True)
@@ -1291,7 +1770,14 @@ def far_copy(o, ratio):
         bm = bmesh.new()
         bm.from_mesh(far.data)
         bmesh.ops.triangulate(bm, faces=bm.faces[:])
-        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.calc_area() < 1e-10], context="FACES_ONLY")
+        # (#895: a triangle with two corners 0.01 mm apart counted here and was welded away by the export)
+        bad, seen = [], set()
+        for f in bm.faces:
+            corners = tuple(sorted(weld_key(v.co) for v in f.verts))
+            if f.calc_area() < 1e-8 or min(e.calc_length() for e in f.edges) < 1e-5 or corners in seen:
+                bad.append(f)
+            seen.add(corners)
+        bmesh.ops.delete(bm, geom=bad, context="FACES_ONLY")
         bm.to_mesh(far.data)
         bm.free()
     return far
@@ -1376,6 +1862,7 @@ def main():
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--preview", type=Path, help="also write one .glb per preset here (for render_sheet.py)")
     ap.add_argument("--preview-only", default="", help="comma-separated preset ids: write only these previews")
+    ap.add_argument("--mouth", default=MOUTH_STYLE, help="a mouth design to try (smile, line, grin); ships smile")
     args = ap.parse_args(sys.argv[sys.argv.index("--") + 1 :])
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -1390,7 +1877,7 @@ def main():
 
     tags = tag_body(body)
     parts = {}
-    rules = {"head": head_rule, "torso": torso_rule, "legs": legs_rule, "feet": feet_rule}
+    rules = {"torso": torso_rule, "legs": legs_rule, "feet": feet_rule}
     for slot, make_rule in rules.items():
         for pid in SLOTS[slot]["parts"]:
             parts[slot, pid] = body_part(
@@ -1404,40 +1891,48 @@ def main():
                 PUSH.get((slot, pid), ()),
                 low_collar=slot == "torso" and pid in LOW_COLLAR,
             )
+            if slot == "torso":
+                cap_neck_hole(parts[slot, pid])
+                assert cap_armholes(parts[slot, pid]) == 2, f"{pid}: the two sleeve ends were not found"
     features = split_features(helmet)
     features.data.materials.append(mat)
     her_features = features.copy()
     her_features.data = features.data.copy()
     bpy.context.collection.objects.link(her_features)
     thin_brows(her_features)
+    hull = head_hull(body, tags)
     female = {}  # (slot, part) -> her variant
-    # Her far heads decimate the head and its features only (as his do) and take her face pieces whole: a collapse
-    # turned the lashes and freckles into slivers that the glTF round trip dropped (Godot counted fewer triangles).
-    her_far_base, her_extras = {}, {}
+    # The far heads decimate the head and its eyes and brows only and take the face's small pieces whole (the
+    # mouth, her lashes and freckles): a collapse turned them into slivers that the glTF round trip dropped (Godot
+    # counted fewer triangles).
+    far_base, extras_of = {}, {}
     for pid in SLOTS["head"]["parts"]:
-        her = body_part(body, tags, "head", head_rule("plain"), f"head__{pid}__{FEMALE}", mat, arm)
-        extras = her_face(pid, her_features, her, arm, mat)
-        f = her_features.copy()
-        f.data = her_features.data.copy()
-        bpy.context.collection.objects.link(f)
-        join(her, f)
-        base = her.copy()
-        base.data = her.data.copy()
-        base.name = base.data.name = f"head__{pid}__{FEMALE}"  # far_copy names its copy after this
-        bpy.context.collection.objects.link(base)
-        her_far_base[pid], her_extras[pid] = base, extras
-        f = extras.copy()
-        f.data = extras.data.copy()
-        bpy.context.collection.objects.link(f)
-        join(her, f)
-        her.name = her.data.name = f"head__{pid}__{FEMALE}"
-        female["head", pid] = her
-        f = features.copy()
-        f.data = features.data.copy()
-        bpy.context.collection.objects.link(f)
-        join(parts["head", pid], f)
+        for her in (False, True):
+            name = f"head__{pid}__{FEMALE}" if her else f"head__{pid}"
+            head = build_head(name, hull, "plain" if her else pid, arm, mat)
+            f = (her_features if her else features).copy()
+            f.data = (her_features if her else features).data.copy()
+            bpy.context.collection.objects.link(f)
+            seat_features(f, head)
+            extras = face_extras(pid, her, f, head, arm, mat, args.mouth)
+            join(head, f)
+            base = head.copy()
+            base.data = head.data.copy()
+            base.name = base.data.name = name  # far_copy names its copy after this
+            bpy.context.collection.objects.link(base)
+            far_base[name], extras_of[name] = base, extras
+            f = extras.copy()
+            f.data = extras.data.copy()
+            bpy.context.collection.objects.link(f)
+            join(head, f)
+            head.name = head.data.name = name
+            if her:
+                female["head", pid] = head
+            else:
+                parts["head", pid] = head
     bpy.data.objects.remove(features)
     bpy.data.objects.remove(her_features)
+    hull.free()
     cut_stripe(parts["legs", "striped"])
     patch = letter_patch(arm, mat)
     join(parts["torso", "letterman"], patch)
@@ -1489,15 +1984,21 @@ def main():
         return (lk, other)
 
     looks_checked = {f"{pid}/{i}": lk2 for pid, _n, lk in PRESETS for i, lk2 in enumerate(worn_both(lk))}
-    # The far ratio is solved over his eight looks as shipped (#342), so adding her leaves every far mesh of his as
-    # it was; her looks are checked against the far budget below.
-    his = {pid: lk for pid, _n, lk in PRESETS if lk["parts"][BODY_SLOT] != FEMALE}
-    far_sources = {**by_name, **{f"head__{pid}__{FEMALE}": o for pid, o in her_far_base.items()}}
-    far_by_name, far_ratio = far_parts(far_sources, lambda counts: {k: look_sum(lk, counts) for k, lk in his.items()})
-    for pid, extras in her_extras.items():
-        far = join(far_by_name[f"head__{pid}__{FEMALE}"], extras)
-        far.name = far.data.name = f"head__{pid}__{FEMALE}__far"
-        bpy.data.objects.remove(her_far_base[pid])
+    # The far ratio is solved over every look as built and as worn by the other character (#895: the heads' mouths
+    # are kept whole like her face pieces, so they count as they are).
+    extra_tris = {name: kitlib.tris(o) for name, o in extras_of.items()}
+
+    def with_extras(counts):
+        return {k: v + extra_tris.get(k, 0) for k, v in counts.items()}
+
+    far_sources = {**by_name, **far_base}
+    far_by_name, far_ratio = far_parts(
+        far_sources, lambda counts: {k: look_sum(lk, with_extras(counts)) for k, lk in looks_checked.items()}
+    )
+    for name, extras in extras_of.items():
+        far = join(far_by_name[name], extras)
+        far.name = far.data.name = f"{name}__far"
+        bpy.data.objects.remove(far_base[name])
     tris_far = {k: kitlib.tris(o) for k, o in far_by_name.items()}
 
     presets = []
@@ -1565,4 +2066,5 @@ def main():
         mat.node_tree.nodes["Image Texture"].image = atlas
 
 
-main()
+if __name__ == "__main__":
+    main()

@@ -15,8 +15,9 @@ var roam: Dictionary = {}
 ## The flares burning now, as `{point, radius, until, shooter}` (the clock of the bots, all the same
 ## step): the dead within a flare's radius walk to it, so a bot judging a revive counts them as far.
 var lures: Array[Dictionary] = []
-## The grenades a bot has thrown that have not gone off, as `{point, until}` (where it was aimed to
-## land and the bot clock at which it goes off): every bot keeps out of the blast (`BotFightBrain`).
+## The grenades a bot has thrown that have not gone off, as `{point, until, owner}` (where it was
+## aimed to land, the bot clock at which it goes off, and the thrower): the thrower keeps out of its
+## own blast (`BotFightBrain`); only the thrower takes a grenade's damage (#856).
 var blasts: Array[Dictionary] = []
 ## The claims on the links to buy (`BotErrands._link`): the nearest free bot to a link holds it.
 ## Keyed by the link id's hash, with the same lease and steal margin as a body's claim.
@@ -46,17 +47,37 @@ func active_lures(now: float) -> Array[Dictionary]:
 	return lures
 
 
-## A grenade was thrown to land at `point` and goes off at `until`.
-func add_blast(point: Vector3, until: float) -> void:
-	blasts.append({"point": point, "until": until})
+## A grenade `owner` threw to land at `point` goes off at `until`.
+func add_blast(point: Vector3, until: float, owner: int) -> void:
+	blasts.append({"point": point, "until": until, "owner": owner, "grenade": -1})
 
 
-## Where the grenades still to go off at `now` are, within `reach` metres (flat) of `here`; the ones
-## that went off are forgotten.
-func blasts_near(here: Vector3, reach: float, now: float) -> Array[Vector3]:
+## The grenade `grenade_id` has left `owner`'s hand: it is the one the owner's latest order
+## planned (`grenade_thrown`).
+func grenade_flying(owner: int, grenade_id: int) -> void:
+	for i in range(blasts.size() - 1, -1, -1):
+		if int(blasts[i]["owner"]) == owner and int(blasts[i]["grenade"]) < 0:
+			blasts[i]["grenade"] = grenade_id
+			return
+
+
+## The grenade `grenade_id` struck a wall, a zombie or the ground at `point` (`grenade_bounced`,
+## which every screen shows): that, not where it was aimed, is where it goes off, for the heavy
+## grenade hardly rolls. A bounce that was a thrower's own is the one that moves its blast.
+func grenade_lies(grenade_id: int, point: Vector3) -> void:
+	for blast in blasts:
+		if int(blast["grenade"]) == grenade_id:
+			blast["point"] = point
+
+
+## Where the grenades `owner` threw that are still to go off at `now` are, within `reach` metres
+## (flat) of `here`; the ones that went off are forgotten.
+func blasts_near(here: Vector3, reach: float, now: float, owner: int) -> Array[Vector3]:
 	blasts = blasts.filter(func(blast: Dictionary) -> bool: return float(blast["until"]) > now)
 	var near: Array[Vector3] = []
 	for blast: Dictionary in blasts:
+		if int(blast["owner"]) != owner:
+			continue
 		var point: Vector3 = blast["point"]
 		if Vector2(here.x - point.x, here.z - point.z).length() < reach:
 			near.append(point)

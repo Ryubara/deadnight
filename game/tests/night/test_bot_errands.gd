@@ -216,7 +216,9 @@ func test_scenario_11_a_breach_is_repaired_in_a_break_and_paid_for() -> void:
 	var points := night.server.rules.points_of(1)
 	var took := _until(night, 90.0, func() -> bool: return _boards(night, id) >= whole)
 	assert_float(took).is_greater(0.0)
-	assert_int(night.server.rules.points_of(1)).is_equal(points + 3 * 12)
+	assert_int(night.server.rules.points_of(1)).is_equal(
+		points + 3 * night.server.rules.tuning.economy.repair
+	)
 	assert_array(_catcher.lines).is_empty()
 	night.dispose()
 
@@ -343,7 +345,7 @@ func test_scenario_22_a_door_a_person_pinged_is_bought_when_it_can_be_paid() -> 
 
 
 ## Whether the yard door (500) is open after a minute, with or without a person's ping on it. The
-## bot holds 520 and saves for the re-cut (1500), so only an order buys the door.
+## bot holds 520 and saves for the re-cut (5000), so only an order buys the door.
 func _ping_run(ping: bool) -> bool:
 	var night := await _night(1, 1)
 	await _open(night, [DOOR])
