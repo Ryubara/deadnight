@@ -95,12 +95,18 @@ func test_the_pump_the_mp5_and_the_m4a1_have_no_wall_on_either_map() -> void:
 			assert_object((rules as RulesTuning).economy.item(id)).is_null()
 
 
-func test_the_tier_table_names_real_weapons_and_the_start_weapon_is_a_wall_one() -> void:
-	for id in WallTier.TIERS:
-		assert_array(WeaponCatalog.IDS).override_failure_message(String(id)).contains([id])
+func test_every_weapon_has_a_tier_on_its_definition_and_the_start_weapon_is_a_wall_one() -> void:
+	for id in WeaponCatalog.IDS:
+		var tier := WeaponCatalog.get_def(id).wall_tier
+		(
+			assert_bool(tier >= WallTier.HAND and tier <= WallTier.BOX)
+			. override_failure_message(String(id))
+			. is_true()
+		)
+		assert_int(WallTier.tier_of(id)).is_equal(tier)
 	assert_bool(WallTier.wall_may_sell(WeaponCatalog.START_WEAPON)).is_true()
 	assert_int(WallTier.tier_of(&"weapon_rifle")).is_equal(WallTier.LONG)
-	# A gun the table does not name is above the wall.
+	# A gun the catalogue does not know is above the wall.
 	assert_int(WallTier.tier_of(&"made_up_gun")).is_equal(WallTier.BOX)
 
 
