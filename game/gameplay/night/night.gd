@@ -108,6 +108,11 @@ var hud: Hud
 ## tests leave it empty, so they never touch the save). The night counts into it as it plays.
 var challenge_board: ChallengeBoard
 var challenges: ChallengeSession
+## The player's profile file, set before `start` by the screen a person plays on (like the board).
+## The night adds its XP to it as it plays, for a player with an account (a Guest one counts);
+## online the server awards.
+var profile_store: ProfileStore
+var progress: ProgressSession
 ## Puts the names and the next door on the HUD from the player's camera (made with the view, when
 ## there is a HUD).
 var markers: NightMarkers
@@ -191,6 +196,7 @@ func start(
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
 	_track_challenges()
+	_track_progress()
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks, world.layout.words())
 	_equip_sync = WeaponEquipSync.new(state, server.body_of)
@@ -364,6 +370,16 @@ func _track_challenges() -> void:
 		challenges.attach(state)
 		if hud != null:
 			_challenge_link = ChallengeHudLink.new(challenges, hud)
+
+
+## Counts the night into the player's XP, when there is a profile to keep it in. Only a night that
+## runs here: an online night's XP is the game server's.
+func _track_progress() -> void:
+	if profile_store == null:
+		return
+	var clock := challenge_board.clock if challenge_board != null else ChallengeClock.system()
+	progress = ProgressSession.new(profile_store, clock, NightTally.fuel_items_of(rules_tuning))
+	progress.attach(state, challenges)
 
 
 ## The view and the sounds, once there is a camera to look through.
@@ -559,6 +575,8 @@ func _exit_tree() -> void:
 	running = false
 	if challenges != null:
 		challenges.flush()
+	if progress != null:
+		progress.flush()
 	if server != null:
 		server.close()
 	if remote and link != null:

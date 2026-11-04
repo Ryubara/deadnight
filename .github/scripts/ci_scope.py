@@ -14,8 +14,9 @@ Prints `name=true|false` lines for $GITHUB_OUTPUT:
 - `docs`: the site could change (`docs/**`, `mkdocs.yml`, `requirements-docs.txt`, any `*.md`): the `mkdocs` job.
 - `markdown`: any `*.md` or the markdownlint rules: the `markdownlint` job.
 - `workflows`: `.github/workflows/**`: the `actionlint` job.
-- `backend`: `spikes/backend/**` except Markdown, or the `ci.yml` workflow itself: the `backend` job (the platform
-  backend's own tests, #558).
+- `backend`: `spikes/backend/**` except Markdown, the progression scripts the backend's tests read
+  (`game/gameplay/progression/*.gd`, #1075), or the `ci.yml` workflow itself: the `backend` job (the platform backend's
+  own tests, #558).
 
 An empty list (the API listed nothing) or a list of 3000 files (the API's limit, so it may be cut short) turns everything
 on: a job that should have run never silently does not.
@@ -35,7 +36,7 @@ NOT_WEB = re.compile(NOT_GAME.pattern + r"|^game/tests/")
 SITE = re.compile(r"^(docs/|mkdocs\.yml$|requirements-docs\.txt$)|\.md$")
 MARKDOWN = re.compile(r"^\.markdownlint|\.md$")
 WORKFLOWS = re.compile(r"^\.github/workflows/")
-BACKEND = re.compile(r"^(spikes/backend/(?!.*\.md$)|\.github/workflows/ci\.yml$)")
+BACKEND = re.compile(r"^(spikes/backend/(?!.*\.md$)|game/gameplay/progression/[^/]+\.gd$|\.github/workflows/ci\.yml$)")
 
 
 def scope(files: list[str]) -> dict[str, bool]:
@@ -78,6 +79,8 @@ def _self_test() -> None:
     assert flags("spikes/backend/src/lobby.ts") == "backend"
     assert flags("spikes/backend/test/lobby.test.ts", "spikes/backend/package-lock.json") == "backend"
     assert flags("spikes/backend/README.md") == "docs markdown"
+    # The backend's tests read the game's level curve and XP rules, so a change to them runs the backend job too.
+    assert flags("game/gameplay/progression/level_curve.gd") == "godot web backend"
     assert flags("tools/web_smoke/smoke.py") == "web"
     assert flags("tools/audio/analyze.py") == "godot web"
     # A markdown file inside the game is documentation too.

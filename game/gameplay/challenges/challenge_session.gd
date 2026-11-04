@@ -20,14 +20,9 @@ var _following := -1
 ## `tuning` names the shop's fuel items; the board is the player's.
 func _init(p_board: ChallengeBoard, tuning: RulesTuning = null) -> void:
 	board = p_board
-	var fuel: Array[StringName] = []
-	if tuning != null:
-		for item in tuning.economy.items:
-			if item.kind == ShopItem.Kind.FUEL:
-				fuel.append(item.id)
-	if fuel.is_empty():
-		fuel.append(&"fuel_can")
-	tracker = ChallengeTracker.new(board.catalog, board.clock, NightTally.new(fuel))
+	tracker = ChallengeTracker.new(
+		board.catalog, board.clock, NightTally.new(NightTally.fuel_items_of(tuning))
+	)
 	tracker.advanced.connect(_on_advanced)
 
 

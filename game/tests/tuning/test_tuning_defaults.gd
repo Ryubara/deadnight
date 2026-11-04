@@ -19,7 +19,7 @@ func test_the_sound_mix_file_holds_the_old_constants() -> void:
 
 func test_every_sound_has_the_values_it_had_in_code() -> void:
 	var table := DefaultValues.sounds()
-	assert_int(table.size()).is_equal(212)
+	assert_int(table.size()).is_equal(217)
 	var wrong := PackedStringArray()
 	for id: String in table:
 		var def := SoundCatalog.get_def(StringName(id))

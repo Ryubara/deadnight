@@ -68,10 +68,13 @@ static func size_of(type: int) -> int:
 
 
 ## Whether a message of this type may be this long: a hello is the version, the resume token when
-## the client is coming back and the backend's ticket, so its length varies.
+## the client is coming back and the backend's ticket, so its length varies; a look may be of an
+## older version.
 static func fits(type: int, size: int) -> bool:
 	if type == NetWire.Type.HELLO:
 		return size >= NetWire.HELLO_MIN and size <= NetWire.MAX_HELLO
+	if type == LookWire.Type.LOOK:
+		return CharacterLook.fits_wire(size - 1)
 	return size_of(type) == size
 
 
