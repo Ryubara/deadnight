@@ -94,9 +94,9 @@ func _assert_not_in_the_walking_mesh(map: Node3D, barricade: Barricade) -> void:
 
 
 func test_every_drive_in_breach_is_a_window() -> void:
-	await _each_barricade(LOT, 6)
+	await _each_barricade(LOT, 16)
 
 
 func test_every_second_map_entry_is_a_window() -> void:
-	await _each_barricade(SMALL, 12)
-	assert_int(_barricades(_map(SMALL)).size()).is_equal(12)
+	await _each_barricade(SMALL, 7)
+	assert_int(_barricades(_map(SMALL)).size()).is_equal(7)

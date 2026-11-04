@@ -8,11 +8,11 @@ const GREYBOX := preload("res://world/smallmap/smallmap_greybox.tscn")
 const BACKDROP := preload("res://world/smallmap/backdrop.tscn")
 const SETTLE_FRAMES := 4
 ## Inside the start room, facing the first window across the hall.
-const START_EAR := Vector3(4.0, 1.6, 10.0)
-const WINDOW_1 := Vector3(4.0, 1.55, 14.65)
+const START_EAR := Vector3(8.0, 1.6, 10.0)
+const WINDOW_1 := Vector3(8.0, 1.55, 14.65)
 ## South of that window, straight out of it, and due north through the walls.
-const OUT_SOUTH := Vector3(4.0, 1.6, 40.0)
-const OUT_NORTH := Vector3(4.0, 1.6, -30.0)
+const OUT_SOUTH := Vector3(8.0, 1.6, 40.0)
+const OUT_NORTH := Vector3(8.0, 1.6, -30.0)
 const FAR_AWAY := Vector3(900.0, 1.6, 900.0)
 const OUTSIDE := Vector3(30.0, 1.6, 30.0)
 
@@ -224,8 +224,8 @@ func test_a_board_torn_off_a_window_cracks_at_its_opening() -> void:
 func test_the_last_board_has_its_own_louder_sound_and_a_repair_knocks() -> void:
 	await _start(false)
 	_listen()
-	_tell({"type": &"board_torn", "barricade_id": &"upper_b1", "boards": 0, "zombie_id": 1})
-	_tell({"type": &"board_repaired", "barricade_id": &"upper_b1", "boards": 1, "player_id": 1})
+	_tell({"type": &"board_torn", "barricade_id": &"upper_a1", "boards": 0, "zombie_id": 1})
+	_tell({"type": &"board_repaired", "barricade_id": &"upper_a1", "boards": 1, "player_id": 1})
 	assert_array(_ids()).is_equal([&"board_last", &"board_repair"])
 	var upper: Vector3 = _last(&"board_last")["at"]
 	assert_float(upper.y).is_equal_approx(3.4 + SmallMapSoundTuning.current().window_lift, 0.01)

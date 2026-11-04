@@ -23,12 +23,14 @@ func _hud() -> Hud:
 	return hud
 
 
+## Stands at the spot and reads its card for as long as a replacing purchase asks (#908: the press
+## that throws a weapon away is one made once the card that says so has been up).
 func _stand_at(night: Night, shop_id: StringName) -> Dictionary:
 	for spot in night.world.shop_spots():
 		if spot["shop_id"] == shop_id:
 			night.player().teleport(spot["position"] + Vector3(0.0, 0.1, 0.0))
 			break
-	NightFixture.run(night, 3)
+	NightFixture.run(night, 3 + ceili(night.server.tuning.replace_settle * 60.0))
 	return night.state.me()["prompt"]
 
 

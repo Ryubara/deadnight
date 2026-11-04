@@ -46,8 +46,11 @@ const DEFERRED_MAX_MSEC := 6.0
 const ENGINE_MAX_DB := 3.0
 const POOL_3D := 32
 const POOL_2D := 12
-## Players for beds (looping ambience and score), which are outside the voice budget.
-const POOL_BEDS := 6
+## Players for beds (looping ambience and score), which are outside the voice budget. A night
+## holds up to seven (crickets, highway, score, wind, the world's bed and the small map's two) and
+## each takes two seconds to fade out after the night; the menu's two (`MenuAmbience`) start the
+## moment the menu is back, so they need a place while the night's beds are still going.
+const POOL_BEDS := 10
 ## A bed fades between this and its own level, at these rates (dB per second), so it comes in over
 ## about three seconds and goes out over about two.
 const BED_SILENT_DB := -60.0

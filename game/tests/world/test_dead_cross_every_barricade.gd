@@ -30,8 +30,6 @@ const WORLD_MASK := 1
 const SIDES: Array[float] = [-0.8, 0.0, 0.8]
 ## A dead walks at a stroll and at a sprint.
 const SPEEDS: Array[float] = [1.0, 6.0]
-## Windows the walking mesh does not join to the room behind them (#824).
-const NO_WAY_IN: Array[StringName] = [&"upper_b1"]
 
 var _seated: SeatedNight
 
@@ -53,8 +51,6 @@ func _walk_every_barricade(path: String) -> void:
 	var world := _seated.world
 	var checked := 0
 	for id in world.barricade_ids():
-		if NO_WAY_IN.has(id):
-			continue
 		for side in SIDES:
 			for speed in SPEEDS:
 				var report := await _cross(id, side, speed)
@@ -146,12 +142,15 @@ func _wall_in_the_body(
 
 
 ## Whether `solid` is a part of the window around `barricade`: a child of its window socket (the
-## second map) or of its frame (`Frame<ID>`, the drive-in's).
+## second map) or of a `Frame*` node standing where it does (the drive-in's).
 func _is_frame_of(solid: Node, barricade: Barricade) -> bool:
 	var parent := solid.get_parent()
 	return (
 		parent == barricade.get_parent()
-		or parent.name == "Frame%s" % String(barricade.barricade_id).to_upper()
+		or (
+			parent.name.begins_with("Frame")
+			and (parent as Node3D).global_position.is_equal_approx(barricade.global_position)
+		)
 	)
 
 

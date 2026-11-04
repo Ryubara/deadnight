@@ -112,6 +112,27 @@ func test_a_person_walking_at_a_bot_is_given_way_at_the_last_moment() -> void:
 	assert_float(legs.yielded_seconds).is_greater(0.0)
 
 
+func test_a_zombie_that_stands_in_the_way_is_walked_round_not_into() -> void:
+	# The dead stop a body (#914): a bot whose way runs through one bends round it.
+	var level := await _hall()
+	var legs := BotLegs.new(level, RandomNumberGenerator.new())
+	legs.seat = ME
+	var intent := BotIntent.new()
+	intent.goal = _arena.centre(6, 3)
+	var here := _arena.centre(0, 3)
+	var crew: Array[Dictionary] = []
+	var dead: Array[Vector3] = [here + Vector3(1.8, 0.0, 0.0)]
+	legs.step(STEP, STEP, _me(here), intent, crew, 1.8, true, dead)
+	assert_float(absf(legs.wish.z)).is_greater(0.3)
+	# One beside the way, or behind, changes nothing.
+	var beside: Array[Vector3] = [here + Vector3(1.0, 0.0, 2.5)]
+	legs.step(STEP, 2.0 * STEP, _me(here), intent, crew, 2.5, true, beside)
+	assert_float(absf(legs.wish.z)).is_less(0.15)
+	var behind: Array[Vector3] = [here + Vector3(-1.0, 0.0, 0.0)]
+	legs.step(STEP, 3.0 * STEP, _me(here), intent, crew, 1.0, true, behind)
+	assert_float(absf(legs.wish.z)).is_less(0.15)
+
+
 func test_a_person_far_off_or_walking_away_is_not_given_way() -> void:
 	var level := await _hall()
 	var legs := BotLegs.new(level, RandomNumberGenerator.new())
@@ -192,7 +213,7 @@ func test_the_jump_rung_uses_a_curated_place_the_way_it_says() -> void:
 
 func test_the_lot_gives_its_loops_and_breaches_to_a_bots_level() -> void:
 	var night := await NightFixture.seat(self, 1, SeatedNight.one_a_round(), 5)
-	assert_int(night.level.breaches.size()).is_equal(6)
+	assert_int(night.level.breaches.size()).is_equal(16)
 	assert_int(night.level.loops.size()).is_equal(2)
 	for ring in night.level.loops:
 		assert_int(ring.size()).is_equal(4)

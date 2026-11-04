@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="DeadContactTuning" format=3]
+
+[ext_resource type="Script" path="res://gameplay/player/dead_contact_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+enabled = true
+radius = 0.4
+reach_above = 1.4
+reach_below = 1.0
+near_range = 3.0
+touch_gap = 0.03
+press_min = 0.6
+policy = 0
+hold_seconds = 0.6
+shove_speed = 1.0
+wade_share = 0.35
+ramp_from = 0.3
+ramp_to = 2.0
+ramp_seconds = 1.5
+crowd_drag = 0.4
+crowd_radius = 1.0
+boss_share = 0.3
+release_rate = 2.0
+lateral = 0.8
+yield_cap = 3.0
