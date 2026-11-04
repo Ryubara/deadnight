@@ -11,10 +11,15 @@ const TIMEOUT_SECONDS := 10.0
 
 
 static func send(
-	parent: Node, method: String, url: String, headers: Dictionary = {}, body: Variant = null
+	parent: Node,
+	method: String,
+	url: String,
+	headers: Dictionary = {},
+	body: Variant = null,
+	timeout: float = TIMEOUT_SECONDS
 ) -> Dictionary:
 	var http := HTTPRequest.new()
-	http.timeout = TIMEOUT_SECONDS
+	http.timeout = timeout
 	# The browser decodes gzip itself, but the answer still names `Content-Encoding: gzip` and Godot
 	# would decode it a second time and fail (Discord's proxy compresses the backend's answers).
 	http.accept_gzip = false

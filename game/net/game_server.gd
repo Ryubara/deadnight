@@ -39,6 +39,9 @@ const HELLO_WITHIN := 10.0
 const IDLE_ROOM_SECONDS := 60.0
 ## Seconds a refused client has to read why before it is hung up on.
 const REFUSAL_GRACE := 1.0
+## Seconds the backend has to answer the read of a seat's challenge board; after that the night
+## goes on without it (it never waits for it).
+const BOARD_TIMEOUT := 3.0
 
 var port := NetWire.DEFAULT_PORT
 var capacity := DEFAULT_CAPACITY
@@ -77,6 +80,15 @@ var clock := Callable()
 ## backend's own address and secret are used; a test sets it to see what would be posted.
 var reports := XpReportQueue.new()
 var report_sender := Callable()
+## How a seat's challenge board is read: a Callable taking the account's id and answering
+## `{status, json}` (status 0: no answer). Unset, the backend's own address and secret are used; a
+## test sets it to see what would be read.
+var board_reader := Callable()
+## What the players are asked and the day it is for them (see `NightHost`); unset, the shipped ones.
+var challenge_catalog: ChallengeCatalog
+var challenge_clock: ChallengeClock
+## False: no room follows any challenge board (the measurement's arm without the tracker).
+var challenge_awards := true
 ## False: no room awards XP (the measurement's arm without the tally).
 var xp_awards := true
 
@@ -307,8 +319,12 @@ func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 	room.room_id = match_id
 	room.log_enabled = log_enabled
 	room.xp_awards = xp_awards
+	room.challenge_awards = challenge_awards
+	room.challenge_catalog = challenge_catalog
+	room.challenge_clock = challenge_clock
 	room.clock = clock
 	room.report_ready.connect(_on_report.bind(match_id))
+	room.board_wanted.connect(_read_board.bind(room))
 	room.seed_value = seed_value
 	room.rules_tuning = rules_tuning
 	if settings != null:
@@ -428,6 +444,31 @@ func _on_report(round_number: int, final: bool, seats: Array, match_id: String) 
 	)
 
 
+## Reads a seat's challenge board from the backend, once, when the seat sits down, and hands the
+## answer to the room (`GET /internal/users/:id/saves/challenges`). It is not waited for: the night
+## runs, and the seat is followed from the moment the board arrives. No answer within
+## `BOARD_TIMEOUT` is no board, and a seat with none is never written.
+func _read_board(user: String, room: NightHost) -> void:
+	var answer := await _fetch_board(user)
+	if is_instance_valid(room):
+		room.board_arrived(user, answer["status"], answer["json"])
+
+
+func _fetch_board(user: String) -> Dictionary:
+	if board_reader.is_valid():
+		return await board_reader.call(user)
+	if backend_url == "":
+		return {"status": 0, "json": null}
+	return await HttpJson.send(
+		self,
+		"GET",
+		backend_url + "/internal/users/%s/saves/challenges" % user.uri_encode(),
+		{"Authorization": "Bearer " + backend_secret},
+		null,
+		BOARD_TIMEOUT
+	)
+
+
 ## The seats of a report as JSON (stat names as plain text).
 func _wire_seats(seats: Array) -> Array:
 	var out: Array = []
@@ -436,6 +477,11 @@ func _wire_seats(seats: Array) -> Array:
 		for stat: StringName in seat["night_stats"]:
 			lines[String(stat)] = seat["night_stats"][stat]
 		var line := {"userId": seat["user"], "xp": seat["xp"], "lines": lines}
+		if seat.has("board"):
+			# The challenges the seat finished and its board as the tracker holds it: the backend
+			# lists the ids on the profile and stores the board over the `challenges` slot.
+			line["done"] = seat["done"]
+			line["board"] = seat["board"]
 		if seat["finished_round"]:
 			# Claims: the backend knows the profile and pays the two one-offs itself, once.
 			line["openingNight"] = true
