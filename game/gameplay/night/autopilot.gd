@@ -70,6 +70,9 @@ var crane_pool: Array[StringName] = []
 ## the bot does not shop for it. The bot re-cuts one weapon and drinks one tonic a night.
 var recut_price: int = 0
 var tonic_price: int = 0
+## The tonic it drinks (the one that raises health, at `tonic_price`): the other machines are not
+## its errand, and a different tonic's price is not the one it saved for.
+var tonic_id: StringName = &""
 ## Where to stand to put boards back across each breach, by id, and how many a whole one holds.
 var repair_goals: Dictionary = {}
 var whole_boards: int = 1
@@ -151,11 +154,20 @@ func decide(delta: float) -> NightCommand:
 	elif kind == &"ammo":
 		command.use = _low_on_rounds(held) and state.points() >= int(prompt.get("price", BIG_PRICE))
 	elif kind == &"recut":
-		command.use = recut_price > 0 and state.points() >= int(prompt.get("price", BIG_PRICE))
+		# One weapon a night: the price once grew with each re-cut and kept the bot to one (#909).
+		command.use = (
+			recut_price > 0
+			and _recut_wanted(held)
+			and state.points() >= int(prompt.get("price", BIG_PRICE))
+		)
 	elif kind == &"tonic":
-		command.use = tonic_price > 0 and state.points() >= int(prompt.get("price", BIG_PRICE))
+		command.use = (
+			tonic_price > 0
+			and prompt.get("id", &"") == tonic_id
+			and state.points() >= int(prompt.get("price", BIG_PRICE))
+		)
 	elif kind == &"tonic_owned":
-		_had_tonic = true
+		_had_tonic = _had_tonic or prompt.get("id", &"") == tonic_id
 	elif kind == &"repair":
 		command.use = target.is_empty()
 	elif kind == &"circuit":
@@ -299,7 +311,12 @@ func _is_goal(spot: Dictionary, held: WeaponDef) -> bool:
 	if kind == MachineOffers.UPGRADE_SPOT:
 		return recut_price > 0 and _recut_wanted(held) and points >= recut_price + AMMO_MONEY
 	if kind == MachineOffers.PERK_SPOT:
-		return tonic_price > 0 and not _had_tonic and points >= tonic_price + AMMO_MONEY
+		return (
+			tonic_price > 0
+			and spot["shop_id"] == tonic_id
+			and not _had_tonic
+			and points >= tonic_price + AMMO_MONEY
+		)
 	var id: StringName = spot["shop_id"]
 	if kind == &"wall":
 		var weapon := WeaponCatalog.catalog_id(id)
@@ -319,7 +336,9 @@ func _is_goal(spot: Dictionary, held: WeaponDef) -> bool:
 ## Whether the weapon in hand is worth a trip to the re-cut bench: a firearm, not yet re-cut, and
 ## nothing else re-cut yet (the bot re-cuts one weapon a night).
 func _recut_wanted(held: WeaponDef) -> bool:
-	if held == null or held.is_melee():
+	# The purchase event reaches the bot before the next frame shows the weapon re-cut, and a second
+	# press in between buys the next weapon's re-cut too.
+	if held == null or held.is_melee() or state.bought.get(&"upgrade_weapon", 0) > 0:
 		return false
 	var arms: Dictionary = state.me().get("arms", {})
 	for counts: Array in arms.values():

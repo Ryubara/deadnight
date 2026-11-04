@@ -36,6 +36,7 @@ static func configure(
 			ShopItem.Kind.TONIC:
 				if item.health_bonus > 0.0:
 					pilot.tonic_price = item.price
+					pilot.tonic_id = item.id
 	pilot.wanted.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
 			return pilot.prices_of_goods[a] < pilot.prices_of_goods[b]
