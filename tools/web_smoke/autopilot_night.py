@@ -39,7 +39,7 @@ def run_once(args: argparse.Namespace, out: Path) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     deployed = args.build.startswith(("http://", "https://"))
     server, port = (None, 0) if deployed else smoke.serve(Path(args.build))
-    base = args.build if deployed else f"http://127.0.0.1:{port}/index.html"
+    base = smoke.probing(args.build) if deployed else f"http://127.0.0.1:{port}/index.html"
     query = f"autopilot&rounds={args.rounds}&hold={args.hold:g}&count={args.count:g}&alive={args.alive}"
     query += f"&tough={args.tough:g}"
     if args.crowd:

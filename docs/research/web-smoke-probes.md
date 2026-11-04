@@ -42,9 +42,13 @@ the JavaScript bridge in every frame (a property read, and a new `Array` for the
 page asks (`WebProbe.asked`): `?probe` (or `?probe=flash`) in the address, `window.deadnight_probe` set before the game
 starts, or a profile run (`window.deadnight_bench`). A probe that reads `viewRows`, `frames`, `pad_count` or
 `pause_presses` opens its page through `smoke.probing(url)`; the pad probe lists the pads on
-`Input.joy_connection_changed`, not every frame. The snapshot (`WebProbe.snapshot`, four times a second) still runs in
-every page but writes only the keys that changed, so a page nobody reads gets about no bridge writes.
+`Input.joy_connection_changed`, not every frame. The snapshot (`WebProbe.snapshot`, four times a second) is built only
+when the page asks (#983), so **every** probe that reads `window.deadnight` needs the page to ask: a build served by
+`smoke.serve` (and `smoke.Quiet`, which the lobby and room probes use, and `activity.py`'s server) gets
+`window.deadnight_probe=true` in its head by itself; a deployed URL goes through `smoke.probing(url)`, or has `probe` in
+the query it builds. A page that must stay plain passes `smoke.serve(folder, probing=False)`.
 
 `tools/web_smoke/bridge_calls.py` counts the bridge's traffic of the plain menu and a plain autopilot night (counting
-proxies for `create_object`, a wrapped `eval`) and fails the web job above `--max-per-second`; `--probe` shows the
+proxies for `create_object`, a wrapped `eval`) and fails the web job above `--max-per-second` (1: a plain page
+publishes nothing and makes no evals, #983); `--probe` shows the
 probes' own traffic. `heap_soak.py --plain` soaks the page a player opens. Numbers: `docs/research/web-heap.md`.

@@ -144,7 +144,7 @@ def main() -> int:
         threading.Thread(target=local.serve_forever, daemon=True).start()
         base = f"http://127.0.0.1:{LOCAL_PORT}/index.html"
     # `bot`: the autopilot plays, so nobody idles and dies while the other page loads.
-    query = f"backend={args.backend}&bot"
+    query = f"backend={args.backend}&bot&probe"
     with sync_playwright() as p:
         if args.gpu:
             browser = p.chromium.launch(channel="chrome", headless=True)

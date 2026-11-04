@@ -111,7 +111,7 @@ def main() -> int:
         local = http.server.ThreadingHTTPServer(("127.0.0.1", LOCAL_PORT), handler)
         threading.Thread(target=local.serve_forever, daemon=True).start()
         base = f"http://127.0.0.1:{LOCAL_PORT}/index.html"
-    query = f"backend={args.backend}&bot"  # the autopilot plays, so nobody idles and dies while the others load
+    query = f"backend={args.backend}&bot&probe"  # the autopilot plays, so nobody idles and dies while the others load
     pages: dict[str, Page] = {}
     with sync_playwright() as p:
         if args.gpu:

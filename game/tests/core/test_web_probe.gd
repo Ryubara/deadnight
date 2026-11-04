@@ -210,3 +210,12 @@ func test_a_page_that_nobody_probes_gets_no_probes() -> void:
 	for probe_class in ["JudderProbe", "ViewWebProbe", "PadWebProbe", "FlashWebProbe"]:
 		var added := source.find("add_child(%s.new())" % probe_class)
 		assert_int(added).is_greater(gate)
+	# Nor does the page get the object, or the snapshot of the screen four times a second (#983).
+	assert_int(source.find("JavaScriptBridge.create_object")).is_greater(gate)
+	assert_bool(probe.is_processing()).is_false()
+
+
+func test_the_controller_hint_reads_the_page_only_inside_a_frame() -> void:
+	var hint := auto_free(ControllerHint.new()) as ControllerHint
+	add_child(hint)
+	assert_bool(hint.is_processing()).is_false()  # off the web: not in a frame
