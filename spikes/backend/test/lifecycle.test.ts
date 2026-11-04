@@ -235,3 +235,87 @@ test("leave over HTTP, and a lobby gone after a restart answers 404 not_found", 
   assert.equal((await app.inject({ method: "POST", url: `/lobbies/${lobby.id}/leave`, headers })).statusCode, 404);
   await app.close();
 });
+
+// --- The end of a night: the lobby opens again for the people who were there (Deadnight #973) ---
+
+test("a finished night reopens its lobby for the people who were there, with its settings and its host", () => {
+  const { lobbies, running } = service(2);
+  const lobby = lobbies.create(alice, 8, "instance-1");
+  lobbies.join(lobby.id, bob);
+  lobbies.join(lobby.id, carol);
+  lobbies.setSettings(lobby.id, "alice", { count_multiplier: 2, max_alive: 0, break_seconds: 0, map: "small_indoor", bots: 3 });
+  const started = lobbies.start(lobby.id, "alice");
+  const matchId = started.match!.id;
+  lobbies.setPlayers(matchId, 3);
+  lobbies.setRound(matchId, 7);
+
+  lobbies.matchEnded(matchId, { present: ["alice", "carol"] }); // bob left during the intermission
+  const again = lobbies.get(lobby.id);
+  assert.equal(again.state, "open");
+  assert.equal(again.code, lobby.code);
+  assert.equal(again.hostId, "alice");
+  assert.deepEqual(again.members.map((m) => m.userId), ["alice", "carol"]);
+  assert.deepEqual(again.settings, started.settings);
+  assert.equal(again.match, null);
+  assert.equal(again.round, null);
+  assert.equal(again.players, null);
+  assert.equal(running.size, 0); // the match's slot is free
+  assert.equal(lobbies.findByInstance("instance-1")?.id, lobby.id);
+  // They can start the next night at once, and the host's rules are still the ones chosen.
+  const next = lobbies.start(lobby.id, "alice");
+  assert.equal(next.state, "started");
+  assert.equal(next.settings?.map, "small_indoor");
+  assert.equal(running.size, 1);
+});
+
+test("a finished night whose host left hands the lobby to the next seat, and an empty one drops it", () => {
+  const { lobbies } = service(2);
+  const lobby = lobbies.create(alice, 8, null);
+  lobbies.join(lobby.id, bob);
+  const first = lobbies.start(lobby.id, "alice").match!.id;
+  lobbies.matchEnded(first, { present: ["bob"] });
+  assert.equal(lobbies.get(lobby.id).hostId, "bob");
+  assert.deepEqual(lobbies.get(lobby.id).members.map((m) => m.userId), ["bob"]);
+
+  const second = lobbies.start(lobby.id, "bob").match!.id;
+  lobbies.matchEnded(second, { present: [] }); // nobody was left: the lobby goes, as any other end does
+  assert.equal(failure(() => lobbies.get(lobby.id)), "not_found");
+});
+
+test("a night that ended any other way still drops its lobby, and a user already in another lobby is not put back", () => {
+  const { lobbies } = service(3);
+  const one = lobbies.create(alice, 8, null);
+  lobbies.join(one.id, bob);
+  const matchOne = lobbies.start(one.id, "alice").match!.id;
+  lobbies.matchEnded(matchOne);
+  assert.equal(failure(() => lobbies.get(one.id)), "not_found");
+
+  const two = lobbies.create(alice, 8, null);
+  lobbies.join(two.id, bob);
+  const matchTwo = lobbies.start(two.id, "alice").match!.id;
+  const other = lobbies.create(bob, 8, null); // bob opened a lobby of his own while the night was on
+  lobbies.matchEnded(matchTwo, { present: ["alice", "bob"] });
+  assert.deepEqual(lobbies.get(two.id).members.map((m) => m.userId), ["alice"]);
+  assert.equal(lobbies.get(other.id).hostId, "bob");
+});
+
+test("the game server's end call with finished and the users present reopens the lobby over HTTP", async () => {
+  const { app, auth, startMatch, user } = await platform(1);
+  const first = await startMatch("ann");
+  const guest = await user("ben");
+  await app.inject({ method: "POST", url: "/lobbies/join-by-code", headers: guest, payload: { code: first.lobby.code } });
+  const ended = await app.inject({
+    method: "POST",
+    url: `/internal/matches/${first.matchId}/end`,
+    headers: auth,
+    payload: { finished: true, present: [first.lobby.hostId, (await app.inject({ method: "GET", url: `/lobbies/${first.lobby.id}`, headers: guest })).json().members[1].userId] },
+  });
+  assert.equal(ended.statusCode, 204);
+  const back = await app.inject({ method: "GET", url: `/lobbies/${first.lobby.id}`, headers: first.headers });
+  assert.equal(back.statusCode, 200);
+  assert.equal(back.json().state, "open");
+  assert.equal(back.json().members.length, 2);
+  const again = await app.inject({ method: "POST", url: `/lobbies/${first.lobby.id}/start`, headers: first.headers });
+  assert.equal(again.statusCode, 200); // the slot was given back, so the host can start the next night
+  await app.close();
+});

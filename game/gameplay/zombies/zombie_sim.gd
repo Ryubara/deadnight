@@ -32,6 +32,9 @@ const NAV_LIFT := 0.35
 const SWING_HEIGHT := 1.3
 ## Metres past the longest swing within which the way to a target is looked at.
 const SWING_SLACK := 0.5
+## A zombie is a climber (the snapshot's bit, the crawl clip) once a window's sill has lifted it
+## this far off the floor (m).
+const CLIMB_DRAWN_FROM := 0.1
 ## Metres of walking a step up or down one storey counts for when a zombie picks its target: a
 ## player on another floor is as far as this many metres of floor for each metre of height.
 const STOREY_WEIGHT := 3.0
@@ -82,9 +85,10 @@ var revision: int = 0
 var lures: Array[ZombieLure] = []
 
 var _rng := RandomNumberGenerator.new()
-var _grid: Dictionary[Vector2i, Array] = {}
-## What a cell nobody stands in answers, so a lookup makes no array.
-var _no_zombies: Array = []
+## The separation pass's grid: built again every step in arrays it keeps (it makes nothing).
+var _grid := SeparationGrid.new()
+## The ids `_clear_the_dead` removes after it has read them all, kept between steps.
+var _cleared := PackedInt64Array()
 ## Time handed to `tick` that has not made a whole step yet.
 var _pending: float = 0.0
 
@@ -112,8 +116,8 @@ func add_lure(lure_id: int, position: Vector3, radius: float, seconds: float) ->
 
 func standing_count() -> int:
 	var count := 0
-	for zombie: ZombieBody in zombies.values():
-		if zombie.is_alive():
+	for id: int in zombies:
+		if zombies[id].is_alive():
 			count += 1
 	return count
 
@@ -238,19 +242,28 @@ func crowd_around(zombie_id: int, radius: float) -> int:
 		return 0
 	var count := 0
 	var limit := radius * radius
-	var cell := _cell(zombie.position, tuning.separation_radius)
-	var reach := ceili(radius / tuning.separation_radius)
+	var size := tuning.separation_radius
+	var cell := SeparationGrid.key_of(zombie.position, size)
+	var reach := ceili(radius / size)
+	var bodies := _grid.bodies
+	var places := _grid.places
+	# The cells of the last step's grid within `reach` of its cell: a run of the grid's list for
+	# each column.
 	for dx in range(-reach, reach + 1):
-		for dz in range(-reach, reach + 1):
-			for other: ZombieBody in _grid.get(cell + Vector2i(dx, dz), _no_zombies):
-				if (
-					other == zombie
-					or absf(other.position.y - zombie.position.y) >= tuning.separation_height
-				):
-					continue
-				var away := other.position - zombie.position
-				if away.x * away.x + away.z * away.z <= limit:
-					count += 1
+		var column := cell + dx * SeparationGrid.CELL_STRIDE
+		var place := _grid.first_of(column - reach)
+		var past := (column + reach + 1) * SeparationGrid.INDEX_SPAN
+		while places[place] < past:
+			var other := bodies[places[place] & SeparationGrid.INDEX_MASK]
+			place += 1
+			if (
+				other == zombie
+				or absf(other.position.y - zombie.position.y) >= tuning.separation_height
+			):
+				continue
+			var away := other.position - zombie.position
+			if away.x * away.x + away.z * away.z <= limit:
+				count += 1
 	return count
 
 
@@ -321,9 +334,12 @@ func _step(targets: Dictionary) -> Array[Dictionary]:
 	revision += 1
 	for lure in lures:
 		lure.left -= STEP
-	lures = lures.filter(func(lure: ZombieLure) -> bool: return lure.left > 0.0)
+	for i in range(lures.size() - 1, -1, -1):
+		if lures[i].left <= 0.0:
+			lures.remove_at(i)
 	var began := PerfProbe.begin()
-	for zombie: ZombieBody in zombies.values():
+	for id: int in zombies:
+		var zombie := zombies[id]
 		zombie.stagger_cooldown_left = maxf(zombie.stagger_cooldown_left - STEP, 0.0)
 		if zombie.mode == ZombieBody.Mode.DYING:
 			zombie.mode_time += STEP
@@ -337,6 +353,7 @@ func _step(targets: Dictionary) -> Array[Dictionary]:
 	PerfProbe.end(&"sim.separate", began)
 	began = PerfProbe.begin()
 	_keep_outside_the_boards()
+	_keep_in_the_openings()
 	_clear_the_dead(events)
 	PerfProbe.end(&"sim.boards_and_clear", began)
 	return events
@@ -443,13 +460,39 @@ func relocate(zombie_id: int, point: Vector3, gate_id: StringName = &"") -> void
 ## floor beside the ramp, and that path led back to the ramp's foot. A path that is a straight line
 ## to a target (no ground offset) carries no floor, and the zombie keeps its height.
 func _settle_on_ground(zombie: ZombieBody, delta: float) -> void:
+	var gate := _sill_gate(zombie)
+	var lift := gate.lift_at(zombie.position) if gate != null else 0.0
+	# Drawn climbing from the moment it is off the floor, not while it only nears the ledge.
+	zombie.climbing = lift >= CLIMB_DRAWN_FROM
 	var offset := pathing.ground_offset()
 	if is_nan(offset) and storey > 0.0:
 		offset = NAV_LIFT
-	if is_nan(offset) or zombie.path.is_empty() or not zombie.is_alive():
+	var ground := NAN
+	if not is_nan(offset) and not zombie.path.is_empty():
+		ground = _ground_under(zombie) - offset
+	elif gate != null:
+		ground = gate.centre.y  # no floor on the path: the ground at the sill is the gate's
+	if not zombie.is_alive():
 		return
-	var ground := _ground_under(zombie) - offset
-	zombie.position.y = move_toward(zombie.position.y, ground, tuning.climb_speed * delta)
+	# The floor it stands on follows the path at the climb speed; the sill's lift is exact (a body
+	# that reaches the ledge before it is lifted would stand in the wall), so it is kept apart.
+	var floor_y := zombie.position.y - zombie.lift
+	if not is_nan(ground):
+		floor_y = move_toward(floor_y, ground, tuning.climb_speed * delta)
+	zombie.lift = lift
+	zombie.position.y = floor_y + lift
+
+
+## The gate whose sill the zombie is climbing over now: it stands in an opening's reach and the
+## boards across it are down (or it is a type no boards hold), or none. Beside it, or at boards that
+## stand, the zombie keeps to the ground.
+func _sill_gate(zombie: ZombieBody) -> ZombieGate:
+	if not zombie.is_alive():
+		return null
+	for gate: ZombieGate in gates.values():
+		if gate.climbs(zombie.position) and not _boards_hold(zombie, gate):
+			return gate
+	return null
 
 
 ## The height of the path under the zombie: the segment it walks is the one that ends at its
@@ -544,7 +587,8 @@ func _gate_in_front_of(zombie: ZombieBody) -> ZombieGate:
 		return own
 	var best: ZombieGate
 	var best_along := INF
-	for gate: ZombieGate in gates.values():
+	for gate_id: StringName in gates:
+		var gate := gates[gate_id]
 		if gate == own or not gate.is_at(zombie.position):
 			continue
 		var along := absf(gate.along_of(zombie.position))
@@ -567,7 +611,8 @@ func _boards_hold(zombie: ZombieBody, gate: ZombieGate) -> bool:
 ## What the separation push moved across the line goes back: the crowd cannot shove a zombie
 ## through boards that stand.
 func _keep_outside_the_boards() -> void:
-	for zombie: ZombieBody in zombies.values():
+	for id: int in zombies:
+		var zombie := zombies[id]
 		if zombie.gate_id == &"" or not zombie.is_alive():
 			continue
 		var gate: ZombieGate = gates.get(zombie.gate_id)
@@ -577,6 +622,17 @@ func _keep_outside_the_boards() -> void:
 		var stop := -tuning.board_stop
 		if depth < 0.0 and depth > stop:
 			zombie.position += gate.inward * (stop - depth)
+
+
+## A zombie in the thickness of a window's wall stays between its jambs, whatever the walking
+## mesh's way or the crowd's push did.
+func _keep_in_the_openings() -> void:
+	for gate: ZombieGate in gates.values():
+		if gate.sill <= 0.0 or not is_finite(gate.clear_half):
+			continue
+		for zombie: ZombieBody in zombies.values():
+			if zombie.is_alive():
+				zombie.position = gate.keep_in_opening(zombie.position)
 
 
 func _ground_speed(zombie: ZombieBody) -> float:
@@ -664,40 +720,48 @@ func _waypoint(zombie: ZombieBody, fallback: Vector3) -> Vector3:
 	return path[zombie.path_index] if zombie.path_index < path.size() else fallback
 
 
-## Pushes standing zombies that overlap apart, using a grid one radius wide.
+## Pushes standing zombies that overlap apart, using a grid one radius wide. A zombie is pushed by
+## what the ones before it in the crowd's order have already moved to, as it always was.
 func _separate(delta: float) -> void:
 	var radius := tuning.separation_radius
-	_grid.clear()
-	for zombie: ZombieBody in zombies.values():
-		if zombie.is_alive():
-			var cell := _cell(zombie.position, radius)
-			if not _grid.has(cell):
-				_grid[cell] = []
-			_grid[cell].append(zombie)
-	for zombie: ZombieBody in zombies.values():
-		if zombie.is_alive():
-			zombie.position += _push_on(zombie, radius) * delta
+	_grid.rebuild(zombies, radius)
+	for i in _grid.count:
+		var zombie := _grid.bodies[i]
+		zombie.position += _push_on(i, radius) * delta
+		_grid.moved(i, zombie.position)
 
 
-func _push_on(zombie: ZombieBody, radius: float) -> Vector3:
+## The push on the `index`th standing zombie of the grid from those in its cell and the eight round
+## it: three runs of the grid's list, one for each column of cells, read in the list's order.
+func _push_on(index: int, radius: float) -> Vector3:
+	var bodies := _grid.bodies
+	var places := _grid.places
+	var at := _grid.at
+	var zombie := bodies[index]
 	var push := Vector3.ZERO
-	var cell := _cell(zombie.position, radius)
 	var here := zombie.position
 	var radius_squared := radius * radius
+	var own_place := _grid.place_of[index]
+	var cell := _grid.cell_of[index]
 	for dx in range(-1, 2):
-		for dz in range(-1, 2):
-			for other: ZombieBody in _grid.get(cell + Vector2i(dx, dz), _no_zombies):
-				if other == zombie:
-					continue
-				# Most of the neighbours in the nine cells are farther than the radius: no square
-				# root for them.
-				var away := here - other.position
+		var column := cell + dx * SeparationGrid.CELL_STRIDE
+		var place := _grid.first_of(column - 1)
+		var past := (column + 2) * SeparationGrid.INDEX_SPAN
+		# `places` ends with a sentinel, so the run ends without a bounds test.
+		while places[place] < past:
+			if place != own_place:
+				# Most of the neighbours in the nine cells are farther than the radius: no
+				# square root for them.
+				var away := here - at[place]
 				# One above the other (the ramp over the floor beside it) do not touch.
 				if (
 					away.x * away.x + away.z * away.z < radius_squared
 					and absf(away.y) < tuning.separation_height
 				):
-					push += _push_from(zombie, other, radius)
+					push += _push_from(
+						zombie, bodies[places[place] & SeparationGrid.INDEX_MASK], radius
+					)
+			place += 1
 	# A pile of coincident zombies adds up a push from each; the sum is bounded so no tick throws
 	# one.
 	return push.limit_length(tuning.separation_max_speed)
@@ -727,15 +791,15 @@ static func _apart_direction(id: int, other_id: int) -> Vector3:
 
 
 func _clear_the_dead(events: Array[Dictionary]) -> void:
-	for zombie_id: int in zombies.keys():
+	_cleared.clear()
+	for zombie_id: int in zombies:
 		var zombie := zombies[zombie_id]
 		if zombie.mode == ZombieBody.Mode.DYING and zombie.mode_time >= tuning.death_seconds:
-			zombies.erase(zombie_id)
+			_cleared.append(zombie_id)
 			events.append({"type": &"zombie_cleared", "zombie_id": zombie_id})
-
-
-static func _cell(position: Vector3, size: float) -> Vector2i:
-	return Vector2i(floori(position.x / size), floori(position.z / size))
+	# Erased after the walk: a dictionary changed while it is read moves its iteration.
+	for zombie_id in _cleared:
+		zombies.erase(zombie_id)
 
 
 static func _flat(a: Vector3, b: Vector3) -> float:

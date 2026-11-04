@@ -54,7 +54,7 @@ const WALKER_POSES := {
 	&"tear": ["extra/Tear_Boards"],
 }
 const CRAWLER_POSES := {
-	&"move": ["Crawl"], &"strike": ["extra/Crawl_Attack"], &"stagger": ["HitReact"]
+	&"move": ["Crawl"], &"strike": ["extra/Crawl_Attack"], &"stagger": ["extra/Crawl_Stagger"]
 }
 const HEADLINER_POSES := {
 	&"move": ["Idle", "Boss_Walk"],
