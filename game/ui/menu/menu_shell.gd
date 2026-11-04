@@ -99,7 +99,7 @@ func _input(event: InputEvent) -> void:
 	var step := MenuNav.tab_step(event)
 	if step == 0 or not _is_on_top():
 		return
-	show_tab(MenuTab.neighbour(tab, step))
+	show_tab(MenuTab.neighbour(tab, step), true, step)
 	_focus_panel()
 	get_viewport().set_input_as_handled()
 
@@ -115,13 +115,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 ## Shows the panel of a tab and sends the camera to its pose.
-func show_tab(to: MenuTab.Id, animate := true) -> void:
+func show_tab(to: MenuTab.Id, animate := true, step := 0) -> void:
 	var previous: MenuPanel = _panels.get(tab)
 	if previous != null and previous.visible and to != tab:
 		previous.visible = false
 		previous.on_hide()
 	tab = to
-	tab_bar.set_tab(to)
+	tab_bar.set_tab(to, step if animate else 0)
 	view.set_compact(_compact)
 	view.show_tab(to)
 	var panel: MenuPanel = _panels[to]
@@ -370,6 +370,7 @@ class _TurnPad:
 
 	func _init(shell: MenuShell) -> void:
 		_shell = shell
+		UiSounds.tag(self, &"stage")
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		mouse_default_cursor_shape = Control.CURSOR_HSIZE

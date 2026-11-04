@@ -121,7 +121,6 @@ func _on_pressed(card: MapCard) -> void:
 	if card.info.id == selected_id:
 		return
 	set_selected(card.info.id)
-	UIAudio.play(&"press")
 	chosen.emit(selected_id)
 
 
