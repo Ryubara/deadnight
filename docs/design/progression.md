@@ -748,10 +748,16 @@ base on rounds reached and points per round.
   migrates. The challenge save keeps its own lifetime counters.
 - **Where:** the backend's saved progress (`PUT/GET /saves/:slot`, an envelope with a revision and a schema version,
   64 KiB; a profile is a few kilobytes): slot `profile`, and slot `challenges` for the board. **No offline XP:** XP
-  exists only for a signed-in account (our reading of the maintainer's "No offline XP"; to confirm). A local file is a
-  cache and a retry queue for that account's own writes, never a second store, and **there is no merge of an offline
-  save**. A guest's night shows "Sign in to keep your XP". A night never waits on the backend: a failed write is sent
-  again.
+  exists only for an account on the server, a Guest account included (the maintainer, 2026-11-04: "even Guest accounts
+  will be tracked on server"). A local file is a cache and a retry queue for that account's own writes, never a second
+  store, and **there is no merge of an offline save**. A night never waits on the backend: a failed write is sent again.
+- **A Guest account lasts 7 days without a sign-in** (built, #1080). The backend signs a guest in with a long-lived
+  signed credential (`guestToken`) that the game keeps in its own storage (`user://guest_account.json`, the browser's
+  IndexedDB on the web); the same account, with its saves, comes back each time it is signed in to within 7 days of
+  the last sign-in, and each sign-in restarts the 7 days. An account idle for 7 days is deleted with its saves; a
+  Discord account never is. A forged or expired credential makes a new guest, never another's account. Clearing the
+  browser's data is a new guest. Moving a guest to Discord or another source is not built (the maintainer: "we'll talk
+  about this more down the line"). How: [Guest accounts](../research/platform-backend.md#guest-accounts).
 - **Writes are round-end reports, never per kill.** The game server posts each seat's XP at each round's end and at
   the night's end, keyed by match and round so a retry cannot double-pay; only a server the platform started may post
   one. A signed-in solo client writes its profile at round ends and the backend **caps** it: at most about 120 XP a
