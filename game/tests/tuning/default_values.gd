@@ -114,6 +114,7 @@ const NIGHT_SOUND_TUNING := {
 	"interrupt_priority": 80,
 	"cut_margin": 25,
 	"urgent_priority": 65,
+	"cheer_window": 0.25,
 	"remember_takes": 3,
 	"streak_kills": 4,
 	"streak_window": 6.0,
@@ -232,6 +233,17 @@ const HUD_TUNING := {
 	"challenge_hold_busy": 1.6,
 	"challenge_gap": 0.3,
 	"challenge_stale": 20.0,
+	"popup_in": 0.25,
+	"popup_out": 0.2,
+	"popup_hold_level": 2.6,
+	"popup_hold_unlock": 2.0,
+	"popup_hold_tier": 3.6,
+	"popup_hold_challenge": 3.0,
+	"popup_hold_busy": 1.6,
+	"popup_start_gap": 0.15,
+	"popup_min_show": 1.0,
+	"popup_slide": 0.25,
+	"popup_drop": 30.0,
 }
 
 ## The constants of `TouchLook` and `TouchControls`.

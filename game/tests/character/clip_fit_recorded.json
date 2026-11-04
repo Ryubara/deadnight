@@ -45,5 +45,54 @@
   "Strafe_Left": {
    "left arm": 0.0405
   }
+ },
+ "ladder two": {
+  "Grenade_Throw": {
+   "right arm": 0.092
+  },
+  "Run": {
+   "left arm": 0.047
+  }
+ },
+ "skirt": {
+  "Downed_Crawl": {
+   "leg": 0.11
+  },
+  "Duck": {
+   "leg": 0.133
+  },
+  "Jump_Idle": {
+   "leg": 0.072
+  },
+  "Reload_Shotgun": {
+   "hand": 0.046
+  },
+  "Revive_Kneel": {
+   "leg": 0.082
+  },
+  "Run": {
+   "leg": 0.137,
+   "hand": 0.041
+  },
+  "Run_Gun": {
+   "leg": 0.138,
+   "hand": 0.039
+  },
+  "Sprint_Pistol": {
+   "hand": 0.093
+  },
+  "Strafe_Left": {
+   "leg": 0.07
+  },
+  "Strafe_Right": {
+   "leg": 0.07
+  },
+  "Walk_Back": {
+   "leg": 0.07
+  },
+  "Walk_Shoot": {
+   "leg": 0.139,
+   "hand": 0.038
+  }
  }
 }

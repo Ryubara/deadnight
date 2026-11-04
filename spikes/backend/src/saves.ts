@@ -8,6 +8,9 @@
  * here and deploy the backend first, then the game, which reads any known version, migrates it and writes back the newest.
  * Remove a version only when no client writes it any more.
  */
+/** The most one save's body may hold (a PUT body, and the board a game server's report carries). */
+export const MAX_SAVE_BYTES = 64 * 1024;
+
 export const SAVE_SCHEMA_VERSIONS: readonly number[] = [1];
 
 export const CURRENT_SAVE_SCHEMA_VERSION = 1;

@@ -7,7 +7,7 @@ extends RefCounted
 ## `equipped` is what the player wears and shows to others: the calling card and the emblem they
 ## chose (`card`, `emblem`: piece ids, absent for none), `done` the challenge ids ever finished
 ## (what a challenge gave them is read from it, `PlateCatalog`), `opening_night` whether the one-off
-## first-night XP was paid, `bonus_day` the local day number the first-game-of-the-day XP was last
+## first-night XP was paid, `bonus_day` the day number (UTC) the first-game-of-the-day XP was last
 ## paid for (-1: never). XP past level 55 is kept; nothing is awarded for it yet (#1055).
 
 const SCHEMA_VERSION := 1
@@ -48,7 +48,7 @@ func apply_write(write: Dictionary) -> void:
 			choose(StringName(str(kind)), StringName(str(chosen[kind])))
 
 
-## Whether the day's first-game XP is still owed for local day `day`.
+## Whether the day's first-game XP is still owed for day `day` (UTC).
 func bonus_due(day: int) -> bool:
 	return bonus_day != day
 

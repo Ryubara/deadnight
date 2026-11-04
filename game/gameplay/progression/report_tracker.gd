@@ -16,6 +16,9 @@ extends RefCounted
 ## The card changed: an `xp_gained` came in, or the night ended.
 signal changed
 
+## The film credits' own count of every player in the night (`CrewTracker`).
+var crew: CrewTracker
+
 var _state: ClientState
 var _sources: Dictionary = {}
 var _night_xp := 0
@@ -38,6 +41,8 @@ func attach(state: ClientState, fuel_items: Array[StringName] = [&"fuel_can"]) -
 	_tally = NightTally.new(fuel_items)
 	_tally.keep_only(XpRules.PAYING)
 	state.event_received.connect(_on_event)
+	crew = CrewTracker.follow(state, fuel_items)
+	crew.changed.connect(changed.emit)
 
 
 ## The card's data for the night as it stands (`NightReport.compose`).
@@ -50,6 +55,15 @@ func model() -> Dictionary:
 	for source: StringName in sources:
 		hundredths += int(sources[source])
 	return NightReport.compose(sources, XpRules.to_xp(hundredths), 0, false)
+
+
+## What the film credits read (`CrewTracker.input`), with this client's own XP when an account
+## holds the night: an unsaved night's number is not XP anyone has, so it is not given.
+func credits_input() -> Dictionary:
+	var input := crew.input()
+	if _kept():
+		input["xp"][_state.player_id] = _night_xp
+	return input
 
 
 ## Whole XP the server has told this client the night paid so far (0 for a night nobody keeps).

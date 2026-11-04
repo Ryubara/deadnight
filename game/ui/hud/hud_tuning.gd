@@ -82,6 +82,26 @@ static var _shipped: HudTuning = null
 ## A prompt that waited this long is dropped: it would describe something long gone.
 @export_range(1.0, 120.0, 1.0, "suffix:s") var challenge_stale := 20.0
 
+@export_group("Progression popups")
+## A card drops in over this long (with a small overshoot), holds, and leaves over `popup_out` ...
+@export_range(0.05, 1.0, 0.05, "suffix:s") var popup_in := 0.25
+@export_range(0.05, 1.0, 0.05, "suffix:s") var popup_out := 0.2
+## ... a level card holds this long, an unlock card, a tier card and a finished challenge ...
+@export_range(0.5, 10.0, 0.1, "suffix:s") var popup_hold_level := 2.6
+@export_range(0.5, 10.0, 0.1, "suffix:s") var popup_hold_unlock := 2.0
+@export_range(0.5, 10.0, 0.1, "suffix:s") var popup_hold_tier := 3.6
+@export_range(0.5, 10.0, 0.1, "suffix:s") var popup_hold_challenge := 3.0
+## ... and no longer than this when others wait behind it.
+@export_range(0.5, 10.0, 0.1, "suffix:s") var popup_hold_busy := 1.6
+## The least time between one card starting and the next (a stack of unlocks).
+@export_range(0.0, 1.0, 0.05, "suffix:s") var popup_start_gap := 0.15
+## A card that is full in stays at least this long before a waiting card sends it away.
+@export_range(0.2, 5.0, 0.1, "suffix:s") var popup_min_show := 1.0
+## The cards under a card that leaves slide up over this long.
+@export_range(0.05, 1.0, 0.05, "suffix:s") var popup_slide := 0.25
+## How far above its place a card starts, canvas units.
+@export_range(0.0, 80.0, 1.0) var popup_drop := 30.0
+
 
 ## The shipped table, loaded once and shared; do not change it at run time (a test that needs
 ## another value makes a copy with `duplicate()`).

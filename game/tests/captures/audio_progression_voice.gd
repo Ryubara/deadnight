@@ -13,6 +13,15 @@ extends Node
 ##   `VOICE` for the rest, like `audio_soldier_night.gd`). `--voice=female` plays every soldier
 ##   line of the night with the female take set (the night's player is the male character).
 ##   The Voice, Effects and Ambience buses are recorded as stems into `--out=<folder>`.
+##   With `--account=<xp>` the player has an account of that raw XP (a profile in memory), so the
+##   night's kills pay XP, the rules tell the same `level_up`, `tier_up` and `unlock_earned` a game
+##   server would (`SERVER <seconds> <event> <level>`) and the soldier cheers them as it does
+##   online;
+##   `--told=0` skips the cheers told by hand. `--challenges=6,12+` tells the server's
+##   `challenge_done` for the player at those seconds (a `+` brings the `level_up` its reward paid,
+##   in the same instant, so one line is said: the challenge's), as `ChallengeAward` would
+##   (`TOLD <seconds> challenge_done`). The director's history is printed at the end
+##   (`HISTORY <seconds> <moment> <speaker> <take>`) and written to `--out`.
 
 const MOVIE_FPS := 15.0
 const STEMS: Array[StringName] = [&"Voice", &"Effects", &"Ambience"]
@@ -137,6 +146,14 @@ func _fight() -> void:
 	tuning.rounds.intro_seconds = 4.0
 	_night = Night.new()
 	_night.hud = hud
+	if _args.has("account"):
+		var path := "user://audio_progression_voice_profile.json"
+		for leftover in [path, path + ".tmp", path + ".broken"]:
+			if FileAccess.file_exists(leftover):
+				DirAccess.remove_absolute(leftover)
+		var store := ProfileStore.open(path, func() -> bool: return true)
+		store.profile.xp = int(_args["account"])
+		_night.profile_store = store
 	add_child(_night)
 	_night.shoulder_camera = true
 	await _night.start(Night.Mode.AUTOPILOT, Night.SEED, tuning)
@@ -145,6 +162,7 @@ func _fight() -> void:
 		player.local_input = false
 		player.capture_mouse = false
 	var voice := _night.get_node("SoldierVoice") as SoldierVoice
+	_night.state.event_received.connect(_on_server_event)
 	if _female:
 		voice.play = func(id: StringName, at: Variant, db: float) -> Variant:
 			return Audio.play(StringName(String(id).replace("vox_", "voxf_")), at, db)
@@ -153,6 +171,9 @@ func _fight() -> void:
 	var gap := float(_args.get("gap", 5))
 	var next := 0
 	var events: Array[StringName] = SoldierVoiceCatalog.PROGRESS
+	if int(_args.get("told", 1)) == 0:
+		next = events.size()
+	var challenges := _challenge_times()
 	var ticks := 0
 	while _night.running and ticks / 60.0 < seconds:
 		await _night.ticked
@@ -161,8 +182,20 @@ func _fight() -> void:
 			voice.celebrate(events[next], PLAYER)
 			print("TOLD %.2f %s" % [_now(), events[next]])
 			next += 1
+		while not challenges.is_empty() and ticks / 60.0 >= challenges[0]["at"]:
+			_tell_challenge(challenges.pop_front()["with_level"])
 	await _wait(3.0)
 	var out := String(_args.get("out", ""))
+	var history: Array = voice.director.history
+	for line: Dictionary in history:
+		if SoldierVoiceCatalog.is_progress(line["event"]):
+			print(
+				"HISTORY %.2f %s %d %d" % [line["at"], line["event"], line["speaker"], line["take"]]
+			)
+	if out != "":
+		var file := FileAccess.open("%s/director_history.json" % out, FileAccess.WRITE)
+		file.store_string(JSON.stringify(history, "  "))
+		file.close()
 	for bus: StringName in _records:
 		var record: AudioEffectRecord = _records[bus]
 		record.set_recording_active(false)
@@ -178,6 +211,42 @@ func _fight() -> void:
 	Audio.stop_all()
 	await Audio.wait_for_mixer()
 	get_tree().quit()
+
+
+## The seconds (and whether a level comes with it) from `--challenges=6,12+`, earliest first.
+func _challenge_times() -> Array[Dictionary]:
+	var times: Array[Dictionary] = []
+	for part: String in String(_args.get("challenges", "")).split(",", false):
+		times.append({"at": float(part.trim_suffix("+")), "with_level": part.ends_with("+")})
+	return times
+
+
+## What the game server tells when a challenge is done: the event of `ChallengeAward`, and with
+## `with_level` the level its XP reward paid.
+func _tell_challenge(with_level: bool) -> void:
+	var events: Array[Dictionary] = [
+		{
+			"type": &"challenge_done",
+			"player_id": PLAYER,
+			"id": &"d_kills",
+			"family": 0,
+			"text": "Put down 40",
+			"target": 40,
+			"rung": 0,
+			"rungs": 1,
+			"reward": {"xp": 50},
+		}
+	]
+	if with_level:
+		events.append({"type": &"level_up", "player_id": PLAYER, "level": 3, "total": 200})
+	_night.state.apply_events(events)
+	print("TOLD %.2f challenge_done%s" % [_now(), " + level_up" if with_level else ""])
+
+
+func _on_server_event(event: Dictionary) -> void:
+	match event["type"]:
+		&"level_up", &"tier_up", &"unlock_earned", &"challenge_done":
+			print("SERVER %.2f %s %d" % [_now(), event["type"], event.get("level", 0)])
 
 
 func _parse_args() -> Dictionary:

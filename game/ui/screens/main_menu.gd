@@ -46,6 +46,7 @@ func _ready() -> void:
 	shell.name = "Shell"
 	shell.context.profile = MenuProfile.load_saved()
 	shell.context.board = _open_board()
+	_follow_account_board(shell.context.board)
 	shell.context.action.connect(_on_action)
 	add_child(shell)
 
@@ -73,6 +74,9 @@ func screen_pause() -> void:
 func screen_resume() -> void:
 	MenuAmbience.start()
 	shell.view.set_active(true)
+	# A night that ended wrote the board file; the board held here reads it again.
+	if shell.context.board != null and shell.context.board.has_method(&"reload"):
+		shell.context.board.reload()
 	shell.set_profile(MenuProfile.load_saved())
 	focus_initial()
 
@@ -86,6 +90,15 @@ func focus_initial() -> void:
 ## Whether the screen has been shown.
 func has_entered() -> bool:
 	return _entered
+
+
+## The board shows what the account's board replaces the file with (the read at sign-in lands
+## after the menu is up) without the player leaving the tab.
+func _follow_account_board(board: Object) -> void:
+	if board == null or not board.has_method(&"watch_file"):
+		return
+	board.watch_file()
+	board.changed.connect(shell.refresh_panels)
 
 
 func _open_board() -> Object:

@@ -16,7 +16,7 @@ extends RefCounted
 ##   boards mended    2 XP a board, up to 100 XP a night
 ##   doors opened     15 XP;  fuel cans 15 XP;  a boss brought down 50 XP
 ##   revives          40 XP, up to 5 a night
-##   opening night    50 XP, once ever;  first game of the day 100 XP, once a local day
+##   opening night    50 XP, once ever;  first game of the day 100 XP, once a day (UTC)
 ##   dailies, orders  the amount the challenge board holds (`reward.xp`)
 ## No streak, no login reward, nothing for opening the game.
 

@@ -16,6 +16,8 @@ const FILES := {
 var _by_id: Dictionary[StringName, ChallengeDef] = {}
 var _by_family: Dictionary[int, Array] = {}
 var _duplicates: Array[StringName] = []
+## The ladders over each stat, found once (a night asks for them at every change a kill makes).
+var _ladders: Dictionary[StringName, Array] = {}
 
 
 ## The shipped catalogue.
@@ -37,6 +39,7 @@ func add(def: ChallengeDef) -> void:
 		_duplicates.append(def.id)
 		return
 	_by_id[def.id] = def
+	_ladders.clear()
 	var list: Array = _by_family.get(def.family, [])
 	list.append(def)
 	_by_family[def.family] = list
@@ -56,6 +59,17 @@ func of_family(family: ChallengeDef.Family) -> Array[ChallengeDef]:
 	var list: Array[ChallengeDef] = []
 	list.assign(_by_family.get(family, []))
 	return list
+
+
+## The milestone ladders over `stat`, in file order (the same array each time: do not change it).
+func ladders_over(stat: StringName) -> Array:
+	var found: Array = _ladders.get(stat, [])
+	if found.is_empty() and not _ladders.has(stat):
+		for def in of_family(ChallengeDef.Family.MILESTONE):
+			if def.stat == stat:
+				found.append(def)
+		_ladders[stat] = found
+	return found
 
 
 ## Every challenge that gives something to wear, in file order: `[{def, grant}]` with the grant

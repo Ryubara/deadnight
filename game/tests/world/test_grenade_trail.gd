@@ -103,6 +103,9 @@ func test_the_trail_is_one_draw_call_while_dots_are_alive() -> void:
 func test_objects_and_nodes_are_flat_after_many_throws() -> void:
 	# Sounds an earlier suite left queued on `Audio` are decoded during the frames below (#1093).
 	await AudioSettle.until_idle(get_tree())
+	# Sounds an earlier suite left playing end during the count, each freeing its playback in a
+	# frame of its own: a fall that hides a leak of as many objects (#1138).
+	assert_bool(await QuietCount.settle(get_tree())).is_true()
 	# A first throw makes the shared mesh and material; the ones after it make nothing that stays.
 	var warm := _flying_view()
 	_fly(warm, FLIGHT_STEPS)
