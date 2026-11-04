@@ -297,6 +297,10 @@ func _track_crew(delta: float) -> void:
 	var players: Dictionary = state.frame.get("players", {})
 	for id: int in players:
 		var player: Dictionary = players[id]
+		if player.get("dropping", false):
+			# Still in the helicopter of their arrival: out of the night, nobody to walk up to (#1057).
+			beliefs.teammates.erase(id)
+			continue
 		var before: Dictionary = beliefs.teammates.get(id, {})
 		var velocity := Vector3.ZERO
 		if not before.is_empty():

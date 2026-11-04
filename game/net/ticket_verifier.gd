@@ -6,6 +6,11 @@ extends RefCounted
 ## (`serverId`) it is for, and, when the host chose them, the rules of the night (`settings`, the
 ## game's `MatchSettings` as `to_dict` writes it).
 ##
+## The ticket also says the level of the lobby's host (`hostLevel`, signed by the backend from the
+## host's account): the host's level decides which maps the night may be on, so a map the host's
+## level does not open falls back to the default (`MatchSettings.fit_host`), whoever holds the
+## ticket and whatever a client sent.
+##
 ## A ticket is good once: the `jti` of every one admitted is remembered until it would have expired
 ## anyway. Time is the caller's (`now`, seconds since 1970), so a test moves it by hand.
 
@@ -16,6 +21,9 @@ const BAD := "bad ticket"
 const WRONG_SERVER := "ticket is for another server"
 const USED := "ticket already used"
 const BAD_SETTINGS := "ticket carries rules this server does not take"
+## `host_level` of a ticket that does not say (a backend from before levels): the host's level is
+## unknown, and the map the host chose stands.
+const NO_LEVEL := 0
 ## Followed by the keys: the host chose a setting this build of the game server has not heard of.
 const UNKNOWN_SETTING := "ticket carries a setting this server does not know"
 ## What the ticket's `icon` claim starts with: `level_07`, the file name of the ladder's icon.
@@ -32,11 +40,14 @@ func _init(secret: String, server_id: String) -> void:
 	_server_id = server_id
 
 
-## `{"ok": true, "user": sub, "name", "match": matchId, "settings", "level", "icon"}` for a ticket
-## this server may admit (and spends it), or `{"ok": false, "reason"}`. `settings` is the
-## `MatchSettings` the host chose, or null when the ticket has none (the usual rules). Rules this
-## server cannot take (a value out of its bounds: the backend and the game disagree) refuse the
-## ticket, loudly, instead of starting a night with other rules than the host asked for.
+## `{"ok": true, "user", "name", "match", "settings", "host_level", "map_refused", "level", "icon"}`
+## for a ticket this server may admit (and spends it), or `{"ok": false, "reason"}`. `settings`
+## is the `MatchSettings` the host chose, or null when the ticket has none (the usual rules).
+## Rules this server cannot take (a value out of its bounds: the backend and the game disagree)
+## refuse the ticket, loudly, instead of starting a night with other rules than the host asked
+## for.
+## `host_level` is the claim (`NO_LEVEL` when absent); `map_refused` names the map the host asked
+## for and the level did not open ("" when the map stands), which the server logs.
 func admit(ticket: String, now: int) -> Dictionary:
 	var claims := claims_of(ticket, now)
 	if claims.is_empty():
@@ -50,12 +61,17 @@ func admit(ticket: String, now: int) -> Dictionary:
 		or typeof(claims.get("matchId")) != TYPE_STRING
 	):
 		return {"ok": false, "reason": BAD}
+	var host_level := _host_level(claims.get("hostLevel"))
 	var settings: MatchSettings = null
+	var map_refused := ""
 	if claims.has("settings"):
 		var why := _settings_problem(claims["settings"])
 		if why != "":
 			return {"ok": false, "reason": why}
 		settings = MatchSettings.from_json(claims["settings"])
+		if host_level != NO_LEVEL and not MapRegistry.is_open(settings.map, host_level):
+			map_refused = settings.map
+			settings = settings.fit_host(host_level)
 	for known: String in _used.keys():
 		if _used[known] <= now:
 			_used.erase(known)
@@ -69,9 +85,25 @@ func admit(ticket: String, now: int) -> Dictionary:
 		"name": str(claims.get("name", "")),
 		"match": claims["matchId"],
 		"settings": settings,
+		"host_level": host_level,
+		"map_refused": map_refused,
 		"level": shown["level"],
 		"icon": shown["icon"],
 	}
+
+
+## The level a ticket's `hostLevel` claim holds: `NO_LEVEL` when there is no claim; a whole number
+## from 1 up is that level (beyond the ladder, the top one); anything else that is claimed is level
+## 1, so a damaged claim never opens a map.
+static func _host_level(claim: Variant) -> int:
+	if claim == null:
+		return NO_LEVEL
+	if typeof(claim) not in [TYPE_INT, TYPE_FLOAT]:
+		return 1
+	var number := float(claim)
+	if not is_finite(number) or number < 1.0 or not is_equal_approx(number, roundf(number)):
+		return 1
+	return mini(int(number), LevelCurve.MAX_LEVEL)
 
 
 ## The level and icon a ticket's claims give the seat, both whole numbers from 1 to the top level,

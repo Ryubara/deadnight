@@ -1,8 +1,8 @@
 # The level and icon beside a name (#1077), over a real WebSocket on this machine: the ticket the
 # backend signs gives a seat its level, the WELCOME and the `player_named` event carry it to every
 # client (a late joiner too), a bot has none, no client message can change one, a level gained in
-# the night reaches the tags, and the wire reads in both versions (15, and 14 which adds nothing a
-# 14 client cannot skip). The ticket's claims are made as the backend makes them (`TicketMaker`).
+# the night reaches the tags, and the wire reads in both versions (16, and 15 which adds nothing a
+# 15 client cannot skip). The ticket's claims are made as the backend makes them (`TicketMaker`).
 extends GdUnitTestSuite
 
 const SECRET := "test-ticket-secret-of-32-characters!"
@@ -323,18 +323,18 @@ func test_a_level_gained_in_the_night_reaches_every_tag_once() -> void:
 # --- The wire in both versions ---
 
 
-func test_the_protocol_is_15_and_takes_a_14_client_that_cannot_read_levels() -> void:
-	assert_int(NetWire.VERSION).is_equal(15)
+func test_the_protocol_is_16_and_takes_a_15_client_that_cannot_read_levels() -> void:
+	assert_int(NetWire.VERSION).is_equal(16)
+	assert_bool(NetWire.accepts(16)).is_true()
 	assert_bool(NetWire.accepts(15)).is_true()
-	assert_bool(NetWire.accepts(14)).is_true()
-	assert_bool(NetWire.accepts(13)).is_false()
-	assert_bool(NetWire.accepts(16)).is_false()
+	assert_bool(NetWire.accepts(14)).is_false()
+	assert_bool(NetWire.accepts(17)).is_false()
 	await _start()
 	var first := await _client("old", "ann", _claims(12))
 	assert_int(first.state.player_id).is_equal(1)
-	# A client of 15 reads the levels from the WELCOME; one of 14, who reads the layout the same
+	# A client of 16 reads the levels from the WELCOME; one of 15, who reads the layout the same
 	# and only the keys it knew, gets the same WELCOME and finds its names where it left them.
-	for version in [15, 14]:
+	for version in [16, 15]:
 		var ticket := _ticket("old", "bo%d" % version, _claims(7))
 		var welcome := NetWire.read_welcome(await _hello(ticket, version))
 		assert_bool(welcome.is_empty()).is_false()
@@ -346,14 +346,14 @@ func test_the_protocol_is_15_and_takes_a_14_client_that_cannot_read_levels() -> 
 		var tags: Dictionary = snapshot["levels"]
 		assert_vector(tags[1]).is_equal(Vector2i(12, 12))
 		assert_vector(tags[welcome["player_id"]]).is_equal(Vector2i(7, 7))
-	# A client of 13 is turned away, as it has been.
-	var refused := await _hello(_ticket("old", "cy", {}), 13)
+	# A client of 14 is turned away, as it has been.
+	var refused := await _hello(_ticket("old", "cy", {}), 14)
 	assert_int(refused[0]).is_equal(NetWire.Type.REFUSED)
 	assert_int(refused[1]).is_equal(NetWire.Refusal.VERSION)
 
 
-func test_a_snapshot_of_a_server_of_14_leaves_the_tags_bare_and_keeps_the_names() -> void:
-	# What a 15 client makes of a WELCOME from a server that sends no `levels` (an older deploy).
+func test_a_snapshot_of_a_server_of_15_leaves_the_tags_bare_and_keeps_the_names() -> void:
+	# What a 16 client makes of a WELCOME from a server that sends no `levels` (an older deploy).
 	var state := ClientState.new()
 	state.load_names({"names": {1: "ann", 2: "bo"}})
 	assert_dict(state.names).is_equal({1: "ann", 2: "bo"})
@@ -361,7 +361,7 @@ func test_a_snapshot_of_a_server_of_14_leaves_the_tags_bare_and_keeps_the_names(
 	var hud_state := HudState.new()
 	hud_state.load_snapshot({"names": {1: "ann"}, "players": {1: {}}})
 	assert_vector(hud_state.level_of(hud_state.team[1])).is_equal(Vector2i.ZERO)
-	# And a player_named event of 14, with no level, names the seat and shows none.
+	# And a player_named event of 15, with no level, names the seat and shows none.
 	hud_state.apply_event({"type": &"player_named", "player_id": 1, "name": "ann"})
 	assert_vector(hud_state.level_of(hud_state.team[1])).is_equal(Vector2i.ZERO)
 

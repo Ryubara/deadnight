@@ -29,6 +29,10 @@ extends Resource
 @export var end_shots: Array[EndShot] = []
 ## False for a map that is listed but not built: its card is locked, "coming soon".
 @export var shipped := true
+## The account level that opens the map (1: from the first night). The host's level decides a
+## hosted night's map (`MapRegistry.fit_host`); a guest below it still plays there as a visitor.
+## The design is docs/design/maps.md; the number is data, so moving a map is one line.
+@export var unlock_level := 1
 
 var _preview: Texture2D
 
@@ -36,6 +40,21 @@ var _preview: Texture2D
 ## Whether a night can be played on it now.
 func is_playable() -> bool:
 	return shipped and not scene_path.is_empty()
+
+
+## Whether an account of `level` may choose the map for a night it hosts.
+func is_open_at(level: int) -> bool:
+	return level >= unlock_level
+
+
+## `Level 10`: what the locked card says it takes.
+func unlock_text() -> String:
+	return "Level %d" % unlock_level
+
+
+## The line the locked card gives on hover or focus, the way the wardrobe gives its own.
+func unlock_hint() -> String:
+	return "Reach level %d to host a night on this map." % unlock_level
 
 
 ## The scene a night builds this map from, or null when it has none.

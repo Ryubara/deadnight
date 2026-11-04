@@ -16,6 +16,7 @@ const SAMPLES := {
 	&"seat_person": {"type": &"seat_person", "player_id": 1},
 	&"seat_bot": {"type": &"seat_bot", "player_id": 1},
 	&"set_downed": {"type": &"set_downed", "player_id": 1, "downed": true},
+	&"arrival": {"type": &"arrival", "player_id": 1, "begin": true},
 	&"blow": {"type": &"blow", "player_id": 1, "damage": 12.0, "bearing": 1.0, "source_id": 3},
 	&"hit": {"type": &"hit", "player_id": 1, "zombie_id": 1, "zone": &"head", "damage": 20.0},
 	&"zombie_gone": {"type": &"zombie_gone", "zombie_id": 1},

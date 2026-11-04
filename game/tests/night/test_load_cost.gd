@@ -122,7 +122,7 @@ func test_the_sounds_load_in_the_background_before_a_night_asks() -> void:
 		service._process(1.0 / 60.0)
 		frames += 1
 	assert_bool(service.background_preloading()).is_false()
-	for id: StringName in SoundCatalog.ids():
+	for id: StringName in SoundCatalog.ids_for_night():
 		# 0 files left to load: the night's warm-up has nothing to read.
 		assert_int(service.preload_sound(id)).is_equal(0)
 	# Asking again after it finished does not start it over.

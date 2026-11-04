@@ -490,6 +490,17 @@ func _on_player_packet(peer: HostPeer, data: PackedByteArray) -> void:
 				_fault(peer)
 				return
 			server.crowd.set_platform(peer.player_id, web == 1)
+		NetWire.Type.ARRIVAL:
+			var begin := NetWire.read_arrival(data)
+			if begin < 0:
+				_fault(peer)
+				return
+			_collect(
+				server.apply(
+					{"type": NightServer.ARRIVAL, "player_id": peer.player_id, "begin": begin == 1},
+					peer.player_id
+				)
+			)
 		NetWire.Type.MARK:
 			var mark := NetWire.read_mark(data)
 			if mark.is_empty():
