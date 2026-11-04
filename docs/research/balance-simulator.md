@@ -113,6 +113,28 @@ player, not a promise: rerun with `--set=economy.items:crane_play.price=<n>`.
   steps and counts were tried and left alone (see [round
   scaling](round-scaling.md#7-what-the-simulator-showed-and-what-is-applied)).
 
+## The House Pistol as the start weapon (#898)
+
+The start weapon went from the revolver (24 a hit, 86 a second) to the House Pistol (8 a hit, 40 a second, 15 / 90 rounds,
+30 rounds for 40 points): a round-1 walker takes 7 body shots or 3 head shots, not 3 and 1
+([the table](../design/weapons.md#the-house-pistol-and-the-hit-zones-898)). The simulator and the bots start with it
+(`SimWeapons.START`, `WeaponCatalog.START_WEAPON`, `start_weapons`); no range, health or price of
+the night was changed. Gate cells
+(60 nights each, seed 4000, medians; baseline from a detached checkout of `main` at 69d92354, the same checkout's run before
+the change; the other columns are the branch at the same commit with the change uncommitted):
+
+| Cell | weak x1 | average x1 | average x2 | average x4 | average x8 | strong x1 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Range | 4 to 9 | 8 to 14 | 11 to 16 | 12 to 17 | 14 to 20 | 12 to 19 |
+| `main` | 5 | 13 | 15 | 16 | 18 | 18 |
+| House Pistol start (spread 0.8) | 5 | 11 | 15 | 16 | 18 | 18 |
+| House Pistol start (shipped, spread 0.6) | 5 | 11 | 15 | 16 | 18 | 18 |
+
+Only the average solo player moves (two rounds earlier, still inside its range): the extra shots a round-1 and round-2
+walker takes cost it time before the first wall weapon, which the rest of the cells do not feel (more players share the
+shots; the strong player and the weak one are bounded by other things). Nothing was retuned. 60 nights a cell is the CI
+gate's sample, not the nightly run's hundred.
+
 ## The re-cut and the tonic (#281)
 
 The modelled players buy the weapon re-cut (`upgrade_weapon`) and the hearty tonic through the same `buy` the night

@@ -34,9 +34,9 @@ func _use(night: Night) -> void:
 
 func test_a_player_starts_with_the_pistol_alone_and_a_free_hand() -> void:
 	var night := await _start()
-	assert_str(String(night.state.me()["weapon"])).is_equal("pistol")
+	assert_str(String(night.state.me()["weapon"])).is_equal("house_pistol")
 	# The crowbar was replaced by the quick melee (#411), which takes no slot.
-	assert_array(night.server.combat.carried(1)).contains_exactly([&"pistol"])
+	assert_array(night.server.combat.carried(1)).contains_exactly([&"house_pistol"])
 	night.queue_free()
 
 
@@ -89,13 +89,13 @@ func test_a_full_reserve_is_offered_nothing_at_the_wall_or_a_locker() -> void:
 
 func test_a_locker_sells_rounds_for_the_gun_in_hand_and_charges_the_part_that_fits() -> void:
 	var night := await _start()
-	var pistol := night.server.combat.state_of(1, &"pistol")
+	var pistol := night.server.combat.state_of(1, &"house_pistol")
 	pistol.reserve = pistol.def.reserve_max - 5
 	var prompt := _stand_at(night, _spot(night, &"", &"ammo"))
 	assert_str(String(prompt["kind"])).is_equal("ammo")
-	assert_str(String(prompt["weapon"])).is_equal("pistol")
+	assert_str(String(prompt["weapon"])).is_equal("house_pistol")
 	assert_int(prompt["rounds"]).is_equal(5)
-	var item := night.server.rules.tuning.economy.ammo_item_for(&"pistol")
+	var item := night.server.rules.tuning.economy.ammo_item_for(&"house_pistol")
 	assert_int(prompt["price"]).is_equal(item.ammo_price(night.server.rules.round_number, 5))
 	var before := night.state.points()
 	_use(night)
@@ -184,7 +184,7 @@ func test_away_from_every_spot_there_is_nothing_to_use() -> void:
 
 func test_nothing_refills_a_weapon_when_a_round_ends() -> void:
 	var night := await _start()
-	var pistol := night.server.combat.state_of(1, &"pistol")
+	var pistol := night.server.combat.state_of(1, &"house_pistol")
 	pistol.reserve = 3
 	NightFixture.first_zombie(night)
 	night.server.rules._plan.clear()

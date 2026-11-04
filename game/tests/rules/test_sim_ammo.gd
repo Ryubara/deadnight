@@ -20,16 +20,16 @@ func _no_ammo_for_sale() -> RulesTuning:
 	return tuning
 
 
-func test_a_player_starts_with_the_revolver_alone_and_the_reserve_the_weapon_gives() -> void:
+func test_a_player_starts_with_the_house_pistol_alone_and_the_reserve_the_weapon_gives() -> void:
 	var sim := NightSim.new(RulesFixture.tuning(), SimSkill.named(SimSkill.AVERAGE), 1, 1, 0.25)
 	var player: NightSim.SimPlayer = sim._players[1]
 	# The crowbar was replaced by the quick melee (#411): the blow every player has, not an arm.
-	assert_array(player.arms.keys()).contains_exactly([&"pistol"])
+	assert_array(player.arms.keys()).contains_exactly([&"house_pistol"])
 	assert_str(player.knife.id).is_equal("quick_melee")
 	assert_str(player.weapon).is_equal("pistol")
-	var pistol := WeaponCatalog.get_def(&"pistol")
-	assert_int(player.arms[&"pistol"].mag).is_equal(pistol.magazine_size)
-	assert_int(player.arms[&"pistol"].reserve).is_equal(pistol.reserve_start)
+	var pistol := WeaponCatalog.get_def(&"house_pistol")
+	assert_int(player.arms[&"house_pistol"].mag).is_equal(pistol.magazine_size)
+	assert_int(player.arms[&"house_pistol"].reserve).is_equal(pistol.reserve_start)
 
 
 func test_a_reload_moves_what_the_combat_servers_reload_moves() -> void:
@@ -50,7 +50,7 @@ func test_a_reload_moves_what_the_combat_servers_reload_moves() -> void:
 
 func test_the_best_armed_weapon_skips_what_is_dry_and_falls_back_to_the_quick_melee() -> void:
 	var arms: Dictionary[StringName, NightSim.SimArm] = {}
-	for id in [&"pistol", &"smg", &"rifle"]:
+	for id in [&"house_pistol", &"smg", &"rifle"]:
 		arms[id] = NightSim.SimArm.of(id)
 	# The pick is sized against the walker the round sends. Without a health it is raw damage a
 	# second, and the stepped-up rifle (#254) would now win; against round 1's 50 health the rate
@@ -60,7 +60,7 @@ func test_the_best_armed_weapon_skips_what_is_dry_and_falls_back_to_the_quick_me
 	arms[&"smg"].mag = 0
 	arms[&"smg"].reserve = 0
 	assert_str(SimWeapons.best_armed(arms, health)).is_equal("rifle")
-	for id in [&"pistol", &"rifle"]:
+	for id in [&"house_pistol", &"rifle"]:
 		arms[id].mag = 0
 		arms[id].reserve = 0
 	assert_str(SimWeapons.best_armed(arms, health)).is_equal("quick_melee")
@@ -106,8 +106,8 @@ func _mean_rounds_with_a_dry_pistol(tuning_of: Callable, seeds: Array[int]) -> f
 			tuning_of.call(), SimSkill.named(SimSkill.AVERAGE), 1, seed_value, 0.25
 		)
 		var player: NightSim.SimPlayer = sim._players[1]
-		player.arms[&"pistol"].mag = 2
-		player.arms[&"pistol"].reserve = 0
+		player.arms[&"house_pistol"].mag = 2
+		player.arms[&"house_pistol"].reserve = 0
 		sim.run(30)
 		total += float(sim._result["rounds_reached"])
 	return total / float(seeds.size())
@@ -116,8 +116,8 @@ func _mean_rounds_with_a_dry_pistol(tuning_of: Callable, seeds: Array[int]) -> f
 func test_a_player_with_no_rounds_and_none_to_buy_fights_with_the_quick_melee() -> void:
 	var sim := NightSim.new(_no_ammo_for_sale(), SimSkill.named(SimSkill.AVERAGE), 1, 11, 0.25)
 	var player: NightSim.SimPlayer = sim._players[1]
-	player.arms[&"pistol"].mag = 2
-	player.arms[&"pistol"].reserve = 0
+	player.arms[&"house_pistol"].mag = 2
+	player.arms[&"house_pistol"].reserve = 0
 	sim.run(30)
 	assert_int(sim._result["dry_rounds"]).is_greater(0)
 	# One night's end is mostly chance (with the stepped-up weapons a single seed can go either
@@ -132,11 +132,11 @@ func test_a_player_with_no_rounds_and_none_to_buy_fights_with_the_quick_melee() 
 func test_the_same_player_with_ammunition_for_sale_buys_it_and_does_not_run_dry() -> void:
 	var sim := NightSim.new(RulesFixture.tuning(), SimSkill.named(SimSkill.AVERAGE), 1, 11, 0.25)
 	var player: NightSim.SimPlayer = sim._players[1]
-	player.arms[&"pistol"].mag = 2
-	player.arms[&"pistol"].reserve = 0
+	player.arms[&"house_pistol"].mag = 2
+	player.arms[&"house_pistol"].reserve = 0
 	sim.run(30)
 	assert_int(sim._result["dry_rounds"]).is_equal(0)
-	assert_int(sim._result["spent_on"].get(&"ammo_pistol", 0)).is_greater(0)
+	assert_int(sim._result["spent_on"].get(&"ammo_house_pistol", 0)).is_greater(0)
 
 
 func test_a_night_with_ammunition_is_repeatable() -> void:
@@ -156,11 +156,11 @@ func test_ammunition_is_bought_for_the_weapons_worth_shooting_only() -> void:
 	sim.rules.round_number = 1
 	var early := sim._useful(player)
 	assert_array(early).contains([&"smg"])
-	assert_bool(early.has(&"pistol")).is_false()
+	assert_bool(early.has(&"house_pistol")).is_false()
 	# By round 10 (117 health) the submachine gun needs nine hits too and the pistol is back in.
 	sim.rules.round_number = 10
 	var useful := sim._useful(player)
-	assert_array(useful).contains([&"smg", &"pistol"])
+	assert_array(useful).contains([&"smg", &"house_pistol"])
 	assert_bool(useful.has(&"flare_gun")).is_false()
 	assert_bool(useful.has(&"crowbar")).is_false()
 	assert_str(useful[0]).is_equal("smg")

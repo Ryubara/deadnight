@@ -46,6 +46,12 @@ const MODELS := {
 		"model_scale": 1.95,
 		"kind": "gun"
 	},
+	"house_pistol":
+	{
+		"scene": "res://assets/weapons/house_pistol/house_pistol.glb",
+		"model_scale": 1.95,
+		"kind": "gun"
+	},
 	"ray_gun":
 	{"scene": "res://assets/weapons/ray_gun/ray_gun.glb", "model_scale": 2.275, "kind": "gun"},
 	"freeze_gun":

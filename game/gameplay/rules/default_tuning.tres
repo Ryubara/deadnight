@@ -156,6 +156,15 @@ price_per_round = 5
 amount = 2.0
 pool_weights = PackedFloat32Array()
 
+[sub_resource type="Resource" id="Resource_ammo_house_pistol"]
+script = ExtResource("1_skww1")
+id = &"ammo_house_pistol"
+kind = 6
+price = 40
+amount = 30.0
+weapon = &"house_pistol"
+pool_weights = PackedFloat32Array()
+
 [sub_resource type="Resource" id="Resource_ammo_pistol"]
 script = ExtResource("1_skww1")
 id = &"ammo_pistol"
@@ -279,7 +288,7 @@ round_bonus_base = 20
 round_bonus_per_round = 10
 down_penalty_fraction = 0.1
 max_tonics = 4
-items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_tri1"), SubResource("Resource_arc1"), SubResource("Resource_upgr1"), SubResource("Resource_utxut"), SubResource("Resource_gren1"), SubResource("Resource_ammo_pistol"), SubResource("Resource_ammo_smg"), SubResource("Resource_ammo_shotgun"), SubResource("Resource_ammo_rifle"), SubResource("Resource_ammo_flare_gun"), SubResource("Resource_ammo_dual_pistols"), SubResource("Resource_ammo_ppsh"), SubResource("Resource_ammo_mp5"), SubResource("Resource_ammo_m4a1"), SubResource("Resource_ammo_m249"), SubResource("Resource_ammo_fifty_cal"), SubResource("Resource_ammo_pump_870")])
+items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_tri1"), SubResource("Resource_arc1"), SubResource("Resource_upgr1"), SubResource("Resource_utxut"), SubResource("Resource_gren1"), SubResource("Resource_ammo_house_pistol"), SubResource("Resource_ammo_pistol"), SubResource("Resource_ammo_smg"), SubResource("Resource_ammo_shotgun"), SubResource("Resource_ammo_rifle"), SubResource("Resource_ammo_flare_gun"), SubResource("Resource_ammo_dual_pistols"), SubResource("Resource_ammo_ppsh"), SubResource("Resource_ammo_mp5"), SubResource("Resource_ammo_m4a1"), SubResource("Resource_ammo_m249"), SubResource("Resource_ammo_fifty_cal"), SubResource("Resource_ammo_pump_870")])
 
 [sub_resource type="Resource" id="Resource_df3qj"]
 script = ExtResource("3_bgcg8")
@@ -476,6 +485,13 @@ leave_chances = PackedFloat32Array(0.15, 0.15, 0.15, 0.15, 0.3, 0.3, 0.3, 0.3, 0
 breakdown_seconds = 4.0
 refund_fraction = 1.0
 
+[sub_resource type="Resource" id="Resource_recut_house_pistol"]
+script = ExtResource("15_recut")
+weapon = &"house_pistol"
+damage_multiplier = 1.75
+magazine_multiplier = 1.5
+reserve_multiplier = 1.5
+
 [sub_resource type="Resource" id="Resource_recut_pistol"]
 script = ExtResource("15_recut")
 weapon = &"pistol"
@@ -586,7 +602,7 @@ burst_radius_multiplier = 1.27
 
 [sub_resource type="Resource" id="Resource_upgt1"]
 script = ExtResource("12_upgr1")
-profiles = Array[ExtResource("15_recut")]([SubResource("Resource_recut_pistol"), SubResource("Resource_recut_smg"), SubResource("Resource_recut_shotgun"), SubResource("Resource_recut_rifle"), SubResource("Resource_recut_flare_gun"), SubResource("Resource_recut_mp5"), SubResource("Resource_recut_ppsh"), SubResource("Resource_recut_m4a1"), SubResource("Resource_recut_m249"), SubResource("Resource_recut_fifty_cal"), SubResource("Resource_recut_pump_870"), SubResource("Resource_recut_dual_pistols"), SubResource("Resource_recut_ray_gun"), SubResource("Resource_recut_freeze_gun")])
+profiles = Array[ExtResource("15_recut")]([SubResource("Resource_recut_house_pistol"), SubResource("Resource_recut_pistol"), SubResource("Resource_recut_smg"), SubResource("Resource_recut_shotgun"), SubResource("Resource_recut_rifle"), SubResource("Resource_recut_flare_gun"), SubResource("Resource_recut_mp5"), SubResource("Resource_recut_ppsh"), SubResource("Resource_recut_m4a1"), SubResource("Resource_recut_m249"), SubResource("Resource_recut_fifty_cal"), SubResource("Resource_recut_pump_870"), SubResource("Resource_recut_dual_pistols"), SubResource("Resource_recut_ray_gun"), SubResource("Resource_recut_freeze_gun")])
 price_step = 1500
 name_prefix = "Re-Cut "
 

@@ -43,11 +43,11 @@ func _lone(profile: BotProfile, bot_seed: int, at := Vector3.ZERO) -> SeatedNigh
 
 func test_scenario_10_a_dry_magazine_with_no_reserve_falls_back_to_the_quick_melee() -> void:
 	var night := await _lone(BotProfile.regular(), 31)
-	var pistol := night.server.combat.state_of(1, &"pistol")
+	var pistol := night.server.combat.state_of(1, &"house_pistol")
 	pistol.ammo = 0
 	pistol.reserve = 0
 	# No melee weapon is carried (#411): the blow every player has is all the bot has left.
-	assert_array(night.server.combat.carried(1)).contains_exactly([&"pistol"])
+	assert_array(night.server.combat.carried(1)).contains_exactly([&"house_pistol"])
 	var blows: Array[int] = []
 	var kills: Array[int] = []
 	night.on_event = func(event: Dictionary) -> void:
@@ -64,8 +64,8 @@ func test_scenario_10_a_dry_magazine_with_no_reserve_falls_back_to_the_quick_mel
 	assert_int(kills.size()).is_equal(1)
 	# It struck with the pistol still in hand, and did not buy back to it: nothing in it.
 	assert_array(blows).is_not_empty()
-	assert_str(night.frame["players"][1]["weapon"]).is_equal("pistol")
-	assert_int(night.server.combat.state_of(1, &"pistol").ammo).is_equal(0)
+	assert_str(night.frame["players"][1]["weapon"]).is_equal("house_pistol")
+	assert_int(night.server.combat.state_of(1, &"house_pistol").ammo).is_equal(0)
 	night.on_event = Callable()
 	night.dispose()
 

@@ -1,0 +1,152 @@
+[gd_resource type="Resource" script_class="ReloadMotion" format=3]
+
+[ext_resource type="Script" path="res://gameplay/player/reload/reload_key.gd" id="1_key"]
+[ext_resource type="Script" path="res://gameplay/player/reload/reload_motion.gd" id="2_motion"]
+
+[sub_resource type="Resource" id="Key_0"]
+script = ExtResource("1_key")
+
+[sub_resource type="Resource" id="Key_1"]
+script = ExtResource("1_key")
+at = 0.1
+weapon_offset = Vector3(0.18, 0.14, 0.12)
+weapon_turn = Vector3(35, -30, -15)
+chest_lean = 4
+chest_turn = 25
+left = 1
+left_point = Vector3(0.05, -0.12, 0.04)
+
+[sub_resource type="Resource" id="Key_2"]
+script = ExtResource("1_key")
+at = 0.2
+weapon_offset = Vector3(0.18, 0.14, 0.12)
+weapon_turn = Vector3(35, -30, -15)
+chest_lean = 4
+chest_turn = 25
+left = 1
+left_point = Vector3(0.05, -0.12, 0.04)
+left_on_part = true
+
+[sub_resource type="Resource" id="Key_3"]
+script = ExtResource("1_key")
+at = 0.26
+weapon_offset = Vector3(0.18, 0.14, 0.12)
+weapon_turn = Vector3(35, -30, -15)
+chest_lean = 4
+chest_turn = 25
+left = 1
+left_point = Vector3(0.05, -0.12, 0.04)
+left_on_part = true
+part = 1
+
+[sub_resource type="Resource" id="Key_4"]
+script = ExtResource("1_key")
+at = 0.3
+weapon_offset = Vector3(0.18, 0.14, 0.12)
+weapon_turn = Vector3(35, -30, -15)
+chest_lean = 4
+chest_turn = 25
+left = 1
+left_point = Vector3(0.05, -0.12, 0.04)
+left_on_part = true
+part = 1
+part_shown = false
+ammo = true
+
+[sub_resource type="Resource" id="Key_5"]
+script = ExtResource("1_key")
+at = 0.42
+weapon_offset = Vector3(0.2, 0.12, 0.12)
+weapon_turn = Vector3(35, -30, -15)
+chest_lean = 6
+chest_turn = 25
+left = 1
+left_space = 1
+left_point = Vector3(-0.2, 0.05, -0.05)
+part = 1
+part_shown = false
+ammo = true
+
+[sub_resource type="Resource" id="Key_6"]
+script = ExtResource("1_key")
+at = 0.58
+weapon_offset = Vector3(0.18, 0.14, 0.12)
+weapon_turn = Vector3(35, -30, -15)
+chest_lean = 4
+chest_turn = 25
+left = 1
+left_point = Vector3(0.05, -0.12, 0.04)
+left_on_part = true
+part = 1
+part_shown = false
+ammo = true
+
+[sub_resource type="Resource" id="Key_7"]
+script = ExtResource("1_key")
+at = 0.62
+weapon_offset = Vector3(0.18, 0.14, 0.12)
+weapon_turn = Vector3(35, -30, -15)
+chest_lean = 4
+chest_turn = 25
+left = 1
+left_point = Vector3(0.05, -0.12, 0.04)
+left_on_part = true
+part = 1
+
+[sub_resource type="Resource" id="Key_8"]
+script = ExtResource("1_key")
+at = 0.7
+weapon_offset = Vector3(0.18, 0.14, 0.12)
+weapon_turn = Vector3(35, -30, -15)
+chest_lean = 4
+chest_turn = 25
+left = 1
+left_point = Vector3(0.05, -0.12, 0.04)
+left_on_part = true
+
+[sub_resource type="Resource" id="Key_9"]
+script = ExtResource("1_key")
+at = 0.78
+weapon_offset = Vector3(0.18, 0.12, 0.12)
+weapon_turn = Vector3(25, -30, -5)
+chest_lean = 4
+chest_turn = 25
+left = 1
+left_point = Vector3(-0.04, 0.1, 0.05)
+
+[sub_resource type="Resource" id="Key_10"]
+script = ExtResource("1_key")
+at = 0.84
+weapon_offset = Vector3(0.18, 0.12, 0.12)
+weapon_turn = Vector3(25, -30, -5)
+chest_lean = 4
+chest_turn = 25
+left = 1
+left_point = Vector3(0.05, 0.1, 0.05)
+
+[sub_resource type="Resource" id="Key_11"]
+script = ExtResource("1_key")
+at = 0.92
+weapon_offset = Vector3(0.02, 0.02, 0.03)
+weapon_turn = Vector3(5, -2, 4)
+chest_lean = 2
+chest_turn = 2.78
+
+[sub_resource type="Resource" id="Key_12"]
+script = ExtResource("1_key")
+at = 1
+
+[resource]
+script = ExtResource("2_motion")
+mechanism = &"magazine"
+part_node = &"Magazine"
+part_slide = Vector3(0.038, -0.12, 0)
+ammo_scene = "res://assets/weapons/house_pistol/house_pistol_ammo.glb"
+ammo_is_part = true
+keys = Array[ExtResource("1_key")]([SubResource("Key_0"), SubResource("Key_1"), SubResource("Key_2"), SubResource("Key_3"), SubResource("Key_4"), SubResource("Key_5"), SubResource("Key_6"), SubResource("Key_7"), SubResource("Key_8"), SubResource("Key_9"), SubResource("Key_10"), SubResource("Key_11"), SubResource("Key_12")])
+events = Dictionary[StringName, PackedFloat32Array]({
+&"mag_out": PackedFloat32Array(0.2),
+&"pouch": PackedFloat32Array(0.4),
+&"mag_in": PackedFloat32Array(0.64),
+&"slide": PackedFloat32Array(0.84)
+})

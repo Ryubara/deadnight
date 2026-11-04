@@ -27,6 +27,7 @@ const SHOP_KINDS := {
 }
 ## `WeaponCatalog.IDS`: a weapon is covered when the motor can fire it as it is built.
 const WEAPONS := {
+	"house_pistol": "rule: BotMotor fires it like the revolver (the start weapon, semi-automatic)",
 	"pistol":
 	"rule: BotMotor fires any hitscan weapon inside its hit cone; BotArsenal ranks and swaps",
 	"smg": "rule: BotMotor fires it in bursts of three to five (automatic)",
