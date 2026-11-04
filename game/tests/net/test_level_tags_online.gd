@@ -81,7 +81,7 @@ func _claims(level: int, icon := -1) -> Dictionary:
 
 
 func _ticket(match_id: String, user: String, extra: Dictionary, settings := {}) -> String:
-	return TicketMaker.make(SECRET, SERVER_ID, match_id, user, user, 60, settings, extra)
+	return TicketMaker.make(SECRET, SERVER_ID, match_id, user, user, 60, settings, null, extra)
 
 
 ## A hand-driven client with a ticket that carries `extra` claims.

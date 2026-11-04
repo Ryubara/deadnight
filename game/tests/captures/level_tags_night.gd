@@ -128,6 +128,7 @@ func _ticket(index: int, settings: MatchSettings) -> String:
 		NAMES[index].capitalize(),
 		60,
 		settings.to_dict(),
+		null,
 		claims
 	)
 
