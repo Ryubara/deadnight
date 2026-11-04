@@ -72,7 +72,13 @@ func _client() -> Night:
 	return night
 
 
+## A press at a spot, made once its card has been up for as long as a replacing purchase asks
+## (#908: a press that throws a carried weapon away is a meant one).
 func _use(night: Night) -> void:
+	var read_until := (
+		_host.server.tick_count + ceili(_host.server.tuning.replace_settle / Night.STEP)
+	)
+	await _until(func() -> bool: return _host.server.tick_count > read_until)
 	var command := _commands[night] as NightCommand
 	command.use = true
 	await night.ticked
