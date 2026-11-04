@@ -91,6 +91,55 @@ by hand).
    gate can fail (`inert` upgrades, health out of range) needs a wall, which 20 nights show with room to spare (median
    rounds one to six below range, a stampede killing two thirds).
 
+## The ten slowest suites (#1017)
+
+Ten scripts took a third of the suite's seconds on the runner. Seconds of the suite on one machine (16 threads, run
+alone, before and after in the same session; a runner is 1.5 to 3 times slower per thread, so read the ratio):
+
+| Script | Before | After | What changed, and what it still proves |
+| --- | --- | --- | --- |
+| `rules/test_balance_targets` | 97.5 | 58.5 | the three "the gate can fail" tests run two small cells, not six; the climb test runs two cells, not three (below) |
+| `night/test_bot_bands` | 110.4 | 74.2 | the seated night's bodies are indexed (below); every seed and second kept |
+| `night/test_bot_grenade_soak` | 90.2 | 39.0 | the same; 3 seeds of 120 s kept |
+| `world/test_midway_fence_reach` | 93.5 | 81.6 | a hop stops settling once the state is a fixed point; the same 21,423 hops |
+| `world/smallmap/test_smallmap_bot_night` | 79.0 | 42.7 | a night stops when it has shown what its test asks for |
+| `night/test_bot_orders_night` | 68.2 | 64.2 | waits for the map's answer after a door, not 12 or 60 frames; the indexed bodies |
+| `night/test_bot_soak` | 53.6 | 25.5 | the indexed bodies |
+| `night/test_bot_combat` | 55.8 | 44.1 | the indexed bodies |
+| `night/test_bot_own_ammo` | 47.0 | 30.6 | the indexed bodies; waits for the map's answer after the door |
+| Total | 694.2 | 460.8 | 233 s (34 %) |
+
+`net/test_room_eight` (real sockets) was left alone, as the issue said.
+
+**Most of it was one missing physics step.** A seated night awaited one `physics_frame` after adding the players' bodies,
+but the signal fires before that iteration's step, so the bodies were still outside the physics index and
+`move_and_slide` cost 0.24 ms for a body standing still instead of 0.02 ms: a tick of four players 3.7 ms, 1.6 ms with a
+second await (`SeatedNight.start`). The bands' counts of shots, hits and blows are the same either way. The 917 tests of
+the `night` folder and the 1,518 of `bots`, `zombies`, `world` and `rules` pass with it.
+
+**The statistics keep their counts.** No seed, second or night count of a statistic was cut. What was cut:
+
+- *Balance gate.* The three tests that prove the gate can fail (drifted tuning, an easy game, ammunition out of reach)
+  read the cells that show the miss (a solo cell or two, 0.3 to 2 s at 20 nights; the 8 player cell is half of a batch at
+  9 s) and drop the checker's `no cell X` lines, so that an absent cell is not read as a miss. Each still fails when the
+  ranges are widened (checked). The climb test read three cells at 60 nights; it reads the 4 player night (the upgrade
+  carries 0.53 rounds of the climb, 0.3 asked) and the strong solo night (0.80), and no longer the 8 player night
+  (1.70, and the cell that costs the most).
+- *Smallmap.* An event is true once it has happened: the solo bot has shown round 4, the first link, four torn windows
+  and a weapon by 130 s of the 330 on all four seeds, so the night stops 30 s after (the cap on the dead alive is read
+  to the end); the team's three links by 60 s of 210, so it stops when the third is bought. A test that reads where a bot
+  is after a wait (the orders suites' "back at its order" after a ping's mark runs out) is true early for a trivial
+  reason, and its wait stays.
+- *Midway sweep.* A settling body whose tick changes nothing under an unchanged command leaves every later tick
+  unchanged: 19,667 of the sweep's 21,423 hops settled early, 299,114 of 1,670,994 ticks skipped, and none of the 19,667
+  ended in a different state than the full 24 ticks (0 mismatches). The grid and the hops are the same, and on the map
+  before the fix (#876) both tests fail as they did. Giving the sweep's body the extra physics frame saved a further
+  15 s but landed the hops at other floats, so its calibration (the 1 m grid, the recorded chain) would have to be
+  redone, and it was not taken.
+
+The method and the numbers (a tick's cost, the seed spread for sizing a statistic) are in the kit's
+`docs/godot/test-speed.md`.
+
 ## What was left alone, on purpose
 
 - `player/test_player_reconcile` is about the engine's own physics callback; its harness runs `_by_clock = true`, one
