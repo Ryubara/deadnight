@@ -311,6 +311,31 @@ health taken 0.0148 to 0.0018 a blast. The Rookie parity cell at x4 (24 nights, 
 beside the unchanged code: median 9 with a Kolmogorov distance of 0.56 before, median 9 and 0.42 after, so the doubled
 throws did not move the bots away from the model.
 
+## The grenade that hit a post at the bot's feet (#1019)
+
+`test_bot_grenade_soak.gd` failed on main in CI on seed 11 (0.830 of the thrower's health on one push, 0.255 on
+another; seeds 12 and 13 clean). It is not one change on main: the night is not repeatable to the blast (two runs of
+the same code in one process part by a millionth of a metre at tick 90, and every seed gives a different count of
+blasts on every machine), and #872 had already seen the tail it is, "the grenade hit a wall 0.7 m from the thrower"
+(0.195 of 24 nights). A probe in the soak's night (every throw: where the bot stood at the order and where the grenade
+left the hand, the order's view and the grenade's, the bounces; 24 nights) found it twice in 20 nights: the bounce was
+the drive-in's lamp post (`Lamp3`, a 0.1 m cylinder) 0.7 m in front of the thrower, the lob of 60 to 70 degrees went
+up into it and fell at the bot's feet (0.41 and 0.15 of its health).
+
+Two causes, both in the check made at the order:
+
+1. **The bot is not where it was when it ordered.** It orders a throw while it walks (a follow, a chase), brakes in a
+   fifth of a second and slides 0.3 to 1 m before it stands (the probe: 4 to 6 m/s at the order, 0 after 10 ticks, the
+   grenade leaving the hand 40 to 60 ticks after the order). The arc was checked, and the landing planned, from the
+   spot of the order. Now the throw is planned from `BotGrenadier.stop_point` (the bot's speed times `STOP_SECONDS`).
+2. **The check is a thin line.** The arc is six chords of one ray each, and the thrown grenade is a ray too, but from a
+   hand a few decimetres off the planned one, so a post or a wall corner a hand's breadth from the line is missed by
+   the check and hit by the grenade. Within reach of a blast that would hurt the bot (`SAFE_FROM_SELF` and the throw
+   margin) the strips `ARC_SPREAD` (0.3 m) to either side of every chord must be clear as well.
+
+Tests: `test_bot_grenadier.gd` (a post 0.25 m off the line stops the throw, one a metre off does not, a post past the
+reach of the blast does not, the stop point), the soak on seeds 11 to 13 and the 24-night probe below.
+
 ## Blasts and gibs free themselves (#929)
 
 `BlastEffect` was never freed in the night (it was written for the range, where the scene is thrown away): 20 blasts
