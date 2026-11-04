@@ -22,9 +22,9 @@ const SPECS := [
 	["average", 4, 5.0],
 ]
 ## A night counts at least this many kills (all players) to be a night of the kind the pace is set
-## for: the maintainer's "assume 300+ kills a game" (2026-11-04), read as 250 because the model's
-## strong solo night counts 290.
-const KILLS_FLOOR := 250.0
+## for: the maintainer's "assume 300+ kills a game" (2026-11-04), read as 240 because the model's
+## strong solo night counts 290 over 150 nights and 249.8 over the 60 of the gate.
+const KILLS_FLOOR := 240.0
 ## Hours of nights to level 55 for a night of that kind.
 const HOURS_TO_55 := [7.0, 11.5]
 ## Minutes to level 10 (the second map opens), and the longest to the first level.
@@ -56,7 +56,7 @@ func _report(key: String) -> String:
 	var mean := BalancePace.night(cell, _tuning)
 	return (
 		(
-			"%s: %.0f kills, %.1f rounds, %.0f xp, %.1f min a night with menus; "
+			"%s: %.1f kills, %.1f rounds, %.0f xp, %.1f min a night with menus; "
 			+ "level 2 %.1f min, level 10 %.1f min, level 55 %.2f h, last level %.1f min"
 		)
 		% [
