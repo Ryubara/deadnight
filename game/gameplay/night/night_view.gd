@@ -18,6 +18,9 @@ const SHOCK_SHAKE := 0.25
 ## Where the gibs of a zombie a blast killed start, and how hard they are thrown up.
 const GIB_LIFT := Vector3(0.0, 1.0, 0.0)
 const GIB_THROW := 2.0
+## The most seconds the dead's voices go without being updated, though the crowd has not moved
+## (a crowd standing quite still): the idle voices and the clock are on their time.
+const VOICE_REFRESH_SECONDS := 0.25
 
 var horde: ZombieHorde
 ## The outline through walls on the last zombies of a round.
@@ -50,6 +53,8 @@ var _state: ClientState
 var _projectile_views: Dictionary[int, ProjectileView] = {}
 ## Shocks drawn so far: each one's bolts start from a different seed.
 var _shocks := 0
+## Seconds of frames since the dead's voices were last updated (`_on_event`).
+var _voice_time := 0.0
 var _elements_shown := 0
 ## The flames on the zombies that burn, by zombie id (`ElementFx.burn`): one fire a zombie.
 var _burning: Dictionary[int, ElementFx] = {}
@@ -216,12 +221,18 @@ func _on_event(event: Dictionary) -> void:
 	match event["type"]:
 		&"frame":
 			began = PerfProbe.begin()
-			horde.apply_snapshot(event["zombies"], step)
+			var moved := horde.apply_snapshot(event["zombies"], step)
 			marks.apply_frame(event.get("phase", -1), event.get("remaining", 0))
 			PerfProbe.end(&"view.horde", began)
-			began = PerfProbe.begin()
-			voices.update(_state.zombies, step)
-			PerfProbe.end(&"view.voices", began)
+			# The dead's voices follow the crowd as the views do: once for each new set of bytes
+			# (and now and then for a crowd that stands quite still, whose idle voices are due),
+			# with the time since the last.
+			_voice_time += step
+			if moved or _voice_time >= VOICE_REFRESH_SECONDS:
+				began = PerfProbe.begin()
+				voices.update(_state.zombies, _voice_time)
+				_voice_time = 0.0
+				PerfProbe.end(&"view.voices", began)
 			_step_grenades()
 			_step_projectiles()
 		&"grenade_thrown", &"grenade_dropped":

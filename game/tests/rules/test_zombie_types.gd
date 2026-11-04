@@ -113,6 +113,7 @@ func test_a_spawn_names_its_type_and_what_the_world_needs() -> void:
 		"damage",
 		"knockback",
 		"telegraph_seconds",
+		"reach",
 		"barrier_speed",
 		"hit_chance",
 	]:
@@ -213,7 +214,7 @@ func test_a_type_pays_its_multiplier() -> void:
 	var brute_pay := _kill_pay(brute)
 	var multiplier := _t.roster.type_of(&"brute").points_multiplier
 	assert_int(walker_pay).is_equal(_t.economy.kill)
-	assert_int(brute_pay).is_equal(roundi(_t.economy.kill * multiplier))
+	assert_int(brute_pay).is_equal(PointSteps.award(_t.economy.kill * multiplier))
 
 
 func test_a_boss_pays_more_hits_than_an_ordinary_zombie() -> void:
@@ -223,7 +224,9 @@ func test_a_boss_pays_more_hits_than_an_ordinary_zombie() -> void:
 	for _i in 10:
 		rules.apply(RulesAction.hit(1, zombie_id, RulesAction.ZONE_BODY, 1.0))
 	var paid := rules.points_of(1) - before
-	var per_hit := roundi(_t.economy.hit * _t.roster.type_of(&"headliner").points_multiplier)
+	var per_hit := PointSteps.award(
+		_t.economy.hit * _t.roster.type_of(&"headliner").points_multiplier
+	)
 	assert_int(paid).is_equal(10 * per_hit)
 
 

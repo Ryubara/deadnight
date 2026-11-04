@@ -20,6 +20,19 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 ## `PROJECTILE` weapon instead; this flag is for the rare hitscan weapon whose beam should show.
 @export var tracer: bool = false
 
+@export_group("Class")
+## What kind of gun this is (`WeaponClass`): the yardstick the audit judges it by
+## (`WeaponClassTargets`, docs/design/weapons.md "The audit").
+@export var weapon_class: WeaponClass.Id = WeaponClass.Id.PISTOL
+
+@export_group("Source")
+## Where a wall may sell it (`WallTier`): 1 the sidearm and the hand weapons, 2 the older long guns,
+## 3 only the prize crane.
+@export_enum("Hand:1", "Long:2", "Box:3") var wall_tier: int = 3
+## The weight of this weapon in the prize crane's draw (`ShopItem.roll`); a map's box may list it
+## or leave it out, and may set its own weights.
+@export_range(0.0, 20.0, 0.1, "or_greater") var crane_weight: float = 1.0
+
 @export_group("Damage")
 ## Per pellet (hitscan), on a direct hit (projectile) or per swing (melee), on the body zone and
 ## at point blank.

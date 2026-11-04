@@ -400,6 +400,9 @@ func _turn_view(look: Vector2) -> void:
 	# the look is sent through the stretch in advance: the player receives exactly `look`.
 	var motion := InputEventMouseMotion.new()
 	motion.relative = get_viewport().get_final_transform().basis_xform(look)
+	# The player turns by `screen_relative`: the layer's look is already in mouse pixels, the same
+	# at every window size, so it is sent as it is.
+	motion.screen_relative = look
 	motion.position = get_viewport().get_final_transform() * get_viewport().get_mouse_position()
 	motion.device = TouchLook.DEVICE
 	TouchLook.sent += 1

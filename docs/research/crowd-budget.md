@@ -137,6 +137,11 @@ deltas. Bandwidth is not the limit at this size.
   that says nothing counts as a browser, so the safe number holds). A browser that joins a night of
   desktop players takes the crowd down to 40 for what spawns next; one that leaves puts it back. The rules' cap
   (`GameRules.crowd_ceiling`) and the sim's hard cap are set together.
+- **A bot is not a client** (#946): it has no screen, so the ceiling follows the **people's** platforms, not the seats'.
+  `NightServer` registers no platform for a bot's seat (before, a hosted bot was registered as a browser and any night
+  with a bot stood 40 on a desktop). A person who takes a bot's seat counts as a browser until its client says what it
+  is; a bot that inherits a seat drops the leaver's platform. A night with nobody but bots follows this process's own
+  platform. The cost at the higher ceiling is in [the bots section](#bots-and-the-desktop-ceiling-946).
 - The match settings' slider offers the host's platform's ceiling (a browser host 40, a desktop host 120).
 - **A server operator's cap**: `MAX_ALIVE` (`ServerConfig`) caps every night of the process. The rooms of one process
   share one thread's tick, so what the deployed server takes is sized in [the last section](#rooms-in-one-process-561)
@@ -147,6 +152,75 @@ deltas. Bandwidth is not the limit at this size.
 What this does not say: one machine of each kind and four standing players; a crowd chasing four moving players spreads
 the neighbours and costs less in separation and more in paths; four rooms in one process were not run together; the
 Discord proxy and a lossy link were not measured.
+
+### Bots and the desktop ceiling (#946)
+
+A hosted bot joined the crowd's table as a browser, so on a desktop any night with a bot stood the web's 40. A bot has
+no screen and no platform: **the ceiling follows the people's platforms** and a bot's seat is not in the table
+(`NightServer._join`; a person taking a bot's seat registers as a browser until its client says what it is; a bot
+inheriting a seat drops the leaver's flag; `test_bot_crowd_ceiling.gd`). Nobody but bots follows the process's
+platform (a Linux game server: 120). A person on the web build still holds the room at 40, with bots or not.
+
+What the lift costs, measured as the performance review did ([#907](https://github.com/Ryubara/deadnight/issues/907)):
+the real night (HUD, the autopilot as the person, 3 bots, 3x, from round 12, seed 1), the person told it is a desktop,
+150 s a headless run and 110 s a windowed one, two runs of each arm one after the other, counted over the ticks with
+at least 85 alive (99 is the rules' cap there; 34 or more for the old arm, whose cap is 40). "Old" is the build before
+the fix, bots registered as browsers (ceiling 40); "new" is the fix (ceiling 120, 99 stood). Debug build, the machine
+at 95 to 100 % CPU the whole time, so read the ratio and the order, not the milliseconds.
+
+| | Ceiling / alive | Labelled tick, headless (ms of 16.7) | Windowed 1280 x 720, frame mean / p95 / p99 | Frames over 25 ms |
+| --- | --- | --- | --- | --- |
+| Old (bots as browsers) | 40 / 38 | 5.9 and 5.9 | 6.6 / 13.3 / 16.5 and 6.4 / 13.4 / 21.1 | 0 % and 1 % |
+| New (bots do not count) | 120 / 99 | 12.1 and 8.1 | 16.4 / 29.6 / 38.1 and 12.5 / 21.8 / 31.8 | 11 % and 3 % |
+
+The tick is `pump + server + client + bots + the autopilot` of `Night.tick`, the labels of the review. The nodes at the
+end were 5446 (old) and 5955 (new, the extra dead and their views), with no orphans in either. The tick at 99 alive is
+8 to 12 ms of the 16.7 ms budget: it fits, with the margin the machine's load takes away. Frame time doubles (as the
+issue read), and on this loaded machine 3 to 11 % of the frames go over 25 ms. The review put about 4.8 ms a tick of
+crowd work in #930 (the client's crowd decode once a step) and #931 (the server's crowd lists once a step); this
+measurement is without them. The ceiling number itself (120, #453) is unchanged: it comes from the Railway server step
+(p95 14.8 ms at 120) and the 2.4 ms client draw above, which this run does not contradict.
+
+### The client's script in the tick, with bots: the crowd is decoded once (#907, #930)
+
+The decision above counted the client's draw and the server's step, not the client's GDScript in the tick. The review
+of #907 (a night at round 12, 3 bots, `count_multiplier` 3, the desktop ceiling, about 98 alive, headless so no draw
+cost, a busy machine) found the client side of a 60 Hz tick (`tick.pump`) as large as the server's step. Part of it
+was the same bytes read again and again: the frame event carries one `PackedByteArray` of zombies to every reader, and
+the readers (the person's `ClientState`, one more for **each bot**, the horde for the views) each decoded all of it,
+five decodes a tick with three bots, though the simulation steps at 30 Hz and every second frame holds the bytes of the
+one before.
+
+What changed:
+
+- `ZombieCodec.decode_shared` keeps the last bytes and entries and hands the same list out again; `ClientState` and the
+  horde use it. A reader never changes the list or an entry (`ZombieCodec.decode_count` is what a test counts).
+- `ZombieHorde.apply_snapshot` returns without touching a view when its bytes are the ones it applied last, and keeps
+  the time for the next one. The views walk to the new place over the ticks since the last (`ZombieView._move_to`), as
+  a client of a server always did, so the dead still move evenly (`test_zombie_shared_decode.gd`).
+- `NightView` updates the dead's voices (`ZombieVoices.update`) only when the horde moved, with the time since the last
+  (and at least every 0.25 s, for a crowd that stands quite still). A hit, a cripple or a death changes the bytes
+  (the mode, the look), so it is never late; a swing's sound can start up to one step (33 ms) after the tick it was
+  due on.
+
+Measured with the review's probe (`PerfProbe` labels, mean microseconds a tick over the ticks with 85 or more standing,
+3,300 ticks; headless, 3 bots, round 12, `count_multiplier` 3, the desktop ceiling): the base commit and the branch run
+**at the same time** on the same night (the rounds and counts are the same in both). Two pairs on a quiet machine, and
+one on a very busy one (about twice the time):
+
+| Label | Quiet before | Quiet after | Busy before | Busy after |
+| --- | ---: | ---: | ---: | ---: |
+| `tick.pump` (the client side) | 2,937 / 2,734 | 1,732 / 1,594 | 11,087 | 5,855 |
+| `event.frame` (a frame applied to every `ClientState` and the view) | 2,406 / 2,230 | 1,202 / 1,128 | 8,962 | 4,056 |
+| `view.horde` | 674 / 635 | 280 / 278 | 2,506 | 847 |
+| `view.voices` | 665 / 593 | 417 / 389 | 3,096 | 1,747 |
+| `horde.decode` | 173 / 154 | 1 / 1 | 536 | 1 |
+
+Decodes of the crowd: about 4.5 a tick before (541 in 120 ticks of a night with 3 bots, `test_zombie_shared_decode.gd`),
+3,118 in 6,000 ticks after (one for each simulation step). About 1.1 to 1.2 ms of a quiet tick, and 5 ms of a busy one.
+
+What is left: `view.voices` is still the largest of these (the loop runs for each step and sorts the due idle voices),
+and `event.frame` still carries the 19 listeners of the frame and the HUD. The server's lists are #931.
 
 ### The browser by system, and on a weak processor (#105)
 
@@ -167,6 +241,45 @@ ones carry the fixed costs of drawing a skinned model; 0.01 on the desktop), and
 89 ms a frame with 40 zombies in the shipped night ([above](web-export.md#big-crowds-in-the-browser-from-the-autopilot-171)),
 so read the bench for the share a crowd takes and the night for what a player gets. Not run: Firefox (not installed on
 the machine) and a real weak laptop; the slowed processor is the stand-in.
+
+### The server's crowd lists, once a step (#931)
+
+The review of #907 found the server building lists for the dead at 60 Hz that change at 30 Hz: the target list twice a
+tick (the combat server's, then the grenades'), the combat and grenade servers' own copies of it and the lag history's
+frame, a host with bots building the whole frame (and the zombies' bytes in it) on every tick, which gave back half of
+what the build every second tick above saved, and `NightWorld.shop_spots()` making 19 dictionaries for every player's
+prompt on every tick. The fix keys them on `ZombieSim.revision`, a number that moves with every step and every change
+to a zombie (a spawn, a hit that staggers, a blast, a status, a cripple, a death, a relocation):
+
+- `NightServer._target_list()` and the frame's zombie bytes are built once for a revision. A kill between two steps
+  moves it, so the grenades' second ask rebuilds only when a shot killed something in the tick.
+- `CombatAction.targets(list, revision)` and `GrenadeAction.targets(list, revision)`: the same number as the last
+  action keeps the server's table. The combat server still records a frame in the lag history on every tick, as the
+  same table (`LagCompensator.record_again`), so a rewind between two ticks blends exactly as before.
+- `shop_spots()` reads the markers once and hands out the same read-only list.
+
+A test rig that writes a `ZombieBody` field by hand (`SeatedNight.drop_zombie`, the staging) calls `sim.touch()`; the
+sim's own methods already do. Without it the new place shows at the next step, up to one tick late.
+
+Measured with the review's probe (`measure.gd` of #907: a real `Night` with the HUD, three bots, 3x, round 12, the
+desktop ceiling, 100 s, the ticks with 85 or more alive), headless. The two builds ran **at the same time** on the same
+loaded machine, two pairs, the same seed (the runs are bit-for-bit the same night: the same 3,300 ticks and the same
+alive count in both arms). Mean microseconds a tick:
+
+| Label | Before (A / B) | After (A / B) | Change |
+| --- | ---: | ---: | ---: |
+| `tick.server` (all the server's work) | 4,256 / 4,318 | 3,094 / 3,150 | **-1.1 ms (-27 %)** |
+| `server.target_list` (the first ask of a tick) | 544 / 566 | 299 / 304 | -0.25 ms |
+| `server.frame` (the frame, the grenades and their second ask) | 1,474 / 1,498 | 630 / 626 | **-0.85 ms (-58 %)** |
+| `server.encode` | 135 / 144 | 72 / 71 | -0.07 ms |
+| `server.combat` | 310 / 305 | 215 / 213 | -0.1 ms |
+| `server.zombies`, `server.move`, `server.act` | | | no change (not touched) |
+
+The counts, which a loaded machine does not move: 6,600 target lists built in the 3,300 ticks before (two a tick), 1,806
+after (one for each step, 1,650, and 156 more for the ticks a kill or a spawn came between); 3,300 encodes of the
+zombies before, 1,735 after. An earlier run on a busier machine read `tick.server` at 11.4 ms for the same night (the
+review's 5.8 ms was a quieter hour): read the ratio of two runs made together, not the milliseconds. No
+ceiling moves on this; the saving is about a quarter of the server's work at this crowd and grows with the crowd.
 
 ## Rooms in one process (#561)
 

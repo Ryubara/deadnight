@@ -113,7 +113,8 @@ var circuits: Dictionary[StringName, bool] = {}
 ## armband's); the server gives the lowest free one, so the state does too until it is told
 ## (a `player_look` event). The look is a `CharacterLook.to_dict` ({} for the seat's own preset).
 ## "bot" (true when a bot plays the seat: the roster shows BOT after the name, `name_of`) is the
-## server's too. "kills", "downs", "revives" and "ping" (milliseconds, `NO_PING` when the night has
+## server's too. "headshots" and "rounds" (the rounds stood at the end of) are the end board's.
+## "kills", "downs", "revives" and "ping" (milliseconds, `NO_PING` when the night has
 ## no link to measure) are the server's counts, set from its frames and snapshot
 ## (`set_player_stats`), never counted here. "dead" (bled out), "bleed" (seconds a downed player has
 ## left), "revive" (the hold's progress, 0 to 1), "reviver" (who holds it, 0 for nobody) and
@@ -295,6 +296,14 @@ func set_player_stats(
 	_flush()
 
 
+## The server's tally for the end-of-night board: the zombies this player killed with a shot to the
+## head and the rounds they stood at the end of. Whole counts, like the stats.
+func set_player_tally(player_id: int, headshots: int, rounds: int) -> void:
+	var member := _member(player_id)
+	member["headshots"] = headshots
+	member["rounds"] = rounds
+
+
 ## The server's word on one player's revive: whether they bled out, the seconds a downed player has
 ## left, how far the hold on them has got (0 to 1), who holds it (0 for nobody) and the seconds left
 ## of the revive perk getting them up alone (0 for none; the bleed-out clock stands still).
@@ -444,6 +453,7 @@ func load_snapshot(data: Dictionary) -> void:
 		member["points"] = int(saved.get("points", 0))
 		member["grenades"] = int(saved.get("grenades", 0))
 		member["kills"] = int(saved.get("kills", 0))
+		member["headshots"] = int(saved.get("headshot_kills", 0))
 		member["downs"] = int(saved.get("downs", 0))
 		member["bot"] = bool(saved.get("bot", false))
 	night_clock = floori(float(data.get("night_time", 0.0)))
@@ -803,6 +813,8 @@ func _member(player_id: int) -> Dictionary:
 			"seat": _free_seat(),
 			"look": {},
 			"kills": 0,
+			"headshots": 0,
+			"rounds": 0,
 			"downs": 0,
 			"revives": 0,
 			"ping": NO_PING,

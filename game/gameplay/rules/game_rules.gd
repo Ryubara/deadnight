@@ -28,9 +28,10 @@ extends RefCounted
 ##   settings_changed: settings (MatchSettings.to_dict), after a configure action, before the start
 ##   round_started: round, zombie_count, special_id (&"" for a normal round), boss_count
 ##   special_round_cleared: round, special_id, reward (paid to each player on their feet)
-##   round_ended: round, special_id
+##   round_ended: round, special_id, standing (the ids of the players not down when it ended)
 ##   zombie_spawn_requested: zombie_id, zombie_type, look, boss, health, speed, point_roll (spawn
-##     point = point_roll % count), damage, knockback, telegraph_seconds, barrier_speed, hit_chance
+##     point = point_roll % count), damage, knockback, telegraph_seconds, reach, barrier_speed,
+##     hit_chance
 ##   zombie_damaged: zombie_id, zombie_type, player_id, zone, damage (what was taken off), health
 ##     (left), max_health
 ##   zombie_removed: zombie_id, zombie_type, boss, cause (killed or gone), killer_id (-1 when no
@@ -96,11 +97,12 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 14 added each player's `self_revives` and `self_revive_left` (the revive perk), 13 the carry
-## (`weapons`, `recuts_lost`), 12 `revives`, `dead`, `bleed_left`, 11 `downs` and `night_time`, 10
-## `match_settings`, 9 `upgraded` weapons, 8 the crane, 7 `barricades`, 6 health, 5 the plan and
-## a zombie's type. Two older layouts both called themselves 4; older snapshots are `bad_version`.
-const SNAPSHOT_VERSION := 14
+## 15 took `recuts_lost` out of each player (a re-cut costs the same every time, #909), 14 added
+## each player's `self_revives` and `self_revive_left` (the revive perk), 13 the carry (`weapons`),
+## 12 `revives`, `dead`, `bleed_left`, 11 `downs` and `night_time`, 10 `match_settings`, 9
+## `upgraded` weapons, 8 the crane, 7 `barricades`, 6 health, 5 the plan and a zombie's type. Two
+## older layouts both called themselves 4; older snapshots are `bad_version`.
+const SNAPSHOT_VERSION := 15
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -249,6 +251,12 @@ func kills_of(player_id: int) -> int:
 	return player.kills if player != null else 0
 
 
+## Zombies this player has killed with a shot to the head (or the weak spot) this night.
+func headshots_of(player_id: int) -> int:
+	var player := players.get(player_id) as PlayerState
+	return player.headshot_kills if player != null else 0
+
+
 ## Times this player has gone down this night.
 func downs_of(player_id: int) -> int:
 	var player := players.get(player_id) as PlayerState
@@ -279,7 +287,7 @@ func is_door_open(door_id: StringName) -> bool:
 
 
 ## What an item costs right now, or -1 when there is no such item. With a `player_id`, what that
-## player pays: a re-cut costs more for each weapon they have re-cut already (-1 for no player).
+## player pays (the same for every player today; -1 for no such player).
 func price_of(item_id: StringName, player_id: int = -1) -> int:
 	var item := tuning.economy.item(item_id)
 	if item == null:
@@ -610,6 +618,7 @@ func _spawn_one() -> void:
 			"damage": type.damage,
 			"knockback": type.knockback,
 			"telegraph_seconds": type.telegraph_seconds,
+			"reach": type.reach,
 			"barrier_speed": type.barrier_speed,
 			"hit_chance": type.hit_chance,
 		}
@@ -645,11 +654,16 @@ func _remove_zombie(
 
 func _end_round() -> void:
 	var economy := tuning.economy
+	# Who stood at the end of it, before the downed are got up: the board's rounds survived.
+	var standing: Array = []
+	for player: PlayerState in players.values():
+		if not player.downed:
+			standing.append(player.id)
 	for player: PlayerState in players.values():
 		# The cap on repair pay runs from one round's end to the next: the break's repairs count.
 		player.repair_points_this_round = 0
 		if player.downed:
-			var penalty := floori(player.points * economy.down_penalty_fraction)
+			var penalty := PointSteps.loss(player.points * economy.down_penalty_fraction)
 			if penalty > 0:
 				player.points -= penalty
 				_emit(
@@ -668,7 +682,7 @@ func _end_round() -> void:
 				_award(player.id, _special.reward_at(round_number), &"special_reward")
 	if _special != null:
 		_emit(&"special_round_cleared", _special.cleared(round_number))
-	_emit(&"round_ended", {"round": round_number, "special_id": special_id()})
+	_emit(&"round_ended", {"round": round_number, "special_id": special_id(), "standing": standing})
 	_special = null
 	_enter_break(settings.break_for(tuning.rounds))
 
@@ -796,7 +810,9 @@ func _blow(action: Dictionary) -> void:
 			_check_game_over()
 
 
-func _award(player_id: int, amount: int, reason: StringName) -> void:
+func _award(player_id: int, raw_amount: int, reason: StringName) -> void:
+	# The one place awards are rounded: every source ends here (`PointSteps`).
+	var amount := PointSteps.award(raw_amount)
 	if amount <= 0:
 		return
 	var player: PlayerState = players[player_id]
@@ -871,7 +887,7 @@ func _paid_hit_limit(type: ZombieType) -> int:
 
 
 func _scaled(points: int, type: ZombieType) -> int:
-	return roundi(float(points) * type.points_multiplier)
+	return PointSteps.award(float(points) * type.points_multiplier)
 
 
 ## Why this hit cannot land, or an empty name when it can.

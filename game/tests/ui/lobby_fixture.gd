@@ -95,6 +95,8 @@ static func lobby(members: Array, state := "open", round_number: Variant = null)
 		"state": state,
 		"round": round_number,
 		"players": null,
+		# The real backend always says: null while the host has set no rules.
+		"settings": null,
 	}
 
 

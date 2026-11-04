@@ -1,3 +1,5 @@
+# gdlint:disable=max-public-methods
+# The body is the boundary between the night and the view: every method is one of those doors.
 class_name Player
 extends CharacterBody3D
 ## Third-person player node: samples the controls into a command each physics tick, runs the
@@ -54,6 +56,10 @@ var has_model := true
 ## True for a body made by `make_puppet`: the drawn copy of a player on another machine.
 var is_puppet := false
 var last_command := PlayerCommand.new()
+## The dead this body is stopped by (#914), filled before each tick by whoever moves the body: the
+## server from what this player's client saw, a predicting client from the frame it drew. Without
+## one (a test's body) nothing stops it.
+var dead: DeadField
 ## Whether the mouse really is captured, as the platform says.
 var grip := MouseGrip.new()
 ## The look belongs to something else for now (the bot command wheel reads the mouse and the right
@@ -127,7 +133,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and mouse_enabled() and not TouchLook.is_stray(event):
 		if look_locked:
 			return
-		camera_rig.look_mouse((event as InputEventMouseMotion).relative)
+		# Screen pixels, not the stretched `relative` (#928, `MouseMotion`).
+		camera_rig.look_mouse(MouseMotion.pixels(event as InputEventMouseMotion))
 	elif event.is_action_pressed(&"pause") and capture_mouse and _controls_enabled:
 		set_controls_enabled(false)
 	elif event is InputEventMouseButton and event.pressed and capture_mouse:
@@ -168,9 +175,24 @@ func make_puppet() -> void:
 	collision_layer = 0
 	collision_mask = 0
 	set_physics_process(false)
-	var rig := get_node(^"CameraRig") as ThirdPersonCamera
-	rig.set_process(false)
+	make_viewless()
+
+
+## Makes this body one no one looks through, before it is in the tree: a bot's, a remote player's on
+## the server, a puppet. It gives up the view (`release_view`) and its camera rig is not run in
+## every drawn frame (`ThirdPersonCamera.rest`); what reads the rig (the weapon's pose) is told the
+## look in each tick instead (`tick`), and a bot's aim, which the server takes from its command,
+## never read it. `look_through` makes it a view again.
+func make_viewless() -> void:
 	release_view()
+	(get_node(^"CameraRig") as ThirdPersonCamera).rest()
+
+
+## Makes this body the view: its camera is the current one and its rig runs in every drawn frame
+## (the autopilot's body under the shoulder camera).
+func look_through() -> void:
+	camera_rig.resume()
+	camera_rig.camera().make_current()
 
 
 ## Gives up the view: the body's camera does not start `current`, so a body that enters the tree
@@ -306,23 +328,33 @@ func _idle_command() -> PlayerCommand:
 ## Run one tick of the simulation with `command` and show the result.
 func tick(command: PlayerCommand) -> void:
 	last_command = command
-	PlayerSimulation.simulate(self, state, command, tuning, get_physics_process_delta_time())
+	PlayerSimulation.simulate(self, state, command, tuning, get_physics_process_delta_time(), dead)
 	rotation.y = state.facing
 	_ease_step(state.stepped_up, get_physics_process_delta_time())
-	camera_rig.aiming = state.aiming
-	camera_rig.side = state.shoulder_side
-	camera_rig.sprinting = state.sprinting
-	camera_rig.crouching = state.crouching
-	camera_rig.downed = _animation != null and _animation.is_downed()
-	camera_rig.ground_speed = state.ground_speed()
-	camera_rig.grounded = state.on_floor
-	camera_rig.track(global_position)
+	if camera_rig.is_resting():
+		_aim_resting_rig(command.yaw, command.pitch)
+	else:
+		camera_rig.aiming = state.aiming
+		camera_rig.side = state.shoulder_side
+		camera_rig.sprinting = state.sprinting
+		camera_rig.crouching = state.crouching
+		camera_rig.downed = _animation != null and _animation.is_downed()
+		camera_rig.ground_speed = state.ground_speed()
+		camera_rig.grounded = state.on_floor
+		camera_rig.track(global_position)
 	if state.jumped:
 		jumped.emit()
 	if state.landed:
 		landed.emit(state.landed_speed)
 	if state.footstep:
 		footstep.emit(state.ground_speed(), state.sprinting)
+
+
+## The look of a rig that is not run (`make_viewless`), from the head: what the weapon's pose reads.
+func _aim_resting_rig(view_yaw: float, view_pitch: float) -> void:
+	camera_rig.aim_along(
+		global_position + Vector3(0.0, tuning.pivot_height, 0.0), view_yaw, view_pitch
+	)
 
 
 ## The body is lifted onto a ledge in one tick (the simulation's business), the model it carries
@@ -351,7 +383,10 @@ func teleport(position: Vector3) -> void:
 	_model.position = _model_rest
 	# Drawn here from the next frame on, not slid in from where it stood.
 	reset_physics_interpolation()
-	camera_rig.snap_to(position)
+	if camera_rig.is_resting():
+		_aim_resting_rig(camera_rig.yaw, camera_rig.pitch)
+	else:
+		camera_rig.snap_to(position)
 
 
 ## Whether the controls act. A gamepad needs no mouse: it plays while the mouse waits for its lock.

@@ -21,12 +21,12 @@ numbers below are what the profiles give most weapons; [the table](#what-each-we
 | | |
 | --- | --- |
 | Item | `upgrade_weapon` (`ShopItem.Kind.UPGRADE`) |
-| Price | **1,500**, and 1,500 more for each weapon you have already re-cut (1,500, then 3,000, then 4,500) |
+| Price | **5,000 flat**: the same for the first, the second and the third weapon, for every player and every round (#909). The step it had (1,500, then 3,000, then 4,500) is gone |
 | Damage | x1.75 on every hit: each pellet and each blast (a flare does no damage, so it gains nothing) |
 | Magazine and reserve limit | x1.5, rounded up (the revolver holds 15 and carries 120, the Tommy gun 45 and 270); the flare gun's are its own ([below](#the-four-elements)) |
 | Filled | the magazine and the reserve come back full at the new size, a reload in progress is dropped |
 | Name | the profile's `recut_name` ("Re-Cut Revolver"), or "Re-Cut " before the weapon's name when it has none (the nine new weapons, whose display names are the maintainer's choice) |
-| Which weapons | every weapon with a profile: the five on `main` and the nine new ones, once each. The crowbar, bat and axe have no magazine and no profile |
+| Which weapons | every weapon with a profile: the five on `main` and the nine new ones, **once each**: a weapon that was re-cut is refused, at the bench ("ALREADY RE-CUT. A WEAPON CAN BE RE-CUT ONCE") and in the rules (`ALREADY_OWNED`), and costs nothing. A weapon given up (a third bought over it) takes its re-cut with it, and a fresh copy is a new weapon that can be re-cut once, for 5,000 again. The maintainer may allow a second re-cut later (#909: "for now") The crowbar, bat and axe have no magazine and no profile |
 | Card | "Re-cut: Revolver, DAMAGE x1.75, ROUNDS x1.5, FIRES SLOWER, EXPLOSIVE ROUNDS": the profile says what it does, from its numbers |
 
 What does not change, unless a profile says so: the fire interval (the revolver's grows), reload time, spread,
@@ -80,7 +80,7 @@ other perks.
 | --- | --- | --- |
 | Where | the projection booth ([the lot](map.md#shop-spots)) | the concession stand |
 | Look | a cast-iron bench with two brass film reels on its tower, a sprocketed film strip along its front, a cradle under a press with a hot head, five ready lamps, a "RE-CUT / WHILE-U-WAIT" sign | a red and cream counter with a chrome band, a back bar of bottles, a tank of fizzing tonic, a tap with a lever, a neon heart over a "HEARTY" board |
-| Prompt | "Re-cut: Revolver, damage x1.75, rounds x1.5, 1500 points"; "this weapon is already re-cut"; "nothing to re-cut in your hand" | "Hearty tonic, +50 most health, 1000 points"; "you have had yours" |
+| Prompt | "Re-cut: Revolver, damage x1.75, rounds x1.5, 5000 points"; "already re-cut. A weapon can be re-cut once"; "nothing to re-cut in your hand" | "Hearty tonic, +50 most health, 1000 points"; "you have had yours" |
 | On a purchase | the weapon lies on the cradle (plain), the reels spin up, the press drops and strikes at 0.8 s: a flash, a ring of light and sparks in the skin's cold blue, the head and the lamps and the bench's one light turn the same colour, and the weapon's skin sweeps on from butt to muzzle in 0.55 s; the lamps chase, a bell at 1.55 s; 2.4 s in all, the booth's amber back at the end | the lever pulls, the cork pops, the tumbler fills, the gulp at 0.55 s flashes the heart; 1.3 s in all |
 | Sound | `buy_recut` (a recipe, 2.5 s: the reels' motor under a charging whine that climbs to the strike, a discharge with an arc of crackle and a rush up through the bright band at 0.8 s, glass notes climbing as the weapon changes, and at 1.55 s the ring that the re-cut layer rings with; no ElevenLabs); the re-cut weapon then sounds upgraded for good ([the layer](audio.md#the-energy-weapons-and-the-re-cut-layer)) | `buy_tonic` (the cork and the gulp) |
 | HUD | the ammo card says "Re-Cut Revolver" and the bigger magazine and reserve; the feed says "had a weapon re-cut" | the health card reads the new most (150); the feed says "drank the hearty tonic" |
@@ -110,9 +110,9 @@ tier]`, the second wire change of #281).
 in [#820](https://github.com/Ryubara/deadnight/issues/820) on the status system of
 [#788](https://github.com/Ryubara/deadnight/issues/788). The research
 ([the roster](../research/weapon-roster.md#the-upgrade-station-what-the-genre-does-and-what-ours-does)) found no reason
-to change the re-cut: it stays **1,500 points (+1,500 per weapon already re-cut), x1.75 damage, x1.5 magazine and
-reserve limit, filled, once a weapon**. What the plan adds is which weapons it goes on, what each one becomes, and the
-**elements**.
+to change the re-cut: it stayed **1,500 points (+1,500 per weapon already re-cut; 5,000 flat since #909), x1.75
+damage, x1.5 magazine and reserve limit, filled, once a weapon**. What the plan adds is which weapons it goes on,
+what each one becomes, and the **elements**.
 
 - **Fourteen of the seventeen are re-cut**: the five that are now plus the nine new ones. `UpgradeTuning.profiles` (what
   `UpgradeTuning.allows` reads, in place of the old list of ids) has a row for each, `mp5`, `ppsh`, `m4a1`, `m249`,
@@ -174,6 +174,7 @@ simulator's worth of each is in [the research](../research/weapon-roster.md#what
 
 | Weapon | Re-cut hit | Magazine | Reserve (limit) | Round 15, body / head | Element or special |
 | --- | ---: | ---: | --- | ---: | --- |
+| House Pistol (#898, the start) | 14 | 23 | 135 (225) | 22 / 9 (300 health on the current curve) | numbers only (the explosive rounds stay on the revolver: an open question for the maintainer) |
 | Revolver | 42 | 15 | 60 (120) | 7 / 3 | **explosive rounds** (0.40 s) |
 | Tommy gun | 24.5 | 45 | 180 (270) | 12 / 6 | numbers only |
 | Double-barrel | 38.5 x 8 | 3 | 24 (48) | 1 / 1 | numbers only: it is a close one-pull kill already |
@@ -200,5 +201,5 @@ simulator's worth of each is in [the research](../research/weapon-roster.md#what
   player against 12.4 for the re-cut revolver, the ray gun 16.3, the dual pistols 13.8 and the PPSh 13.1
   ([the table](../research/weapon-roster.md#what-a-weapon-is-worth-average-solo-150-nights-seed-1)). The simulator
   does not model the elements; a weapon whose element is not measurable is held by the numbers above, not by the model.
-- **The cost does not change** with the roster: 1,500 for the first, then +1,500 each. A weapon given up loses its re-cut
-  (`recuts_lost`) and a fresh copy can be re-cut again at the stepped price.
+- **The cost does not change** with the roster: 5,000 for every re-cut (#909; it was 1,500 and 1,500 more for each weapon
+  already re-cut). A weapon given up loses its re-cut and a fresh copy can be re-cut again at the same price.

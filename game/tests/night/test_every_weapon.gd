@@ -65,7 +65,7 @@ func test_the_crane_holds_every_weapon_the_shop_and_the_start_do_not_give() -> v
 		assert_array(sources[id]).contains([&"crane"])
 	for prize in _crane_pool(tuning):
 		assert_bool(WeaponCatalog.catalog_id(prize) in WeaponCatalog.IDS).is_true()
-	assert_int(tuning.economy.item(&"crane_play").pool_weights.size()).is_equal(
+	assert_int(tuning.economy.item(&"crane_play").weights().size()).is_equal(
 		_crane_pool(tuning).size()
 	)
 

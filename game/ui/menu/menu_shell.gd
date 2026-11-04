@@ -13,6 +13,8 @@ const PAD := 64.0
 const PAD_COMPACT := 28.0
 const TOP := 150.0
 const TOP_COMPACT := 104.0
+## The least space between the tab bar and the plate.
+const PLATE_GAP := 16.0
 const BOTTOM := 96.0
 const BOTTOM_COMPACT := 64.0
 ## Radians per second of the soldier's turn at full right stick, and per pixel of a drag.
@@ -50,6 +52,7 @@ func _ready() -> void:
 	# Back on top after a night: the phone factor the night set aside comes back.
 	visibility_changed.connect(_apply_scale)
 	get_window().size_changed.connect(_on_window_resized)
+	resized.connect(_on_resized)
 	Settings.changed.connect(_on_setting)
 	context.leaving.connect(commit)
 	view = MenuStageView.new()
@@ -99,7 +102,7 @@ func _input(event: InputEvent) -> void:
 	var step := MenuNav.tab_step(event)
 	if step == 0 or not _is_on_top():
 		return
-	show_tab(MenuTab.neighbour(tab, step))
+	show_tab(MenuTab.neighbour(tab, step), true, step)
 	_focus_panel()
 	get_viewport().set_input_as_handled()
 
@@ -115,13 +118,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 ## Shows the panel of a tab and sends the camera to its pose.
-func show_tab(to: MenuTab.Id, animate := true) -> void:
+func show_tab(to: MenuTab.Id, animate := true, step := 0) -> void:
 	var previous: MenuPanel = _panels.get(tab)
 	if previous != null and previous.visible and to != tab:
 		previous.visible = false
 		previous.on_hide()
 	tab = to
-	tab_bar.set_tab(to)
+	tab_bar.set_tab(to, step if animate else 0)
 	view.set_compact(_compact)
 	view.show_tab(to)
 	var panel: MenuPanel = _panels[to]
@@ -213,6 +216,18 @@ func _on_window_resized() -> void:
 	_apply_scale()
 
 
+## The canvas changed (the window was resized, a phone turned): the panel on show is placed again
+## and reads its area anew.
+func _on_resized() -> void:
+	var shown: MenuPanel = _panels.get(tab)
+	if shown == null or not shown.visible:
+		return
+	var before := shown.area_width
+	_place(shown)
+	if not is_equal_approx(before, shown.area_width):
+		shown.refresh()
+
+
 func _on_setting(key: StringName, _value: Variant) -> void:
 	# The settings service applies the UI scale to the root itself: put the phone factor back.
 	if key == SettingsService.UI_SCALE:
@@ -256,10 +271,13 @@ func _build_chrome() -> void:
 	tab_bar.position = Vector2(pad, 26.0)
 	tab_bar.selected.connect(_on_tab_pressed)
 	add_child(tab_bar)
-	plate = MenuPlate.new(_compact)
+	# The plate takes what the tab bar leaves: on a phone's narrowest canvas (960 units) that is
+	# less than its usual width.
+	var plate_room := get_viewport_rect().size.x - 2.0 * pad - tab_bar.get_combined_minimum_size().x
+	plate = MenuPlate.new(_compact, plate_room - PLATE_GAP)
 	plate.anchor_left = 1.0
 	plate.anchor_right = 1.0
-	var plate_width := MenuPlate.COMPACT_WIDTH if _compact else MenuPlate.SIZE.x
+	var plate_width := plate.custom_minimum_size.x
 	plate.offset_left = -pad - plate_width
 	plate.offset_right = -pad
 	plate.offset_top = 22.0
@@ -302,6 +320,7 @@ func _place(panel: MenuPanel) -> void:
 	var top := TOP_COMPACT if _compact else TOP
 	var bottom := BOTTOM_COMPACT if _compact else BOTTOM
 	var wide := minf(panel.width(_compact), size.x * 0.7)
+	panel.area_width = wide
 	panel.anchor_top = 0.0
 	panel.anchor_bottom = 1.0
 	panel.offset_top = top
@@ -370,6 +389,7 @@ class _TurnPad:
 
 	func _init(shell: MenuShell) -> void:
 		_shell = shell
+		UiSounds.tag(self, &"stage")
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		mouse_default_cursor_shape = Control.CURSOR_HSIZE

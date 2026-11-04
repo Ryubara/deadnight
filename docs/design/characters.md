@@ -39,14 +39,14 @@ writes the catalog `parts.json` beside the model, so this page, the file and the
 
 | Slot | Bone(s) | Parts |
 | --- | --- | --- |
-| head | Head, Neck | the face and neck: `plain`, `stubble`, `beard` |
+| head | Head, Neck | one closed head with its own neck, a buzz of hair, the kit's eyes and brows and a mouth (#895, [Character faces](../research/character-faces.md)): `plain`, `stubble`, `beard` |
 | hair | Head | `none`, `crew`, `pompadour`, `flattop`, `ponytail`, `bob`, `curls`, `bun` |
 | headwear | Head | `none`, `helmet` (the kit Soldier's), `pillbox`, `ballcap`, `papercap`, `ranger` |
 | torso | spine, arms, hands | `vest` (the kit Soldier's), `jacket`, `shirt`, `rolled`, `tank`, `letterman` |
 | legs | hips, legs | `trousers`, `cuffed`, `shorts`, `striped` |
 | feet | feet | `boots`, `sneakers`, `shoes` |
 | eyewear | Head | `none`, `sunglasses`, `glasses`, `goggles` |
-| neck | Neck, Torso | `none`, `scarf`, `bowtie` |
+| neck | Neck | `none`, `scarf`, `bowtie` |
 | arm | UpperArm.L | `none`, `armband` |
 | body | - | `male`, `female`: the character (no mesh of its own) |
 
@@ -64,7 +64,7 @@ neckwear, the armband, the shoes) is shared, so every outfit fits both.
 
 | Part | Hers |
 | --- | --- |
-| Face | the kit face with lashes over each eye, brows half as tall and arched, a small mouth (`lips`). Her names for the three head choices: Natural, Freckles (dots of `skin_shade` under the eyes) and Rosy (`blush` cheeks): no beard |
+| Face | his head with lashes over each eye, brows half as tall and arched, a smaller mouth (0.115 m against his 0.135). Her names for the three head choices: Natural, Freckles (dots of `skin_shade` under the eyes) and Rosy (`blush` cheeks): no beard |
 | Torso, legs | his six tops and four trousers moved at rest by one warp (`female_shape`): a chest of two soft lobes, a 13 % narrower waist, 5 % wider hips. The chest's weights lean 60 % to `Torso`, so the shoulders do not pull it. Arms and hands do not move |
 | Hair | three cuts of hers, `bob` (ends flared clear of the collar), `curls` (two rolls on top, the back to the nape) and `bun`; each hair part names the character it belongs to (`body`), and the ponytail is either's |
 
@@ -92,7 +92,8 @@ camera hides the body (`test_hair_and_the_camera.gd`).
 ## Colour channels
 
 Faces of every part sit on one swatch of the atlas. Channel swatches are repainted per look; fixed swatches (black,
-greys, white, leather, lens, metal, lips, blush) never change.
+greys, white, leather, lens, metal, lips, blush, mouth) never change. `mouth` (#2a1414, #895) is as dark as the eyes,
+so the mouth reads on every skin tone; `lips` is no longer used and keeps its cell.
 
 | Channel | Palette | Used for |
 | --- | --- | --- |
@@ -115,12 +116,15 @@ other character, goes over 6,000 near or 2,000 far.
 
 | Measured | Tris |
 | --- | --- |
-| Presets | his 4,490 (Lifeguard) to 5,080 (Projectionist); hers 4,748 (Pep squad) to 5,428 (Pit crew); the kit Soldier is 5,828 |
-| Far presets | his 1,515 (Greaser) to 1,812 (Projectionist), hers 1,680 to 1,904; each part's `<slot>__<part>__far` shows past 18 m. The heaviest look of all is the Projectionist worn by her: 5,268 near, 2,000 far, at the far budget |
-| Torso | 2,288 (jacket, shirt, tank) to 2,754 (vest, with the kit's shoulder pads); letterman 2,344, rolled 2,520 |
-| Head, legs, feet | 736, 500, 702 (the kit Soldier's own faces, recoloured) |
+| Presets | his 4,672 (Lifeguard) to 5,360 (Projectionist); hers 5,076 (Carhop) to 5,566 (Pit crew); before #895 his 4,490 to 5,080 and hers 4,748 to 5,428; the kit Soldier is 5,828 |
+| Far presets | 1,407 (Greaser) to 1,715 (Usher); every preset worn by either character 1,787 at most (2,000 before #895, at the budget); the far ratio is solved over all of them (0.284) |
+| Torso | 2,382 (shirt, tank) to 3,117 (vest, with the kit's shoulder pads); jacket 2,651, letterman 2,707, rolled 2,614: the tall collars' lining (about 330) and the bridged bare wrists (#895) |
+| Head | his 824 (plain) and 922 (stubble, beard: the beard's edges are cut in); legs 500, feet 702 |
 | Helmet | 1,136 (the kit's, eyes and brows moved to the head); original hats 88-292, hair 44-278, eyewear 220-436, scarf 152, bow tie 84, armband 92 |
-| Hers | face 852 (Natural) and 924 (Freckles, Rosy), far 361 and 433 (her face pieces kept whole); her torso and legs as many as his; bob 424, pin curls 448, bun 354 |
+| Hers | face 896 (Natural) and 968 (Freckles, Rosy); her torso and legs as many as his; bob 424, pin curls 448, bun 354 |
+
+Only the presets are held to the budget: the heaviest possible look (vest, helmet, a beard, goggles, scarf, armband,
+striped trousers) is over it: 7,231 (6,824 before #895).
 
 Draw calls: one per visible part (5-7) with one shared material per character, near or far. The far level of detail
 (#139) is a copy of every part in the same file: `SoldierLook.apply` shows the far mesh of each shown part with the

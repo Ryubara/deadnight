@@ -80,7 +80,7 @@ const PARKED_BODIES := {
 	&"farmhand": 4,
 	&"runner": 3,
 	&"brute": 3,
-	&"crawler": 3
+	&"crawler": 20
 }
 const DIGITS_NUMBER := 1234567890
 const BUSES_MUTED: Array[StringName] = [&"Effects", &"Voice"]
@@ -642,6 +642,16 @@ func _replay_effects() -> void:
 		blast.play(at + Vector3(3.0, -1.0, -2.0), load(def_path) as GrenadeDef)
 		blast.gibs(at, Vector3.UP, 1)
 		await _chunk()
+		# Drawn once, the programs are built: the sample goes before the night starts.
+		if is_instance_valid(blast):
+			blast.queue_free()
+	# A grenade's trail: its dots are one multimesh over a shared mesh and material, drawn once here
+	# so the first throw of a night builds nothing (#936).
+	var trail := GrenadeTrail.new()
+	view.effects.add_child(trail)
+	trail.drop(at + Vector3(3.0, -1.0, -2.0))
+	await _chunk()
+	trail.queue_free()
 	# The shock perk's shader, alone in frames of its own (a new shader's first draw builds a few GL
 	# programs at once, docs/research/first-use-hitches.md), held still at its brightest.
 	(

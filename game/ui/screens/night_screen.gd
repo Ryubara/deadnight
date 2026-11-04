@@ -1,8 +1,12 @@
 class_name NightScreen
 extends UIScreen
-## The night as a screen: the 3D night underneath, the HUD over it (`NightHudBinding` feeds it from
-## the night's events), the night's menu and a result when the night is over. Both ways out lead
-## back to the menu.
+## The night as a screen: the 3D night underneath, the HUD over it (`NightHudBinding` feeds it
+## from the night's events), the night's menu and, when the night is over, the end sequence: the
+## camera flies over the map (`EndCamera`), the board shows every player's numbers over it
+## (`HudEndBoard`), the server's intermission clock counts down, and at its end the player is back
+## where the night was made: the lobby they came from online (the same lobby, reopened by the
+## backend), their Play screen alone. The menu's Leave night and the board's Leave go back at once
+## (`docs/design/end-of-night.md`).
 ##
 ## The menu opens on Esc, the pad's Start or the touch layer's pause button (or when the platform
 ## takes the mouse back). It has Resume, Settings (the same screen as the main menu's, held inside
@@ -19,6 +23,17 @@ const DIM := Color(0.0, 0.0, 0.0, 0.55)
 ## Seconds to wait for a game server to welcome us (a night may have to be built first).
 const JOIN_SECONDS := 25.0
 const SETTINGS_SCENE := "res://ui/screens/settings_screen.tscn"
+## How many times (every `RETURN_WAIT` seconds) the lobby is asked for after the night closed,
+## until the backend has opened it again; then the player is sent back to the screen the night
+## came from.
+const RETURN_TRIES := 20
+const RETURN_WAIT := 0.5
+## What the board's clock says it counts to, and the words of its way out.
+const CAPTION_ONLINE := "BACK TO THE LOBBY IN"
+const CAPTION_ALONE := "BACK TO SETUP IN"
+const LEAVE_ONLINE := "Leave"
+const LEAVE_ALONE := "Back"
+const OPENING := "OPENING THE LOBBY"
 
 ## Whether the night warms up behind a loading screen before it starts. There is nothing to warm up
 ## without a renderer, so a headless run skips it.
@@ -43,6 +58,11 @@ static var own_look: CharacterLook
 ## Where the player's challenges are kept; empty (tests, captures) counts nothing and writes
 ## nothing. The game's root sets it, so only the real game keeps a save.
 static var challenge_path := ""
+## The lobby the night was entered from (a lobby screen, the Together screen, Quick join set them:
+## `remember_lobby`) and the way to ask the backend about it; taken once, as `join_url` is. At the
+## end of the night the player goes back to this lobby, which the backend opens again for them.
+static var return_api: TogetherApi
+static var return_lobby := {}
 
 ## How a night played alone starts, for a run that is not a person's (`KillBench`): the bot plays,
 ## filmed from its shoulder, under this tuning (the defaults when null).
@@ -60,6 +80,12 @@ var night: Night
 var wheel: BotWheelDriver
 
 var _hud: Hud
+var _end: HudEndBoard
+## The lobby this night came from, if any (`return_lobby`), and the API to ask about it.
+var _lobby := {}
+var _lobby_api: TogetherApi
+## The way out was taken (the clock ran out or Leave was pressed): it is taken only once.
+var _left := false
 var _loading: LoadingOverlay
 var _touch: TouchControls
 var _overlay: Control
@@ -70,6 +96,13 @@ var _resume: UIButton
 var _settings_button: UIButton
 var _quit: UIButton
 var _settings: SettingsScreen
+
+
+## Keeps the lobby this night is entered from, for the way back at its end. The API is one that
+## outlives the screen that made it (`TogetherApi.detached`), since that screen is freed or paused.
+static func remember_lobby(api: TogetherApi, held: Dictionary, root: Node) -> void:
+	return_api = api.detached(root)
+	return_lobby = held
 
 
 ## The look a `--look` value names: `N` is the preset N, `seed:N` a random look made from seed N.
@@ -85,6 +118,8 @@ func _ready() -> void:
 	super._ready()
 	# B (`ui_cancel`) crouches in the night: it must not take the player back to the menu.
 	allow_back = false
+	# The menu's ambience ends as a night starts to load (the night has its own beds).
+	MenuAmbience.stop()
 	# The night is made for the player's own UI scale: the menu's phone factor (2, which halves the
 	# canvas to 540 units high) would put half the touch buttons off the top. The menu puts the
 	# factor back when it shows again (`MenuShell`).
@@ -96,6 +131,11 @@ func _ready() -> void:
 	if match_settings != null and join_url == "":
 		night.match_settings = match_settings
 	match_settings = null
+	if join_url != "" and not return_lobby.is_empty():
+		_lobby = return_lobby
+		_lobby_api = return_api
+	return_lobby = {}
+	return_api = null
 	if challenge_path != "":
 		night.challenge_board = ChallengeBoard.open(challenge_path)
 	add_child(night)
@@ -116,8 +156,10 @@ func _ready() -> void:
 	wheel.hud_wheel = _hud.bot_wheel
 	wheel.touch = _touch
 	add_child(wheel)
+	_build_end()
 	_build_overlay()
 	night.night_over.connect(_on_night_over)
+	night.night_closed.connect(_on_night_closed)
 	night.ready_to_play.connect(_watch_mouse)
 	if night.warm_up:
 		_loading = LoadingOverlay.new()
@@ -177,7 +219,7 @@ func screen_enter() -> void:
 
 
 func screen_pause() -> void:
-	if night.running:
+	if night.running and not night.state.over:
 		_pause()
 
 
@@ -229,6 +271,7 @@ func _on_mirrored_changed(mirrored: bool) -> void:
 ## The HUD keeps inside the notch and the rounded corners.
 func _on_safe_insets_changed(insets: Vector4) -> void:
 	_hud.set_safe_insets(insets)
+	_end.set_safe_insets(insets)
 
 
 ## The player's body takes the mouse back from the platform (a browser's first Esc, a window that
@@ -273,12 +316,80 @@ func _on_connect_failed(reason: String) -> void:
 	_show_overlay("Could not join", reason, false)
 
 
-func _on_night_over(round_reached: int) -> void:
+## The night is over: the game's cards give way to the end sequence. The camera is the night's
+## (`Night._start_end_camera`); this puts the board over it.
+func _on_night_over(_round_reached: int) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	var points: int = night.state.points_earned
-	_show_overlay(
-		"You did not make it", "Round %d.  %d points earned." % [round_reached, points], false
+	_drop_settings()
+	_overlay.hide()
+	_hud.hide()
+	_hud.reticle.set_shown(false)
+	_hud.scoreboard_enabled = false
+	_touch.live = false
+	_end.show_results(
+		_hud.state,
+		CAPTION_ONLINE if _has_lobby() else CAPTION_ALONE,
+		LEAVE_ONLINE if _has_lobby() else LEAVE_ALONE
 	)
+	_end.set_left(night.state.over_left())
+
+
+func _process(_delta: float) -> void:
+	if _end.visible and not _left:
+		_end.set_left(night.state.over_left())
+
+
+## The server's intermission ran out: everyone goes back to the lobby they came from.
+func _on_night_closed() -> void:
+	_go_back(true)
+
+
+## Whether there is a lobby to go back to: a night entered from one, not one joined by an address.
+func _has_lobby() -> bool:
+	return night.remote and _lobby_api != null and not _lobby.is_empty()
+
+
+## The way out, once: at the end of the clock (`reopen`) the lobby is asked for until the backend
+## has opened it again and the screen is replaced by it; by the player's own press, online, the
+## player leaves the lobby too (the host role passes on) and goes back to the screen before the
+## night.
+func _go_back(reopen: bool) -> void:
+	if _left:
+		return
+	_left = true
+	if not _has_lobby():
+		UIRouter.pop()
+		return
+	if not reopen:
+		_lobby_api.leave(_lobby)
+		UIRouter.pop()
+		return
+	_end.set_waiting(OPENING)
+	_end.leave_button.disabled = true
+	var held := await _reopened()
+	if not is_inside_tree():
+		return
+	if held.is_empty():
+		UIRouter.pop()
+	else:
+		LobbyScreen.replace_with_lobby(_lobby_api, held)
+
+
+## The lobby once the backend has opened it again, or `{}` when it did not within `RETURN_TRIES`
+## asks (the lobby is gone: nobody else was left, or the backend is out of reach).
+func _reopened() -> Dictionary:
+	for _i in RETURN_TRIES:
+		var answer := await _lobby_api.refresh(_lobby)
+		if not is_inside_tree():
+			return {}
+		if not answer["ok"]:
+			return {}
+		if answer["lobby"].get("state") == "open":
+			return answer["lobby"]
+		await get_tree().create_timer(RETURN_WAIT).timeout
+		if not is_inside_tree():
+			return {}
+	return {}
 
 
 func _show_overlay(title: String, note: String, can_resume: bool) -> void:
@@ -329,6 +440,19 @@ func _drop_settings() -> void:
 	_overlay.remove_child(page)
 	page.queue_free()
 	_card.show()
+
+
+func _build_end() -> void:
+	_end = HudEndBoard.new()
+	_end.name = "EndBoard"
+	_end.leave_pressed.connect(_go_back.bind(false))
+	add_child(_end)
+	_hud.state.changed.connect(_on_hud_changed)
+
+
+func _on_hud_changed() -> void:
+	if _end.visible and not _left:
+		_end.refresh(_hud.state)
 
 
 func _build_overlay() -> void:

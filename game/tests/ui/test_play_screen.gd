@@ -5,10 +5,10 @@ extends GdUnitTestSuite
 const MENU := "res://ui/screens/main_menu.tscn"
 const PLAY := "res://ui/screens/play_screen.tscn"
 const WINDOW := Vector2(1280.0, 720.0)
-## What headless text measures short of the real fonts, in canvas units: the title is 23 units high
-## here and about 50 in a window, the rows' text and the panel's edge are shorter too. The capture
-## tours (`solo_settings_tour`, `map_picker_tour`) print the real fit; this keeps a row added to the
-## panel from going unnoticed until someone runs one.
+## What the screen measures short of the player's, in canvas units, because the phone test below
+## builds it under a bare `Control` with no theme (a title is 23 units high there and 83 under the
+## router's stage). `test_ui_fit.gd` measures the themed screen at every size with no allowance;
+## this keeps a row added to the panel from going unnoticed in the meantime.
 const HEADLESS_TEXT_ALLOWANCE := 100.0
 
 

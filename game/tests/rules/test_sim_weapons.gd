@@ -43,7 +43,7 @@ func test_sustained_damage_counts_the_reload_and_the_health_the_blows_must_beat(
 	# is 95 and the shotgun 152 a pull), so on raw damage alone they now beat the submachine gun.
 	assert_str(SimWeapons.best(owned)).is_equal("weapon_shotgun")
 	var none: Array[StringName] = []
-	assert_str(SimWeapons.best(none)).is_equal("pistol")
+	assert_str(SimWeapons.best(none)).is_equal("house_pistol")
 
 
 func test_a_blow_that_overshoots_the_health_is_worth_no_more_than_the_health() -> void:
@@ -106,8 +106,10 @@ func _melee_arms(ids: Array[StringName]) -> Dictionary:
 func test_a_player_out_of_rounds_falls_back_on_the_melee_weapon_that_kills_fastest() -> void:
 	var crowbar: Array[StringName] = [&"crowbar"]
 	var all: Array[StringName] = [&"crowbar", &"baseball_bat", &"fire_axe"]
-	# With only the crowbar, the crowbar, whatever the health.
-	assert_str(String(SimWeapons.best_armed(_melee_arms(crowbar), 50.0))).is_equal("crowbar")
+	# With only the crowbar, the crowbar against the tougher dead; a round-1 walker (50) falls to one
+	# quick melee blow, which the crowbar (two slow blows) does not beat.
+	assert_str(String(SimWeapons.best_armed(_melee_arms(crowbar), 66.0))).is_equal("crowbar")
+	assert_str(String(SimWeapons.best_armed(_melee_arms(crowbar), 50.0))).is_equal("quick_melee")
 	# Against nothing in particular the heavy axe does the most a second; a round-1 walker (50) falls
 	# to one quick bat blow sooner than to one slow axe blow or two crowbar blows; a round-10 one
 	# (121) takes the crowbar three blows, the bat three quick ones and the axe a single one.

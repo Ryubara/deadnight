@@ -20,7 +20,7 @@ signal cursor_moved(index: int)
 ## Size of a swatch and the gap between chips; a palette longer than `LONG` uses the compact pair.
 const SWATCH := 44.0
 const GAP := 8.0
-const SWATCH_COMPACT := 30.0
+const SWATCH_COMPACT := 28.0
 const GAP_COMPACT := 4.0
 const LONG := 8
 const CHIP_PADDING := 20.0
@@ -54,8 +54,12 @@ func _init() -> void:
 	_fill.set_border_width_all(_tokens.border)
 
 
+func ui_sound_role() -> StringName:
+	return &"choice_strip"
+
+
 func _ready() -> void:
-	focus_entered.connect(UIAudio.play.bind(&"focus"))
+	focus_entered.connect(UIAudio.play.bind(&"focus", self))
 	focus_entered.connect(queue_redraw)
 	focus_exited.connect(queue_redraw)
 
@@ -79,7 +83,7 @@ func move_to(index: int) -> void:
 	var moved := index != _cursor
 	_cursor = index
 	if moved:
-		UIAudio.play(&"tick")
+		UIAudio.play(&"select", self)
 		cursor_moved.emit(index)
 	if entries[index].get("locked", false):
 		blocked.emit(index)

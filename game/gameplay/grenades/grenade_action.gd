@@ -40,9 +40,11 @@ static func tick(delta: float) -> Dictionary:
 	return {"type": TICK, "delta": delta}
 
 
-## Where every zombie is this step: `[{"id": int, "pos": Vector3, "yaw": float}]`.
-static func targets(list: Array) -> Dictionary:
-	return {"type": TARGETS, "list": list}
+## Where every zombie is this step: `[{"id": int, "pos": Vector3, "yaw": float}]`. `revision` (0 or
+## more): the same number as the last action means the same list, and the server keeps its table
+## (`CombatAction.targets`). -1 (the default) always reads the list.
+static func targets(list: Array, revision: int = -1) -> Dictionary:
+	return {"type": TARGETS, "list": list, "revision": revision}
 
 
 ## Where every player is this step: `[{"id": int, "pos": Vector3}]` (feet).

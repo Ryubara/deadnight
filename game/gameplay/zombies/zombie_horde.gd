@@ -7,6 +7,10 @@ extends Node3D
 
 ## Views kept for each look; a view past it is freed.
 const PARKED_PER_LOOK := 12
+## Looks that keep more: a blast that takes the legs of a crowd turns that many walkers into
+## crawlers in one tick, and each needs a crawler's body in that frame (`_redress`), not one made in
+## it.
+const PARKED_FOR_LOOK := {&"crawler": 20}
 
 ## Every zombie wears the body its `look` names (`ZombieModels`), as the snapshot says; setting
 ## `model_scene` puts every zombie in that one body instead (a test or a capture).
@@ -23,6 +27,10 @@ var _views: Dictionary[int, ZombieView] = {}
 ## kill).
 var _parked: Dictionary[StringName, Array] = {}
 var _emerge_seconds: float = 0.0
+## The bytes the views follow now, and the seconds of the snapshots since that held the same.
+var _applied := false
+var _applied_bytes := PackedByteArray()
+var _unspent := 0.0
 ## Seconds each look's wind-up lasts, for the looks whose attack is timed to it (the boss's).
 var _telegraphs: Dictionary[StringName, float] = {}
 ## Seconds one board takes each look's type, for the tear clip (`ZombieView.setup`).
@@ -93,11 +101,24 @@ func publish(delta: float) -> void:
 
 ## The client side: the views follow one snapshot's bytes and nothing else. `delta` is the time
 ## since the previous snapshot.
-func apply_snapshot(bytes: PackedByteArray, delta: float) -> void:
+##
+## The dead move at the simulation's 30 Hz and a snapshot comes at 60 Hz, so every other one holds
+## the bytes of the last: nothing in a view could differ, and the loop over the crowd is not run.
+## The time of the skipped snapshots is kept and given to the next one, which walks the views to
+## their new place over the ticks since the last (`ZombieView._move_to`). Returns whether the
+## crowd was applied (false when the bytes were the last ones).
+func apply_snapshot(bytes: PackedByteArray, delta: float) -> bool:
 	last_snapshot_bytes = bytes.size()
+	if _applied and bytes == _applied_bytes:
+		_unspent += delta
+		return false
+	_applied = true
+	_applied_bytes = bytes
+	delta += _unspent
+	_unspent = 0.0
 	var seen: Dictionary[int, bool] = {}
 	var began := PerfProbe.begin()
-	var entries := ZombieCodec.decode(bytes)
+	var entries := ZombieCodec.decode_shared(bytes)
 	PerfProbe.end(&"horde.decode", began)
 	for entry in entries:
 		var zombie_id: int = entry["id"]
@@ -106,11 +127,12 @@ func apply_snapshot(bytes: PackedByteArray, delta: float) -> void:
 			_add_view(zombie_id, entry["look"])
 		var view := _views[zombie_id]
 		if view.look != entry["look"]:
-			view.dress(_scene_for(entry["look"]), entry["look"])
+			view = _redress(zombie_id, view, entry["look"])
 		view.apply(entry, delta)
 	for zombie_id in _views.keys():
 		if not seen.has(zombie_id):
 			_remove_view(zombie_id)
+	return true
 
 
 ## Makes `counts[look]` bodies of each look ahead of the night and parks them, so its first zombies
@@ -118,12 +140,15 @@ func apply_snapshot(bytes: PackedByteArray, delta: float) -> void:
 func prewarm(counts: Dictionary) -> void:
 	for look: StringName in counts:
 		var parked: Array = _parked.get_or_add(look, [])
-		while parked.size() < mini(int(counts[look]), PARKED_PER_LOOK):
+		while parked.size() < mini(int(counts[look]), parked_limit(look)):
 			var view := ZombieView.new()
 			add_child(view)
 			var telegraph: float = _telegraphs.get(look, ZombieRig.BOSS_HIT_SECONDS)
 			var board: float = _board_seconds.get(look, _default_board_seconds)
 			view.setup(_scene_for(look), -1, 0.0, _emerge_seconds, look, telegraph, board)
+			# One pose, so the tree has resolved its tracks: the first advance of a tree
+			# does, and 20 of them in one frame are 2 ms.
+			view.advance_animation()
 			view.park()
 			parked.append(view)
 
@@ -135,6 +160,11 @@ func tore(zombie_id: int) -> void:
 		view.tore()
 
 
+## How many views of `look` are kept.
+func parked_limit(look: StringName) -> int:
+	return PARKED_FOR_LOOK.get(look, PARKED_PER_LOOK)
+
+
 func _scene_for(look: StringName) -> PackedScene:
 	return model_scene if model_scene != null else ZombieModels.scene(look)
 
@@ -142,18 +172,47 @@ func _scene_for(look: StringName) -> PackedScene:
 func _add_view(zombie_id: int, look: StringName) -> void:
 	var began := PerfProbe.begin()
 	PerfProbe.count(&"view_added")
+	_views[zombie_id] = _take_view(zombie_id, look)
+	PerfProbe.end(&"horde.add_view", began)
+
+
+## A view of `look` set going for the zombie `zombie_id`: a parked one when there is one, else made.
+## It is in the throttle.
+func _take_view(zombie_id: int, look: StringName) -> ZombieView:
+	# A parked body has its model already, so the scene is not looked up (`load` of a file already
+	# loaded still costs about a millisecond, which is a frame's tenth for each of twenty crawlers).
 	var view := _take_parked(look)
+	var scene: PackedScene = null
 	if view == null:
 		view = ZombieView.new()
 		add_child(view)
+		scene = _scene_for(look)
 	# The same id always gives the same phase, so every client agrees without being told.
 	var phase := fposmod(float(zombie_id) * 0.618034, 1.0)
 	var telegraph: float = _telegraphs.get(look, ZombieRig.BOSS_HIT_SECONDS)
 	var board: float = _board_seconds.get(look, _default_board_seconds)
-	view.setup(_scene_for(look), zombie_id, phase, _emerge_seconds, look, telegraph, board)
-	_views[zombie_id] = view
+	view.setup(scene, zombie_id, phase, _emerge_seconds, look, telegraph, board)
 	throttle.add_view(view)
-	PerfProbe.end(&"horde.add_view", began)
+	return view
+
+
+## The zombie's look changed (a blast took its legs): it moves to a view of the new look, a parked
+## one as a spawn takes (a model is not instanced nor a tree built in the frame of the blast), and
+## its old body is parked for the next zombie of that look. The animation time the old view had
+## saved up and the outline it wore go with the zombie; the next entry places and poses the new
+## view.
+func _redress(zombie_id: int, old: ZombieView, look: StringName) -> ZombieView:
+	var began := PerfProbe.begin()
+	PerfProbe.count(&"view_redressed")
+	var view := _take_view(zombie_id, look)
+	view.accumulated = old.accumulated
+	view.period = old.period
+	view.set_outlined(old.is_outlined(), old.outline_style())
+	_views[zombie_id] = view
+	throttle.remove_view(old)
+	_park_or_free(old)
+	PerfProbe.end(&"horde.redress", began)
+	return view
 
 
 ## A parked view of `look`, or null.
@@ -168,10 +227,15 @@ func _remove_view(zombie_id: int) -> void:
 	var view := _views[zombie_id]
 	_views.erase(zombie_id)
 	throttle.remove_view(view)
+	_park_or_free(view)
+	PerfProbe.end(&"horde.remove_view", began)
+
+
+## Keeps a view that left for the next zombie of its look, or frees it when enough are kept.
+func _park_or_free(view: ZombieView) -> void:
 	var parked: Array = _parked.get_or_add(view.look, [])
-	if parked.size() < PARKED_PER_LOOK:
+	if parked.size() < parked_limit(view.look):
 		view.park()
 		parked.append(view)
 	else:
 		view.queue_free()
-	PerfProbe.end(&"horde.remove_view", began)

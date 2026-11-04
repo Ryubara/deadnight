@@ -14,13 +14,21 @@ static var _shipped: LightTuning = null
 @export_group("Lamps (the rules read these)")
 ## Ground within this of a lit lamp is lit: the dead there keep to their round's pace.
 @export_range(1.0, 20.0, 0.5, "suffix:m") var lamp_reach := 6.0
-## A failing tank changes a lamp's state every this many ticks (60 a second: 5 is about 12 times a
-## second).
-@export_range(1, 60, 1, "suffix:ticks") var flicker_ticks := 5
-## How much light a lamp keeps when the tank is nearly dry ...
+## How much light a lamp keeps when the tank is nearly dry; the dips of its warning flicker
+## (`FailingBattery.brownout`) go below it.
 @export_range(0.0, 1.0, 0.01) var sag_floor := 0.35
-## ... and the share it keeps in the dropouts of a flicker.
-@export_range(0.0, 1.0, 0.01) var dropout := 0.12
+
+@export_group("Failing battery (the back lot's lights, FailingBattery)")
+## How much of its light a lamp gives on average: dimmed ...
+@export_range(0.1, 1.0, 0.01) var failing_base := 0.6
+## ... drifting by this much either side over a few seconds ...
+@export_range(0.0, 0.3, 0.01) var failing_wander := 0.08
+## ... and the share it keeps at the bottom of a dip (above 0: the lights never go out).
+@export_range(0.02, 0.5, 0.01) var failing_floor := 0.12
+## One event at most in each cycle of this many seconds (the quiet between two is at least 1.5 s).
+@export_range(3.2, 10.0, 0.1, "suffix:s") var failing_cycle := 3.6
+## The flicker's seed: the same number gives the same lights, a test or a night.
+@export var failing_seed := 851
 
 @export_group("The night closing in")
 ## A change of round takes this long to settle (a break is 20 s).

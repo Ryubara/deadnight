@@ -49,7 +49,8 @@ func _stand_at(shop_id: StringName) -> void:
 		if spot["shop_id"] == shop_id:
 			_night.player().teleport(spot["position"] + Vector3(0.0, 0.1, 0.0))
 			break
-	NightFixture.run(_night, 3)
+	# The card is read before the press: a replacing purchase needs it up `replace_settle` (#908).
+	NightFixture.run(_night, 3 + ceili(_night.server.tuning.replace_settle * 60.0))
 
 
 func test_a_player_starts_with_the_crowbar_in_slot_one_and_the_pistol_in_two() -> void:

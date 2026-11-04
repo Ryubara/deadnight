@@ -22,6 +22,11 @@ const TAG_WIDTH := 96.0
 const LEAVE_WIDTH := 150.0
 ## How long the host's last change waits for another before it is sent (a slider drag is a stream).
 const RULES_DELAY := 0.35
+## What the host reads when the backend's lobbies carry no `settings` at all.
+const RULES_UNSUPPORTED := (
+	"This server is out of date and keeps none of these rules, so the night will be the usual one."
+	+ " Ask whoever runs it to update it."
+)
 ## Kept free around the panel when the window is shorter than the screen is tall (it scrolls then).
 const PANEL_MARGIN := 120.0
 
@@ -70,6 +75,9 @@ var rules: MatchSettingsPanel
 var map_card: MapCard
 
 var _rules_title: UILabel
+## Said under the panel when the backend keeps no rules at all (a build from before them): the
+## night will be the usual one, and the host is told, not left to find out (Deadnight #944).
+var _rules_note: UILabel
 var _rules_timer: Timer
 var _rules_waiting: MatchSettings
 var _rules_sending := false
@@ -96,6 +104,12 @@ var _asking_preview := false
 ## Opens the lobby screen for a lobby the player is a member of.
 static func show_lobby(from: TogetherApi, held: Dictionary) -> void:
 	UIRouter.push(SCREEN, UITransition.Kind.SLIDE, {"api": from, "lobby": held})
+
+
+## Opens the lobby screen in place of the night that ended, for the lobby the backend opened again
+## (`NightScreen` at the end of the sequence).
+static func replace_with_lobby(from: TogetherApi, held: Dictionary) -> void:
+	UIRouter.replace(SCREEN, UITransition.Kind.SLIDE, {"api": from, "lobby": held})
 
 
 ## Opens the screen on what a code says, with Join.
@@ -214,6 +228,12 @@ func _ready() -> void:
 	rules.custom_minimum_size.x = FIELD_WIDTH
 	rules.changed.connect(_on_rules_changed)
 	box.add_child(rules)
+	_rules_note = _label(RULES_UNSUPPORTED, UILabel.Style.CAPTION)
+	_rules_note.name = "RulesNote"
+	_rules_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_rules_note.custom_minimum_size.x = FIELD_WIDTH
+	_rules_note.visible = false
+	box.add_child(_rules_note)
 	_rules_timer = Timer.new()
 	_rules_timer.one_shot = true
 	_rules_timer.wait_time = RULES_DELAY
@@ -269,6 +289,7 @@ func _ready() -> void:
 	_share_timer.timeout.connect(_show_share)
 	add_child(_share_timer)
 	copy_field = LineEdit.new()
+	UiSounds.wire_field(copy_field)
 	copy_field.name = "CopyField"
 	copy_field.editable = false
 	copy_field.custom_minimum_size.x = FIELD_WIDTH
@@ -423,6 +444,7 @@ func _go_in(held: bool) -> void:
 	NightScreen.join_ticket = pass_to["ticket"]
 	NightScreen.join_map = MapRegistry.of_lobby(lobby).id
 	NightScreen.join_as_bot = play_as_bot
+	NightScreen.remember_lobby(api, lobby, get_tree().root)
 	_entering = true
 	watch.stop()
 	if opener.is_valid():
@@ -500,6 +522,13 @@ func rules_editable() -> bool:
 	return _rules_editable
 
 
+## Whether the backend keeps the night's rules: its lobbies always carry `settings` (null while the
+## host has set none). A backend from before the rules has no such key, and takes nothing the host
+## chooses.
+func rules_supported() -> bool:
+	return mode != Mode.LIVE or lobby.has("settings")
+
+
 ## The rules the lobby holds (the usual ones while the host has set none).
 func lobby_rules() -> MatchSettings:
 	var out := MatchSettings.from_json(lobby.get("settings"))
@@ -555,11 +584,12 @@ func _show_rules() -> void:
 	var live := mode == Mode.LIVE
 	_rules_title.visible = live
 	rules.visible = live
+	_rules_note.visible = live and not rules_supported()
 	if not live:
 		_rules_editable = false
 		_rules_shown = false
 		return
-	var editable: bool = is_host() and lobby.get("state") != "started"
+	var editable: bool = is_host() and lobby.get("state") != "started" and rules_supported()
 	# A host's own panel is the truth while they use it: it takes the lobby's rules once, when the
 	# role comes to them (the first host, or the next one after the host left).
 	if not editable or not _rules_editable:

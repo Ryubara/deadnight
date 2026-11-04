@@ -74,7 +74,9 @@ func test_a_reserve_with_little_room_pays_for_little() -> void:
 	night.server.buy(1, &"ammo_pistol")
 	NightFixture.run(night, 2)
 	assert_int(state.reserve).is_equal(state.def.reserve_max)
-	assert_int(before - night.state.points()).is_equal(ceili(float(item.price) * 5.0 / item.amount))
+	assert_int(before - night.state.points()).is_equal(
+		item.part_price(night.server.rules.round_number, 5)
+	)
 	night.queue_free()
 
 

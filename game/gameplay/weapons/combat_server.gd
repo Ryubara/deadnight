@@ -70,6 +70,8 @@ var _defs: Dictionary[StringName, WeaponDef] = {}
 var _loadouts: Dictionary[int, Dictionary] = {}
 var _current: Dictionary[int, StringName] = {}
 var _targets: Dictionary[int, Dictionary] = {}
+## The `CombatAction.targets` revision `_targets` was read at (-1: none, or a list without one).
+var _targets_revision := -1
 var _alive: Dictionary[int, bool] = {}
 var _projectiles: Array[ProjectileState] = []
 ## Seconds until each player's quick melee is ready again (`WeaponCatalog.quick_melee`'s interval).
@@ -172,10 +174,12 @@ func _dispatch(action: Dictionary) -> void:
 			_upgrade(action["player_id"], action["weapon_id"])
 		CombatAction.REMOVE_WEAPONS:
 			_remove(action["player_id"], action["weapon_ids"])
+		CombatAction.FORGET_PLAYER:
+			_forget(action["player_id"])
 		CombatAction.TICK:
 			_tick(action["delta"])
 		CombatAction.TARGETS:
-			_set_targets(action["list"])
+			_set_targets(action["list"], action.get("revision", -1))
 		CombatAction.TRACK_TARGET:
 			_alive[action["target_id"]] = true
 		CombatAction.UNTRACK_TARGET:
@@ -254,6 +258,16 @@ func _remove(player_id: int, weapon_ids: Array) -> void:
 		_current.erase(player_id)
 		if not held.is_empty():
 			_equip(player_id, held.keys()[held.size() - 1])
+
+
+## A player who left takes everything with them. The rules' list of a player is gone with the seat;
+## a loadout kept here would be handed to the next person with the same id, whose rules list says
+## the start weapon only, so the wall and the crane would sell and refuse by one list and give by
+## the other (#904).
+func _forget(player_id: int) -> void:
+	_loadouts.erase(player_id)
+	_current.erase(player_id)
+	_quick_wait.erase(player_id)
 
 
 func _equip(player_id: int, weapon_id: StringName) -> void:
@@ -370,7 +384,11 @@ func _begin_reload(shooter_id: int, state: WeaponState) -> void:
 	)
 
 
-func _set_targets(list: Array) -> void:
+func _set_targets(list: Array, revision: int) -> void:
+	if revision >= 0 and revision == _targets_revision:
+		lag.record_again(now)
+		return
+	_targets_revision = revision
 	_targets.clear()
 	for target in list:
 		_targets[target["id"]] = LagCompensator.placed(target)
