@@ -98,11 +98,24 @@ static func into_round_one(rules: GameRules) -> void:
 
 
 ## Buys and returns the GameRules.BuyResult the events report.
+## A tonic bought this way is drunk down at once (`drink_down`): the suites about what a perk does
+## start from the perk had; the drink itself is `test_perk_drink.gd`'s.
 static func buy(rules: GameRules, player_id: int, item_id: StringName) -> int:
 	for event in rules.apply(RulesAction.buy(player_id, item_id)):
 		if event["type"] == &"purchase_denied":
 			return event["result"]
+	drink_down(rules, player_id)
 	return GameRules.BuyResult.OK
+
+
+## Ends the drink under way of `player_id` now (#912): the perk is had, as the drink's last tick
+## would give it. Returns the events (`drink_finished` and what the perk does at once).
+static func drink_down(rules: GameRules, player_id: int) -> Array[Dictionary]:
+	var player := rules.players.get(player_id) as PlayerState
+	if player == null or player.drinking == &"":
+		return []
+	player.drink_left = 0.0
+	return rules.apply(RulesAction.tick(0.0))
 
 
 ## One hit that is sure to kill whatever it lands on (a zombie in the rules has finite health).

@@ -40,8 +40,10 @@ func test_the_bot_re_cuts_its_weapon_and_drinks_the_hearty_tonic() -> void:
 	night.queue_free()
 
 
+## The tonic is had when its drink ends (#912), not when it is bought.
 func _done(night: Night) -> bool:
 	return (
 		night.state.bought.get(&"upgrade_weapon", 0) > 0
 		and night.state.bought.get(&"tonic_hearty", 0) > 0
+		and night.server.rules.players[1].drinking == &""
 	)

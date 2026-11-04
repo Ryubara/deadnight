@@ -30,6 +30,7 @@ const DENIED_TEXT := {
 	GameRules.BuyResult.WRONG_PHASE: "NOT RIGHT NOW",
 	GameRules.BuyResult.CRANE_BUSY: "THE CRANE IS BUSY",
 	GameRules.BuyResult.PLAYER_DOWNED: "GET UP FIRST",
+	GameRules.BuyResult.DRINKING: "FINISH YOUR DRINK",
 }
 ## Why the crane would not hand the weapon over (`crane_take_denied`'s reason).
 const TAKE_DENIED_TEXT := {

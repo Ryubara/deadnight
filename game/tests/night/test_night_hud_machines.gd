@@ -32,6 +32,7 @@ func _use(night: Night) -> void:
 	command.use = true
 	NightFixture.run(night, 1, command)
 	NightFixture.run(night, 3)
+	NightFixture.drink_down(night)  # a perk bought is had when its drink ends (#912)
 
 
 func test_the_card_at_the_bench_names_the_weapon_the_price_and_what_it_gives() -> void:
@@ -155,6 +156,7 @@ func test_the_weapon_slots_grow_to_three_with_the_third_holster_and_shrink_when_
 	assert_int(hud.state.slot_count).is_equal(2)
 	night.server.buy(1, &"tonic_third_holster")
 	NightFixture.run(night, 3)
+	NightFixture.drink_down(night)
 	assert_int(hud.state.slot_count).is_equal(3)
 	night.server.rules.apply(RulesAction.skip_break())
 	night.state.apply_events(night.server.rules.apply(RulesAction.blow(1, 9999.0)))

@@ -137,6 +137,7 @@ func _recut_all(night: Night, ids: Array[StringName]) -> void:
 func _third_holster(night: Night) -> void:
 	night.server.buy(PLAYER, &"tonic_third_holster")
 	NightFixture.run(night, 2)
+	NightFixture.drink_down(night, PLAYER)  # a perk bought is had when its drink ends (#912)
 	assert_int(PerkEffects.carry_limit(night.server.rules, PLAYER)).is_equal(3)
 
 

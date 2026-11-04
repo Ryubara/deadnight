@@ -35,6 +35,8 @@ static func quote(
 		result.result = GameRules.BuyResult.UNKNOWN_PLAYER
 	elif player.downed:
 		result.result = GameRules.BuyResult.PLAYER_DOWNED
+	elif player.drinking != &"":
+		result.result = GameRules.BuyResult.DRINKING
 	elif item == null:
 		result.result = GameRules.BuyResult.UNKNOWN_ITEM
 	else:
@@ -68,9 +70,7 @@ static func grant(rules: GameRules, player: PlayerState, bought: Quote) -> Dicti
 		ShopItem.Kind.CRANE:
 			detail = CranePlay.start(rules, player, bought.price)
 		ShopItem.Kind.TONIC:
-			player.tonics.append(item.id)
-			if item.health_bonus > 0.0:
-				rules._events.append(PlayerHealth.raise_max(player, item.health_bonus))
+			detail = PerkPlay.start_drink(rules, player, item)
 		ShopItem.Kind.UPGRADE:
 			player.upgraded.append(bought.weapon)
 			detail = {"upgrade": bought.weapon}
@@ -107,7 +107,7 @@ static func _check(rules: GameRules, player: PlayerState, bought: Quote) -> Game
 		ShopItem.Kind.TONIC:
 			if player.tonics.has(item.id):
 				result = GameRules.BuyResult.ALREADY_OWNED
-			elif player.tonics.size() >= rules.settings.tonic_limit(tuning.economy):
+			elif PerkPlay.held(player) >= rules.settings.tonic_limit(tuning.economy):
 				result = GameRules.BuyResult.LIMIT_REACHED
 		ShopItem.Kind.UPGRADE:
 			if not tuning.upgrade.allows(bought.weapon):

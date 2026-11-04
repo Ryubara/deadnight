@@ -61,6 +61,8 @@ extends RefCounted
 ##     id the hands gave up for it or an empty name; ammunition: `ammo`, the
 ##     catalogue weapon, and `rounds` into its reserve; a re-cut: `upgrade`, the catalogue weapon;
 ##     a crane play: `crane_spot`, see CranePlay)
+##   drink_started: player_id, item_id, seconds: a tonic bought is being drunk (`PerkPlay`);
+##   drink_finished: player_id, item_id: the perk is had; drink_spilled: the same, a down spilled it
 ##   weapon_released: player_id, weapon (a shop id), taken (the shop id that replaced it); a third
 ##     weapon replaced the one in hand and the released one is a prize and a purchase again
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
@@ -94,15 +96,17 @@ enum BuyResult {
 	## A re-cut with no weapon in hand that can take one.
 	NO_WEAPON,
 	PLAYER_DOWNED,
+	DRINKING,
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 15 took `recuts_lost` out of each player (a re-cut costs the same every time, #909), 14 added
-## each player's `self_revives` and `self_revive_left` (the revive perk), 13 the carry (`weapons`),
-## 12 `revives`, `dead`, `bleed_left`, 11 `downs` and `night_time`, 10 `match_settings`, 9
-## `upgraded` weapons, 8 the crane, 7 `barricades`, 6 health, 5 the plan and a zombie's type. Two
-## older layouts both called themselves 4; older snapshots are `bad_version`.
-const SNAPSHOT_VERSION := 15
+## 16 added each player's `drinking` and `drink_left` (the perk drink, #912), 15 took `recuts_lost`
+## out of each player (a re-cut costs the same every time, #909), 14 added each player's
+## `self_revives` and `self_revive_left` (the revive perk), 13 the carry (`weapons`), 12 `revives`,
+## `dead`, `bleed_left`, 11 `downs` and `night_time`, 10 `match_settings`, 9 `upgraded` weapons, 8
+## the crane, 7 `barricades`, 6 health, 5 the plan and a zombie's type. Two older layouts both
+## called themselves 4; older snapshots are `bad_version`.
+const SNAPSHOT_VERSION := 16
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -500,6 +504,7 @@ func _tick(delta: float, held: Array = []) -> void:
 			night_time += delta
 			generator.tick(delta, round_number, true)
 			CranePlay.tick(self, delta)
+			_events.append_array(PerkPlay.tick(self, delta))
 			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))
 			_break_left -= delta
 			if _break_left <= 0.0:
@@ -508,6 +513,7 @@ func _tick(delta: float, held: Array = []) -> void:
 			night_time += delta
 			generator.tick(delta, round_number, false)
 			CranePlay.tick(self, delta)
+			_events.append_array(PerkPlay.tick(self, delta))
 			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))
 			RevivePlay.tick(self, delta, held)
 			_tick_spawning(delta)
