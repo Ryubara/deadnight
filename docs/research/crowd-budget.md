@@ -168,6 +168,45 @@ ones carry the fixed costs of drawing a skinned model; 0.01 on the desktop), and
 so read the bench for the share a crowd takes and the night for what a player gets. Not run: Firefox (not installed on
 the machine) and a real weak laptop; the slowed processor is the stand-in.
 
+### The server's crowd lists, once a step (#931)
+
+The review of #907 found the server building lists for the dead at 60 Hz that change at 30 Hz: the target list twice a
+tick (the combat server's, then the grenades'), the combat and grenade servers' own copies of it and the lag history's
+frame, a host with bots building the whole frame (and the zombies' bytes in it) on every tick, which gave back half of
+what the build every second tick above saved, and `NightWorld.shop_spots()` making 19 dictionaries for every player's
+prompt on every tick. The fix keys them on `ZombieSim.revision`, a number that moves with every step and every change
+to a zombie (a spawn, a hit that staggers, a blast, a status, a cripple, a death, a relocation):
+
+- `NightServer._target_list()` and the frame's zombie bytes are built once for a revision. A kill between two steps
+  moves it, so the grenades' second ask rebuilds only when a shot killed something in the tick.
+- `CombatAction.targets(list, revision)` and `GrenadeAction.targets(list, revision)`: the same number as the last
+  action keeps the server's table. The combat server still records a frame in the lag history on every tick, as the
+  same table (`LagCompensator.record_again`), so a rewind between two ticks blends exactly as before.
+- `shop_spots()` reads the markers once and hands out the same read-only list.
+
+A test rig that writes a `ZombieBody` field by hand (`SeatedNight.drop_zombie`, the staging) calls `sim.touch()`; the
+sim's own methods already do. Without it the new place shows at the next step, up to one tick late.
+
+Measured with the review's probe (`measure.gd` of #907: a real `Night` with the HUD, three bots, 3x, round 12, the
+desktop ceiling, 100 s, the ticks with 85 or more alive), headless. The two builds ran **at the same time** on the same
+loaded machine, two pairs, the same seed (the runs are bit-for-bit the same night: the same 3,300 ticks and the same
+alive count in both arms). Mean microseconds a tick:
+
+| Label | Before (A / B) | After (A / B) | Change |
+| --- | ---: | ---: | ---: |
+| `tick.server` (all the server's work) | 4,256 / 4,318 | 3,094 / 3,150 | **-1.1 ms (-27 %)** |
+| `server.target_list` (the first ask of a tick) | 544 / 566 | 299 / 304 | -0.25 ms |
+| `server.frame` (the frame, the grenades and their second ask) | 1,474 / 1,498 | 630 / 626 | **-0.85 ms (-58 %)** |
+| `server.encode` | 135 / 144 | 72 / 71 | -0.07 ms |
+| `server.combat` | 310 / 305 | 215 / 213 | -0.1 ms |
+| `server.zombies`, `server.move`, `server.act` | | | no change (not touched) |
+
+The counts, which a loaded machine does not move: 6,600 target lists built in the 3,300 ticks before (two a tick), 1,806
+after (one for each step, 1,650, and 156 more for the ticks a kill or a spawn came between); 3,300 encodes of the
+zombies before, 1,735 after. An earlier run on a busier machine read `tick.server` at 11.4 ms for the same night (the
+review's 5.8 ms was a quieter hour): read the ratio of two runs made together, not the milliseconds. No
+ceiling moves on this; the saving is about a quarter of the server's work at this crowd and grows with the crowd.
+
 ## Rooms in one process (#561)
 
 The numbers above are one night in one process. A game server runs its rooms (`GameServer`, each a `NightHost` in a

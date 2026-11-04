@@ -49,6 +49,9 @@ var _barricades: Dictionary[StringName, Barricade] = {}
 var _lamps: LotLamps
 ## The rules' generator, which says which circuits are lit; without one every lamp is.
 var _generator: GeneratorState
+## `shop_spots`, read once the markers are in the scene.
+var _shop_spots: Array[Dictionary] = []
+var _shop_spots_built := false
 
 
 ## Builds the map (the default one when none is given) and waits until its collision and navigation
@@ -267,13 +270,15 @@ func _flat(a: Vector3, b: Vector3) -> float:
 ## shop id and sells the rounds of the weapon in hand). A crane spot also has `crane_spot`: its
 ## place in the rules' list of crane places (metadata `crane_spot`, 0 when not set).
 func shop_spots() -> Array[Dictionary]:
-	var spots: Array[Dictionary] = []
+	if _shop_spots_built:
+		return _shop_spots
 	var group := greybox.get_node_or_null("ShopSpots")
 	if group == null:
-		return spots
+		var none: Array[Dictionary] = []
+		return none
 	for marker in group.get_children():
 		(
-			spots
+			_shop_spots
 			. append(
 				{
 					"kind": StringName(marker.get_meta("kind")),
@@ -284,7 +289,13 @@ func shop_spots() -> Array[Dictionary]:
 				}
 			)
 		)
-	return spots
+	# The markers do not move and the list is asked for by every player on every tick: it is read
+	# once and shared, and read-only so a caller cannot change what the next one sees (#931).
+	for spot in _shop_spots:
+		spot.make_read_only()
+	_shop_spots.make_read_only()
+	_shop_spots_built = true
+	return _shop_spots
 
 
 ## The turn of a marker about the up axis, from where its +Z axis points (an Euler angle is not

@@ -67,6 +67,8 @@ var _defs: Dictionary[StringName, WeaponDef] = {}
 var _loadouts: Dictionary[int, Dictionary] = {}
 var _current: Dictionary[int, StringName] = {}
 var _targets: Dictionary[int, Dictionary] = {}
+## The `CombatAction.targets` revision `_targets` was read at (-1: none, or a list without one).
+var _targets_revision := -1
 var _alive: Dictionary[int, bool] = {}
 var _projectiles: Array[ProjectileState] = []
 ## Seconds until each player's quick melee is ready again (`WeaponCatalog.quick_melee`'s interval).
@@ -169,7 +171,7 @@ func _dispatch(action: Dictionary) -> void:
 		CombatAction.TICK:
 			_tick(action["delta"])
 		CombatAction.TARGETS:
-			_set_targets(action["list"])
+			_set_targets(action["list"], action.get("revision", -1))
 		CombatAction.TRACK_TARGET:
 			_alive[action["target_id"]] = true
 		CombatAction.UNTRACK_TARGET:
@@ -363,7 +365,11 @@ func _begin_reload(shooter_id: int, state: WeaponState) -> void:
 	)
 
 
-func _set_targets(list: Array) -> void:
+func _set_targets(list: Array, revision: int) -> void:
+	if revision >= 0 and revision == _targets_revision:
+		lag.record_again(now)
+		return
+	_targets_revision = revision
 	_targets.clear()
 	for target in list:
 		_targets[target["id"]] = LagCompensator.placed(target)

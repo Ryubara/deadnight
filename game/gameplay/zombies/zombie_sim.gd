@@ -69,6 +69,12 @@ var storey := 0.0
 ## clear way to, so the dead on a stair do not hit a player beside it through the wall.
 var sight: Callable = Callable()
 var zombies: Dictionary[int, ZombieBody] = {}
+## Counts every change to the dead that a list built from them would show: a step, a spawn, a
+## removal, a hit that staggers, a blast, a status, a cripple, a relocation. A list of where the
+## zombies stand (the target list, the frame's bytes) is the same while this is the same, so the
+## server builds it once for a revision, not once a tick (#931). Anything outside the sim that
+## writes a `ZombieBody` field calls `touch`.
+var revision: int = 0
 ## The lures burning now (`add_lure`, `ZombieLure`).
 var lures: Array[ZombieLure] = []
 
@@ -88,6 +94,11 @@ func _init(p_tuning: ZombieTuning = null, p_seed: int = 0) -> void:
 ## Zombies that count toward the cap: the dying are on the ground and do not.
 ## A lure starts burning at `position`: for `seconds` the zombies within `radius` go to it (the
 ## tuning says which may stay on what they are doing). A lure with the same id is replaced.
+## Marks the dead as changed (see `revision`).
+func touch() -> void:
+	revision += 1
+
+
 func add_lure(lure_id: int, position: Vector3, radius: float, seconds: float) -> void:
 	for i in lures.size():
 		if lures[i].id == lure_id:
@@ -129,6 +140,7 @@ func spawn(
 	zombie.retarget_left = _rng.randf() * tuning.retarget_interval
 	zombie.enter(ZombieBody.Mode.EMERGING)
 	zombies[zombie_id] = zombie
+	revision += 1
 	return zombie
 
 
@@ -136,11 +148,13 @@ func spawn(
 func begin_death(zombie_id: int) -> void:
 	if zombies.has(zombie_id):
 		ZombieBrain.die(zombies[zombie_id])
+		revision += 1
 
 
 ## It left the match without dying (the rules removed it with no killer).
 func despawn(zombie_id: int) -> void:
 	zombies.erase(zombie_id)
+	revision += 1
 
 
 ## A blast took its legs: it is what `profile` says now (a crawler), at `speed_scale` of the speed
@@ -155,6 +169,7 @@ func cripple(zombie_id: int, profile: ZombieProfile, speed_scale: float) -> void
 	zombie.profile = profile
 	zombie.speed *= speed_scale
 	ZombieBrain.stagger(zombie)
+	revision += 1
 
 
 ## A hit on a weak spot that did not kill: staggers a zombie that has one (a boss), unless it was
@@ -168,12 +183,14 @@ func weak_hit(zombie_id: int) -> void:
 	if zombie.mode == ZombieBody.Mode.CHASE or zombie.mode == ZombieBody.Mode.ATTACK:
 		ZombieBrain.stagger(zombie)
 		zombie.stagger_cooldown_left = zombie.profile.stagger_cooldown
+		revision += 1
 
 
 ## A hit the rules accepted that did not kill.
 func react_to_hit(zombie_id: int) -> void:
 	if zombies.has(zombie_id):
 		ZombieBrain.stagger(zombies[zombie_id])
+		revision += 1
 
 
 ## A blast reached it (`blast_hit`): it is thrown along the ground by `impulse` (the push slows
@@ -187,6 +204,7 @@ func blast(zombie_id: int, impulse: Vector3, stun: float) -> void:
 		return
 	ZombieBrain.stun(zombie, stun)
 	zombie.push = Vector3(impulse.x, 0.0, impulse.z).limit_length(tuning.push_max_speed)
+	revision += 1
 
 
 ## A status effect changed what the zombie is under (`CombatServer`'s `status_applied` and
@@ -201,6 +219,7 @@ func set_status(zombie_id: int, wire: int, halts: bool, speed_scale: float) -> v
 	zombie.slow = speed_scale
 	if halts:
 		ZombieBrain.hold(zombie)
+	revision += 1
 
 
 ## A zombie the rules killed while it was frozen breaks apart: it is gone at once, with no corpse
@@ -212,6 +231,7 @@ func shatter(zombie_id: int) -> Dictionary:
 		return {}
 	var zombie := zombies[zombie_id]
 	zombies.erase(zombie_id)
+	revision += 1
 	return {
 		"type": &"zombie_shattered",
 		"zombie_id": zombie_id,
@@ -251,6 +271,7 @@ func tick(delta: float, targets: Dictionary) -> Array[Dictionary]:
 ## One fixed step.
 func _step(targets: Dictionary) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	revision += 1
 	for lure in lures:
 		lure.left -= STEP
 	lures = lures.filter(func(lure: ZombieLure) -> bool: return lure.left > 0.0)
@@ -364,6 +385,7 @@ func relocate(zombie_id: int, point: Vector3, gate_id: StringName = &"") -> void
 	zombie.tear_progress = 0.0
 	zombie.push = Vector3.ZERO
 	zombie.enter(ZombieBody.Mode.EMERGING)
+	revision += 1
 
 
 ## Lifts or lowers the zombie to the floor its path runs on, at most `tuning.climb_speed` a second.
