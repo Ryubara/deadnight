@@ -26,7 +26,7 @@ crawlers is a bit hit or miss especially when hitting their forehead") found tha
 | Skins the near mesh on the CPU in any clip at any time, and tells which part (head, torso, arm, leg) a ray touches | `ZombieMeshProbe` (tests) |
 | Fires a grid of parallel rays from 8 sides and 2 to 3 heights at it and counts what a shooter registers | `ZombieRayGrid` (tests) |
 | Fits the zones: per look and pose, the bone pieces over 32 moments of each clip, the moments of a piece clustered into several spheres and capsules (an envelope of its travel, the server not knowing the clip's phase) | `tools/hit_fit/fit_hit_shapes.gd` writes `HitPoseData` |
-| Which set a zombie is shot at: its look and the pose its mode and speed put it in (`move`, `run`, `sprint`, `strike`, `stagger`, `tear`, `roar`) | `ZombiePose`, `ZombieBody.hit_target` |
+| Which set a zombie is shot at: its look and the pose its mode and speed put it in (`move`, `run`, `sprint`, `strike`, `stagger`, `tear`, `roar`, `climb`) | `ZombiePose`, `ZombieBody.hit_target` |
 | Prints the before and after table | `tools/hit_fit/hit_rates.gd` |
 
 The set travels with the target (`"pose"`, kept by the lag compensator and sent by `NightServer`), and a crawler's
@@ -37,6 +37,12 @@ the chest.
 Two rules of the ray: a limb the ray meets first gives way to a body or head zone within 0.2 m behind it (an arm
 swinging in front of the chest is cover, not the part aimed at), and the boss's lamp counts when reached within 0.45 m
 behind the first surface (its jaw hangs over the lens from the front).
+
+A climb over a sill has a set of its own with twice the shapes of a piece (`CLIMB_PARTS`): the clip moves the body over
+a metre round its origin, which the simulation holds at the sill's height, and the walker's upright set put the head
+zone 0.9 m over the head the player sees. Bots and the autopilot aim at the middle of that set, not at the upright
+1.1 m. At five moments of each clip a walker and a crawler register 94% or more of the shots that touch the mesh; 65%
+or more of head shots count as head (69% on the way up, when the hands are in front of the face) (#991).
 
 ## Numbers
 

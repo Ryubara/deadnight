@@ -245,7 +245,9 @@ func _aim_point(contact: Dictionary, eye: Vector3) -> Vector3:
 	var head := _head and speed < HEAD_SPEED and apart < HEAD_RANGE
 	var zone := Hitbox.HEAD if head else Hitbox.BODY
 	var mode: int = contact.get("mode", ZombieBody.Mode.CHASE)
-	var point := at + ZombiePose.aim_offset(look, mode, float(contact.get("yaw", 0.0)), zone)
+	var yaw := float(contact.get("yaw", 0.0))
+	var climbing: bool = contact.get("climbing", false)
+	var point := at + ZombiePose.aim_offset(look, mode, yaw, zone, climbing)
 	if _profile.aims_off_weak_spot and ZombieModels.is_boss(look) and not head:
 		# The chest is where the boss's lens is: a bot that does not go for the lens aims at the
 		# hips, so its hits on the lens are the ones it aimed at (the simulator's `weak_spot_rate`).

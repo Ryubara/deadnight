@@ -1648,6 +1648,7 @@ to 65% after the changes to the hit zones and the play states).
 | `weighs_by_round` | true | `NightSim._worth_taking`: a weapon by the health of the round's dead, a free hand against the quick melee (`BotShop.rounds`, `BotEconomy.View.zombie_health`) |
 | `aims_off_weak_spot` | true | `SimSkill.weak_spot_rate`: the share of boss hits on the lens |
 | `throws_grenades` | true (not used) | the model's players never throw one; a switch for the next fit |
+| `kites_when_last` | false (the others true) | `NightSim._blow`: the last player up stands where it is, nothing kites a slow boss ([second round](#rookie-parity-second-round-the-last-bot-kited-767)) |
 
 Shared code touched: `bot_economy.gd` (`View.prepared`, `View.zombie_health`, `_floor_mags`, `_topoff`, `worth_taking`,
 `weakest_of`), `bot_errands.gd` (`_view`, `_zombie_health`, the crane take, `_hands_wrong`), `bot_client.gd` and
@@ -1678,6 +1679,50 @@ view and shorter memory (one bot: 10 of 16), a reaction of 1.0 s or a think rate
 of 16). Both together moved one bot to 5 of 16 and left two bots at 15 of 16 and four at 6 of 8, and put the Rookie's hit
 rate in the bands test at 0.46 (the model's 0.45), so they are the next thing to try with more nights than a sample of
 16. The gate on parity stays off (`--gate-parity`).
+
+#### Rookie parity, second round: the last bot kited (#767)
+
+Re-measured on `main` after #827 and #835 (24 nights a cell, round cap 16, the model's 300 nights): two bots median 8,
+Kolmogorov 0.58; four bots 6 and 0.21 (one bot 6 and 0.27, not touched by anything below). Two bots passed the first boss
+night in 14 of 16 nights at cap 6 against the model's 27%.
+
+**What it was.** A night of two bots at the first boss night, watched seat by seat (`--watch=1,2`): once one bot is
+down the other is the last one up, the revive is not safe, and `BotRevive` puts it in `SURVIVE`, which *kites* (a 5 m retreat
+margin, `KITE_MARGIN`). The headliner walks at 0.45 of a walker's speed, so a kiter is never reached: in the soak's
+counts the boss was in `CHASE` for 67 to 87 of its seconds and in `ATTACK` for 6 to 8 (4 to 5 swings), three blows
+landed a night against the six the model's loss needs. The model's player does not kite: the one left stands where it is
+(`NightSim._blow` hits it every swing). Every lever of the first round was a number of the model's player; this was a
+behaviour it does not have, found by reading the trace of one lost-or-won night, not by another sweep.
+
+**The lever.** `BotProfile.kites_when_last` (default true; the Rookie sets false): `BotRevive.kite_margin` is 0 for
+a profile that does not kite, so the last Rookie up stands and fights (the Regular and the Veteran keep kiting, as a
+person does). A bot with no teammate down never met the rule, so one bot is unchanged.
+
+| First boss night, two Rookies (cap 6, 16 nights) | Passed (the model 27%) |
+| --- | ---: |
+| kiting (before) | 14 of 16 |
+| `kites_when_last` false | **9 of 16** |
+| and `fire_jitter` 0.5 | 7 of 16 (and deaths in rounds 3 and 4: the model has 3%) |
+| and `revive_eagerness` 0 | 10 of 16 |
+| and `track_error` 24 | 10 of 16 |
+| and `weak_spot_rate` 0 | 9 of 16 |
+| and `throws_grenades` false | 12 of 16 (the grenades do not carry the boss night) |
+
+**Parity** (24 nights a cell, round cap 16, the model's 300 nights; `before` is `main`, `after` has the field; one bot
+is the same code in both):
+
+| Cell | Median before | after | Sim | Kolmogorov before | after |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| rookie x1 | 6 | 6 | 5 | 0.27 | 0.27 |
+| rookie x2 | 8 | 6 | 5 | 0.58 | 0.27 |
+| rookie x4 | 6 | 5 | 5 | 0.21 | 0.20 |
+
+The median is within a round for all three. The curves agree from round 8 on; what is left is the first boss night: two
+bots pass it in 50% of nights against the model's 23% (reached round 6), four in 38% against 34%. A Kolmogorov distance
+of two samples of the same distribution is 0.10 on average at 24 nights (0.17 at the 90th percentile) and 0.05 at 100,
+so the gate at 0.2 is read on the nightly run's 100 nights, not on 24. One two-bot night broke the roam-idle gate
+(`idle 26.4 s under Roam`, a bot with note `hold` and no goal in a break of round 4, seed 8); it is not the kite (the same
+night breaks with `kites_when_last` true, and the rule never runs with no teammate down) and is not understood.
 
 #### A Follow bot far from the person (#784)
 

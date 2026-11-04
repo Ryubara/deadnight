@@ -56,6 +56,8 @@ var _shocks := 0
 ## Seconds of frames since the dead's voices were last updated (`_on_event`).
 var _voice_time := 0.0
 var _elements_shown := 0
+## The flames on the zombies that burn, by zombie id (`ElementFx.burn`): one fire a zombie.
+var _burning: Dictionary[int, ElementFx] = {}
 ## The world's first surface on a segment, as the server's shots see it (made on the first shot).
 var _probe: WorldProbe
 ## The grenades in the air, by the server's id: each a copy of the server's grenade, stepped with
@@ -309,6 +311,8 @@ func _on_event(event: Dictionary) -> void:
 			_burn_lure(event)
 		&"element_burst", &"element_arc", &"fire_patch_started":
 			_show_element(event)
+		&"element_burn":
+			_show_burn(event)
 		&"board_torn", &"board_repaired":
 			if event["type"] == &"board_torn":
 				horde.tore(event.get("zombie_id", -1))
@@ -401,6 +405,29 @@ func _show_element(event: Dictionary) -> void:
 			fx = ElementFx.fire(event["point"], event["radius"], event["seconds"], element.tint)
 	_elements_shown += 1
 	add_child(fx)
+
+
+## A zombie a fire round set alight wears flames for the seconds it burns; a second hit on one that
+## already burns begins them again (one fire a zombie, never two).
+func _show_burn(event: Dictionary) -> void:
+	var element := ElementCatalog.get_def(event["element"])
+	if element == null:
+		return
+	var id: int = event["target_id"]
+	var alight: ElementFx = _burning.get(id)
+	if alight != null and is_instance_valid(alight) and not alight.is_queued_for_deletion():
+		alight.restart(event["seconds"])
+		return
+	var fx := ElementFx.burn(horde, id, event["seconds"], element.tint)
+	_burning[id] = fx
+	_elements_shown += 1
+	add_child(fx)
+	fx.tree_exited.connect(_burn_ended.bind(id, fx))
+
+
+func _burn_ended(id: int, fx: ElementFx) -> void:
+	if _burning.get(id) == fx:
+		_burning.erase(id)
 
 
 ## The flare lies where it landed and burns for as long as the server's lure lasts.
