@@ -96,7 +96,7 @@ func test_a_second_press_on_a_re_cut_weapon_is_refused_with_the_rule_and_costs_n
 	_use(night)
 	_use(night)
 	assert_int(night.state.points()).is_equal(before)
-	assert_int(night.server.combat.state_of(1, &"pistol").tier()).is_equal(1)
+	assert_int(night.server.combat.state_of(1, &"house_pistol").tier()).is_equal(1)
 	# The rules refuse it too, for a client that asks anyway.
 	var events := night.server.buy(1, &"upgrade_weapon")
 	assert_int(RulesFixture.first(events, &"purchase_denied")["result"]).is_equal(
