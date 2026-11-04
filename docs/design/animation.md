@@ -162,7 +162,7 @@ gets its grip by placing three empties and running the solver, never by tuning n
 | `Trigger` | guns: the middle of the trigger's front face, where the finger's pad presses | +Y the press (backward) |
 | `Support` | two-handed guns: the left hand's handle (fore-end, vertical foregrip) | +Z toward the left index finger (the muzzle, on a fore-end); +Y the way its fingers point (to the gun's right on a fore-end held from below, forward on a vertical grip) |
 
-**The solver** (`game/tests/art/solve_grips.gd`, with `GripSolver` and `HandContact`) works in the hand bone's space
+**The solver** (`game/tools/art/solve_grips.gd`, with `GripSolver` and `HandContact`) works in the hand bone's space
 (`Index1`), so its result holds in every pose:
 
 1. The hand's handle line: across the knuckles (pinky to index) at the middle finger; the straight fingers' direction

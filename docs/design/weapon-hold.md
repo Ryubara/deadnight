@@ -98,7 +98,7 @@ from the muzzle to what the camera ray is on.
 The cooked grenade is held like a weapon: `holds/grenade.tres` (`weapon_class` Grenade) names the model
 (`assets/weapons/grenade/grenade.glb`), the size (2.2 times the rule's length: a real grenade vanishes in the chibi's
 fist at the rule's size), the muzzle and butt points of the model, and `grips/grenade.tres` is the fist solved for it
-(`tests/art/solve_grips.gd`, rerun after a size change). `PlayerAnimation` builds the node `Grenade` on the weapon mount
+(`tools/art/solve_grips.gd`, rerun after a size change). `PlayerAnimation` builds the node `Grenade` on the weapon mount
 from them; it shows with the cook clip's `grenade_visible` event and goes with `release`. The capture
 (`weapon_hold_sheet.tscn -- --only=grenade`) adds a close view of the hand and one from the front.
 
