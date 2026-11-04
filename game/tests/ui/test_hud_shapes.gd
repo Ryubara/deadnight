@@ -130,6 +130,9 @@ func test_labels_leave_no_objects_behind_when_sounds_are_still_queued() -> void:
 
 func _labels_come_and_go(service: AudioService = Audio) -> void:
 	await AudioSettle.until_idle(get_tree(), service)
+	# Sounds an earlier suite left playing end during the count, each freeing its playback in a
+	# frame of its own: a fall that hides a leak of as many objects (#1138).
+	assert_bool(await QuietCount.settle(get_tree())).is_true()
 	var host: Control = auto_free(Control.new())
 	host.size = Vector2(400.0, 400.0)
 	add_child(host)
