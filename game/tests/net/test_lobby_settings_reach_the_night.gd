@@ -167,12 +167,27 @@ func _start_stack() -> void:
 # --- The players ---
 
 
-func _guest(player_name: String) -> TogetherApi:
+func _guest(player_name: String, level_10 := false) -> TogetherApi:
 	var api := TogetherApi.new(self, _backend)
 	api.isolated = true
 	var signed := await api.sign_in(player_name)
 	assert_bool(signed["ok"]).is_true()
+	if level_10:
+		await _reach_level_10(api)
 	return api
+
+
+## The backend pays the signed-in account the XP of level 10, as a game server's report does (the
+## back rooms open to a host from that level; the backend refuses the map to a lower one, #1098).
+func _reach_level_10(api: TogetherApi) -> void:
+	var sent := await HttpJson.send(
+		self,
+		"POST",
+		"%s/internal/matches/seed-level-10/report" % _backend,
+		{"Authorization": "Bearer " + GAME_SERVER_SECRET},
+		{"kind": "night", "round": 0, "seats": [{"userId": api.my_id(), "xp": 1000}]}
+	)
+	assert_int(sent["status"]).is_equal(200)
 
 
 ## The host's real lobby screen over a lobby the real backend made.
@@ -356,7 +371,7 @@ func _move(panel: MatchSettingsPanel, key: String) -> MatchSettings:
 
 
 func _moved_and_sent_then_started(key: String) -> void:
-	var host := await _guest("Ann")
+	var host := await _guest("Ann", true)
 	var screen := await _host_screen(host)
 	var guest := await _guest_in(screen)
 	var wanted := _move(screen.rules, key)
@@ -389,7 +404,7 @@ func _moved_and_sent_then_started(key: String) -> void:
 
 
 func _moved_and_started_at_once(key: String) -> void:
-	var host := await _guest("Ann")
+	var host := await _guest("Ann", true)
 	var screen := await _host_screen(host)
 	var wanted := _move(screen.rules, key)
 	# Nothing was sent yet: the change is still waiting when Start is pressed.
@@ -491,7 +506,7 @@ func test_the_perk_limit_the_host_picks_as_they_press_start_is_the_nights(
 func test_every_setting_the_host_moves_together_and_changes_again_ends_as_the_last_change(
 	_do_skip := _why_not() != "", _skip_reason := SKIP
 ) -> void:
-	var host := await _guest("Ann")
+	var host := await _guest("Ann", true)
 	var screen := await _host_screen(host)
 	# A first choice, sent; then a second one over it, sent; the night has the second.
 	screen.rules.map_picker.card_for(SECOND_MAP).pressed.emit()
@@ -513,7 +528,7 @@ func test_every_setting_the_host_moves_together_and_changes_again_ends_as_the_la
 func test_a_start_with_no_rules_in_it_keeps_what_the_host_sent_while_waiting(
 	_do_skip := _why_not() != "", _skip_reason := SKIP
 ) -> void:
-	var host := await _guest("Ann")
+	var host := await _guest("Ann", true)
 	var screen := await _host_screen(host)
 	var wanted := MatchSettings.new()
 	wanted.map = SECOND_MAP
@@ -566,7 +581,7 @@ func test_the_backend_takes_exactly_the_settings_the_game_has(
 func test_a_setting_the_backend_does_not_know_is_an_error_the_host_reads(
 	_do_skip := _why_not() != "", _skip_reason := SKIP
 ) -> void:
-	var host := await _guest("Ann")
+	var host := await _guest("Ann", true)
 	var made := await host.create_lobby()
 	var asked := MatchSettings.new().to_dict()
 	asked["a_modifier"] = true

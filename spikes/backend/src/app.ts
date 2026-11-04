@@ -386,7 +386,7 @@ export function buildApp(deps: Deps): FastifyInstance {
 
   // Quick join: into a public night with room, or a new public one that starts at once.
   app.post("/lobbies/quick", { onRequest: requireUser }, async (request, reply) => {
-    return reply.code(200).send(lobbyView(lobbies.quick(await member(request.userId))));
+    return reply.code(200).send(lobbyView(lobbies.quick(await member(request.userId), await progress.levelFor(request.userId))));
   });
 
   app.post<{ Params: { id: string } }>("/lobbies/:id/leave", { onRequest: requireUser }, async (request, reply) => {
@@ -399,7 +399,7 @@ export function buildApp(deps: Deps): FastifyInstance {
   app.put<{ Params: { id: string }; Body: unknown }>(
     "/lobbies/:id/settings",
     { onRequest: requireUser },
-    async (request) => lobbyView(lobbies.setSettings(request.params.id, request.userId, request.body)),
+    async (request) => lobbyView(lobbies.setSettings(request.params.id, request.userId, await progress.levelFor(request.userId), request.body)),
   );
 
   // The host may send the night's rules (`settings`, the game's `MatchSettings`: count_multiplier, max_alive,
@@ -407,7 +407,7 @@ export function buildApp(deps: Deps): FastifyInstance {
   app.post<{ Params: { id: string }; Body: { settings?: unknown } | undefined }>(
     "/lobbies/:id/start",
     { onRequest: requireUser },
-    async (request) => lobbyView(lobbies.start(request.params.id, request.userId, request.body?.settings)),
+    async (request) => lobbyView(lobbies.start(request.params.id, request.userId, await progress.levelFor(request.userId), request.body?.settings)),
   );
 
   // The handoff: a member of a started lobby gets the game server's address and a one-minute ticket for their seat.
@@ -425,7 +425,9 @@ export function buildApp(deps: Deps): FastifyInstance {
       name: seat.name,
       // What the seat's level is seen by in the night: from the stored profile, never the client's word.
       ...(await progress.claimsFor(seat.userId)),
-      // Every ticket of a match carries the same rules; the game server applies them when the first one opens the room.
+      // Every ticket of a match carries the same host level, the lobby host's when the match started (a guest's ticket
+      // too: the host's level decides the map, not the holder's), and the same rules; the game server applies them when the first one opens the room.
+      hostLevel: lobby.match.hostLevel,
       ...(lobby.settings ? { settings: lobby.settings } : {}),
     });
     return { matchId: lobby.match.id, address: { url: server.url, activityPath: server.activityPath }, ticket };

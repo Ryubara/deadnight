@@ -76,7 +76,7 @@ test("an expired lobby frees its members, its code and its Activity instance", (
 test("a started lobby lasts until its match ends or its maximum age, then frees the slot", () => {
   const { lobbies, clock, running } = service(1);
   const lobby = lobbies.create(alice, 4, null);
-  lobbies.start(lobby.id, "alice");
+  lobbies.start(lobby.id, "alice", 1);
   assert.equal(running.size, 1);
 
   clock.now = 119 * MINUTE; // far past the open-lobby idle time: a started lobby does not idle out
@@ -99,7 +99,7 @@ test("a user is in at most one open lobby; leaving hands over the host and drops
   lobbies.leave(first.id, "alice"); // the host leaves
   assert.equal(lobbies.get(first.id).hostId, "bob");
   assert.deepEqual(lobbies.get(first.id).members.map((m) => m.userId), ["bob"]);
-  assert.equal(failure(() => lobbies.start(first.id, "alice")), "not_host");
+  assert.equal(failure(() => lobbies.start(first.id, "alice", 1)), "not_host");
   assert.equal(failure(() => lobbies.leave(first.id, "alice")), "not_member");
   lobbies.create(alice, 4, null); // alice is free again
 
@@ -113,7 +113,7 @@ test("starting a lobby frees its members to open another; leaving a started lobb
   const { lobbies, running } = service(2);
   const lobby = lobbies.create(alice, 4, null);
   lobbies.join(lobby.id, bob);
-  lobbies.start(lobby.id, "alice");
+  lobbies.start(lobby.id, "alice", 1);
   const next = lobbies.create(alice, 4, null);
   assert.equal(next.state, "open");
 
@@ -243,8 +243,8 @@ test("a finished night reopens its lobby for the people who were there, with its
   const lobby = lobbies.create(alice, 8, "instance-1");
   lobbies.join(lobby.id, bob);
   lobbies.join(lobby.id, carol);
-  lobbies.setSettings(lobby.id, "alice", { count_multiplier: 2, max_alive: 0, break_seconds: 0, map: "small_indoor", bots: 3 });
-  const started = lobbies.start(lobby.id, "alice");
+  lobbies.setSettings(lobby.id, "alice", 10, { count_multiplier: 2, max_alive: 0, break_seconds: 0, map: "small_indoor", bots: 3 });
+  const started = lobbies.start(lobby.id, "alice", 10);
   const matchId = started.match!.id;
   lobbies.setPlayers(matchId, 3);
   lobbies.setRound(matchId, 7);
@@ -262,7 +262,7 @@ test("a finished night reopens its lobby for the people who were there, with its
   assert.equal(running.size, 0); // the match's slot is free
   assert.equal(lobbies.findByInstance("instance-1")?.id, lobby.id);
   // They can start the next night at once, and the host's rules are still the ones chosen.
-  const next = lobbies.start(lobby.id, "alice");
+  const next = lobbies.start(lobby.id, "alice", 10);
   assert.equal(next.state, "started");
   assert.equal(next.settings?.map, "small_indoor");
   assert.equal(running.size, 1);
@@ -272,12 +272,12 @@ test("a finished night whose host left hands the lobby to the next seat, and an 
   const { lobbies } = service(2);
   const lobby = lobbies.create(alice, 8, null);
   lobbies.join(lobby.id, bob);
-  const first = lobbies.start(lobby.id, "alice").match!.id;
+  const first = lobbies.start(lobby.id, "alice", 1).match!.id;
   lobbies.matchEnded(first, { present: ["bob"] });
   assert.equal(lobbies.get(lobby.id).hostId, "bob");
   assert.deepEqual(lobbies.get(lobby.id).members.map((m) => m.userId), ["bob"]);
 
-  const second = lobbies.start(lobby.id, "bob").match!.id;
+  const second = lobbies.start(lobby.id, "bob", 1).match!.id;
   lobbies.matchEnded(second, { present: [] }); // nobody was left: the lobby goes, as any other end does
   assert.equal(failure(() => lobbies.get(lobby.id)), "not_found");
 });
@@ -286,13 +286,13 @@ test("a night that ended any other way still drops its lobby, and a user already
   const { lobbies } = service(3);
   const one = lobbies.create(alice, 8, null);
   lobbies.join(one.id, bob);
-  const matchOne = lobbies.start(one.id, "alice").match!.id;
+  const matchOne = lobbies.start(one.id, "alice", 1).match!.id;
   lobbies.matchEnded(matchOne);
   assert.equal(failure(() => lobbies.get(one.id)), "not_found");
 
   const two = lobbies.create(alice, 8, null);
   lobbies.join(two.id, bob);
-  const matchTwo = lobbies.start(two.id, "alice").match!.id;
+  const matchTwo = lobbies.start(two.id, "alice", 1).match!.id;
   const other = lobbies.create(bob, 8, null); // bob opened a lobby of his own while the night was on
   lobbies.matchEnded(matchTwo, { present: ["alice", "bob"] });
   assert.deepEqual(lobbies.get(two.id).members.map((m) => m.userId), ["alice"]);
