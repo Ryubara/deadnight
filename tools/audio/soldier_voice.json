@@ -170,6 +170,46 @@
       "[tired] Sorry, I was humming. Habit. My mother used to hum when things got bad.",
       "[low] Man, what I wouldn't give for a hot coffee and a bed that doesn't smell like gasoline.",
       "[tired chuckle] Funny thing is, I used to hate quiet. Now it scares me more than the noise."
+    ],
+    "level_up": [
+      "[excited] Level up! Now we're cooking!",
+      "[grinning] Climbing the ladder, one rung at a time!",
+      "[laughs] Moving up in the world, folks!"
+    ],
+    "tier_up": [
+      "[shouting, triumphant] New rank! Hear that brass?!",
+      "[whooping] Whoo! Straight up the chain of command!",
+      "[proud] Look at me. Stripes and everything."
+    ],
+    "unlock": [
+      "[pleased] Ooh, something new. Don't mind if I do.",
+      "[excited] Look what I just earned!",
+      "[grins] Well, well. Look what I found."
+    ],
+    "challenge_done": [
+      "[laughs] Ha! Nailed it. Put it on the board!",
+      "[smug] Challenge done. Easy as pie.",
+      "[chuckles] Scratch that one off the list."
+    ],
+    "poster_set": [
+      "[delighted] The whole set! Every poster on the wall!",
+      "[proud] Full set. Hang 'em up, folks.",
+      "[laughs] That's the last poster. Now it looks right."
+    ],
+    "card": [
+      "[pleased] A new calling card. Classy.",
+      "[chuckles] Fresh card in the deck. Deal me in.",
+      "[excited] New card! Hand 'em out!"
+    ],
+    "emblem": [
+      "[proud] Got me a new emblem. Wear it loud.",
+      "[grinning] Shiny new badge. Look at that shine.",
+      "[pleased] Fancy frame, fancy me."
+    ],
+    "first_game": [
+      "[cheerful] First feature of the day. Let's go!",
+      "[upbeat] Doors are open. First show's on me.",
+      "[laughs] Day's first game. Bonus time!"
     ]
   }
 }

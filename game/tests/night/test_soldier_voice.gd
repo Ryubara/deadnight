@@ -439,3 +439,56 @@ func test_a_player_whose_look_has_not_arrived_has_his_voice() -> void:
 	assert_str(String(_voice.look_voice(MATE))).is_equal("male")
 	assert_bool(_say_until(&"reload", MATE)).is_true()
 	assert_str(String(_heard[0]["id"])).starts_with("vox_reload_")
+
+
+func test_a_cheer_for_every_progression_moment_plays_for_both_voices() -> void:
+	for voice: StringName in [&"male", &"female"]:
+		_voices(voice, voice)
+		for event in SoldierVoiceCatalog.PROGRESS:
+			_voice.step(100.0)
+			_heard.clear()
+			_voice.celebrate(event, OWN)
+			_voice.step(0.1)
+			assert_int(_heard.size()).override_failure_message("%s %s" % [voice, event]).is_equal(1)
+			var prefix: String = SoldierVoiceCatalog.VOICES[voice]["prefix"]
+			assert_str(String(_heard[0]["id"])).starts_with("%s%s_" % [prefix, event])
+			assert_object(SoundCatalog.get_def(_heard[0]["id"])).is_not_null()
+
+
+func test_a_teammates_cheer_is_heard_where_they_stand_and_ours_is_flat() -> void:
+	_voice.celebrate(&"level_up", MATE)
+	_voice.step(0.1)
+	assert_int(_heard.size()).is_equal(1)
+	assert_vector(_heard[0]["at"]).is_equal_approx(
+		AT_MATE + SoldierVoice.HEAD_LIFT, Vector3.ONE * 0.01
+	)
+	assert_float(_heard[0]["db"]).is_equal(0.0)
+	_voice.step(100.0)
+	_heard.clear()
+	_voice.celebrate(&"level_up", OWN)
+	_voice.step(0.1)
+	assert_object(_heard[0]["at"]).is_null()
+	assert_float(_heard[0]["db"]).is_equal(SoundCatalog.mix().own_voice_db)
+
+
+func test_a_cheer_waits_for_the_line_that_speaks_instead_of_being_dropped() -> void:
+	assert_bool(_say_until(&"reload", OWN)).is_true()
+	_voice.step(0.2)
+	_voice.celebrate(&"tier_up", MATE)
+	_voice.step(0.2)
+	assert_array(_moments()).is_equal(["reload"])
+	_voice.step(12.0)
+	assert_array(_moments()).is_equal(["reload", "tier_up"])
+
+
+func test_a_downed_player_does_not_cheer_and_a_hurt_cuts_a_cheer() -> void:
+	_frame(GameRules.Phase.ACTIVE, true)
+	_voice.celebrate(&"level_up", MATE)
+	_voice.step(0.1)
+	assert_array(_moments()).is_empty()
+	_frame(GameRules.Phase.ACTIVE)
+	_voice.celebrate(&"level_up", OWN)
+	_voice.step(0.1)
+	assert_array(_moments()).is_equal(["level_up"])
+	assert_bool(_say_until(&"hurt", OWN)).is_true()
+	assert_array(_moments()).is_equal(["level_up", "hurt"])

@@ -36,6 +36,8 @@ var clock_text := ""
 var has_ping := false
 ## The player ids in row order.
 var row_ids: Array[int] = []
+## The level each row shows (0 for none), in row order (`HudState.level_of`).
+var row_levels: Array[int] = []
 
 var _t := HudTuning.current()
 var _grid := VBoxContainer.new()
@@ -119,9 +121,11 @@ func refresh() -> void:
 	_grid.add_child(_heading_row())
 	rows_text.clear()
 	row_ids.clear()
+	row_levels.clear()
 	for id in ids.slice(0, MAX_ROWS):
 		var cells := _cells(id)
 		row_ids.append(id)
+		row_levels.append(state.level_of(state.team[id]).x)
 		rows_text.append(cells)
 		_grid.add_child(_player_row(id, cells))
 	update_minimum_size()
@@ -217,12 +221,17 @@ func _player_row(player_id: int, cells: Array[String]) -> Control:
 			var grades: Array[Color] = [tokens.ink, tokens.accent, tokens.danger]
 			var ping := int(member["ping"])
 			ink = tokens.ink_muted if ping < 0 else grades[ping_grade(ping)]
+		var shown := state.level_of(member)
+		var room := widths[i] - (HudLevelCell.taken(shown) if i == 0 else 0.0)
 		var label := HudStyle.clip(HudStyle.label("", HudStyle.MEDIUM, ink, i > 0))
-		label.custom_minimum_size = Vector2(widths[i], ROW_HEIGHT)
+		label.custom_minimum_size = Vector2(room, ROW_HEIGHT)
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		label.horizontal_alignment = (
 			HORIZONTAL_ALIGNMENT_LEFT if i == 0 else HORIZONTAL_ALIGNMENT_RIGHT
 		)
-		HudStyle.set_fitted(label, cells[i], HudStyle.MEDIUM, widths[i] - float(HudStyle.SM))
-		row.add_child(label)
+		HudStyle.set_fitted(label, cells[i], HudStyle.MEDIUM, room - float(HudStyle.SM))
+		if i == 0:
+			row.add_child(HudLevelCell.wrap(label, shown, tokens.ink, ROW_HEIGHT))
+		else:
+			row.add_child(label)
 	return wash

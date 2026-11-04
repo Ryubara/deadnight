@@ -34,7 +34,7 @@ they matter, and where each lands. Where this table differs from the earlier pla
 | 8 | **All weapons and tonics free** from the first night. **A higher level has a slightly better kit**: "yeah the higher level player would ideally have a slightly better kit but that's a reward for them playing more." | [Rules](#rules-we-hold-ourselves-to), [Combat bonuses](#combat-bonuses), #1055 |
 | 9 | **Popups in real time**, as soon as they trigger, during play; XP and milestones credit live, not at a round's end. "Animations for this stuff need to be good" | [Popups, motion and sound](#popups-motion-and-sound), #1064 |
 | 10 | **Sounds**: a record scratch of our own making when a challenge is done; an honourable, battlefield-like sound for a level up (snare and brass; bigger on a tier) | [Popups, motion and sound](#popups-motion-and-sound), #1062 |
-| 11 | **Progression voice lines**: several celebration lines for every progression event, male and female, ElevenLabs, heard by every client; they wait on the maintainer's credits and commercial licence | [Voice lines](#voice-lines), #1063 (blocked), #252 |
+| 11 | **Progression voice lines**: several celebration lines for every progression event, male and female, ElevenLabs, heard by every client; made on the free tier, regenerated under the commercial plan before release | [Voice lines](#voice-lines), #1063, #252 |
 | 12 | **Wardrobe**: a grid; locked names are `???` with a silhouette of the base icon and the unlock instructions on hover; **no fitting room**; mouths are free | [Wardrobe](#wardrobe-costumes-and-the-locks), #1065, #1061 |
 | 13 | **Costumes** in their own tab, each with a **"Default"** colour option, and the player's own colours from the palette they have unlocked ("costumes in their default colors will have a Default option, and the users will have the ability to choose their own colors") | [Wardrobe](#wardrobe-costumes-and-the-locks), #1066 |
 | 14 | **Plate frames**: part of levels 1 to 55, plus exclusive ones from challenges ("beat this map"); calling cards and emblems yes; **no title phrases, no ticket book, no applause** | [The plate](#plate-calling-cards-emblems-and-frames), #1070, #1071, #1072 |
@@ -48,9 +48,9 @@ they matter, and where each lands. Where this table differs from the earlier pla
 | 22 | **Left out**: Bad Weather nights, the fitting room, rested XP, the ticket book, applause, title phrases | [What changed](#what-changed-from-the-earlier-plan) |
 
 **Open:** what prestige resets and which rewards are exclusive (after #1055); how slight the combat edge is (#1055);
-the extraction details (#1056, each point a choice); rarity (#1053); the voice lines wait on the credits and licence
-(#252); the sizes of the first-game bonus and the opening night (first guesses; what they are is still with the
-maintainer).
+the extraction details (#1056, each point a choice); rarity (#1053); the voice lines are free-tier takes to regenerate
+under the commercial plan (#252); the sizes of the first-game bonus and the opening night (first guesses; what they
+are is still with the maintainer).
 
 ## What changed from the earlier plan
 
@@ -687,9 +687,11 @@ commercial license." So (#1063): several celebration takes each for a level up, 
 (the line after the record scratch), a poster set, a card, emblem or frame, and the first game of the day, male and
 female, made with ElevenLabs. Every client hears them through the server events the XP issues emit: `SoldierVoice`
 already makes a voice from a server event, and a teammate's level up is heard by everyone. **Priority:** they outrank
-combat chatter but not urgent lines (hurt, downed, a boss, a warning). **Blocked on the maintainer**: the lines need
-the new credits and the commercial licence ([#252](https://github.com/Ryubara/deadnight/issues/252)); free-tier sounds
-are not licensed for commercial use.
+combat chatter but not urgent lines (hurt, downed, a boss, a warning). **Made (#1063, 2026-11-04)**: 24 takes in each
+voice on the free tier, at the maintainer's word ("go ahead and get them going, I'll get the package with commercial
+rights in a moment"); they are **not licensed for commercial use** and are regenerated under the commercial plan before
+release ([#252](https://github.com/Ryubara/deadnight/issues/252)). The server events are wired to them when #1059 lands
+([research](../research/audio.md#the-progression-voice-lines-1063)).
 
 ## Level icons
 
@@ -708,14 +710,27 @@ are not licensed for commercial use.
 
 ## The level over a head
 
-The HUD's ally marker (`HudMarkers`, drawn in screen space) shows a name above a triangle. It becomes **icon, name,
-level**, the icon from the 64 px atlas at 24 px, in the same marker so it keeps its place rules. **Shown by default**
-(decision 18); a setting hides every level on the viewer's own screen. The level and icon ride with the name: in the
-ticket the backend signs, then in the WELCOME's names and the `player_named` event. **Bots have no level** and keep
+The HUD's ally marker (`HudMarkers`, drawn in screen space) shows a name above a triangle. It becomes **icon, level,
+name**: the icon from the 64 px atlas at 24 px, the level right beside it, a little padding, then the name, in the
+same marker so it keeps its place rules. This is the maintainer's order ("icon, then level to the right of it, with a
+bit of padding to the right and it shows the players name"), and it is the same **everywhere** a level shows: over a
+head, in the bottom-left player boxes, on the scoreboard, in the night report and in the lobby's seat list. Two gaps
+decide it and live in one place, `LevelTag`: `ICON_GAP` (4) between the icon and the level, tight, and `NAME_GAP` (12)
+between the level and the name, visibly larger. A row with no level (a bot, a seat without one, the setting off) is
+the name alone, with no badge and no gap. In a list (the scoreboard, the report, the lobby, the boxes) a level has the
+room of two digits, so the names of the people start on one line and 55 is never cut; over a head the level takes its
+own width and the whole tag is centred as a bare name is. In the compact box the name ends in an ellipsis before the
+badge or the points are cut. **Shown by default**
+(decision 18); a setting hides every level on the viewer's own screen. The level comes from the server's XP tally, which
+every client hears (the WELCOME's `levels`, then `account_seated`, `level_up` and `account_left`); the icon is the
+level's own. **Bots have no level** and keep
 their usual difficulties (the earlier idea of a level near the lobby's average is dropped). A Guest account is an
 account and has a level like any other; only a bot has none.
-Also on the scoreboard, the lobby list and the night report. A name tag never shows a card or an emblem in the night.
-Build: #1077.
+Also on the scoreboard, the lobby list, the night report and the player boxes at the bottom left (calling cards
+beside the box come with #1070). A name tag never shows a card or an emblem in the night.
+Built in #1077: [how it travels and what it costs](../research/multiplayer.md#the-level-and-icon-beside-a-name-1077).
+The setting is **Player levels** (Settings, Accessibility). A level gained in a night reaches the tags by the
+`level_up` event the tally already sends (#1114), so a tag changes the moment the level does.
 
 ## Prestige
 
@@ -803,6 +818,10 @@ base on rounds reached and points per round.
   game server must send are in [Progression on the backend](../research/platform-backend.md#progression-the-profile-slot-round-reports-and-the-xp-clamp).
   One decision there: the server posts XP **without** the two one-offs and claims them (`openingNight`, `bonusDay`); the
   backend knows the profile and pays each once.
+- **Built (#1106): a signed-in solo night sends its XP.** The queue holds **changes** (`{id, xp, opening_night,
+  bonus_day, done}`), not profiles: the backend takes the whole profile on a revision, so each send reads the account's
+  own latest, puts the change on it and writes that. The account's profile is read at sign-in and replaces the file's
+  (no merge of an offline file). How: [the solo night's write](../research/progression.md#a-signed-in-solo-nights-write-1106).
 - **What a level is seen by:** the ticket the backend mints carries `level`, `icon` and `xp`; never the client's word
   in the night.
 - **What would force more:** a leaderboard, any ranking, anything paid, or a reward a cheater would gain from (none
@@ -886,7 +905,7 @@ files):
 | 4 | #1060 The 55 level icons and the atlas (art; parallel) | - |
 | 5 | #1061 More mouths, free (art; parallel) | - |
 | 6 | #1062 The record scratch, level-up fanfare and unlock sounds (audio; parallel) | - |
-| 7 | #1063 Progression voice lines (**blocked on the maintainer**: credits and licence, #252) | 3, 6 |
+| 7 | #1063 Progression voice lines (made on the free tier; regenerate under the commercial plan, #252) | 3, 6 |
 | 8 | #1064 The popup lane, live, with motion proved by clips | 3, 4, 6 |
 | 9 | #1065 The wardrobe grid, `???`, locks | 1, 4 |
 | 10 | #1066 The Costumes tab | 9 |
@@ -914,7 +933,7 @@ curve).
 | 1 | What does prestige reset, and which rewards are exclusive? | After #1055 |
 | 2 | How slight is the combat edge, and what is it (ammunition, reload, an attachment, a skill)? | After #1055 |
 | 3 | Are 50 XP for the opening night and 100 for the first game of the day the right size? | First guesses; tune from telemetry |
-| 4 | Do the voice lines wait for the new credits and the commercial licence? | Yes (#252, #1063 is blocked) |
+| 4 | Do the voice lines wait for the new credits and the commercial licence? | Made now on the free tier (maintainer, 2026-11-04); regenerated under the commercial plan before release (#252) |
 | 5 | Which rarity tiers, if any, and what do the top ones cost? | #1053 |
 | 6 | Extraction's quota, steps, last stand and what a win pays | #1056 |
 | 7 | Is a weekly bill (live operations) in scope, and who runs it? | Defer |

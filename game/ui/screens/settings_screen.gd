@@ -164,6 +164,12 @@ const TABS := [
 				"labels": ["All", "Big ones only", "Off"],
 				"values": [0, 1, 2],
 			},
+			{
+				"key": SettingsService.SHOW_LEVELS,
+				"title": "Player levels",
+				"hint": "Each player's level and icon beside their name.",
+				"kind": "toggle",
+			},
 		],
 	},
 	{

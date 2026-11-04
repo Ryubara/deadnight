@@ -155,6 +155,10 @@ func _ready() -> void:
 		night.challenge_board = ChallengeBoard.open(challenge_path)
 	if profile_path != "":
 		night.profile_store = ProfileStore.open(profile_path, TogetherApi.signed_in)
+		# Under the root: the last round's write is sent after this screen has gone.
+		night.profile_uplink = ProfileUplink.new(
+			TogetherApi.new(get_tree().root, TogetherScreen.backend_url()), night.profile_store
+		)
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	add_child(_hud)

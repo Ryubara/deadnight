@@ -106,13 +106,13 @@ func test_a_refused_write_stays_queued_and_is_sent_again_unchanged() -> void:
 	var first_id: String = store.queue[0]["id"]
 	var seen: Array[String] = []
 	# The backend refuses: nothing leaves the queue, and the cached profile keeps the XP.
-	assert_int(store.flush(func(_write: Dictionary) -> bool: return false)).is_zero()
+	assert_int(await store.flush(func(_write: Dictionary) -> bool: return false)).is_zero()
 	assert_int(store.queue.size()).is_equal(2)
 	assert_int(store.profile.xp).is_equal(200)
 	# The file carries the queue, so a restart still has it.
 	assert_int(ProfileStore.open(store.path).queue.size()).is_equal(2)
 	# It takes the first and refuses the second.
-	var taken := store.flush(
+	var taken := await store.flush(
 		func(write: Dictionary) -> bool:
 			seen.append(write["id"])
 			return seen.size() == 1
@@ -122,7 +122,7 @@ func test_a_refused_write_stays_queued_and_is_sent_again_unchanged() -> void:
 	assert_int(store.queue[0]["xp"]).is_equal(80)
 	# Then everything goes, oldest first, with the ids it had before.
 	var resent: Array[String] = []
-	var rest := store.flush(
+	var rest := await store.flush(
 		func(write: Dictionary) -> bool:
 			resent.append(write["id"])
 			return true

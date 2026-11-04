@@ -298,6 +298,8 @@ export function buildApp(deps: Deps): FastifyInstance {
       userId: m.userId,
       name: m.name,
       seat: i + 1,
+      // The level and icon beside the name in the lobby list (the same the ticket will carry); absent until the backend has read the profile.
+      ...(progress.knownLevel(m.userId) ?? {}),
       host: m.userId === lobby.hostId,
       away: lobbies.isQuiet(lobby, m.userId),
     })),
@@ -325,6 +327,7 @@ export function buildApp(deps: Deps): FastifyInstance {
   const member = async (userId: string) => {
     const user = await store.getUser(userId);
     if (!user) throw new LobbyFailure("not_found");
+    await progress.claimsFor(user.id); // reads the profile once, so the member list can show the level
     return { userId: user.id, name: user.name };
   };
 

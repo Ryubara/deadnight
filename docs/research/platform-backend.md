@@ -299,7 +299,10 @@ yet, and the ledger holds the same facts.
 
 **The ticket** carries `level`, `icon` (`level_NN`, a file of `game/assets/ui/levels/`) and `xp`, read from the stored
 profile when the ticket is minted, never from the client; an account with no profile, or one that does not read, is
-level 1. The stub game server passes them on in its welcome.
+level 1. The stub game server passes them on in its welcome. The lobby's member list carries the same `level` and `icon`
+for each member (`ProgressService.knownLevel`, read when the member joins and moved by every report), so the lobby shows
+the tag the ticket will carry; a Guest account's is its own like any other. How the game server shows them:
+[the level and icon beside a name](multiplayer.md#the-level-and-icon-beside-a-name-1077).
 
 What the game server must send, and when: [the game server's tally](../design/progression.md#who-awards-xp-and-live-xp)
 (#1059) posts one report a seat at each round's end (`kind: round`, `round: n`) and one at the night's end (`kind:
@@ -423,7 +426,7 @@ lobby reads its rules back with `MatchSettings.from_json`, which makes the whole
 
 ### The host's level decides the map (#1098)
 
-The back rooms open at level 10 ([the design](../design/maps.md)). The host's level decides, not the
+The back rooms open at level 10 ([the design](../design/maps.md#levels-open-maps)). The host's level decides, not the
 holder's: a guest below a map's level still plays a hosted night there.
 
 - `src/settings.ts` keeps `MAP_UNLOCK_LEVELS` (`drive_in` 1, `small_indoor` 10), the game's `MapInfo.unlock_level`;
@@ -438,8 +441,9 @@ holder's: a guest below a map's level still plays a hosted night there.
   into the ticket of every member, so the order the players arrive in decides nothing and XP the host earns in the night
   moves the badge (`level`) and not the gate. A night that reopens its lobby reads the host again at its next start, so
   a host who passed the role on changes it for the next match.
-- A backend from before this signs no `hostLevel`; the game server then leaves the host's choice
-  (`TicketVerifier.NO_LEVEL`).
+- A backend from before this signs no `hostLevel`; the game server then counts the host as level 1
+  (`TicketVerifier.NO_LEVEL`), so the back rooms are never opened by a missing claim (#1107).
+  `test_map_unlock_net.gd` runs the rule over this backend: a level-3 host and a level-12 guest, and the reverse.
 
 ### A setting is never dropped (#944)
 

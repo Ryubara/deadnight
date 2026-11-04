@@ -149,6 +149,23 @@ test("a profile that does not read gives level 1 in the ticket, it never breaks 
   await api.app.close();
 });
 
+test("the lobby's member list carries each member's level and icon, a Guest's too, and follows a report", async () => {
+  const api = await backend();
+  const host = await api.discord(1, "ana");
+  const visitor = await api.guest("visitor");
+  assert.equal((await api.put(host, envelope(0, profile({ xp: 300 })))).statusCode, 200);
+  const lobby = (await api.app.inject({ method: "POST", url: "/lobbies", headers: host.headers, payload: {} })).json();
+  const joined = await api.app.inject({ method: "POST", url: "/lobbies/join-by-code", headers: visitor.headers, payload: { code: lobby.code } });
+  assert.equal(joined.statusCode, 200, joined.body);
+  const levels = (view: { members: { userId: string; level?: number; icon?: string }[] }) => view.members.map((m) => [m.level, m.icon]);
+  assert.deepEqual(levels(joined.json()), [[4, "level_04"], [1, "level_01"]]);
+  // The tag in the lobby is the tag in the ticket: a report that pays the guest 85 XP moves it up the next time the list is read.
+  assert.equal((await api.report("m1", roundReport(1, [seat(visitor.id, 85)]))).statusCode, 200);
+  const again = (await api.app.inject({ method: "GET", url: `/lobbies/${lobby.id}`, headers: host.headers })).json();
+  assert.deepEqual(levels(again), [[4, "level_04"], [2, "level_02"]]);
+  await api.app.close();
+});
+
 // ---- the game server's round report
 
 test("a round report pays once, and posting it again changes nothing", async () => {
