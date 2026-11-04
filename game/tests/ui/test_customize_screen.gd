@@ -1,7 +1,8 @@
 # gdlint: disable=max-public-methods
 extends GdUnitTestSuite
-## The customization screen driven with simulated keyboard, gamepad and mouse input: pickers move
-## the look, locked options refuse, presets and Randomize apply, Save and a fresh screen restore.
+## The customization screen driven with simulated keyboard, gamepad and mouse input: the grid's
+## move the look, locked ones refuse, presets and Randomize apply, Save and a fresh screen restore.
+## The screen is opened at level 55 (everything is the player's) unless a test gives other unlocks.
 
 const SCREEN := "res://ui/screens/customize_screen.tscn"
 const TEST_PATH := "user://customize_screen_test.cfg"
@@ -48,7 +49,10 @@ func _open(params := {}) -> CustomizeScreen:
 	# the window.
 	get_window().size = Vector2i(1920, 1080)
 	var screen := (load(SCREEN) as PackedScene).instantiate() as CustomizeScreen
-	screen.params = params
+	var given := params.duplicate()
+	if not given.has("unlocks"):
+		given["unlocks"] = LookUnlocks.at_level(LevelCurve.MAX_LEVEL)
+	screen.params = given
 	# On a layer of its own, above the test runner's own controls, so a click reaches the screen.
 	var layer := CanvasLayer.new()
 	layer.layer = 100
@@ -98,22 +102,24 @@ func test_it_starts_on_the_saved_look_and_shows_it() -> void:
 	assert_bool(_screen.is_dirty()).is_false()
 	assert_object(_screen.preview().model).is_not_null()
 	# The default look is the first preset, so the selector reads its name.
-	var selector := _screen.preset_selector()
-	assert_str(selector.text()).is_equal("Greaser")
+	assert_str(_screen.preset_selector().text()).is_equal("Greaser")
 
 
-func test_the_first_focus_is_the_character_selector() -> void:
+func test_the_first_focus_is_the_body_tab() -> void:
 	await await_idle_frame()
 	_screen.focus_initial()
-	assert_object(_screen.get_viewport().gui_get_focus_owner()).is_same(_screen.body_selector())
+	assert_object(_screen.get_viewport().gui_get_focus_owner()).is_same(_screen.tab_button(&"body"))
 
 
-func test_the_character_row_switches_to_her_and_everything_follows() -> void:
-	assert_str(_screen.body_selector().text()).is_equal("Male")
-	_screen.body_selector().grab_focus()
-	await _key(KEY_RIGHT)
+func test_the_character_choice_switches_to_her_and_everything_follows() -> void:
+	await await_idle_frame()
+	assert_bool(_screen.cell("part:body", 0).worn).is_true()
+	# A real click on her cell.
+	var her := _screen.cell("part:body", 1)
+	await _click(her, her.size * 0.5)
 	assert_str(String(_screen.look.body())).is_equal("female")
-	assert_str(_screen.body_selector().text()).is_equal("Female")
+	assert_bool(her.worn).is_true()
+	assert_bool(_screen.cell("part:body", 0).worn).is_false()
 	# The Greaser's pompadour is his: she gets her bob; the outfit stays.
 	assert_str(String(_screen.look.parts[&"hair"])).is_equal("bob")
 	assert_str(String(_screen.look.parts[&"torso"])).is_equal("jacket")
@@ -122,7 +128,7 @@ func test_the_character_row_switches_to_her_and_everything_follows() -> void:
 	assert_array(Array(presets)).is_equal(
 		["Carhop", "Usherette", "Pit crew", "Pep squad", "Custom"]
 	)
-	assert_str(_screen.selector(&"head").text()).is_equal("Natural")
+	assert_str(_screen.cell("part:head", 0).shown_name()).is_equal("Natural")
 	var shown := SoldierLook.visible_meshes(_screen.look.to_soldier_look())
 	assert_array(shown).contains(
 		["head__plain__female", "torso__jacket__female", "legs__cuffed__female"]
@@ -134,39 +140,51 @@ func test_the_character_row_switches_to_her_and_everything_follows() -> void:
 	)
 	assert_bool((model.find_child("torso__jacket", true, false) as Node3D).visible).is_false()
 	# And back: his crew cut, his presets.
-	await _key(KEY_LEFT)
+	var him := _screen.cell("part:body", 0)
+	await _click(him, him.size * 0.5)
 	assert_str(String(_screen.look.body())).is_equal("male")
 	assert_str(String(_screen.look.parts[&"hair"])).is_equal("crew")
 	assert_str(_screen.preset_selector().options[0]).is_equal("Greaser")
-	assert_str(_screen.selector(&"head").text()).is_equal("Clean-shaven")
+	assert_str(_screen.cell("part:head", 0).shown_name()).is_equal("Clean-shaven")
 
 
 func test_her_preset_picks_her_and_randomize_keeps_her() -> void:
 	_screen.apply_preset(9)
-	assert_str(_screen.body_selector().text()).is_equal("Female")
+	assert_bool(_screen.cell("part:body", 1).worn).is_true()
 	assert_str(_screen.preset_selector().text()).is_equal("Usherette")
 	for i in 20:
 		_screen.randomize()
 		assert_str(String(_screen.look.body())).is_equal("female")
 
 
-func test_the_mouth_row_sits_under_the_face_row_free_and_saved() -> void:
-	var slots := LookCatalog.choosable_part_slots()
-	assert_int(slots.find(&"mouth")).is_equal(slots.find(&"head") + 1)
-	var selector := _screen.selector(&"mouth")
-	assert_int(selector.options.size()).is_equal(LookCatalog.options(&"mouth").size())
-	assert_bool("locked" in ",".join(selector.options)).is_false()
-	# The player's own way: focus the row and press right, and the turntable follows at once.
-	selector.grab_focus()
-	await _key(KEY_RIGHT)
+func test_the_mouths_are_free_on_the_body_tab_under_the_face_and_saved() -> void:
+	await await_idle_frame()
+	var body_sections: Array = CustomizeScreen.TABS[0]["sections"]
+	var parts: Array = (
+		body_sections
+		. filter(func(s: Dictionary) -> bool: return s.has("part"))
+		. map(func(s: Dictionary) -> StringName: return s["part"])
+	)
+	assert_int(parts.find(&"mouth")).is_equal(parts.find(&"head") + 1)
+	var mouths := _screen.cells("part:mouth")
+	assert_int(mouths.size()).is_equal(LookCatalog.options(&"mouth").size())
+	for mouth in mouths:
+		assert_bool(mouth.locked).is_false()
+	# At level 1 too: nothing about a mouth is gated.
+	var starter := _open({"unlocks": LookUnlocks.new(), "seed": 4})
+	for mouth in starter.cells("part:mouth"):
+		assert_bool(mouth.locked).is_false()
+	# The player's own way: focus the cell and press accept, and the turntable follows at once.
 	var second: Dictionary = LookCatalog.options(&"mouth")[1]
+	var cell := _screen.cell("part:mouth", 1)
+	cell.grab_focus()
+	await _key(KEY_ENTER)
 	assert_str(String(_screen.look.parts[&"mouth"])).is_equal(String(second["id"]))
 	var mesh := "mouth__%s" % second["id"]
 	assert_bool((_screen.preview().model.find_child(mesh, true, false) as Node3D).visible).is_true()
 	_screen.save()
-	assert_str(String(LookStore.load_look(LookUnlocks.new()).parts[&"mouth"])).is_equal(
-		String(second["id"])
-	)
+	var back := LookStore.load_look(LookUnlocks.new())
+	assert_str(String(back.parts[&"mouth"])).is_equal(String(second["id"]))
 
 
 func test_a_preset_keeps_its_mouth_and_randomize_reaches_every_mouth() -> void:
@@ -181,98 +199,130 @@ func test_a_preset_keeps_its_mouth_and_randomize_reaches_every_mouth() -> void:
 	assert_int(seen.size()).is_equal(LookCatalog.options(&"mouth").size())
 
 
-func test_every_choosable_slot_has_a_strip() -> void:
+func test_every_slot_and_colour_has_a_grid_on_a_tab() -> void:
+	var on_tabs := {}
+	for tab: Dictionary in CustomizeScreen.TABS:
+		for section: Dictionary in tab["sections"]:
+			for kind: String in ["part", "colour"]:
+				if section.has(kind):
+					on_tabs[kind + ":" + section[kind]] = true
 	for slot in LookCatalog.choosable_part_slots():
-		assert_object(_screen.selector(slot)).is_not_null()
+		(
+			assert_bool(on_tabs.has("part:%s" % slot))
+			. override_failure_message("slot %s is on no tab" % slot)
+			. is_true()
+		)
+		# Every catalogue entry has a cell, and the wearables with no model yet come after.
+		assert_int(_screen.cells("part:" + slot).size()).is_equal(
+			LookCatalog.options(slot).size() + LookCatalog.pending(slot).size()
+		)
+	assert_bool(on_tabs.has("part:body")).is_true()
 	for slot in LookCatalog.colour_slots():
-		assert_int(_screen.strip("colour:" + slot).entries.size()).is_equal(
+		assert_bool(on_tabs.has("colour:%s" % slot)).is_true()
+		assert_int(_screen.cells("colour:" + slot).size()).is_equal(
 			LookCatalog.palette(slot).size()
 		)
 
 
-func test_the_keyboard_moves_along_a_strip_and_the_look_follows() -> void:
-	var strip := _screen.strip("colour:skin")
-	strip.grab_focus()
+func test_the_keyboard_walks_along_the_skin_swatches_and_accept_wears() -> void:
+	await await_idle_frame()
 	var start: int = _screen.look.colours[&"skin"]
+	_screen.cell("colour:skin", start).grab_focus()
 	await _key(KEY_RIGHT)
 	await _key(KEY_RIGHT)
-	assert_int(strip.selected).is_equal(start + 2)
+	# Walking is not choosing: the look changes on accept.
+	assert_int(_screen.look.colours[&"skin"]).is_equal(start)
+	await _key(KEY_ENTER)
 	assert_int(_screen.look.colours[&"skin"]).is_equal(start + 2)
-	await _key(KEY_LEFT)
-	assert_int(_screen.look.colours[&"skin"]).is_equal(start + 1)
+	assert_bool(_screen.cell("colour:skin", start + 2).worn).is_true()
 	assert_bool(_screen.is_dirty()).is_true()
 
 
-func test_the_gamepad_dpad_moves_along_a_strip() -> void:
-	var strip := _screen.strip("colour:secondary")
-	strip.grab_focus()
-	var start: int = _screen.look.colours[&"secondary"]
+func test_the_gamepad_dpad_walks_the_grid_and_a_wears() -> void:
+	await await_idle_frame()
+	var start: int = _screen.look.colours[&"hair"]
+	_screen.show_tab(&"hair")
+	await await_idle_frame()
+	_screen.cell("colour:hair", start).grab_focus()
 	for i in 3:
 		await _pad(JOY_BUTTON_DPAD_RIGHT)
-	assert_int(_screen.look.colours[&"secondary"]).is_equal(start + 3)
-	strip.grab_focus()
+	await _pad(JOY_BUTTON_A)
+	assert_int(_screen.look.colours[&"hair"]).is_equal(start + 3)
 	await _pad(JOY_BUTTON_DPAD_LEFT)
-	assert_int(_screen.look.colours[&"secondary"]).is_equal(start + 2)
+	await _pad(JOY_BUTTON_A)
+	assert_int(_screen.look.colours[&"hair"]).is_equal(start + 2)
 
 
-func test_the_gamepad_walks_down_the_rows_and_back_up() -> void:
+func test_the_gamepad_walks_from_a_tab_down_into_the_grid_and_back_up() -> void:
 	await await_idle_frame()
-	var first := _screen.selector(&"head")
-	first.grab_focus()
+	var tab := _screen.tab_button(&"torso")
+	_screen.show_tab(&"torso")
+	await await_idle_frame()
+	await await_idle_frame()
+	tab.grab_focus()
 	await _pad(JOY_BUTTON_DPAD_DOWN)
-	assert_object(_screen.get_viewport().gui_get_focus_owner()).is_same(_screen.selector(&"mouth"))
-	await _pad(JOY_BUTTON_DPAD_UP)
+	var first := _screen.cells("part:torso")[0]
 	assert_object(_screen.get_viewport().gui_get_focus_owner()).is_same(first)
+	await _pad(JOY_BUTTON_DPAD_UP)
+	assert_object(_screen.get_viewport().gui_get_focus_owner()).is_same(tab)
+	# Along the strip the focus walks and a press shows the tab.
+	await _pad(JOY_BUTTON_DPAD_RIGHT)
+	assert_object(_screen.get_viewport().gui_get_focus_owner()).is_same(_screen.tab_button(&"legs"))
+	assert_str(String(_screen.current_tab())).is_equal("torso")
+	await _pad(JOY_BUTTON_A)
+	assert_str(String(_screen.current_tab())).is_equal("legs")
 
 
-func test_the_mouse_clicks_a_swatch_and_a_text_chip() -> void:
+func test_the_mouse_clicks_a_swatch_a_tab_and_a_wearable() -> void:
 	await await_idle_frame()
-	var skin := _screen.strip("colour:skin")
-	# The colour rows are below the fold of the scrolling list.
-	for scroll in _screen.find_children("*", "ScrollContainer", true, false):
-		(scroll as ScrollContainer).ensure_control_visible(skin)
+	var skin := _screen.cell("colour:skin", 3)
+	_screen.reveal(skin)
 	await await_idle_frame()
-	await _click(skin, skin.chip_rect(3).get_center())
+	await _click(skin, skin.size * 0.5)
 	assert_int(_screen.look.colours[&"skin"]).is_equal(3)
-	# The right half of a part selector steps to the next part.
-	var headwear := _screen.selector(&"headwear")
-	await _click(headwear, Vector2(headwear.size.x - 20.0, headwear.size.y * 0.5))
+	# The Hats tab, by a click, then the helmet.
+	var tab := _screen.tab_button(&"headwear")
+	await _click(tab, tab.size * 0.5)
+	assert_str(String(_screen.current_tab())).is_equal("headwear")
+	await await_idle_frame()
+	var helmet := _screen.cell_of(&"headwear", &"helmet")
+	await _click(helmet, helmet.size * 0.5)
 	assert_str(String(_screen.look.parts[&"headwear"])).is_equal("helmet")
+	assert_bool(helmet.worn).is_true()
 	(
 		assert_bool(_screen.preview().model.find_child("headwear__helmet", true, false).visible)
 		. is_true()
 	)
 
 
-func test_a_locked_option_can_be_looked_at_but_not_chosen() -> void:
-	var strip := _screen.strip("colour:primary")
-	strip.grab_focus()
-	var blocked: Array[int] = []
-	strip.blocked.connect(func(index: int) -> void: blocked.append(index))
-	for i in 10:
-		await _key(KEY_RIGHT)
-	assert_int(strip.selected).is_equal(10)
-	assert_int(_screen.look.colours[&"primary"]).is_equal(10)
-	await _key(KEY_RIGHT)
-	assert_int(strip.cursor).is_equal(11)
-	assert_int(strip.selected).is_equal(10)
-	assert_int(_screen.look.colours[&"primary"]).is_equal(10)
-	assert_array(blocked).contains([11])
-	# Accept on it is refused too, and the screen says how to get it.
+func test_a_locked_item_can_be_looked_at_but_not_worn() -> void:
+	var poor := _open({"unlocks": LookUnlocks.at_level(10), "seed": 3})
+	poor.show_tab(&"colours")
+	await await_idle_frame()
+	var locked := poor.first_locked_cell()
+	assert_object(locked).is_not_null()
+	var before := poor.look.duplicate_look()
+	locked.grab_focus()
+	# The focus alone reads how to get it; accept is refused and the look stays.
+	assert_str(poor.detail_text()).is_equal("??? - Reach level 15 (you are level 10)")
 	await _key(KEY_ENTER)
-	assert_int(_screen.look.colours[&"primary"]).is_equal(10)
-	assert_bool(_hint_text().contains("Billing level 10")).is_true()
+	assert_bool(poor.look.equals(before)).is_true()
+	assert_bool(locked.worn).is_false()
+	assert_str(poor.detail_text()).contains("Reach level 15")
 
 
-func test_locked_swatches_are_flagged_and_unlocking_opens_them() -> void:
-	assert_bool(_screen.strip("colour:primary").entries[11]["locked"]).is_true()
-	assert_bool(_screen.strip("colour:primary").entries[0]["locked"]).is_false()
-	var rich := LookUnlocks.new()
-	rich.billing_level = 10
-	var opened := _open({"unlocks": rich, "seed": 3})
-	assert_bool(opened.strip("colour:primary").entries[11]["locked"]).is_false()
-	opened.strip("colour:primary").move_to(11)
-	assert_int(opened.look.colours[&"primary"]).is_equal(11)
+func test_unlocking_opens_the_items() -> void:
+	var poor := _open({"unlocks": LookUnlocks.at_level(10), "seed": 3})
+	var gold := poor.cell("colour:primary", 11)
+	assert_bool(gold.locked).is_true()
+	assert_bool(poor.cell("colour:primary", 0).locked).is_false()
+	var rich := _open({"unlocks": LookUnlocks.at_level(42), "seed": 3})
+	assert_bool(rich.cell("colour:primary", 11).locked).is_false()
+	rich.choose("colour:primary", 11)
+	assert_int(rich.look.colours[&"primary"]).is_equal(11)
+	# Choosing a locked one does nothing.
+	poor.choose("colour:primary", 11)
+	assert_int(poor.look.colours[&"primary"]).is_not_equal(11)
 
 
 func test_a_preset_picked_with_the_keyboard_applies_and_shows_its_name() -> void:
@@ -282,7 +332,7 @@ func test_a_preset_picked_with_the_keyboard_applies_and_shows_its_name() -> void
 	assert_bool(_screen.look.equals(CharacterLook.from_preset(1))).is_true()
 	assert_str(selector.text()).is_equal("Usher")
 	# Editing a colour leaves the preset: the selector reads Custom.
-	_screen.strip("colour:hair").move_to(3)
+	_screen.choose("colour:hair", 3)
 	assert_str(selector.text()).is_equal(CustomizeScreen.CUSTOM_LABEL)
 
 
@@ -291,9 +341,15 @@ func test_every_preset_can_be_applied_and_the_preview_follows() -> void:
 		_screen.apply_preset(i)
 		assert_bool(_screen.look.equals(CharacterLook.from_preset(i))).is_true()
 		for slot in LookCatalog.colour_slots():
-			assert_int(_screen.strip("colour:" + slot).selected).is_equal(
-				CharacterLook.from_preset(i).colours[slot]
-			)
+			var worn := _screen.cell("colour:" + slot, CharacterLook.from_preset(i).colours[slot])
+			assert_bool(worn.worn).is_true()
+
+
+func test_a_preset_a_player_cannot_wear_whole_is_put_on_in_what_they_may_wear() -> void:
+	var starter := _open({"unlocks": LookUnlocks.new(), "seed": 1})
+	starter.apply_preset(5)
+	assert_bool(starter.look.equals(starter.look.without_locked(starter.unlocks))).is_true()
+	assert_bool(starter.look.equals(CharacterLook.from_preset(5))).is_false()
 
 
 func test_randomize_is_repeatable_with_a_seed_and_never_locked() -> void:
@@ -301,15 +357,15 @@ func test_randomize_is_repeatable_with_a_seed_and_never_locked() -> void:
 	_screen.randomize()
 	other.randomize()
 	assert_bool(_screen.look.equals(other.look)).is_true()
-	var unlocks := LookUnlocks.new()
+	var starter := _open({"unlocks": LookUnlocks.new(), "seed": 5})
 	for i in 20:
-		_screen.randomize()
-		assert_bool(_screen.look.equals(_screen.look.without_locked(unlocks))).is_true()
+		starter.randomize()
+		assert_bool(starter.look.equals(starter.look.without_locked(starter.unlocks))).is_true()
 
 
 func test_save_then_open_a_fresh_screen_restores_the_look() -> void:
 	_screen.apply_preset(4)
-	_screen.strip("colour:accent").move_to(4)
+	_screen.choose("colour:accent", 4)
 	var expected := _screen.look.duplicate_look()
 	_screen.save()
 	assert_bool(_screen.is_dirty()).is_false()
@@ -317,7 +373,7 @@ func test_save_then_open_a_fresh_screen_restores_the_look() -> void:
 	Settings.load_from_disk()
 	var fresh := _open({"seed": 1})
 	assert_bool(fresh.look.equals(expected)).is_true()
-	assert_int(fresh.strip("colour:accent").selected).is_equal(4)
+	assert_bool(fresh.cell("colour:accent", 4).worn).is_true()
 	assert_bool(fresh.is_dirty()).is_false()
 
 
@@ -366,10 +422,3 @@ func test_the_main_menu_hosts_the_wardrobe_on_its_loadout_tab() -> void:
 	assert_object(panel.wardrobe.find_child("Back", true, false)).is_null()
 	UIRouter.reset("res://ui/screens/main_menu.tscn", UITransition.Kind.CUT)
 	await UIRouter.idle
-
-
-func _hint_text() -> String:
-	for label in _screen.find_children("*", "UILabel", true, false):
-		if (label as Label).text.begins_with("Locked:"):
-			return (label as Label).text
-	return ""

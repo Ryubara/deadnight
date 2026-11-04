@@ -14,6 +14,8 @@ const MENU := "res://ui/screens/main_menu.tscn"
 const WARDROBE := "res://ui/screens/customize_screen.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
 const FILE := "user://saved_look_capture.cfg"
+## The look wears pieces a level opens: the profile this capture reads says level 55.
+const PROFILE := "user://saved_look_capture_profile.json"
 ## Frames the wardrobe and the night each stand before the shot.
 const SETTLE_FRAMES := 25
 const SHOT_FRAMES := 25
@@ -22,10 +24,15 @@ const SHOT_FRAMES := 25
 func _ready() -> void:
 	Settings.path = FILE
 	Settings.reset_defaults()
+	var profile := Profile.new()
+	profile.xp = LevelCurve.xp_for(LevelCurve.MAX_LEVEL)
+	ProfileSave.write(profile, [], 1, PROFILE)
+	LookUnlocks.profile_path = PROFILE
 	LookStore.save_look(_look())
 	await _wardrobe()
 	await _night()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(FILE))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE))
 	Settings.reset_defaults()
 	get_tree().quit()
 

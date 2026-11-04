@@ -66,7 +66,7 @@ func _menu() -> void:
 	shell.tab_bar.button(MenuTab.Id.LOADOUT).pressed.emit()
 	await _beat("menu_loadout")
 	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
-	print("[female] loadout character: ", panel.wardrobe.body_selector().text())
+	print("[female] loadout character: ", panel.wardrobe.look.body())
 	shell.tab_bar.button(MenuTab.Id.PLAY).pressed.emit()
 	await _beat("menu_home_after")
 

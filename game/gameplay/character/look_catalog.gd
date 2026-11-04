@@ -16,7 +16,7 @@ extends RefCounted
 ## The character (#678) is the `body` part slot: `male` is the Soldier as built, `female` shows her
 ## variant of the face, mouth, torso and legs (`SoldierLook.visible_meshes`), so every other choice
 ## fits both. It has a row of its own at the top of the screen, not a part row. The `mouth` slot
-## (#1061) came after it on the wire, and is free to everyone: nothing in `PART_GATES` names it.
+## (#1061) came after it on the wire, and is free to everyone: `unlocks.json` does not name it.
 
 const CATALOG_PATH := "res://assets/characters/soldier_parts/parts.json"
 
@@ -58,15 +58,10 @@ const ARMBAND_COLOURS: Array[Color] = [
 	Color("f2f2f2"),
 ]
 
-## What a locked palette entry asks for, by "<channel>/<index>" (see `LookUnlocks` for the forms).
-## Progression decides the real ones; no starting preset uses any of these.
-const PALETTE_GATES := {
-	"primary/11": {"billing": 10},
-	"secondary/15": {"stubs": 400},
-	"accent/14": {"stubs": 150},
-}
-## The same for parts, by "<slot>/<id>". None is locked yet.
-const PART_GATES := {}
+## The ladder: which wearables and colours a level opens, written beside the parts
+## (`unlocks.json`, #1065). A part or a colour that it does not name, or names at level 1, is free:
+## it has no gate.
+const UNLOCKS_PATH := "res://assets/characters/soldier_parts/unlocks.json"
 ## The slot that holds the character, and its two choices.
 const BODY_SLOT := &"body"
 const MALE := &"male"
@@ -78,6 +73,10 @@ static var _channels: Array[StringName] = []
 static var _options: Dictionary = {}
 static var _palettes: Dictionary = {}
 static var _presets: Array[Dictionary] = []
+static var _part_gates: Dictionary = {}
+static var _palette_gates: Dictionary = {}
+static var _pending: Dictionary = {}
+static var _ladder_parts: Array = []
 
 
 ## The part slots, in wire order.
@@ -103,6 +102,45 @@ static func options(slot: StringName) -> Array:
 static func palette(channel: StringName) -> Array:
 	_load()
 	return _palettes.get(channel, [])
+
+
+## What a locked part asks for, by "<slot>/<id>" (a gate is `LookUnlocks`'s dictionary).
+static func part_gates() -> Dictionary:
+	_load()
+	return _part_gates
+
+
+## The same for a colour, by "<channel>/<palette index>": a gate of the cloth palette is on all
+## three cloth channels.
+static func palette_gates() -> Dictionary:
+	_load()
+	return _palette_gates
+
+
+## The wearables the ladder promises that have no model yet, of `slot`: `id`, `label`,
+## `label_female` and `gate`. They show in the wardrobe by their icon, locked or not, and cannot be
+## worn; each leaves this list when `parts.json` gets it.
+static func pending(slot: StringName) -> Array:
+	_load()
+	return _pending.get(slot, [])
+
+
+## The part of `slot` a look falls back to when what it wears is not the player's: the first one
+## this player may wear (every slot has a free one).
+static func first_open(slot: StringName, unlocks: LookUnlocks) -> StringName:
+	for option: Dictionary in options(slot):
+		if unlocks.is_unlocked(slot, option["id"], option["gate"]):
+			return option["id"]
+	return options(slot)[0]["id"]
+
+
+## The palette index of `channel` a look falls back to: the first the player may use.
+static func first_open_colour(channel: StringName, unlocks: LookUnlocks) -> int:
+	var entries := palette(channel)
+	for i in entries.size():
+		if unlocks.is_unlocked(channel, entries[i]["id"], entries[i]["gate"]):
+			return i
+	return 0
 
 
 ## The presets: `id`, `name`, `parts` (id by slot) and `colours` (palette index by channel). The
@@ -176,13 +214,14 @@ static func _load() -> void:
 	_options.clear()
 	_palettes.clear()
 	_presets.clear()
+	_read_unlocks()
 	for slot_name: String in _data["slots"]:
 		var slot := StringName(slot_name)
 		_slots.append(slot)
 		var list: Array[Dictionary] = []
 		var parts: Dictionary = _data["slots"][slot_name]["parts"]
 		for id: String in parts:
-			var gate: Dictionary = PART_GATES.get("%s/%s" % [slot_name, id], {})
+			var gate: Dictionary = _part_gates.get("%s/%s" % [slot_name, id], {})
 			var entry: Dictionary = parts[id]
 			(
 				list
@@ -197,6 +236,7 @@ static func _load() -> void:
 				)
 			)
 		_options[slot] = list
+		_pending[slot] = _pending_of(slot, parts)
 	for channel_name: String in _data["channels"]:
 		var channel := StringName(channel_name)
 		_channels.append(channel)
@@ -205,7 +245,7 @@ static func _load() -> void:
 		var names: Array = _data["palette_names"][source]
 		var entries: Array[Dictionary] = []
 		for i in colours.size():
-			var gate: Dictionary = PALETTE_GATES.get("%s/%d" % [channel_name, i], {})
+			var gate: Dictionary = _palette_gates.get("%s/%d" % [channel_name, i], {})
 			(
 				entries
 				. append(
@@ -236,3 +276,53 @@ static func _load() -> void:
 				}
 			)
 		)
+
+
+## Reads `unlocks.json` into the two gate tables, by the ids of `parts.json` and its palette names.
+## The palette's names are read here (`_data` is already set) so a colour is found by name.
+static func _read_unlocks() -> void:
+	_part_gates.clear()
+	_palette_gates.clear()
+	_pending.clear()
+	var json := JSON.new()
+	if json.parse(FileAccess.get_file_as_string(UNLOCKS_PATH)) != OK:
+		push_error("LookCatalog: cannot read %s" % UNLOCKS_PATH)
+		return
+	var ladder: Dictionary = json.data
+	_ladder_parts = ladder.get("parts", [])
+	for entry: Dictionary in _ladder_parts:
+		if int(entry["level"]) > 1:
+			_part_gates["%s/%s" % [entry["slot"], entry["id"]]] = {"level": int(entry["level"])}
+	for entry: Dictionary in ladder.get("colours", []):
+		if int(entry["level"]) <= 1:
+			continue
+		var source: String = entry["palette"]
+		for channel_name: String in _data["channels"]:
+			if _data["channels"][channel_name] != source:
+				continue
+			var at: int = (_data["palette_names"][source] as Array).find(
+				entry["id"].replace("_", " ")
+			)
+			if at >= 0:
+				_palette_gates["%s/%d" % [channel_name, at]] = {"level": int(entry["level"])}
+
+
+## The ladder's wearables of `slot` that `parts` (the slot's entries of `parts.json`) lacks.
+static func _pending_of(slot: StringName, parts: Dictionary) -> Array:
+	var out: Array = []
+	for entry: Dictionary in _ladder_parts:
+		if StringName(entry["slot"]) != slot or parts.has(entry["id"]):
+			continue
+		var label: String = entry.get("label", String(entry["id"]).capitalize())
+		(
+			out
+			. append(
+				{
+					"id": StringName(entry["id"]),
+					"label": label,
+					"label_female": entry.get("label_female", label),
+					"gate": {"level": int(entry["level"])},
+				}
+			)
+		)
+	return out
