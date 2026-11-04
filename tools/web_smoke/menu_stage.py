@@ -43,9 +43,17 @@ from smoke import (
 CASES = [
     # name, query, screen the probe must report, viewport
     ("menu_today_720p", "", "main_menu", {"width": 1280, "height": 720}),
-    ("stage_live_720p", "?stage", "menu_stage_screen", {"width": 1280, "height": 720}),
-    ("stage_live_1080p", "?stage", "menu_stage_screen", {"width": 1920, "height": 1080}),
-    ("stage_live_phone_landscape", "?stage", "menu_stage_screen", {"width": 844, "height": 390}),
+    ("stage_live_720p", "?stage=live", "menu_stage_screen", {"width": 1280, "height": 720}),
+    ("stage_live_1080p", "?stage=live", "menu_stage_screen", {"width": 1920, "height": 1080}),
+    ("stage_live_1440p", "?stage=live", "menu_stage_screen", {"width": 2560, "height": 1440}),
+    ("stage_live_phone_landscape", "?stage=live", "menu_stage_screen", {"width": 844, "height": 390}),
+    # A phone: 844 x 390 css pixels at a pixel ratio of 2 (the page reports at most 2 to the engine), touch on.
+    (
+        "stage_live_phone_dpr2",
+        "?stage=live",
+        "menu_stage_screen",
+        {"width": 844, "height": 390, "device_scale_factor": 2, "has_touch": True, "is_mobile": True},
+    ),
     ("stage_still_1080p", "?stage=still", "menu_stage_screen", {"width": 1920, "height": 1080}),
 ]
 SETTLE_MS = 3000
@@ -99,7 +107,10 @@ def main() -> int:
             browser = p.chromium.launch(headless=True, args=SOFTWARE_GL)
         try:
             for name, query, screen, viewport in CASES:
-                page = browser.new_page(viewport=viewport)
+                if args.cases and name not in args.cases.split(","):
+                    continue
+                size = {"width": viewport["width"], "height": viewport["height"]}
+                page = browser.new_page(viewport=size, **{k: v for k, v in viewport.items() if k not in size})
                 page.add_init_script("(" + LINKS_PER_FRAME_JS.strip() + ")();")
                 page.on("console", on_console)
                 page.on("pageerror", lambda error: problems.append(f"[pageerror] {error}"))
@@ -140,6 +151,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("out", type=Path, help="where the screenshots and result.json go")
     parser.add_argument("--gpu", action="store_true", help="use the installed Chrome and the machine's GPU")
     parser.add_argument("--unpaced", action="store_true", help="with --gpu: lift the display's frame limit")
+    parser.add_argument("--cases", default="", help="only these cases, by name, separated by commas")
     parser.add_argument("--budget-p95", type=float, default=0.0, help="fail when the live stage's p95 is over this")
     return parser.parse_args()
 
