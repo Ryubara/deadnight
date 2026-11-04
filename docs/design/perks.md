@@ -25,8 +25,8 @@ Prices, the per-player limit and what going down costs are [from the simulator](
 
 ## What a player sees at a machine
 
-Within reach (`NightTuning.use_reach`, 3.2 m) of a machine the prompt card shows **the name, the price and one plain
-line** of what it does, and a press of use buys it, the same press as a door ([the card](hud.md)):
+Within reach (`NightTuning.spot_reach`, 1.5 m from its spot) of a machine the prompt card shows **the name, the price
+and one plain line** of what it does, and a press of use buys it, the same press as a door ([the card](hud.md)):
 
 | Machine | Card |
 | --- | --- |
