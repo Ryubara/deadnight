@@ -21,6 +21,7 @@ const MODELS: Array[String] = [
 	"flare_gun",
 	"grenade",
 	"hammer",
+	"perk_bottle",
 	"lever_rifle",
 	"revolver",
 	"tommy_gun",
@@ -80,10 +81,13 @@ func _ticks(count: int) -> void:
 	await get_tree().process_frame
 
 
-## The held item now (the hammer while repairing, the grenade while in the hand, else the weapon).
+## The held item now (the hammer while repairing, the perk's bottle while drinking, the grenade
+## while in the hand, else the weapon).
 func _held() -> Node3D:
 	if _animation.hammer().visible:
 		return _animation.hammer()
+	if _animation.bottle().visible:
+		return _animation.bottle()
 	var grenade := _animation.weapon_mount().get_node("Grenade") as Node3D
 	if grenade.visible:
 		return grenade
@@ -253,4 +257,17 @@ func test_the_repair_hammer_and_the_grenade_are_held_by_their_grips() -> void:
 	_animation.grenade(&"cook")
 	await _ticks(40)
 	fails.append_array(await _check("grenade cooked", HandGrip.for_name("grenade")))
+	assert_array(fails).is_empty()
+
+
+func test_the_perk_bottle_is_held_by_its_grip_through_the_drink() -> void:
+	# #912: up from the hip, at the cap, at the mouth for both gulps.
+	var fails: Array[String] = []
+	_animation.drink(&"tonic_double_shot", 2.5)
+	var done := 0
+	for at: float in [0.6, 0.75, 1.3, 1.6]:
+		await _ticks(roundi(at / TICK) - done)
+		done = roundi(at / TICK)
+		fails.append_array(await _check("bottle %.2f s" % at, _animation.bottle().grip))
+		done += 1
 	assert_array(fails).is_empty()
