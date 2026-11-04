@@ -29,6 +29,15 @@ class Patch:
 		return element.ground_dps * element.tick_seconds
 
 
+## One zombie set burning (`ElementDef.burn_dps`): whose it is, by which weapon and element, and the
+## seconds until the next hit it takes. The seconds the fire lasts are the status's.
+class Burn:
+	var shooter_id: int = 0
+	var weapon_id: StringName = &""
+	var element: ElementDef
+	var next_tick: float = 0.0
+
+
 var _patches: Array[Patch] = []
 
 
