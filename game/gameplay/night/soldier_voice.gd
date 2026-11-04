@@ -111,10 +111,11 @@ func celebrate(event: StringName, speaker: int) -> void:
 	say_in(0.0, event, speaker, true)
 
 
-## A server's progression event (`XpAward`) for any player in the lot: every client hears it. The
-## events of one player that come together (a level, its tier, what it unlocks) are held for
-## `cheer_window` and the best of them is said once, as that player. Players who level up in the
-## same window are cheered one after the other, the better cheer first.
+## A server's progression event (`XpAward`, `ChallengeAward`) for any player in the lot: every
+## client hears it. The events of one player that come together (a level, its tier, what it
+## unlocks, the challenge that paid it) are held for `cheer_window` and the best of them is said
+## once, as that player. Players who level up in the same window are cheered one after the other,
+## the better cheer first.
 func _on_progress(event: Dictionary) -> void:
 	var cheer := SoldierVoiceCatalog.cheer_of(event)
 	if cheer == &"":
@@ -164,7 +165,7 @@ func _next_cheer() -> void:
 
 func _on_event(event: Dictionary) -> void:
 	match event["type"]:
-		&"level_up", &"tier_up", &"unlock_earned":
+		&"level_up", &"tier_up", &"unlock_earned", &"challenge_done":
 			_on_progress(event)
 		&"break_started":
 			_break_ends = director.now() + event["seconds"]
