@@ -85,12 +85,26 @@ func hold(id: StringName) -> void:
 	_held.close_hands()
 	_held.hands.active = carried
 	_held.hands.aim_pitch = LOW_READY_PITCH
+	_aim_along_front()
 
 
-## Steps the idle by `delta` seconds.
+## Turns the soldier to `yaw` (radians about up, 0 facing +Z) and aims the arms along his front. The
+## arms' pose is worked out in the world (`WeaponHandsIK.aim_yaw`), so a turn that moved only the
+## body left the weapon pointing where it was (#940).
+func face(yaw: float) -> void:
+	rotation.y = yaw
+	_aim_along_front()
+
+
+## Steps the idle by `delta` seconds, and poses the body even when `delta` is 0: a still never
+## advances the clip, and a skeleton that was never posed stays in the model's arms-out rest.
 func advance(delta: float) -> void:
 	if _player != null:
 		_player.advance(delta)
-	if _held != null:
-		# The hand pose aims in the world: forward is the soldier's own front (+Z), plus the turn.
-		_held.hands.aim_yaw = global_rotation.y + PI + LOW_READY_TURN
+	_aim_along_front()
+
+
+## The hand pose aims in the world: forward is the soldier's own front (+Z), plus the turn.
+func _aim_along_front() -> void:
+	if _held != null and _held.hands != null:
+		_held.hands.aim_yaw = rotation.y + PI + LOW_READY_TURN
