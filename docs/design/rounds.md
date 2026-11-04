@@ -330,7 +330,7 @@ Shop (prices at round 1):
 | Door: concession stand / generator yard / booth / back lot / road | 350 / 500 / 750 / 1250 / 2000 | opens for everyone; the yard and booth need the concession, the back lot the booth, the road the back lot ([the lot](map.md)) |
 | Wall weapons: shotgun / rifle | 900 / 1200 | per player |
 | Crane play | 550 | a spin, then a random weapon the player lacks to take (shotgun 4, rifle 3, SMG 2, flare gun 1); may break down and refund ([the crane](#the-prize-crane)) |
-| Re-cut of the weapon in hand | 1500, +1500 for each weapon already re-cut | x1.75 damage, x1.5 magazine and reserve limit, filled; once a weapon ([the re-cut](upgrades.md)) |
+| Re-cut of the weapon in hand | 5000 flat, every weapon (#909) | x1.75 damage, x1.5 magazine and reserve limit, filled; once a weapon ([the re-cut](upgrades.md)) |
 | Perks (tonics): hearty / double shot / quick load / third holster / swift rescue / reload shock | 1000 / 3000 / 2500 / 3000 / 1500 / 2000 | one of each, four at most, all lost on a down ([perks](perks.md), the prices [from the simulator](../research/perks.md#numbers)) |
 | Fuel can (+25 units) | 100 + 20 per round | a partial fill pays only for the room |
 | Grenades (+2) | 150 + 5 per round | up to 5 carried; a part purchase pays a part price |

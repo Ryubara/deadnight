@@ -55,7 +55,7 @@ func _ready() -> void:
 	UITokens.active_changed().connect(_on_tokens_changed)
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
-	focus_entered.connect(UIAudio.play.bind(&"focus"))
+	focus_entered.connect(UIAudio.play.bind(&"focus", self))
 	value_changed.connect(_on_value_changed)
 	_update_targets()
 	for spring in [_shown, _hover, _press, _focus]:
@@ -131,7 +131,7 @@ func _thumb_width() -> int:
 
 func _on_mouse_entered() -> void:
 	_inside = true
-	UIAudio.play(&"hover")
+	UIAudio.play(&"hover", self)
 	grab_focus()
 	set_process(true)
 
@@ -141,8 +141,12 @@ func _on_mouse_exited() -> void:
 	set_process(true)
 
 
+func ui_sound_role() -> StringName:
+	return &"slider"
+
+
 func _on_value_changed(_value: float) -> void:
-	UIAudio.play(&"tick")
+	UIAudio.play(&"tick", self)
 	set_process(true)
 
 

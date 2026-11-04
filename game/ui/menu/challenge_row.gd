@@ -56,12 +56,19 @@ static func tags_of(data: Dictionary) -> PackedStringArray:
 
 
 func _init() -> void:
+	UiSounds.wire(self)
 	flat = true
 	focus_mode = Control.FOCUS_ALL
 	focus_entered.connect(queue_redraw)
 	focus_exited.connect(queue_redraw)
 	mouse_entered.connect(_on_hover)
 	mouse_exited.connect(queue_redraw)
+
+
+## A challenge on the sheet only reads; an order can be swapped, which is a select (the menu's
+## sounds).
+func ui_sound_role() -> StringName:
+	return &"sheet_row_swap" if entry.has("slot") else &"sheet_row"
 
 
 func _build(with_tags: bool) -> void:

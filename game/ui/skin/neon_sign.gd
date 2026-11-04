@@ -56,6 +56,7 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	UiSounds.tag(self, &"any")
 	UITokens.active_changed().connect(_apply_face.unbind(1))
 	_apply_face()
 	UIMotion.changed().connect(_on_reduced_changed)
@@ -81,6 +82,9 @@ func _apply_face() -> void:
 func ignite() -> void:
 	clock = 0.0
 	lit_from_start = UIMotion.reduced
+	# The sound is the sign's own ignition, to its own timing; a sign that is simply lit has none.
+	if not UIMotion.reduced and is_inside_tree():
+		UIAudio.play(&"sign", self)
 	set_process(not UIMotion.reduced)
 	queue_redraw()
 

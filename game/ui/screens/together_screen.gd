@@ -196,6 +196,7 @@ func _build_menu() -> VBoxContainer:
 	create_button.pressed.connect(func() -> void: await _create("Making your night..."))
 	column.add_child(create_button)
 	code_field = LineEdit.new()
+	UiSounds.wire_field(code_field)
 	code_field.name = "Code"
 	code_field.placeholder_text = "Code from a friend"
 	code_field.max_length = CODE_LENGTH
@@ -229,6 +230,7 @@ func _build_naming() -> VBoxContainer:
 	note.custom_minimum_size.x = FIELD_WIDTH
 	column.add_child(note)
 	name_field = LineEdit.new()
+	UiSounds.wire_field(name_field)
 	name_field.name = "PlayerName"
 	name_field.placeholder_text = "Your name"
 	name_field.max_length = MenuProfile.MAX_NAME
