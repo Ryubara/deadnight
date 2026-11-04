@@ -138,6 +138,10 @@ const BOSS_ATTACK_SCALE_PARAMETER := &"parameters/attack/scale/scale"
 ## The one library every zombie shares. Built from the first model, then reused.
 static var _library: AnimationLibrary
 static var _boss_library: AnimationLibrary
+## The walkers' state machine, shared by every tree: a tree keeps its own playback and parameters,
+## so one machine of about forty nodes serves every body instead of one each (the objects the
+## night's budget counts, `tools/perf/budget.json`).
+static var _machine: AnimationNodeStateMachine
 ## The files the warm-up loaded, held so they stay in the resource cache until `release`.
 static var _warm: Array[Resource] = []
 
@@ -163,7 +167,9 @@ static func attach(model: Node) -> AnimationTree:
 	if _library == null:
 		_library = _build_library(player)
 	player.add_animation_library(LIBRARY, _library)
-	var tree := _tree(model, player, _build_state_machine())
+	if _machine == null:
+		_machine = _build_state_machine()
+	var tree := _tree(model, player, _machine)
 	tree.set(CLIMB_SCALE_PARAMETER, 0.0)
 	tree.set(CRAWL_CLIMB_SCALE_PARAMETER, 0.0)
 	return tree
@@ -195,6 +201,7 @@ static func _tree(
 static func release() -> void:
 	_library = null
 	_boss_library = null
+	_machine = null
 	_warm.clear()
 
 
