@@ -184,6 +184,12 @@ var _cast: WorldCast
 var _throwers: Dictionary[int, GrenadeThrower] = {}
 ## The shock perk's waits (`ShockPlay`).
 var _shocks := ShockPlay.new()
+## The target list and the frame's zombie bytes, each with the `ZombieSim.revision` it was built
+## at (-1: none yet).
+var _targets: Array = []
+var _targets_at := -1
+var _bytes := PackedByteArray()
+var _bytes_at := -1
 
 
 func _init(
@@ -349,7 +355,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	var target_list := _target_list()
 	PerfProbe.end(&"server.target_list", began)
 	began = PerfProbe.begin()
-	_combat(CombatAction.targets(target_list))
+	_combat(CombatAction.targets(target_list, sim.revision))
 	_combat(CombatAction.tick(delta))
 	PerfProbe.end(&"server.combat", began)
 	began = PerfProbe.begin()
@@ -595,7 +601,7 @@ func _throw_grenades(delta: float) -> void:
 	for player_id in _bodies:
 		standing.append({"id": player_id, "pos": _bodies[player_id].global_position})
 	_grenade(GrenadeAction.players(standing))
-	_grenade(GrenadeAction.targets(_target_list()))
+	_grenade(GrenadeAction.targets(_target_list(), sim.revision))
 	for player_id in _bodies:
 		_throw_of(player_id, delta)
 	_grenade(GrenadeAction.tick(delta))
@@ -749,12 +755,20 @@ func _shock(player_id: int) -> void:
 		_outbox.append(burst)
 
 
+## Where every standing zombie is, one `hit_target` each. Built once for each `ZombieSim.revision`:
+## the dead change when the sim steps (30 Hz, every second tick) and when a hit, a blast or a
+## spawn touches one, not on every tick, and a second ask in a tick (the grenades') is the first's
+## answer unless a shot killed something in between. The list is shared, nobody writes to it.
 func _target_list() -> Array:
-	var list: Array = []
+	if _targets_at == sim.revision:
+		return _targets
+	_targets_at = sim.revision
+	_targets = []
+	PerfProbe.count(&"server.targets_built")
 	for zombie: ZombieBody in sim.zombies.values():
 		if zombie.is_alive():
-			list.append(zombie.hit_target())
-	return list
+			_targets.append(zombie.hit_target())
+	return _targets
 
 
 func _act(player_id: int, delta: float) -> void:
@@ -1157,11 +1171,17 @@ func _frame() -> Dictionary:
 	}
 
 
+## The frame's zombie bytes: encoded once for each `ZombieSim.revision`, so the ticks between two
+## steps (a host with bots builds the frame on every one) carry the last bytes again.
 func _encode_zombies() -> PackedByteArray:
+	if _bytes_at == sim.revision:
+		return _bytes
 	var began := PerfProbe.begin()
-	var bytes := ZombieCodec.encode(sim.zombies)
+	_bytes = ZombieCodec.encode(sim.zombies)
+	PerfProbe.count(&"server.zombies_encoded")
+	_bytes_at = sim.revision
 	PerfProbe.end(&"server.encode", began)
-	return bytes
+	return _bytes
 
 
 ## The crane for the picture: where it stands, which stage it is in, whose play it is, the prize
