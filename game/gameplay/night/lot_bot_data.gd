@@ -48,6 +48,7 @@ static func shop(world: NightWorld, tuning: RulesTuning, settings: MatchSettings
 		found.hurt_share = overlay.bot_hurt_share
 		found.team_links = overlay.bot_team_links
 		found.shopping.assign(overlay.bot_shopping)
+		found.saves_for.assign(overlay.bot_saves_for)
 	var night_tuning := NightTuning.shipped()
 	found.use_reach = night_tuning.use_reach
 	found.spot_reach = night_tuning.spot_reach

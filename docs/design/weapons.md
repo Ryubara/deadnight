@@ -86,9 +86,9 @@ them](#the-six-firearms-793). The dual pistols, ray gun and freeze gun are [#789
 and [#788](https://github.com/Ryubara/deadnight/issues/788).
 
 **On the second map the walls sell more** ([the shop of the small map](smallmap.md#the-shop-formula-rows-22-to-25)):
-nine places for eight weapons, so the revolver (90, back in the pool after it is given up), the crowbar (270), the
-shotgun (540, on two walls), the Tommy gun (540), the bat (540), the flare gun (630), the axe (720) and, in the cabinet
-upstairs, the rifle (675) are all bought by the wall there, at prices that climb from room to room, and its box
+six places for five weapons, so the revolver (90, back in the pool after it is given up), the shotgun (540, on two
+walls), the Tommy gun (540), the flare gun (630) and, in the cabinet upstairs, the rifle (675) are all bought by the
+wall there, at prices that climb from room to room, and its box
 (425, one place) gives any weapon the buyer lacks. The tuning is the map's own overlay; the lot's walls are unchanged.
 
 **The crane gives every weapon the start and the wall do not**, the revolver too (the crane never gives a weapon the
@@ -154,27 +154,35 @@ set its own weights; it lists none as shipped, so every weight is the definition
 
 ### The wall tier
 
-**A wall spot sells only the weaker guns, on every map** (the maintainer, [#858](https://github.com/Ryubara/deadnight/issues/858)).
+**A wall spot sells only the weaker guns, on every map, and never a melee weapon** (the maintainer,
+[#858](https://github.com/Ryubara/deadnight/issues/858), [#910](https://github.com/Ryubara/deadnight/issues/910)).
 Every weapon has a wall tier, set on its definition (`WeaponDef.wall_tier`, read through `WallTier`,
 `gameplay/weapons/wall_tier.gd`); a wall may sell up to tier 2, and any weapon above it is **box only**: the prize crane
 is the only way to it.
 
 | Tier | Weapons | Wall? |
 | --- | --- | --- |
-| 1, hand | the House Pistol, the revolver, the crowbar, the baseball bat, the fire axe, the flare gun | yes |
+| 1, sidearms | the House Pistol, the revolver, the flare gun | yes |
 | 2, the older long guns | the double-barrel, the Tommy gun, the hunting rifle (the best a wall sells) | yes |
-| 3, box | every other weapon: the pump 870, MP5, M4A1, PPSh, M249, fifty cal, dual pistols, the ray gun, the freeze gun | **no, the box only** |
+| 3, box | every other weapon: **the melee weapons (the crowbar, the baseball bat, the fire axe)**, the pump 870, MP5, M4A1, PPSh, M249, fifty cal, dual pistols, the ray gun, the freeze gun | **no, the box only** |
 
+- **A melee weapon is tier 3 whatever its definition says** (#910): `WallTier.tier_of` asks the weapon's own kind
+  (`WeaponDef.is_melee`) and the three definitions say tier 3, so a hand weapon added later cannot be put on a wall
+  by a number. The first rule (#858) ranked
+  weapons by how weak they are per hit and put the three blades in the lowest tier, which a wall may sell; but a blow
+  never runs dry, needs no reload and no rounds from the locker, so a wall that sells one sells a gun with no upkeep
+  (the maintainer: "too overpowered"). Melee comes from the start kit and the box only.
 - **A definition that sets no tier is tier 3**, so a gun added to the catalogue is in the box until someone decides it
   may hang on a wall; the decision is its `wall_tier` and a row in this table.
-- **It holds on both maps.** The lot's walls are the double-barrel and the rifle; the second map's nine places are
-  the revolver, the crowbar, the double-barrel (two walls), the Tommy gun, the bat, the flare gun, the axe and, in the
-  cabinet, the rifle. The pump, the MP5 and the M4A1 have no wall on either: the second map asked for new places for them
-  and the maintainer's answer was the box only, and the lot follows the same rule.
-- **Held by a test.** `test_wall_tier.gd` fails when a wall marker of either map, a weapon either map's tuning prices
-  for a wall, or a weapon in a bot's shopping list is above the tier, and when a tier-3 weapon of the catalogue is
-  missing from the box's pool of either map. The bots buy at the spots the map has (`BotEconomy` reads the wall
-  markers), so their lists follow the walls.
+- **It holds on both maps.** The lot's walls are the double-barrel and the rifle; the second map's six places are
+  the revolver, the double-barrel (two walls), the Tommy gun, the flare gun and, in the cabinet, the rifle (its
+  crowbar, bat and axe walls were taken out in #910, not given to other guns). The pump, the MP5 and the M4A1 have
+  no wall on either: the second map asked for new places for them and the maintainer's answer was the box only, and
+  the lot follows the same rule.
+- **Held by a test.** `test_wall_tier.gd` fails when a wall marker of either map sells a melee weapon or is above
+  the tier, when a weapon either map's tuning prices for a wall or a weapon in a bot's shopping list is above it,
+  and when a tier-3 weapon of the catalogue is missing from the box's pool of either map. The bots buy at the spots
+  the map has (`BotEconomy` reads the wall markers), so their lists follow the walls.
 
 ## Quick melee
 

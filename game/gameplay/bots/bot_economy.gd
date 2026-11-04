@@ -167,6 +167,7 @@ func candidates(view: View) -> Array[Buy]:
 			found.append(floor_buy)
 	var reserve := _fuel_reserve(view)
 	var next := next_price(view)
+	var saves := _shop.saves_for if not _shop.saves_for.is_empty() else _profile.saves_for
 	for item_id in plan(view):
 		var buy := _entry(view, _shop.item(item_id))
 		if buy == null:
@@ -175,7 +176,11 @@ func candidates(view: View) -> Array[Buy]:
 			continue
 		if buy.price + reserve <= view.points:
 			found.append(buy)
-		elif _profile.saves_for.has(item_id):
+			# On a map whose bots buy the links as a team, a bot with only its start gun buys the
+			# first gun it can pay for before the links after it on the list (#910).
+			if _shop.team_links and buy.prompt == &"weapon" and _only_start_gun(view):
+				break
+		elif saves.has(item_id):
 			break
 	last_next = next
 	last_health = view.zombie_health
@@ -205,6 +210,11 @@ func plan(_view: View = null) -> Array[StringName]:
 		if not ids.has(door_id):
 			ids.append(door_id)
 	return ids
+
+
+## Whether the bot holds no gun but the one every player starts with (and perhaps a blade).
+func _only_start_gun(view: View) -> bool:
+	return BotNeeds.gun_level(view.arms) != BotNeeds.Level.NONE
 
 
 ## What the next thing on the list costs, whether or not the bot can pay now; 0 when the list is

@@ -4,12 +4,11 @@ extends GdUnitTestSuite
 ## onto `defs/<id>.tres`, with no number changed. The literals below are the old tables, kept so the
 ## move is checked against what it replaced.
 
+## (The crowbar, the bat and the axe were tier 1 here; since #910 they are box only: no wall
+## sells a melee weapon.)
 const OLD_WALL_TIERS := {
 	&"house_pistol": 1,
 	&"pistol": 1,
-	&"crowbar": 1,
-	&"baseball_bat": 1,
-	&"fire_axe": 1,
 	&"flare_gun": 1,
 	&"shotgun": 2,
 	&"smg": 2,

@@ -41,6 +41,9 @@ var team_links := false
 ## What the bot buys, first to last, on this map; empty is the profile's own list
 ## (`BotProfile.shopping`, written for the lot).
 var shopping: Array[StringName] = []
+## The items on that list the bot saves for here (nothing after one is bought while it is out of
+## reach); empty is the profile's own (`BotProfile.saves_for`).
+var saves_for: Array[StringName] = []
 ## Doors to buy, in the order of the shop table.
 var doors: Array[StringName] = []
 ## Where to stand to use each door (the middle of each of its slabs), by door id.

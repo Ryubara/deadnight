@@ -35,6 +35,9 @@ extends Resource
 @export_range(1.0, 40.0, 0.5, "suffix:m") var bot_clear_from: float = 12.0
 @export_range(0.05, 1.0, 0.05) var bot_calm_share: float = 0.25
 @export var bot_shopping: Array[StringName] = []
+## The items of `bot_shopping` a bot saves for: while one is not yet affordable nothing after it is
+## bought, so the first gun is not put off by a link that costs less (empty: the profiles' own).
+@export var bot_saves_for: Array[StringName] = []
 ## A hurt teammate holds every link back while their health is under this share of full.
 @export_range(0.0, 1.0, 0.05) var bot_hurt_share: float = 0.5
 ## The bots buy the links as a team: whenever one is affordable and the dead are clear of the

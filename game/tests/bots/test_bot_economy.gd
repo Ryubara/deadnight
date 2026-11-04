@@ -162,6 +162,42 @@ func test_an_item_the_bot_saves_for_stops_the_list_there() -> void:
 	assert_str(String(_choose(view, no_saving).item)).is_equal("door_back_lot")
 
 
+func test_a_map_can_name_what_its_bots_save_for_over_the_profiles_list() -> void:
+	# The second map's overlay (`bot_saves_for`): the first gun is not put off by a link that costs
+	# less, so with 400 the bot waits for the shotgun (900) instead of buying the concession.
+	var profile := _profile([&"weapon_shotgun", &"door_concession"])
+	var view := _view(400, {"doors_open": []})
+	assert_str(String(_choose(view, profile).item)).is_equal("door_concession")
+	_shop.saves_for.assign([&"weapon_shotgun"])
+	assert_bool(_choose(view, profile).is_none()).is_true()
+	assert_str(String(_choose(_view(900, {"doors_open": []}), profile).item)).is_equal(
+		"weapon_shotgun"
+	)
+
+
+func test_on_a_team_links_map_a_gun_in_reach_comes_before_the_links_after_it() -> void:
+	# A bot with only its start gun that can pay for the shotgun is offered nothing after it (the
+	# team link rule would buy the next door first, #910); a bot with a second gun still is.
+	var profile := _profile([&"weapon_shotgun", &"door_booth"])
+	var start_only := {WeaponCatalog.START_WEAPON: [10, 80, 0], CROWBAR: [0, 0, 0]}
+	var view := _view(1300, {"doors_open": [&"door_concession"], "arms": start_only})
+	assert_array(_items(BotEconomy.new(_shop, profile).candidates(view))).contains([&"door_booth"])
+	_shop.team_links = true
+	assert_array(_items(BotEconomy.new(_shop, profile).candidates(view))).is_equal(
+		[&"weapon_shotgun"]
+	)
+	var armed := _view(1300, {"doors_open": [&"door_concession"], "arms": start_only.duplicate()})
+	armed.arms[&"smg"] = [30, 120, 0]
+	assert_array(_items(BotEconomy.new(_shop, profile).candidates(armed))).contains([&"door_booth"])
+
+
+func _items(found: Array[BotEconomy.Buy]) -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for buy in found:
+		ids.append(buy.item)
+	return ids
+
+
 func test_a_door_is_bought_only_when_the_one_before_it_is_open() -> void:
 	var profile := _profile([&"door_booth"])
 	assert_bool(_choose(_view(5000, {"doors_open": []}), profile).item == &"door_booth").is_false()
