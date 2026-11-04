@@ -28,8 +28,6 @@ const SMALL_PENDING: Array[String] = [
 	"breach side_1 | breach side_breach",
 	"door door_stairs_side | breach side_breach",
 	"tonic_swift_rescue (-1.5, 0.0, -0.4) | breach side_1",
-	"weapon_baseball_bat (14.7, 3.4, 2.3) | ammo (12.0, 3.4, 3.2)",
-	"weapon_crowbar (1.4, 0.0, 6.0) | tonic_hearty (1.7, 0.0, 8.5)",
 	"weapon_pistol (1.4, 0.0, 11.0) | tonic_hearty (1.7, 0.0, 8.5)",
 ]
 

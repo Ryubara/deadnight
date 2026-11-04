@@ -38,6 +38,20 @@ const GROUND_PREFIXES := {
 }
 const SETTLE_FRAMES := 3
 const POINTS_PER_PLAYER := 10000
+## The lot's outer walls, as `area/name prefix`: getting over them leaves the map.
+const PERIMETER := [
+	"Field/FenceN",
+	"Field/FenceW",
+	"Field/FenceE",
+	"GeneratorYard/FenceE",
+	"BackLot/FenceW",
+	"Road/FenceEnd",
+	"Road/SideW",
+	"Road/SideE",
+]
+## A wall is a box at most this thick and at least this tall.
+const WALL_THICKNESS := 0.5
+const WALL_HEIGHT := 2.0
 
 
 ## The greybox in a SubViewport of its own under `host` (so its navigation map and physics space are
@@ -149,6 +163,39 @@ static func footprint(lot: Node3D, area: String) -> Array[Rect2]:
 					)
 				)
 	return rects
+
+
+## The perimeter's boxes (`PERIMETER`).
+static func perimeter(lot: Node3D) -> Array[CSGBox3D]:
+	var boxes: Array[CSGBox3D] = []
+	for entry: String in PERIMETER:
+		var parts := entry.split("/")
+		for child in lot.get_node(parts[0]).get_children():
+			if child is CSGBox3D and String(child.name).begins_with(parts[1]):
+				boxes.append(child)
+	return boxes
+
+
+## The thin, tall boxes of an area: its walls and fences.
+static func walls_of(area: Node) -> Array[CSGBox3D]:
+	var walls: Array[CSGBox3D] = []
+	for child in area.get_children():
+		if child is CSGBox3D:
+			var box := child as CSGBox3D
+			if minf(box.size.x, box.size.z) <= WALL_THICKNESS and box.size.y >= WALL_HEIGHT:
+				walls.append(box)
+	return walls
+
+
+## The slabs of the doors in `doors` (shop ids) that are still in the lot.
+static func slabs(lot: Node3D, doors: Array) -> Array[CSGBox3D]:
+	var boxes: Array[CSGBox3D] = []
+	for door: Node in lot.get_node("Doors").get_children():
+		if doors.has(door.get_meta("shop_id")):
+			for slab in door.get_children():
+				if slab is CSGBox3D:
+					boxes.append(slab)
+	return boxes
 
 
 ## True when `point` is inside one of `rects`, shrunk by `inset` metres on every side.

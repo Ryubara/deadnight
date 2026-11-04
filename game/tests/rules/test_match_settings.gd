@@ -644,9 +644,9 @@ func test_a_person_who_leaves_gives_the_seat_to_a_bot_as_it_stands() -> void:
 func test_a_key_the_game_does_not_know_is_named_and_the_known_ones_are_not() -> void:
 	var data := MatchSettings.new().to_dict()
 	assert_array(MatchSettings.unknown_keys(data)).is_empty()
-	data["perk_limit"] = 2
+	data["a_rule"] = 2
 	data["a_modifier"] = true
-	assert_array(MatchSettings.unknown_keys(data)).is_equal(["a_modifier", "perk_limit"])
+	assert_array(MatchSettings.unknown_keys(data)).is_equal(["a_modifier", "a_rule"])
 	# A snapshot from a newer server still reads (the known keys are taken), only the places a
 	# person's choice enters refuse the key.
 	assert_object(MatchSettings.from_dict(data)).is_not_null()

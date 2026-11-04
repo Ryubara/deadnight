@@ -14,6 +14,13 @@ signal player_struck(player_id: int, zombie_id: int, damage: float)
 ## A frozen zombie was killed and broke apart: the `zombie_shattered` event (`ZombieSim.shatter`).
 signal zombie_shattered(event: Dictionary)
 
+## Seconds a round stands down to its last dead with nothing happening to them before they are
+## walked to the people, how far from every person the point they rise on is at the least, and how
+## many of the nearest points the stragglers are spread over.
+const RESCUE_AFTER := 30.0
+const RESCUE_RANGE := 25.0
+const RESCUE_SPREAD := 3
+
 var rules: GameRules
 var sim: ZombieSim
 var port: ZombieRulesPort
@@ -25,8 +32,13 @@ var spawn_gates: Dictionary[Vector3, StringName] = {}
 
 ## How many stranded zombies were put back on a spawn point (`ZombieSim.relocate`), for the reports.
 var relocated := 0
+## How many stragglers were walked to the people (`_watch_the_tail`), for the reports.
+var rescued := 0
 
 var _waiting: Array[Dictionary] = []
+## Seconds the round has stood down to its last few dead with no blow struck, no damage done and
+## no kill (`RESCUE_AFTER`).
+var _quiet := 0.0
 
 
 func _init(p_rules: GameRules, p_sim: ZombieSim, p_spawn_points: Array[Vector3]) -> void:
@@ -71,11 +83,15 @@ func tick(delta: float, targets: Dictionary) -> void:
 	for event in sim.tick(delta, targets):
 		match event["type"]:
 			&"zombie_struck":
+				_quiet = 0.0
 				player_struck.emit(event["target_id"], event["zombie_id"], event["damage"])
 			&"zombie_tore":
 				port.tear_board(event["gate_id"], event["zombie_id"])
+			&"zombie_burst":
+				port.tear_all(event["gate_id"], event["zombie_id"])
 			&"zombie_stranded":
 				_relocate(event["zombie_id"])
+	_watch_the_tail(delta, targets)
 
 
 ## A zombie with no way to its target, far from it: back on a spawn point (the next one in turn, so
@@ -88,7 +104,70 @@ func _relocate(zombie_id: int) -> void:
 	sim.relocate(zombie_id, point, spawn_gates.get(point, &""))
 
 
+## The rescue of a round that will not end: with only the last few dead left (the ones the screen
+## outlines) and nothing happening to them for `RESCUE_AFTER` seconds, no blow struck, no damage
+## done, no kill, a dead that has no way to its target (the walking mesh gives it a path that stops
+## `ZombieSim.STRAND_GAP` or more short: a pocket of the mesh, where the strand watch does not look
+## when the map is small enough that someone is always within 12 m) goes to the spawn point nearest
+## the people that is `RESCUE_RANGE` metres or more from them (the farthest one when the map has
+## none that far), away from the breach it was stuck at, and rises there as a new one: the dead
+## walk to the people. A dead that has a way is coming, however slowly (a headliner after a person
+## with an empty gun), and is left where it is. The soak found rounds that stood on one such dead
+## for minutes (#950).
+func _watch_the_tail(delta: float, targets: Dictionary) -> void:
+	var left := rules.zombies_remaining()
+	if (
+		rules.phase != GameRules.Phase.ACTIVE
+		or left < 1
+		or left > sim.tuning.mark_last
+		or not _waiting.is_empty()
+		or targets.is_empty()
+	):
+		_quiet = 0.0
+		return
+	_quiet += delta
+	if _quiet < RESCUE_AFTER:
+		return
+	_quiet = 0.0
+	var nth := 0
+	for zombie: ZombieBody in sim.zombies.values():
+		if zombie.mode == ZombieBody.Mode.DYING or zombie.mode == ZombieBody.Mode.EMERGING:
+			continue
+		if zombie.path_gap < ZombieSim.STRAND_GAP:
+			continue
+		var point := _rescue_point(zombie, targets, nth)
+		if point == Vector3.INF:
+			continue
+		nth += 1
+		rescued += 1
+		sim.relocate(zombie.id, point, spawn_gates.get(point, &""))
+
+
+## The spawn point to walk a straggler in from: of those `RESCUE_RANGE` or more from every person
+## and not at the breach it stood at, the `nth` nearest to the nearest person (so two stragglers do
+## not rise on the same point); with none that far, the `nth` farthest; `Vector3.INF` for no point.
+func _rescue_point(zombie: ZombieBody, targets: Dictionary, nth: int) -> Vector3:
+	var scored: Array[Dictionary] = []
+	for point in spawn_points:
+		if zombie.gate_id != &"" and spawn_gates.get(point, &"") == zombie.gate_id:
+			continue
+		var nearest := INF
+		for at: Vector3 in targets.values():
+			nearest = minf(nearest, Vector2(at.x - point.x, at.z - point.z).length())
+		scored.append({"point": point, "apart": nearest})
+	if scored.is_empty():
+		return Vector3.INF
+	scored.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["apart"] < b["apart"])
+	var far := scored.filter(func(row: Dictionary) -> bool: return row["apart"] >= RESCUE_RANGE)
+	if far.is_empty():
+		scored.reverse()
+		return scored[nth % mini(scored.size(), RESCUE_SPREAD)]["point"]
+	return far[nth % mini(far.size(), RESCUE_SPREAD)]["point"]
+
+
 func _on_rules_event(event: Dictionary) -> void:
+	if event["type"] == &"zombie_removed" or event["type"] == &"zombie_damaged":
+		_quiet = 0.0
 	match event["type"]:
 		&"zombie_spawn_requested":
 			_waiting.append(event)

@@ -9,7 +9,7 @@ extends GdUnitTestSuite
 const SCENE := "res://world/smallmap/smallmap_greybox.tscn"
 const PLAYER_SCENE := "res://gameplay/player/player.tscn"
 ## The most the body is measured to climb from level ground (`tests/player/test_jump_reach.gd`).
-const BODY_REACH := 1.25
+const BODY_REACH := CameraProbe.BODY_REACH
 ## What the counter must stand above that, so a small change to the jump or the step does not
 ## bring the roost back.
 const MARGIN := 0.15

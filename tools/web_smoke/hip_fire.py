@@ -35,7 +35,7 @@ from pathlib import Path
 from judder import play
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
-from smoke import SOFTWARE_GL, SYNTHETIC_MOUSE_MOVE_JS, UNPACED, VIEWPORT, gl_info, probe, serve
+from smoke import SOFTWARE_GL, SYNTHETIC_MOUSE_MOVE_JS, UNPACED, VIEWPORT, gl_info, probe, probing, serve
 
 # After the button is let go the view must start to move within LEAVE_S and be back at the hip's within BLEND_S. The
 # aim's own spring settles in about 0.3 s (the unit tests hold it to 0.5 s); the rest is the browser's input and frame
@@ -277,7 +277,7 @@ def main() -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     deployed = args.build.startswith(("http://", "https://"))
     server, port = (None, 0) if deployed else serve(Path(args.build))
-    url = args.build if deployed else f"http://127.0.0.1:{port}/index.html"
+    url = probing(args.build if deployed else f"http://127.0.0.1:{port}/index.html")
     result: dict = {"build": args.build, "label": args.label, "gpu": args.gpu, "blend_s": BLEND_S}
     ok = False
     with sync_playwright() as p:

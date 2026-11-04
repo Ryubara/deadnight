@@ -219,3 +219,83 @@ func test_two_ups_from_start_reach_the_bot_count_and_right_asks_for_three_bots()
 		focus = focus.get_node(focus.focus_neighbor_bottom) as Control
 	assert_object(focus).is_same(screen.start_button)
 	(made[0] as Control).free()
+
+
+# --- The perk limit (#913) ---
+
+
+func test_solo_and_the_room_both_offer_the_perk_limit_and_it_defaults_to_default() -> void:
+	var menu := await _open_menu()
+	await _press_solo(menu)
+	var solo := UIRouter.top() as PlayScreen
+	var lobby := _lobby()
+	for panel: MatchSettingsPanel in [solo.panel, lobby.rules]:
+		assert_object(panel.row_for("perk_limit")).is_not_null()
+		assert_bool(panel.row_for("perk_limit").is_visible_in_tree()).is_true()
+		assert_int(panel.settings().perk_limit).is_equal(MatchSettings.PERKS_DEFAULT)
+		assert_bool(panel.text().contains("unlimited")).is_false()
+		panel.perk_selector.select(MatchSettings.PERKS_UNLIMITED, true)
+		assert_int(panel.settings().perk_limit).is_equal(MatchSettings.PERKS_UNLIMITED)
+		assert_str(panel.text()).contains("unlimited perks")
+		# "Usual rules" and a guest's `set_settings` put the Default back and read it.
+		panel.set_settings(MatchSettings.new())
+		assert_int(panel.perk_selector.selected).is_equal(MatchSettings.PERKS_DEFAULT)
+	lobby.free()
+
+
+func test_solo_with_unlimited_perks_runs_a_night_whose_machines_sell_past_the_limit() -> void:
+	var menu := await _open_menu()
+	await _press_solo(menu)
+	var solo := UIRouter.top() as PlayScreen
+	solo.panel.perk_selector.select(MatchSettings.PERKS_UNLIMITED, true)
+	solo.start_button.pressed.emit()
+	await UIRouter.idle
+	var night_screen := UIRouter.top() as NightScreen
+	await night_screen.night.ready_to_play
+	var rules := night_screen.night.server.rules
+	assert_int(rules.settings.perk_limit).is_equal(MatchSettings.PERKS_UNLIMITED)
+	rules.apply(RulesAction.skip_break())
+	rules.apply(RulesAction.grant_points(1, 50000))
+	for perk in PerkEffects.tonic_ids(rules.tuning.economy):
+		assert_int(RulesFixture.buy(rules, 1, perk)).is_equal(GameRules.BuyResult.OK)
+	assert_int(rules.players[1].tonics.size()).is_greater(rules.tuning.economy.max_tonics)
+
+
+func test_a_guest_sees_the_hosts_perk_limit_and_cannot_move_it() -> void:
+	var lobby := _lobby()
+	var lifted := MatchSettings.new()
+	lifted.perk_limit = MatchSettings.PERKS_UNLIMITED
+	lobby.rules.set_settings(lifted)
+	lobby.rules.set_editable(false)
+	assert_int(lobby.rules.perk_selector.selected).is_equal(MatchSettings.PERKS_UNLIMITED)
+	assert_int(lobby.rules.perk_selector.focus_mode).is_equal(Control.FOCUS_NONE)
+	assert_int(lobby.rules.perk_selector.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+	lobby.free()
+
+
+func test_the_perk_limit_shares_the_intensity_row_and_the_arrows_reach_it() -> void:
+	var made := await _boxed(DESKTOP_CANVAS)
+	var screen := made[1] as PlayScreen
+	var panel := screen.panel
+	assert_object(panel.row_for("perk_limit")).is_same(panel.row_for("count_multiplier"))
+	assert_bool(panel.perk_selector.is_visible_in_tree()).is_true()
+	# Up from the slider under the row reaches the perk selector, then the intensity; Down goes back.
+	var focus: Control = panel.alive_slider
+	focus = focus.get_node(focus.focus_neighbor_top) as Control
+	assert_object(focus).is_same(panel.perk_selector)
+	focus = focus.get_node(focus.focus_neighbor_top) as Control
+	assert_object(focus).is_same(panel.count_selector)
+	for _i in 2:
+		focus = focus.get_node(focus.focus_neighbor_bottom) as Control
+	assert_object(focus).is_same(panel.alive_slider)
+	# Right on the selector asks for the unlimited perks, and the usual rules put Default back.
+	panel.perk_selector.grab_focus()
+	var event := InputEventAction.new()
+	event.action = &"ui_right"
+	event.pressed = true
+	panel.perk_selector._gui_input(event)
+	assert_int(panel.settings().perk_limit).is_equal(MatchSettings.PERKS_UNLIMITED)
+	assert_float(panel.settings().count_multiplier).is_equal(1.0)
+	screen.reset_button.pressed.emit()
+	assert_int(panel.settings().perk_limit).is_equal(MatchSettings.PERKS_DEFAULT)
+	(made[0] as Control).free()

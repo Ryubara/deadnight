@@ -16,6 +16,9 @@ var fuel: FuelTuning
 ## The round table: the health of the dead a round sends (a bot that weighs its weapons by it,
 ## `BotProfile.weighs_by_round`).
 var rounds: RoundTuning
+## The most perks a player may carry in this night (`MatchSettings.tonic_limit`); 0 is the shop
+## table's own limit.
+var perk_limit := 0
 ## Boards a whole barricade holds.
 var boards := 1
 ## Grenades a pack holds (`ExplosiveTuning.max_grenades`).
@@ -38,6 +41,9 @@ var team_links := false
 ## What the bot buys, first to last, on this map; empty is the profile's own list
 ## (`BotProfile.shopping`, written for the lot).
 var shopping: Array[StringName] = []
+## The items on that list the bot saves for here (nothing after one is bought while it is out of
+## reach); empty is the profile's own (`BotProfile.saves_for`).
+var saves_for: Array[StringName] = []
 ## Doors to buy, in the order of the shop table.
 var doors: Array[StringName] = []
 ## Where to stand to use each door (the middle of each of its slabs), by door id.
@@ -62,6 +68,13 @@ var fuel_doors: Dictionary[StringName, StringName] = {}
 var fuel_item: ShopItem
 
 var _tonic_order: Array[StringName] = []
+
+
+## The most tonics a bot buys: the night's limit (`perk_limit`), else the shop table's.
+func tonic_limit() -> int:
+	if perk_limit > 0:
+		return perk_limit
+	return economy.max_tonics if economy != null else 0
 
 
 ## The tonics' ids in the shop's order, the bits of a frame's `perks` (`PerkEffects.mask_of`): made

@@ -5,10 +5,10 @@ extends Node
 ## part of the game. Two ways to run it:
 ##
 ## Frames (Movie Maker, fixed time step):
-##     gds godot -- --path game res://tests/captures/hip_fire_transition.tscn \
+##     gds godot -- --path game res://tools/captures/hip_fire_transition.tscn \
 ##         --write-movie <abs>/hip.png --fixed-fps 20 --resolution 1280x720 -- --scenario=fire
 ## Numbers (headless, one CSV line per physics tick on stdout, `SAMPLE ...`):
-##     godot --headless --path game res://tests/captures/hip_fire_transition.tscn --fixed-fps 60 \
+##     godot --headless --path game res://tools/captures/hip_fire_transition.tscn --fixed-fps 60 \
 ##         -- --scenario=fire
 ##
 ## `--scenario=fire` holds the trigger without aiming, `--scenario=aim` holds the aim button,

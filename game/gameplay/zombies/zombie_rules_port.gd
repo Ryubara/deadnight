@@ -34,3 +34,10 @@ func deal_damage(
 func tear_board(gate_id: StringName, zombie_id: int) -> void:
 	if rules.barricades.boards_of(gate_id) > 0:
 		rules.apply(RulesAction.tear_board(gate_id, zombie_id))
+
+
+## A zombie burst the boards of `gate_id` (it has been at them too long): every one still up comes
+## off, one `board_torn` each, so the clients draw them fall.
+func tear_all(gate_id: StringName, zombie_id: int) -> void:
+	while rules.barricades.boards_of(gate_id) > 0:
+		rules.apply(RulesAction.tear_board(gate_id, zombie_id))

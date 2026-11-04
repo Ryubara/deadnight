@@ -4,7 +4,7 @@
 # WebSocket.
 extends GdUnitTestSuite
 
-const SETTINGS_FIELDS := ["count_multiplier", "max_alive", "break_seconds", "bots"]
+const SETTINGS_FIELDS := ["count_multiplier", "max_alive", "break_seconds", "bots", "perk_limit"]
 
 var _host: NightHost
 var _nights: Array[Night] = []

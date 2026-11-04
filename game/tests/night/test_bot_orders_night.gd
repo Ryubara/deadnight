@@ -49,10 +49,17 @@ func _night(bots: int, doors: Array[StringName] = []) -> SeatedNight:
 		night.seat(id, BotProfile.regular(), SEED + id)
 	for door in doors:
 		night.open_door(door)
-	await night.settle(12)
+	await _doors_taken_in(night)
 	night.start_round()
 	_catcher.start()
 	return night
+
+
+## Waits for the navigation map to take in the doors that were bought (it answers over 8 to 12
+## physics frames that move with the load; a count of frames was 12 in one place and 60 in another).
+func _doors_taken_in(night: SeatedNight) -> void:
+	var taken_in := await night.settle_doors()
+	assert_bool(taken_in).override_failure_message("the map never took the doors in").is_true()
 
 
 func _place(night: SeatedNight, id: int, at: Vector3) -> void:
@@ -443,7 +450,7 @@ func _ping_pull(order: StringName) -> void:
 	night.seat(2, BotProfile.regular(), SEED + 2)
 	for door in [&"door_concession", &"door_booth", &"door_back_lot"]:
 		night.open_door(door)
-	await night.settle(60)
+	await _doors_taken_in(night)
 	_catcher.start()
 	night.server.rules.players[PERSON].points = 100
 	night.server.rules.players[2].points = 520

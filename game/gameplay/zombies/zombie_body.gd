@@ -33,6 +33,9 @@ var repath_left: float = 0.0
 ## far from the target (`ZombieSim.STRAND_SECONDS`).
 var path_gap: float = 0.0
 var stranded_for: float = 0.0
+## Seconds it has been pulling at the boards of one breach without getting through (a player puts
+## them back as fast as it tears them): `ZombieSim.SIEGE_SECONDS`.
+var siege_seconds: float = 0.0
 var retarget_left: float = 0.0
 ## Seconds a blast holds it in its stagger (longer than the profile's own), while STAGGER lasts.
 var stun_seconds: float = 0.0

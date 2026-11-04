@@ -141,6 +141,25 @@ twelve: the round banner, damage and the markers while they show), about 7 ids a
 to stop creating them (a newer engine or a template whose id tables are not padded), a maintainer's decision about the
 pinned tool; at a phone's 30 frames a second the rate is a third of this.
 
+## The probes in a player's page (#935)
+
+The publishers were not the heap's cause, but they were still in every player's page: the judder, view and pad probes
+read `window.deadnight` over the bridge in every frame (the pad probe also made an `Array`), and the snapshot wrote about
+65 properties four times a second whether or not anyone read them. They are now added only when the page asks (`?probe`,
+`WebProbe.asked`) and the snapshot writes only what changed.
+
+`tools/web_smoke/bridge_calls.py` counts the bridge's traffic (software GL, 15 s windows, the plain page, no `?probe`):
+
+| | menu | night (autopilot) |
+| --- | --- | --- |
+| before | 430 a second (3 119 reads, 3 249 writes, 145 evals in 15 s) | 141 a second |
+| after | 9 a second (145 evals, no reads, no writes) | 4 a second |
+
+What is left are `eval`s: `GamepadProbe.in_frame` (about 5 a second, from the snapshot and the controller hint; it was
+meant to be asked once and is not, found here, not fixed) and `WebClipboard.read` (4 a second, the snapshot). Heap
+after a forced collection, four minutes of an autopilot night on a desktop page (`heap_soak.py --plain`): 23.2 to
+38.3 MB before (4.3 MB a minute), 23.9 to 38.2 MB after (4.0): unchanged, as #834 found.
+
 ## The marquee and the damage frame (#934)
 
 The special-round marquee (`HudMarquee`) redrew every frame while it showed: 15 bulbs a row, two rows, plus the ticket's

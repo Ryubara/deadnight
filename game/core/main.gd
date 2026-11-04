@@ -7,7 +7,8 @@ extends Control
 ## `--room CODE` (or `?room=CODE`) joins the night of an invite code, `--instance_id ID` (a Discord
 ## Activity) opens the menu and makes the voice channel's night ready for Play together, `--dev`
 ## shows the server address setting, `--stage` (`?stage`) opens only the menu's 3D stage for a
-## frame-time run and `--stage=still` (`?stage=still`) its still level,
+## frame-time run, `--stage=still` (`?stage=still`) its still level and `--stage=live`
+## (`?stage=live`) its live level whatever the renderer (software ones start as a still),
 ## `--connect [ws://host:port]` goes from the menu straight into the night of that server,
 ## `--report [seconds]` prints a line of what the joined night looks like from here, and
 ## `--look N` (a preset) or `--look seed:N` (a random look) wears that look instead of the saved
@@ -44,7 +45,9 @@ func _ready() -> void:
 		add_child(AutopilotRun.new(args))
 		return
 	if args.has("stage"):
-		UIRouter.reset(STAGE, UITransition.Kind.CUT, {"still": args.get_string("stage") == "still"})
+		var level := args.get_string("stage")
+		var params := {"still": level == "still", "live": level == "live"}
+		UIRouter.reset(STAGE, UITransition.Kind.CUT, params)
 		return
 	UIRouter.reset(MENU, UITransition.Kind.FADE)
 	TogetherScreen.dev_enabled = TogetherScreen.dev_enabled or args.has("dev")

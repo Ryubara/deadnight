@@ -12,7 +12,9 @@ const ROAM_SPACING := 5.0
 
 ## Fills `level` from `world`. With the rules' `tuning` the bots also get the shop (`shop`): a level
 ## made without it is one whose bots do no errands (the suites that measure the fight alone).
-static func fill(level: BotLevel, world: NightWorld, tuning: RulesTuning = null) -> void:
+static func fill(
+	level: BotLevel, world: NightWorld, tuning: RulesTuning = null, settings: MatchSettings = null
+) -> void:
 	# What a body is stopped by: the walls, and the boards across a breach (a shot goes through them).
 	level.walk_probe = WorldProbe.new(
 		world.get_world_3d().direct_space_state, WorldProbe.WORLD_MASK | Barricade.BOARD_LAYER
@@ -25,16 +27,18 @@ static func fill(level: BotLevel, world: NightWorld, tuning: RulesTuning = null)
 	level.roam_spots = roam_spots(world)
 	level.mark_last = ZombieTuning.shipped().mark_last
 	if tuning != null:
-		level.shop = shop(world, tuning)
+		level.shop = shop(world, tuning, settings)
 
 
 ## What a bot is given of the shop, the breaches, the breaker posts and the fuel crates: the rules'
 ## tables and where to stand at each of them.
-static func shop(world: NightWorld, tuning: RulesTuning) -> BotShop:
+static func shop(world: NightWorld, tuning: RulesTuning, settings: MatchSettings = null) -> BotShop:
 	var found := BotShop.new()
 	found.economy = tuning.economy
 	found.fuel = tuning.fuel
 	found.rounds = tuning.rounds
+	if settings != null:
+		found.perk_limit = settings.tonic_limit(tuning.economy)
 	found.boards = tuning.barricades.boards
 	found.max_grenades = tuning.explosives.max_grenades
 	var overlay := world.layout.map_tuning() if world.layout != null else null
@@ -44,6 +48,7 @@ static func shop(world: NightWorld, tuning: RulesTuning) -> BotShop:
 		found.hurt_share = overlay.bot_hurt_share
 		found.team_links = overlay.bot_team_links
 		found.shopping.assign(overlay.bot_shopping)
+		found.saves_for.assign(overlay.bot_saves_for)
 	var night_tuning := NightTuning.shipped()
 	found.use_reach = night_tuning.use_reach
 	found.spot_reach = night_tuning.spot_reach

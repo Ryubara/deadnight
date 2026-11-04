@@ -7,7 +7,11 @@ and the engine's own count of its nodes. A heap that rises after a forced collec
 
     uv run --project <kit>/python gds quiet -- \\
         uv run --with playwright==1.64.1 python tools/web_smoke/heap_soak.py build/web <out folder> \\
-        [--minutes 6] [--label NAME] [--query "probe_off=webprobe"] [--no-recorder] [--sampling]
+        [--minutes 6] [--label NAME] [--query "probe_off=webprobe"] [--no-recorder] [--sampling] [--plain]
+
+`--plain` opens the page the way a player does, without `?probe`: no probe reads the page, so the night is waited for a
+fixed `--settle` seconds instead of asked of `window.deadnight`, and the rows carry no zombie count (#935). Without it
+the page carries `?probe`, the browser test's arm.
 
 `--no-recorder` leaves out the frame-time recorder of `phone_frames.py` (a page that is only played); `--sampling`
 runs V8's sampling heap profiler for the whole run and writes the stacks that allocated what is still alive at the
@@ -119,6 +123,8 @@ def run(args: argparse.Namespace) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     server, port = smoke.serve(Path(args.build))
     query = f"autopilot&rounds=99&hold=0&seconds={int(args.minutes * 60 + 240)}&{args.query}"
+    if not args.plain:
+        query += "&probe"
     url = f"http://127.0.0.1:{port}/index.html?{query}"
     flags = [*CHROME_FLAGS, *(smoke.UNPACED if args.unpaced else []), *smoke.mute_args()]
     width, height = (int(v) for v in args.size.split("x"))
@@ -152,13 +158,13 @@ def run(args: argparse.Namespace) -> dict:
                 session.send("HeapProfiler.startSampling", {"samplingInterval": SAMPLING_INTERVAL})
             page.goto(url, wait_until="commit")
             began = time.monotonic()
-            while time.monotonic() - began < NIGHT_WAIT_S:
-                running = bool(smoke.probe(page).get("running"))
-                if running:
-                    break
-                time.sleep(1.0)
+            if args.plain:
+                time.sleep(args.settle)
             else:
-                raise TimeoutError("the night never ran")
+                while not smoke.probe(page).get("running"):
+                    if time.monotonic() - began > NIGHT_WAIT_S:
+                        raise TimeoutError("the night never ran")
+                    time.sleep(1.0)
             run_began = time.monotonic()
             if not args.no_recorder:
                 page.evaluate(DRAIN_JS)
@@ -203,6 +209,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-recorder", action="store_true", help="no frame-time recorder in the page")
     parser.add_argument("--sampling", action="store_true", help="V8 sampling heap profile of what is alive at the end")
     parser.add_argument("--count-gl", action="store_true", help="count the WebGL objects the page creates")
+    parser.add_argument("--plain", action="store_true", help="no ?probe: the page a player opens")
+    parser.add_argument("--settle", type=float, default=90.0, help="with --plain: seconds to wait for the night")
     parser.add_argument("--label", default="run")
     parser.add_argument(
         "--query",

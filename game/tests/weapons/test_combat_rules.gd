@@ -66,11 +66,10 @@ func test_a_melee_kill_pays_the_melee_price() -> void:
 	WeaponsFixture.step(_server, {_zombie: Vector3(0, 0, -1.2)}, 2)
 	var before := _rules.points_of(1)
 	var chest := Vector3(0, 1.1, 0)
-	for swing in 2:
-		var action := CombatAction.fire(1, swing + 1, chest, Vector3(0, 0, -1), chest, _server.now)
-		_server.apply(action)
-		WeaponsFixture.step(_server, {_zombie: Vector3(0, 0, -1.2)}, 40)
-	assert_int(_rules.points_of(1) - before).is_equal(5 + 130)
+	# The crowbar's blow (55, flat in every zone, #924) fells round one's 50 health in one.
+	var action := CombatAction.fire(1, 1, chest, Vector3(0, 0, -1), chest, _server.now)
+	_server.apply(action)
+	assert_int(_rules.points_of(1) - before).is_equal(130)
 
 
 func test_the_rules_own_the_health_so_a_dead_zombie_pays_nothing_more() -> void:

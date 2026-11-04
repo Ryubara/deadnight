@@ -1,30 +1,19 @@
-# A full jump lifts the player 1.1 m (`PlayerTuning.jump_height`) and a car roof is 1.65 m up. Can
-# a jump from anything reachable get onto a closed door's slab or out over the lot's perimeter?
-# Two proofs. A navigation mesh baked with the jump as its climb finds the platforms a player can
-# stand on, and a reach from each says whether a barrier's top is within a jump. The real player
-# body, run through `PlayerSimulation`, then tries from every car roof beside the perimeter.
+# A full jump lifts the player 1.1 m (`PlayerTuning.jump_height`), but the real body climbs 1.25 m
+# from level ground (`CameraProbe.BODY_REACH`: the step-up at an edge and the capsule's rounded foot
+# add the rest, #848), and a car roof is 1.65 m up. Can a climb from anything reachable get onto a
+# closed door's slab or out over the lot's perimeter? Two proofs. A navigation mesh baked with the
+# reach as its climb finds the platforms a player can stand on, and a reach from each says whether
+# a barrier's top is within the body's climb. The real player body, run through `PlayerSimulation`,
+# then tries from every car roof beside the perimeter. `test_drive_in_escape_sweep.gd` runs the
+# body at every prop beside the walls.
 extends GdUnitTestSuite
 
-## The lot's outer walls, as `area/name prefix`: getting over them leaves the map.
-const PERIMETER := [
-	"Field/FenceN",
-	"Field/FenceW",
-	"Field/FenceE",
-	"GeneratorYard/FenceE",
-	"BackLot/FenceW",
-	"Road/FenceEnd",
-	"Road/SideW",
-	"Road/SideE",
-]
 ## A platform is a spot the walking mesh reaches at least this high.
 const PLATFORM_FROM := 1.0
 ## Platforms closer together than this are one.
 const PLATFORM_CELL := 1.0
 ## How near a path must end to a mesh vertex for the player to have reached it.
 const REACHED := 0.4
-## A wall is a box at most this thick and at least this tall.
-const WALL_THICKNESS := 0.5
-const WALL_HEIGHT := 2.0
 ## How far in from the cabin's edge the real body starts.
 const ROOF_EDGE := 0.2
 ## Seconds the real body spends pushing at a barrier.
@@ -33,16 +22,16 @@ const PUSH_SECONDS := 4.0
 const ROOF_NEAR := 8.0
 
 
-func test_no_platform_within_a_jump_of_a_door_slab_or_the_perimeter() -> void:
+func test_no_platform_within_the_reach_of_a_door_slab_or_the_perimeter() -> void:
 	var table := LotFixture.door_table()
 	for door: String in table:
 		var closed := _with_dependents(door, table)
 		var sold: Array = table.keys().filter(func(id: String) -> bool: return not closed.has(id))
 		var lot := await LotFixture.make_lot(self, sold)
 		auto_free(lot.get_parent())
-		var nav := LotNavigation.new(lot, CameraProbe.body_radius(), CameraProbe.jump_height())
+		var nav := LotNavigation.new(lot, CameraProbe.body_radius(), CameraProbe.BODY_REACH)
 		await nav.settle(get_tree())
-		var platforms := _platforms(nav)
+		var platforms := _platforms(nav, lot)
 		assert_int(platforms.size()).override_failure_message(door).is_greater(0)
 		var failures: Array[String] = []
 		for barrier in _barriers(lot, closed):
@@ -58,7 +47,7 @@ func test_the_real_player_cannot_jump_out_of_the_lot_from_a_car_roof() -> void:
 	var lot := await LotFixture.make_lot(self, [])
 	auto_free(lot.get_parent())
 	var tried := 0
-	for wall in _perimeter(lot):
+	for wall in LotFixture.perimeter(lot):
 		var outward := _outward(wall)
 		for roof in _roofs_near(lot, wall):
 			tried += 1
@@ -88,8 +77,11 @@ func _with_dependents(door: String, table: Dictionary) -> Array[String]:
 
 
 ## Spots the walking mesh reaches from the start that are at least `PLATFORM_FROM` high, one for
-## each `PLATFORM_CELL` metre cell.
-func _platforms(nav: LotNavigation) -> Array[Vector3]:
+## each `PLATFORM_CELL` metre cell, at the height of the solid top under them: the mesh floats about
+## 0.1 m over what it was baked from, and a car roof (1.65 m) read as 1.75 m is within the reach of
+## a 3.0 m fence when it is not.
+func _platforms(nav: LotNavigation, lot: Node3D) -> Array[Vector3]:
+	var space := lot.get_world_3d().direct_space_state
 	var cells := {}
 	for vertex in nav.navmesh.get_vertices():
 		if vertex.y < PLATFORM_FROM:
@@ -103,7 +95,12 @@ func _platforms(nav: LotNavigation) -> Array[Vector3]:
 			continue
 		var way := nav.path(LotFixture.START, vertex)
 		if not way.is_empty() and way[way.size() - 1].distance_to(vertex) <= REACHED:
-			cells[cell] = vertex
+			var ray := PhysicsRayQueryParameters3D.create(
+				vertex + Vector3(0, 0.3, 0), vertex - Vector3(0, 0.6, 0)
+			)
+			ray.collision_mask = PhysicsLayers.WORLD | PhysicsLayers.BOARDS
+			var hit := space.intersect_ray(ray)
+			cells[cell] = hit["position"] if not hit.is_empty() else vertex
 	var platforms: Array[Vector3] = []
 	for vertex: Vector3 in cells.values():
 		platforms.append(vertex)
@@ -114,49 +111,25 @@ func _platforms(nav: LotNavigation) -> Array[Vector3]:
 ## close, the fence between the field and the yard and back lot, and the perimeter.
 func _barriers(lot: Node3D, closed: Array[String]) -> Array[CSGBox3D]:
 	var boxes: Array[CSGBox3D] = []
-	for door: Node in lot.get_node("Doors").get_children():
-		if closed.has(door.get_meta("shop_id")):
-			for slab in door.get_children():
-				if slab is CSGBox3D:
-					boxes.append(slab)
+	boxes.append_array(LotFixture.slabs(lot, closed))
 	for area: String in LotFixture.AREA_DOOR:
 		if closed.has(LotFixture.AREA_DOOR[area]):
-			boxes.append_array(_walls_of(lot.get_node(area)))
+			boxes.append_array(LotFixture.walls_of(lot.get_node(area)))
 	for fence in lot.get_node("Field").get_children():
 		if fence is CSGBox3D and String(fence.name).begins_with("FenceS"):
 			boxes.append(fence)
-	boxes.append_array(_perimeter(lot))
+	boxes.append_array(LotFixture.perimeter(lot))
 	return boxes
 
 
-## The thin, tall boxes of an area: its walls and fences.
-func _walls_of(area: Node) -> Array[CSGBox3D]:
-	var walls: Array[CSGBox3D] = []
-	for child in area.get_children():
-		if child is CSGBox3D:
-			var box := child as CSGBox3D
-			if minf(box.size.x, box.size.z) <= WALL_THICKNESS and box.size.y >= WALL_HEIGHT:
-				walls.append(box)
-	return walls
-
-
-func _perimeter(lot: Node3D) -> Array[CSGBox3D]:
-	var boxes: Array[CSGBox3D] = []
-	for entry: String in PERIMETER:
-		var parts := entry.split("/")
-		for child in lot.get_node(parts[0]).get_children():
-			if child is CSGBox3D and String(child.name).begins_with(parts[1]):
-				boxes.append(child)
-	return boxes
-
-
-## The first platform from which a jump can reach `barrier`'s top, described; none when none can.
+## The first platform from which the body climbs onto `barrier`'s top, described; none when none
+## can.
 func _reachable_tops(platforms: Array[Vector3], barrier: CSGBox3D) -> Array[String]:
 	var found: Array[String] = []
 	var top := barrier.global_position.y + barrier.size.y * 0.5
 	for platform in platforms:
 		var rise := top - platform.y
-		if rise > CameraProbe.jump_height():
+		if rise > CameraProbe.BODY_REACH:
 			continue
 		if _distance_to_footprint(platform, barrier) <= _horizontal_reach(maxf(rise, 0.0)):
 			found.append("%s (top %.2f) from %s" % [barrier.get_path(), top, platform])

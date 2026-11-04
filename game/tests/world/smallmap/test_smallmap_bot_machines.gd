@@ -78,6 +78,10 @@ func test_the_map_lists_the_machines_the_bots_buy_from() -> void:
 	for door: StringName in overlay.link_ids():
 		last_door = maxi(last_door, overlay.bot_shopping.find(door))
 	assert_int(overlay.bot_shopping.find(&"tonic_hearty")).is_greater(last_door)
+	# The first gun is saved for, so a link that costs less never puts it off: a solo bot paid for
+	# both stairs before its shotgun and met round 3 with the revolver (#910).
+	assert_array(overlay.bot_saves_for).contains([&"weapon_shotgun"])
+	assert_array(overlay.bot_shopping).contains(overlay.bot_saves_for)
 
 
 func test_a_bot_with_every_link_open_buys_a_weapon_at_once_and_does_not_pace_the_landing() -> void:

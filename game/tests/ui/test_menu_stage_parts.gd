@@ -87,22 +87,117 @@ func test_a_wander_path_is_a_function_of_time() -> void:
 	)
 
 
-func test_the_governor_steps_down_once_per_slow_window_and_never_up() -> void:
+## Feeds the governor `seconds` of frames of `frame` seconds; returns how many times the level
+## changed.
+func _run(governor: StageGovernor, seconds: float, frame: float) -> int:
+	var changes := 0
+	var elapsed := 0.0
+	while elapsed < seconds:
+		if governor.feed(frame):
+			changes += 1
+		elapsed += frame
+	return changes
+
+
+func _warmed() -> StageGovernor:
 	var governor := StageGovernor.new()
-	for _i in StageGovernor.WARMUP + StageGovernor.WINDOW:
-		governor.feed(1.0 / 60.0)
+	_run(governor, StageGovernor.WARMUP_SECONDS, 1.0 / 60.0)
+	return governor
+
+
+func test_the_governor_steps_down_after_two_slow_windows_and_not_one() -> void:
+	var governor := _warmed()
 	assert_int(governor.level).is_equal(StageGovernor.Level.LIVE)
-	var changed := false
-	for _i in StageGovernor.WINDOW:
-		changed = governor.feed(0.03) or changed
-	assert_bool(changed).is_true()
+	# One slow window (a busy second at launch) is not a trend.
+	_run(governor, StageGovernor.WINDOW_SECONDS + 0.2, 0.03)
+	assert_int(governor.level).is_equal(StageGovernor.Level.LIVE)
+	_run(governor, StageGovernor.WINDOW_SECONDS * 2.0, 1.0 / 60.0)
+	assert_int(governor.level).is_equal(StageGovernor.Level.LIVE)
+	# Two in a row are.
+	var changed := _run(governor, StageGovernor.WINDOW_SECONDS * 3.0, 0.03)
+	assert_int(changed).is_equal(1)
 	assert_int(governor.level).is_equal(StageGovernor.Level.HALF)
-	for _i in StageGovernor.WINDOW:
-		governor.feed(0.06)
+	# At half, too slow again for two windows: the still.
+	_run(governor, StageGovernor.WINDOW_SECONDS * 3.0, 0.06)
 	assert_int(governor.level).is_equal(StageGovernor.Level.STILL)
-	for _i in StageGovernor.WINDOW:
-		governor.feed(0.001)
+	_run(governor, 10.0, 0.001)
 	assert_int(governor.level).is_equal(StageGovernor.Level.STILL)
+
+
+func test_the_stage_climbs_back_to_live_when_frames_recover() -> void:
+	var governor := _warmed()
+	_run(governor, 5.0, 0.03)
+	assert_int(governor.level).is_equal(StageGovernor.Level.HALF)
+	# A 60 Hz display held at half resolution for a few windows: back to live, once.
+	var seconds := governor.seconds_to_climb() + StageGovernor.WINDOW_SECONDS * 4.0
+	var changed := _run(governor, seconds, 1.0 / 60.0)
+	assert_int(changed).is_equal(1)
+	assert_int(governor.level).is_equal(StageGovernor.Level.LIVE)
+	assert_int(governor.failed_climbs).is_equal(0)
+
+
+func test_a_fast_display_does_not_hurry_the_climb() -> void:
+	var governor := _warmed()
+	_run(governor, 5.0, 0.03)
+	assert_int(governor.level).is_equal(StageGovernor.Level.HALF)
+	# 240 frames a second fill a window of 90 frames in 0.4 s: the wait is in seconds.
+	_run(governor, StageGovernor.RECOVER_SECONDS - 2.0, 1.0 / 240.0)
+	assert_int(governor.level).is_equal(StageGovernor.Level.HALF)
+	_run(governor, 3.0, 1.0 / 240.0)
+	assert_int(governor.level).is_equal(StageGovernor.Level.LIVE)
+
+
+func test_a_stage_that_is_only_just_holding_does_not_climb() -> void:
+	var governor := _warmed()
+	_run(governor, 5.0, 0.03)
+	assert_int(governor.level).is_equal(StageGovernor.Level.HALF)
+	# 30 frames a second at half: fine to stay, nothing to say live would hold.
+	_run(governor, 60.0, 0.033)
+	assert_int(governor.level).is_equal(StageGovernor.Level.HALF)
+
+
+func test_a_climb_that_fails_waits_longer_and_stops_after_two() -> void:
+	var governor := _warmed()
+	var climbs_needed := []
+	var drops := 0
+	var climbs := 0
+	for _round in 3:
+		# Slow until it is at half.
+		var guard := 0.0
+		while governor.level == StageGovernor.Level.LIVE and guard < 30.0:
+			governor.feed(0.03)
+			guard += 0.03
+		if governor.level != StageGovernor.Level.HALF:
+			break
+		drops += 1
+		climbs_needed.append(governor.seconds_to_climb())
+		# Fast until it climbs, if it will.
+		guard = 0.0
+		while governor.level == StageGovernor.Level.HALF and guard < 200.0:
+			if governor.feed(1.0 / 60.0):
+				climbs += 1
+			guard += 1.0 / 60.0
+	# The wait doubles after each failed climb; after two failures the stage stays at half.
+	assert_array(climbs_needed).is_equal([4.5, 9.0, 18.0])
+	assert_int(governor.failed_climbs).is_equal(StageGovernor.MAX_FAILED_CLIMBS)
+	assert_bool(governor.can_climb()).is_false()
+	# Good frames for as long as it likes: it stays at half, the look does not flicker.
+	_run(governor, 120.0, 1.0 / 60.0)
+	assert_int(governor.level).is_equal(StageGovernor.Level.HALF)
+	assert_int(climbs).is_equal(2)
+	assert_int(drops).is_equal(3)
+
+
+func test_a_drop_long_after_a_climb_is_not_a_failed_climb() -> void:
+	var governor := _warmed()
+	_run(governor, 5.0, 0.03)
+	_run(governor, 30.0, 1.0 / 60.0)
+	assert_int(governor.level).is_equal(StageGovernor.Level.LIVE)
+	# A minute of good frames, then another program starts: that is not the stage's fault.
+	_run(governor, StageGovernor.PROBATION_SECONDS + 5.0, 1.0 / 60.0)
+	_run(governor, 5.0, 0.03)
+	assert_int(governor.level).is_equal(StageGovernor.Level.HALF)
+	assert_int(governor.failed_climbs).is_equal(0)
 
 
 func test_a_machine_that_draws_a_few_frames_a_second_goes_straight_to_the_still() -> void:
@@ -120,9 +215,29 @@ func test_one_long_frame_is_not_a_trend() -> void:
 	var governor := StageGovernor.new()
 	for _i in StageGovernor.WARMUP:
 		governor.feed(0.2)
-	for index in StageGovernor.WINDOW:
+	for index in StageGovernor.WINDOW * 3:
 		governor.feed(5.0 if index == 10 else 1.0 / 60.0)
 	assert_int(governor.level).is_equal(StageGovernor.Level.LIVE)
+
+
+func test_the_stage_is_drawn_in_the_windows_own_pixels_and_4x() -> void:
+	# A 2560 x 1440 window has a 1920 x 1080 control (the canvas stretch) scaled by 4/3.
+	assert_vector(MenuStageView.render_size_for(Vector2(1920, 1080), 4.0 / 3.0, false)).is_equal(
+		Vector2i(2560, 1440)
+	)
+	assert_vector(MenuStageView.render_size_for(Vector2(1920, 1080), 1.0, true)).is_equal(
+		Vector2i(960, 540)
+	)
+	# A phone page (1688 x 780 pixels) has a 2337 x 1080 control scaled by 0.722: its own pixels.
+	(
+		assert_vector(MenuStageView.render_size_for(Vector2(2337, 1080), 780.0 / 1080.0, false))
+		. is_equal(Vector2i(1688, 780))
+	)
+	# A 4K window is drawn at 1440p.
+	assert_vector(MenuStageView.render_size_for(Vector2(1920, 1080), 2.0, false)).is_equal(
+		Vector2i(2560, 1440)
+	)
+	assert_int(MenuStageView.MSAA).is_equal(Viewport.MSAA_4X)
 
 
 func test_the_settings_know_the_stage_and_the_showcase_weapon() -> void:

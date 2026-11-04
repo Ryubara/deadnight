@@ -73,7 +73,7 @@ func observe(
 	view_yaw: float
 ) -> void:
 	beliefs.now = now
-	if think:
+	if think and not beliefs.blows.is_empty():
 		beliefs.blows.assign(
 			beliefs.blows.filter(
 				func(blow: Dictionary) -> bool: return now - blow["at"] <= BLOW_MEMORY
@@ -82,10 +82,15 @@ func observe(
 	if beliefs.contacts.is_empty() and not think:
 		return
 	var here: Vector3 = me.get("pos", Vector3.ZERO)
+	# The zombies of the frame that the bot holds a contact on, by id: the bot reads no other (the
+	# crowd is a hundred, its contacts a handful).
 	var by_id := {}
 	if not beliefs.contacts.is_empty():
+		var contacts := beliefs.contacts
 		for zombie in zombies:
-			by_id[zombie["id"]] = zombie
+			var id: int = zombie["id"]
+			if contacts.has(id):
+				by_id[id] = zombie
 		_drop_gone(by_id)
 	if think:
 		_look(zombies, here, round_number, view_yaw)

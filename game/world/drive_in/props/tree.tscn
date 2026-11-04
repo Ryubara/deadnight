@@ -7,9 +7,9 @@
 [node name="Model" parent="." instance=ExtResource("model")]
 
 [node name="Blocker" type="CSGCylinder3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.200, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.000, 0)
 visible = false
 use_collision = true
 radius = 0.300
-height = 2.400
+height = 4.000
 sides = 12
