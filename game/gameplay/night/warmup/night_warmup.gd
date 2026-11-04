@@ -645,6 +645,13 @@ func _replay_effects() -> void:
 		# Drawn once, the programs are built: the sample goes before the night starts.
 		if is_instance_valid(blast):
 			blast.queue_free()
+	# A grenade's trail: its dots are one multimesh over a shared mesh and material, drawn once here
+	# so the first throw of a night builds nothing (#936).
+	var trail := GrenadeTrail.new()
+	view.effects.add_child(trail)
+	trail.drop(at + Vector3(3.0, -1.0, -2.0))
+	await _chunk()
+	trail.queue_free()
 	# The shock perk's shader, alone in frames of its own (a new shader's first draw builds a few GL
 	# programs at once, docs/research/first-use-hitches.md), held still at its brightest.
 	(

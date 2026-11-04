@@ -320,3 +320,20 @@ itself when it ends and the effect with the last one; the warm-up's samples are 
 off unless gibs fly (Godot turns it on at ready, so it is switched off in `_ready`, not `_init`).
 `tests/night/test_blast_frees.gd` plays 20 blasts and 100 blast kills in the real night, waits out the scorch and
 expects the same counts as before. Kit page: `docs/godot/one-shot-effects.md`.
+
+## The trail is one multimesh (#936)
+
+`GrenadeView._drop_trail_dot` made a 64 x 32 `SphereMesh` (4,224 triangles), a material, a node and a tween for every
+dot, about 30 a second with 27 alive: in a 3 s flight 166 objects at the peak, 27 draw calls, over 100,000 triangles
+of dots. Now `GrenadeTrail` (`world/grenade_range/grenade_trail.gd`) is one `MultiMeshInstance3D` made with the first
+dot: a ring of 32 dots (the cap; a full ring takes over the oldest) over one shared 12 x 6 sphere (168 triangles) and
+one shared material, the fade carried by each instance's colour alpha (`vertex_color_use_as_albedo`), written into the
+multimesh as one `PackedFloat32Array` a step (16 floats an instance: the 3 x 4 transform, then the colour). Dots age by
+the step the view is given, not by a tween, so a fixed-step run fades them the same way; the node hides itself when the
+last dot is gone. The shared mesh and material are held by the class for the process's life (a material that is freed
+takes its shader with it) and drawn once in the warm-up (`NightWarmup`), so the first throw of a night builds no
+program. Shadows are off for the dots (an alpha-blended unshaded dot is not worth a shadow draw).
+`tests/world/test_grenade_trail.gd` flies 12 throws and expects the same objects, resources, nodes and orphans, and no
+node added in a flight; `test_a_grenades_trail_draws_nothing_the_warm_up_did_not` in `test_night_warmup.gd` covers the
+first throw. An assertion is an object of its own, so a test that counts objects reads the monitor before it asserts.
+`tests/captures/grenade_trail.tscn` films a throw with the camera beside it, for before and after.
