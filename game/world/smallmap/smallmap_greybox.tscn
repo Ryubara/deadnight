@@ -446,15 +446,15 @@ size = Vector3(12, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallN1" type="CSGBox3D" parent="Side"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 10.825, 1.600, -7.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 10.975, 1.600, -7.950)
 layers = 4
 use_collision = true
 collision_layer = 3
-size = Vector3(5.45, 3.2, 0.3)
+size = Vector3(5.75, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallN2" type="CSGBox3D" parent="Side"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.300, 3.000, -7.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.600, 3.000, -7.950)
 layers = 4
 use_collision = true
 collision_layer = 3
@@ -462,11 +462,11 @@ size = Vector3(1.5, 0.4, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallN3" type="CSGBox3D" parent="Side"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 15.675, 1.600, -7.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 15.825, 1.600, -7.950)
 layers = 4
 use_collision = true
 collision_layer = 3
-size = Vector3(1.25, 3.2, 0.3)
+size = Vector3(0.95, 3.2, 0.3)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="WallE0" type="CSGBox3D" parent="Side"]
@@ -1105,7 +1105,7 @@ metadata/barricade_id = "side_1"
 metadata/room = "side"
 
 [node name="Window_side_2" type="Node3D" parent="Windows"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.300, 0.000, -7.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.600, 0.000, -7.950)
 metadata/barricade_id = "side_2"
 metadata/room = "side"
 metadata/kind = "window"
@@ -1179,7 +1179,7 @@ transform = Transform3D(0.9962, 0.0872, 0, -0.0872, 0.9962, 0, 0, 0, 1, -0.03, 1
 transform = Transform3D(0.9986, -0.0523, 0, 0.0523, 0.9986, 0, 0, 0, 1, 0.03, 2.03, 0.215)
 
 [node name="Spawn_side_2" type="Marker3D" parent="ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.300, 0.000, -14.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.600, 0.000, -14.950)
 metadata/barricade_id = "side_2"
 metadata/room = "side"
 
@@ -2140,17 +2140,17 @@ metadata/shop_id = "weapon_shotgun"
 metadata/room = "side"
 
 [node name="SmgSidePlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.600, 1.600, -7.740)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.300, 1.600, -7.740)
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
 [node name="SmgSideSilhouette" type="Node3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.600, 1.600, -7.660)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.300, 1.600, -7.660)
 script = ExtResource("silhouette")
 shop_id = &"weapon_smg"
 
 [node name="SpotSmgSide" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.600, 0.000, -6.450)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.300, 0.000, -6.450)
 metadata/kind = "wall"
 metadata/shop_id = "weapon_smg"
 metadata/room = "side"
@@ -2188,33 +2188,33 @@ metadata/shop_id = "weapon_flare_gun"
 metadata/room = "upstairs"
 
 [node name="AxeUpstairsPlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.990, 5.000, -6.600)
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.990, 5.000, -7.350)
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
 [node name="AxeUpstairsSilhouette" type="Node3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.910, 5.000, -6.600)
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.910, 5.000, -7.350)
 script = ExtResource("silhouette")
 shop_id = &"weapon_fire_axe"
 
 [node name="SpotAxeUpstairs" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 14.700, 3.400, -6.600)
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 14.700, 3.400, -7.350)
 metadata/kind = "wall"
 metadata/shop_id = "weapon_fire_axe"
 metadata/room = "upstairs"
 
 [node name="ShotgunUpstairsPlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.500, 5.000, -7.790)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.000, 5.000, -7.790)
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
 [node name="ShotgunUpstairsSilhouette" type="Node3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.500, 5.000, -7.710)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.000, 5.000, -7.710)
 script = ExtResource("silhouette")
 shop_id = &"weapon_shotgun"
 
 [node name="SpotShotgunUpstairs" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.500, 3.400, -6.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.000, 3.400, -6.500)
 metadata/kind = "wall"
 metadata/shop_id = "weapon_shotgun"
 metadata/room = "upstairs"

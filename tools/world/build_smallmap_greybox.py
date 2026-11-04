@@ -117,7 +117,7 @@ WINDOWS = [
     ("start_1", "start", "x", 14.65, 8.0, (0, -1), 0.0, GROUND_WALL),
     ("start_4", "start", "z", 16.15, 8.0, (-1, 0), 0.0, GROUND_WALL),
     ("side_1", "side", "x", -0.15, -4.6, (0, -1), 0.0, GROUND_WALL),
-    ("side_2", "side", "x", -7.95, 14.3, (0, 1), 0.0, GROUND_WALL),
+    ("side_2", "side", "x", -7.95, 14.6, (0, 1), 0.0, GROUND_WALL),
     ("upper_a1", "upstairs", "z", -0.15, 1.6, (1, 0), STOREY, UPPER_WALL),
     ("upper_a2", "upstairs", "x", 4.6, 9.5, (0, -1), STOREY, UPPER_WALL),
 ]
@@ -174,11 +174,11 @@ WALL_SPOTS = [
     ("PistolStart", "weapon_pistol", "start", (0.0, 11.0), (1, 0), 0.0),
     ("CrowbarStart", "weapon_crowbar", "start", (0.0, 6.0), (1, 0), 0.0),
     ("ShotgunSide", "weapon_shotgun", "side", (9.5, -0.3), (0, -1), 0.0),
-    ("SmgSide", "weapon_smg", "side", (3.6, -7.8), (0, 1), 0.0),
+    ("SmgSide", "weapon_smg", "side", (3.3, -7.8), (0, 1), 0.0),
     ("BatUpstairs", "weapon_baseball_bat", "upstairs", (16.05, 2.3), (-1, 0), STOREY),
     ("FlareUpstairs", "weapon_flare_gun", "upstairs", (4.5, 4.5), (0, -1), STOREY),
-    ("AxeUpstairs", "weapon_fire_axe", "upstairs", (16.05, -6.6), (-1, 0), STOREY),
-    ("ShotgunUpstairs", "weapon_shotgun", "upstairs", (11.5, -7.85), (0, 1), STOREY),
+    ("AxeUpstairs", "weapon_fire_axe", "upstairs", (16.05, -7.35), (-1, 0), STOREY),
+    ("ShotgunUpstairs", "weapon_shotgun", "upstairs", (11.0, -7.85), (0, 1), STOREY),
 ]
 # The sniper cabinet: the rifle, at 1.5 P, in the upstairs half over the side room.
 CABINET = ("RifleCabinet", "weapon_rifle", "upstairs", (-6.05, -4.0), (1, 0), STOREY)
