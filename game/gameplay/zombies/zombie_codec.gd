@@ -66,6 +66,7 @@ static func decode(bytes: PackedByteArray) -> Array[Dictionary]:
 
 
 static func _decode(bytes: PackedByteArray) -> Array[Dictionary]:
+	PerfProbe.count(&"codec.decoded")
 	var entries: Array[Dictionary] = []
 	if bytes.size() < HEADER_BYTES:
 		return entries

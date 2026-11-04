@@ -654,6 +654,7 @@ func _shock(player_id: int) -> void:
 
 
 func _target_list() -> Array:
+	PerfProbe.count(&"server.target_lists")
 	var list: Array = []
 	for zombie: ZombieBody in sim.zombies.values():
 		if zombie.is_alive():
