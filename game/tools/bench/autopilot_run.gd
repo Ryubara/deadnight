@@ -28,6 +28,9 @@ extends Node
 ##   `xp=1`       every player (the bots too: only here) holds an account, so the night awards XP
 ##                as a game server would and the XP's counts and time are in the rows
 ##                (`xp.gained`, `server.xp`; tools/perf/budget.json holds them)
+##   `challenges=0`  with `xp=1`, the accounts' challenge boards are not followed (the arm without
+##                the tracker; on by default: `challenge.advance`, `challenge.told`,
+##                `server.challenges`)
 ##   `signin=1`   sign in as a guest first (`?backend=` names the backend), so the night is a
 ##                signed-in solo night: its XP is kept in the profile and sent to the account
 ##   `map=ID`     the map of the night (`MapRegistry`: `drive_in`, `small_indoor`; default the lot)
@@ -268,7 +271,11 @@ func _register_accounts(night: Night) -> void:
 	for id: int in rules.players:
 		if not _accounts.has(id):
 			_accounts[id] = true
-			night.server.xp.register(id, "bench-%d" % id, 300, rules.round_number)
+			var user := "bench-%d" % id
+			night.server.xp.register(id, user, 300, rules.round_number)
+			# The board the backend would hold for the account (none yet: a fresh one).
+			if _args.get_int("challenges", 1) == 1 and night.server.challenges.seat(id, user):
+				night.server.challenges.arrived(user, 404, ChallengeAward.NO_BOARD)
 
 
 ## Draw calls of the frame with each part of the HUD hidden in turn (`hudprobe=1`), printed as

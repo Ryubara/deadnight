@@ -8,14 +8,16 @@ import { type Lobby, LobbyFailure, type LobbyLimits, LobbyService, MAX_PLAYERS }
 import { chooseName, firstUsable } from "./names.ts";
 import { DEFAULT_MAP, SETTINGS_KEYS } from "./settings.ts";
 import { GameServerRegistry } from "./servers.ts";
-import { checkSave, SaveRejected } from "./saves.ts";
+import { checkSave, MAX_SAVE_BYTES, SaveRejected } from "./saves.ts";
 import { RevisionConflict, type Store, type User } from "./store.ts";
 import { signToken, verifyToken } from "./tokens.ts";
 import { NIGHT_CAP, PROFILE_SLOT, ProgressService } from "./progression.ts";
 
+/** What a game server's report may weigh: a seat may carry its board (held to `MAX_SAVE_BYTES` each), so more than a save. */
+export const REPORT_BODY_LIMIT = 1024 * 1024;
+
 export const SESSION_TTL_SECONDS = 60 * 60;
 export const TICKET_TTL_SECONDS = 60;
-export const MAX_SAVE_BYTES = 64 * 1024;
 /** Guest sign-ins one address may make in an hour, and all addresses together. */
 export const GUESTS_PER_ADDRESS_PER_HOUR = 30;
 export const GUESTS_IN_ALL_PER_HOUR = 2000;
@@ -519,6 +521,20 @@ export function buildApp(deps: Deps): FastifyInstance {
     },
   );
 
+  // A seat's challenge board, read by the game server when the seat sits down (its tracker follows it from there). Only
+  // this one slot: the profile's XP already rides the ticket, and a game server has no business with the rest.
+  app.get<{ Params: { userId: string } }>(
+    "/internal/users/:userId/saves/challenges",
+    {
+      onRequest: requireGameServer,
+      schema: { params: { type: "object", properties: { userId: { type: "string", minLength: 1, maxLength: 64 } } } },
+    },
+    async (request, reply) => {
+      const board = await progress.boardOf(request.params.userId);
+      return board ?? reply.code(404).send({ error: "not_found" });
+    },
+  );
+
   // A game server's report of one round (or of the night's end): each seat's XP, which the backend adds to the seat's
   // profile once. The key is (match, kind, round, user), so a retry pays nothing; the answer says per seat what was
   // paid, so a server that lost the answer can post the same report again. Never called per kill.
@@ -533,6 +549,7 @@ export function buildApp(deps: Deps): FastifyInstance {
         openingNight?: boolean;
         bonusDay?: number;
         done?: string[];
+        board?: { schemaVersion: number; data: Record<string, unknown> };
         lines?: Record<string, number>;
       }[];
     };
@@ -540,6 +557,7 @@ export function buildApp(deps: Deps): FastifyInstance {
     "/internal/matches/:matchId/report",
     {
       onRequest: requireGameServer,
+      bodyLimit: REPORT_BODY_LIMIT,
       schema: {
         params: { type: "object", properties: { matchId: { type: "string", minLength: 1, maxLength: 64 } } },
         body: {
@@ -560,6 +578,11 @@ export function buildApp(deps: Deps): FastifyInstance {
                   openingNight: { type: "boolean" },
                   bonusDay: { type: "integer", minimum: 0, maximum: 1_000_000 },
                   done: { type: "array", maxItems: 100, items: { type: "string", minLength: 1, maxLength: 64 } },
+                  board: {
+                    type: "object",
+                    required: ["schemaVersion", "data"],
+                    properties: { schemaVersion: { type: "integer", minimum: 1 }, data: { type: "object" } },
+                  },
                   lines: {
                     type: "object",
                     maxProperties: 32,
