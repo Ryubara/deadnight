@@ -11,6 +11,12 @@ const EMERGE_DEPTH := 1.4
 ## (metres: a teleport, a new life) it is set down at once.
 const GLIDE_MAX_TICKS := 6
 const GLIDE_MAX_JUMP := 4.0
+## Climbing in over a window's sill (#915): the walker drops to its crawl clip, played at this rate
+## (hands over the sill, then the legs), and leans forward by this angle (degrees) about its feet,
+## reaching in over the ledge; the lean eases in and out over `CLIMB_EASE_SECONDS`.
+const CLIMB_RATE := 1.3
+const CLIMB_LEAN := 12.0
+const CLIMB_EASE_SECONDS := 0.2
 
 var zombie_id: int = 0
 ## The look it is drawn in (`ZombieModels`).
@@ -27,6 +33,15 @@ var _model: Node3D
 ## nothing.
 var _outline: Outline
 var _boss := false
+## The status effect it is drawn under (the wire id of a `StatusDef`, 0 for none) and whether that
+## one holds it still: a frozen zombie keeps its pose, the animation is not advanced.
+var _status := 0
+var _held := false
+## Whether the tree has been advanced since the body was set going: a zombie that is first seen
+## frozen is posed once and then held.
+var _posed := false
+## The meshes the status shell is laid over (the model's near and far variants).
+var _meshes: Array[MeshInstance3D] = []
 ## The boss's lamp (its material, a copy of its own): dark once it is dead.
 var _lamp: StandardMaterial3D
 var _lamp_strength := 0.0
@@ -36,6 +51,9 @@ var _telegraph := ZombieRig.BOSS_HIT_SECONDS
 ## `barrier_speed`): the tear clip is played to pull one off in exactly that.
 var _board_seconds := 1.2
 var _tearing := false
+## Climbing over a sill now (a walker's crawl clip and a lean), and how far into the lean it is.
+var _climbing := false
+var _lean := 0.0
 var _playback: AnimationNodeStateMachinePlayback
 var _mode: int = -1
 var _episode: int = -1
@@ -57,6 +75,7 @@ var _last_entry_tick := -1
 ## `phase` (0 to 1) starts the walk part-way through its cycle so a crowd does not march in step.
 ## A view that was parked (`park`) and is wanted in the same look is set going again as it is, with
 ## its model, skeleton and tree: nothing is made.
+## `model_scene` may be null for such a view: it is only read when the body is made.
 func setup(
 	model_scene: PackedScene,
 	id: int,
@@ -81,11 +100,13 @@ func setup(
 
 
 ## Takes the zombie off the lot and keeps its body for the next one of its look (`ZombieHorde` keeps
-## the parked views): hidden, with nothing to draw, move or animate.
+## the parked views): hidden, with nothing to draw, move or animate. The tree stays `active`: it is
+## advanced by hand and only by the throttle, which a parked view is not in, and switching it off
+## and on throws away its resolved tracks, which the next advance rebuilds (2 ms for twenty).
 func park() -> void:
+	set_status(0)
 	set_outlined(false)
 	visible = false
-	tree.active = false
 	_tearing = false
 	_placed = false
 	_glide_total = 0
@@ -94,11 +115,15 @@ func park() -> void:
 
 ## The next life of a parked body: no mode, gait or clip yet, so the first entry starts them.
 func _restart() -> void:
-	tree.active = true
+	_posed = false
+	set_status(0)
 	_mode = -1
 	_episode = -1
 	_speed_step = -1
 	_tearing = false
+	_climbing = false
+	_lean = 0.0
+	_model.rotation.x = 0.0
 	_emerge_left = 0.0
 	period = 1
 	if _boss:
@@ -119,6 +144,12 @@ func dress(model_scene: PackedScene, p_look: StringName) -> void:
 	_model.scale = Vector3.ONE * ZombieModels.GAME_SCALE
 	add_child(_model)
 	_strip_for_crowd(_model)
+	_meshes.clear()
+	for node in _model.find_children("*", "MeshInstance3D", true, false):
+		_meshes.append(node as MeshInstance3D)
+	_status = 0
+	_held = false
+	_posed = false
 	_outline = Outline.new()
 	_outline.style = outline_style
 	_model.add_child(_outline)
@@ -132,20 +163,34 @@ func dress(model_scene: PackedScene, p_look: StringName) -> void:
 	_mode = -1
 	_speed_step = -1
 	_tearing = false
+	_climbing = false
+	_lean = 0.0
 
 
 ## Moves and animates from one decoded entry. `delta` is the time since the last entry.
 func apply(entry: Dictionary, delta: float) -> void:
+	set_status(entry.get("status", 0))
 	_move_to(entry["position"], entry["yaw"])
 	var mode: int = entry["mode"]
 	var tearing: bool = entry.get("tearing", false)
+	var climbing: bool = (
+		entry.get("climbing", false)
+		and mode == ZombieBody.Mode.CHASE
+		and not tearing
+		and not _boss
+		and not ZombieModels.crawls(look)
+	)
 	if tearing:
 		# At the boards the simulation swings again and again (new episodes); the tear clip
 		# loops through them and only the rules' tears (`tore`) move it.
 		if not _tearing:
 			_start_tearing()
-	elif _tearing or mode != _mode or entry["episode"] != _episode:
+	elif climbing:
+		if not _climbing:
+			_start_climbing()
+	elif _climbing or _tearing or mode != _mode or entry["episode"] != _episode:
 		_enter(mode)
+	_climbing = climbing
 	_tearing = tearing
 	_mode = mode
 	_episode = entry["episode"]
@@ -154,6 +199,8 @@ func apply(entry: Dictionary, delta: float) -> void:
 		_speed_step = step
 		_set_gait(entry["speed"])
 	_emerge_left = maxf(_emerge_left - delta, 0.0) if mode == ZombieBody.Mode.EMERGING else 0.0
+	_lean = move_toward(_lean, 1.0 if climbing else 0.0, delta / CLIMB_EASE_SECONDS)
+	_model.rotation.x = deg_to_rad(CLIMB_LEAN) * _lean
 	if not _boss:
 		_model.position.y = -EMERGE_DEPTH * _emerge_left / _emerge_seconds
 
@@ -226,6 +273,11 @@ func is_tearing() -> bool:
 	return _tearing
 
 
+## Whether it is drawn climbing in over a window's sill.
+func is_climbing() -> bool:
+	return _climbing
+
+
 ## The tear clip's playhead, in the clip's own seconds.
 func tear_position() -> float:
 	return _playback.get_current_play_position() if _tearing else 0.0
@@ -247,6 +299,34 @@ func is_outlined() -> bool:
 	return _outline.enabled
 
 
+## The style the outline is drawn in.
+func outline_style() -> OutlineStyle:
+	return _outline.style
+
+
+## Draws the zombie under the status effect with this wire id (`StatusDef.wire`, 0 for none): the
+## status's shell over the body, and a status that holds it keeps the pose as it is.
+func set_status(wire: int) -> void:
+	if wire == _status:
+		return
+	_status = wire
+	var def := StatusCatalog.by_wire(wire)
+	_held = def != null and def.halts
+	var shell := StatusLook.shell_for(wire)
+	for mesh in _meshes:
+		mesh.material_overlay = shell
+
+
+## The status effect it is drawn under (a `StatusDef` wire id), 0 for none.
+func status() -> int:
+	return _status
+
+
+## Whether a status holds it still: frozen.
+func is_held() -> bool:
+	return _held
+
+
 ## Whether the zombie is dead and falling (its entry's mode said so).
 func is_dying() -> bool:
 	return _mode == ZombieBody.Mode.DYING
@@ -254,6 +334,10 @@ func is_dying() -> bool:
 
 ## Spends the accumulated animation time.
 func advance_animation() -> void:
+	if _held and _posed:
+		accumulated = 0.0
+		return
+	_posed = true
 	tree.advance(accumulated)
 	accumulated = 0.0
 
@@ -265,6 +349,13 @@ func _start_tearing() -> void:
 	tree.set(ZombieRig.TEAR_SEEK_PARAMETER, 0.0)
 	tree.set(ZombieRig.TEAR_SCALE_PARAMETER, ZombieRig.TEAR_YANK_SECONDS / _board_seconds)
 	_take_seek()
+
+
+## It reached a window's sill with the boards down: the crawl clip and a lean forward, until it is
+## over (`CLIMB_LEAN`).
+func _start_climbing() -> void:
+	_playback.start(ZombieRig.STATE_CRAWL, true)
+	tree.set(ZombieRig.CRAWL_RATE_PARAMETER, CLIMB_RATE)
 
 
 ## A seek is taken on the tree's next advance, which then moves no further: taken now, so the
@@ -282,10 +373,21 @@ func _enter(mode: int) -> void:
 				tree.set(
 					ZombieRig.BOSS_ATTACK_SCALE_PARAMETER, ZombieRig.BOSS_HIT_SECONDS / _telegraph
 				)
+			elif ZombieModels.crawls(look):
+				# A crawler grabs from the floor: its own clip, never the walker's standing punch.
+				state = ZombieRig.STATE_CRAWL_ATTACK
+				tree.set(
+					ZombieRig.CRAWL_ATTACK_SCALE_PARAMETER, ZombieRig.CRAWL_HIT_SECONDS / _telegraph
+				)
 		ZombieBody.Mode.STAGGER:
-			state = ZombieRig.STATE_STAGGER
+			# A flinch on the floor for a body that lies on it (the walker's stands it up).
+			state = (
+				ZombieRig.STATE_CRAWL_STAGGER
+				if ZombieModels.crawls(look)
+				else ZombieRig.STATE_STAGGER
+			)
 		ZombieBody.Mode.DYING:
-			state = ZombieRig.STATE_DIE
+			state = ZombieRig.STATE_CRAWL_DIE if ZombieModels.crawls(look) else ZombieRig.STATE_DIE
 			_light_lamp(_model, false)
 		ZombieBody.Mode.EMERGING:
 			_emerge_left = _emerge_seconds

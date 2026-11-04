@@ -14,6 +14,7 @@ const EXPECTED := {
 	&"shotgun": [&"Shotgun", "res://assets/weapons/double_shotgun/double_shotgun.glb"],
 	&"crowbar": [&"Melee", "res://assets/weapons/crowbar/crowbar.glb"],
 	&"smg": [&"Rifle", "res://assets/weapons/tommy_gun/tommy_gun.glb"],
+	&"house_pistol": [&"Pistol", "res://assets/weapons/house_pistol/house_pistol.glb"],
 	&"pistol": [&"Pistol", "res://assets/weapons/revolver/revolver.glb"],
 	&"flare_gun": [&"Pistol", "res://assets/weapons/flare_gun/flare_gun.glb"],
 	&"baseball_bat": [&"Melee", "res://assets/weapons/baseball_bat/baseball_bat.glb"],
@@ -25,6 +26,8 @@ const EXPECTED := {
 	&"fifty_cal": [&"Rifle", "res://assets/weapons/fifty_cal/fifty_cal.glb"],
 	&"pump_870": [&"Shotgun", "res://assets/weapons/pump_870/pump_870.glb"],
 	&"dual_pistols": [&"Dual", "res://assets/weapons/service_pistol/service_pistol.glb"],
+	&"ray_gun": [&"Pistol", "res://assets/weapons/ray_gun/ray_gun.glb"],
+	&"freeze_gun": [&"Rifle", "res://assets/weapons/freeze_gun/freeze_gun.glb"],
 }
 ## A weapon drawn with another's model until its own lands: it may share that model, and is taken
 ## off this list with its own glb. None now: all six of #793 have theirs.

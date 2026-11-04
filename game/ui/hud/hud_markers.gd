@@ -22,9 +22,21 @@ const DOWNED_WIDTH := 6.0
 ## Text stays this far inside the screen.
 const TEXT_MARGIN := 12.0
 const LABEL_SIZE := HudStyle.MIN_TEXT
+## Steps of a canvas unit a marker's place is told apart in: a marker follows the world, so the
+## state holds a new float place nearly every frame, and the part is drawn when the picture would
+## change by a quarter of a unit (a quarter of a pixel at 1080p), not when a float does (#948).
+const PLACE_STEPS := 4.0
 
 ## Where each marker is drawn on the last frame: {id: {"at": Vector2, "pinned": bool}}.
 var placed: Dictionary = {}
+
+## What the last draw was made from (`_key`).
+var _drawn_key: Array = []
+## What a draw collects: every marker's shapes, their smoothed rings [centre, radius, from, to,
+## colour, width] and their words [font, place, text, colour].
+var _shapes := HudShapes.new()
+var _rings: Array[Array] = []
+var _words: Array[Array] = []
 
 
 func _ready() -> void:
@@ -36,7 +48,43 @@ func topics() -> Array[StringName]:
 
 
 func refresh() -> void:
-	queue_redraw()
+	var key := _key()
+	if key != _drawn_key:
+		_drawn_key = key
+		queue_redraw()
+
+
+## Everything `_draw` reads, as the picture tells it apart: the screen, where each marker stands in
+## quarter units, how far it says it is in whole metres, its words and its state.
+func _key() -> Array:
+	var key: Array = [size]
+	if state == null:
+		return key
+	var spots := _place_all()
+	for marker in state.markers:
+		var spot: Dictionary = spots.get(marker["id"], {})
+		if spot.is_empty():
+			continue
+		var at: Vector2 = spot["at"]
+		(
+			key
+			. append(
+				[
+					marker["id"],
+					marker["kind"],
+					roundi(at.x * PLACE_STEPS),
+					roundi(at.y * PLACE_STEPS),
+					spot["pinned"],
+					roundi(float(marker.get("distance", 0.0))),
+					str(marker.get("label", "")),
+					bool(marker.get("downed", false)),
+					bool(marker.get("dead", false)),
+					int(marker.get("bleed", 0)),
+					roundi(float(marker.get("revive", 0.0)) * 100.0),
+				]
+			)
+		)
+	return key
 
 
 func marker_at(id: StringName) -> Dictionary:
@@ -46,6 +94,12 @@ func marker_at(id: StringName) -> Dictionary:
 func _draw() -> void:
 	placed = _place_all()
 	var font := tokens.text_font(tokens.embolden_display * 0.3, 1.0)
+	# All the markers' shapes are one command, then the smoothed rings, then all their words (the
+	# outlines, then the letters: two commands, not two a marker): a marker's words can go over
+	# another marker's shape that stands under them (#948).
+	_shapes = HudShapes.new()
+	_rings.clear()
+	_words.clear()
 	for marker in state.markers:
 		var spot: Dictionary = placed.get(marker["id"], {})
 		if spot.is_empty():
@@ -54,6 +108,15 @@ func _draw() -> void:
 			_draw_ally(font, marker, spot["at"])
 		else:
 			_draw_objective(font, marker, spot)
+	_shapes.flush(self)
+	for ring: Array in _rings:
+		draw_arc(ring[0], ring[1], ring[2], ring[3], 32, ring[4], ring[5], true)
+	for word: Array in _words:
+		draw_string_outline(
+			word[0], word[1], word[2], HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, 7, tokens.shadow
+		)
+	for word: Array in _words:
+		draw_string(word[0], word[1], word[2], HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, word[3])
 
 
 func _place_all() -> Dictionary:
@@ -103,7 +166,7 @@ func _draw_objective(font: Font, marker: Dictionary, spot: Dictionary) -> void:
 			at + Vector2(-half, 0)
 		]
 	)
-	_fill(
+	_shapes.polygon(
 		PackedVector2Array(
 			[
 				diamond[0] + Vector2(3, 3),
@@ -114,14 +177,14 @@ func _draw_objective(font: Font, marker: Dictionary, spot: Dictionary) -> void:
 		),
 		tokens.shadow
 	)
-	_fill(diamond, tokens.accent_bright)
+	_shapes.polygon(diamond, tokens.accent_bright)
 	var inner := half * 0.45
-	draw_rect(Rect2(at - Vector2.ONE * inner * 0.5, Vector2.ONE * inner), tokens.ink_on_accent)
+	_shapes.rect(Rect2(at - Vector2.ONE * inner * 0.5, Vector2.ONE * inner), tokens.ink_on_accent)
 	if spot["pinned"]:
 		var direction := (at - size * 0.5).normalized()
 		var tip := at + direction * (half + ARROW + 6.0)
 		var side := direction.orthogonal() * ARROW * 0.6
-		_fill(
+		_shapes.polygon(
 			PackedVector2Array(
 				[tip, at + direction * (half + 6.0) + side, at + direction * (half + 6.0) - side]
 			),
@@ -138,7 +201,7 @@ func _draw_ally(font: Font, marker: Dictionary, at: Vector2) -> void:
 		_draw_downed(font, marker, at)
 		return
 	var tip := at + Vector2(0.0, -10.0)
-	_fill(
+	_shapes.polygon(
 		PackedVector2Array([tip + Vector2(0, 14), tip + Vector2(-10, 0), tip + Vector2(10, 0)]),
 		tokens.accent
 	)
@@ -155,26 +218,26 @@ func _draw_ally(font: Font, marker: Dictionary, at: Vector2) -> void:
 func _draw_downed(font: Font, marker: Dictionary, at: Vector2) -> void:
 	var dead := bool(marker.get("dead", false))
 	var colour := tokens.ink_muted if dead else tokens.danger
-	draw_circle(at, DOWNED_RADIUS + 4.0, Color(tokens.shadow, 0.6))
-	draw_arc(at, DOWNED_RADIUS, 0.0, TAU, 32, Color(colour, 0.35), DOWNED_WIDTH, true)
+	_shapes.circle(at, DOWNED_RADIUS + 4.0, Color(tokens.shadow, 0.6))
+	_rings.append([at, DOWNED_RADIUS, 0.0, TAU, Color(colour, 0.35), DOWNED_WIDTH])
 	var progress := float(marker.get("revive", 0.0))
 	if progress > 0.0:
-		draw_arc(
-			at,
-			DOWNED_RADIUS,
-			-PI * 0.5,
-			-PI * 0.5 + TAU * clampf(progress, 0.0, 1.0),
-			32,
-			tokens.accent_bright,
-			DOWNED_WIDTH,
-			true
+		_rings.append(
+			[
+				at,
+				DOWNED_RADIUS,
+				-PI * 0.5,
+				-PI * 0.5 + TAU * clampf(progress, 0.0, 1.0),
+				tokens.accent_bright,
+				DOWNED_WIDTH
+			]
 		)
 	elif not dead:
-		draw_arc(at, DOWNED_RADIUS, -PI * 0.5, PI * 1.5, 32, colour, DOWNED_WIDTH * 0.5, true)
+		_rings.append([at, DOWNED_RADIUS, -PI * 0.5, PI * 1.5, colour, DOWNED_WIDTH * 0.5])
 	# A cross, the mark of someone who needs a hand.
 	var arm := DOWNED_RADIUS * 0.45
-	draw_line(at + Vector2(-arm, 0.0), at + Vector2(arm, 0.0), colour, 4.0)
-	draw_line(at + Vector2(0.0, -arm), at + Vector2(0.0, arm), colour, 4.0)
+	_shapes.line(at + Vector2(-arm, 0.0), at + Vector2(arm, 0.0), colour, 4.0)
+	_shapes.line(at + Vector2(0.0, -arm), at + Vector2(0.0, arm), colour, 4.0)
 	var words := str(marker.get("label", "")).to_upper()
 	if dead:
 		words += "  DEAD"
@@ -183,21 +246,10 @@ func _draw_downed(font: Font, marker: Dictionary, at: Vector2) -> void:
 	_text(font, words, at + Vector2(0.0, -DOWNED_RADIUS - 10.0), colour)
 
 
-## A flat triangle or quad. Not `draw_colored_polygon`: the markers move with the camera and are
-## drawn again every frame, and a polygon makes the Compatibility renderer build a vertex array and
-## buffers each time, whose WebGL ids the web page keeps for good (#883). A primitive is batched
-## with the rest and makes none.
-func _fill(points: PackedVector2Array, colour: Color) -> void:
-	var colours := PackedColorArray()
-	colours.resize(points.size())
-	colours.fill(colour)
-	draw_primitive(points, colours, PackedVector2Array())
-
-
-## Centred text with a dark outline, so it holds on a lit or dark ground.
+## Centred text with a dark outline, so it holds on a lit or dark ground: kept for the end of the
+## draw.
 func _text(font: Font, text: String, baseline_centre: Vector2, colour: Color) -> void:
 	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE).x
 	var at := baseline_centre - Vector2(width * 0.5, 0.0)
 	at.x = clampf(at.x, TEXT_MARGIN, maxf(size.x - TEXT_MARGIN - width, TEXT_MARGIN))
-	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, 7, tokens.shadow)
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, colour)
+	_words.append([font, at, text, colour])

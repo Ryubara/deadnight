@@ -41,9 +41,14 @@ func _ready() -> void:
 	var panel := UIPanel.new()
 	panel.variant = UIPanel.Variant.MARQUEE
 	centre.add_child(panel)
+	# The card scrolls rather than grow past the canvas (a phone held sideways is 540 units, #980).
+	var scroll := UIFitScroll.new()
+	scroll.name = "Scroll"
+	scroll.margin = float(_tokens.space_md)
+	panel.add_child(scroll)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override(&"separation", _tokens.space_md)
-	panel.add_child(box)
+	scroll.add_child(box)
 	box.add_child(_label("TOGETHER", UILabel.Style.OVERLINE))
 	box.add_child(_label("Join a night", UILabel.Style.TITLE))
 	var note := _label(
@@ -57,6 +62,7 @@ func _ready() -> void:
 	note.custom_minimum_size.x = FIELD_WIDTH
 	box.add_child(note)
 	address = LineEdit.new()
+	UiSounds.wire_field(address)
 	address.text = PUBLIC_URL if OS.has_feature("web") else DEFAULT_URL
 	address.placeholder_text = DEFAULT_URL
 	address.custom_minimum_size.x = FIELD_WIDTH

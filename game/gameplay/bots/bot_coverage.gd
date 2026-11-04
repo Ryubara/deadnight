@@ -27,6 +27,7 @@ const SHOP_KINDS := {
 }
 ## `WeaponCatalog.IDS`: a weapon is covered when the motor can fire it as it is built.
 const WEAPONS := {
+	"house_pistol": "rule: BotMotor fires it like the revolver (the start weapon, semi-automatic)",
 	"pistol":
 	"rule: BotMotor fires any hitscan weapon inside its hit cone; BotArsenal ranks and swaps",
 	"smg": "rule: BotMotor fires it in bursts of three to five (automatic)",
@@ -45,6 +46,8 @@ const WEAPONS := {
 	"fifty_cal": "rule: BotMotor fires it like the pistol (the shot pierces the line of the dead)",
 	"pump_870": "rule: BotMotor fires it like the pistol; BotArsenal reloads it shell by shell",
 	"dual_pistols": "rule: BotMotor fires it like the pistol (the hands alternate on the server)",
+	"ray_gun": "rule: BotMotor fires it like the pistol (the bolt's splash forgives the aim)",
+	"freeze_gun": "rule: BotMotor fires it like the pistol; a frozen zombie is shot once",
 }
 ## `PingBoard.KINDS`: what a bot does about each mark a person puts up.
 const PINGS := {

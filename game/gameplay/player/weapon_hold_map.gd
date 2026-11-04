@@ -11,6 +11,7 @@ const CLASS_OF := {
 	&"rifle": &"Rifle",
 	&"shotgun": &"Shotgun",
 	&"smg": &"Rifle",
+	&"house_pistol": &"Pistol",
 	&"pistol": &"Pistol",
 	&"flare_gun": &"Pistol",
 	&"mp5": &"Rifle",
@@ -20,6 +21,8 @@ const CLASS_OF := {
 	&"fifty_cal": &"Rifle",
 	&"pump_870": &"Shotgun",
 	&"dual_pistols": &"Dual",
+	&"ray_gun": &"Pistol",
+	&"freeze_gun": &"Rifle",
 }
 const MELEE_CLASS := &"Melee"
 

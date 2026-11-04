@@ -62,14 +62,21 @@ func test_the_lot_has_the_breaches_the_rules_list_with_boards_across_each() -> v
 	night.queue_free()
 
 
-func test_every_field_spawn_stands_outside_its_own_breach() -> void:
+func test_every_spawn_stands_outside_its_own_breach() -> void:
+	# The field's six and, since #849, every later area's points too: each stands behind the boards
+	# it names (a point in the midway's bay, 3.5 m inside the bay's wall, is as far behind its
+	# boards as one on an apron), and each breach has a point at least.
 	var night := await _start()
 	var gates := night.world.spawn_gates()
-	assert_int(gates.size()).is_equal(night.world.barricade_ids().size())
+	assert_int(gates.size()).is_equal(night.world.layout.all_spawns().size())
+	var named: Array[StringName] = []
 	for point: Vector3 in gates:
 		var barricade := night.world.barricade(gates[point])
 		assert_float(barricade.depth_of(point)).is_less(-2.0)
 		assert_float(point.distance_to(barricade.centre())).is_less(6.0)
+		named.append(gates[point])
+	for id in night.world.barricade_ids():
+		assert_bool(named.has(id)).override_failure_message("no spawn at %s" % id).is_true()
 	night.queue_free()
 
 
@@ -99,7 +106,9 @@ func test_boards_stop_a_player_and_not_a_shot() -> void:
 	night.queue_free()
 
 
-func test_a_player_walks_into_whole_boards_and_out_through_torn_ones() -> void:
+## Whole boards stop a player, and so does the window with the boards torn off (#915): a breach
+## is a window with a sill and a blocker, never a door a player can walk out through.
+func test_a_player_is_stopped_by_whole_boards_and_by_the_window_with_none() -> void:
 	var night := await _start()
 	var barricade := night.world.barricade(BREACH)
 	var walk := NightCommand.new()
@@ -112,7 +121,7 @@ func test_a_player_walks_into_whole_boards_and_out_through_torn_ones() -> void:
 	for _i in night.server.rules.tuning.barricades.boards:
 		night.state.apply_events(night.server.rules.apply(RulesAction.tear_board(BREACH, zombie)))
 	NightFixture.run(night, 240, walk)
-	assert_float(barricade.depth_of(night.player().global_position)).is_less(-1.0)
+	assert_float(barricade.depth_of(night.player().global_position)).is_greater(0.0)
 	night.queue_free()
 
 

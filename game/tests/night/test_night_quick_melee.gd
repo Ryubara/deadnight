@@ -63,6 +63,7 @@ func _place(body: ZombieBody) -> void:
 	var flat := Vector3(dir.x, 0.0, dir.z).normalized()
 	body.position = _night.state.position() + flat * REACH_AHEAD
 	body.velocity = Vector3.ZERO
+	_night.server.sim.touch()
 
 
 ## Holds the key for a few ticks (a tap), keeping the zombie where it is.
@@ -111,6 +112,30 @@ func test_v_strikes_with_each_weapon_and_plays_that_weapons_clip() -> void:
 		# No gun went off and the weapon in hand is the same one.
 		assert_int(_count(&"shot_fired")).is_equal(0)
 		assert_str(String(_night.state.me()["weapon"])).is_equal(String(id))
+
+
+func test_a_round_two_walker_takes_two_blows_on_v_and_a_round_one_walker_one() -> void:
+	# Through the real key, command, sweep from the eye and rules (#897): 50 health on round 1 falls
+	# to the 50 of one blow, round 2's 58 does not.
+	var round_one := _zombie_in_reach()
+	_tap(round_one, 6)
+	assert_int(_count(&"damage_dealt")).is_equal(1)
+	assert_int(_count(&"target_killed")).is_equal(1)
+	_night.queue_free()
+	await get_tree().physics_frame
+	await before_test()
+	_night.server.rules.round_number = 1
+	var walker := _zombie_in_reach()
+	_tap(walker, 6)
+	assert_int(_count(&"damage_dealt")).is_equal(1)
+	var hurt := _heard.filter(func(e: Dictionary) -> bool: return e["type"] == &"damage_dealt")
+	var left: float = hurt[0]["health"]
+	assert_float(left).is_equal(RulesFixture.round_health(2) - 50.0)
+	assert_int(_count(&"target_killed")).is_equal(0)
+	NightFixture.run(_night, 40)
+	_tap(walker, 6)
+	assert_int(_count(&"damage_dealt")).is_equal(2)
+	assert_int(_count(&"target_killed")).is_equal(1)
 
 
 func test_a_press_while_the_body_faces_away_turns_it_and_the_blow_follows() -> void:

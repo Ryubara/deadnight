@@ -105,6 +105,15 @@ changed the look only: the stages, timings, cycling, blink, dud and the server's
   is for the dig only), read from the frame's crane stage, so the wire is unchanged.
 - **Beam.** A cheap additive cone (a ten-line shader: bright at the foot, fading up, blended additively, no depth
   write) stands over the crane's spot from the top of the marquee, so the way to it is a column of light in the night.
+  It rises to the first solid over the crane and no further (#911): the cone was a fixed 36 m, and the depth test
+  only hides what lies behind a surface from the camera, so from a floor or a roof over the crane the column came out
+  of the slab (the concession's roof, the second map's upper floor). `CraneView` casts one ray up from the marquee
+  (`PrizeCrane.beam_length_over`, world layer) when it puts the crane at a spot, and `set_beam_length` shortens the same
+  cone (same taper, one uniform `cut`, a fade over the last 1.5 m, or 0.6 of a shorter beam). A crane under a ceiling
+  3.2 m high has a 0.39 m beam: a glow on the marquee. No ray runs in a frame, and no mesh, light or program is added.
+  `tests/world/test_crane_beam.gd` casts the same ray from every crane spot of both maps and checks that nothing solid
+  stands inside the beam and that a solid ends it; `tests/captures/box_beam_views.tscn` shoots every spot from the floor
+  in front, from the first solid over it and from across the lot.
 
 ### Why the prize comes out at eye height (#830)
 

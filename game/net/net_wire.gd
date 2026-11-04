@@ -1,6 +1,7 @@
 class_name NetWire
 extends RefCounted
-## The bytes of a night's connection (protocol version 13 has the ORDER message, a person's order to
+## The bytes of a night's connection (protocol version 14 puts the zombie's status effect in its
+## mode byte (`ZombieCodec`: frozen, chilled); version 13 has the ORDER message, a person's order to
 ## the bots, and the `bot_orders` of the frame; version 12 carries each player's stance, sprint,
 ## crouch and in the air, in the frame; version 11 has the quick melee flag in a command's flags
 ## (`F_MELEE`); version 10 has the client's PLATFORM message; version
@@ -66,10 +67,10 @@ enum Refusal { VERSION = 1, FULL = 2, DENIED = 3 }
 ## The protocol version of this build. Raise it whenever a layout above changes (a field added,
 ## resized or reordered, a type renumbered). New keys in the events and the frame do not need it:
 ## clients ignore keys they do not know. The policy is in docs/research/multiplayer.md.
-const VERSION := 13
+const VERSION := 14
 ## The oldest client version a server of this build still takes. Equal to `VERSION` while the web
 ## client and the server ship from one commit; lower it only for a layout both versions can read.
-const MIN_VERSION := 13
+const MIN_VERSION := 14
 ## Port of a game server unless told otherwise. (Not 9080: the Godot editor's MCP bridge listens
 ## there on the maintainer's machine and Windows lets a second listener bind it silently.)
 const DEFAULT_PORT := 8910

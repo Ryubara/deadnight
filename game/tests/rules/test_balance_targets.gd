@@ -7,6 +7,13 @@ extends GdUnitTestSuite
 ## Nights per cell in CI. Seeds are fixed, so the result is the same every run on every machine.
 const NIGHTS := 60
 const SEED := 4000
+## How many rounds further the re-cut and the tonic must carry the good and the many nights. It
+## was a whole round at 1,500 and a step; at 5,000 flat (#909) the average nights of 4 and 8 players
+## gain 0.95 and 1.0, because the re-cut comes later. 0.3 since the House Pistol start (#898): the
+## strong solo night gains 0.38 (14.08 with, 13.70 without; 60 nights a cell reads a mean to about
+## 0.3 either way) because the opening is slower and the re-cut comes later still; the two party
+## cells still gain more than 0.5.
+const CLIMB_CARRIED := 0.3
 const CELLS := [
 	["weak", 1],
 	["average", 1],
@@ -117,7 +124,6 @@ func test_the_same_climb_goes_less_far_when_the_re_cut_and_the_tonic_do_nothing(
 		profile.reserve_multiplier = 1.0
 		profile.fire_interval = 0.0
 		profile.element = null
-	inert.upgrade.price_step = 0
 	inert.economy.item(&"upgrade_weapon").price = 1
 	inert.economy.item(&"tonic_hearty").health_bonus = 0.0
 	var without := _batch(inert)
@@ -132,7 +138,7 @@ func test_the_same_climb_goes_less_far_when_the_re_cut_and_the_tonic_do_nothing(
 					% [key, inert_mean, shipped_mean]
 				)
 			)
-			. is_less(shipped_mean - 1.0)
+			. is_less(shipped_mean - CLIMB_CARRIED)
 		)
 
 

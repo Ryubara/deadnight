@@ -21,9 +21,8 @@ var _buttons := {}
 
 func _ready() -> void:
 	var column := VBoxContainer.new()
-	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	column.add_theme_constant_override(&"separation", 10)
-	add_child(column)
+	hold(column)
 	for route: Array in ROUTES:
 		if route[0] == &"quit" and not has_quit():
 			continue
@@ -48,6 +47,7 @@ func _ready() -> void:
 	name_field.name = "PlayerName"
 	name_field.placeholder_text = MenuProfile.DEFAULT_NAME
 	name_field.max_length = MenuProfile.MAX_NAME
+	UiSounds.wire_field(name_field)
 	name_field.custom_minimum_size.x = width(context.compact)
 	name_field.text = _saved_name()
 	name_field.text_submitted.connect(func(_text: String) -> void: save_name())

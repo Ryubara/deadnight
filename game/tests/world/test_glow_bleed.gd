@@ -11,6 +11,7 @@ const GREYBOXES: Array[String] = [
 	"res://world/smallmap/smallmap_greybox.tscn",
 ]
 const SIGN := "Concession/Lamps/NeonSnacks"
+const BACK_LOT_SIGN := "BackLot/Lamps/NeonSign"
 ## What a lamp still lights through a wall after the room layers (issue #841;
 ## docs/research/room-lights.md): `[the most it gives a surface, why it stays]`. A lamp lights the
 ## default layer and its own room's, and a floor, wall or ceiling that must not take it sits on a
@@ -28,14 +29,9 @@ const LEAKS := {
 		"ShopProps/ReCut/Glow":
 		[0.28, "the booth's east wall is one box over both storeys, like the lower lamp's"],
 	},
-	"res://world/smallmap/smallmap_greybox.tscn":
-	{
-		"UpperA/Lamp6/Light":
-		[
-			0.26,
-			"one slab is the upper hall's floor and the roof terrace past its south wall",
-		],
-	},
+	# The upper hall's lamp lit the roof terrace through the one slab under both until #917 cut the
+	# terrace into its own slab, outdoors.
+	"res://world/smallmap/smallmap_greybox.tscn": {},
 }
 ## What the room layers take from a lamp that it could see: `"lamp|surface"` and why it is let go. A
 ## lamp that loses a surface not listed here is darkening a room it lights; the test fails on it and
@@ -56,7 +52,17 @@ const LOST := {
 		"up the stairwell onto the next hall's wall base, above a slab",
 		"Start/Lamp3/Light|Ceilings/SideSlabS":
 		"up the stairwell onto the next hall's floor, a room's glow in another room",
-		"UpperA/Lamp6/Light|Side/WallS4": "the wall below, seen through the slab: it was a leak",
+		"UpperA/Lamp6/Light|Side/WallS3": "the wall below, seen through the slab: it was a leak",
+		"Start/Lamp1/Light|Roof/ParapetS":
+		"the terrace's railing, over the hall's roof: it would be a leak",
+		"Start/Lamp1/Light|Roof/ParapetW":
+		"the terrace's railing, over the hall's roof: it would be a leak",
+		"Start/Lamp2/Light|Roof/ParapetS":
+		"the terrace's railing, over the hall's roof: it would be a leak",
+		"Start/Lamp2/Light|Roof/ParapetE":
+		"the terrace's railing, over the hall's roof: it would be a leak",
+		"ShopProps/Soda/Glow|Roof/ParapetW":
+		"the terrace's railing, over the hall's roof: it would be a leak",
 		"UpperA/Lamp6/Light|Ceilings/SideSlabS":
 		"the next hall's floor, seen through its own walls: it was a leak",
 	},
@@ -149,6 +155,33 @@ func test_the_sign_halo_stops_at_the_top_of_its_wall() -> void:
 	# The flat card is 4 m high round the sign's 3.3 m: its top would stand over the roof from
 	# behind.
 	assert_float(halo.global_position.y + 2.0).is_greater(wall_top)
+
+
+func test_the_back_lots_sign_faces_the_lot_and_shows_nothing_from_behind_its_board() -> void:
+	# Issue #852: the lot's sign hangs on a free-standing board against the south fence. Its lamp is
+	# a spot facing the lot (nothing lit behind the board), and its halo is drawn from the front
+	# only: from the strip between the board and the fence there is no glow to see round it.
+	var lot := _instance(GREYBOXES[0])
+	var sign := lot.get_node(BACK_LOT_SIGN) as LotNeonSign
+	var light := sign.get_node("Light") as SpotLight3D
+	var outward := sign.global_basis.z.normalized()
+	assert_float(outward.z).is_less(-0.99)
+	assert_float((-light.global_basis.z).dot(outward)).is_greater(0.99)
+	assert_float(light.spot_angle).is_less(90.0)
+	assert_array(GlowBleed.bleeding_lights(lot, [light] as Array[Light3D])).is_empty()
+	var halo := (sign.get_node("Halo") as MeshInstance3D).material_override as ShaderMaterial
+	assert_bool(halo.get_shader_parameter(&"front_only")).is_true()
+	# The card is a flat quad facing the lot, so its front side is the lot's.
+	var card := sign.get_node("Halo") as MeshInstance3D
+	assert_float(card.global_basis.z.dot(outward)).is_greater(0.99)
+	var board := lot.get_node("BackLot/SignBoard") as CSGBox3D
+	assert_float(card.global_position.z).is_less(board.global_position.z - board.size.z * 0.5)
+
+
+func test_the_glow_shader_can_draw_a_card_from_its_front_only() -> void:
+	var code := (load("res://world/drive_in/glow.gdshader") as Shader).code
+	assert_str(code).contains("uniform bool front_only = false")
+	assert_str(code).contains("if (front_only && !FRONT_FACING)")
 
 
 func test_the_check_sees_an_omni_lighting_through_a_wall_and_a_spot_that_does_not() -> void:

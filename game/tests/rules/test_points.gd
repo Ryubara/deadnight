@@ -61,7 +61,7 @@ func test_the_repair_cap_runs_from_one_rounds_end_to_the_next() -> void:
 	_end_the_round()
 	var after_the_bonus := _rules.points_of(1)
 	_repair(&"n")
-	assert_int(_rules.points_of(1)).is_equal(after_the_bonus + 5 * 12)
+	assert_int(_rules.points_of(1)).is_equal(after_the_bonus + 5 * 10)
 
 
 func test_a_round_pays_a_bonus_to_everyone_on_their_feet() -> void:

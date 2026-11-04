@@ -13,6 +13,11 @@ signal closed
 
 const PANEL_WIDTH := 1200
 const MAX_PAGE_ROWS := 4
+## The phone's tab type is this share of the usual size.
+const TAB_SHRINK := 0.85
+## A canvas this high or lower is a phone held sideways (540 units): the heading goes and the
+## margins thin out so the rows keep their room.
+const COMPACT_HEIGHT := 600.0
 const PERCENT := "%d%%"
 
 ## Each tab: a title and its rows. A row is {key, title, hint, kind} plus, by kind:
@@ -251,10 +256,18 @@ var _tab_buttons: Array[UIButton] = []
 var _pages: Array[VBoxContainer] = []
 var _footer_buttons: Array[UIButton] = []
 var _current := -1
+var _margin: MarginContainer
+var _column: VBoxContainer
+var _overline: UILabel
+var _title: UILabel
+var _rows_scroll: UIFitScroll
+var _phone_type := false
 
 
 func _ready() -> void:
 	super._ready()
+	# The screen is the source of its tab sound; the strip's buttons only hint.
+	UiSounds.tag(self, &"tab_bar")
 	_build()
 	_sync_all()
 	select_tab(0, false)
@@ -268,14 +281,14 @@ func select_tab(index: int, animate := true) -> void:
 	# Hiding a page drops the focus of a control on it, and nothing would give it back. Focus on
 	# the tab strip follows the selected tab.
 	var refocus := _has_focus_in_page(_current) or _tab_buttons.any(_has_focus)
+	if animate and _current >= 0:
+		UiSounds.tab(self, 1 if target > _current else -1)
 	_current = target
 	for i in _pages.size():
 		_pages[i].visible = i == target
 		_tab_buttons[i].variant = (
 			UIButton.Variant.PRIMARY if i == target else UIButton.Variant.GHOST
 		)
-	if animate:
-		UIAudio.play(&"press")
 	var rows: Array[Control] = []
 	for row in _pages[target].get_children():
 		if row.visible:
@@ -329,23 +342,56 @@ func _has_focus_in_page(index: int) -> bool:
 
 
 func _build() -> void:
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in [&"margin_left", &"margin_right", &"margin_top", &"margin_bottom"]:
-		margin.add_theme_constant_override(side, _tokens.space_xl)
-	add_child(margin)
+	_margin = MarginContainer.new()
+	_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_margin)
 	var centre := CenterContainer.new()
-	margin.add_child(centre)
+	_margin.add_child(centre)
 	var column := VBoxContainer.new()
-	column.custom_minimum_size.x = PANEL_WIDTH
-	column.add_theme_constant_override(&"separation", _tokens.space_md)
+	_column = column
 	centre.add_child(column)
-	column.add_child(_label("OPTIONS", UILabel.Style.OVERLINE))
-	column.add_child(_label("Settings", UILabel.Style.TITLE))
+	_overline = _label("OPTIONS", UILabel.Style.OVERLINE)
+	column.add_child(_overline)
+	_title = _label("Settings", UILabel.Style.TITLE)
+	column.add_child(_title)
 	column.add_child(_build_tabs())
 	column.add_child(_build_panel())
 	column.add_child(_build_footer())
 	initial_focus = _tab_buttons[0].get_path()
+	_rows_scroll.card = column
+	resized.connect(_fit)
+	_fit()
+
+
+## The card is as wide as the canvas allows and its rows scroll in what height is left: on a phone
+## (a 540 unit canvas) the overline and the title go (the tabs name the screen) and the margins and
+## gaps thin out (#980).
+func _fit() -> void:
+	if _column == null:
+		return
+	var phone := size.y <= COMPACT_HEIGHT
+	var edge := _tokens.space_md if phone else _tokens.space_xl
+	for side in [&"margin_left", &"margin_right"]:
+		_margin.add_theme_constant_override(side, edge)
+	var vertical := _tokens.space_sm if phone else _tokens.space_xl
+	for side in [&"margin_top", &"margin_bottom"]:
+		_margin.add_theme_constant_override(side, vertical)
+	_overline.visible = not phone
+	_title.visible = not phone
+	# Five tabs in one line need 983 units at the usual type size and a phone's narrowest canvas
+	# has 960: the phone's tabs are set a little smaller (still 16 px at the phone factor).
+	if phone != _phone_type:
+		_phone_type = phone
+		for button in _tab_buttons:
+			button.remove_theme_font_size_override(&"font_size")
+			if phone:
+				var base := button.get_theme_font_size(&"font_size")
+				button.add_theme_font_size_override(&"font_size", roundi(base * TAB_SHRINK))
+	_column.add_theme_constant_override(
+		&"separation", _tokens.space_sm if phone else _tokens.space_md
+	)
+	_column.custom_minimum_size.x = minf(float(PANEL_WIDTH), size.x - 2.0 * edge)
+	_rows_scroll.margin = float(vertical)
 
 
 func _build_tabs() -> HBoxContainer:
@@ -355,6 +401,7 @@ func _build_tabs() -> HBoxContainer:
 		var button := UIButton.new()
 		button.text = TABS[i]["title"]
 		button.variant = UIButton.Variant.GHOST
+		UiSounds.tag(button, &"tab")
 		button.pressed.connect(select_tab.bind(i))
 		strip.add_child(button)
 		_tab_buttons.append(button)
@@ -365,9 +412,15 @@ func _build_panel() -> UIPanel:
 	var panel := UIPanel.new()
 	panel.variant = UIPanel.Variant.RAISED
 	var row_height := _tokens.control_height + _tokens.space_md
-	panel.custom_minimum_size.y = (MAX_PAGE_ROWS * row_height + 2 * _tokens.space_lg)
+	# The rows scroll in what the screen leaves; a page of few rows keeps the height of four, so
+	# the card does not jump between tabs.
+	_rows_scroll = UIFitScroll.new()
+	_rows_scroll.name = "Rows"
+	_rows_scroll.steady = float(MAX_PAGE_ROWS * row_height)
+	panel.add_child(_rows_scroll)
 	var holder := VBoxContainer.new()
-	panel.add_child(holder)
+	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_rows_scroll.add_child(holder)
 	for tab in TABS:
 		var page := VBoxContainer.new()
 		page.add_theme_constant_override(&"separation", _tokens.space_md)

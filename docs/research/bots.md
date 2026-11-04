@@ -282,6 +282,20 @@ question (`probe`) goes through the same check. `tests/night/test_bot_fence.gd` 
 fence's edge (longest stuck under 3 s; 5 to 11 s on `main`); the old negative control for a wall the mesh does not know
 turns the check off, since the check now sees such a wall.
 
+### The way round: bots walk a mesh without the barricades (#995)
+
+Cutting a goal short or marking it unreachable (above) was not enough when the bot's way home was *through* a breach: a
+bot sent back from the road was routed through the south pocket's gap, the goal was unreachable for 5 s, and then asked
+again, so it stood at the boards for as long as it wanted to go home (the autopilot, which asks the mesh itself,
+stood against `Board1` at (12.0, 0, 33.45) for minutes). The lot has one navigation map and the dead need the gaps, so
+the mesh is cut, not baked twice: `DoorNavigation` puts the polygons that cross a barricade's line
+(`NavmeshSplit`, 57 of about 3,000 on the lot, 10 ms on a desktop for each mesh a door swaps in) in a region of their
+own on layer 2 (`NavLayers.GAP`); the rest is layer 1. A path asked with `NavLayers.WALK` (1, the engine's default, so
+`BotPath`, `Autopilot` and `HumanWalker` and any path asked without a layer) never crosses a barricade; the dead ask
+with `NavLayers.DEAD` (`NavmeshPathing`, the night's spawn checks). `walkable` stays as the check for every other
+thing the mesh does not know. `tests/night/test_bot_breach_paths.gd`: no walking path crosses any of the 16 barricades
+and the dead's do; a bot at the plaza's pockets and at the road door gets home by the gate in a minute.
+
 ## Economy
 
 The bot knows the shop table (prices, prerequisites, plan order) because every client has it. It shops from the
@@ -376,7 +390,8 @@ zombies and the kill seconds, distance, claim). Measure: [the numbers](#revive-r
 **Roles are stances, not classes**, reassigned by utility every few seconds and sticky for at least 10 s:
 
 - **Anchor** (default): within 6 m of the nearest human group; at least one bot is an anchor for each human.
-- **Flank**: with two or more bots, one holds a choke 8 to 14 m on the other side of the group's heading.
+- **Flank**: with two or more bots, one holds a choke 8 to 10 m on the other side of the group's heading, on ground
+  it can walk to ([#953](#a-flank-bot-that-stood-still-953)).
 - **Maintainer**: one bot at a time goes on an errand (repair, fuel, buy), only when no zombie is within 12 m and no
   teammate is hurt; it comes back.
 
@@ -803,7 +818,7 @@ timing) are ours too ([Ocio Barriales](http://www.gameaipro.com/GameAIPro3/GameA
 | Rots after release | The abandoned L4D bots mod; Vermintide's open reports | Soak in CI, the coverage test, and an owner in each phase |
 | Makes the night easier or harder than people | Ellie's "killing machine" | The parity batch against the simulator, damage left alone |
 | Predictable and exploitable | Practice bots | Seeded variety in positions and timing |
-| Fires or throws into teammates | Any shooter | A grenade hurts its thrower alone (#856): none where its blast reaches the bot, under a tenth of its health at that spot (`BotGrenadier.harmless_apart`, 5.8 m; the blast hurts the thrower out to 8 m, #805). The 7.5 m kept from every teammate no longer protects health and stays for now ([measured](grenades.md#only-the-thrower-856)) |
+| Fires or throws into teammates | Any shooter | A grenade hurts its thrower alone (#856): none where its blast reaches the bot, under a tenth of its health at that spot (`BotGrenadier.harmless_apart`, 5.8 m; the blast hurts the thrower out to 8 m, #805), planned 7 m off. The bots keep no distance from teammates (nothing to protect), and keep out of their own live grenade ([#872](grenades.md#the-bots-and-their-own-grenade-872)) |
 
 ## Phases
 
@@ -1005,14 +1020,18 @@ decides, the others hold a rule each, so a test pins them one by one):
   rule forbade the swing, the swap back waited for 8 m clear, and a bot kited ten dead for 500 s with a fire axe in
   hand and a shotgun at 0/54).
 - **`BotGrenadier`**: a grenade at a pack of three (two in Crawl Space) within 3 m of each other, 3 to 12 m away, as
-  the pack will stand when the 3 s fuse runs out (it keeps walking), when the blast is 6 m or more from the bot and
-  **4 m plus a margin of 1.5 m from every teammate** (where they stand and where they will be by then; the margin is
-  the scatter of a real throw, see the lesson on the rolling grenade), with an open arc and 6 s since the last. The
+  the pack will stand when the 3 s fuse runs out (it keeps walking), when the blast is 7 m or more from the bot (a
+  blast that lands exactly there takes 2% of its health; the grenade lands a metre or so off, see the lesson on the
+  rolling grenade) and wherever the teammates are (only the thrower takes the damage, #856; #872 took the old
+  clearance away), with an open arc and 6 s since the last. The
   pitch comes from a table of real flights made once with `GrenadeArc` on flat ground: the heavy grenade (#680) lies
   4 to 12 m out and hardly rolls, so a short throw is a lob (underarm up to 4 m, steep overarm to 12 m). The plan flies
-  the walls only; a zombie in the way stops the real grenade at its feet. The motor turns, holds the
-  button for two ticks and keeps the view still while the arm swings; the brain takes the order back if a teammate
-  walks in.
+  the walls, and the dead where they will stand as the arc passes (`ZombieBump`): a zombie that would stop the real
+  grenade nearer than 7 m from the bot drops it at the bot's feet, so the throw is not made (#872). The motor turns,
+  holds the button for two ticks and keeps the view still while the arm swings; the brain takes the order back while
+  the view still turns if a zombie comes within 3 m. From the order to the blast the bot keeps out of its own grenade
+  (`BotFightBrain`): it steps out of reach, never takes a retreat heading toward it (`BotSteering.keep_out`), and
+  within 20 m of it stands and fights (`blast_wait`) instead of following, chasing or running an errand.
 - **`BotDodge`**: a swing that began on the frame (`attack_at` on the contact) and that would still reach the bot
   (within 1.4 + 0.4 m, plus 0.3 of drift) is stepped out of after the profile's reaction time, if there is time before
   the blow (0.45 s a plain zombie, **1.2 s the headliner**): a retreat heading on the mesh at a sprint. A telegraphed
@@ -1206,8 +1225,9 @@ the claim table have pure unit tests; a mutant that makes the risk check always 
   gives it up at once, and a bot that kept it 30 s while another waited rests 10 s. `BotTeam.one_errand_at_a_time`
   turns it off (the soak's `--parallel`), to measure what it costs.
 - `BotRoles`: anchor (the default, at least one for each person), flank (with a person and one bot more than there
-  are people, one bot holds a choke 11 m to the side of the people's heading, `BotStance.choke` rating the place) and
-  maintainer (whoever has the errand turn). Reassigned every 3 s, kept 10 s, one table for the team.
+  are people, one bot holds a choke to the side of the people's heading, 11 m then and 8 to 10 m since
+  [#953](#a-flank-bot-that-stood-still-953), `BotStance.choke` rating the place) and maintainer
+  (whoever has the errand turn). Reassigned every 3 s, kept 10 s, one table for the team.
 - `BotSay` (twelve enumerated lines with their words and cooldowns of 20 to 60 s), `SayBoard` (the server's gate, one
   line a player every 4 s, so a bot that misjudges itself cannot flood the feed) and a new `say` action answered by a
   `bot_say` event that the feed shows ("NAME: RELOADING!"). `BotCallouts` decides what a bot says from what it
@@ -1990,3 +2010,58 @@ Measured (`bots_soak.tscn --map=small_indoor`, Regular, seeds 1 to 5, headless; 
 
 A lone bot that buys the tonics lasts twice the rounds it did: the machines are what the economy's late points are for.
 `test_smallmap_bot_night.gd` holds the solo night over seeds 1, 3, 4 and 7 (it flaked on a seed picked to pass).
+
+## Walking round the dead (#914)
+
+The dead stop a body now, so a path that runs through a standing zombie is a way nowhere. `BotLegs._avoid_dead` bends the
+way round a zombie the bot believes in (`BotClient._dead_near`: within 2.4 m, ahead, its middle within 1 m of the way),
+on the side the way leans (by seat when it is dead ahead), and slows the pace as the gap closes; the stuck ladder still
+climbs if a body is held anyway. Bots alone barely meet the dead at rounds up to 9 (held 0.04 percent of the time, the same
+rounds as with the dead off): [The player and the dead](dead-contact.md#the-variants-and-the-numbers).
+
+## A flank bot that stood still (#953)
+
+**Symptom.** `test_under_follow_the_bots_stay_with_the_person_who_gave_the_order` (seed 53, bar 0.9) read 0.925 on `main`
+and 0.895 on #923, which moved the back lot's breaker post: one bot in its flank role stayed within 12 m of the person
+only 0.74 to 0.79 of the time, the other two 0.92 to 1.00.
+
+**Cause.** Three things in `BotFightBrain._flank`, none of them the post alone:
+
+- The place was the flank's choke, else `project(centre)`, brought in to 11.5 m from the person and *not put on the mesh
+  again*, and never asked whether the bot can walk there. With the person at the field's north-west corner the place
+  fell on the outskirts slab past the fence (the mesh has a patch there: the walk from the lot ends 3 m short, over the
+  2.5 m `BotPath.REACHED_SHORT`), or on the fence's inside behind the breaker post, where the straight way the mesh
+  draws runs through the post (`BotPath.walkable` calls that walled). Either way the goal was marked unreachable for
+  5 s and the bot stood still where it was, 13 to 19 m from the person, twice a stop of the person.
+- The place was chosen again at every think of the choke search, so two valid places 22 m apart took turns and the bot
+  paced between them.
+- The band: the place was 11.5 m from the person, and a bot "at" its place is within 1.5 m of it, so a flank that did
+  everything right stood 13 m away. The flank is for covering a side, not for leaving the person; 12 m is what "with
+  the person" counts (the follow band's 10 m and the lag).
+
+**Fix.** The flank takes the first place the walk reaches (`BotPath.probe`: the walk ends within 0.5 m of it, not the
+2.5 m an errand allows, and is not walled; and not marked blocked, and not in a gap) among its choke, then
+`BotRoles.flank_choices` (its side and the other, at 9 and at 8 m), each brought in to `FLANK_LIMIT` and put on the
+mesh; none and it follows with the rest. It keeps the place until the people move 3 m or the place is marked
+blocked, and looks again every 3 s while it has none. `FLANK_FAR` and `FLANK_LIMIT` are the follow band's far edge
+(10 m, `BotFollow.CALM_BAND`), `FLANK_AT` 9 m.
+
+**Measured** (the follow test's night with a probe in place of the assert, seeds 53 to 58, one run each, `main` at
+166da77e and #923's branch at bc0224e6; the share is over the three bots from 15 s on; "bot 4" is the flank):
+
+| | seed 53 | 54 | 55 | 56 | 57 | 58 | mean |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `main`, before | 0.887 | 0.915 | 0.915 | 0.936 | 0.916 | 0.927 | 0.916 |
+| `main`, after | 0.950 | 0.930 | 0.931 | 0.939 | 0.950 | 0.929 | 0.939 |
+| #923, before | 0.907 | 0.900 | 0.902 | 0.900 | 0.921 | 0.950 | 0.914 |
+| #923, after | 0.963 | 0.932 | 0.949 | 0.932 | 0.971 | 0.960 | 0.951 |
+
+Two runs of the same commit and seed differ by up to 0.05 (seed 53 on `main` read 0.935 and 0.887): the first bot to the
+place and the order the navigation server takes its meshes in move with the machine's load, so compare means over
+seeds. What is left of the flank's far time is the walk to its place after the role is given (it can be 20 m away), which
+the stance cannot take away. `test_a_flank_bot_is_sent_only_to_ground_it_can_walk_to_inside_the_lot` fails on the old
+brain (the goal behind the post) and passes now.
+
+**Not changed, and seen:** the walking mesh runs straight through the breaker post of the screen lot (a 1.75 m stop at
+(-0.13, 0.5, -45.95) on the way north): a path that must pass it is called walled and the goal given up, which is the
+right answer for a bot. Whether the dead's paths meet the same post was not looked at.

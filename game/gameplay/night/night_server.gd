@@ -15,7 +15,8 @@ extends RefCounted
 ## walking and shooting). The look server answers a join and a look with `look_packet` events
 ## (`LOOK_PACKET`). `step(delta)` runs one fixed tick and returns the events for every client: the
 ## rules events (a zombie's blow is a `blow` action, answered by the rules' `player_hurt`), the
-## weapons events (`CombatServer`), `player_damaged` (the blow as the world saw it: `from`, where it
+## weapons events (`CombatServer`), `zombie_shattered` (a frozen zombie the rules killed: where it
+## stood, for the pieces), `player_damaged` (the blow as the world saw it: `from`, where it
 ## came from, and the zombie's id, type and `knockback`: metres the blow throws the player, recorded
 ## for the player's own motion to apply), and last a `frame`. A frame carries the whole picture a
 ## client or a HUD draws from. Frame fields: tick, phase, round, remaining, fuel, circuits ({id:
@@ -32,6 +33,9 @@ extends RefCounted
 
 ## Ticks between the asks which areas the map has taken in (a quarter second).
 const SPAWN_RETRY_TICKS := 15
+## Ticks of the dead's places kept for the bodies (#914): the lag compensation's quarter second and
+## a margin.
+const DEAD_RING := 18
 const COMMAND := &"command"
 const JOIN := &"join"
 const LEAVE := &"leave"
@@ -48,6 +52,11 @@ const SAY := &"say"
 const RESYNC := &"resync"
 ## A client's look, as `LookWire.look` bytes: `look` {player_id, packet}.
 const LOOK := &"look"
+## The seconds of the intermission after the night ends, counted by the server (the maintainer
+## asked for about fifteen), and the event that says they are over: `night_closed`, once. Every
+## client leaves for its lobby at it (`docs/design/end-of-night.md`).
+const END_SECONDS := 15.0
+const NIGHT_CLOSED := &"night_closed"
 ## The look server's answer to one client: `look_packet` {to, packet (`LookWire.player_look`)}.
 const LOOK_PACKET := &"look_packet"
 ## The weapons events worth sending on (the rules events ride the rules signal; the weapons
@@ -69,6 +78,8 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"projectile_spawned",
 	&"projectile_burst",
 	&"lure_started",
+	&"status_applied",
+	&"status_ended",
 	&"element_burst",
 	&"element_arc",
 	&"fire_patch_started",
@@ -91,6 +102,8 @@ const GRENADE_EVENTS: Array[StringName] = [
 ]
 ## The grenade the night throws.
 const GRENADE_DEF := "res://gameplay/grenades/defs/frag.tres"
+## Metres over a player's feet at which their own burst is measured to (the chest).
+const SELF_SPLASH_LIFT := 1.0
 ## A held trigger meets these every tick; they are not news.
 const QUIET_REJECTIONS: Array[StringName] = [&"cooldown", &"reloading"]
 ## The frame names where a player looks up or down in steps of this many radians (3 degrees): a
@@ -113,6 +126,8 @@ var tuning: NightTuning:
 			_revive.tuning = value
 			_ping_judge.tuning = value
 var tick_count := 0
+## The seconds of the intermission once the night is over (a test sets it shorter).
+var end_seconds := END_SECONDS
 ## The marks the players have put up.
 var ping_board := PingBoard.new()
 var bot_orders := BotOrders.new()
@@ -125,6 +140,17 @@ var drawn_bodies := true
 var pings: Dictionary[int, int] = {}
 ## The crowd this match stands, from the weakest client in it (`CrowdCeiling.set_platform`).
 var crowd := CrowdCeiling.new()
+
+## The dead stop the bodies (#914). `dead_tuning` is the one table, `_dead_ring` where the dead
+## stood at the last ticks (in the centimetres a frame carries), `_dead_fields` the field each body
+## is moved against, `_shove` what a sustained push does. A body is stopped by the dead where its
+## client saw them (`dead_as_seen`), the positions its predicting copy holds, so the two bodies end
+## at the same place; off, by where they stand now.
+var dead_tuning := DeadContactTuning.shipped()
+var dead_as_seen := true
+var _dead_ring: Array[DeadSnapshot] = []
+var _dead_fields: Dictionary[int, DeadField] = {}
+var _shove: DeadShove
 
 var _pending: Dictionary[int, NightCommand] = {}
 ## Steps since each player's last command arrived.
@@ -148,10 +174,20 @@ var _facing_breach: Dictionary[int, StringName] = {}
 var _face_left: Dictionary[int, float] = {}
 ## The teammates raising downed players (held `use` beside a downed one).
 var _revive: ReviveChannel
+## Which presses may buy: none from a repair, a replacing one only when meant (#908).
+var _guard: UseGuard
+## The marker of the spot `_spot_offer` last answered with.
+var _spot_at := Vector3.ZERO
 ## What decides whether a ping is true, and whether an order to the bots is taken.
 var _ping_judge: PingJudge
 var _order_judge: OrderJudge
 var _outbox: Array[Dictionary] = []
+## Seconds of the intermission left; -1 until the night is over. At 0 the night is closed.
+var _over_left := -1.0
+var _closed := false
+var _holds_ended := false
+## Player id -> the rounds they stood at the end of (`round_ended`'s `standing`), for the board.
+var _rounds_up: Dictionary[int, int] = {}
 var _probe: WorldProbe
 ## Whether a hand reaches what a prompt offers without a wall between (#831).
 var _sight: UseSight
@@ -161,6 +197,12 @@ var _cast: WorldCast
 var _throwers: Dictionary[int, GrenadeThrower] = {}
 ## The shock perk's waits (`ShockPlay`).
 var _shocks := ShockPlay.new()
+## The target list and the frame's zombie bytes, each with the `ZombieSim.revision` it was built
+## at (-1: none yet).
+var _targets: Array = []
+var _targets_at := -1
+var _bytes := PackedByteArray()
+var _bytes_at := -1
 
 
 func _init(
@@ -191,11 +233,14 @@ func _init(
 	_sight = UseSight.new(_probe.static_callable())
 	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
 	_revive.sight = _sight
+	_guard = UseGuard.new(tuning)
 	_ping_judge = PingJudge.new(tuning, ping_board, rules, world, sim, _bodies, _announce)
 	_order_judge = OrderJudge.new(_ping_judge, bot_orders, rules, world, _bodies, _announce)
+	_shove = DeadShove.new(sim, dead_tuning)
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
 	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
+	director.zombie_shattered.connect(_announce)
 	world.bind(rules)
 	rules.event_emitted.connect(_on_rules_event)
 	crowd.bind(rules, sim)
@@ -222,6 +267,7 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			_leave(action["player_id"])
 		SEAT_PERSON, RulesAction.SEAT_BOT:
 			rules.apply({"type": action["type"], "player_id": action["player_id"]})
+			_platform_of_seat(action["player_id"], action["type"] == SEAT_PERSON)
 		START_NIGHT:
 			rules.apply(RulesAction.start())
 		LOOK:
@@ -283,6 +329,16 @@ func _view_tick_of(view_step: int) -> int:
 	return tick_count - behind if behind <= 0x7FFF else tick_count
 
 
+## What the dead did to this player's body in the last tick (#914).
+func dead_field_of(player_id: int) -> DeadField:
+	return _dead_fields.get(player_id)
+
+
+## The sustained pushes' numbers (nudges made and seconds of yield).
+func shove() -> DeadShove:
+	return _shove
+
+
 func body_of(player_id: int) -> Player:
 	return _bodies.get(player_id)
 
@@ -295,14 +351,17 @@ func health_of(player_id: int) -> float:
 func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	_outbox = []
 	tick_count += 1
+	if rules.phase == GameRules.Phase.OVER:
+		return _step_over(delta, with_frame)
 	var began := PerfProbe.begin()
-	_move_players()
+	_move_players(delta)
 	_return_strays(delta)
 	PerfProbe.end(&"server.move", began)
 	if tick_count % SPAWN_RETRY_TICKS == 0:
 		director.spawn_points = world.spawn_points()
 	began = PerfProbe.begin()
 	director.tick(delta, _chase_targets())
+	_remember_the_dead()
 	PerfProbe.end(&"server.zombies", began)
 	began = PerfProbe.begin()
 	rules.apply(RulesAction.tick(delta, _revive.held_targets()))
@@ -312,7 +371,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	var target_list := _target_list()
 	PerfProbe.end(&"server.target_list", began)
 	began = PerfProbe.begin()
-	_combat(CombatAction.targets(target_list))
+	_combat(CombatAction.targets(target_list, sim.revision))
 	_combat(CombatAction.tick(delta))
 	PerfProbe.end(&"server.combat", began)
 	began = PerfProbe.begin()
@@ -332,6 +391,30 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	return _outbox
 
 
+## One tick of the intermission: the night stands still where it ended (the bodies, the dead, the
+## rules and the weapons take no step) and only the clock runs. At 0 it says `night_closed` once.
+func _step_over(delta: float, with_frame: bool) -> Array[Dictionary]:
+	if _over_left < 0.0:
+		_over_left = end_seconds
+	if not _holds_ended:
+		# The step that would stop a downed reviver's hold (`_act`) does not run once the night is
+		# frozen, and the game over is made by the last of them going down: end the holds here.
+		_holds_ended = true
+		_revive.end_all(&"down")
+	_over_left = maxf(_over_left - delta, 0.0)
+	if _over_left <= 0.0 and not _closed:
+		_closed = true
+		_outbox.append({"type": NIGHT_CLOSED})
+	if with_frame:
+		_outbox.append(_frame())
+	return _outbox
+
+
+## Whether the night is over and its intermission has run out.
+func closed() -> bool:
+	return _closed
+
+
 # --- Players ---
 
 
@@ -339,8 +422,13 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 	if _bodies.has(player_id):
 		return
 	_slots[player_id] = _bodies.size()
-	_bodies[player_id] = world.add_body(world.player_spawn(_slots[player_id]), local, drawn_bodies)
-	crowd.join(player_id, OS.has_feature("web") if local else true)
+	_bodies[player_id] = world.add_body(
+		world.player_spawn(_slots[player_id]), local, drawn_bodies, bot or not drawn_bodies
+	)
+	_dead_fields[player_id] = DeadField.new(dead_tuning)
+	_bodies[player_id].dead = _dead_fields[player_id]
+	if not bot:
+		crowd.join(player_id, OS.has_feature("web") if local else true)
 	looks.join(player_id)
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
@@ -355,12 +443,26 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 		_combat(CombatAction.give_weapon(player_id, WeaponCatalog.catalog_id(shop_id)))
 
 
+## A seat changed hands: a bot has no screen, so it counts for nothing in the crowd's ceiling (the
+## ceiling follows the people's platforms, `CrowdCeiling`); a person who takes a bot's seat counts
+## as a browser until its client says what it is, like any remote person that joins.
+func _platform_of_seat(player_id: int, person: bool) -> void:
+	if not _bodies.has(player_id):
+		return
+	if person:
+		crowd.join(player_id, true)
+	else:
+		crowd.leave(player_id)
+
+
 func _leave(player_id: int) -> void:
 	if _bodies.has(player_id):
 		_bodies[player_id].queue_free()
 		_bodies.erase(player_id)
 		_slots.erase(player_id)
 		_out_for.erase(player_id)
+		_dead_fields.erase(player_id)
+		_shove.forget(player_id)
 		crowd.leave(player_id)
 		_pending.erase(player_id)
 		_silent.erase(player_id)
@@ -368,6 +470,7 @@ func _leave(player_id: int) -> void:
 		pings.erase(player_id)
 		_repairing.erase(player_id)
 		_revive.forget(player_id)
+		_guard.forget(player_id)
 		ping_board.forget(player_id)
 		bot_orders.forget(player_id)
 		say_board.forget(player_id)
@@ -393,7 +496,7 @@ func _is_downed(player_id: int) -> bool:
 	return state == null or state.downed
 
 
-func _move_players() -> void:
+func _move_players(delta: float) -> void:
 	for player_id in _bodies:
 		_silent[player_id] = _silent.get(player_id, 0) + 1
 		var command := _pending.get(player_id) as NightCommand
@@ -409,12 +512,44 @@ func _move_players() -> void:
 				motion = command.motion
 				# The trigger is the command's own, whoever made the motion.
 				motion.fire = command.fire
-		_bodies[player_id].tick(motion)
+		var body := _bodies[player_id]
+		var field := _dead_fields[player_id]
+		var began := PerfProbe.begin()
+		if dead_tuning.enabled:
+			field.fill(_dead_seen_by(command), body.global_position)
+		PerfProbe.end(&"dead.fill", began)
+		body.tick(motion)
+		began = PerfProbe.begin()
+		_shove.step(player_id, field, delta)
+		PerfProbe.end(&"dead.shove", began)
 		if command != null:
 			# Pressed edges are used once.
 			command.motion.jump = false
 			command.motion.melee = false
 			command.motion.swap_shoulder = false
+
+
+## Keeps where the dead stand after this tick, a few ticks' worth.
+func _remember_the_dead() -> void:
+	if not dead_tuning.enabled:
+		return
+	var began := PerfProbe.begin()
+	_dead_ring.append(DeadSnapshot.of_sim(sim.zombies, tick_count))
+	while _dead_ring.size() > DEAD_RING:
+		_dead_ring.pop_front()
+	PerfProbe.end(&"dead.snapshot", began)
+
+
+## The dead as the player of `command` saw them: the snapshot of the frame its view step names, no
+## older than the lag compensation allows; the latest when it names none.
+func _dead_seen_by(command: NightCommand) -> DeadSnapshot:
+	if _dead_ring.is_empty():
+		return DeadSnapshot.new()
+	var last := _dead_ring[-1]
+	if not dead_as_seen or command == null or command.view_step < 0:
+		return last
+	var behind := clampi(last.tick - command.view_tick, 0, _dead_ring.size() - 1)
+	return _dead_ring[_dead_ring.size() - 1 - behind]
 
 
 ## The server's rule for a player who has left the playable space (a hop past a fence, a physics
@@ -500,6 +635,12 @@ func _position_of_zombie(zombie_id: int) -> Vector3:
 func _on_rules_event(event: Dictionary) -> void:
 	_outbox.append(event)
 	match event["type"]:
+		&"game_over":
+			# The clock starts with the event, so the frame of this very step carries it.
+			_over_left = end_seconds
+		&"round_ended":
+			for id: int in event.get("standing", []):
+				_rounds_up[id] = _rounds_up.get(id, 0) + 1
 		&"player_hurt":
 			_repairing[event["player_id"]] = &""
 		&"purchase_made":
@@ -519,7 +660,7 @@ func _throw_grenades(delta: float) -> void:
 	for player_id in _bodies:
 		standing.append({"id": player_id, "pos": _bodies[player_id].global_position})
 	_grenade(GrenadeAction.players(standing))
-	_grenade(GrenadeAction.targets(_target_list()))
+	_grenade(GrenadeAction.targets(_target_list(), sim.revision))
 	for player_id in _bodies:
 		_throw_of(player_id, delta)
 	_grenade(GrenadeAction.tick(delta))
@@ -634,9 +775,33 @@ func _combat(action: Dictionary) -> void:
 			continue
 		if event["type"] == &"lure_started":
 			sim.add_lure(event["lure_id"], event["point"], event["radius"], event["seconds"])
+		if event["type"] == &"projectile_burst":
+			_hurt_the_shooter(event)
+		if event["type"] == &"status_applied" or event["type"] == &"status_ended":
+			sim.set_status(event["target_id"], event["wire"], event["halts"], event["speed_scale"])
 		_outbox.append(event)
 		if event["type"] == &"reload_started":
 			_shock(event["shooter_id"])
+
+
+## A burst of a weapon that hurts its shooter (`WeaponDef.self_splash_share`, the ray gun's 25%):
+## the shooter takes that share of the splash at their own distance from the burst. A teammate
+## takes nothing, as a grenade's rule. The re-cut copy in hand is the one that is measured.
+func _hurt_the_shooter(burst: Dictionary) -> void:
+	var shooter: int = burst["shooter_id"]
+	var state := combat.state_of(shooter, burst["weapon_id"])
+	if state == null or state.def.self_splash_share <= 0.0 or not _bodies.has(shooter):
+		return
+	var at := _bodies[shooter].global_position + Vector3(0.0, SELF_SPLASH_LIFT, 0.0)
+	var damage := DamageModel.splash(state.def, at.distance_to(burst["point"]))
+	if damage > 0.0:
+		_blast_player(
+			shooter,
+			damage * state.def.self_splash_share,
+			burst["point"],
+			burst["weapon_id"],
+			shooter,
+		)
 
 
 ## The shock perk (`ShockPlay`): a reload gives off a shock round the player.
@@ -649,16 +814,27 @@ func _shock(player_id: int) -> void:
 		_outbox.append(burst)
 
 
+## Where every standing zombie is, one `hit_target` each. Built once for each `ZombieSim.revision`:
+## the dead change when the sim steps (30 Hz, every second tick) and when a hit, a blast or a
+## spawn touches one, not on every tick, and a second ask in a tick (the grenades') is the first's
+## answer unless a shot killed something in between. The list is shared, nobody writes to it.
 func _target_list() -> Array:
-	var list: Array = []
+	if _targets_at == sim.revision:
+		return _targets
+	_targets_at = sim.revision
+	_targets = []
+	PerfProbe.count(&"server.targets_built")
 	for zombie: ZombieBody in sim.zombies.values():
 		if zombie.is_alive():
-			list.append(zombie.hit_target())
-	return list
+			_targets.append(zombie.hit_target())
+	return _targets
 
 
 func _act(player_id: int, delta: float) -> void:
 	_hand_wait[player_id] = maxf(_hand_wait[player_id] - delta, 0.0)
+	# What the card shows, each tick, so a press knows how long its offer has been up (#908).
+	var target := {} if _is_downed(player_id) else use_target(player_id)
+	_guard.see(player_id, target, combat.now)
 	var command := _pending.get(player_id) as NightCommand
 	if command == null or _is_downed(player_id):
 		_repairing[player_id] = &""
@@ -680,7 +856,9 @@ func _act(player_id: int, delta: float) -> void:
 	if command.swap or command.slot != WeaponSlots.NONE or command.fire or command.reload:
 		_repairing[player_id] = &""
 	if command.use:
-		_use(player_id)
+		# A swap or a slot this tick changed the hand the offer is for.
+		var changed := command.swap or command.slot != WeaponSlots.NONE
+		_use(player_id, use_target(player_id) if changed else target)
 	_hold_repair(player_id, command)
 	_revive.hold(player_id, command.use_held)
 	_face_breach(player_id, delta)
@@ -779,32 +957,61 @@ func use_target(player_id: int) -> Dictionary:
 			"progress": _revive.progress(raise),
 			"bleed": rules.bleed_left_of(raise),
 		}
+	# The maps keep the zones apart (`UseZones`); where two still meet, a held repair keeps its
+	# breach and otherwise the one the player looks at wins (#908).
+	var view := _view_of(player_id)
+	var offers: Array[Dictionary] = []
 	var door := UseOffers.door(world, rules, tuning, here, _sight)
 	if not door.is_empty():
-		return door
-	var offer := _spot_offer(player_id, here)
-	if not offer.is_empty():
-		return offer
-	var post := UseOffers.post(world, rules, tuning, here, _sight)
-	if not post.is_empty():
-		return post
-	return UseOffers.fuel(world, rules, tuning, here, _sight)
+		offers.append({"offer": door, "at": _nearest(world.door_points(door["id"]), here)})
+	var spot := _spot_offer(player_id, here)
+	if not spot.is_empty():
+		offers.append({"offer": spot, "at": _spot_at})
+	var post := UseOffers.post(world, rules, tuning, here, _sight, view)
+	if post.get("kind") == &"repair":
+		if post["id"] == _repairing.get(player_id, &""):
+			return post
+		offers.append({"offer": post, "at": world.barricade(post["id"]).centre()})
+	elif not post.is_empty():
+		offers.append({"offer": post, "at": world.switches.post(post["id"]).global_position})
+	var fuel := UseOffers.fuel(world, rules, tuning, here, _sight)
+	if not fuel.is_empty():
+		offers.append({"offer": fuel, "at": world.fuel.standing_point(fuel["id"])})
+	return UseOffers.faced(offers, here, view)
 
 
-## The offer of the nearest shop spot in reach that has one, or `{}`.
+static func _nearest(points: Array[Vector3], here: Vector3) -> Vector3:
+	var best := here
+	var best_apart := INF
+	for point in points:
+		if point.distance_to(here) < best_apart:
+			best_apart = point.distance_to(here)
+			best = point
+	return best
+
+
+## Where the player looks, flat: the view of their latest command, else the way the body faces.
+func _view_of(player_id: int) -> Vector3:
+	var command := _pending.get(player_id) as NightCommand
+	var yaw := command.motion.yaw if command != null else _bodies[player_id].state.facing
+	return Vector3(-sin(yaw), 0.0, -cos(yaw))
+
+
+## The offer of the nearest shop spot in reach that has one, or `{}` (its marker in `_spot_at`).
 func _spot_offer(player_id: int, here: Vector3) -> Dictionary:
 	var best := {}
 	var best_apart := INF
 	for spot in world.shop_spots():
 		var apart := world.reach_distance(here, spot["position"])
-		if apart > tuning.use_reach or apart >= best_apart:
+		if apart >= best_apart:
 			continue
-		if not _sight.clear(here, spot["position"]):
+		if not UseZones.spot_reaches(world, tuning, _sight, spot["position"], here):
 			continue
 		var offer := _offer_at(player_id, spot)
 		if not offer.is_empty():
 			best = offer
 			best_apart = apart
+			_spot_at = spot["position"]
 	return best
 
 
@@ -876,8 +1083,9 @@ func _ammo_offer(player_id: int, weapon: StringName) -> Dictionary:
 	}
 
 
-func _use(player_id: int) -> void:
-	var target := use_target(player_id)
+func _use(player_id: int, target: Dictionary) -> void:
+	if _guard.refuses(player_id, target, combat.now, is_repairing(player_id)) != &"":
+		return
 	match target.get("kind"):
 		&"door", &"weapon", &"ammo", &"grenades", &"crane", &"recut", &"tonic":
 			buy(player_id, target["id"])
@@ -921,6 +1129,7 @@ func _repair(player_id: int, breach: StringName) -> void:
 	if _hand_wait[player_id] <= 0.0:
 		_hand_wait[player_id] = tuning.repair_interval
 		rules.apply(RulesAction.repair(player_id, breach))
+		_guard.board(player_id, combat.now)
 		_facing_breach[player_id] = breach
 		_face_left[player_id] = tuning.repair_interval
 
@@ -989,6 +1198,8 @@ func _frame() -> Dictionary:
 			"revive": _revive.progress(player_id),
 			"reviver": _revive.holder_of(player_id),
 			"kills": rules.kills_of(player_id),
+			"headshots": rules.headshots_of(player_id),
+			"rounds": _rounds_up.get(player_id, 0),
 			"downs": rules.downs_of(player_id),
 			"revives": rules.revives_of(player_id),
 			"dead": rules.is_dead(player_id),
@@ -1009,6 +1220,9 @@ func _frame() -> Dictionary:
 		"round": rules.round_number,
 		"remaining": rules.zombies_remaining(),
 		"clock": floori(rules.night_time),
+		# Whole seconds of the intermission left (-1 while the night is on): the clock every client
+		# counts the end by.
+		"over_left": ceili(_over_left) if _over_left >= 0.0 else -1,
 		"fuel": rules.generator.fuel,
 		"circuits": rules.generator.circuits.duplicate(),
 		"doors": rules.doors_open.duplicate(),
@@ -1021,11 +1235,17 @@ func _frame() -> Dictionary:
 	}
 
 
+## The frame's zombie bytes: encoded once for each `ZombieSim.revision`, so the ticks between two
+## steps (a host with bots builds the frame on every one) carry the last bytes again.
 func _encode_zombies() -> PackedByteArray:
+	if _bytes_at == sim.revision:
+		return _bytes
 	var began := PerfProbe.begin()
-	var bytes := ZombieCodec.encode(sim.zombies)
+	_bytes = ZombieCodec.encode(sim.zombies)
+	PerfProbe.count(&"server.zombies_encoded")
+	_bytes_at = sim.revision
 	PerfProbe.end(&"server.encode", began)
-	return bytes
+	return _bytes
 
 
 ## The crane for the picture: where it stands, which stage it is in, whose play it is, the prize

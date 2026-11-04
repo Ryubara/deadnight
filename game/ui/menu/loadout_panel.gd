@@ -15,6 +15,7 @@ const CUSTOMIZE := "res://ui/screens/customize_screen.tscn"
 var wardrobe: CustomizeScreen
 
 var _weapon_selector: UIOptionSelector
+var _weapon_row: UIRow
 var _mastery_label: Label
 var _weapons: Array[StringName] = []
 ## The showcase weapon chosen on the tab, saved or not yet.
@@ -25,16 +26,26 @@ func _ready() -> void:
 	_weapon = MenuHero.saved_weapon()
 	var column := VBoxContainer.new()
 	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	column.add_theme_constant_override(&"separation", 14)
+	column.add_theme_constant_override(&"separation", 6 if context.compact else 14)
 	add_child(column)
-	column.add_child(MenuLook.heading("Loadout", "Dress the soldier"))
-	column.add_child(_build_weapon_row())
+	# A phone leaves 372 units: the heading goes (the tab bar says where you are).
+	if not context.compact:
+		column.add_child(MenuLook.heading("Loadout", "Dress the soldier"))
+	var weapon_box := _build_weapon_row()
+	if not context.compact:
+		column.add_child(weapon_box)
 	wardrobe = (load(CUSTOMIZE) as PackedScene).instantiate() as CustomizeScreen
 	wardrobe.params = {"embedded": true}
 	wardrobe.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	wardrobe.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_child(wardrobe)
+	# A phone has 372 units for the tab: the weapon row scrolls with the pickers.
+	if context.compact:
+		wardrobe.prepend_row(weapon_box)
+	# The weapon row lines up with the wardrobe's rows, and is as narrow as they are.
+	_weapon_row.set_widths(wardrobe.row_widths.x, wardrobe.row_widths.y)
 	wardrobe.look_changed.connect(_on_look_changed)
+	wardrobe.rows_stacked.connect(_weapon_row.set_stacked)
 	if context.compact:
 		_fit_for_fingers()
 	refresh()
@@ -98,8 +109,14 @@ func commit() -> void:
 
 func _build_weapon_row() -> Control:
 	var row := UIRow.new()
-	row.title = "Showcase weapon"
-	row.hint = "The soldier holds it here. A night starts with the starter program."
+	_weapon_row = row
+	# On a phone the title column is the wardrobe's 150 units: the short word fits it.
+	row.title = "Weapon" if context.compact else "Showcase weapon"
+	row.hint = (
+		""
+		if context.compact
+		else ("The soldier holds it here. A night starts with the starter program.")
+	)
 	_weapon_selector = UIOptionSelector.new()
 	var names := PackedStringArray()
 	_weapons = MenuHero.available()

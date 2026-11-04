@@ -19,7 +19,8 @@ static func simulate(
 	state: PlayerMotionState,
 	command: PlayerCommand,
 	tuning: PlayerTuning,
-	delta: float
+	delta: float,
+	dead: DeadField = null
 ) -> void:
 	state.jumped = false
 	state.shot_ready = false
@@ -53,7 +54,7 @@ static func simulate(
 	state.sprinting = _sprint_allowed(state, command, tuning)
 	_face(state, wish, command, tuning, delta)
 	_gate_shot(state, command, tuning, delta)
-	_move(body, state, wish, command, tuning, delta)
+	_move(body, state, wish, command, tuning, delta, dead)
 
 	state.position = body.global_position
 	state.velocity = body.velocity
@@ -212,8 +213,10 @@ static func _move(
 	wish: Vector3,
 	command: PlayerCommand,
 	tuning: PlayerTuning,
-	delta: float
+	delta: float,
+	dead: DeadField = null
 ) -> void:
+	var before := body.global_position
 	var on_floor := state.on_floor
 	if on_floor:
 		state.coyote = tuning.coyote_time
@@ -258,6 +261,11 @@ static func _move(
 		state.stepped_up = _step_up(body, tuning, delta)
 	# While a step settles the foot is over the ledge's edge: a snap would pull it back down.
 	_slide(body, on_floor and state.step_settle <= 0.0 and state.stepped_up <= 0.0, delta)
+	if dead != null:
+		# The dead stop the body where it stands (#914), after the walls have had their say.
+		var began := PerfProbe.begin()
+		DeadBlock.apply(body, dead, before, wish * speed, tuning.radius, tuning.height)
+		PerfProbe.end(&"dead.block", began)
 
 	state.on_floor = body.is_on_floor()
 	_settle_step(body, state, tuning, delta)

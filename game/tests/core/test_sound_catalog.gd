@@ -6,8 +6,8 @@ extends GdUnitTestSuite
 
 ## Overrides that `merged(..., false)` used to drop: the base already had the key.
 const OVERRIDES := {
-	&"ui_tick": {"pitch_semitones": 1.0, "cooldown": 0.02},
-	&"ui_press": {"pitch_semitones": 0.3},
+	&"ui_tick": {"pitch_semitones": 0.3, "cooldown": 0.045},
+	&"ui_press": {"pitch_semitones": 0.4},
 	&"shot_smg": {"pitch_semitones": ArmsCatalog.FIREARM_PITCH_SEMITONES, "volume_db": -6.5},
 	&"dry_fire": {"priority": 70, "max_distance": 20.0, "cooldown": 0.12},
 	&"grenade_throw": {"priority": 70, "max_distance": 30.0},

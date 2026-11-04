@@ -111,7 +111,7 @@ func refresh() -> void:
 	if context.board == null:
 		return
 	var limits: Dictionary = ALL_SHOWN_COMPACT if context.compact else ALL_SHOWN
-	var inner := width(context.compact) - 56.0 - 22.0
+	var inner := fit_width(context.compact) - 56.0 - 22.0 - UIScroll.side_room(_scroll)
 	if family in [Family.ALL, Family.DAILY]:
 		_list.add_child(
 			MenuLook.heading(
@@ -168,6 +168,7 @@ class FamilyChip:
 	var label_text := ""
 
 	func _init(text_value: String) -> void:
+		UiSounds.wire(self)
 		label_text = text_value
 		name = text_value
 		accessibility_name = text_value
@@ -182,6 +183,9 @@ class FamilyChip:
 		focus_exited.connect(queue_redraw)
 		mouse_entered.connect(queue_redraw)
 		mouse_exited.connect(queue_redraw)
+
+	func ui_sound_role() -> StringName:
+		return &"chip"
 
 	func _draw() -> void:
 		var lit := active or has_focus() or is_hovered()

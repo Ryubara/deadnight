@@ -65,6 +65,17 @@ static func stun(zombie: ZombieBody, seconds: float) -> void:
 		zombie.stun_seconds = maxf(seconds, 0.0)
 
 
+## It is held where it stands (a status that halts it): a swing in the air or a stagger is over, and
+## it stops. Whatever it was doing, it walks again from the chase when the hold ends.
+static func hold(zombie: ZombieBody) -> void:
+	if zombie.mode == ZombieBody.Mode.ATTACK or zombie.mode == ZombieBody.Mode.STAGGER:
+		zombie.enter(ZombieBody.Mode.CHASE)
+	zombie.velocity = Vector3.ZERO
+	zombie.push = Vector3.ZERO
+	zombie.move_speed = 0.0
+	zombie.tearing = false
+
+
 static func die(zombie: ZombieBody) -> void:
 	if zombie.mode != ZombieBody.Mode.DYING:
 		zombie.enter(ZombieBody.Mode.DYING)
@@ -82,7 +93,10 @@ static func _chase(
 ) -> void:
 	if not has_target:
 		return
-	if same_level and _flat_distance(zombie.position, target_pos) <= tuning.reach:
+	if (
+		same_level
+		and _flat_distance(zombie.position, target_pos) <= zombie.profile.reach_in(tuning)
+	):
 		zombie.enter(ZombieBody.Mode.ATTACK)
 		return
 	var to_waypoint := waypoint - zombie.position
@@ -108,7 +122,7 @@ static func _attack(
 		_turn_toward(zombie, to_target, tuning.turn_rate * delta)
 		if not zombie.struck and zombie.mode_time >= profile.windup:
 			zombie.struck = true
-			if same_level and to_target.length() <= tuning.reach + tuning.strike_slack:
+			if same_level and to_target.length() <= profile.reach_in(tuning) + tuning.strike_slack:
 				strike = {
 					"zombie_id": zombie.id,
 					"target_id": zombie.target_id,

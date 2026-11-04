@@ -51,6 +51,7 @@ GUNS = [
     "mp5",
     "pump_870",
     "dual_pistols",
+    "house_pistol",
 ]
 
 

@@ -46,6 +46,7 @@ var _width := 440.0
 
 
 func _init() -> void:
+	UiSounds.wire(self)
 	flat = true
 	focus_mode = Control.FOCUS_ALL
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -57,8 +58,9 @@ func _init() -> void:
 	resized.connect(queue_redraw)
 
 
-func _ready() -> void:
-	focus_entered.connect(UIAudio.play.bind(&"focus"))
+## A map that is built is picked with a select; one that is not is refused (the menu's sounds).
+func ui_sound_role() -> StringName:
+	return &"map_card_locked" if is_locked() else &"map_card"
 
 
 ## True for a map that cannot be chosen yet.

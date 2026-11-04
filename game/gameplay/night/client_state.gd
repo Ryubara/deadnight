@@ -8,8 +8,12 @@ signal event_received(event: Dictionary)
 
 var player_id := 1
 var frame: Dictionary = {}
+## The dead of the latest frame, decoded once for the process (`ZombieCodec.decode_shared`): the
+## list and its entries are shared with every other client, so a reader never changes them.
 var zombies: Array[Dictionary] = []
 var over := false
+## The server closed the night after its intermission (`night_closed`): everyone goes back.
+var closed := false
 var round_reached := 0
 var kills := 0
 var points_earned := 0
@@ -50,7 +54,7 @@ func _apply(event: Dictionary) -> void:
 	match event["type"]:
 		&"frame":
 			frame = event
-			zombies = ZombieCodec.decode(event["zombies"])
+			zombies = ZombieCodec.decode_shared(event["zombies"])
 		&"player_named":
 			names[int(event["player_id"])] = str(event["name"])
 		&"round_started":
@@ -58,6 +62,8 @@ func _apply(event: Dictionary) -> void:
 		&"game_over":
 			over = true
 			round_reached = event["round_reached"]
+		&"night_closed":
+			closed = true
 		&"zombie_removed":
 			if event["killer_id"] == player_id:
 				kills += 1
@@ -101,6 +107,12 @@ func phase() -> int:
 
 func round_number() -> int:
 	return frame.get("round", 0)
+
+
+## Whole seconds of the end-of-night intermission left, as the server's last frame says (-1 while
+## the night is on). Every client counts the end by it, so they stay in step with the server.
+func over_left() -> int:
+	return int(frame.get("over_left", -1))
 
 
 func points() -> int:
