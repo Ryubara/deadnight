@@ -215,3 +215,30 @@ func test_closing_the_menu_on_the_loadout_tab_saves_what_was_picked() -> void:
 	Settings.load_from_disk()
 	assert_bool(LookStore.load_look().equals(picked)).is_true()
 	assert_str(String(MenuHero.saved_weapon())).is_equal(String(weapon))
+
+
+func test_a_costume_put_on_by_a_click_is_kept_across_tabs_and_written_when_the_player_leaves(
+) -> void:
+	# A new player (level 1) owns the carhop costume: it is made of starting pieces.
+	var shell := await _open()
+	await _go_to(shell, MenuTab.Id.LOADOUT)
+	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
+	panel.wardrobe.show_tab(&"costumes")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var carhop := panel.wardrobe.costume_cell(8)
+	assert_bool(carhop.locked).is_false()
+	panel.wardrobe.reveal(carhop)
+	await get_tree().process_frame
+	await _click(carhop)
+	var picked := CharacterLook.from_preset(8)
+	assert_bool(panel.wardrobe.look.equals(picked)).is_true()
+	assert_bool(carhop.worn).is_true()
+	# The menu's soldier wears her at once; nothing is on disk until the player leaves the tab.
+	assert_bool(shell.view.stage.hero.look.equals(picked)).is_true()
+	assert_bool(LookStore.load_look().equals(picked)).is_false()
+	await _go_to(shell, MenuTab.Id.SHOP)
+	await _go_to(shell, MenuTab.Id.LOADOUT)
+	assert_bool(panel.wardrobe.costume_cell(8).worn).is_true()
+	Settings.load_from_disk()
+	assert_bool(LookStore.load_look().equals(picked)).is_true()

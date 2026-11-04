@@ -73,7 +73,8 @@ neckwear, the armband, the shoes) is shared, so every outfit fits both.
 
 In the Loadout tab (and the wardrobe) the first row is **Character** (Male, Female). Switching it keeps the outfit and
 the colours and swaps a cut of the other character's for this one's own (crew cut for him, bob for her,
-`CharacterLook.set_body`); the Preset row offers that character's presets; Randomize keeps the character. The choice
+`CharacterLook.set_body`); a costume of the other character changes it too
+([costumes](customization.md#costumes)); Randomize keeps the character. The choice
 is part of the look, so it is saved with it when the player leaves the tab (#489), sent on join and drawn by every
 client, and the menu's soldier wears it at once.
 

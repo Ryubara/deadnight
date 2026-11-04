@@ -97,6 +97,10 @@ func test_each_tab_at_each_level_lights_what_the_level_opens_and_blanks_the_rest
 				for item in screen.cells(key):
 					var gate := _gate_of(item)
 					var wanted := LookUnlocks.level_of(gate) > level
+					# The one exception: a colour the look wears as the Default of a costume the
+					# player owns (the saved Greaser at level 12 has its denim, which asks 21).
+					if item.worn and screen.look.default_costume(screen.unlocks) >= 0:
+						wanted = false
 					(
 						assert_bool(item.locked)
 						. override_failure_message(

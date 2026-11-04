@@ -1,7 +1,16 @@
+# gdlint: disable=max-public-methods
 class_name CustomizeScreen
 extends UIScreen
-## The wardrobe: a lit turntable with the character on it, a strip of tabs (Body, Hair, Hats, Tops,
-## Legs, Shoes, Eyes, Neck, Colours) and, under it, the choices of the tab in a grid (#1065).
+## The wardrobe: a lit turntable with the character on it, a strip of tabs (Costumes, Body, Hair,
+## Hats, Tops, Legs, Shoes, Eyes, Neck, Colours) and, under it, the choices of the tab in a grid
+## (#1065).
+##
+## The Costumes tab (#1066) holds the twelve presets, each a whole look: dark with `???` and how to
+## get it until the player owns every piece, lit after, and a press sets the look (its pieces, its
+## face and hair, and its colours). The player may then change any part they own. The Colours tab
+## starts with a "Default" option that gives the costume on the character its own three colours
+## back; the player's own colours come from the palette they have unlocked, and the colours of a
+## costume they own count as unlocked in the channel the costume puts them in.
 ##
 ## An item the player has is lit; one they have not is the dark silhouette of its icon, its name
 ## `???`, and what it takes to get it on the detail line under the grid (the pointer on it says it,
@@ -20,8 +29,8 @@ extends UIScreen
 ## is a phone's layout.
 ##
 ## Route to it with `UIRouter.push("res://ui/screens/customize_screen.tscn")`. Tests and captures
-## drive it through `apply_preset`, `randomize`, `choose`, `choose_body`, `save`, `show_tab` and the
-## cells.
+## drive it through `wear_costume`, `use_default_colours`, `randomize`, `choose`, `choose_body`,
+## `save`, `show_tab` and the cells.
 
 ## Emitted when the working look changes, so a stage somewhere else can show it.
 signal look_changed(look: CharacterLook)
@@ -44,20 +53,20 @@ const COLOUR_PREFIX := "colour:"
 const CUSTOM_LABEL := "Custom"
 ## What the detail line says while nothing is pointed at.
 const REST_HINT := "Point at an item to read it; press to wear it."
+## The cells of the costumes, and of the Default option, in `_cells`.
+const COSTUME_KEY := "costume:costumes"
+const DEFAULT_KEY := "costume:default"
+const DEFAULT_TITLE := "Default"
+const NO_COSTUME_NOTE := "wear a costume to give it its own colours back"
 ## The tabs, in order: a key, the words on the tab, and the sections of the grid: a part slot
-## (`part`), a colour channel (`colour`) or the presets (`presets`).
+## (`part`), a colour channel (`colour`), the costumes (`costumes`) or the Default colours option
+## (`default`).
 const TABS: Array[Dictionary] = [
+	{"key": &"costumes", "title": "Costumes", "sections": [{"costumes": true}]},
 	{
 		"key": &"body",
 		"title": "Body",
-		"sections":
-		[
-			{"part": &"body"},
-			{"presets": true},
-			{"part": &"head"},
-			{"part": &"mouth"},
-			{"colour": &"skin"}
-		],
+		"sections": [{"part": &"body"}, {"part": &"head"}, {"part": &"mouth"}, {"colour": &"skin"}],
 	},
 	{"key": &"hair", "title": "Hair", "sections": [{"part": &"hair"}, {"colour": &"hair"}]},
 	{"key": &"headwear", "title": "Hats", "sections": [{"part": &"headwear"}]},
@@ -69,7 +78,13 @@ const TABS: Array[Dictionary] = [
 	{
 		"key": &"colours",
 		"title": "Colours",
-		"sections": [{"colour": &"primary"}, {"colour": &"secondary"}, {"colour": &"accent"}],
+		"sections":
+		[
+			{"default": true},
+			{"colour": &"primary"},
+			{"colour": &"secondary"},
+			{"colour": &"accent"}
+		],
 	},
 ]
 
@@ -88,10 +103,6 @@ var _cells := {}
 var _tabs := {}
 var _pages := {}
 var _tab := &"body"
-var _preset_selector: UIOptionSelector
-var _preset_row: UIRow
-## The presets the preset row offers (indices into `LookCatalog.presets()`): the character's own.
-var _preset_ids: Array[int] = []
 var _preview: LookPreview
 var _hint: UILabel
 var _status: UILabel
@@ -124,10 +135,34 @@ func _ready() -> void:
 	initial_focus = (_tabs[_tab] as Control).get_path()
 
 
-## Puts the look of preset `index` on the character.
+## Puts the look of preset `index` on the character, in what the player owns (a script's way in;
+## the player's is `wear_costume`).
 func apply_preset(index: int) -> void:
 	look = CharacterLook.from_preset(index).without_locked(unlocks)
 	_sync_all()
+
+
+## Wears costume `index` (a preset) as a press on its cell does: its pieces, face and hair, and its
+## default colours. A costume the player does not own whole is refused (false).
+func wear_costume(index: int) -> bool:
+	if index < 0 or index >= Costumes.count() or not unlocks.owns_costume(index):
+		return false
+	look = Costumes.look(index).without_locked(unlocks)
+	_sync_all()
+	return true
+
+
+## Gives the costume on the character its own three colours back (the Default option), or does
+## nothing and returns false when the look wears no costume.
+func use_default_colours() -> bool:
+	var worn := Costumes.of_look(look)
+	if worn < 0:
+		return false
+	Costumes.give_default_colours(look, worn)
+	for channel in Costumes.COLOUR_CHANNELS:
+		_sync_cells(COLOUR_PREFIX + channel)
+	_after_pick(COLOUR_PREFIX + "primary")
+	return true
 
 
 ## Rolls a look from the options this player may wear, for the character they chose.
@@ -241,9 +276,17 @@ func detail_text() -> String:
 	return _hint.text
 
 
-## The Preset row's selector: the character's presets, then "Custom".
-func preset_selector() -> UIOptionSelector:
-	return _preset_selector
+## The cell of costume `index`.
+func costume_cell(index: int) -> WardrobeCell:
+	for found in cells(COSTUME_KEY):
+		if found.index == index:
+			return found
+	return null
+
+
+## The Default option's cell.
+func default_cell() -> WardrobeCell:
+	return cells(DEFAULT_KEY)[0]
 
 
 func preview() -> LookPreview:
@@ -378,7 +421,7 @@ func _build_pickers() -> Control:
 
 func _build_tab_strip() -> Control:
 	var strip := HFlowContainer.new()
-	strip.add_theme_constant_override(&"h_separation", 6)
+	strip.add_theme_constant_override(&"h_separation", 3 if _compact else 6)
 	strip.add_theme_constant_override(&"v_separation", 4)
 	for tab: Dictionary in TABS:
 		var button := WardrobeTab.new(tab["key"], tab["title"], _compact)
@@ -398,12 +441,15 @@ func _build_page(tab: Dictionary) -> Control:
 		var box := VBoxContainer.new()
 		box.add_theme_constant_override(&"separation", _tokens.space_sm)
 		page.add_child(box)
-		if section.has("presets"):
-			box.add_child(_build_preset_row())
-			continue
 		var key := ""
 		var heading := ""
-		if section.has("part"):
+		if section.has("costumes"):
+			key = COSTUME_KEY
+			heading = "Costumes"
+		elif section.has("default"):
+			key = DEFAULT_KEY
+			heading = "Costume colours"
+		elif section.has("part"):
 			key = PART_PREFIX + section["part"]
 			heading = LookCatalog.PART_TITLES[section["part"]]
 		else:
@@ -413,17 +459,6 @@ func _build_page(tab: Dictionary) -> Control:
 			box.add_child(_label(heading, UILabel.Style.CAPTION))
 		box.add_child(_build_grid(key))
 	return page
-
-
-func _build_preset_row() -> Control:
-	_preset_row = UIRow.new()
-	_preset_row.title = "Preset"
-	_preset_row.hint = "Ready-made looks."
-	_preset_selector = UIOptionSelector.new()
-	_preset_selector.selected_changed.connect(_on_preset_selected)
-	_preset_row.set_control(_preset_selector)
-	_preset_row.set_widths(row_widths.x, row_widths.y)
-	return _preset_row
 
 
 func _build_grid(key: String) -> Control:
@@ -444,6 +479,8 @@ func _build_grid(key: String) -> Control:
 		item.locked = spec["locked"]
 		item.soon = spec["soon"]
 		item.instructions = spec["instructions"]
+		item.action = spec.get("action", item.action)
+		item.swatches = spec.get("swatches", {})
 		item.chosen.connect(_on_cell_chosen.bind(item, key))
 		item.refused.connect(_on_cell_refused.bind(item))
 		item.shown.connect(_on_cell_shown.bind(item))
@@ -457,6 +494,10 @@ func _build_grid(key: String) -> Control:
 ## ones a lower level opens first (a stable order: the catalogue's within a level).
 func _specs(key: String) -> Array[Dictionary]:
 	var specs: Array[Dictionary] = []
+	if key == COSTUME_KEY:
+		return _costume_specs()
+	if key == DEFAULT_KEY:
+		return [_default_spec()]
 	if key.begins_with(PART_PREFIX):
 		var slot := StringName(key.trim_prefix(PART_PREFIX))
 		var list := LookCatalog.options(slot)
@@ -486,6 +527,65 @@ func _specs(key: String) -> Array[Dictionary]:
 	for pair: Array in decorated:
 		ordered.append(specs[pair[1]])
 	return ordered
+
+
+## The costumes with the ones a lower level opens first, the starting ones leading (a stable
+## order within a level).
+func _costume_specs() -> Array[Dictionary]:
+	var decorated: Array = []
+	for index in Costumes.count():
+		decorated.append([Costumes.level_needed(index), index])
+	decorated.sort()
+	var specs: Array[Dictionary] = []
+	for pair: Array in decorated:
+		var index: int = pair[1]
+		var open := unlocks.owns_costume(index)
+		(
+			specs
+			. append(
+				{
+					"kind": WardrobeCell.Kind.COSTUME,
+					"slot": &"costume",
+					"id": Costumes.id(index),
+					"index": index,
+					"title": Costumes.title(index),
+					"gate": {},
+					"locked": not open,
+					"soon": false,
+					"instructions": "" if open else unlocks.costume_instructions(index),
+					"action": "press to wear it in its own colours",
+					"swatches": _costume_swatches(Costumes.look(index)),
+				}
+			)
+		)
+	return specs
+
+
+func _default_spec() -> Dictionary:
+	return {
+		"kind": WardrobeCell.Kind.DEFAULT,
+		"slot": &"costume",
+		"id": &"default",
+		"index": 0,
+		"title": DEFAULT_TITLE,
+		"gate": {},
+		"locked": false,
+		"soon": false,
+		"instructions": "",
+		"action": "press to give the costume its own colours back",
+		"swatches": {},
+	}
+
+
+## The colours a costume's figure is drawn in, for a look.
+func _costume_swatches(of: CharacterLook) -> Dictionary:
+	return {
+		"skin": of.colour(&"skin"),
+		"hair": of.colour(&"hair"),
+		"main": of.colour(&"primary"),
+		"second": of.colour(&"secondary"),
+		"trim": of.colour(&"accent"),
+	}
 
 
 func _spec(
@@ -542,8 +642,6 @@ func _restack() -> void:
 	)
 	var gap := float(_tokens.space_lg)
 	var stacked := size.x < row_widths.x + gap + row_widths.y + around
-	if _preset_row != null:
-		_preset_row.set_stacked(stacked)
 	rows_stacked.emit(stacked)
 
 
@@ -574,26 +672,11 @@ func _build_footer(with_back := true) -> HBoxContainer:
 	return footer
 
 
-## The preset row's entries: this character's presets, then "Custom".
-func _sync_preset_options() -> void:
-	_preset_ids.clear()
-	var names := PackedStringArray()
-	var presets := LookCatalog.presets()
-	for i in presets.size():
-		if presets[i]["parts"].get(LookCatalog.BODY_SLOT, LookCatalog.MALE) == look.body():
-			_preset_ids.append(i)
-			names.append(presets[i]["name"])
-	names.append(CUSTOM_LABEL)
-	_preset_selector.options = names
-
-
-## Puts every cell, the preset row, the preview and the captions in step with `look`.
+## Puts every cell, the preview and the captions in step with `look`.
 func _sync_all() -> void:
 	_building = true
-	_sync_preset_options()
 	for key: String in _cells:
 		_sync_cells(key)
-	_sync_preset_selector()
 	_building = false
 	_refresh_preview()
 	_refresh_status()
@@ -603,6 +686,9 @@ func _sync_all() -> void:
 
 ## What a cell wears and is called, for the look and the character it has now.
 func _sync_cells(key: String) -> void:
+	if key == COSTUME_KEY or key == DEFAULT_KEY:
+		_sync_costume_cells()
+		return
 	var is_part := key.begins_with(PART_PREFIX)
 	var name_of := StringName(key.trim_prefix(PART_PREFIX if is_part else COLOUR_PREFIX))
 	for found: WardrobeCell in _cells[key]:
@@ -612,15 +698,22 @@ func _sync_cells(key: String) -> void:
 				found.title = LookCatalog.label(name_of, found.index, look.body())
 		else:
 			found.worn = found.index == int(look.colours[name_of])
+			# A colour that is only the costume's is lit while the look wears it as its Default.
+			var entry: Dictionary = LookCatalog.palette(name_of)[found.index]
+			var owned := unlocks.is_unlocked(name_of, entry["id"], entry["gate"])
+			found.locked = not owned and not (found.worn and look.default_costume(unlocks) >= 0)
 
 
-func _sync_preset_selector() -> void:
-	var index := _preset_ids.size()
-	for i in _preset_ids.size():
-		if CharacterLook.from_preset(_preset_ids[i]).equals(look):
-			index = i
-			break
-	_preset_selector.select(index, false)
+## The costume on the character is the worn one; the Default option shows its colours and is off
+## when there is none.
+func _sync_costume_cells() -> void:
+	var worn := Costumes.of_look(look)
+	for found: WardrobeCell in _cells.get(COSTUME_KEY, []):
+		found.worn = found.index == worn
+	for found: WardrobeCell in _cells.get(DEFAULT_KEY, []):
+		found.off_reason = "" if worn >= 0 else NO_COSTUME_NOTE
+		found.swatches = _costume_swatches(Costumes.look(maxi(worn, 0)))
+		found.worn = worn >= 0 and Costumes.has_default_colours(look, worn)
 
 
 func _refresh_preview() -> void:
@@ -640,16 +733,14 @@ func _refresh_status() -> void:
 		_status.text = "Saved: this is how the others see you"
 
 
-func _on_preset_selected(index: int) -> void:
-	if _building or index >= _preset_ids.size():
-		return
-	apply_preset(_preset_ids[index])
-
-
 func _on_cell_chosen(item: WardrobeCell, key: String) -> void:
 	if _building:
 		return
-	if key.begins_with(PART_PREFIX):
+	if key == COSTUME_KEY:
+		wear_costume(item.index)
+	elif key == DEFAULT_KEY:
+		use_default_colours()
+	elif key.begins_with(PART_PREFIX):
 		if item.slot == LookCatalog.BODY_SLOT:
 			choose_body(item.id)
 		else:
@@ -657,13 +748,25 @@ func _on_cell_chosen(item: WardrobeCell, key: String) -> void:
 			_after_pick(key)
 	else:
 		look.colours[item.slot] = item.index
+		_repair_colours()
 		_after_pick(key)
 	_hint.text = item.detail()
 
 
+## A colour the player has changed leaves the rest of a costume's Default colours to the palette
+## they own: a locked one is put back at once, so what the turntable shows is what is saved.
+func _repair_colours() -> void:
+	var fixed := look.without_locked(unlocks)
+	if fixed.colours == look.colours:
+		return
+	look.colours = fixed.colours
+	for channel in LookCatalog.colour_slots():
+		_sync_cells(COLOUR_PREFIX + channel)
+
+
 func _after_pick(key: String) -> void:
 	_sync_cells(key)
-	_sync_preset_selector()
+	_sync_costume_cells()
 	_refresh_preview()
 	_refresh_status()
 

@@ -77,6 +77,22 @@ func test_every_menu_tab_fits_its_panel_between_the_header_and_the_footer() -> v
 	_assert_fits(problems)
 
 
+## The Loadout tab shows one wardrobe page at a time (Costumes, Body ... Colours): each page fits.
+func test_every_wardrobe_tab_fits_the_loadout_panel() -> void:
+	var problems: Array[String] = []
+	for entry: Array in _cases():
+		await _run.set_window(entry[0], entry[1])
+		var subject := await _run.open_tab(MenuTab.Id.LOADOUT)
+		var panel := (subject["shell"] as MenuShell).panel(MenuTab.Id.LOADOUT) as LoadoutPanel
+		for key in panel.wardrobe.tab_keys():
+			panel.wardrobe.show_tab(key)
+			await _run.frames()
+			var page := subject.duplicate()
+			page["name"] = "%s, wardrobe tab %s" % [subject["name"], key]
+			problems.append_array(_run.problems(page))
+	_assert_fits(problems)
+
+
 func test_every_screen_fits_the_canvas() -> void:
 	var problems: Array[String] = []
 	for entry: Array in _cases():

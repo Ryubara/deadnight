@@ -8,7 +8,11 @@ extends Button
 ##   - a colour: a paint chip and its name, the same way;
 ##   - a free choice (a face, a hair style, a mouth): its name on the plate. Nothing free carries a
 ##     lock mark;
-##   - "None" of a slot that may be empty: a slashed ring.
+##   - "None" of a slot that may be empty: a slashed ring;
+##   - a costume (#1066): a figure in the costume's colours, or its silhouette and `???` until the
+##     player owns every piece;
+##   - the "Default" option of a costume's colours: its three colours as bands. It is `off` while
+##     the look wears no costume: a press says so and changes nothing.
 ## `soon` is a wearable the player has earned and the art does not have yet: it is lit, and cannot
 ## be worn.
 ##
@@ -22,12 +26,12 @@ signal refused
 ## The pointer or the focus came to this cell, or left it for another (`shown` is false then).
 signal shown(on: bool)
 
-enum Kind { PART, COLOUR, TEXT, NONE }
+enum Kind { PART, COLOUR, TEXT, NONE, COSTUME, DEFAULT }
 
 ## The size of a cell: the icon's plate, and the name's line under it.
 const SIZE := Vector2(148.0, 170.0)
 const SIZE_COMPACT := Vector2(104.0, 114.0)
-## A colour's cell is smaller: sixteen of them fit two rows of the grid.
+## A colour's cell (and the Default option's) is smaller: sixteen of them fit two rows of the grid.
 const SIZE_CHIP := Vector2(96.0, 112.0)
 const SIZE_CHIP_COMPACT := Vector2(84.0, 100.0)
 ## A free choice with no drawing (a face, a mouth) is its name on a low plate, a tap target high.
@@ -75,6 +79,20 @@ var worn := false:
 		queue_redraw()
 ## How to get it, for a locked one ("Reach level 22 (you are level 12)").
 var instructions := ""
+## What a press on a lit cell does, for the detail line ("press to wear").
+var action := "press to wear"
+## Why a press does nothing while the cell is not locked ("wear a costume first"); empty when it
+## does something. A cell that is `off` is dim.
+var off_reason := "":
+	set(value):
+		off_reason = value
+		_refresh_name()
+## The colours a costume's figure (`skin`, `hair`, `main`, `second`, `trim`) or the Default
+## option's bands (`main`, `second`, `trim`) are drawn in.
+var swatches := {}:
+	set(value):
+		swatches = value
+		queue_redraw()
 var compact := false:
 	set(value):
 		compact = value
@@ -106,7 +124,7 @@ func _init() -> void:
 ## A cell is a map card to the sound table: a hover and a focus tick, a select on a press, and a
 ## refusal when it is locked.
 func ui_sound_role() -> StringName:
-	return &"map_card_locked" if locked or soon else &"map_card"
+	return &"map_card_locked" if locked or soon or is_off() else &"map_card"
 
 
 ## The name the cell shows: `???` while it is locked.
@@ -119,15 +137,22 @@ func shown_name() -> String:
 func detail() -> String:
 	if locked:
 		return "%s - %s" % [shown_name(), instructions]
+	if is_off():
+		return "%s - %s" % [title, off_reason]
 	if soon:
 		return "%s - not drawn yet, it comes in a later update" % title
 	if worn:
 		return "%s - wearing" % title
-	return "%s - press to wear" % title
+	return "%s - %s" % [title, action]
+
+
+## Whether a press does nothing for a reason that is not a lock.
+func is_off() -> bool:
+	return off_reason != ""
 
 
 func _fit() -> void:
-	if kind == Kind.COLOUR:
+	if kind == Kind.COLOUR or kind == Kind.DEFAULT:
 		custom_minimum_size = SIZE_CHIP_COMPACT if compact else SIZE_CHIP
 	elif kind == Kind.TEXT:
 		custom_minimum_size = SIZE_NAME_COMPACT if compact else SIZE_NAME
@@ -136,7 +161,7 @@ func _fit() -> void:
 
 
 func _icon_side() -> float:
-	if kind == Kind.COLOUR:
+	if kind == Kind.COLOUR or kind == Kind.DEFAULT:
 		return ICON_CHIP_COMPACT if compact else ICON_CHIP
 	return ICON_COMPACT if compact else ICON
 
@@ -145,11 +170,13 @@ func _refresh_name() -> void:
 	accessibility_name = (
 		"Locked item, %s" % instructions if locked else (title + (", wearing" if worn else ""))
 	)
+	if is_off():
+		accessibility_name = "%s, %s" % [title, off_reason]
 	queue_redraw()
 
 
 func _on_pressed() -> void:
-	if locked or soon:
+	if locked or soon or is_off():
 		refused.emit()
 		UIMotion.shake(self)
 	else:
@@ -181,6 +208,15 @@ func _draw() -> void:
 			ItemIcons.draw_chip(self, icon, colour, locked)
 		Kind.NONE:
 			ItemIcons.draw_none(self, icon, _tokens.ink_muted)
+		Kind.COSTUME:
+			ItemIcons.draw_costume(self, icon, swatches, locked)
+		Kind.DEFAULT:
+			var bands: Array = [
+				swatches.get("main", Color.WHITE),
+				swatches.get("second", Color.WHITE),
+				swatches.get("trim", Color.WHITE)
+			]
+			ItemIcons.draw_swatches(self, icon, bands, 0.35 if is_off() else 1.0)
 		Kind.TEXT:
 			pass
 	_draw_name(plate, icon)
@@ -205,7 +241,7 @@ func _draw_name(plate: Rect2, icon: Rect2) -> void:
 		and font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size).x > room
 	):
 		font_size -= 1
-	var ink := _tokens.ink_disabled if locked else _tokens.ink
+	var ink := _tokens.ink_disabled if locked or is_off() else _tokens.ink
 	var band := Rect2(PAD, icon.end.y, room, plate.size.y - icon.end.y - PAD)
 	if kind == Kind.TEXT:
 		band = Rect2(PAD, 0.0, room, plate.size.y)
