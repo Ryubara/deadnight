@@ -23,6 +23,10 @@ extends Resource
 ## to cost a phone fewer draw calls. Only for a map whose scene was written for it (what moves is
 ## left alone).
 @export var batch_still := false
+## The angles the camera cuts between at the end of a night, after its pull-back from the player's
+## own lens (`EndCamera`, docs/design/end-of-night.md). Checked against the map's walls by
+## `test_end_shots.gd`. A map with none holds the end of the pull-back.
+@export var end_shots: Array[EndShot] = []
 ## False for a map that is listed but not built: its card is locked, "coming soon".
 @export var shipped := true
 

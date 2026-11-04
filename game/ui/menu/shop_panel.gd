@@ -11,6 +11,7 @@ const CATEGORIES: Array[String] = [
 ]
 
 var _list: VBoxContainer
+var _scroll: ScrollContainer
 var _balance: Label
 var _status: Label
 
@@ -23,15 +24,15 @@ func _ready() -> void:
 	column.add_child(MenuLook.heading("Prize counter", "Prices are placeholders", MenuLook.AMBER))
 	_balance = MenuLook.label("", MenuLook.SIZE_BODY, MenuLook.INK)
 	column.add_child(_balance)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.follow_focus = true
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(scroll)
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.follow_focus = true
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(_scroll)
 	_list = VBoxContainer.new()
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list.add_theme_constant_override(&"separation", 8)
-	scroll.add_child(_list)
+	_scroll.add_child(_list)
 	_status = MenuLook.label("", MenuLook.SIZE_CAPTION, MenuLook.MUTED)
 	column.add_child(_status)
 	refresh()
@@ -105,7 +106,7 @@ func refresh() -> void:
 		row.title = entry["title"]
 		row.note = entry["how"]
 		row.placeholder = not entry["real"]
-		row.set_width(width(context.compact) - 24.0)
+		row.set_width(fit_width(context.compact) - UIScroll.side_room(_scroll))
 		row.pressed.connect(_on_pressed.bind(entry))
 		_list.add_child(row)
 

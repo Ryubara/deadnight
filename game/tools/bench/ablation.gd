@@ -12,6 +12,9 @@ extends RefCounted
 ##   `cull=D`   every mesh of the lot stops drawing D metres from the camera
 ##   `cullsmall=D` the same, only for meshes under 2 m across
 ##   `ui=0`     hide the HUD and the touch layer
+##   `hudcost=1` once `hudalive` dead (default 60) stand: the HUD's redraws a second and its draw
+##              calls (`HudCostProbe.run_night`, printed as `HUDCOST_NIGHT`); `hudsecs=S` (10),
+##              `hudquit=1` ends the run after it
 ##   `dead=0`   hide the dead from drawing (their views still move and animate)
 ##   `shot=PATH` with `shot_frame=N`: save one picture of the view at frame N (`ShotTaker`)
 ##   `census=1` a line a second of where the dead stand and the renderer's CPU and GPU time
@@ -83,3 +86,7 @@ static func apply(args: NetArgs, night: Night, screen: Control) -> void:
 		for node in screen.get_tree().root.find_children("*", "TouchHints", true, false):
 			for id in TouchHints.ORDER:
 				(node as TouchHints).mark_used(id)
+	if args.get_int("hudcost") == 1:
+		var probe := HudCostProbe.new()
+		screen.add_child(probe)
+		probe.run_night(args, night, screen)

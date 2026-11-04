@@ -106,7 +106,9 @@ func test_boards_stop_a_player_and_not_a_shot() -> void:
 	night.queue_free()
 
 
-func test_a_player_walks_into_whole_boards_and_out_through_torn_ones() -> void:
+## Whole boards stop a player, and so does the window with the boards torn off (#915): a breach
+## is a window with a sill and a blocker, never a door a player can walk out through.
+func test_a_player_is_stopped_by_whole_boards_and_by_the_window_with_none() -> void:
 	var night := await _start()
 	var barricade := night.world.barricade(BREACH)
 	var walk := NightCommand.new()
@@ -119,7 +121,7 @@ func test_a_player_walks_into_whole_boards_and_out_through_torn_ones() -> void:
 	for _i in night.server.rules.tuning.barricades.boards:
 		night.state.apply_events(night.server.rules.apply(RulesAction.tear_board(BREACH, zombie)))
 	NightFixture.run(night, 240, walk)
-	assert_float(barricade.depth_of(night.player().global_position)).is_less(-1.0)
+	assert_float(barricade.depth_of(night.player().global_position)).is_greater(0.0)
 	night.queue_free()
 
 
