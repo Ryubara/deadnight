@@ -6,12 +6,12 @@ import { type DiscordClient, DiscordUnavailable } from "./discord.ts";
 import { RateLimit } from "./limits.ts";
 import { type Lobby, LobbyFailure, type LobbyLimits, LobbyService, MAX_PLAYERS } from "./lobbies.ts";
 import { chooseName } from "./names.ts";
-import { NIGHT_CAP, PROFILE_SLOT, ProgressService } from "./progression.ts";
 import { DEFAULT_MAP, SETTINGS_KEYS } from "./settings.ts";
 import { GameServerRegistry } from "./servers.ts";
 import { checkSave, SaveRejected } from "./saves.ts";
 import { RevisionConflict, type Store } from "./store.ts";
 import { signToken, verifyToken } from "./tokens.ts";
+import { NIGHT_CAP, PROFILE_SLOT, ProgressService } from "./progression.ts";
 
 export const SESSION_TTL_SECONDS = 60 * 60;
 export const TICKET_TTL_SECONDS = 60;
