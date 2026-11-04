@@ -93,7 +93,9 @@ func _play(seed_value: int) -> Dictionary:
 	for i in bots:
 		var id := first_bot + i
 		night.seat(id, _profile(), 1000 + 100 * seed_value + id)
+	_set_dead(night)
 	var watch := SoakWatch.new(night, people, order)
+	var dead := DeadStats.new(night)
 	night.on_event = watch.hear
 	night.on_action = watch.act
 	night.start_round()
@@ -125,6 +127,7 @@ func _play(seed_value: int) -> Dictionary:
 			break
 		night.tick()
 		watch.tick()
+		dead.tick()
 		ticks += 1
 		if not _args.has("quiet") and ticks % (TRACE_EVERY * 60) == 0:
 			print(
@@ -160,6 +163,8 @@ func _play(seed_value: int) -> Dictionary:
 	catcher.stop()
 	var report := watch.report()
 	report["seed"] = seed_value
+	report["dead_variant"] = String(_args.get("dead", "timed"))
+	report["dead"] = dead.report()
 	report["profile"] = String(_args.get("profile", "regular"))
 	report["order"] = String(order)
 	report["map"] = String(_args.get("map", "drive_in"))
@@ -180,6 +185,30 @@ func _play(seed_value: int) -> Dictionary:
 	night.dispose()
 	await get_tree().process_frame
 	return report
+
+
+## `--dead=off|hard|timed|wade|ramp`: how the dead meet the bodies in this soak (#914). `off` lets
+## the bodies walk through them, as before; `hard` stops them and lets no push move a zombie; the
+## rest are the policies of `DeadContactTuning`. `--seen=0` makes the server stop a body by where
+## the dead stand now and not where its client saw them.
+func _set_dead(night: SeatedNight) -> void:
+	var tuning := night.server.dead_tuning
+	match String(_args.get("dead", "timed")):
+		"off":
+			tuning.enabled = false
+		"hard":
+			tuning.policy = DeadContactTuning.Policy.TIMED
+			tuning.hold_seconds = 1.0e6
+		"straight":
+			tuning.lateral = 0.0
+		"wade":
+			tuning.policy = DeadContactTuning.Policy.WADE
+		"ramp":
+			tuning.policy = DeadContactTuning.Policy.RAMP
+			tuning.hold_seconds = 0.3
+		_:
+			tuning.policy = DeadContactTuning.Policy.TIMED
+	night.server.dead_as_seen = String(_args.get("seen", "1")) != "0"
 
 
 func _print_seat(night: SeatedNight, id: int, ticks: int) -> void:

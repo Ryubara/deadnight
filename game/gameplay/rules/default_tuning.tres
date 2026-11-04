@@ -285,13 +285,13 @@ pool_weights = PackedFloat32Array()
 [sub_resource type="Resource" id="Resource_6sif2"]
 script = ExtResource("2_tud1d")
 start_points = 200
-hit = 4
-headshot_hit = 8
+hit = 5
+headshot_hit = 10
 max_paid_hits = 4
-kill = 60
-headshot_kill = 70
+kill = 55
+headshot_kill = 65
 melee_kill = 130
-repair = 12
+repair = 10
 repair_cap_per_round = 120
 round_bonus_base = 20
 round_bonus_per_round = 10
@@ -467,7 +467,7 @@ crawler_speed_fraction = 0.35
 
 [sub_resource type="Resource" id="Resource_barr1"]
 script = ExtResource("10_barr1")
-ids = Array[StringName]([&"nw", &"ne", &"w", &"e", &"n", &"n2"])
+ids = Array[StringName]([&"nw", &"ne", &"w", &"e", &"n", &"n2", &"mid_w", &"mid_e", &"yard_e1", &"yard_e2", &"yard_s", &"back_w1", &"back_w2", &"back_s", &"plaza_w", &"plaza_e"])
 boards = 5
 seconds_per_board = 1.2
 

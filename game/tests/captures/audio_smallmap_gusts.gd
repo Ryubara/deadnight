@@ -26,8 +26,8 @@ const BAR_WIDTH := 480.0
 const YARD_WINDOW := &"start_1"
 const STANDS := {
 	"roof": {"at": Vector3(-3.0, 5.0, -4.0), "look": Vector3(-3.0, 5.0, -8.0)},
-	"hall": {"at": Vector3(4.0, EYE, 9.5), "look": Vector3(4.0, 1.4, 16.0)},
-	"open": {"at": Vector3(4.0, EYE, 9.5), "look": Vector3(4.0, 1.4, 16.0)},
+	"hall": {"at": Vector3(8.0, EYE, 9.5), "look": Vector3(8.0, 1.4, 16.0)},
+	"open": {"at": Vector3(8.0, EYE, 9.5), "look": Vector3(8.0, 1.4, 16.0)},
 }
 
 var _args := {}

@@ -26,6 +26,13 @@ const GROUPS := ["Start", "Side", "UpperA", "UpperB"]
 const ROOM_OF := {"Start": "start", "Side": "side", "UpperA": "upstairs", "UpperB": "upstairs"}
 ## The building's box: the floor mesh is baked inside it.
 const BUILDING := AABB(Vector3(-7.0, -0.5, -9.0), Vector3(24.0, 8.0, 24.5))
+## Row 15's windows a room, the maintainer's rule for this map (#917): one window a wall on the
+## ground floor (the hall's west wall is the shop wall), a few upstairs, both in the half over the
+## hall (two halves' windows on one deck would join the halves outside by a shorter way than the
+## opening); the side room's three include the breach.
+const WINDOWS := {"start": 2, "side": 3, "upstairs": 2}
+## Row 18: how far inside a window its dead must reach by it (metres, along the window's +Z).
+const INSIDE := 1.5
 ## Words that are Nacht der Untoten's, or of its setting, and never in ours (row 29).
 const NOT_OURS := [
 	"nacht", "untoten", "help", "cave", "bunker", "bomber", "verruckt", "nazi", "1945"
@@ -439,17 +446,16 @@ func _measure_entries() -> void:
 		sockets[socket.get_meta(&"barricade_id")] = [socket, group]
 	facts["windows"] = counts.merged({"halves": halves, "breaches": breaches})
 	var windows_ok: bool = (
-		counts["start"] == 5
-		and counts["side"] == 3
-		and counts["upstairs"] == 4
+		counts["start"] == WINDOWS["start"]
+		and counts["side"] == WINDOWS["side"]
+		and counts["upstairs"] == WINDOWS["upstairs"]
 		and breaches.get("side", 0) == 1
 		and breaches.size() == 1
-		and halves.get("UpperA", 0) >= 1
-		and halves.get("UpperB", 0) >= 1
+		and halves.get("UpperA", 0) == WINDOWS["upstairs"]
 	)
 	_add(
 		15,
-		"Windows start / side (one a breach) / upstairs (both halves)",
+		"Windows start / side (one a breach) / upstairs (over the hall)",
 		"%d / %d / %d" % [counts["start"], counts["side"], counts["upstairs"]],
 		0,
 		0,
@@ -494,8 +500,11 @@ func _measure_entries() -> void:
 			nearest = minf(nearest, SmallMapNavigation.flat(centre, sockets[id][0].global_position))
 	_add(17, "Players' start to the nearest window", nearest, 4, 7, "m", _within(nearest, 4, 7))
 
-	# Row 18: each spawn 5 to 15 m outside its window, in no room, and walking into its own room
-	# only (the links shut, the windows open): the dead never go round outside to another room.
+	# Row 18: each spawn 5 to 15 m outside its window, in no room; the way from it to the floor
+	# just inside its own window comes in by that window (not round to another: #824); and it walks
+	# into its own room only (the links shut, the windows open): each room's dead have ground of
+	# their own (the yard's walls, #917), so the walking mesh has no way round outside from one room
+	# to another, which a bot would take and stop at the boards.
 	var nav := SmallMapNavigation.new(lot as Node3D, SmallMapNavigation.zombie_mesh())
 	await nav.settle(tree)
 	var spawn_ok := true
@@ -512,6 +521,13 @@ func _measure_entries() -> void:
 		if not _within(distance, 5, 15) or group_at(spawn.global_position) != "":
 			spawn_ok = false
 			notes.append("%s at %.1f m" % [id, distance])
+		var inside := socket.global_position + socket.global_basis.z * INSIDE
+		if not nav.can_reach(spawn.global_position, inside):
+			spawn_ok = false
+			notes.append("%s never reaches the floor inside its window" % id)
+		elif nav.passes_within(spawn.global_position, inside, socket.global_position) > 1.0:
+			spawn_ok = false
+			notes.append("%s comes in by another window" % id)
 		for group: String in GROUPS:
 			var reaches := nav.can_reach(spawn.global_position, _middle(lot, group))
 			var mine: bool = ROOM_OF[group] == ROOM_OF[own]
@@ -536,7 +552,7 @@ func _measure_entries() -> void:
 					notes.append("%s walks in %.1f m from a window of its room" % [id, by])
 	_add(
 		18,
-		"A window's spawn outside it (and only its room reached)",
+		"A window's spawn outside it (in by its own window, its room only)",
 		"%.1f to %.1f" % [shortest, longest],
 		5,
 		15,

@@ -86,13 +86,111 @@ the random spread of every play (a level jitter of +-0.8 dB is on every play too
 | A challenge that only reads | pressing it does nothing |
 | A hint on a finger | no hover on touch: the tap is the press |
 | A hint just after a press, a tab or a screen change | the sound already made covers it; the focus moves by itself |
-| The sign's flicker every 4.7 s | a sound that repeats on a timer is noise; revisit with an ambience bed (no menu music exists) |
+| The sign's flicker every 4.7 s | decided again with the bed in (#926): the bed does not hide it (a hint-weight tick would stand 14 to 24 dB over the bed on every speaker, see [the bed](#the-ambience-bed-926)), so it would be heard as a metronome, 13 times a minute for as long as a menu stays open, and it is the sign's own timer, not an event of the player's. The room is no longer silent, so the sign's lack of a tick no longer reads as a gap; the sign's ignition, once, is the whole of its sound |
+| The lobby's "ready" and its countdown | there is neither: the lobby has Start (the host's) and Leave and a status line, and a night begins when the host presses Start. Decided for when they arrive (#926): *ready* is a `toggle` (the on and off pair, weight 2), a countdown is one `ui_tick` a second for the last three seconds and `ui_confirm` at zero; the tick is 17 dB or more over the bed on every speaker already, so the bed changes nothing. They are written here and not as rows of `UiSoundTable` because a row with no control to play it is a dead row, and the test that walks every control has nothing to say about it |
+| "X joined" and "X left" in the lobby's note line | words only, a system event; a sound for it is new vocabulary (no weight of the ladder fits a notification) and belongs with the ready sound when the lobby gets one |
 | The panel sliding in | the tab sound already went with it |
 | Purchase and unlock | the Shop buys nothing yet (a real row's press only shows a note, an ordinary press); when buying lands its event is the till (`till_ring`) |
 
-Not in the table because it does not exist yet: a menu **music** bed (the menu is silent between sounds) and a menu
-**ambience** (the drive-in's crickets and the projector). Both would make the menu feel alive more than any click;
-they are a follow-up, and the hint levels above are set for a silent room.
+The menu has an **ambience bed** since #926, so it is no longer silent between its sounds: [below](#the-ambience-bed-926).
+It is not a row of the table (it answers no control), and the hint levels above were checked against it and did not
+move. A menu **music** bed is not made: the bed does what the maintainer asked for ("the menu needs to feel more
+alive"), and a score would have to be written and licensed (the night's `bed_score` is the break's).
+
+## The ambience bed (#926)
+
+Between its sounds the menu was silent. Now the drive-in is there under it: the projector's motor and, very quietly,
+the crickets. `MenuAmbience` (`core/audio/menu_ambience.gd`) starts two beds on the **Ambience** bus, so the slider is
+Settings, Audio, "Ambience" (80 percent by default, 0 is mute):
+
+| Bed | File (the night's own) | Trim | The night's trim of the same file | What it is |
+| --- | --- | --- | --- | --- |
+| `bed_menu_projector` | `ambience/projector_1.ogg`, 12 s | -25 dB | -14 dB, 3D at the booth | the gate's 24 clatters a second over a motor and a fan: low, mostly under 300 Hz |
+| `bed_menu_crickets` | `ambience/crickets_1.ogg`, 24 s | -31 dB | -26 dB | eight insects at 3.7 to 5.3 kHz, singing in bursts |
+
+- **No new file and no new licence.** Both are the Ogg files of the night's beds (synthesised in `night_recipes.py`),
+  under quieter trims, flat (2D) in the menu. A bed is a looping stream, never decoded to samples, so it is not in a
+  deferred bank (a deferred bank would queue its 36 s for a decode it must not get).
+- **When.** It starts with the main menu (`MainMenu.screen_enter`) and fades in over three seconds. Every screen pushed
+  over the menu (Settings, Play together, the lobby, Credits) keeps it, so the Ambience slider can be heard as it is
+  dragged. It fades out over two seconds when a night is being loaded (`NightScreen._ready`) and comes back with the
+  menu (`MainMenu.screen_resume`) after Leave night.
+- **Why these two.** They are the drive-in's own, so the night has no sound the menu did not hint at. The motor is low
+  and is what a small speaker loses; the crickets are what a phone keeps, and they sing where the hints do
+  (2.5 to 6 kHz), so they are the part that decides how loud the bed may be.
+
+### Checked without ears, on a laptop speaker and a phone
+
+The issue asked for a person's ears on a laptop and a phone. Nobody is asked to listen: the mix is **linear**, so a
+hint over the bed is the hint plus the bed, and each can be put through a speaker model before they are compared
+(`tools/audio/menu_speakers.py`, on the recording of `tests/captures/audio_menu_bed.tscn`, the bed alone through the
+real service and buses at the default settings, and the recording of every hint of `audio_menu_levels.tscn`). The models
+are **assumed curves, not measurements of a device**, written in the tool's header: `laptop` is a 4th-order high-pass at
+280 Hz with a 3 dB presence bump at 2.5 kHz and a low-pass at 13 kHz; `phone` is one driver (the channels summed), a
+4th-order high-pass at 500 Hz, a 4 dB bump at 2 kHz and a low-pass at 9 kHz; `flat` is the recording as it is
+(headphones). Two margins for every hint:
+
+1. **Peak over the bed's momentary loudness.** The kit's rule: a hint 10 dB over the loudest 400 ms of the bed (K-weighted,
+   after the model) is plain. The gate is 10 dB.
+2. **In the hints' own band** (1.5 to 8 kHz): the hint's loudest 50 ms rms over the bed's loud 50 ms (its 95th percentile)
+   in the same band. A low motor is not in that band and masks nothing there, while a cricket chirp is and does; the
+   first margin cannot tell them apart (a first version of the second margin, over the whole spectrum, counted the
+   motor and failed the "Coming" hints for a bed that did not bury them). The gate is 6 dB.
+
+| | flat | laptop | phone |
+| --- | --- | --- | --- |
+| Bed, loudest 400 ms (LUFS-M) | -42.4 | -45.7 | -49.5 |
+| Bed, median 400 ms | -44.2 | -50.2 | -54.5 |
+| Hover, peak over the bed / in its band, dB | 14.9 / 10.2 | 20.0 / 11.6 | 23.8 / 12.4 |
+| Focus | 16.3 / 10.8 | 20.1 / 11.5 | 24.5 / 13.5 |
+| Tick | 17.1 / 10.0 | 22.2 / 11.2 | 26.3 / 12.7 |
+| Hover on a "Coming" row (4 dB under) | **10.9** / **6.2** | 16.0 / 7.7 | 19.8 / 8.5 |
+| Focus on a "Coming" row | 12.3 / 6.8 | 16.1 / 7.5 | 20.4 / 9.5 |
+
+- **Every hint passes on every model.** The quietest, the "Coming" hover on a flat speaker, has 0.9 dB over the first
+  gate and 0.2 over the second: the bed is as loud as the hints allow (+2 dB on both trims fails both gates), *quiet
+  but not silent*. The night's crickets alone are 5 dB louder (-26 dB against -31 dB).
+- **The smaller the speaker, the plainer the hints.** The motor is under what a laptop plays (the bed's loudest 400 ms
+  falls 3.3 dB) and what a phone plays (7.1 dB), and the hints sit where both speakers keep them. On a phone the bed is
+  mostly the crickets. That is the price of a hint that stays plain, not a fault. **No hint trim moved**: the one-line
+  changes in `ui_menu.tres` that the issue allowed for were not needed.
+- **What was not tested** is what only a person can tell: whether the bed is pleasant, whether it is heard at all in a
+  noisy room, and how a real speaker differs from the curves above. The numbers say the hints are plain; they do not
+  say the bed is good. The slider is the answer to taste.
+- **Pinned.** `tests/core/menu_bed_levels.json` (written by `menu_speakers.py --pin`) holds the trims, the hints' levels
+  and the worst margins the check found; `test_menu_bed_levels.gd` fails when a trim or a hint level has changed since
+  (the message says to run the tool again) and when a margin under the gates was written.
+
+### What it costs to load
+
+| | Cost |
+| --- | --- |
+| New bytes in the pack | **0**: the same two Ogg files (330 KiB) as the night's beds |
+| The night's loading bar | **0** files read and **0** decoded for the bed: the night's warm-up finds both files read already (`test_the_nights_warm_up_has_nothing_more_to_read_or_decode_for_the_bed`). The web smoke's night load ratio is below |
+| Starting the bed in the menu | **2.9 and 3.7 ms**, once, in the frame the menu is entered (reading and opening the two files), after the sign's own sound has paid the engine's first use of an Ogg (30 to 37 ms) |
+| Mixing it, native | 0.009 and 0.014 ms per 60 Hz frame on average, 0.095 ms at the worst: 0.14 percent of a frame |
+| The catalog | 199 sounds (197), two more rows in `tests/tuning/sound_defaults.json` |
+| Web build, night load (`smoke.py`, headless Chromium, SwiftShader, this machine) | Night 10.4 s and 10.4 s, menu 6.8 s and 6.5 s, ratio **1.30** and **1.30** (two runs); `origin/main` without the bed on the same machine and day: night 11.6 s and 10.3 s, ratio 1.45 and 1.29. Both far under the gate (5.5), and no console or page error |
+
+A bed's **player pool** was too small once the menu had a bed: the night's beds (up to seven: crickets, highway, score,
+wind, the world's bed and the small map's two) take two seconds to fade out after the night and hold their players, and
+the pool had six, so the menu's bed, started the moment Leave night returned to the menu, found no free player and was
+silent (`start_bed` returns null with no warning). `AudioService.POOL_BEDS` is 10, and `test_menu_ambience.gd` leaves a
+night at once to prove it.
+
+### The walk, before and after
+
+The same walk (`tests/captures/menu_sfx_tour.tscn`, 52 s, mouse and keys as a player sends them) on #925's menu and with
+the bed; a recording with sound of each, the plot of both and the speaker plot are on the pull request. The 97 sounds
+are the same ones (a bed is no play of a sound: the service's `played` signal does not carry beds).
+
+| | Before (#925, no bed) | After |
+| --- | --- | --- |
+| Quietest 100 ms of the walk after the sign | digital silence | -34.3 dBFS peak (the bed) |
+| Silent stretches of 3 s or more (under -60 dBFS) | 0 | 0 |
+| Peak of the mix | -12.1 dBFS | -12.2 dBFS |
+| Most hints in one second; least gap between hints and between ticks | 5; 0.133 s; 0.100 s | 5; 0.133 s; 0.100 s |
+| Clipped samples | 0 | 0 |
 
 ## The sounds and where they come from
 
@@ -186,6 +284,6 @@ Plots and a recording with sound of both walks are on the pull request.
   same *peak* as a click they are 8 to 10 LU louder, so the first set of levels (equal peaks by rung) had the screen
   change louder than the press that caused it and the commit louder than a pistol shot. The ladder is read on both the
   peak and the loudness now.
-- **Open** (#926 holds the ears, the bed and the lobby's sounds): a human's ears on a laptop speaker and a phone
-  (whether a hint at -27 dBFS is plain; it is one number in the bank); a menu ambience and music bed; the shop's
-  purchase sound when buying exists; the lobby's ready and countdown sounds (the lobby has no countdown today).
+- **Open**: a person's taste on the bed and the hints (the speaker check says they are plain, not that they are good;
+  see [the bed](#the-ambience-bed-926)); a menu music bed (not made); the shop's purchase sound when buying exists; the
+  lobby's ready and countdown sounds when the lobby gets them (decided in the table of silences above).
