@@ -31,18 +31,26 @@ func test_the_stick_floats_under_the_thumb_and_moves_right() -> void:
 	assert_bool(_fixture.controls.is_stick_down()).is_false()
 
 
-func test_pushing_the_stick_up_walks_forward_and_to_the_rim_sprints() -> void:
+func test_pushing_the_stick_up_walks_forward_and_past_the_edge_sprints() -> void:
 	var start := Vector2(300.0, 800.0)
+	var edge := _fixture.controls.stick_radius()
 	await _fixture.touch(0, start)
 	await _fixture.drag(0, start + Vector2(0.0, -60.0), Vector2(0.0, -60.0))
 	assert_float(Input.get_action_strength(&"move_forward")).is_greater(0.3)
 	assert_bool(Input.is_action_pressed(&"sprint")).is_false()
-	await _fixture.drag(0, start + Vector2(0.0, -140.0), Vector2(0.0, -80.0))
+	# The edge itself is a full walk, not a sprint (#1276).
+	await _fixture.drag(0, start + Vector2(0.0, -edge), Vector2(0.0, 60.0 - edge))
+	assert_float(Input.get_action_strength(&"move_forward")).is_equal_approx(1.0, 0.001)
+	assert_bool(Input.is_action_pressed(&"sprint")).is_false()
+	var past := edge + _fixture.controls.sprint_margin() + 5.0
+	await _fixture.drag(0, start + Vector2(0.0, -past), Vector2(0.0, edge - past))
 	assert_bool(_fixture.controls.is_sprinting()).is_true()
 	assert_bool(Input.is_action_pressed(&"sprint")).is_true()
-	await _fixture.drag(0, start + Vector2(0.0, -60.0), Vector2(0.0, 80.0))
-	assert_bool(Input.is_action_pressed(&"sprint")).is_false()
+	# Easing back no longer ends it: only the lift does.
+	await _fixture.drag(0, start + Vector2(0.0, -60.0), Vector2(0.0, past - 60.0))
+	assert_bool(Input.is_action_pressed(&"sprint")).is_true()
 	await _fixture.lift(0)
+	assert_bool(Input.is_action_pressed(&"sprint")).is_false()
 
 
 func test_a_thumb_past_the_rim_drags_the_stick_base_along() -> void:
