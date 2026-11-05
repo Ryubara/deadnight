@@ -154,9 +154,11 @@ its poster, all six win a calling card and an emblem. The data is one file, `gam
   round-trips with the board, the server's ticket check (`PlateTable`, which reads `done`) needs no change, and the
   protocol stays 15. `test_poster_sets` pins it.
 - **What a set may list.** `PosterSets.problems` fails a set that names a challenge that is not a feat, one in two
-  sets, a stat the night does not count (`ChallengeStats.is_known`) or one that needs a crowd (`revives`), a palette or
-  a motif nobody has, or not six. The count was taken from the data before it was written down: 21 feats, so two sets
-  of six use 12 and nine are left over; the design's "two sets of the 21" is that. Adding a set is a record in the
+  sets, a stat the night does not count (`ChallengeStats.is_known`) or one that needs a crowd (`ChallengeStats.CROWD`:
+  `revives`, `nights:together`, `rounds:whole_crew`, `boards:shared`, the last three added by #1074 and found missing
+  here at the merge), a palette or a motif nobody has, or not six. The sets were chosen from the 21 feats then counted:
+  two sets of six use 12; with #1074's feats the catalogue has 43, so 31 are in no set. `test_poster_sets` pins the
+  crowd list and plays a solo night that moves none of its stats. Adding a set is a record in the
   file, two pieces in `plate_pieces.json` and a test count.
 - **The art.** `PosterCompose` builds a 300 by 450 poster from the cards' own parts (`PlateShapes`, `PlateMotifs`,
   `PlatePalettes`): a ground, a sunburst of dark rays, stars, a hill, a disc of light, the set's large motif (a new `bolt`
@@ -208,6 +210,6 @@ its poster, all six win a calling card and an emblem. The data is one file, `gam
 - **Cost.** Per frame nothing: the poster and the prize are retained commands. A finish of a feat asks
   `PosterSets.completed_by` (a search of two sets); the 12 feats of the sets are checked only when they finish.
 
-What is not here: a poster for the nine feats outside the sets, the poster's panels animating as they uncover (the
+What is not here: a poster for the 31 feats outside the sets, the poster's panels animating as they uncover (the
 covers change on the next read of the board), and feats in the menu's news (a finished feat on its own is
 not told by the menu; the set it completes is).

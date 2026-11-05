@@ -714,13 +714,14 @@ real time and every client can hear its celebration.
 B-movie ("Attack of the Fifty-Foot Generator"): each one done uncovers a panel of the poster, and finishing all six
 wins the set's calling card and emblem. A set shows on the Challenges tab as its poster with its panels and six rows,
 and in the night report when finished. Every challenge in a set is one the night counts (rule 15: the mock's "restart
-the generator" and "kill with shock" need their stats first), so the first release has two sets from the 21 counted
-challenges and sets arrive as their stats do. Posters are composed from shared parts like the cards, and sets are
-solo-safe (no Together challenge in one). Build: #1073.
+the generator" and "kill with shock" need their stats first), so the first release has two sets from the feats
+counted then and a set is a line of data for any six that are counted since. Posters are composed from shared parts
+like the cards, and sets are solo-safe (no Together challenge in one). Build: #1073.
 
-**Built (#1073).** Two sets of six, made of 12 of the 21 feats the night counts (the other nine wait for sets of
-their own, as the stats of #1074 arrive): *Attack of the Fifty-Foot Generator* (a fuel can, ten boards, a door, five
-buys in a night, 150 fuel cans, 1,000 boards; a card and an emblem in teal and gold) and *Revenge of the Headliners* (a
+**Built (#1073).** Two sets of six, made of 12 of the feats the night counts (21 when they were chosen, 43 since the
+stats of #1074 arrived; the other feats wait for sets of their own, none of which may list a stat that needs a crowd,
+`ChallengeStats.CROWD`): *Attack of the Fifty-Foot Generator* (a fuel can, ten boards, a door, five buys in a night,
+150 fuel cans, 1,000 boards; a card and an emblem in teal and gold) and *Revenge of the Headliners* (a
 headshot, a grenade kill, 100 headliners, 1,000 melee kills, 1,000 grenade kills, 1,500 headshots; cherry). The panels
 run from the easy challenge to the long one. The mock's own "restart the generator" and "kill with shock" need stats
 the night does not count, so they are not offered (rule 15). A set is **read, never stored**: a panel is uncovered

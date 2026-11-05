@@ -91,7 +91,8 @@ func test_the_launch_has_two_sets_of_six_from_the_counted_feats() -> void:
 	var feats := _catalog.of_family(ChallengeDef.Family.FEAT).map(
 		func(def: ChallengeDef) -> StringName: return def.id
 	)
-	assert_int(feats.size()).is_equal(21)
+	# The catalogue has grown with the stats of #1074; the sets name 12 of its feats.
+	assert_int(feats.size()).is_greater(12)
 	var seen := {}
 	for poster_set in all:
 		assert_int(poster_set.challenges.size()).is_equal(PosterSet.PANELS)
@@ -111,7 +112,7 @@ func test_a_set_never_lists_a_stat_the_night_does_not_count_or_one_that_needs_a_
 			stats.append_array(def.stats)
 			for stat in stats:
 				assert_bool(ChallengeStats.is_known(stat, _weapon_ids(), _type_ids())).is_true()
-				assert_bool(PosterSets.TOGETHER_STATS.has(stat)).is_false()
+				assert_bool(ChallengeStats.CROWD.has(stat)).is_false()
 
 
 func test_a_set_that_lists_an_uncountable_stat_is_reported() -> void:

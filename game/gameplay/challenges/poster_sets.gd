@@ -11,8 +11,6 @@ extends RefCounted
 const PATH := "res://gameplay/challenges/data/poster_sets.json"
 ## The event that tells a set was finished: to the popup lane, the voice and the news.
 const DONE := &"poster_set_done"
-## Stats a player cannot make alone: a set is playable by one person.
-const TOGETHER_STATS: Array[StringName] = [ChallengeStats.REVIVES]
 
 static var _shared: PosterSets
 
@@ -130,17 +128,20 @@ func problems(
 			seen_challenges[id] = true
 			if def.family != ChallengeDef.Family.FEAT:
 				found.append("%s: '%s' is not a feat" % [poster_set.id, id])
+			# A `distinct` feat has no stat of its own; its definition checks the prefix.
 			for stat in _stats_of(def):
 				if not ChallengeStats.is_known(stat, weapon_ids, type_ids):
 					found.append(
 						"%s: '%s' counts '%s', which the night does not" % [poster_set.id, id, stat]
 					)
-				if TOGETHER_STATS.has(stat):
+				if ChallengeStats.CROWD.has(stat):
 					found.append("%s: '%s' needs a crowd ('%s')" % [poster_set.id, id, stat])
 	return found
 
 
 static func _stats_of(def: ChallengeDef) -> Array[StringName]:
-	var stats: Array[StringName] = [def.stat]
+	var stats: Array[StringName] = []
+	if def.distinct == "":
+		stats.append(def.stat)
 	stats.append_array(def.stats)
 	return stats
