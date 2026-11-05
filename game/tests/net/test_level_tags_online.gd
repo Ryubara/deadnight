@@ -10,6 +10,7 @@ const SERVER_ID := "gs-test"
 
 var _server: GameServer
 var _nights: Array[Night] = []
+var _layers: Array[CanvasLayer] = []
 
 
 func after_test() -> void:
@@ -17,6 +18,10 @@ func after_test() -> void:
 		if is_instance_valid(night):
 			night.get_parent().queue_free()
 	_nights.clear()
+	for layer in _layers:
+		if is_instance_valid(layer):
+			layer.queue_free()
+	_layers.clear()
 	if is_instance_valid(_server):
 		_server.get_parent().queue_free()
 	await get_tree().process_frame
@@ -216,3 +221,283 @@ func test_a_client_cannot_give_itself_a_level_whatever_it_sends() -> void:
 	assert_int(room.server.xp.levels()[1]).is_equal(3)
 	assert_int(room.server.xp.levels()[2]).is_equal(1)
 	assert_dict(bo.state.levels).is_equal({1: 3, 2: 1})
+
+
+# --- A level crossed in the night follows the tally to every tag (#1116) ---
+
+
+## The XP a seat needs to cross to `level` from where it is: the tally pays it as a challenge's
+## reward is paid (`add_xp`), and the room's own tick tells every client (`XpAward.end_tick`).
+func _pay_up_to(room: NightHost, player_id: int, level: int) -> void:
+	var need := LevelCurve.xp_for(level) - room.server.xp.total_of(player_id)
+	room.server.xp.add_xp(player_id, need, &"test")
+
+
+## A client with a HUD of its own, seated with `account`.
+func _viewer(match_id: String, user: String, account := {}) -> Array:
+	var layer := CanvasLayer.new()
+	add_child(layer)
+	_layers.append(layer)
+	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
+	layer.add_child(hud)
+	var night := await _client(match_id, user, account, {}, hud)
+	return [night, hud]
+
+
+## The scoreboard of each viewer held up, the way a player holds the key.
+func _hold_boards(viewers: Array) -> void:
+	Input.action_press(Hud.SCOREBOARD_ACTION)
+	for pair: Array in viewers:
+		(pair[1] as Hud).scoreboard.set_shown(true)
+
+
+## What one client's screen shows for a seat, `{state, tag, box, board}` (0: no level shown). The
+## nameplate is the marker over the seat's head (never your own), the box is the bottom-left
+## one, the board the scoreboard's row.
+func _screen(night: Night, hud: Hud, id: int) -> Dictionary:
+	var shown := {
+		"state": hud.state.level_of(hud.state.team[id]).x, "tag": -1, "box": 0, "board": 0
+	}
+	for marker in night.markers.markers():
+		if marker["id"] == StringName("player_%d" % id):
+			shown["tag"] = int(marker["level"])
+	var box := hud.points.box_of(id)
+	if box != null:
+		shown["box"] = box.shown_level.x
+	hud.scoreboard.refresh()
+	var at := hud.scoreboard.row_ids.find(id)
+	if at >= 0:
+		shown["board"] = hud.scoreboard.row_levels[at]
+	return shown
+
+
+## Whether `id` shows `level` everywhere on this client's screen (the tag only where it can be
+## seen: not over your own head).
+func _shows(night: Night, hud: Hud, id: int, level: int) -> bool:
+	var shown := _screen(night, hud, id)
+	var tag_ok: bool = int(shown["tag"]) == level or id == night.state.player_id
+	return shown["state"] == level and shown["box"] == level and shown["board"] == level and tag_ok
+
+
+func test_a_level_paid_in_the_night_reaches_the_tag_the_box_and_the_board_of_every_client() -> void:
+	await _start()
+	var one := await _viewer("pay", "ann", _account(4))
+	var two := await _viewer("pay", "bo", _account(9))
+	var room := _server.room_of_match("pay")
+	var ann: Night = one[0]
+	var bo: Night = two[0]
+	Input.action_press(Hud.SCOREBOARD_ACTION)
+	for pair: Array in [one, two]:
+		(pair[1] as Hud).scoreboard.set_shown(true)
+	var ids: Array[int] = [ann.state.player_id, bo.state.player_id]
+	for pair: Array in [one, two]:
+		for i in ids.size():
+			var settled := func() -> bool: return _shows(pair[0], pair[1], ids[i], [4, 9][i])
+			assert_bool(await _until(settled)).override_failure_message("before %d" % i).is_true()
+	# Ann crosses three levels in one tick (one of them gives a card, an emblem and a colour), Bo one.
+	_pay_up_to(room, ids[0], 7)
+	_pay_up_to(room, ids[1], 10)
+	for pair: Array in [one, two]:
+		for i in ids.size():
+			var seen := func() -> bool: return _shows(pair[0], pair[1], ids[i], [7, 10][i])
+			(
+				assert_bool(await _until(seen))
+				. override_failure_message(
+					(
+						"client %d, seat %d: %s"
+						% [pair[0].state.player_id, ids[i], _screen(pair[0], pair[1], ids[i])]
+					)
+				)
+				. is_true()
+			)
+	Input.action_release(Hud.SCOREBOARD_ACTION)
+
+
+func test_a_level_that_gives_an_item_moves_the_tags_like_one_that_gives_none() -> void:
+	await _start()
+	var one := await _viewer("items", "ann", _account(1))
+	var two := await _viewer("items", "bo", _account(1))
+	var room := _server.room_of_match("items")
+	var ann: Night = one[0]
+	var bo: Night = two[0]
+	var heard: Array[StringName] = []
+	bo.state.event_received.connect(func(e: Dictionary) -> void: heard.append(e["type"]))
+	Input.action_press(Hud.SCOREBOARD_ACTION)
+	for pair: Array in [one, two]:
+		(pair[1] as Hud).scoreboard.set_shown(true)
+	var table := LadderUnlocks.shipped()
+	# 2: a calling card and an emblem; 3: a colour; 5: a tier (its card, emblem and a colour); 10
+	# jumps five levels (a tier, a map, a hat...). Each says `unlock_earned` and `tier_up` beside
+	# `level_up`, the events the voice cheers differently.
+	var before := 1
+	var slots := {}
+	for level in [2, 3, 5, 10]:
+		heard.clear()
+		_pay_up_to(room, ann.state.player_id, level)
+		for pair: Array in [one, two]:
+			var done := func() -> bool: return _shows(pair[0], pair[1], ann.state.player_id, level)
+			(
+				assert_bool(await _until(done))
+				. override_failure_message(
+					"level %d: %s" % [level, _screen(pair[0], pair[1], ann.state.player_id)]
+				)
+				. is_true()
+			)
+		# The levels crossed gave their items by their own events beside `level_up`.
+		var items := 0
+		var tiers := 0
+		for crossed in range(before + 1, level + 1):
+			items += table.earned_at(crossed).size()
+			tiers += 1 if LevelCurve.tier_of(crossed) > LevelCurve.tier_of(crossed - 1) else 0
+			for row: Dictionary in table.earned_at(crossed):
+				slots[row["slot"]] = true
+		assert_int(heard.count(&"level_up")).is_equal(level - before)
+		assert_int(heard.count(&"unlock_earned")).is_equal(items)
+		assert_int(heard.count(&"tier_up")).is_equal(tiers)
+		before = level
+	# The four steps gave a calling card, an emblem, a colour and a tier's card.
+	assert_array(slots.keys()).contains([&"calling_cards", &"emblem", &"colour", &"tier_card"])
+	# Bo was never paid: its tag stayed where it began on both screens.
+	assert_bool(_shows(bo, two[1], bo.state.player_id, 1)).is_true()
+	assert_bool(_shows(ann, one[1], bo.state.player_id, 1)).is_true()
+	Input.action_release(Hud.SCOREBOARD_ACTION)
+
+
+func test_a_late_joiner_shows_the_levels_paid_before_it_came_and_the_next_one_too() -> void:
+	await _start()
+	var one := await _viewer("late", "ann", _account(3))
+	var room := _server.room_of_match("late")
+	var ann: Night = one[0]
+	_pay_up_to(room, ann.state.player_id, 11)
+	(
+		assert_bool(
+			await _until(func() -> bool: return room.server.xp.levels()[ann.state.player_id] == 11)
+		)
+		. is_true()
+	)
+	var two := await _viewer("late", "bo", _account(8))
+	var bo: Night = two[0]
+	Input.action_press(Hud.SCOREBOARD_ACTION)
+	(two[1] as Hud).scoreboard.set_shown(true)
+	# Bo's WELCOME carried Ann's level now (11), not the one she joined with (3).
+	var arrived := func() -> bool: return _shows(bo, two[1], ann.state.player_id, 11)
+	(
+		assert_bool(await _until(arrived))
+		. override_failure_message(str(_screen(bo, two[1], ann.state.player_id)))
+		. is_true()
+	)
+	# And a level paid after it came reaches Bo's own box and Ann's view of it.
+	(one[1] as Hud).scoreboard.set_shown(true)
+	_pay_up_to(room, bo.state.player_id, 12)
+	for pair: Array in [one, two]:
+		var next := func() -> bool: return _shows(pair[0], pair[1], bo.state.player_id, 12)
+		assert_bool(await _until(next)).is_true()
+	Input.action_release(Hud.SCOREBOARD_ACTION)
+
+
+func test_a_seat_with_no_account_has_no_level_and_is_paid_nothing() -> void:
+	await _start()
+	var one := await _viewer("bare", "ann", _account(5))
+	var two := await _viewer("bare", "", {})
+	var room := _server.room_of_match("bare")
+	var ann: Night = one[0]
+	var bare: Night = two[0]
+	_hold_boards([one, two])
+	assert_bool(room.server.xp.has_seat(bare.state.player_id)).is_false()
+	# The tally pays no seat without an account, so its XP is not asked for and nothing is told.
+	_pay_up_to(room, bare.state.player_id, 9)
+	_pay_up_to(room, ann.state.player_id, 6)
+	for pair: Array in [one, two]:
+		var next := func() -> bool: return _shows(pair[0], pair[1], ann.state.player_id, 6)
+		(
+			assert_bool(await _until(next, 3.0))
+			. override_failure_message(str(_screen(pair[0], pair[1], ann.state.player_id)))
+			. is_true()
+		)
+	for pair: Array in [one, two]:
+		assert_bool(_shows(pair[0], pair[1], bare.state.player_id, 0)).is_true()
+		assert_dict(pair[0].state.levels).is_equal({ann.state.player_id: 6})
+
+
+func test_a_level_paid_to_a_seat_that_left_in_the_same_tick_is_not_an_error() -> void:
+	await _start()
+	var one := await _viewer("gone", "ann", _account(5))
+	var two := await _viewer("gone", "bo", _account(5))
+	var room := _server.room_of_match("gone")
+	var ann: Night = one[0]
+	var bo: Night = two[0]
+	var gone := bo.state.player_id
+	_hold_boards([one, two])
+	_pay_up_to(room, gone, 9)
+	_pay_up_to(room, ann.state.player_id, 8)
+	# Bo is released before the room's tick tells anyone of the 9 it was paid.
+	room.server.xp.release(gone)
+	room._collect([{"type": &"account_left", "player_id": gone}])
+	var next := func() -> bool: return _shows(ann, one[1], ann.state.player_id, 8)
+	(
+		assert_bool(await _until(next, 3.0))
+		. override_failure_message(str(_screen(ann, one[1], ann.state.player_id)))
+		. is_true()
+	)
+	assert_dict(ann.state.levels).is_equal({ann.state.player_id: 8})
+	assert_vector(one[1].state.level_of(one[1].state.team[gone])).is_equal(Vector2i.ZERO)
+
+
+# --- The night report shows the level the night crossed (#1116) ---
+
+
+func test_the_report_of_the_paid_client_shows_the_levels_crossed_and_the_other_not() -> void:
+	await _start()
+	var one := await _viewer("report", "ann", _account(3))
+	var two := await _viewer("report", "bo", _account(2))
+	var room := _server.room_of_match("report")
+	room.server.end_seconds = 60.0
+	var ann: Night = one[0]
+	var bo: Night = two[0]
+	# Before anything is paid both reports sit in the level they began in.
+	for night: Night in [ann, bo]:
+		assert_bool(night.report.is_kept()).is_true()
+	assert_array(ann.report.model()["crossed"]).is_empty()
+	# Ann is paid up to level 6 through the tally; the room's tick tells every client.
+	_pay_up_to(room, ann.state.player_id, 6)
+	var paid := func() -> bool: return ann.report.model()["level_to"] >= 6
+	assert_bool(await _until(paid)).is_true()
+	# Everyone goes down in a round: the night ends and each client reads its own report.
+	var rules := room.server.rules
+	rules.apply(RulesAction.skip_break())
+	room._collect(rules.apply(RulesAction.set_downed(ann.state.player_id, true)))
+	room._collect(rules.apply(RulesAction.set_downed(bo.state.player_id, true)))
+	var over := func() -> bool: return ann.state.over and bo.state.over
+	assert_bool(await _until(over)).is_true()
+	await _ticks(10)
+	var mine := ann.report.model()
+	assert_bool(mine["kept"]).is_true()
+	assert_int(mine["level_from"]).is_equal(3)
+	assert_int(mine["level_to"]).is_equal(6)
+	assert_array(mine["crossed"]).is_equal([4, 5, 6])
+	# The levels' items are on the report (level 5 opens a tier), each from a level it crossed.
+	var gave: Array[int] = []
+	for row: Dictionary in mine["unlocked"]:
+		gave.append(row["level"])
+	assert_array(gave).is_not_empty()
+	for level in gave:
+		assert_bool(level in [4, 5, 6]).is_true()
+	assert_bool(5 in gave).is_true()
+	# The card the end board draws says it: from where the night began to where it ended.
+	var card := HudNightReport.new()
+	one[1].add_child(card)
+	card.show_report(mine)
+	assert_str(card.level_text).is_equal("LEVEL 3 TO 6")
+	assert_str(card.unlocked_text).starts_with("UNLOCKED: ")
+	# Bo was never paid that level: its report crossed nothing and shows its own level.
+	var theirs := bo.report.model()
+	assert_bool(theirs["kept"]).is_true()
+	assert_array(theirs["crossed"]).is_empty()
+	assert_int(theirs["level_to"]).is_equal(theirs["level_from"])
+	assert_int(theirs["level_to"]).is_less(6)
+	assert_array(theirs["unlocked"]).is_empty()
+	var other := HudNightReport.new()
+	two[1].add_child(other)
+	other.show_report(theirs)
+	assert_str(other.level_text).is_equal("LEVEL %d" % theirs["level_to"])
+	assert_str(other.unlocked_text).is_empty()
