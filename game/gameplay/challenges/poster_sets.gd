@@ -6,7 +6,8 @@ extends RefCounted
 ## prize is granted once however often a board is read, and a retune needs no migration.
 ##
 ## A set only names challenges the night counts (progression rule 15: a stat that does not exist
-## is not offered) and none a crowd is needed for (solo-safe): `problems` says when one does not.
+## is not offered), none a crowd is needed for (solo-safe) and none a hidden one (its words stay
+## secret until it is done): `problems` says when one does not.
 
 const PATH := "res://gameplay/challenges/data/poster_sets.json"
 ## The event that tells a set was finished: to the popup lane, the voice and the news.
@@ -91,8 +92,8 @@ func event_of(poster_set: PosterSet, player_id: int = -1) -> Dictionary:
 
 
 ## What is wrong with the sets (empty when sound): an id twice, a challenge that does not exist or
-## is in two sets, a stat the night cannot count, one that needs a crowd, a poster with no art, no
-## title or not six panels.
+## is in two sets, a hidden one, a stat the night cannot count, one that needs a crowd, a poster
+## with no art, no title or not six panels.
 func problems(
 	challenges: ChallengeCatalog, weapon_ids: Array[StringName], type_ids: Array[StringName]
 ) -> Array[String]:
@@ -128,6 +129,10 @@ func problems(
 			seen_challenges[id] = true
 			if def.family != ChallengeDef.Family.FEAT:
 				found.append("%s: '%s' is not a feat" % [poster_set.id, id])
+			# A set prints its challenges' words on the Challenges tab, and a hidden challenge's words
+			# may not be read before it is done (#1172).
+			if def.hidden:
+				found.append("%s: '%s' is hidden" % [poster_set.id, id])
 			# A `distinct` feat has no stat of its own; its definition checks the prefix.
 			for stat in _stats_of(def):
 				if not ChallengeStats.is_known(stat, weapon_ids, type_ids):

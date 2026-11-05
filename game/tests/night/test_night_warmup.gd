@@ -7,6 +7,12 @@ const PLAYED_TICKS := 3600
 const LOOK_EVERY := 30
 
 
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
+
+
 func _warmed_night(tuning: RulesTuning = null) -> Night:
 	var night := Night.new()
 	night.warm_up = true
