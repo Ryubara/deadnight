@@ -319,23 +319,48 @@ sizes in window px, and do not detect a phone by the window's short side there (
   The words alone at 39 units beside a 26 unit diamond read as a caption with no mark. A capture with the words alone
   is kept as the option in the pull request.
 - **A marker whose shape, words or arrow would be under a card or a touch button is moved** (`HudMarkers._settle`) to
-  the nearest place where its whole rectangle is under none: the places beside each side of each card, nearest first,
-  then once more from the nearest four of those. An arrow beside it points back at the place it marks (a pinned
-  marker's arrow already did that), on the side of the shape that faces the place or on its flank when that would be
-  over the words. The touch buttons are in the same list (`TouchControls.button_boxes`, `layout_changed`, set by
-  `NightScreen`): a diamond moved off the ammo card landed under Fire in the first capture. The resting ring of the
-  stick is not in it (a faint ring over a name still reads). `HudMarkers.shown` tells where each marker was drawn and
+  the nearest place where its whole rectangle is under none. An arrow beside it points back at the place it marks (a
+  pinned marker's arrow already did that), on the side of the shape that faces the place or, when that would be over
+  the words, a card or a marker moved before it, on a flank or under or over the shape. The touch buttons are in the
+  same list (`TouchControls.button_boxes`, `layout_changed`, set by `NightScreen`): a diamond moved off the ammo card
+  landed under Fire in the first capture. The resting ring of the stick is not in it (a faint ring over a name still
+  reads). `HudMarkers.shown` tells where each marker was drawn (its box is what it draws: shape, words and arrow) and
   whether it moved; `placed` is where it points.
 - **Markers moved off neighbouring cards keep clear of each other** when there is room (the objective off the health
   card and a teammate down on the round card both took the pocket between the cards).
-- **Cost.** No node: it is the one canvas item of `HudMarkers`. A place is tried by arithmetic on rectangles, the
-  strings of a draw are measured once (`_width`), and a draw tries 1500 places at most for all its markers
-  (`MAX_TRIES`). The first version laid the marker out again, strings included, for every place of two full rounds
-  (about 2000 layouts a marker) and a suite of 300 markers ran past ten minutes.
-- **Not done:** a 667 x 375 CSS px phone at the largest interface size (a 1536 x 864 canvas) has no place the search
-  reaches for a tag beside the cards and the buttons: its markers can stay under a card (its words are 14 CSS px all
-  the same). A tag near the top of the screen is cut by it (only x is kept inside the screen). The banner, the prompt
-  and the popup cards in the middle are not kept clear of.
+
+## The search for a place, and the smallest page (#1230)
+
+The first search (#1218) tried the places beside each side of each card and then once more from the nearest four: a
+column of the screen between the cards and the buttons was out of its reach, and the grid test left the page out
+(`CRAMPED`). A rectangle that is clear can be slid left, then up, until it rests on an obstacle or the screen, so a place
+exists only on lines where its left edge is on either side of an obstacle and its top the same.
+`HudMarkers._nearest_clear` tries those columns nearest first, and in each `_clear_y` takes the nearest `y` from the
+obstacles' edges; once a place is found a farther column is not looked at. The rectangle is measured in the middle of
+the screen (nothing clamps it there) and the place found is looked at as it is drawn. `MAX_TRIES` (800) caps the
+columns a draw tries for all its markers.
+
+- **Every marker is clear of every card and button on every page the grid names**, the 667 x 375 CSS px page at 1.25
+  (a 1536 x 864 canvas) included: `CRAMPED` is gone from `test_hud_marker_cards.gd`, whose grid now also has the
+  prompt of a door and the card of a level gained up (the lane of the progression's cards, `Hud.centre_cards`).
+- **The banner, the prompt and the popup cards are cards a marker keeps clear of** (`Hud.centre_cards`: banner,
+  marquee, boss bar, prompt, popup lane), while they are up. A marker is not drawn over them and goes back to its place
+  when they leave.
+- **A tag at the top edge stays on the screen**: when the tag over a teammate would start above the screen
+  (`TEXT_MARGIN`) it is drawn under the pointer or the ring (`_ally_baseline`).
+- **Markers moved to the same side of a card keep clear of each other more often**: a moved marker keeps its drawn
+  rectangle (shape, words and the arrow where it stands), not the room for an arrow on every side, and the next marker
+  keeps clear of that. How many markers a page holds with none meeting another (a diamond and teammates, one on each
+  card; `test_markers_one_on_each_card_keep_clear_of_the_cards_and_of_each_other`): 10 or more on every phone page at
+  0.8 and 1.0, 8 with three diamonds at 1.0 on the 667 x 375 page, 9 at 1.25 on the 1688 x 780 and 2532 x 1170 pages
+  (6 with three diamonds), and **4 at 1.25 on the 667 x 375 page** (3 with three diamonds): the one column left between
+  its cards and its buttons is 344 units wide and a diamond's words are 319. More than that are still kept off every
+  card and button (`test_the_smallest_page_keeps_eight_markers_off_every_card_and_button`) but meet each other. This
+  page's night has one next door and a few teammates under the cards at a time; the deliberate replacement for
+  "no room" is "meet another marker", never "stay under a card".
+- **Cost.** No node (`test_moving_markers_adds_no_canvas_item`). A frame on the busiest case, eight markers under the
+  cards moved by a pixel every frame (a draw each frame; headless, the whole frame): 7.2 ms on the smallest page against
+  37 ms with the old search (worst 16 ms against 83 ms), and 7.8 ms against 12.7 ms on a 1688 x 780 page at 1.0.
 
 ## Sources
 

@@ -162,7 +162,7 @@ func _ready() -> void:
 	_place_challenge(margin)
 	popups.mode_changed.connect(_on_popups_mode)
 	_on_popups_mode()
-	markers.keep_clear = corner_cards()
+	markers.keep_clear = corner_cards() + centre_cards()
 	# Last, so it draws over every other part.
 	_centre(scoreboard)
 	for part in all_parts():
@@ -370,8 +370,8 @@ func all_parts() -> Array[HudPart]:
 
 ## The cards of the corners, which a world marker's words stay out of (#1192): the round and the
 ## objective, the feeds, the players and the health, the perks, the weapon slots and the ammo, and
-## the challenge on the left edge. The cards that come and go in the middle of the screen are not
-## in it.
+## the challenge on the left edge. The cards that come and go in the middle of the screen are in
+## `centre_cards`.
 func corner_cards() -> Array[Control]:
 	return [
 		round_part,
@@ -386,6 +386,13 @@ func corner_cards() -> Array[Control]:
 		ammo,
 		challenge
 	]
+
+
+## The cards that come and go in the middle of the screen, which a world marker also keeps clear of
+## while they are up (#1230): the round banner, the marquee, the boss bar, the prompt and the lane
+## of the progression's cards.
+func centre_cards() -> Array[Control]:
+	return [banner, marquee, boss_bar, prompt, popups]
 
 
 ## The parts that take a rectangle on screen (not the full-screen overlays): for layout checks.
