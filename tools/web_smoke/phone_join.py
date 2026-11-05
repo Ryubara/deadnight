@@ -24,6 +24,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
 from pathlib import Path
@@ -78,30 +79,48 @@ def start_backend(origin: str) -> tuple[subprocess.Popen, str]:
     raise SystemExit("the backend never answered /health")
 
 
-def call(url: str, path: str, body: dict, token: str = "") -> dict:
+def call(url: str, path: str, body: dict | None, token: str = "") -> dict:
+    """A POST with `body`, or a GET with none."""
     request = urllib.request.Request(
         url + path,
-        data=json.dumps(body).encode(),
+        data=None if body is None else json.dumps(body).encode(),
         headers={"Content-Type": "application/json", **({"Authorization": f"Bearer {token}"} if token else {})},
     )
     with urllib.request.urlopen(request, timeout=10) as answer:
         return json.loads(answer.read())
 
 
+def keep_present(url: str, lobby: str, token: str, stop: threading.Event) -> None:
+    """The host's screen reads its lobby every couple of seconds; a host that stops is marked away and, a while later,
+    left behind (a slow runner takes minutes to load the phone's page). This is that read."""
+    while not stop.wait(2.0):
+        try:
+            call(url, f"/lobbies/{lobby}", None, token)
+        except OSError:
+            pass
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("web", type=Path)
     parser.add_argument("out", type=Path)
+    parser.add_argument(
+        "--host-silent", action="store_true", help="the host never reads its lobby (shows what a slow page costs)"
+    )
+    parser.add_argument("--wait", type=float, default=0.0, help="seconds the phone waits on the preview before Join")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     check = pk.Checks()
     server, port = smoke.serve(args.web)
     backend, url = start_backend(f"http://127.0.0.1:{port}")
+    stop = threading.Event()
     try:
         signed = call(url, "/auth/guest", {"name": "Hostess"})
         night = call(url, "/lobbies", {}, signed["token"])
         code = night["code"]
         print(f"the host made a night: code {code}")
+        if not args.host_silent:
+            threading.Thread(target=keep_present, args=(url, night["id"], signed["token"], stop), daemon=True).start()
         with sync_playwright() as p:
             browser = p.chromium.launch(args=smoke.SOFTWARE_GL + smoke.mute_args())
             context = browser.new_context(
@@ -158,6 +177,7 @@ def main() -> int:
             joins = [name for name in spots if name.lower().startswith("join")]
             check(bool(joins), "the preview has a Join button", f"buttons {sorted(spots)}")
             if joins:
+                page.wait_for_timeout(int(args.wait * 1000))
                 pk.tap_box(page, cdp, pk.css_box(page, "spots", joins[0]))
                 page.wait_for_timeout(4000)
                 seats = str(rooms.read_probe(page).get("lobby_seats", ""))
@@ -169,6 +189,7 @@ def main() -> int:
                 page.screenshot(path=args.out / "5_joined.png")
             browser.close()
     finally:
+        stop.set()
         backend.terminate()
         server.shutdown()
     print("all held" if not check.failed else "FAILED: " + "; ".join(check.failed))
