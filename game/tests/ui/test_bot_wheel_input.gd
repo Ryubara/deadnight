@@ -1,3 +1,4 @@
+# gdlint: disable=max-public-methods
 # The bot command wheel through the real input paths (#642): a key, a mouse, a pad that is not
 # device 0 and a finger go in as events, the night screen's driver reads them, and the order reaches
 # `BotOrderLink` (a stub here: `BotOrders` is #641's). Holding opens the wheel, the pointer picks,
@@ -23,6 +24,12 @@ var _heard: Array[Dictionary] = []
 var _held: Array[InputEvent] = []
 var _fixture: TouchFixture
 var _arrival := false
+
+
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
 
 
 func before_test() -> void:

@@ -20,6 +20,14 @@ var rim := Color(0, 0, 0, 0):
 		rim = value
 		_dirty = true
 		queue_redraw()
+## Draw the badge in the flat colour of a locked piece (`ItemIcons.SILHOUETTE`): a hidden emblem not
+## yet earned.
+var silhouette := false:
+	set(value):
+		if silhouette != value:
+			silhouette = value
+			_dirty = true
+			queue_redraw()
 ## Dim the emblem (a downed player's).
 var dim := 0.0:
 	set(value):
@@ -82,6 +90,8 @@ func _build() -> void:
 		for point in item["p"] as PackedVector2Array:
 			points.append(point * factor + (size - Vector2.ONE * side) * 0.5)
 		var colour := PlatePalettes.colour(palette, item["r"]).lerp(Color.BLACK, dim)
+		if silhouette:
+			colour = ItemIcons.SILHOUETTE
 		_built.append({"p": points, "c": colour})
 
 
@@ -93,3 +103,6 @@ func _draw() -> void:
 	for item in _built:
 		shapes.polygon(item["p"], item["c"])
 	shapes.flush(self)
+	if silhouette:
+		var side := minf(size.x, size.y)
+		PlateDraw.question_mark(self, Rect2((size - Vector2.ONE * side) * 0.5, Vector2.ONE * side))
