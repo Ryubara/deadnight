@@ -218,6 +218,14 @@ shard runs it (about 1.5 minutes) and writes what it measured into the job summa
   that holds on a slow runner and a busy machine; it is deliberately loose until three runs of the real runner's
   summary say where it should sit.
 
+Canvas items (limit 230) count every `CanvasItem` in the tree, so the HUD's nodes are counted as built, empty or not.
+What only a bigger night needs is built when a night reaches it and freed on the way down: the bots' chip strip
+(`HudBotChips`, two nodes) first sat in the points column at four bodies and took the peak from 215 to 217 here (229 to
+232 on CI, main 229); `HudPoints` now makes it past eight bodies only. The HUD at four bodies is the same 164 canvas
+items as on main (a probe over the fixture), and the budget's run peaks at 215 locally, as main does. A night of 15
+bodies (8 people, 7 bots) holds 60 more HUD canvas items (224 against 164, boxes and chips only, before the scoreboard
+or end board is up): about 275 here, which the budget's case does not cover (#1193 measures it).
+
 Teeth: the report of a run with the node limit set under the peak fails and names it (output in the pull request).
 `max_per_tick` (a counted piece of work a tick, from `PerfProbe.count`) is built in for the fixes of #930 and #931 to
 use.

@@ -172,12 +172,24 @@ func test_eight_people_and_seven_bots_the_people_get_boxes_and_the_bots_a_strip_
 	)
 	assert_array(downed).has_size(1)
 	assert_int(downed[0]["id"]).is_equal(NightBots.id_at(2))
+	# Bots leaving brings the night back to eight bodies: the strip's nodes are freed with them.
+	var strip := points.chips()
+	for i in MatchSettings.MAX_BOTS - 1:
+		fixture.act(RulesAction.remove_player(NightBots.id_at(i)))
+	await await_idle_frame()
+	assert_object(points.chips()).is_not_null()
+	assert_int(points.chips().shown.size()).is_equal(1)
+	fixture.act(RulesAction.remove_player(NightBots.id_at(MatchSettings.MAX_BOTS - 1)))
+	await await_idle_frame()
+	assert_object(points.chips()).is_null()
+	assert_bool(is_instance_valid(strip) and strip.is_inside_tree()).is_false()
 	# Eight bodies or fewer have no strip: a room of four people and four bots is eight boxes.
 	fixture.hud.get_parent().remove_child(fixture.hud)
 	fixture.hud.free()
 	var small := _party(4, false, 4)
 	await await_idle_frame()
-	assert_bool(small.hud.points.chips().visible).is_false()
+	# The strip is not even built for a night of eight bodies (the perf budget counts its nodes).
+	assert_object(small.hud.points.chips()).is_null()
 	assert_object(small.hud.points.box_of(NightBots.id_at(0))).is_not_null()
 	small.hud.get_parent().remove_child(small.hud)
 	small.hud.free()

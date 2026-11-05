@@ -27,7 +27,8 @@ var name_text: String:
 		return box.name_text if box != null else ""
 
 var _column := VBoxContainer.new()
-var _chips := HudBotChips.new()
+## The bots' strip, made when a night reaches more than eight bodies and freed when it falls back.
+var _chips: HudBotChips = null
 ## Player id -> the box on screen.
 var _boxes: Dictionary[int, HudPlayerBox] = {}
 
@@ -37,7 +38,6 @@ func _init() -> void:
 	_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_column.add_theme_constant_override(&"separation", HudStyle.GAP)
 	_column.custom_minimum_size.x = WIDTH
-	_column.add_child(_chips)
 	add_child(_column)
 	_column.minimum_size_changed.connect(update_minimum_size)
 
@@ -137,13 +137,30 @@ func refresh() -> void:
 				}
 			)
 		)
-	_chips.show_bots(chipped, state.team)
+	_show_chips(chipped)
 	visible = not all.is_empty()
 
 
-## The strip of chips the bots are drawn as past eight bodies, for tests and tools.
+## The strip of chips the bots are drawn as past eight bodies, for tests and tools; null while the
+## night has eight bodies or fewer.
 func chips() -> HudBotChips:
 	return _chips
+
+
+## Draws `ids` as chips. The strip is only built for a night past eight bodies and freed when it is
+## back at eight or fewer, so a small night holds none of its nodes (the perf budget counts them).
+func _show_chips(ids: Array[int]) -> void:
+	if ids.is_empty():
+		if _chips != null:
+			_column.remove_child(_chips)
+			_chips.queue_free()
+			_chips = null
+		return
+	if _chips == null:
+		_chips = HudBotChips.new()
+		_column.add_child(_chips)
+	_column.move_child(_chips, -1)
+	_chips.show_bots(ids, state.team)
 
 
 ## The box of a player, for tests and tools; null when they are not shown.
