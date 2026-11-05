@@ -69,9 +69,13 @@ under it.
 ## First run and key hints
 
 - **No keycap on a phone.** `UIInputMode.touch` is true while a finger was the last input (and when the layer comes up
-  with nothing else used yet); the prompt card's glyph then draws a round tap mark (rings round a dot) and no letter
-  ([HUD prompt](hud.md)). A key or a gamepad button brings the keycap back, and so does a real mouse click; mouse
-  *motion* does not, because the layer sends its look as motion, and the engine's touch copies are marked as emulated.
+  with nothing else used yet); wherever a glyph is drawn then it is a round tap mark (rings round a dot) and no letter.
+  The night's prompt card has no glyph at all while the touch layer is up (`HudPrompt.touch_layout`, #1275): the Interact
+  button is the control and says the verb, so a key or a mark on the card pointed at nothing and held 64 units of the
+  words' room. A key or a gamepad button brings the keycap back where there is no touch layer, and so does a real mouse
+  click; mouse *motion* does not, because the layer sends its look as motion, and the engine's touch copies are marked
+  as emulated. The health card likewise drops `GRENADES xN` (the strip's grenade place counts them). What each other
+  control does and why is [the phone audit](touch-audit.md).
 - **Hints once per control** (`TouchHints`, a child of the layer): "DRAG TO MOVE" over the stick's resting ring, "DRAG TO
   LOOK" in the look area, "TAP TO USE" ("HOLD TO REPAIR" at a fence) beside the Interact button while it shows and
   "STRIKE" (with the tap mark) beside the Strike button while it shows. Each goes the moment its control is used: a
