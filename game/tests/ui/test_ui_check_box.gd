@@ -2,6 +2,10 @@
 # disabled. Driven with real events (#9).
 extends GdUnitTestSuite
 
+## The most frame time a spring gets to settle in: it needs about a second, so this is slack, not
+## a tolerance.
+const SETTLE_SECONDS := 5.0
+
 var _box: UICheckBox
 var _was_reduced := false
 
@@ -45,6 +49,14 @@ func _click() -> void:
 		await await_idle_frame()
 
 
+## Waits for frames until `spring` has settled, at most `SETTLE_SECONDS` of frame time.
+func _settle(spring: UISpring) -> void:
+	var elapsed := 0.0
+	while not spring.is_settled() and elapsed < SETTLE_SECONDS:
+		await await_idle_frame()
+		elapsed += get_process_delta_time()
+
+
 func test_a_click_toggles_it_and_emits_toggled() -> void:
 	var seen: Array[bool] = []
 	_box.toggled.connect(func(on: bool) -> void: seen.append(on))
@@ -83,13 +95,17 @@ func test_the_fill_follows_the_state_on_a_spring() -> void:
 	_box.button_pressed = true
 	await await_idle_frame()
 	assert_float(_box._on.value).is_less(1.0)
-	for _i in 90:
-		await await_idle_frame()
-	assert_float(_box._on.value).is_between(0.99, 1.2)
+	# The spring's own clock is time, so it is read once it has settled, not after a count of frames
+	# (90 frames are a second and a half at 60 a second, a third of a second in a window with no cap).
+	await _settle(_box._on)
+	assert_bool(_box._on.is_settled()).is_true()
+	assert_float(_box._on.value).is_equal(1.0)
 	_box.button_pressed = false
-	for _i in 120:
-		await await_idle_frame()
-	assert_float(_box._on.value).is_between(-0.05, 0.01)
+	await await_idle_frame()
+	assert_float(_box._on.value).is_less(1.0)
+	await _settle(_box._on)
+	assert_bool(_box._on.is_settled()).is_true()
+	assert_float(_box._on.value).is_equal(0.0)
 
 
 func test_reduced_motion_snaps_the_fill() -> void:
