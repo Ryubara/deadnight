@@ -1,13 +1,16 @@
 {
   "note": "Written by `gds sync` from the GDStudio kit; edit the kit, not these files.",
   "files": {
-    ".claude/agents/backend-engineer.md": "bfb64149b9aaaf0e722d443525d34163ec0f6261e404474175f569d04dc102e0",
-    ".claude/agents/blender-artist.md": "26a01f25f282c9edab61c369f451cc6e7979206668279599b8281328f0d6e043",
-    ".claude/agents/godot-engineer.md": "a47642ebcc2595ca24f4d37dce9180e6944380c6781de65fed6761c21d63dc1a",
-    ".claude/agents/reviewer.md": "68104931d795d954e189488015ffe07e23dd2e8b72a728e57fd503577826f988",
+    ".claude/agents/backend-engineer.md": "24b0024c07e9429e76e45ae7ff3bc5b5de92871d0ff60f09fae993cc16c05410",
+    ".claude/agents/blender-artist.md": "df63e2f2c24191f54f7507d09ccd546aa17fdd1e0845248f5327797b5758e98f",
+    ".claude/agents/godot-engineer.md": "fabe9e2536e49ae275716db39613d434ec62aa87198b4d8020e49eaa9156fc59",
+    ".claude/agents/level-designer.md": "602783c04f40dc0bb5b79f01bc8a7374b4bc8b26b954399f20f23ed51580a05b",
+    ".claude/agents/reviewer.md": "f86a35bac08db5bbc65963cc7c5e00108999c8c3b6121dcbb3af803e75ec8845",
     ".claude/hooks/launch.py": "74bd821e242ccc840b1d1c4f9eb84bf6e8bc4731d1322cf688896e30fd0452fe",
     ".claude/settings.json": "5929bb537471f17406b4a4fe1e008bd4e42ed3a457cce5ead5cea057dfa9d628",
-    ".github/scripts/groundwork.py": "23d13238883135438c4810ef4c539b603df48c63e3ffe31f7f530362fd9c9a96"
+    ".github/scripts/groundwork.py": "8893154eb9d77e9766f8b0184f32628486a6f3d80cf2fb859ff2f14c742238a5",
+    ".github/workflows/hold.yml": "ae007ce4087db9a387953774e054f10545d1154a6e186f3fcf5f71fca9c86354",
+    ".github/workflows/hold-sweep.yml": "2b5f114396cff36ce5b0f918da9c5214be19859d9121d24c89b450ca2b5604cf"
   },
   "blocks": {
     ".pre-commit-config.yaml#install-hooks": "1872b6359b8073a26ae3434b976e383e14c685884b42714754bee8bb08a61fec",

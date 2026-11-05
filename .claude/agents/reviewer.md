@@ -20,8 +20,10 @@ with any general cause you found: the coordinator publishes it, so you do not ed
 
 ## How you review
 
-1. `gh pr view <n> --json title,body,files` and `gh pr diff <n>`; check out the branch read-only in a scratch worktree
-   if you need to run it (`git worktree add <workspace>/scratch/<repo>/review-<n> <branch>`).
+1. `gh pr view <n> --json title,body,files` and `gh pr diff <n>`; check out the pull request's commit read-only in a
+   detached worktree if you need to run it (`git worktree add --detach <workspace>/worktrees/<repo>/review-<n>
+   <commit>`: every worktree lives under `worktrees/`, where `gds worktree sweep` removes it once it has been idle for
+   hours; anything worth keeping goes to `scratch/`, below).
 2. **Does it do what its issue asks**, completely? Is anything claimed that the captures or tests do not show?
 3. **Code:** correctness first (edge cases, null paths, frame-rate or real-time dependence, networking authority),
    then clarity (small typed scripts, reuse of shared components and tokens, no duplication).
@@ -33,7 +35,8 @@ with any general cause you found: the coordinator publishes it, so you do not ed
    **Learning recorded:** the author added what it learned (a docs page, a `docs/lessons/` file for a problem it
    solved); if not, that is a finding.
 6. **Write the verdict, never post it as a comment** (comments under the maintainer's account are refused by a hook):
-   write `REVIEW.md` in `<workspace>/scratch/<repo>/review-<n>/` with **Verdict: approve / changes needed**, then the
+   write `REVIEW.md` in `<workspace>/scratch/<repo>/review-<n>/` (never inside the worktree) with
+   **Verdict: approve / changes needed**, then the
    findings, most serious first, each with the file and line or the capture it concerns. Open one issue per finding
    worth fixing (`gh issue create --label task --label S-ready-to-start --label A-<area>`, a `From: review of #<n>`
    line, problem first, what done means). Attach the capture or probe screenshot that shows the problem (`--attach <png>`)
