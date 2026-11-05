@@ -80,6 +80,8 @@ var _title := HudStyle.label(TITLE, HudStyle.BIG, _tokens.danger, true, 2.0)
 var _round_label := HudStyle.label("", HudStyle.MEDIUM, _tokens.hot, true)
 var _caption := HudStyle.label("", HudStyle.SMALL, _tokens.ink_muted, false, 2.0)
 var _number := HudStyle.label("", HudStyle.NUMERAL, _tokens.accent, true)
+var _count := VBoxContainer.new()
+var _way_out := BoxContainer.new()
 var _ticket := HudTicket.new()
 var _grid := VBoxContainer.new()
 var _insets := Vector4.ZERO
@@ -150,14 +152,23 @@ func _build_left() -> Control:
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_child(spacer)
-	left.add_child(_caption)
-	left.add_child(_number)
+	# The countdown and the way out: one over the other, or side by side on a screen too short for
+	# the report (`_fit_report`).
+	_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_count.add_theme_constant_override(&"separation", HudStyle.SM)
+	_count.add_child(_caption)
+	_count.add_child(_number)
+	_way_out.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_way_out.vertical = true
+	_way_out.add_theme_constant_override(&"separation", HudStyle.SM)
+	_way_out.add_child(_count)
 	leave_button = UIButton.new()
 	leave_button.variant = UIButton.Variant.PRIMARY
 	leave_button.text = "Leave"
 	leave_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	leave_button.pressed.connect(func() -> void: leave_pressed.emit())
-	left.add_child(leave_button)
+	_way_out.add_child(leave_button)
+	left.add_child(_way_out)
 	return left
 
 
@@ -212,9 +223,9 @@ func show_credits(input: Dictionary) -> void:
 ## The height the report's ticket has: what the screen leaves besides the rest of the left column
 ## (read as it is laid out: the title's type fits one line, the countdown's type steps down).
 func report_room() -> float:
-	# A gap of the column lies between every two of its seven parts (the spacer is one).
+	# A gap of the column lies between every two of its five parts (the spacer is one).
 	var taken := float(HudStyle.SM)
-	for part: Control in [_title, _round_label, _caption, _number, leave_button]:
+	for part: Control in [_title, _round_label, _way_out]:
 		taken += part.get_combined_minimum_size().y + float(HudStyle.SM)
 	var margins := float(HudStyle.margin()) * 2.0 + _insets.y + _insets.w
 	return size.y - margins - taken
@@ -245,23 +256,33 @@ func _fit_title() -> void:
 
 ## Gives the report the room the left column has, and the countdown's numerals what the report
 ## cannot give up: the rows go to their floor first, the numerals after, so Leave stays on screen.
+## When they are at their floor and the report still does not fit (a phone at the largest interface
+## size: Leave is a tap target there), the countdown stands beside Leave, not over it.
 func _fit_report() -> void:
 	if _report.is_empty():
 		return
 	if size.y <= 0.0:
 		report_card.show_report(_report)
 		return
-	_set_number_size(HudStyle.NUMERAL)
-	report_card.show_report(_report, report_room())
-	var over := report_card.height() - report_room()
-	if over > 0.0:
-		var font := _number.get_theme_font(&"font")
-		var allowed := font.get_height(HudStyle.NUMERAL) - over
-		var size_px := HudStyle.NUMERAL
-		while size_px > NUMBER_FLOOR and font.get_height(size_px) > allowed:
-			size_px -= NUMBER_STEP
-		_set_number_size(size_px)
+	for beside: bool in [false, true]:
+		_way_out.vertical = not beside
+		_way_out.add_theme_constant_override(&"separation", HudStyle.LG if beside else HudStyle.SM)
+		leave_button.size_flags_vertical = (
+			Control.SIZE_SHRINK_END if beside else Control.SIZE_FILL
+		)
+		_set_number_size(HudStyle.NUMERAL)
 		report_card.show_report(_report, report_room())
+		var over := report_card.height() - report_room()
+		if over > 0.0:
+			var font := _number.get_theme_font(&"font")
+			var allowed := font.get_height(HudStyle.NUMERAL) - over
+			var size_px := HudStyle.NUMERAL
+			while size_px > NUMBER_FLOOR and font.get_height(size_px) > allowed:
+				size_px -= NUMBER_STEP
+			_set_number_size(size_px)
+			report_card.show_report(_report, report_room())
+		if report_card.height() <= report_room():
+			return
 
 
 func _set_number_size(size_px: int) -> void:

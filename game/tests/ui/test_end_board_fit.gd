@@ -71,8 +71,10 @@ func _faults(board: HudEndBoard, canvas: Vector2, insets: Vector4, where: String
 		var seen := column[i].get_global_rect()
 		if not inside.encloses(seen):
 			faults.append("%s: the %s %s leaves %s" % [where, names[i], seen, inside])
-		if i > 0 and seen.position.y < column[i - 1].get_global_rect().end.y - 0.5:
-			faults.append("%s: the %s %s is on the %s" % [where, names[i], seen, names[i - 1]])
+		# Beside the countdown (a screen too short for the report), Leave is under the report.
+		var above := 2 if names[i] == "Leave" and not board._way_out.vertical else i - 1
+		if i > 0 and seen.position.y < column[above].get_global_rect().end.y - 0.5:
+			faults.append("%s: the %s %s is on the %s" % [where, names[i], seen, names[above]])
 	for part in others:
 		if part.visible and not inside.encloses(part.get_global_rect()):
 			faults.append("%s: %s leaves %s" % [where, part.get_global_rect(), inside])
