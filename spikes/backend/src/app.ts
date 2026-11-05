@@ -360,7 +360,7 @@ export function buildApp(deps: Deps): FastifyInstance {
     },
     async (request, reply) => {
       // Always a new lobby, on the website and in a Discord Activity alike: players reach each other by code, link or
-      // Quick join, never by the Activity instance they share (#1178).
+      // the Server Browser, never by the Activity instance they share (#1178).
       const { maxPlayers = MAX_PLAYERS, visibility = "public" } = request.body ?? {};
       return reply.code(201).send(lobbyView(lobbies.create(await member(request.userId), maxPlayers, visibility)));
     },
@@ -407,11 +407,6 @@ export function buildApp(deps: Deps): FastifyInstance {
 
   app.get<{ Params: { id: string } }>("/lobbies/:id", { onRequest: requireUser }, async (request) => {
     return lobbyView(lobbies.view(request.params.id, request.userId));
-  });
-
-  // Quick join: into a public night with room, or a new public one that starts at once.
-  app.post("/lobbies/quick", { onRequest: requireUser }, async (request, reply) => {
-    return reply.code(200).send(lobbyView(lobbies.quick(await member(request.userId), await progress.levelFor(request.userId))));
   });
 
   app.post<{ Params: { id: string } }>("/lobbies/:id/leave", { onRequest: requireUser }, async (request, reply) => {

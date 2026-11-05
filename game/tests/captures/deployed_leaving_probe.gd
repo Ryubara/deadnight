@@ -27,7 +27,7 @@ func _ready() -> void:
 	var waiting: Dictionary = (await bo.api.create_lobby())["lobby"]
 	var waiting_code: String = waiting["code"]
 	await _leave_then_move(ann, bo, waiting, waiting_code, "button", "join")
-	await _leave_then_move(ann, bo, waiting, waiting_code, "tab", "quick")
+	await _leave_then_move(ann, bo, waiting, waiting_code, "tab", "list")
 	await _leave_then_move(ann, bo, waiting, waiting_code, "tab", "create")
 	if with_end:
 		await _ended_night(ann, bo)
@@ -137,8 +137,15 @@ func _leave_then_move(
 	match next:
 		"join":
 			answer = await client.api.join_code(waiting_code)
-		"quick":
-			answer = await client.api.quick()
+		"list":
+			# The Server Browser's way in: read the list, then join the first night it shows by its code.
+			var listed := await client.api.list_nights()
+			var nights: Array = listed.get("nights", [])
+			answer = (
+				await client.api.join_code(str(nights[0]["code"]))
+				if not nights.is_empty()
+				else listed
+			)
 		_:
 			answer = await client.api.create_lobby()
 	var moved_ms := Time.get_ticks_msec() - left_at

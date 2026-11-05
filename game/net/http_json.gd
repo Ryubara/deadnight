@@ -5,7 +5,9 @@ extends RefCounted
 ## it when the answer comes and never throws: a network failure is `status` 0.
 ##
 ## `await HttpJson.send(self, "POST", url, {"Authorization": "Bearer ..."}, {"name": "Ann"})` gives
-## `{"status": 200, "json": <parsed body, or null>}`.
+## `{"status": 200, "json": <parsed body, or null>, "retry_after": 0.0}`; `retry_after` is the
+## seconds a
+## `Retry-After` header asked the caller to wait (0 when there is none).
 
 const TIMEOUT_SECONDS := 10.0
 
@@ -49,7 +51,16 @@ static func send(
 	var parsed: Variant = JSON.parse_string(text) if not text.is_empty() else null
 	# A transport failure (the result is not RESULT_SUCCESS) has no status worth reading.
 	var status: int = answer[1] if answer[0] == HTTPRequest.RESULT_SUCCESS else 0
-	return {"status": status, "json": parsed}
+	return {"status": status, "json": parsed, "retry_after": _retry_after(answer[2])}
+
+
+## The seconds a `Retry-After: N` header names, or 0.
+static func _retry_after(headers: PackedStringArray) -> float:
+	for line in headers:
+		if line.to_lower().begins_with("retry-after:"):
+			var value := line.substr(line.find(":") + 1).strip_edges()
+			return maxf(0.0, value.to_float()) if value.is_valid_float() else 0.0
+	return 0.0
 
 
 static func _method(name: String) -> HTTPClient.Method:

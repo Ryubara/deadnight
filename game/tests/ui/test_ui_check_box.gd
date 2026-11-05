@@ -57,6 +57,14 @@ func _settle(spring: UISpring) -> void:
 		elapsed += get_process_delta_time()
 
 
+## Waits for frames until `spring` has moved off `from`, at most `SETTLE_SECONDS` of frame time.
+func _leave(spring: UISpring, from: float) -> void:
+	var elapsed := 0.0
+	while spring.value == from and elapsed < SETTLE_SECONDS:
+		await await_idle_frame()
+		elapsed += get_process_delta_time()
+
+
 func test_a_click_toggles_it_and_emits_toggled() -> void:
 	var seen: Array[bool] = []
 	_box.toggled.connect(func(on: bool) -> void: seen.append(on))
@@ -94,14 +102,21 @@ func test_the_fill_follows_the_state_on_a_spring() -> void:
 	UIMotion.reduced = false
 	_box.button_pressed = true
 	await await_idle_frame()
+	# One frame is not a length of time: `UISpring` takes a step only for each 1/240 s it is given, so
+	# a frame shorter than that (a window with no frame cap, a headless run) leaves the value where it
+	# was. What one frame does settle is the target; the value is read once it has left its start.
+	assert_float(_box._on.target).is_equal(1.0)
+	await _leave(_box._on, 0.0)
+	assert_float(_box._on.value).is_greater(0.0)
 	assert_float(_box._on.value).is_less(1.0)
-	# The spring's own clock is time, so it is read once it has settled, not after a count of frames
-	# (90 frames are a second and a half at 60 a second, a third of a second in a window with no cap).
 	await _settle(_box._on)
 	assert_bool(_box._on.is_settled()).is_true()
 	assert_float(_box._on.value).is_equal(1.0)
 	_box.button_pressed = false
 	await await_idle_frame()
+	assert_float(_box._on.target).is_equal(0.0)
+	await _leave(_box._on, 1.0)
+	assert_float(_box._on.value).is_greater(0.0)
 	assert_float(_box._on.value).is_less(1.0)
 	await _settle(_box._on)
 	assert_bool(_box._on.is_settled()).is_true()

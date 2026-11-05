@@ -68,7 +68,7 @@ func test_down_walks_the_starts_and_on_into_the_challenges() -> void:
 	var menu := await _menu()
 	assert_str(_focused_name()).is_equal("together")
 	await _tap(KEY_DOWN)
-	assert_str(_focused_name()).is_equal("quick_join")
+	assert_str(_focused_name()).is_equal("browser")
 	await _tap(KEY_DOWN)
 	assert_str(_focused_name()).is_equal("solo")
 	await _tap(KEY_DOWN)

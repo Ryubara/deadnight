@@ -277,7 +277,7 @@ def main() -> int:
                 browser, f"http://127.0.0.1:{PAGE_PORT}/index.html?backend={address}&probe", console, problems, "A"
             )
             lobby.to_together(page)
-            smoke.press(page, "ArrowDown")  # Quick join -> Create a night
+            smoke.press(page, "ArrowDown")  # Server Browser -> Create a night
             smoke.press(page, "Enter")
             smoke.give_name(page, "Ann")
             state = lobby.wait_for(

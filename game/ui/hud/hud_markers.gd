@@ -26,6 +26,8 @@ const LABEL_SIZE := HudStyle.MIN_TEXT
 ## state holds a new float place nearly every frame, and the part is drawn when the picture would
 ## change by a quarter of a unit (a quarter of a pixel at 1080p), not when a float does (#948).
 const PLACE_STEPS := 4.0
+## How far an objective's words keep from a card of the HUD (the outline of the letters is 3.5).
+const CLEAR_GAP := 8.0
 
 ## Where each marker is drawn on the last frame: {id: {"at": Vector2, "pinned": bool}}.
 var placed: Dictionary = {}
@@ -36,6 +38,23 @@ var tags: Dictionary = {}
 ## none): {id: {"icon": Rect2, "level": Rect2, "name": Rect2}}.
 var tag_parts: Dictionary = {}
 
+## Where each objective's words (its name and distance) were drawn on the last frame, in this
+## part's units: {id: Rect2}. They stay out of `keep_clear` (#1192).
+var labels: Dictionary = {}
+## The cards the HUD keeps in its corners, which a marker's words stay out of: the part cannot see
+## the HUD, so `Hud` lists them. A card that moves, grows or goes away redraws the markers.
+var keep_clear: Array[Control] = []:
+	set(value):
+		for card in keep_clear:
+			if is_instance_valid(card) and card.item_rect_changed.is_connected(queue_redraw):
+				card.item_rect_changed.disconnect(queue_redraw)
+				card.visibility_changed.disconnect(queue_redraw)
+		keep_clear = value
+		for card in keep_clear:
+			card.item_rect_changed.connect(queue_redraw)
+			card.visibility_changed.connect(queue_redraw)
+		queue_redraw()
+
 ## What the last draw was made from (`_key`).
 var _drawn_key: Array = []
 ## What a draw collects: every marker's shapes, their smoothed rings [centre, radius, from, to,
@@ -45,6 +64,10 @@ var _rings: Array[Array] = []
 var _words: Array[Array] = []
 ## The level icons of a draw [rect, region of the atlas]: all of them before any word.
 var _icons: Array[Array] = []
+## `keep_clear` as this draw sees it, grown by `CLEAR_GAP`, in this part's units; read by the first
+## words that need it (`_cards`), not by a draw with no objective on screen.
+var _blocked: Array[Rect2] = []
+var _blocked_read := false
 
 
 func _ready() -> void:
@@ -114,6 +137,8 @@ func _draw() -> void:
 	_icons.clear()
 	tags.clear()
 	tag_parts.clear()
+	labels.clear()
+	_blocked_read = false
 	for marker in state.markers:
 		var spot: Dictionary = placed.get(marker["id"], {})
 		if spot.is_empty():
@@ -211,7 +236,13 @@ func _draw_objective(font: Font, marker: Dictionary, spot: Dictionary) -> void:
 	var text := "%d m" % roundi(float(marker["distance"]))
 	if str(marker.get("label", "")) != "":
 		text = "%s  %s" % [str(marker["label"]).to_upper(), text]
-	_text(font, text, at + Vector2(0.0, half + LABEL_SIZE + 8.0), tokens.ink)
+	var baseline := at + Vector2(0.0, half + LABEL_SIZE + 8.0)
+	# Under the diamond, or over it when the screen ends there.
+	if baseline.y > size.y - TEXT_MARGIN:
+		baseline.y = at.y - half - 8.0
+	var words := _clear_of_cards(_on_screen(_words_rect(font, text, baseline)))
+	labels[marker["id"]] = words
+	_words.append([font, Vector2(words.position.x, words.end.y), text, tokens.ink])
 
 
 func _draw_ally(font: Font, marker: Dictionary, at: Vector2) -> void:
@@ -296,6 +327,84 @@ func _tag(
 		"level": Rect2(level_at, baseline_centre.y - LABEL_SIZE, level_width, LABEL_SIZE),
 		"name": Rect2(name_at, baseline_centre.y - LABEL_SIZE, name_width, LABEL_SIZE),
 	}
+
+
+## `words` where it stays out of the HUD's cards (#1192). Unmoved when it touches none, else the
+## nearest place on the screen that touches none: slid along its line against the edge of a card, up
+## to the edge above or below a card, and once more from there when that meets another card. A
+## screen with no such place keeps the words where they were.
+func _clear_of_cards(words: Rect2) -> Rect2:
+	if not _touches(words):
+		return words
+	var best := words
+	var best_cost := INF
+	var round_one: Array[Rect2] = _slid(words)
+	var tries: Array[Rect2] = round_one.duplicate()
+	for step in round_one:
+		if _touches(step):
+			tries.append_array(_slid(step))
+	for candidate in tries:
+		if _touches(candidate):
+			continue
+		var cost := candidate.get_center().distance_squared_to(words.get_center())
+		if cost < best_cost:
+			best = candidate
+			best_cost = cost
+	return best
+
+
+## Whether `words` meets a card.
+func _touches(words: Rect2) -> bool:
+	for card in _cards():
+		if words.intersects(card):
+			return true
+	return false
+
+
+## `words` moved to each side of every card (left, right, above, below) and kept on the screen.
+func _slid(words: Rect2) -> Array[Rect2]:
+	var moved: Array[Rect2] = []
+	for card in _cards():
+		for at: Vector2 in [
+			Vector2(card.end.x, words.position.y),
+			Vector2(card.position.x - words.size.x, words.position.y),
+			Vector2(words.position.x, card.position.y - words.size.y),
+			Vector2(words.position.x, card.end.y),
+		]:
+			var kept := _on_screen(Rect2(at, words.size))
+			if not moved.has(kept):
+				moved.append(kept)
+	return moved
+
+
+## `words` pulled inside the screen, `TEXT_MARGIN` from its edges.
+func _on_screen(words: Rect2) -> Rect2:
+	var x := clampf(
+		words.position.x, TEXT_MARGIN, maxf(size.x - TEXT_MARGIN - words.size.x, TEXT_MARGIN)
+	)
+	var y := clampf(
+		words.position.y, TEXT_MARGIN, maxf(size.y - TEXT_MARGIN - words.size.y, TEXT_MARGIN)
+	)
+	return Rect2(x, y, words.size.x, words.size.y)
+
+
+## The shown cards of `keep_clear`, grown by `CLEAR_GAP`, in this part's units, as this draw has
+## them.
+func _cards() -> Array[Rect2]:
+	if not _blocked_read:
+		_blocked = _keep_clear_rects()
+		_blocked_read = true
+	return _blocked
+
+
+func _keep_clear_rects() -> Array[Rect2]:
+	var found: Array[Rect2] = []
+	var origin := get_global_rect().position
+	for card in keep_clear:
+		if is_instance_valid(card) and card.is_visible_in_tree() and card.size != Vector2.ZERO:
+			var rect := card.get_global_rect()
+			found.append(Rect2(rect.position - origin, rect.size).grow(CLEAR_GAP))
+	return found
 
 
 func _width(font: Font, text: String) -> float:

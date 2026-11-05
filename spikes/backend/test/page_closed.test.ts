@@ -95,7 +95,7 @@ test("a host who pastes the invite in another tab keeps the lobby: the code stil
   await app.close();
 });
 
-test("one member's poll is enough to list a lobby, and a lobby of all quiet members is not Quick-joined", async () => {
+test("one member's poll is enough to list a lobby, and a lobby of all quiet members is left out of the list", async () => {
   const { app, clock, guest, call, codes } = await platform();
   const [ann, bo, cy] = [await guest("Ann"), await guest("Bo"), await guest("Cy")];
   const made = (await call("POST", "/lobbies", ann, {})).json();
@@ -104,10 +104,10 @@ test("one member's poll is enough to list a lobby, and a lobby of all quiet memb
   await call("GET", `/lobbies/${made.id}`, bo); // Bo polls; Ann has gone quiet
   assert.deepEqual(await codes(cy), [made.code]);
 
-  // Everyone quiet: a stranger's Quick join does not walk into a lobby nobody is in.
+  // Everyone quiet: the Server Browser's list does not show a lobby nobody is in, and its code still opens it.
   clock.now += 20 * SECOND;
-  const quick = (await call("POST", "/lobbies/quick", cy)).json();
-  assert.notEqual(quick.id, made.id, "Quick join made a night of its own");
+  assert.deepEqual(await codes(cy), []);
+  assert.equal((await call("POST", "/lobbies/join-by-code", cy, { code: made.code })).statusCode, 200);
   await app.close();
 });
 

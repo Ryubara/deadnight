@@ -19,7 +19,8 @@ Postgres) makes the nights and the game servers (`deadnight-server`) run them, o
 
 1. Open the web build, <https://web-production-f401d1.up.railway.app>, and wait for the menu.
 2. Choose **Play together** (the second item). Then one of:
-   - **Quick join**: you land in a public night with room, or a new one starts.
+   - **Server browser** (the Play tab's second item, or the first on this screen): the public nights, lobbies that wait
+     and nights in progress, one row each; press a row to land in it.
    - **Create a night**: the lobby opens with a code, an invite link and eight seats, you as host. **Copy the link** and
      send it. A friend who opens the link (`?room=CODE`) reads your lobby first (*Waiting room, Ann is hosting, 1 of 4
      here.*) and presses **Join**; or types the code under **Join with the code**. Everyone sees who is there within a
@@ -48,7 +49,7 @@ date, when the server is the newer: reload). To read what the server sees: `rail
 (one JSON line a `room_opened`, `joined`, `left` and every ten seconds a `stats` for each night).
 
 `tools/web_smoke/rooms.py` plays the whole flow in headless Chromium with four pages (A creates a night, B opens the
-invite link, C and D press Quick join) and fails unless each pair sees exactly two players:
+invite link, C makes a night and D finds it in the Server Browser) and fails unless each pair sees exactly two players:
 
 ```text
 uv run --project <kit>/python gds quiet --   uv run --with playwright==1.64.1 python tools/web_smoke/rooms.py <web URL or build/web> <backend https address> <out folder> --gpu

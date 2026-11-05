@@ -241,9 +241,12 @@ static func snapshot(top: Control) -> Dictionary:
 		"weapon_slot_held": 0,
 		"settings_open": false,
 		"menu_buttons": "",
+		"menu_button_sizes": "",
 		"tab": "",
 		"stage": "",
-		"quick_join": "",
+		"browser": "",
+		"browser_status": "",
+		"browser_note": "",
 		"gamepad": "",
 		"signed_in": TogetherApi.signed_in(),
 		"controller_hint": false,
@@ -272,16 +275,13 @@ static func snapshot(top: Control) -> Dictionary:
 		else null
 	)
 	data["controller_hint"] = hint != null and hint.label.is_visible_in_tree()
-	if top is MainMenu or top is PlayScreen or top is LobbyScreen:
+	if top is MainMenu or top is PlayScreen or top is LobbyScreen or top is ServerBrowserScreen:
 		# Where a finger taps each start and button, as fractions of the window.
 		data["spots"] = _spots(top)
 	var menu := top as MainMenu
 	if menu != null and menu.shell != null:
 		data["tab"] = MenuTab.label(menu.shell.tab)
 		data["stage"] = ["live", "half", "still"][menu.shell.view.level]
-		# Quick join's card over the menu: what it says while it searches or after it failed.
-		var card := menu.find_child("QuickJoin", false, false) as QuickJoinOverlay
-		data["quick_join"] = card.text() if card != null and card.visible else ""
 	var together := top as TogetherScreen
 	if together != null:
 		# What the screen says (a browser test reads it); the code is the lobby screen's.
@@ -289,6 +289,13 @@ static func snapshot(top: Control) -> Dictionary:
 		# The name prompt is up (a browser test types a name into it).
 		data["naming"] = together.name_field.is_visible_in_tree()
 		data["code_text"] = together.code_field.text  # what a paste put into the code field
+	var browser := top as ServerBrowserScreen
+	if browser != null:
+		# The Server Browser: what it says, the note under it, and the rows as `CODE kind
+		# people/seats map host`.
+		data["browser_status"] = browser.status.text
+		data["browser_note"] = browser.note.text
+		data["browser"] = browser.rows_text()
 	var lobby := top as LobbyScreen
 	if lobby != null:
 		# The lobby: its code, the seats as `1 Ann HOST|2  Bo|...`, the standing line, the last
@@ -375,6 +382,7 @@ static func snapshot(top: Control) -> Dictionary:
 	data["reticle"] = night_screen.reticle_shown()
 	data["settings_open"] = night_screen.settings_open()
 	data["menu_buttons"] = _button_spots(night_screen)
+	data["menu_button_sizes"] = _button_sizes(night_screen)
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)
@@ -406,6 +414,21 @@ static func _button_spots(screen: NightScreen) -> String:
 	return _spots(screen)
 
 
+## The night's shown buttons as `text:w,h`: the size as fractions of the window, so a browser test
+## reads the size a finger meets in CSS pixels (#1192).
+static func _button_sizes(screen: NightScreen) -> String:
+	if not screen.is_inside_tree():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var found: Array[String] = []
+	for node in screen.find_children("*", "UIButton", true, false):
+		var button := node as UIButton
+		if button.is_visible_in_tree():
+			var share := button.get_global_rect().size / size
+			found.append("%s:%.5f,%.5f" % [button.text, share.x, share.y])
+	return "|".join(found)
+
+
 ## The screen's shown buttons as `text:x,y` (the centre, as fractions of the window): the
 ## `UIButton`s and the menu's `MenuItemButton`s (by their title).
 static func _spots(screen: Control) -> String:
@@ -424,6 +447,13 @@ static func _spots(screen: Control) -> String:
 			continue
 		var at := button.get_global_rect().get_center() / size
 		spots.append("%s:%.4f,%.4f" % [text, at.x, at.y])
+	var browser := screen as ServerBrowserScreen
+	if browser != null:
+		# Each night's row, to tap it: `night_<CODE>`.
+		for row in browser.rows():
+			if row.is_visible_in_tree():
+				var middle := row.get_global_rect().get_center() / size
+				spots.append("night_%s:%.4f,%.4f" % [row.entry.code, middle.x, middle.y])
 	var play := screen as PlayScreen
 	var lobby := screen as LobbyScreen
 	var panel: MatchSettingsPanel = (

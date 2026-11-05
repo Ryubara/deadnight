@@ -154,3 +154,54 @@ func test_a_screen_that_is_going_does_not_take_back_the_word_of_the_one_that_rep
 	old_screen.free()
 	assert_str(PageClosing.armed_for).is_equal(str(second["id"]))
 	assert_bool(PageClosing.armed.is_empty()).is_false()
+
+
+func test_a_row_of_the_server_browser_whose_tab_just_closed_says_so_in_words_and_leaves_the_list(
+	_do_skip := BackendFixture.why_not() != "", _skip_reason := SKIP
+) -> void:
+	var host := await _guest("Ann")
+	var other := await _guest("Di")
+	var viewer := await _guest("Cy")
+	var made: Dictionary = (await host.create_lobby())["lobby"]
+	var kept: Dictionary = (await other.create_lobby())["lobby"]
+	var lobby_screen := await _open(made, host)
+	var request: Dictionary = PageClosing.armed
+	assert_bool(request.is_empty()).is_false()
+
+	# Cy's list shows both nights.
+	UIRouter.reset(
+		"res://ui/screens/server_browser_screen.tscn",
+		UITransition.Kind.CUT,
+		{"api": viewer, "lobby": {}}
+	)
+	await UIRouter.idle
+	var screen := UIRouter.top() as ServerBrowserScreen
+	await _until(
+		func() -> bool:
+			return screen.feed.state == NightListFeed.State.LOADED and screen.rows().size() == 2
+	)
+	assert_int(screen.rows().size()).is_equal(2)
+
+	# Ann's tab closes: her lobby is gone at once. Cy's row for it is stale until the next read, and
+	# a press on it says the night has ended (words, not an error) and reads the list again.
+	assert_int(await _beacon(request)).is_equal(200)
+	var row := screen.row_of(str(made["code"]))
+	assert_object(row).is_not_null()
+	row.pressed.emit()
+	await _until(func() -> bool: return screen.note.text == ServerBrowserScreen.GONE)
+	assert_str(screen.note.text).is_equal(ServerBrowserScreen.GONE)
+	assert_bool(screen.is_busy()).is_false()
+	assert_int(UIRouter.depth()).is_equal(1)
+	await _until(func() -> bool: return screen.rows().size() == 1)
+	assert_str(screen.rows()[0].entry.code).is_equal(str(kept["code"]))
+	assert_object(screen.row_of(str(made["code"]))).is_null()
+	lobby_screen = null
+
+
+func _until(condition: Callable, seconds: float = 20.0) -> bool:
+	var began := Time.get_ticks_msec()
+	while not await condition.call():
+		if (Time.get_ticks_msec() - began) / 1000.0 > seconds:
+			return false
+		await get_tree().create_timer(0.05).timeout
+	return true
