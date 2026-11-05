@@ -474,8 +474,11 @@ func _show_overlay(title: String, note: String, can_resume: bool) -> void:
 	(_resume if can_resume else _quit).grab_focus()
 
 
+## The pause menu's "Leave night": the same way out as the end board's Leave, so the lobby the night
+## came from is left too (the host role passes on, and a night with nobody in it ends), never only
+## the screen (#1177).
 func _leave() -> void:
-	UIRouter.pop()
+	_go_back(false)
 
 
 ## The settings page over the card: the same screen as the main menu's, with a Back that comes here.

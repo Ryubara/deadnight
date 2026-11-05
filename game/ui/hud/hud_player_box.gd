@@ -350,10 +350,14 @@ func _layout() -> void:
 	var number_px := _number.get_theme_font_size(&"font_size")
 	var name_font := _name.get_theme_font(&"font")
 	var name_px := _name.get_theme_font_size(&"font_size")
-	# One baseline for both: the numerals' capitals centred in the box.
-	var baseline := (
-		box.size.y * 0.5
-		+ (number_font.get_ascent(number_px) - number_font.get_descent(number_px)) * 0.5
+	# One baseline for both: the numerals' capitals centred in the box, on a whole unit (a label
+	# drawn from half a unit sets its glyphs at a whole one, and the icon beside the level follows
+	# the digits where they are drawn).
+	var baseline := roundf(
+		(
+			box.size.y * 0.5
+			+ (number_font.get_ascent(number_px) - number_font.get_descent(number_px)) * 0.5
+		)
 	)
 	var wide := HudStyle.text_width(number_font, _number.text, number_px) + 2.0
 	_number.size = Vector2(
@@ -366,9 +370,10 @@ func _layout() -> void:
 	badge_parts = {}
 	if shown_level.x > 0:
 		var room := LevelTag.level_room(name_font, name_px)
+		# The icon's body is centred on the digits' ink, which sit on the name's baseline.
 		var icon := Rect2(
 			name_left,
-			box.position.y + (box.size.y - LevelTag.ICON) * 0.5,
+			LevelTag.icon_top(LevelTag.digits_centre(name_font, name_px, baseline), shown_level.y),
 			LevelTag.ICON,
 			LevelTag.ICON
 		)

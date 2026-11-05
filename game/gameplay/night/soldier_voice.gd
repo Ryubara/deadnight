@@ -165,7 +165,7 @@ func _next_cheer() -> void:
 
 func _on_event(event: Dictionary) -> void:
 	match event["type"]:
-		&"level_up", &"tier_up", &"unlock_earned", &"challenge_done":
+		&"level_up", &"tier_up", &"unlock_earned", &"challenge_done", &"poster_set_done":
 			_on_progress(event)
 		&"break_started":
 			_break_ends = director.now() + event["seconds"]

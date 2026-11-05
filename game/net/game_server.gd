@@ -87,6 +87,8 @@ var board_reader := Callable()
 ## What the players are asked and the day it is for them (see `NightHost`); unset, the shipped ones.
 var challenge_catalog: ChallengeCatalog
 var challenge_clock: ChallengeClock
+## The poster sets a finished challenge may complete; unset, the shipped ones. Tests set it.
+var poster_sets: PosterSets
 ## False: no room follows any challenge board (the measurement's arm without the tracker).
 var challenge_awards := true
 ## False: no room awards XP (the measurement's arm without the tally).
@@ -322,6 +324,7 @@ func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 	room.challenge_awards = challenge_awards
 	room.challenge_catalog = challenge_catalog
 	room.challenge_clock = challenge_clock
+	room.poster_sets = poster_sets
 	room.clock = clock
 	room.report_ready.connect(_on_report.bind(match_id))
 	room.board_wanted.connect(_read_board.bind(room))
@@ -334,6 +337,7 @@ func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 	room.bot_limit = bot_limits.for_room(_rooms.size() + _building.size())
 	room.heavy_parity = _lighter_parity()
 	room.emptied.connect(func() -> void: _end_room(match_id))
+	room.user_left.connect(_on_user_left.bind(match_id))
 	viewport.add_child(room)
 	await room.built
 	_rooms[match_id] = room
@@ -385,6 +389,13 @@ func _close_if_done(match_id: String, now: float) -> void:
 	if room.users_present() == 0 and room.away_count() == 0 and room.peer_count() == 0:
 		if now - _opened_at[match_id] > idle_room_seconds:
 			_end_room(match_id)
+
+
+## A person's seat is empty: the backend takes them out of the match's lobby at once, so nothing of
+## the night holds them and a night with nobody left is over (`POST /internal/matches/:id/left`).
+func _on_user_left(user: String, match_id: String) -> void:
+	_log("user_left", {"match": match_id})
+	_tell_backend("POST", "/internal/matches/%s/left" % match_id.uri_encode(), {"userId": user})
 
 
 func _end_room(match_id: String) -> void:
