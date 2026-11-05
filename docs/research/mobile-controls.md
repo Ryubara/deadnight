@@ -551,7 +551,20 @@ let go (even if they drag finger back into the circle)". What was built:
   edge walks at 4.80 m/s (`run_speed`) on both pages, a drag 15 CSS px past the ring still walks with no buzz, the
   latch sprints at 7.0 m/s (`sprint_speed`) on every side, one buzz, and stays on at a 0.67 push and at the middle
   of the ring until the lift (4.09 m/s at 0.67 after one second: the stick is analog, so a latched sprinter who relaxes
-  the thumb slows down but is still sprinting); a new press walks.
+  the thumb slows down but is still sprinting); a new press walks. Run again after #1280, #1281 and #1283 on the merged
+  game (844 x 390 and 667 x 375 at a pixel ratio of 3, CSS px per unit 0.3611 and 0.3472): the ring is 40.0 CSS px and
+  the sprint starts at 58.0 on both; the edge walks at 4.80 m/s with 0 buzzes; a drag 15 CSS px past the ring walks, 0
+  buzzes; past the line one buzz of 40 ms (`navigator.vibrate` replaced by a counter, 10 buzzes in the whole run: one
+  per sprint start); 7.0 m/s to the right, down and up-right; a finger put back in the ring and at its middle keeps the
+  latch (at the middle no push, so the body walks off the sprint with the latch kept); the lift clears it; the pause
+  menu with a latched stick leaves nothing held and a press after it walks. Sideways at the edge: 4.67 m/s (the
+  diagonal's share of the push) and no latch. Ending the body's sprint with the latch kept, second finger held on the
+  stick finger: Aim held 1.71 m/s (the aimed walk) then 7.0 m/s again when it lifts; one Crouch tap 2.4 m/s, the
+  second tap 7.0 m/s again, the sprint cue on the ring the whole time. (The speeds that read 0.0 in the log are the
+  player's face against the wall after the first push: the edge's 4.8 is the peak of the first second.)
+- **Where the cue is.** With the phone's buzz missing the ring is the cue: accent colour, thicker, a tinted disc and
+  SPRINT above the knob (captures in the pull request; the web build cannot tell the game whether the phone buzzes).
+  iOS Safari is believed to have no `navigator.vibrate` (not checked on a device), Discord's webview was not checked.
 
 ## Sources
 

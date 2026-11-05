@@ -169,9 +169,10 @@ def second_finger_down(client: CDPSession, thumb: Thumb, at: tuple[float, float]
 
 
 def second_finger_up(client: CDPSession, thumb: Thumb) -> None:
-    """Lifts the second finger and keeps the first: a move without it releases it."""
+    """Lifts the second finger and keeps the first: a touchEnd that lists only the second releases only it (a
+    touchMove without it releases nothing, which Chrome's DevTools protocol docs suggest it would)."""
+    touch(client, "touchEnd", thumb.also)
     thumb.also = []
-    touch(client, "touchMove", thumb.points())
     time.sleep(STEP_PERIOD_S)
 
 
