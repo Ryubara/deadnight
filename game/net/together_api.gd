@@ -22,6 +22,11 @@ const DISCORD_STATE_JS := (
 const SIGN_IN_TRIES := 3
 ## Seconds to wait for Discord's answer to the Activity's sign-in.
 const DISCORD_WAIT_SECONDS := 30.0
+## Whether a night made from the game is public (listed in the Server Browser, open to Quick join)
+## until its host switches Private on. THE ONE PLACE this is decided: `create` and `create_lobby`
+## send it, and the lobby's Private switch starts from what the lobby says (this, for a backend that
+## says nothing). The maintainer has not yet confirmed that public is the right default (#1186).
+const PUBLIC_BY_DEFAULT := true
 ## What a player reads for each reason the backend gives.
 const TEXTS := {
 	"not_found": "There is no night with that code. Check it and try again.",
@@ -186,7 +191,7 @@ func _sign_in_call(path: String, body: Dictionary) -> Dictionary:
 ## lobby and signs them into every ticket, and the game server's room starts with them. Null is
 ## the usual rules.
 func create(settings: MatchSettings = null) -> Dictionary:
-	var made := await _call("POST", "/lobbies", {"maxPlayers": NightHost.MAX_PLAYERS})
+	var made := await _call("POST", "/lobbies", new_lobby_body())
 	if not made["ok"]:
 		return made
 	if made["state"] != "started":
@@ -201,10 +206,24 @@ func create(settings: MatchSettings = null) -> Dictionary:
 	return {"ok": true, "lobby": made}
 
 
+## What a new night is made with: the seats for people and whether it is listed
+## (`PUBLIC_BY_DEFAULT`).
+static func new_lobby_body() -> Dictionary:
+	return {
+		"maxPlayers": NightHost.MAX_PLAYERS,
+		"visibility": visibility_word(PUBLIC_BY_DEFAULT),
+	}
+
+
+## The word the backend uses for a night that is listed (`public`) or not (`private`).
+static func visibility_word(public_night: bool) -> String:
+	return "public" if public_night else "private"
+
+
 ## A lobby of your own, still waiting: the player is its host and seat 1, and nobody has a night
 ## until `start`. Always a new lobby, in the Activity as on the website. `{"ok", "lobby"}`.
 func create_lobby() -> Dictionary:
-	var made := await _call("POST", "/lobbies", {"maxPlayers": NightHost.MAX_PLAYERS})
+	var made := await _call("POST", "/lobbies", new_lobby_body())
 	return {"ok": true, "lobby": made} if made["ok"] else made
 
 
@@ -276,9 +295,7 @@ func list_nights() -> Dictionary:
 ## still joins) or public again. A new night is public. `{"ok", "lobby"}`.
 func set_visibility(lobby: Dictionary, public_night: bool) -> Dictionary:
 	var answer := await _call(
-		"PUT",
-		"/lobbies/%s/visibility" % lobby["id"],
-		{"visibility": "public" if public_night else "private"}
+		"PUT", "/lobbies/%s/visibility" % lobby["id"], {"visibility": visibility_word(public_night)}
 	)
 	return {"ok": true, "lobby": answer} if answer["ok"] else answer
 
