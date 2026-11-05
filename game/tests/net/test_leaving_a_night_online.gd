@@ -7,7 +7,8 @@
 # in an existing night", and "why aren't lobbies immediately disbanded and player state cleared
 # whenever the lobby is empty? The lobby I left had bots in it". Every way out of a night is run
 # here, with bots in the room, and each ends with the same check: the player creates, joins and
-# quick-joins another night at once, and the lobby they left is gone when no person is in it.
+# joins a night from the Server Browser's list at once, and the lobby they left is gone when no
+# person is in it.
 #
 # It needs Node 24 and the backend's packages (`npm ci` in `spikes/backend`); without them the suite
 # is skipped with a line saying so.
@@ -22,7 +23,7 @@ const GAME_SERVER_SECRET := "server-secret-of-at-least-32-characters-c"
 const SECONDS := 2.0
 const SKIP := "needs node 24 and npm ci in spikes/backend"
 ## The next thing a player does after leaving, one for each of three players.
-const NEXT := ["create", "join", "quick"]
+const NEXT := ["create", "join", "list"]
 
 var _pid := 0
 var _backend := ""
@@ -224,7 +225,16 @@ func _next(player: Guest, kind: String, target: Dictionary) -> Dictionary:
 		"join":
 			return await player.api.join_code(target["code"])
 		_:
-			return await player.api.quick()
+			return await _join_from_the_list(player)
+
+
+## What the Server Browser does for a press on its first row: read the list, join that night by its
+## code.
+func _join_from_the_list(player: Guest) -> Dictionary:
+	var listed := await player.api.list_nights()
+	if not listed["ok"] or (listed["nights"] as Array).is_empty():
+		return listed
+	return await player.api.join_code(str(listed["nights"][0]["code"]))
 
 
 ## Everyone in the room goes down: the night is over, as the server's own rules say.
@@ -239,7 +249,8 @@ func _end(room: NightHost) -> void:
 
 
 ## Three players, each alone in a night of their own with bots, leave the same way and each does a
-## different next thing at once: create, join a waiting lobby, quick join. The lobby each left is
+## different next thing at once: create, join a waiting lobby, join from the list. The lobby each
+## left is
 ## gone when no person is in it, and its room is over.
 func _leave_with_bots_then_move(how: String) -> void:
 	var watcher := await _guest("Watcher")
@@ -374,4 +385,4 @@ func test_a_player_who_drops_out_of_a_night_with_others_in_it_is_no_longer_in_it
 	var seen := await bo.api.refresh(bo.lobby)
 	assert_str(seen["lobby"]["hostId"]).is_equal(bo.api.my_id())
 	# Ann joins a night straight away.
-	assert_bool((await ann.api.quick())["ok"]).is_true()
+	assert_bool((await _join_from_the_list(ann))["ok"]).is_true()

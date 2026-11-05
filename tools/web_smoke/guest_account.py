@@ -142,7 +142,7 @@ def to_lobby(page: Page, name: str | None) -> dict:
     smoke.press(page, "Enter")
     wait_for(page, "the Play together screen", lambda s: s.get("screen") == "together_screen", smoke.SCREEN_TIMEOUT_S)
     page.wait_for_timeout(1500)
-    smoke.press(page, "ArrowDown")  # Quick join -> Create a night
+    smoke.press(page, "ArrowDown")  # Server browser -> Create a night
     smoke.press(page, "Enter")
     if name is not None:
         smoke.give_name(page, name)  # a player with no saved name is asked first

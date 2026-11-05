@@ -492,7 +492,6 @@
     "ui/test_play_screen.gd": 2.9,
     "ui/test_popup_lane.gd": 6.2,
     "ui/test_popup_queue.gd": 0.3,
-    "ui/test_quick_join.gd": 7.2,
     "ui/test_reduced_motion_skin.gd": 0.7,
     "ui/test_settings_layout.gd": 17.0,
     "ui/test_settings_screen.gd": 0.8,
