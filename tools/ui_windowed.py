@@ -43,6 +43,10 @@ UI_FOLDER = "tests/ui"
 # skips there or runs no test case is reported as `not-run`, not as a pass.
 PIXEL_SUITES = ("test_level_ink", "test_poster_art_pixels")
 
+# A known-file entry that starts with this is a suite the runner's software GL cannot judge (too slow, or it counts
+# frames in real time): it is run and shown, never a reason to open an issue, and passing is not stale.
+SOFTWARE_GL = "llvmpipe:"
+
 # One suite's own limit. The longest suite takes about a minute on a developer's GPU; a hang costs this much, once.
 SUITE_TIMEOUT_SECONDS = 300
 HEADLESS_TIMEOUT_SECONDS = 180
@@ -192,12 +196,23 @@ def load_known(path: Path = KNOWN_FILE) -> dict[str, str]:
 
 def classify(result: dict, known: dict[str, str]) -> dict[str, list]:
     """Sort a run's suites into what the report says. `window_only` failed in the window and passed headless."""
-    groups: dict[str, list] = {"window_only": [], "both": [], "not_run": [], "known": [], "stale": [], "passed": []}
+    groups: dict[str, list] = {
+        "window_only": [],
+        "both": [],
+        "not_run": [],
+        "known": [],
+        "software_gl": [],
+        "stale": [],
+        "passed": [],
+    }
     for row in result["suites"]:
         name, outcome = row["suite"], row["outcome"]
+        soft = known.get(name, "").startswith(SOFTWARE_GL)
         if outcome == PASSED:
-            (groups["stale"] if name in known else groups["passed"]).append(row)
-        elif name in known:
+            (groups["stale"] if name in known and not soft else groups["passed"]).append(row)
+        elif soft and row.get("headless") == PASSED:
+            groups["software_gl"].append(row)
+        elif name in known and not soft:
             groups["known"].append(row)
         elif outcome == NOT_RUN:
             groups["not_run"].append(row)
@@ -274,6 +289,7 @@ def render(
             ("not_run", "Pixel suites that did not run in the window"),
             ("stale", "Listed as known failures but pass now: remove them from `tools/ui_windowed_known.json`"),
             ("known", "Known failures, each with the issue that fixes it"),
+            ("software_gl", "Not judged: the runner's software GL is too slow or too slow-framed for them"),
         ]
         for key, title in sections:
             rows = groups[key]
@@ -367,14 +383,27 @@ def self_test() -> int:
         {"suite": "test_known", "outcome": FAILED, "seconds": 9.0, "headless": PASSED},
         {"suite": "test_fixed", "outcome": PASSED, "seconds": 9.0},
         {"suite": "test_level_ink", "outcome": NOT_RUN, "seconds": 5.0, "headless": PASSED},
+        {"suite": "test_slow", "outcome": TIMEOUT, "seconds": 300.0, "headless": PASSED},
+        {"suite": "test_slow_ok", "outcome": PASSED, "seconds": 90.0},
+        {"suite": "test_slow_red", "outcome": TIMEOUT, "seconds": 300.0, "headless": FAILED},
     ]
-    known = {"test_known": "#1", "test_fixed": "#2"}
+    known = {
+        "test_known": "#1",
+        "test_fixed": "#2",
+        "test_slow": "llvmpipe: draws 60 frames",
+        "test_slow_ok": "llvmpipe: draws 60 frames",
+        "test_slow_red": "llvmpipe: draws 60 frames",
+    }
     groups = classify({"suites": rows, "complete": True}, known)
     assert [r["suite"] for r in groups["window_only"]] == ["test_win", "test_hang"]
-    assert [r["suite"] for r in groups["both"]] == ["test_red"]
+    assert [r["suite"] for r in groups["both"]] == ["test_red", "test_slow_red"]
     assert [r["suite"] for r in groups["known"]] == ["test_known"]
     assert [r["suite"] for r in groups["stale"]] == ["test_fixed"]
     assert [r["suite"] for r in groups["not_run"]] == ["test_level_ink"]
+    # A software-GL suite that times out is only shown; one that passes is not stale; one red headless too is red.
+    assert [r["suite"] for r in groups["software_gl"]] == ["test_slow"]
+    assert "test_slow_ok" not in [r["suite"] for r in groups["stale"]]
+
     assert state_of("success", {"suites": rows, "complete": True}, groups) == "failing"
     only_known = classify({"suites": rows[:1] + rows[4:5], "complete": True}, known)
     assert (

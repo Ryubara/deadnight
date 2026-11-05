@@ -1,28 +1,45 @@
 # The UI suites in a window, on a schedule (#1196). CI runs every GdUnit suite headless, where the game's own switches
 # that a window turns the other way are off (the helicopter drop, the loading screen, a 64 pixel window that never makes
-# the menu shell a phone's), so three suites failed for days only in a window (#1187) and three more still do (#1195).
-# This runs `game/tests/ui` on a Linux runner under a virtual display (`xvfb-run`, Mesa's software GL, the Compatibility
+# the menu shell a phone's), so three suites failed for days only in a window (#1187) and more still do (#1195). This
+# runs `game/tests/ui` on a Linux runner under a virtual display (`xvfb-run`, Mesa's software GL, the Compatibility
 # renderer), one Godot process a suite with its own timeout, and reports the suites that fail there.
-# SPIKE: the push trigger below is for the first trials of this branch only.
+#
+# It is never part of a pull request and never a required check, so it cannot block a merge. How a result reaches
+# people (docs/research/windowed-ui-ci.md): the `report` job opens one issue ("Windowed UI suites need a look") when a
+# suite fails in the window and passes headless, when a listed known failure passes, when a pixel suite did not run, and
+# when the run could not run or stopped part way; it rewrites that issue on every run and closes it on the first clean
+# one; and it fails the run, so the run list is red too. The workflow is the actor; no agent posts for it.
 name: ui-windowed
 
 on:
-  push:
+  push: # TRIAL, removed before the pull request is ready: the branch's own runs of the three paths of the report
     branches: [ci-run-the-ui-suites-windowed-on-a-schedule-so]
     paths: [.github/workflows/ui-windowed.yml]
+  schedule:
+    - cron: "47 4 * * *"
   workflow_dispatch:
     inputs:
       suites:
         description: "Comma-separated suites (test_level_ink,test_night_crosshair); empty: all of tests/ui"
         default: ""
         type: string
+      timeout:
+        description: "Seconds a suite may take before it is stopped"
+        default: "300"
+        type: string
 
 permissions:
   contents: read
 
+concurrency:
+  group: ui-windowed
+  cancel-in-progress: false
+
 jobs:
   windowed:
     runs-on: ubuntu-24.04
+    # The suites take about 35 minutes (docs/research/windowed-ui-ci.md); the run step's own limit is below the job's,
+    # so a run that stops there still uploads what it ran and the `report` job says it stopped.
     timeout-minutes: 90
     steps:
       - name: Start the clock
@@ -31,7 +48,7 @@ jobs:
         with:
           path: repos/deadnight
           persist-credentials: false
-          lfs: true
+          lfs: true # models, textures and sounds are LFS objects: without them Godot imports pointer files
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Ryubara/gdstudio
@@ -48,7 +65,6 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 libegl1 \
             libxcursor1 libxinerama1 libxi6 libxrandr2 libxkbcommon0 libfontconfig1 libasound2t64
-          echo "setup done at $(( $(date +%s) - CLOCK )) s"
       - name: Make the workspace and fetch the pinned Godot and GdUnit4
         timeout-minutes: 10
         run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,gdunit4
@@ -59,35 +75,28 @@ jobs:
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
           "$godot" --headless --path repos/deadnight/game --import 2>&1 | tee import.log
           ! grep -E "^(SCRIPT )?ERROR" import.log
-          echo "import done at $(( $(date +%s) - CLOCK )) s"
-      - name: What the display and the renderer are
-        timeout-minutes: 3
-        run: |
-          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
-          xvfb-run -a -s "-screen 0 1920x1080x24" "$godot" --path repos/deadnight/game --quit-after 5 --verbose 2>&1 | grep -iE "OpenGL|Mesa|llvmpipe|Vulkan|Renderer|GLES|display|X11" | head -20 || true
-      - name: SPIKE, the hang of the kit lesson
-        # Two suites in one process, the first one pushing mouse events (the pair that hung on a private Windows desktop).
-        timeout-minutes: 8
-        continue-on-error: true
-        run: |
-          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
-          start=$(date +%s)
-          timeout 400 xvfb-run -a -s "-screen 0 1920x1080x24" "$godot" --path repos/deadnight/game --audio-driver Dummy \
-            -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests/ui/test_main_menu_input.gd \
-            -a res://tests/ui/test_night_crosshair.gd -c 2>&1 \
-            | grep -E "Overall Summary|Total execution|PASSED|FAILED" | tail -30 || true
-          echo "pair took $(( $(date +%s) - start )) s"
       - name: Run the suites in a window
-        timeout-minutes: 80
+        # One Godot a suite: a suite that hangs costs its own five minutes and nothing after it. A suite that does not
+        # pass is run again headless, as `ci` runs it, to say whether the window is what differs. The step ends 0 when
+        # suites fail; only a run that could not run ends it red.
+        timeout-minutes: 75
         env:
-          SUITES: ${{ inputs.suites }}
+          SUITES: ${{ inputs.suites || 'test_hud_prompt_fit,test_menu_hero_arms,test_menu_stage,test_reduced_motion_skin,test_night_screen,test_level_ink,test_poster_art_pixels' }}
+          SUITE_TIMEOUT: ${{ inputs.timeout || '900' }}
           LIBGL_ALWAYS_SOFTWARE: "1"
         run: |
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
           python3 repos/deadnight/tools/ui_windowed.py --self-test
-          python3 repos/deadnight/tools/ui_windowed.py run --project repos/deadnight/game --out out --suites "$SUITES" \
+          {
+            echo "### Where it ran"
+            echo
+            xvfb-run -a -s "-screen 0 1920x1080x24" "$godot" --path repos/deadnight/game --quit-after 5 --verbose 2>&1 \
+              | grep -E "OpenGL API" | head -1 || true
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+          python3 repos/deadnight/tools/ui_windowed.py run --project repos/deadnight/game --out out --suites "$SUITES" --timeout "$SUITE_TIMEOUT" \
             --headless-godot "$godot" -- xvfb-run -a -s "-screen 0 1920x1080x24" "$godot"
-          echo "suites done at $(( $(date +%s) - CLOCK )) s"
+          echo "the suites took $(( $(date +%s) - CLOCK )) s with the setup"
       - name: Upload the logs
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -97,9 +106,73 @@ jobs:
             out
             import.log
           if-no-files-found: warn
-      - name: Show the result
-        if: always()
+          retention-days: 14
+
+  report:
+    # Always, and from the result files, not from the run job's exit code: a run job that failed, was cancelled or never
+    # uploaded anything is "could not run", never "clean" (tools/ui_windowed.py report).
+    needs: windowed
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        continue-on-error: true # no artifact is the run that never got that far: the report says so
+        with:
+          name: ui-windowed
+          path: downloaded
+      - name: Classify the run
+        id: report
+        env:
+          RUN_RESULT: ${{ needs.windowed.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          python3 repos/deadnight/tools/ui_windowed.py report --out out --job-result "${{ job.status }}" \
-            --markdown summary.md --known repos/deadnight/tools/ui_windowed_known.json || true
-          [ -f summary.md ] && cat summary.md >> "$GITHUB_STEP_SUMMARY" || true
+          python3 tools/ui_windowed.py report --out downloaded/out --job-result "$RUN_RESULT" --run-url "$RUN_URL" \
+            --markdown summary.md --issue issue.md --github-output "$GITHUB_OUTPUT"
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Open, rewrite or close the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          STATE: ${{ steps.report.outputs.state }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          [[ "$STATE" =~ ^(clean|known-only|failing|could-not-run)$ ]] || { echo "::error::no state from the report"; exit 1; }
+          title="Windowed UI suites need a look"
+          number=$(gh issue list --state open --search "\"$title\" in:title" --json number,title \
+            --jq "map(select(.title == \"$title\")) | .[0].number // empty")
+          case "$STATE" in
+            failing|could-not-run)
+              if [ -z "$number" ]; then
+                gh issue create --title "$title" --label task --label A-tests --label S-needs-triage --body-file issue.md
+              else
+                before=$(gh issue view "$number" --json body --jq .body)
+                gh issue edit "$number" --body-file issue.md
+                # A change of kind (failing, then could not run) is worth a notification; the same state is not.
+                if ! grep -qF "<!-- ui-windowed-state: $STATE -->" <<<"$before"; then
+                  gh issue comment "$number" --body "The windowed run is now \`$STATE\`: $RUN_URL"
+                fi
+              fi
+              ;;
+            *)
+              if [ -n "$number" ]; then
+                gh issue comment "$number" --body "A windowed run is $STATE again: $RUN_URL"
+                gh issue close "$number" --reason completed
+              fi
+              ;;
+          esac
+      - name: Fail the run when there is something to look at
+        # The run list is red for a window failure or a run that could not run; it blocks nothing.
+        if: steps.report.outputs.state != 'clean' && steps.report.outputs.state != 'known-only'
+        env:
+          STATE: ${{ steps.report.outputs.state }}
+        run: |
+          echo "::error::the windowed UI run is ${STATE:-unknown}: see the job summary and the issue"
+          exit 1

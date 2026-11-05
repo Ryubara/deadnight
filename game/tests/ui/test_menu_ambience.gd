@@ -13,9 +13,13 @@ const FADE_OUT_S := 2.1
 const FADE_IN_S := 3.1
 
 var _saved_path: String
+var _arrival := false
 
 
 func before_test() -> void:
+	_arrival = NightScreen.arrival_enabled
+	# No drop due, as headless always has it (`--noarrival`): this suite is not about the drop.
+	NightScreen.arrival_enabled = false
 	await RouterFixture.clear(get_tree())
 	Audio.stop_beds(true)
 	_saved_path = Settings.path
@@ -25,6 +29,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	NightScreen.arrival_enabled = _arrival
 	await RouterFixture.clear(get_tree())
 	Audio.stop_beds(true)
 	MainMenu.board_factory = Callable()

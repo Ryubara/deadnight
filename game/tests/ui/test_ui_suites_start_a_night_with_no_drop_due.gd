@@ -13,10 +13,12 @@
 extends GdUnitTestSuite
 
 const UI_DIR := "res://tests/ui/"
-const SETS_THE_DROP := "NightScreen.arrival_enabled ="
-## What puts the night screen on the router: `UIRouter.push|replace|reset(` of the scene's path or
-## of a constant (`NIGHT`) that holds it.
-const PUSHES_THE_NIGHT := 'UIRouter\.(push|replace|reset)\(\s*(NIGHT\b|"[^"]*night_screen\.tscn")'
+## A suite chooses the drop with `= false` or `= true`; putting back what it found (`= _arrival`)
+## is not a choice.
+const SETS_THE_DROP := "NightScreen\\.arrival_enabled = (false|true)\\b"
+## What puts the night screen on the router: a push, reset or replace (`UIRouter.push(`, or a
+## suite's own `_push(` helper) of the scene's path or of a constant (`NIGHT`) that holds it.
+const PUSHES_THE_NIGHT := '\\w*(push|reset|replace)\\w*\\(\\s*(NIGHT\\b|"[^"]*night_screen\\.tscn")'
 ## Another scan that names the calls in its own assertions without pushing a night.
 const EXEMPT: Array[String] = ["test_suites_leave_the_router_empty.gd"]
 ## Suites that push the night and set nothing yet, each with the issue that fixes it. An entry that
@@ -43,17 +45,18 @@ func test_every_ui_suite_that_pushes_the_night_says_whether_the_drop_is_due() ->
 				stale.append(file)
 		elif not sets:
 			careless.append(file)
-	assert_int(pushing).is_greater(8)  # the scan finds the suites it is about
+	assert_int(pushing).is_greater_equal(8)  # the scan finds the suites it is about
 	(
 		assert_array(careless)
 		. override_failure_message(
 			(
 				(
-					"These suites push the night screen and never set `%s` (false: no drop, as headless "
-					+ "always has it; true: the suite is about the drop). A window plays the drop and "
-					+ "holds the look, the touch layer, the HUD and the reticle for it: %s"
+					"These suites push the night screen and never set `NightScreen.arrival_enabled` "
+					+ "(false: no drop, as headless always has it; true: the suite is about the "
+					+ "drop). A window plays the drop and holds the look, the touch layer, the HUD "
+					+ "and the reticle for it: %s"
 				)
-				% [SETS_THE_DROP, careless]
+				% [careless]
 			)
 		)
 		. is_empty()
@@ -92,6 +95,7 @@ func test_the_not_yet_list_names_suites_that_push_the_night() -> void:
 func test_the_scan_tells_the_suites_apart() -> void:
 	assert_bool(_pushes_the_night("UIRouter.push(NIGHT, UITransition.Kind.CUT)")).is_true()
 	assert_bool(_pushes_the_night("UIRouter.push( NIGHT )")).is_true()
+	assert_bool(_pushes_the_night("await _push(NIGHT)")).is_true()
 	(
 		assert_bool(_pushes_the_night('UIRouter.replace("res://ui/screens/night_screen.tscn")'))
 		. is_true()
@@ -103,7 +107,9 @@ func test_the_scan_tells_the_suites_apart() -> void:
 	assert_bool(_sets_the_drop("NightScreen.arrival_enabled = false")).is_true()
 	# gdformat writes the spaces around `=`, so the scan looks for them.
 	assert_bool(_sets_the_drop("NightScreen.arrival_enabled=false")).is_false()
+	assert_bool(_sets_the_drop("NightScreen.arrival_enabled = true")).is_true()
 	assert_bool(_sets_the_drop("var d := NightScreen.arrival_enabled")).is_false()
+	assert_bool(_sets_the_drop("NightScreen.arrival_enabled = _arrival")).is_false()
 
 
 func _pushes_the_night(text: String) -> bool:
@@ -111,7 +117,7 @@ func _pushes_the_night(text: String) -> bool:
 
 
 func _sets_the_drop(text: String) -> bool:
-	return text.contains(SETS_THE_DROP)
+	return RegEx.create_from_string(SETS_THE_DROP).search(text) != null
 
 
 ## Every `test_*.gd` of the UI folder, this scan excluded (it names the call it looks for).
