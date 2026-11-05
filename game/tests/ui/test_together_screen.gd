@@ -57,8 +57,10 @@ func test_a_discord_activity_connects_through_its_own_proxy() -> void:
 
 
 func test_what_a_player_reads_for_each_answer_of_the_backend() -> void:
-	for reason in ["not_found", "full", "no_server", "already_in_lobby", "network"]:
+	for reason in ["not_found", "full", "no_server", "network"]:
 		assert_bool(TogetherApi.TEXTS.has(reason)).is_true()
+	# A player is never told they are in another night: creating or joining moves them (#1177).
+	assert_bool(TogetherApi.TEXTS.has("already_in_lobby")).is_false()
 	# An answer nobody planned for still says something.
 	assert_str(TogetherApi._failed("weird")["text"]).contains("weird")
 	assert_bool(TogetherApi._failed("full")["ok"]).is_false()
