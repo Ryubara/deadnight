@@ -1,15 +1,17 @@
 class_name StartupSignIn
 extends RefCounted
-## A returning Guest signs in when the game opens, in the background, so the account and its
-## profile (`ProfileUplink`) are ready before the first Solo night: a solo night earns XP only for
-## a player who is signed in (no offline XP, `ProfileStore`), and a player who never opens Play
-## together would otherwise earn nothing (#1122).
+## A returning Guest, or a player in a Discord Activity, signs in when the game opens, in the
+## background, so the account and its profile (`ProfileUplink`) are ready before the first Solo
+## night: a solo night earns XP only for a player who is signed in (no offline XP, `ProfileStore`),
+## and a player who never opens Play together would otherwise earn nothing (#1122). The Activity
+## signs in with Discord (`TogetherApi.activity`) and does nothing else here: it makes and reads
+## no lobby (#1178).
 ##
-## - **Only a returning guest.** The credential the last visit kept (`GuestAccount`,
+## - **Only a returning guest, or an Activity.** The credential the last visit kept (`GuestAccount`,
 ##   `user://guest_account.json`) is the sign that this player has an account here. With none,
 ##   nothing is sent and the player is as before: not signed in. Whether a first Solo makes a
 ##   Guest account for someone who never asked is the maintainer's call (#1122), and is not made
-##   here.
+##   here. An Activity is always signed in: Discord has the player's name.
 ## - **One request.** The sign-in is the one `TogetherApi.sign_in` makes (`POST /auth/guest` with
 ##   the credential); the profile read that follows it (`ProfileUplink.sync_after_sign_in`) is
 ##   the sign-in's own and is not made again here. A screen that signs in meanwhile (Play
@@ -35,11 +37,13 @@ static func begin(
 
 
 ## Whether this player has an account to come back to and is not signed in already: a credential
-## kept for this backend, and no session in this run. A Discord Activity keeps none (it signs in
-## with Discord when Play together opens).
+## kept for this backend, and no session in this run; a Discord Activity keeps none and signs in
+## with Discord every time.
 static func wanted(api: TogetherApi) -> bool:
-	if TogetherApi.signed_in() or api.instance_id != "":
+	if TogetherApi.signed_in():
 		return false
+	if TogetherApi.activity:
+		return true
 	return GuestAccount.load_credential(api.base_url, api.guest_path) != ""
 
 

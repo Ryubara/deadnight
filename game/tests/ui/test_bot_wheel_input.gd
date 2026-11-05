@@ -22,9 +22,15 @@ var _screen: NightScreen
 var _heard: Array[Dictionary] = []
 var _held: Array[InputEvent] = []
 var _fixture: TouchFixture
+var _arrival := false
 
 
 func before_test() -> void:
+	# The helicopter drop a window plays at the start of a night (#1057) holds the look, the touch
+	# layer and the HUD until it ends; a headless run has none. This suite is about the wheel, in a
+	# night the player has control of (`--noarrival`); `test_arrival_night` is about the drop.
+	_arrival = NightScreen.arrival_enabled
+	NightScreen.arrival_enabled = false
 	await RouterFixture.clear(get_tree())
 	_heard = []
 	_held = []
@@ -56,6 +62,7 @@ func after_test() -> void:
 		_fixture.free_all()
 		_fixture = null
 	TouchMode.device_is_touch = null
+	NightScreen.arrival_enabled = _arrival
 	await RouterFixture.clear(get_tree())
 
 

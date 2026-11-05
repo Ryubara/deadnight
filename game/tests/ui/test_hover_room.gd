@@ -15,7 +15,6 @@ const CANVASES := {
 ## Longer than the entrance of any screen: its rows have risen and settled by then.
 const SETTLE_SECONDS := 0.8
 const SETTLE_TIME_SCALE := 10.0
-const MENU := "res://ui/screens/main_menu.tscn"
 const PLAY := "res://ui/screens/play_screen.tscn"
 const TOGETHER := "res://ui/screens/together_screen.tscn"
 const LOBBY := "res://ui/screens/lobby_screen.tscn"
@@ -27,6 +26,7 @@ const CREDITS := "res://ui/screens/credits_screen.tscn"
 var _saved_path: String
 var _saved_size: Vector2i
 var _saved_factor: float
+var _holder: CanvasLayer
 
 
 func before_test() -> void:
@@ -41,6 +41,8 @@ func before_test() -> void:
 
 func after_test() -> void:
 	Engine.time_scale = 1.0
+	if is_instance_valid(_holder):
+		_holder.free()
 	await RouterFixture.clear(get_tree())
 	get_window().size = _saved_size
 	get_window().content_scale_factor = _saved_factor
@@ -411,10 +413,52 @@ func test_the_settings_tabs_keep_their_buttons_whole_when_hovered() -> void:
 func test_the_menu_tabs_keep_their_buttons_whole_when_hovered() -> void:
 	for canvas: String in CANVASES:
 		_canvas(canvas)
-		var menu := (await _open(MENU)) as MainMenu
+		var shell := await _open_shell()
 		var lines: Array[String] = []
+		var seen := 0
 		for tab in MenuTab.ORDER:
-			menu.shell.show_tab(tab, false)
+			shell.show_tab(tab, false)
 			await _settle()
-			lines.append_array(_report("menu tab %d" % tab, canvas, menu))
+			seen += _count(shell)
+			lines.append_array(_report("menu tab %d" % tab, canvas, shell))
 		assert_array(lines).is_empty()
+		# The phone is where a button meets a strip (the desktop's tabs clip none): a run that saw
+		# no button there measured nothing, as a headless shell once did.
+		if canvas == "phone":
+			assert_int(seen).is_greater(0)
+
+
+func test_the_menu_shell_is_the_phones_in_a_phone_window_headless_or_not() -> void:
+	for canvas: String in CANVASES:
+		_canvas(canvas)
+		var shell := await _open_shell()
+		assert_bool(shell.is_compact()).is_equal(canvas == "phone")
+		# The shell puts the phone factor on the window, which is what the canvas lists.
+		assert_float(get_window().content_scale_factor).is_equal((CANVASES[canvas] as Array)[1])
+
+
+## The menu's tab shell, told what a window of this size is. A headless shell takes every window
+## for a desktop's (its own is 64 pixels), so the phone's layout was measured only in a window and
+## CI never saw it (#1187): the shell is built here with the answer a window of this size gives
+## (`MenuScale.is_phone`), as `UiFitRun` does, under the router's theme.
+func _open_shell() -> MenuShell:
+	await RouterFixture.clear(get_tree())
+	if is_instance_valid(_holder):
+		_holder.free()
+	_holder = CanvasLayer.new()
+	_holder.layer = 100
+	get_tree().root.add_child(_holder)
+	var stage := Control.new()
+	stage.theme = UIThemeBuilder.build(UITokens.active())
+	stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_holder.add_child(stage)
+	var shell := MenuShell.new()
+	shell.manual_stage = true
+	shell.phone_mode = 1 if MenuScale.is_phone(get_window().size) else 0
+	shell.context.board = FakeChallengeBoard.new()
+	shell.context.profile = MenuProfile.from_json(
+		MenuProfile.to_json("Ann", MenuProfile.xp_at(7) + 90, 1250, {"rifle": 900})
+	)
+	stage.add_child(shell)
+	await _settle()
+	return shell

@@ -7,7 +7,7 @@ players are in your lobby before you start"; Deadnight #515). The platform side 
 [networking](networking.md).
 
 **Status:** built and played in the browser: the backend (open and started lobbies, presence, the round, the
-preview by code or by Activity instance), the lobby screen and its poll (`LobbyScreen`, `LobbyWatch`), Play together
+preview by code), the lobby screen and its poll (`LobbyScreen`, `LobbyWatch`), Play together
 opening it, the join notice in the night, and a web probe (`tools/web_smoke/lobby.py`). Not built: the host's match
 settings are built too (the host's `MatchSettingsPanel`, sent live with `PUT /lobbies/:id/settings`, read only for
 guests).
@@ -115,10 +115,11 @@ the same message from the refusal (`409 full`). Nobody is queued: Back, or Creat
 
 ### 8. In the Discord Activity
 
-The voice channel's room (#495, `ActivityRoom`) is this lobby: the first to press Play together makes it and is the
-host, the rest of the channel land in the same lobby (or, if it started, in the preview of a night in progress). The
-Activity still opens on the main menu. Joining happens when a player opens the lobby screen, not before, so people who
-only opened the Activity are not seats.
+The Activity plays the website's Play together, nothing more (#1178). It opens on the main menu (#495) and signs in with
+Discord in the background (`StartupSignIn`); Play together is the same screen with Quick join, Create a night and the
+code field, and makes no lobby until the player presses Create. Players reach each other by the code, the link or Quick
+join, like on the website: the voice channel's instance id is not sent to the backend and names no lobby (it used to,
+and two players who each pressed Play together got a lobby of their own). Share in Discord and the invite window stay.
 
 ## Leaving and moving: every state, and what ends it
 
@@ -226,8 +227,8 @@ sign in (once), `POST /lobbies/quick`, `POST /lobbies/:id/ticket`, then the nigh
 - **If no night is found or the call fails** the card says the same words as the Together screen (`TogetherApi.TEXTS`) and
   offers **Create a night** (a lobby of the player's own, opened on its lobby screen with the code) and **Close**.
   The Together screen is therefore never in the path.
-- In a **Discord Activity** the card waits for the room that signed in on the menu (`ActivityRoom`), then asks as
-  above.
+- In a **Discord Activity** the card asks as above: its sign-in is the one the menu started (`StartupSignIn`), which
+  the card waits for if it is still out.
 - Proof: `game/tests/ui/test_quick_join.gd` (found, failed and cancelled paths with a stubbed `TogetherApi`, and a
   press that lands in a joined room over a real socket) and the browser probe `tools/web_smoke/quick_join.py`.
 
