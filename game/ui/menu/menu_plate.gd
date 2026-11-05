@@ -10,6 +10,8 @@ const RING_ZONE := 108.0
 const COMPACT_WIDTH := 372.0
 
 var _paper: MenuLook.Paper
+var _line: HBoxContainer
+var _full_width := SIZE.x
 var _name: Label
 var _level: Label
 var _stubs: Label
@@ -18,57 +20,66 @@ var _ring_number: Label
 
 
 ## `width` (when it is more than 0) is the plate's own width: the tab bar's end leaves less than
-## `COMPACT_WIDTH` on the narrowest phone canvas (960 units).
+## `COMPACT_WIDTH` on the narrowest phone canvas (960 units). `fit` says it again when the canvas
+## turns out to be another size than the one the plate was built on.
 func _init(compact := false, width := 0.0) -> void:
-	var plate_size := Vector2(COMPACT_WIDTH if compact else SIZE.x, SIZE.y)
-	if width > 0.0:
-		plate_size.x = minf(plate_size.x, width)
-	custom_minimum_size = plate_size
-	size = plate_size
+	_full_width = COMPACT_WIDTH if compact else SIZE.x
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_paper = MenuLook.Paper.new(9.0)
-	_paper.perf_x = plate_size.x - RING_ZONE
 	_paper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_paper)
 	_name = MenuLook.label("", 30, MenuLook.PAPER_INK, &"wide")
 	_name.position = Vector2(24.0, 2.0)
-	_name.size = Vector2(plate_size.x - RING_ZONE - 40.0, 38.0)
 	# A name of sixteen wide letters is longer than the room before the ring: it ends in an
 	# ellipsis instead of running over the ring.
 	_name.clip_text = true
 	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	add_child(_name)
-	var line := HBoxContainer.new()
-	line.add_theme_constant_override(&"separation", 12)
-	line.position = Vector2(24.0, 40.0)
-	line.size = Vector2(plate_size.x - RING_ZONE - 40.0, 28.0)
-	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(line)
+	_line = HBoxContainer.new()
+	_line.add_theme_constant_override(&"separation", 12)
+	_line.position = Vector2(24.0, 40.0)
+	_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_line)
 	_level = MenuLook.label("", MenuLook.SIZE_CAPTION, MenuLook.RED, &"wide")
 	_stubs = MenuLook.label("", MenuLook.SIZE_CAPTION, MenuLook.PAPER_MUTED, &"wide")
 	_stubs.clip_text = true
 	_stubs.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_stubs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	line.add_child(_level)
-	line.add_child(_stubs)
+	_line.add_child(_level)
+	_line.add_child(_stubs)
 	_ring = MenuLook.Ring.new()
 	var diameter := SIZE.y - 12.0
 	_ring.size = Vector2(diameter, diameter)
-	_ring.position = Vector2(plate_size.x - RING_ZONE * 0.5 - diameter * 0.5, 6.0)
 	add_child(_ring)
 	_ring_number = MenuLook.label(
 		"", 24, MenuLook.PAPER_INK, &"display", HORIZONTAL_ALIGNMENT_CENTER
 	)
 	_ring_number.size = Vector2(diameter, diameter)
 	_ring_number.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_ring_number.position = _ring.position
 	add_child(_ring_number)
+	fit(width)
+
+
+## Lays the plate out at `width` (when it is more than 0), or the width it has when the tab bar
+## leaves room for all of it: its parts keep their place from the ring, which sits at the right.
+func fit(width: float) -> void:
+	var plate_size := Vector2(_full_width, SIZE.y)
+	if width > 0.0:
+		plate_size.x = minf(plate_size.x, width)
+	custom_minimum_size = plate_size
+	size = plate_size
+	_paper.perf_x = plate_size.x - RING_ZONE
+	_paper.queue_redraw()
+	_name.size = Vector2(plate_size.x - RING_ZONE - 40.0, 38.0)
+	_line.size = Vector2(plate_size.x - RING_ZONE - 40.0, 28.0)
+	_ring.position = Vector2(plate_size.x - RING_ZONE * 0.5 - _ring.size.x * 0.5, 6.0)
+	_ring_number.position = _ring.position
 
 
 ## Shows `profile`.
 func show_profile(profile: MenuProfile) -> void:
 	_name.text = profile.display_name.to_upper()
-	_level.text = "BILLING %d" % profile.level()
+	_level.text = "LEVEL %d" % profile.level()
 	_stubs.text = "%s STUBS" % MenuNav.grouped(profile.stubs)
 	_ring.fraction = profile.level_fraction()
 	_ring.queue_redraw()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ElementDef" format=3]
+
+[ext_resource type="Script" path="res://gameplay/weapons/elements/element_def.gd" id="1_elem"]
+
+[resource]
+script = ExtResource("1_elem")
+id = &"fire"
+display_name = "Fire rounds"
+tint = Color(1, 0.5, 0.12, 1)
+bleeds = false
+burn_dps = 30.0
+burn_seconds = 3.0
+burn_tick_seconds = 0.5
+burn_status = &"burning"

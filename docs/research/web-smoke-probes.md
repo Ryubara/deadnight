@@ -51,4 +51,23 @@ the query it builds. A page that must stay plain passes `smoke.serve(folder, pro
 `tools/web_smoke/bridge_calls.py` counts the bridge's traffic of the plain menu and a plain autopilot night (counting
 proxies for `create_object`, a wrapped `eval`) and fails the web job above `--max-per-second` (1: a plain page
 publishes nothing and makes no evals, #983); `--probe` shows the
-probes' own traffic. `heap_soak.py --plain` soaks the page a player opens. Numbers: `docs/research/web-heap.md`.
+probes' own traffic. The picture it saves of each page is for a reader, taken after the count, so it waits
+120 s and, when a night on the runner's software renderer still does not answer, is left out and noted in the report
+(`screenshot`), never a failed job (#1235: one run in seven stalled the night's shot past Playwright's 30 s;
+the other six took 161 to 187 s for the whole step). `heap_soak.py --plain` soaks the page a player opens.
+Numbers: `docs/research/web-heap.md`.
+
+`tools/web_smoke/arrival_web.py` plays the helicopter drop of a player's arrival (#1057): Solo from the menu on either map
+(`--map`), a phone-sized page (`--size 844x390`), a skip (`--skip`), or a late join to a game server of this machine with
+a bot in the night (`--late --godot <the pinned Godot>`); it counts the WebGL calls through the show and after it
+(`smoke.trace`) and fails on a console error, a show that never began or ended, or a HUD that did not give way. A page that
+asks for the probes does not play the show unless it has `?arrival` (`--unasked` checks that it does not). Numbers:
+[the arrival](arrival.md).
+
+## Which scale a page runs at, and the ruler (#1197)
+
+`phone_layout.py` walks the menu screens in Chromium as a phone (or `--desktop`, or `--iframe` for the Activity's frame)
+and prints, from `window.deadnight` (`layout`, `phone`, `ui_audit`), the page in CSS px, the canvas, the content scale
+factor, the canvas in units and the smallest text and tap target in CSS px. It fails under 14 and 44. Sections: `tour`,
+`turn` (upright and back, a tablet page, a covering screen), `night` (a night entered and left). Details and numbers:
+[phone-page-scale.md](phone-page-scale.md).

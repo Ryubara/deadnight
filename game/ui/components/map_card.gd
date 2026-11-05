@@ -8,6 +8,12 @@ extends Button
 ## shaded paper with a hatched stub, a padlock and a COMING SOON stamp: it takes the focus (a
 ## keyboard can read it) but a press chooses nothing (`MapPicker` says `blocked`).
 ##
+## A map the host's level does not open yet (`is_level_locked`) is a hidden card, the wardrobe's
+## look (#1065): the name is `???`, the picture is the map's silhouette under a padlock and a LEVEL
+## stamp, and the card's focus or hover says what unlocks it ("Reach level 10 to host a night on
+## this map"). It takes the focus and refuses a press like a map that is not built. The card of the
+## map a lobby is on is never hidden (a guest below its level still sees where the night is).
+##
 ## The compact form (a phone held sideways, two cards to a row) has no picture and is a little over
 ## a tap target high: the name, the size and the players on three short lines, and a red check in
 ## the corner for the chosen map in place of the word.
@@ -25,16 +31,29 @@ const COMPACT_CAPTION := 20
 const TITLE_SIZE := 28
 const TITLE_SIZE_MIN := 18
 const STAMP_TILT := -0.14
+## The title of a card the level has not opened.
+const HIDDEN_TITLE := "???"
+## The tint that turns a picture into a dark silhouette: the shapes stay, the colours go.
+const SILHOUETTE := Color(0.13, 0.14, 0.2, 1.0)
 
 var info: MapInfo:
 	set(value):
 		info = value
 		accessibility_name = _spoken()
+		tooltip_text = _tip()
 		queue_redraw()
 var selected := false:
 	set(value):
 		selected = value
 		accessibility_name = _spoken()
+		tooltip_text = _tip()
+		queue_redraw()
+## The level of the person whose picker this is, which decides what the card hides.
+var player_level := 1:
+	set(value):
+		player_level = value
+		accessibility_name = _spoken()
+		tooltip_text = _tip()
 		queue_redraw()
 var compact := false:
 	set(value):
@@ -49,6 +68,9 @@ func _init() -> void:
 	UiSounds.wire(self)
 	flat = true
 	focus_mode = Control.FOCUS_ALL
+	# Inside a scroll area a drag that starts here reaches it (`UIScroll`); anywhere else the button
+	# stops the pointer, as a button does.
+	UIScroll.pass_touch_in_scroll(self)
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_fit()
 	focus_entered.connect(queue_redraw)
@@ -60,12 +82,27 @@ func _init() -> void:
 
 ## A map that is built is picked with a select; one that is not is refused (the menu's sounds).
 func ui_sound_role() -> StringName:
-	return &"map_card_locked" if is_locked() else &"map_card"
+	return &"map_card_locked" if blocks() else &"map_card"
 
 
-## True for a map that cannot be chosen yet.
+## True for a map that cannot be chosen yet (not built).
 func is_locked() -> bool:
 	return info == null or not info.is_playable()
+
+
+## True for a built map the level does not open.
+func is_level_locked() -> bool:
+	return info != null and info.is_playable() and not info.is_open_at(player_level)
+
+
+## True for the card that shows `???`: level-locked, and not the map the lobby is on.
+func is_hidden() -> bool:
+	return is_level_locked() and not selected
+
+
+## True when a press chooses nothing: the map is not built, or the level does not open it.
+func blocks() -> bool:
+	return is_locked() or is_level_locked()
 
 
 ## The width the card asks for.
@@ -78,8 +115,15 @@ func set_width(width: float) -> void:
 func _spoken() -> String:
 	if info == null:
 		return ""
+	if is_hidden():
+		return "Locked map, %s" % info.unlock_hint()
 	var state := "coming soon" if is_locked() else ("selected" if selected else "")
 	return "%s, %s%s" % [info.title, info.facts_text(), ", " + state if state != "" else ""]
+
+
+## The pointer's tip on a hidden card: what unlocks it.
+func _tip() -> String:
+	return info.unlock_hint() if is_hidden() else ""
 
 
 func _fit() -> void:
@@ -96,7 +140,7 @@ func _on_hover() -> void:
 func _draw() -> void:
 	if info == null:
 		return
-	var locked := is_locked()
+	var locked := blocks()
 	var lit := has_focus() or is_hovered()
 	var paper := MenuLook.PAPER_SHADE if locked else MenuLook.PAPER
 	var shade := MenuLook.PAPER_RULE if locked else MenuLook.PAPER_SHADE
@@ -125,7 +169,7 @@ func _draw_text(left: float, locked: bool) -> void:
 	var tokens := UITokens.active()
 	var muted := MenuLook.PAPER_MUTED
 	var room := size.x - left - PAD
-	var title := info.title.to_upper()
+	var title := HIDDEN_TITLE if is_hidden() else info.title.to_upper()
 	var small: Font = tokens.font_text
 	var tag := "" if (not selected or locked) else "SELECTED"
 	var title_size := _fit_size(tokens.font_display, title, room, TITLE_SIZE, TITLE_SIZE_MIN)
@@ -138,6 +182,9 @@ func _draw_text(left: float, locked: bool) -> void:
 		title_size,
 		ink
 	)
+	if is_hidden():
+		_draw_hidden_lines(small, left, room)
+		return
 	var lines: Array[String] = [info.size_text(), info.players_text()]
 	for index in lines.size():
 		draw_string(
@@ -152,12 +199,38 @@ func _draw_text(left: float, locked: bool) -> void:
 	_draw_tag(tag, 68.0)
 
 
+## Under `???`: the level it takes, and, with the focus or the pointer on the card, what to do.
+func _draw_hidden_lines(small: Font, left: float, room: float) -> void:
+	var muted := MenuLook.PAPER_MUTED
+	if not (has_focus() or is_hovered()):
+		draw_string(
+			small,
+			Vector2(left, 68.0),
+			info.unlock_text(),
+			HORIZONTAL_ALIGNMENT_LEFT,
+			room,
+			MenuLook.SIZE_CAPTION,
+			muted
+		)
+		return
+	draw_multiline_string(
+		small,
+		Vector2(left, 68.0),
+		info.unlock_hint(),
+		HORIZONTAL_ALIGNMENT_LEFT,
+		room,
+		MenuLook.SIZE_CAPTION,
+		2,
+		MenuLook.PAPER_INK
+	)
+
+
 ## The compact card: the name (it leaves room for the check), then the size and the players.
 func _draw_compact_text(left: float, locked: bool, ink: Color) -> void:
 	var tokens := UITokens.active()
 	var small: Font = tokens.font_text
 	var room := size.x - left - PAD_COMPACT
-	var title := info.title.to_upper()
+	var title := HIDDEN_TITLE if is_hidden() else info.title.to_upper()
 	var title_room := room - (24.0 if selected and not locked else 0.0)
 	var title_size := _fit_size(tokens.font_display, title, title_room, 22, 16)
 	draw_string(
@@ -170,7 +243,11 @@ func _draw_compact_text(left: float, locked: bool, ink: Color) -> void:
 		ink
 	)
 	var lines: Array[String] = [info.size_text(), info.players_text()]
-	if locked:
+	if is_hidden():
+		lines = [info.unlock_text(), ""]
+		if has_focus() or is_hovered():
+			lines = ["Reach " + info.unlock_text().to_lower(), "to host here."]
+	elif locked:
 		lines = ["Coming soon", info.size_text()]
 	for index in lines.size():
 		draw_string(
@@ -219,6 +296,9 @@ func _draw_picture(rect: Rect2, locked: bool) -> void:
 		draw_texture_rect(texture, rect, false)
 		draw_rect(rect, MenuLook.PAPER_INK, false, 1.0)
 		return
+	if is_level_locked():
+		_draw_silhouette(rect, texture)
+		return
 	draw_rect(rect, MenuLook.HOLE)
 	var hatch := Color(1.0, 1.0, 1.0, 0.07)
 	var step := 12.0
@@ -235,6 +315,17 @@ func _draw_picture(rect: Rect2, locked: bool) -> void:
 	draw_rect(rect, MenuLook.PAPER_INK, false, 1.0)
 
 
+## The stub of a map the level does not open: its own picture as a flat dark shape on the night's
+## dark (the wardrobe's silhouette of the base icon), a padlock and the level it takes.
+func _draw_silhouette(rect: Rect2, texture: Texture2D) -> void:
+	draw_rect(rect, MenuLook.HOLE)
+	if texture != null:
+		draw_texture_rect(texture, rect, false, SILHOUETTE)
+	_draw_padlock(rect.get_center() + Vector2(0.0, -10.0))
+	_draw_stamp(rect.get_center() + Vector2(0.0, 22.0), info.unlock_text().to_upper())
+	draw_rect(rect, MenuLook.PAPER_INK, false, 1.0)
+
+
 func _draw_padlock(at: Vector2) -> void:
 	var colour := MenuLook.MUTED
 	var body := Rect2(at + Vector2(-11.0, -2.0), Vector2(22.0, 16.0))
@@ -243,9 +334,8 @@ func _draw_padlock(at: Vector2) -> void:
 	draw_circle(body.get_center(), 2.4, MenuLook.HOLE)
 
 
-func _draw_stamp(at: Vector2) -> void:
+func _draw_stamp(at: Vector2, text := "COMING SOON") -> void:
 	var font := MenuLook.wide_font()
-	var text := "COMING SOON"
 	var text_size := 17
 	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, text_size).x
 	draw_set_transform(at, STAMP_TILT, Vector2.ONE)

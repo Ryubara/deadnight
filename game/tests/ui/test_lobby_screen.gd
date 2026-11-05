@@ -17,8 +17,9 @@ func after_test() -> void:
 	LobbyScreen.play_as_bot = false
 	NightScreen.join_as_bot = false
 	LobbyScreen.opener = Callable()
-	NightScreen.join_url = ""
-	NightScreen.join_ticket = ""
+	# Start fills the join and the lobby a night would take; the stubbed opener never does.
+	RouterFixture.forget_join()
+	PlayerLevel.reset()
 
 
 func _instance() -> LobbyScreen:
@@ -483,6 +484,7 @@ func test_the_host_picks_the_map_and_it_goes_to_the_backend_with_the_other_rules
 
 func test_the_host_picks_the_second_map_from_the_lobby() -> void:
 	StubMaps.remove()
+	PlayerLevel.use(10)
 	var api := LobbyFixture.FakeApi.new(self)
 	api.lobby = LobbyFixture.lobby([LobbyFixture.member("a", "Ann", 1, true)])
 	var screen := await _screen(api, {"lobby": api.lobby})
@@ -523,6 +525,43 @@ func test_a_guest_sees_the_hosts_map_and_cannot_change_it() -> void:
 	NightScreen.join_map = ""
 	screen.free()
 	StubMaps.remove()
+
+
+func test_a_host_below_level_10_is_not_offered_the_back_rooms() -> void:
+	StubMaps.remove()
+	PlayerLevel.use(3)
+	var api := LobbyFixture.FakeApi.new(self)
+	api.lobby = LobbyFixture.lobby([LobbyFixture.member("a", "Ann", 1, true)])
+	var screen := await _screen(api, {"lobby": api.lobby})
+	var card := screen.rules.map_picker.card_for("small_indoor")
+	assert_bool(card.is_hidden()).is_true()
+	card.pressed.emit()
+	await screen.send_rules()
+	assert_int(api.rules_sent.size()).is_equal(0)
+	assert_str(screen.rules.settings().map).is_equal("drive_in")
+	screen.free()
+
+
+func test_a_guest_below_level_10_sees_and_joins_the_hosts_back_rooms() -> void:
+	StubMaps.remove()
+	PlayerLevel.use(3)
+	var api := LobbyFixture.FakeApi.new(self)
+	api.me = "b"
+	api.lobby = LobbyFixture.lobby(
+		[LobbyFixture.member("a", "Ann", 1, true), LobbyFixture.member("b", "Bo", 2)]
+	)
+	var screen := await _screen(api, {"lobby": api.lobby})
+	api.refreshed = LobbyFixture.lobby(api.lobby["members"], "started", null)
+	api.refreshed["settings"] = _rules(1.0, 0, 0.0).merged({"map": "small_indoor"})
+	await screen.watch.poll()
+	var picker := screen.rules.map_picker
+	assert_str(picker.selected_id).is_equal("small_indoor")
+	assert_bool(picker.card_for("small_indoor").is_hidden()).is_false()
+	assert_bool(picker.is_editable()).is_false()
+	await screen._go_in(false)
+	assert_str(NightScreen.join_map).is_equal("small_indoor")
+	NightScreen.join_map = ""
+	screen.free()
 
 
 func test_a_code_looked_at_shows_the_map_of_the_room_before_joining() -> void:

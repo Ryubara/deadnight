@@ -17,8 +17,8 @@ commercial release
 | --- | --- | --- | --- |
 | `zombie/` `alert_4..6`, `attack_4..6`, `death_3..5`, `groan_5..7`, `groan_brute_4..5`, `groan_crawler_4..5`, `hurt_4..6`, `roar_3..4`, `shriek_3..5` | 24 | ElevenLabs (models v2 and v3), extra takes of the dead's voices | [`zombie/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/zombie/LICENSE.md), every prompt in `zombie/eleven.json` |
 | `eleven/` | 5 | ElevenLabs (model v2): the generator's engine loop, power-down and power-up, the door purchase | [`eleven/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/eleven/LICENSE.md), every prompt in it |
-| `voice/soldier/` | 115 | ElevenLabs text to speech (model `eleven_v4`, the premade voice Brian): the male soldier's barks, see [The soldiers' voices](#the-soldiers-voices) | [`voice/soldier/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/voice/soldier/LICENSE.md), every line, setting and seed in `manifest.json` |
-| `voice/soldier_female/` | 115 | ElevenLabs text to speech, Free tier (model `eleven_v4`, the premade voice Sarah): the same moments and takes in the female soldier's voice | [`voice/soldier_female/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/voice/soldier_female/LICENSE.md), every line, setting and seed in `manifest.json` |
+| `voice/soldier/` | 139 | ElevenLabs text to speech (model `eleven_v4`, the premade voice Brian): the male soldier's barks, see [The soldiers' voices](#the-soldiers-voices) | [`voice/soldier/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/voice/soldier/LICENSE.md), every line, setting and seed in `manifest.json` |
+| `voice/soldier_female/` | 139 | ElevenLabs text to speech, Free tier (model `eleven_v4`, the premade voice Sarah): the same moments and takes in the female soldier's voice | [`voice/soldier_female/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/voice/soldier_female/LICENSE.md), every line, setting and seed in `manifest.json` |
 | the other 48 files in `zombie/`, and `ambience/`, `energy/`, `grenade/`, `guns/`, `melee/`, `music/`, `shop/`, `steps/`, `stings/`, `ui/`, `world/` (11, 48, 8, 91, 5, 2, 2, 48, 3, 11 and 40 files) | 317 | synthesised by `tools/audio/` (`generate.py` and the recipe files), seeded from each sound's name | none: nothing in them is third-party (see [`tools/audio/README.md`](https://github.com/Ryubara/deadnight/blob/main/tools/audio/README.md)) |
 
 The decision to use the ElevenLabs takes is recorded in two places, which say it differently:
@@ -125,7 +125,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | Doors | `door_open` | a bolt thrown, a rusty creak, the weight settling; from `door_opened`, at the door |
 | Melee | `melee_swing`, `melee_hit` | a crowbar through the air from `shot_fired` of a melee weapon; the thud of iron on the dead from a melee `damage_dealt` |
 | The till | `till_ring` | the shop's cash register (key thump, ratchet, bell) from `purchase_made`, where the buyer stands |
-| The soldiers | `vox_<moment>_<n>` | 115 takes of 21 moments, played by `SoldierVoice`: see [The soldiers' voices](#the-soldiers-voices); they replace the synthesised `player_hurt` and `player_downed` |
+| The soldiers | `vox_<moment>_<n>` | 139 takes of 29 moments, played by `SoldierVoice`: see [The soldiers' voices](#the-soldiers-voices); they replace the synthesised `player_hurt` and `player_downed` |
 | Stings | `round_start`, `round_end`, `special_round` | stereo, on Music; `round_start` ducks Effects 9 dB; `special_round` (3.5 s, on the rules' `special_round_announced`, a higher priority so it takes the one sting voice from the `round_end` that is still sounding) 9 dB for 2.2 s |
 | Beds | `bed_crickets`, `bed_highway`, `bed_projector`, `bed_score`, `bed_tension`; the menu's `bed_menu_pad`, `bed_menu_bells`, `bed_menu_wind`, `bed_menu_projector`, `bed_menu_crickets` | loops under everything, see below; the menu's projector and crickets are the night's files under quieter trims ([the menu's ambience bed](../research/menu-sfx.md#the-ambience-bed-926)), its pad, bells and wind are three loops of 76, 113 and 47 s that never come back together ([the menu's music](../research/menu-music.md)) |
 | The wind | `bed_wind`, `wind_gust`, `wind_creak`, `wind_rattle`, `wind_flap` | a quiet base layer and gusts that come and go at random, with a detail now and then: see [The wind](#the-wind) |
@@ -305,12 +305,29 @@ and which take speaks; the table of moments, takes and ranks is `SoldierVoiceCat
 | `power_on` (5), `power_low` (4) | `fuel_restored`; `fuel_low` or `fuel_empty` |
 | `grenade` (5), `boss_arrive` (5), `boss_dead` (4) | `grenade_thrown`; the boss's spawn; the boss's death |
 | `idle` (5) | quiet: five seconds with nothing said in a break that has eight more seconds to run, or ten seconds of a round with no dead within 30 m |
+| `level_up`, `tier_up`, `unlock`, `challenge_done`, `poster_set`, `card`, `emblem`, `first_game` (3 each) | the **progression cheers** (#1063): a level, a tier, an unlock, a challenge (the line after the record scratch), a poster set (the server's `poster_set_done`, #1073: weight 4, over a tier and over the challenge that finished it), a card, an emblem or a frame, the first game of the day; `SoldierVoice.celebrate(moment, speaker)`, heard by every client |
 
 - **One voice at a time.** A line owns the channel until it ends and a half second more; a request that meets a busy
   channel is dropped, never queued: a bark is about the moment it was said in. The teammates share the channel with the
   player, so four players reloading are one voice, not four.
 - **Priority.** Downed (100) over hurt (90) over everything else (boss 75 down to idle 10). Only those two may cut the line
   speaking; any other line may cut one 25 ranks below it (a streak over a kill, a boss over a mutter).
+- **The progression cheers rank 61 to 64**: over the chatter (a kill 30, a reload 45, a streak 60), under the urgent
+  lines (revived 66, teammate down 68, close call 70, a boss 72 and 75, hurt, downed). A cheer cuts a kill, a door or a
+  purchase (25 ranks) but never a reload, and any line of `urgent_priority` (65) or more cuts a cheer that speaks
+  (`NightSoundTuning`), so an urgent line is never kept waiting for a celebration and a cheer never cuts one.
+  `celebrate` queues the cheer after the line that speaks instead of dropping it (a level up is rare, a kill's bark is
+  not); the cooldown (2 to 30 s a speaker) keeps a burst of rewards from being a chorus.
+- **Heard by every client.** The server's `level_up`, `tier_up` and `unlock_earned` (`XpAward`, #1059) and
+  `challenge_done` (`ChallengeAward`, #1076) reach every client's `SoldierVoice`, which cheers the player they name:
+  flat for the player at the screen, from where the soldier stands for a teammate. A level, its tier, what it unlocks
+  and the challenge that paid it arrive together, so the soldier waits `cheer_window` (0.25 s) and says one cheer for
+  each player, by weight (`SoldierVoiceCatalog.CHEER_WEIGHT`): a finished poster set (4, #1073: it arrives with the
+  challenge that finished it) over the tier (3) over a challenge or an item (a card, an emblem or frame by its slot,
+  else an unlock; 2 each, the first told of equals) over the level (1). A challenge is
+  what the player did and the level is what it paid, so a challenge that levels you up is cheered as the challenge;
+  a tier is rarer than any of them. Players who finish or level up in the same window are cheered one after the
+  other. A bot has no level and no cheer. The maintainer accepted these weights (2026-11-04).
 - **Cooldown and chance.** Each moment has a cooldown for each speaker (a reload 6 s, a streak 20 s, a kill 5 s) and a
   chance (a kill is voiced 45% of the time, a reload 70%), so the commonest moments are not a running commentary.
 - **Variety.** A moment never repeats one of its last three takes, from a seeded generator, so a night repeats

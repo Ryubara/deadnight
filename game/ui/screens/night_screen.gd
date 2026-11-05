@@ -38,6 +38,12 @@ const OPENING := "OPENING THE LOBBY"
 ## Whether the night warms up behind a loading screen before it starts. There is nothing to warm up
 ## without a renderer, so a headless run skips it.
 static var warm_up_enabled := DisplayServer.get_name() != "headless"
+## Whether a person's night opens with the helicopter drop (#1057, `ArrivalCutscene`). A headless
+## run
+## draws nothing, and a page that asks for the probes (`WebProbe.asked`: a probe drives the night
+## from
+## its first frame) skips it unless the page asks for it (`?arrival`).
+static var arrival_enabled := DisplayServer.get_name() != "headless" and not WebProbe.asked()
 
 ## The server to join (`ws://host:port`) the next time this screen opens; empty plays alone.
 static var join_url := ""
@@ -58,7 +64,9 @@ static var own_look: CharacterLook
 ## Where the player's challenges are kept; empty (tests, captures) counts nothing and writes
 ## nothing. The game's root sets it, so only the real game keeps a save.
 static var challenge_path := ""
-## The lobby the night was entered from (a lobby screen, the Together screen, Quick join set them:
+## The profile file a person's night adds its XP to ('' for tests and captures: no file is touched).
+static var profile_path := ""
+## The lobby the night was entered from (a lobby screen, the Server Browser set them:
 ## `remember_lobby`) and the way to ask the backend about it; taken once, as `join_url` is. At the
 ## end of the night the player goes back to this lobby, which the backend opens again for them.
 static var return_api: TogetherApi
@@ -92,6 +100,8 @@ var _overlay: Control
 var _title: UILabel
 var _note: UILabel
 var _card: Control
+## The card and the settings, laid out at the menu's phone factor on a phone (`PhoneScale`, #1205).
+var _scaled: PhoneScale
 var _resume: UIButton
 var _settings_button: UIButton
 var _quit: UIButton
@@ -114,18 +124,33 @@ static func look_from_flag(text: String) -> CharacterLook:
 	return CharacterLook.from_preset(text.to_int())
 
 
+func _exit_tree() -> void:
+	MenuPopups.set_night(false)
+	# The screen under a night (the Play screen Leave night returns to) is the menu's and runs on
+	# the menu's factor: the shell is hidden under it and cannot put the factor back (#1197). A
+	# frame later: the factor emits `size_changed`, and this screen's parts have left the tree.
+	var window := get_window()
+	if window != null and is_inside_tree():
+		get_tree().process_frame.connect(
+			MenuShell.restore_scale_of.bind(get_tree()), CONNECT_ONE_SHOT
+		)
+
+
 func _ready() -> void:
 	super._ready()
 	# B (`ui_cancel`) crouches in the night: it must not take the player back to the menu.
 	allow_back = false
 	# The menu's ambience ends as a night starts to load (the night has its own beds).
 	MenuAmbience.stop()
+	# The night's HUD owns the popup lane (under its round banner) while this screen is up.
+	MenuPopups.set_night(true)
 	# The night is made for the player's own UI scale: the menu's phone factor (2, which halves the
 	# canvas to 540 units high) would put half the touch buttons off the top. The menu puts the
 	# factor back when it shows again (`MenuShell`).
 	get_window().content_scale_factor = float(Settings.get_value(SettingsService.UI_SCALE))
 	night = Night.new()
 	night.warm_up = warm_up_enabled
+	night.arrival = arrival_enabled
 	night.touch_active = touch_active
 	night.own_look = own_look
 	if match_settings != null and join_url == "":
@@ -138,6 +163,16 @@ func _ready() -> void:
 	return_api = null
 	if challenge_path != "":
 		night.challenge_board = ChallengeBoard.open(challenge_path)
+		# Under the root, like the profile's: the last round's write is sent after this screen has gone.
+		night.challenge_uplink = ChallengeUplink.new(
+			TogetherApi.new(get_tree().root, TogetherScreen.backend_url())
+		)
+	if profile_path != "":
+		night.profile_store = ProfileStore.open(profile_path, TogetherApi.signed_in)
+		# Under the root: the last round's write is sent after this screen has gone.
+		night.profile_uplink = ProfileUplink.new(
+			TogetherApi.new(get_tree().root, TogetherScreen.backend_url()), night.profile_store
+		)
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	add_child(_hud)
@@ -148,7 +183,10 @@ func _ready() -> void:
 	_touch.safe_insets_changed.connect(_on_safe_insets_changed)
 	_touch.mirrored_changed.connect(_on_mirrored_changed)
 	_touch.active_changed.connect(func(active: bool) -> void: _hud.touch_layout = active)
+	_touch.layout_changed.connect(func() -> void: _hud.markers.held = _touch.button_boxes())
 	_touch.look_gain = _look_gain
+	# A hit area is never under a fingertip, at the interface size this night runs at (#1217).
+	_touch.finger_units = func() -> float: return MenuScale.tap_units(get_window(), true)
 	add_child(_touch)
 	wheel = BotWheelDriver.new()
 	wheel.name = "BotWheelDriver"
@@ -161,6 +199,8 @@ func _ready() -> void:
 	night.night_over.connect(_on_night_over)
 	night.night_closed.connect(_on_night_closed)
 	night.ready_to_play.connect(_watch_mouse)
+	night.arrival_started.connect(_on_arrival_started)
+	night.arrival_ended.connect(_on_arrival_ended)
 	if night.warm_up:
 		_loading = LoadingOverlay.new()
 		add_child(_loading)
@@ -182,9 +222,30 @@ func touch_active() -> bool:
 	return _touch != null and _touch.is_active()
 
 
+## The touch layer's circles (`TouchLayout.buttons`) and the buttons a finger is on (a browser test
+## reads them).
+func touch_circles() -> Dictionary:
+	return _touch.circles() if _touch != null else {}
+
+
+func touch_held() -> PackedStringArray:
+	return _touch.held_buttons() if _touch != null else PackedStringArray()
+
+
 ## True while the settings page of the menu is open (a browser test reads it).
 func settings_open() -> bool:
 	return _settings != null
+
+
+## The pause card with its Settings while it is on screen, else null: what a person's finger meets
+## over the night, which a probe measures alone (#1205).
+func card_root() -> Control:
+	return _overlay if _overlay != null and _overlay.visible else null
+
+
+## True while the HUD is on screen (the arrival's show hides it, #1057).
+func hud_shown() -> bool:
+	return _hud != null and _hud.visible
 
 
 ## True while the centre reticle is on screen (a browser test reads it, #517).
@@ -307,9 +368,31 @@ func _resume_night() -> void:
 ## (#517).
 func _hide_overlay() -> void:
 	_overlay.hide()
-	_hud.reticle.set_shown(true)
-	_hud.scoreboard_enabled = true
-	_touch.live = true
+	var playing := not night.is_arriving()
+	_hud.reticle.set_shown(playing)
+	_hud.scoreboard_enabled = playing
+	_touch.live = playing
+
+
+## The helicopter drop is on this screen: the HUD, the reticle and the touch layer give way to it.
+func _on_arrival_started() -> void:
+	_hud.hide()
+	_hud.reticle.set_shown(false)
+	_hud.scoreboard_enabled = false
+	_touch.live = false
+
+
+## The drop is over and the night is the player's. A night that ended under it (`Night._on_over`
+## closes the show when the end arrives, after this screen has put the board up) is not: the board
+## stays alone over the end camera.
+func _on_arrival_ended() -> void:
+	if _end.visible:
+		return
+	_hud.show()
+	if not _overlay.visible:
+		_hud.reticle.set_shown(true)
+		_hud.scoreboard_enabled = true
+		_touch.live = true
 
 
 func _on_connect_failed(reason: String) -> void:
@@ -332,6 +415,24 @@ func _on_night_over(_round_reached: int) -> void:
 		LEAVE_ONLINE if _has_lobby() else LEAVE_ALONE
 	)
 	_end.set_left(night.state.over_left())
+	_show_report()
+
+
+## The night report and the film credits on the board: what the night paid, from the night's own
+## events, and again when the server tells more (the last round's XP can come after the end).
+func _show_report() -> void:
+	if night.report == null:
+		return
+	_end.show_report(night.report.model())
+	_end.show_credits(night.report.credits_input())
+	if not night.report.changed.is_connected(_on_report_changed):
+		night.report.changed.connect(_on_report_changed)
+
+
+func _on_report_changed() -> void:
+	if _end.visible and not _left:
+		_end.show_report(night.report.model())
+		_end.show_credits(night.report.credits_input())
 
 
 func _process(_delta: float) -> void:
@@ -400,14 +501,18 @@ func _show_overlay(title: String, note: String, can_resume: bool) -> void:
 	_touch.live = false
 	_title.text = title
 	_note.text = note
+	_fit_taps()
 	_resume.visible = can_resume
 	_settings_button.visible = can_resume
 	_overlay.show()
 	(_resume if can_resume else _quit).grab_focus()
 
 
+## The pause menu's "Leave night": the same way out as the end board's Leave, so the lobby the night
+## came from is left too (the host role passes on, and a night with nobody in it ends), never only
+## the screen (#1177).
 func _leave() -> void:
-	UIRouter.pop()
+	_go_back(false)
 
 
 ## The settings page over the card: the same screen as the main menu's, with a Back that comes here.
@@ -418,7 +523,7 @@ func _open_settings() -> void:
 	_settings = (load(SETTINGS_SCENE) as PackedScene).instantiate() as SettingsScreen
 	_settings.embedded = true
 	_settings.closed.connect(_close_settings)
-	_overlay.add_child(_settings)
+	_scaled.add_child(_settings)
 	_settings.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_card.hide()
 	_settings.focus_initial()
@@ -437,7 +542,7 @@ func _drop_settings() -> void:
 		return
 	var page := _settings
 	_settings = null
-	_overlay.remove_child(page)
+	_scaled.remove_child(page)
 	page.queue_free()
 	_card.show()
 
@@ -464,9 +569,14 @@ func _build_overlay() -> void:
 	dim.color = DIM
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.add_child(dim)
+	# The night itself stays at the interface size (the HUD and the touch layer are made for it); the
+	# card and the settings are the menu's, at the factor of a phone's menu.
+	_scaled = PhoneScale.new()
+	_scaled.name = "PhoneScale"
+	_overlay.add_child(_scaled)
 	_card = CenterContainer.new()
 	_card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_overlay.add_child(_card)
+	_scaled.add_child(_card)
 	var panel := UIPanel.new()
 	panel.variant = UIPanel.Variant.MARQUEE
 	_card.add_child(panel)
@@ -487,6 +597,21 @@ func _build_overlay() -> void:
 	box.add_child(_resume)
 	box.add_child(_settings_button)
 	box.add_child(_quit)
+	_scaled.resized.connect(_fit_taps)
+
+
+## The card's buttons are tap targets on a phone: the night runs at the interface size alone, where
+## the theme's 79 unit button is 28 px at 844 x 390 (#1192). The card is at the phone factor
+## (`_scaled`), so a unit there is bigger.
+func _fit_taps() -> void:
+	var least := MenuScale.tap_units(get_window(), TouchMode.wanted(get_tree()), _scaled.factor)
+	for button: UIButton in [_resume, _settings_button, _quit]:
+		button.custom_minimum_size = Vector2(0.0, least)
+	# The title's own size (60 units) would take a third of a phone's 540 unit canvas.
+	if _scaled.factor > 1.0:
+		_title.add_theme_font_size_override(&"font_size", _tokens.size_heading)
+	else:
+		_title.remove_theme_font_size_override(&"font_size")
 
 
 func _label(style: UILabel.Style) -> UILabel:

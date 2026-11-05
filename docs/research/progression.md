@@ -226,6 +226,409 @@ count 1 with the earlier build of the rules. Kept for the method only.
 - **One atlas for the tags.** Names over heads can be eight at once; one atlas texture keeps them in one batch on the
   web build. The source stays one SVG per icon.
 
+### The ladder as built (#1060)
+
+![The whole ladder at 128 px](progression-icon-ladder.png)
+
+*The 55 icons from the 128 px atlas, a column a tier, drawn in the game by `LevelIcons`
+(`game/tools/captures/level_tags.tscn`). Original drawings; none is traced from any game.*
+
+| Step | Where | What it does |
+| --- | --- | --- |
+| Draw | `tools/level_icons/draw_icons.py` | One function a drawing, the frames, the tier colours; writes the SVGs (standard library) |
+| Source | `game/assets/ui/levels/level_NN.svg` | 128 x 128, shapes and strokes, no `<text>`; a `<title>` (the working name) and a `<desc>` (the tier). The folder has a `.gdignore`: nothing the game ships reads them, and 55 more textures would only grow the pack |
+| Export | `game/tools/art/export_level_icons.gd` | `Image.load_svg_from_string` at each cell size, no window: `level_icons_64.png`, `level_icons_128.png` and `level_icons.json` (with each icon's body rows, which centre it on the digits: [alignment](level-badge-alignment.md)) in `game/assets/ui/level_atlas/`, a column per level in the tier, a row per tier |
+| Read | `LevelIcons` | `atlas(cell)`, `region(level, cell)`, `texture(level, cell)` (a shared `AtlasTexture`), `tier(level)` |
+| Check | `tools/check_level_icons.py` (CI, pre-commit) | The manifest holds a hash of every SVG and atlas, so an SVG changed without an export fails with no Godot and no raster compared across machines; so does an atlas changed by hand, and an SVG edited by hand that the script would overwrite |
+
+To change a drawing: edit its function, run the script, run the export, import once, and commit all of it.
+
+- **Frames:** ticket, token, sign in turn, a colour each, so that no two tiers of one shape share a colour: tickets
+  cream, tan, green, pink; tokens sky, silver, violet, gold on red; signs copper, periwinkle, teal.
+- **A drawing keeps to its plate.** It sits in a 100 x 100 box at 0.8, outlined 4.5 in the ink `#1c1730`, with two to
+  four colours; light (a beam, a fog bank) is the one thing with no outline. Bulbs are at y 120, r 5.2, lit butter,
+  unlit `#3b3350`. Everything stays 3 px inside the cell, so a mipmap does not bleed into the next one.
+- **24 px, read by eye and by number.** The closest pairs of whole icons at 24 px are all two of one tier (the frame
+  is the same): ray gun and saucer 11.2 of 255 a channel, cup and milkshake 11.6, radio mast and flare 11.9. Cup and
+  milkshake were the only pair that read alike by eye (a red band, a tapered shape, a straw): the cup's band went sky
+  blue. At 24 px the bulbs are a dotted line, not five countable dots: the number beside the icon carries the level.
+- **Mipmaps cost sharpness and buy stillness.** Both atlases carry mipmaps, and a canvas item that shows an icon under
+  its cell size sets `texture_filter = LevelIcons.FILTER`. Against plain linear filtering a 24 px icon is softer at
+  rest, and changes 22 to 43 percent less when it moves a quarter of a pixel (mean change a step on the asphalt, of
+  255: 4.3, 1.7, 4.5 with mipmaps, 5.5, 3.0, 5.7 without). A tag moves all the time, so tags want them.
+**Draw cost**, counted in the web build and on the desktop (the same numbers: Compatibility renderer, 1760 x 960,
+`tools/web_smoke/level_tags_cost.py`), draw calls of eight tags with the frame's one taken off:
+
+| Eight of them | Calls |
+| --- | ---: |
+| Icons from the atlas, one canvas item | 1 |
+| Icons from the atlas, eight `TextureRect`s (`LevelIcons.texture`) | 1 |
+| Icons from eight separate textures | 8 |
+| Whole tags: all the icons, then all the outlines, then all the letters | 3 |
+| Whole tags: icon, outline, letters, tag by tag | 24 |
+
+So `HudMarkers` (it already collects its words and draws them last) gets the icons first: three calls for eight tags,
+not twenty-four. The atlases add 0.98 MB to the pack (lossless, with mipmaps: 0.31 and 0.68 MB) and load on first use.
+
+**Locked silhouettes (the wardrobe, #1065).** A locked item's base icon is the same drawing language with its inner
+detail gone: one flat shape in `#3b3350` with the ink outline, on the plate of the grid, no bulbs.
+
+## The game server awards XP (#1059)
+
+The maintainer chose the game server to award XP, a kill at a time, live ("Game server is good. We'll see how much
+it stresses when we do it because XP is earned after every zombie kill and there can be hordes"). It is built, and the
+horde was measured. The plan is [Who awards XP](../design/progression.md#who-awards-xp-and-live-xp).
+
+### How it works
+
+| Part | Where | What it does |
+| --- | --- | --- |
+| `XpAward` | `gameplay/progression/xp_award.gd` | A meter (`XpMeter`) for each seat that holds an account. It hears the rules' events through `NightServer._on_rules_event` (one dictionary read for the events that cannot pay: a shot, a hit, a frame) and adds what each change is worth (`XpRules.live`). `end_tick` answers the events every client hears. Nothing a client sends reaches it |
+| `NightTally.keep_only` | `gameplay/challenges/night_tally.gd` | Counts only the paying stats, so a kill is a few dictionary reads and not the dozen stats the challenges keep. `forget` and `set_present` let a person take a bot's seat with a clean count |
+| `LadderUnlocks` | `gameplay/progression/ladder_unlocks.gd`, `unlocks.json` | What each level gives (the design page's table as data). A row whose art is not drawn has `available` false: the level's card is told, the item is not. The wardrobe, the maps and the plate read the same file |
+| `NightHost` | `net/night_host.gd` | Registers a seat from the ticket the server verified (never a client's word), releases it when the seat is freed, puts every seat's level in the WELCOME and tells the others a seat's level when it sits (`account_seated`, `account_left`), and makes a report when the award says one is due |
+| `XpReportQueue` | `net/xp_report_queue.gd` | The reports wait here in order, one in flight, and are sent again unchanged after 2, 5, 15, 30, 60 s until the backend takes them. A night never waits on the backend |
+| `ClientState` | `gameplay/night/client_state.gd` | `levels` (every seat's), `account_xp` (this player's raw XP from the WELCOME, then every `xp_gained`), `night_xp` |
+
+A **Guest account** earns like any other (its ticket carries an account id like any other); a seat with no account
+(a server with no backend, so no ticket) is never registered and earns nothing, and a **bot** is never registered, so
+it has no level. A **late joiner** is paid for the rounds it plays, not the ones it missed (`round_base`), and a
+person who takes a bot's seat starts with a clean count. **Signed-in solo** runs the same code in the local rules: the
+profile is still written by `ProgressSession` at round ends, which also tells the award the XP no stat shows (the
+opening night, the day's first game, a challenge) so the events agree with the file.
+
+### The events
+
+Every client hears them (they ride the tick like any rules event); the popups (#1064), the level over a head (#1077),
+the night report (#1068) and the voice lines (#1063) read them.
+
+| Event | Keys | When |
+| --- | --- | --- |
+| `xp_gained` | `player_id`, `hundredths` (added since the seat was last told), `xp` (the night's whole XP), `total` (the account's raw XP), `sources` (`{stat: hundredths}`: `points_earned`, `round`, `boards_repaired`, `doors_bought`, `fuel_cans`, `kills:boss`, `revives`, `opening_night`, `first_game_of_the_day`, `challenge`) | At most once a seat a tick: a tick's kills are added first |
+| `level_up` | `player_id`, `level`, `total` | Once for each level crossed, in order |
+| `tier_up` | `player_id`, `tier`, `tier_name`, `level` | A crossed level that opens a tier (6, 11, ...) |
+| `unlock_earned` | `player_id`, `level`, `slot`, `item` | One for each available item the crossed level gives |
+| `account_seated`, `account_left` | `player_id`, `level` | A seat with an account sat down or left (the others' `levels`) |
+
+The WELCOME's snapshot carries `levels` (`{player_id: level}`) and the joiner's own `account_xp`.
+
+### The interface with the backend (#1075)
+
+The backend side is built ([Progression](platform-backend.md#progression-the-profile-slot-round-reports-and-the-xp-clamp));
+the game server follows it. Nothing is written per kill.
+
+- **The ticket** carries `xp` (the raw total), `level` and `icon`, read from the stored profile when it is minted. The
+  server registers a seat with the ticket's `xp` and nothing else; a ticket without one is an account at 0 XP.
+- **A report**: `POST /internal/matches/:matchId/report` with the game server's bearer secret and
+  `{kind: "round" | "night", round, seats: [{userId, xp, openingNight?, bonusDay?, lines}]}`. `xp` is the whole XP the seat
+  earned since its last report, without the two one-offs; `lines` are the night's paying counts so far (`round`,
+  `points_earned`, `boards_repaired`, ...). A seat that has finished a round also claims `openingNight: true` and
+  `bonusDay` (the UTC day number): the backend knows the profile and pays the opening night and the day's first game
+  itself, once. A `round` report is made when a round ends (`round` is that round); a `night` report when the night ends
+  (`round` is the round reached) or when the room closes with a round half played, and lists every seat.
+- **The key** is the match, the kind, the round and the account, so a repeat pays nothing and answers `duplicate`. One
+  request carries every seat, so a night is the rounds played plus one.
+- **Answers**: 200, 201 and 204 take a report; any other 4xx but 408 and 429 refuses it for good (dropped, logged); the
+  rest and no answer are retried in order after 2, 5, 15, 30 and 60 s (200 reports kept at most), so the backend being
+  down never stops a night. The backend holds one account to 1,500 XP a match, the same as `XpRules.NIGHT_CAP`.
+- **A signed-in solo night** is capped by the backend at 120 XP a minute of wall clock (`PUT /saves/profile`); how the
+  game sends it is [below](#a-signed-in-solo-nights-write-1106).
+
+### A signed-in solo night's write (#1106)
+
+`ProfileUplink` (`game/net/profile_uplink.gd`) is the `ProgressSession.uploader` and the sign-in read.
+
+- **The queue holds changes.** The backend takes the whole profile on its revision and refuses one that takes anything
+  away, so a file's profile is never sent. A queued write is what the night added: `{id, xp, opening_night, bonus_day,
+  done}`. `send` reads the account's latest (`GET /saves/profile`; a 404 is a fresh profile on revision 0), puts the
+  write on it (`Profile.apply_write`) and writes on that revision. A profile in a newer schema than the game reads is
+  never written over.
+- **What the answers do.** 409 `revision_conflict`: read again and put the same change on the new latest (four
+  tries). 422 `implausible_progress`: the write stays queued and goes again at the next round's end (the allowance
+  grows with the clock, up to an hour of it). 422 `implausible_day` (a clock a day off): sent without the first-game day
+  and its 100 XP. A network failure or any other refusal: stays queued.
+- **One write for what waits.** The clamp counts the minutes since the account's last XP write, so a queue of three
+  rounds sent one after the other would be refused after the first. `ProfileStore.flush(send, true)` joins the queue into
+  one write first (`coalesce`: XP added, the one-offs and finished challenges kept). A second `flush` while one is out
+  does nothing; the running one takes what was queued meanwhile.
+- **Read at sign-in.** `TogetherApi.sign_in` starts `ProfileUplink.sync_after_sign_in` (under the root, not awaited: a
+  night never waits on the backend). It reads the account's profile into the file (`ProfileStore.adopt`): the XP is the
+  account's, with the changes still queued on top. A queue that belongs to another account (the file names the account
+  it was made for; a Guest account that ran out is a new one) is dropped. `ProfileUplink.sync_path` is empty in tests
+  and captures, as `NightScreen.profile_path` is; `Main` sets it.
+- **A Callable does not keep its RefCounted object alive.** `Night` holds the uplink (its `send` was freed once, with
+  the local that made it); `send` and `flush` hold themselves while a request is out, so a night that ends mid-request
+  still saves.
+- **A night with no sign-in earns nothing**, as the decision says. **A returning Guest signs in when the game opens**
+  (`StartupSignIn`, called by `Main`, #1122): a credential kept for the backend (`GuestAccount`) is traded in the
+  background for the account and its profile, so a Solo night earns XP for a player who never opens Play together.
+  `begin` returns at once (the menu and a night never wait). A `TogetherApi.sign_in` that comes while another is out
+  (Play together opened during the start-up one) waits for it and sends no second request; when the first failed, the
+  waiter signs in itself. A failed start-up sign-in leaves the player as before. **Open, the maintainer's:** a brand-new
+  player has no credential, so nothing is sent and their first Solo earns nothing until they open Play together; whether
+  a first Solo should make a Guest account for someone who never asked is not decided.
+- **Tests:** `game/tests/net/test_profile_uplink.gd` and `test_startup_sign_in.gd` run the real backend
+  (`BackendFixture`, `npm ci` in `spikes/backend`); the browser run is `tools/web_smoke/solo_profile.py` (the autopilot
+  with `signin=1`, or with `--returning`: a first visit makes the Guest by Play together, and the second, a solo night
+  with no `signin=1`, signs in at start-up by itself).
+
+### The challenge board, signed in (#1124)
+
+`ChallengeUplink` (`game/net/challenge_uplink.gd`) is the sign-in read and the solo night's write of the `challenges`
+slot. The design is in [the board, signed in](../design/progression.md#the-board-signed-in); what a maintainer or the
+next engineer needs:
+
+- **The file and the slot.** `ChallengeSave` writes `account` and `accountRevision` into the envelope of
+  `user://challenges.json` (`ChallengeProfile.account`, `account_revision`, not part of `data`); the backend's slot holds
+  `data` without the machine's own save counter. A write names the revision it follows, from the file for a board the
+  account owns, and reads first (`GET`, a 404 is revision 0) for one that no account has claimed yet.
+- **The answers.** 409 `revision_conflict`: `GET` again, write the same board on the new revision (four tries; nothing
+  merged). A slot in a layout newer than `ChallengeSave.SCHEMA_VERSION`: not written. A slot that already holds a board
+  when this machine's board never named the account (the sign-in read was missed): not written over. Another failure:
+  the board stays in the file and goes at the next round end.
+- **One at a time.** A round end while a write is out is folded into it (`_again`): the running write goes on to the
+  board as it is then. A board that has not changed since the last write is not sent again (the night's end right after
+  a round's).
+- **The menu follows the file.** The sign-in read lands after the menu is up, and a night writes the file under it.
+  `ChallengeBoard.watch_file()` (the main menu's board) reads the file again when the uplink replaces it
+  (`ChallengeBoard.file_replaced`), and `MainMenu` calls `reload()` when it is shown again and refreshes the panel on
+  `changed`. A night's board never watches: its tracker holds the profile.
+- **Not in an online night.** Only a night whose rules run here (`Night.start`, not `start_remote`) gets the uplink; the
+  game server writes the board of an online night (#1076) and a second writer would be two counters on one slot.
+- **Known gap.** A sign-in read that lands in the middle of a solo night replaces the file under the night's board; the
+  night's round-end saves put its own board back and the write is refused (the board names no account), so that night's
+  challenge progress stays on the machine. The read is made at start-up, seconds after the game opens.
+- **Tests:** `game/tests/net/test_challenge_uplink.gd` (the real backend through `BackendFixture`, and fakes for the
+  counts), two menu tests in `game/tests/ui/test_main_menu.gd`; the browser run is `tools/web_smoke/solo_profile.py`
+  (the slot, the file and the Challenges tab after a solo night).
+
+### The horde, measured
+
+**Method.** `game/tools/bench/xp_horde_bench.tscn`: a four-player night on a real `GameServer` (tickets, a room, a
+WebSocket): an autopilot player over a socket and three hosted bots, all holding accounts (in the bench only; a game
+server never gives a bot one), **count multiplier 5** from round 8 with 20,000 points each so the bots have bought their
+guns, players who cannot die so the horde keeps coming, 120 seconds from the round's start at a fixed 60 Hz step,
+headless. Three seeds, the arms played in turn on each. A tick is the room's own work (`NightHost`'s step including the
+packing and sending of the tick), taken every step; bytes are what the client's link takes in, and the XP events' own
+size is counted by `var_to_bytes`. This machine ran other agents' Godot processes throughout, so a time here has noise:
+read the calibration row (a fixed loop timed in the same process) and the spread across seeds, and trust the counts.
+`xp_award_micro.tscn` times the award alone on hand-made events and repeats to a few percent.
+
+Natural play, the web's 40 dead (seeds 1 to 3):
+
+| | No award | Every tick | Every 2nd tick | 0.25 s window |
+| --- | ---: | ---: | ---: | ---: |
+| Server tick, mean (ms) | 4.45 (4.38 to 4.53) | 4.56 (4.47 to 4.63) | 4.48 (4.45 to 4.51) | 4.35 (4.32 to 4.38) |
+| Server tick, p99 (ms) | 11.4 (10.7 to 12.1) | 12.3 (11.7 to 12.9) | 11.5 (11.1 to 11.8) | 11.7 (11.5 to 11.9) |
+| Server tick, worst (ms) | 23.2 (20.9 to 24.7) | 32.8 (24.3 to 46.9) | 23.8 (22.6 to 25.5) | 23.8 (23.2 to 24.4) |
+| Kills a second, mean / peak second | 1.76 / 13 | 1.72 / 9 | 1.7 / 11 | 1.71 / 13 |
+| `xp_gained` a second a client hears, mean / peak | 0.0 / 0 | 5.4 / 14 | 5.4 / 16 | 5.3 / 14 |
+| XP events, bytes a second, mean / peak | 0.0 / 0 | 1076.0 / 2744 | 1065.0 / 3136 | 1056.0 / 2744 |
+| All bytes a second a client takes, mean / peak | 23013.0 / 32358 | 24215.0 / 34050 | 23995.0 / 33501 | 23670.0 / 34258 |
+| The award's own time (microseconds a tick) | - | 5.2 | 5.0 | 4.8 |
+| The client's cost of applying one `xp_gained` (microseconds) | - | 20.3 | 20.0 | 21.0 |
+| Backend writes | 1 | 1 | 1 | 1 |
+| Calibration loop (ms) | 3.74 | 2.65 | 3.17 | 3.13 |
+
+Natural play plus 20 kills a second made at the rules:
+
+| | No award | Every tick | 0.25 s window |
+| --- | ---: | ---: | ---: |
+| Server tick, mean (ms) | 1.57 (1.55 to 1.58) | 1.57 (1.56 to 1.58) | 1.63 (1.56 to 1.74) |
+| Server tick, p99 (ms) | 3.9 (3.7 to 4.2) | 4.1 (3.9 to 4.3) | 5.0 (4.0 to 6.7) |
+| Server tick, worst (ms) | 20.9 (20.1 to 21.3) | 20.3 (19.9 to 20.7) | 24.1 (20.7 to 30.9) |
+| Kills a second, mean / peak second | 4.57 / 5 | 4.57 / 5 | 4.57 / 5 |
+| `xp_gained` a second a client hears, mean / peak | 0.0 / 0 | 4.7 / 6 | 3.8 / 6 |
+| XP events, bytes a second, mean / peak | 0.0 / 0 | 945.0 / 1792 | 768.0 / 1792 |
+| All bytes a second a client takes, mean / peak | 10439.0 / 14272 | 10935.0 / 14983 | 10862.0 / 14596 |
+| The award's own time (microseconds a tick) | - | 4.1 | 4.3 |
+| The client's cost of applying one `xp_gained` (microseconds) | - | 26.6 | 27.6 |
+| Backend writes | 1 | 2 | 2 |
+| Calibration loop (ms) | 2.74 | 2.62 | 4.18 |
+
+Natural play, the desktop's 120 dead:
+
+| | No award | Every tick |
+| --- | ---: | ---: |
+| Server tick, mean (ms) | 4.51 (4.06 to 4.95) | 4.66 (4.47 to 5.01) |
+| Server tick, p99 (ms) | 12.0 (11.8 to 12.4) | 15.1 (11.8 to 21.8) |
+| Server tick, worst (ms) | 43.3 (24.9 to 72.4) | 36.6 (23.7 to 60.7) |
+| Kills a second, mean / peak second | 1.82 / 11 | 1.65 / 11 |
+| `xp_gained` a second a client hears, mean / peak | 0.0 / 0 | 5.2 / 14 |
+| XP events, bytes a second, mean / peak | 0.0 / 0 | 1035.0 / 2744 |
+| All bytes a second a client takes, mean / peak | 23033.0 / 32840 | 24377.0 / 33501 |
+| The award's own time (microseconds a tick) | - | 5.3 |
+| The client's cost of applying one `xp_gained` (microseconds) | - | 20.7 |
+| Backend writes | 1 | 1 |
+| Calibration loop (ms) | 3.57 | 3.27 |
+
+**The award alone** (`tools/bench/xp_award_micro.tscn`, three runs, the calibration loop 2.6 ms):
+
+| Piece | Cost |
+| --- | ---: |
+| One kill: three hits, the removal and its points (five events), counted and added | 16.3 microseconds |
+| An event the award ignores (a shot, a frame) | 0.19 microseconds |
+| The end of a tick with nothing to tell | 1.1 microseconds |
+| A tick that tells all four seats (four `xp_gained`) | 43 microseconds |
+| A burst: 120 kills in one tick (a grenade into a horde), counted, then the tick's end | 0.77 ms median, 0.9 to 1.3 ms worst of 200 |
+| The client applying one `xp_gained` in `ClientState` | 0.72 microseconds |
+| One `xp_gained` on the wire, before compression | 196 bytes |
+
+**Reading.**
+
+- **The tick does not move.** The room's mean tick is 4.45 ms without the award and 4.56 ms with it, and the seeds' ranges
+  overlap (4.38 to 4.53 and 4.47 to 4.63); the p99 and the worst tick differ by more between two seeds of one arm than
+  between the arms. The award's own time is 5 microseconds a tick on average (0.03 % of the 16.7 ms tick), a kill about
+  16 microseconds, and the worst tick it can make is the burst: 120 kills at once cost about 0.8 ms, under 5 % of a tick.
+  Costs add per kill, so 50 kills a second would be 0.8 ms of every tick.
+- **The horde the bots make is small, so the burst is the number that bounds it.** The bots kill 1.7 a second on average
+  and 9 to 13 in their best second; the synthetic arm (20 kills a second asked of the rules) is held to 4.6 a second by
+  how fast the dead spawn at x5, and kills them as they appear. Four people with automatic weapons can kill faster for a
+  second, but everything above is linear in kills and a grenade is the burst.
+- **The events are about 5 % of what a client takes.** 5.4 `xp_gained` a second a client hears on average (4 seats, each
+  told at most once a tick; 14 to 16 in the peak second), 1.1 KB/s, with a peak second of 2.7 to 3.1 KB/s, against 23 KB/s
+  of everything else in the mean second (32 to 34 KB/s at the peak). The desktop's 120 dead are the same.
+- **The window does not earn its lag.** A 2-tick window (what a client could not tell apart: the tick goes out every
+  other step) and the issue's 0.25 s window change the events a second from 5.4 to 5.4 and 5.3 with the bots, and from 4.7
+  to 3.8 in the synthetic arm: nothing worth a quarter second of delay on a popup that should be real time. The award
+  keeps one event per seat per tick, and `XpAward.window_ticks` is the knob if a real horde ever asks for it.
+- **The client** applies an event in under a microsecond; the bench's own 20 microseconds a client event is its handler
+  measuring byte sizes. What the popups cost is #1064's to measure.
+- **The backend** is written once a night in the 120 seconds of one round (the night's report when the client leaves),
+  never per kill: 210 kills made 1 write. Where rounds end, the writes are the rounds plus one: the synthetic arm from
+  round 3 for 150 seconds, three seeds, ended 4 rounds, made 520 kills and **5 writes** each.
+  (The "No award" columns' one write is an empty night report the bench made before a report with no seat was
+  dropped; it is not sent now.)
+
+## The game server follows the challenges (#1076)
+
+Rule 9 for challenges: the server counts, the client asks. A seat that holds an account has its challenge board followed
+on the game server by the same `NightTally` and `ChallengeTracker` a client runs, over the events the night makes, so a
+finished challenge pays its XP and is said to every client in the tick it finished (the popup lane, #1064, and the voice
+lines, #1063, read it). The plan is [the save](../design/progression.md#the-save).
+
+### How the tracker works
+
+| Part | Where | What it does |
+| --- | --- | --- |
+| `ChallengeAward` | `gameplay/challenges/challenge_award.gd` | A board for each account that holds a seat. It hears the night's events where `XpAward` does (the rules' in `NightServer._on_rules_event`, the weapons' in `_combat`, the frame when one is built), one dictionary read for the events that cannot move a challenge. `take_events` answers `challenge_progress` and `challenge_done`; a finished challenge pays its `reward.xp` to the seat's `XpAward` (source `challenge`); `fill_report` puts the boards that moved into the report |
+| `NightHost` | `net/night_host.gd` | Asks for a seat's board once, when the seat sits down (`board_wanted`), hands the answer to the award (`board_arrived`), releases the seat when it is freed, and lets the award fill each report |
+| `GameServer` | `net/game_server.gd` | Reads the board (`GET /internal/users/:id/saves/challenges`, 3 s timeout, `board_reader` for a test) and queues the reports with the boards in them (`XpReportQueue`, unchanged) |
+| `ChallengeSession` | `gameplay/challenges/challenge_session.gd` | The client's prompt: online, for a seat that holds an account, it shows the server's `challenge_progress` and not its own count (the local count goes on quietly as the board's cache) |
+
+- **A night never waits for the backend.** The read is not awaited: the seat is in the night and is followed from the
+  moment the board arrives. An answer that never comes, a 5xx, a board this game cannot read or a newer game wrote:
+  the seat is **not followed and its board is never written**, so the backend's board is left as it is and the XP is
+  paid as ever. A 404 is an account with no board yet and starts a fresh one.
+- **A board is read once for the night.** It is kept in memory for the night: a seat that drops and comes back on a new
+  ticket (the same seat, or another one) is followed from where it was, and nothing it finished is said or paid twice
+  (`Board.finished`). A late joiner is told nothing of the past: events are not replayed.
+- **The day** is the server's (UTC), the clock the XP award uses for the first game of the day; the client's dailies
+  follow its local day. Which day a board follows is #1124's to decide.
+- **What no client can say.** Nothing in the protocol reaches the award: a forged tick carrying `challenge_done` is
+  dropped like the `xp_gained` one (`test_a_client_cannot_finish_a_challenge_by_saying_so`).
+
+### The tracker's events
+
+Every client hears them (they ride the tick like any rules event). A challenge that finishes says `challenge_progress`
+(it reached 100 %) and then `challenge_done`, in the tick it finished, ahead of the `xp_gained` that carries its reward.
+
+| Event | Keys | When |
+| --- | --- | --- |
+| `challenge_progress` | `player_id` and the advance `ChallengeProfile.apply` made: `id`, `family` (0 daily, 1 order, 2 milestone), `text`, `before`, `after`, `target`, `checkpoint` (25, 50, 75 or 100), `completed`, `rung`, `rungs` | A quarter mark of a daily or an order (a target under 4 is only said when done) or a ladder's step, never every kill. It is the in-night prompt's input as it was |
+| `challenge_done` | `player_id`, `id`, `family`, `text`, `target`, `rung`, `rungs`, `reward` (the definition's: `xp`) | Once for a challenge finished (a ladder's last step too), never twice in a night |
+
+### The interface with the backend
+
+Nothing is written per kill. The route and the field are the backend's
+([the board](platform-backend.md#the-challenge-board-a-game-server-follows)).
+
+- **Read:** `GET /internal/users/:userId/saves/challenges` with the game-server secret, once per account a night, when
+  the seat sits down: the slot's envelope or 404.
+- **Write:** in the round's report, each seat's `board` (`{schemaVersion, data}`, the profile as `ChallengeSave` writes
+  it) and `done` (the ids finished since the last report). A seat whose board moved without XP gets an entry of its own
+  (`xp: 0`); a seat that left still reports what it had. The backend replaces the slot, never lets a refused board stop
+  the XP, and answers `board: "saved" | "refused"` for each seat that sent one.
+
+### The tracker on the horde, measured
+
+**Method.** The same bench as the XP's (`xp_horde_bench.tscn`: a four-player night on a real `GameServer` with an
+autopilot client over a socket and three hosted bots, all holding accounts in the bench only, count multiplier 5 from
+round 8, players who cannot die, 120 seconds at a fixed 60 Hz step, headless), with `challenges=0|1` for the tracker
+(the XP award is on in both arms). Every account's board is the backend's "no board yet" (404), a fresh one, so the
+**shipped catalogue** (26 dailies, 12 orders, 12 milestones) is what runs. Three seeds, the arms played in turn on each;
+the machine ran other agents' Godot processes throughout, so read the spread of the seeds and the counts, not one time.
+`challenge_award_micro.tscn` times the tracker alone on hand-made events.
+
+Natural play, the web's 40 dead (seeds 1 to 3):
+
+| | No tracker | With the tracker |
+| --- | ---: | ---: |
+| Server tick, mean (ms) | 4.84 (4.65 to 5.07) | 4.53 (4.10 to 4.79) |
+| Server tick, p99 (ms) | 13.3 (11.3 to 15.0) | 12.5 (11.3 to 13.6) |
+| Server tick, worst (ms) | 45.2 (30.9 to 55.6) | 32.1 (30.7 to 33.8) |
+| Kills a second, mean | 1.78 | 1.85 |
+| The tracker's own time (microseconds a tick) | - | 16.1 (15.5 to 16.5) |
+| Advances the tracker handled in 120 s | - | 1,092 (1,067 to 1,106) |
+| `challenge_*` events a second a client hears, mean / peak second | 0 / 0 | 0.35 / 9 (3 to 12) |
+| Challenge bytes a second, mean / peak second | 0 / 0 | 119 / 2,963 (1,048 to 3,920) |
+| All bytes a second a client takes, mean | 23,275 | 23,218 |
+| Challenges finished in 120 s | - | 6 (3 to 8) |
+| A fresh board after the run (bytes of JSON) | - | 919 (900 to 957) |
+| The night's report, largest body (bytes) | 631 | 3,281 (3,248 to 3,314) |
+| Backend writes | 1 | 1 |
+| Calibration loop (ms) | 3.01 | 3.30 |
+
+Natural play plus 20 kills a second made at the rules (seed 1): tick mean 1.71 ms without and 1.67 ms with, p99 5.1
+and 4.4, the tracker 14.8 microseconds a tick, 549 advances, 4 challenges finished, backend writes 3 and 3 (the rounds
+that ended plus the night's). Natural play, the desktop's 120 dead (seed 1): tick mean 4.55 ms and 4.94 ms, p99 12.7 and
+15.5, worst 46 and 82 (one run each: inside the 31 to 56 ms the seeds of the web arm spread over), the tracker 17.0
+microseconds a tick, 3 finished.
+
+**The tracker alone** (`tools/bench/challenge_award_micro.tscn`, three runs, the calibration loop 2.6 ms, four seats
+with
+fresh boards on the shipped catalogue):
+
+| Piece | Cost |
+| --- | ---: |
+| One kill: three hits, the removal and its points (five events, eight stat changes), counted, advanced and listed | 57 to 59 microseconds |
+| An event it ignores (a hurt player) | 0.43 microseconds |
+| A shot (the weapon in the shooter's hand) | 1.5 microseconds |
+| A frame of four players | 2.9 microseconds |
+| A burst: 120 kills in one tick (a grenade into a horde) | 4.45 ms median, 6.6 worst of 200 |
+| The four boards put into a report | 27 microseconds |
+| A fresh board saved (JSON), and one `challenge_progress` on the wire | 527 bytes, 344 bytes |
+| The client applying one `challenge_progress` in `ClientState` | 0.86 microseconds |
+
+**Reading.**
+
+- **The tick does not move.** The room's mean tick with the tracker (4.53 ms) is inside the spread of the runs without
+  it
+  (4.65 to 5.07; the machine's noise is larger than the tracker). The tracker's own time is 16 microseconds a tick, 0.1
+  %
+  of the 16.7 ms tick, and the CI budget case (round 12 at 3x, every seat an account, the desktop's crowd) holds it as
+  `server.challenges` at 0.0047 times the calibration loop against a limit of 0.012.
+- **The burst is the number to watch.** A kill is 58 microseconds, about 4 times the XP award's 16, because every stat
+  change (a kill makes eight: the kill, the head, the weapon, the type, the points of the hits and the kill) walks the
+  seat's three open dailies and three open orders. 120 kills in a tick cost 4.4 ms, over five times the XP award's 0.8
+  and about a quarter of a tick, once, and only when the dead fall together (a grenade); the room's worst tick in
+  natural
+  play is already 30 to 55 ms. The knob if a real horde ever asks: index the open challenges of a profile by stat so a
+  change with no challenge on it is one lookup (a kill's `kills:type` and `kills:weapon` changes mostly have none).
+- **The events are about half a percent of what a client takes.** 0.35 a second on average, 9 in the peak second (a
+  round
+  ending finishes several at once), 119 bytes a second against 23 KB/s (peak second 3 KB/s), and only quarter marks are
+  told, never a kill. The XP events, by comparison, are 5 %.
+- **The backend** is read once for each account when its seat sits down (four reads, a test counts them) and written
+  with the round's report, never per kill: 1 write in the 120 s of one round, 3 where two rounds ended. A report with
+  four boards weighs 3.3 KB, 0.9 KB a board; a long-played board is bigger (every weapon and kind of dead is a stat),
+  and
+  the backend holds one to 64 KiB.
+- **What was not measured.** A board that has been played for weeks (hundreds of lifetime stats) was not: the profile's
+  work is the same three dailies and three orders, so its cost is the same per change, but its JSON grows with the stats
+  it counts and is sent whole each round. 8 seats in one room (the limit) was not run either; the cost is linear in
+  seats that hold an account.
+
 ## Sources, and what we could not read
 
 Everything linked above. Not read in full: the two 2006 papers (abstracts and secondary summaries), Zagal et al. 2013

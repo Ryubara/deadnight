@@ -5,6 +5,10 @@
 # the labels leave the engine two runs of glyphs, not four.
 extends GdUnitTestSuite
 
+## Deferred sounds the queued-sounds test puts in the `Audio` service's line: enough files to still
+## be decoding after the labels are counted.
+const QUEUED_SOUNDS := 40
+
 
 func test_a_ticket_polygon_is_four_triangles() -> void:
 	var shapes := HudShapes.new()
@@ -106,9 +110,41 @@ func test_a_label_that_wraps_keeps_its_own_outline_too() -> void:
 
 
 func test_labels_made_and_freed_leave_no_objects_behind() -> void:
+	await _labels_come_and_go()
+
+
+## The deferred sounds an earlier suite queued on the `Audio` service decode a few milliseconds a
+## frame while this suite runs, and each decoded sound is an object. CI failed twice with 55 and 78
+## more objects, all of them voice files (#1093). A service of this test's own holds a line that is
+## surely not empty, and the count waits for it.
+func test_labels_leave_no_objects_behind_when_sounds_are_still_queued() -> void:
+	var service: AudioService = auto_free(AudioService.new())
+	add_child(service)
+	for id in SoundCatalog.ids():
+		if service.decode_pending() < QUEUED_SOUNDS and SoundCatalog.get_def(id).deferred:
+			service.preload_sound_for_night(id)
+	assert_int(service.decode_pending()).is_greater_equal(QUEUED_SOUNDS)
+	await _labels_come_and_go(service)
+	assert_int(service.decode_pending()).is_equal(0)
+
+
+func _labels_come_and_go(service: AudioService = Audio) -> void:
+	await AudioSettle.until_idle(get_tree(), service)
+	# Sounds an earlier suite left playing end during the count, each freeing its playback in a
+	# frame of its own: a fall that hides a leak of as many objects (#1138).
+	assert_bool(await QuietCount.settle(get_tree())).is_true()
 	var host: Control = auto_free(Control.new())
 	host.size = Vector2(400.0, 400.0)
 	add_child(host)
+	await get_tree().process_frame
+	# The first label of a run makes a few objects that stay (6 when this suite runs alone), so
+	# one is made, drawn and freed before the count starts.
+	var warm := HudStyle.label("ROW", HudStyle.SMALL, Color.WHITE)
+	host.add_child(warm)
+	warm.size = Vector2(120.0, 28.0)
+	for _i in 3:
+		await get_tree().process_frame
+	warm.free()
 	await get_tree().process_frame
 	var before := Performance.get_monitor(Performance.OBJECT_COUNT)
 	for i in 100:

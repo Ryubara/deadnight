@@ -11,6 +11,8 @@
 # changed. A job skipped by an `if` reports success to a required check, so every required name is still reported;
 # `build-ok` fails on a failed or cancelled job and on a `conventions` that failed (which also stops the long jobs).
 # The `backend` job runs the platform backend's own tests beside them (docs/research/ci-jobs.md).
+# `gdlint` runs the commit hook itself over every script of the merged head; `gdlint-late` lints the changed scripts
+# again on the base as it is when the run ends, because a merge that landed during the run is in no merged head (#1238).
 # Actions are pinned to a full commit SHA; the tag is in the comment beside it.
 name: ci
 
@@ -22,6 +24,10 @@ on:
 
 permissions:
   contents: read
+
+env:
+  # The tool that runs the hooks. What it runs (gdtoolkit's version, the files, the settings) is `.pre-commit-config.yaml`.
+  PRE_COMMIT: pre-commit@4.7.0
 
 concurrency:
   # A pull request's runs share one group and a superseded run is cancelled. Each push to main gets its own group (its
@@ -48,6 +54,7 @@ jobs:
       markdown: ${{ steps.scope.outputs.markdown }}
       workflows: ${{ steps.scope.outputs.workflows }}
       backend: ${{ steps.scope.outputs.backend }}
+      gdscript: ${{ steps.scope.outputs.gdscript }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
@@ -60,9 +67,20 @@ jobs:
         run: bash deploy/test_check_head.sh
       - name: The backend deploy finds a backend that is behind the game's match settings
         run: bash deploy/backend/test_check_keys.sh
+      - name: A command is run again after an outside failure, a bounded number of times
+        run: bash tools/ci/test_retry.sh
+      - name: The actionlint download retries and says what it got in place of an archive
+        run: bash tools/ci/test_fetch_actionlint.sh
+      - name: A failed Railway upload is repeated only when no deployment is alive, and inside the job's time
+        run: bash deploy/test_railway_up.sh
       - name: The Discord bridge's share half refuses nothing it could have asked for first
         # A client that wants `authenticate` before any command (RPC 4006 otherwise, #627); no packages, node is on the runner.
         run: node --test deploy/web/test_discord_share.mjs
+      - name: The late gdlint judges a merge the run's own merged head does not hold
+        run: bash tools/test_gdlint_on_base.sh
+      - name: The page's last word is sent by a page that is going, and by none that is only kept
+        # `pagehide` with `persisted` true (a phone that switched app, the back-forward cache) sends nothing (#1188); no packages.
+        run: node --test tools/web_smoke/test_page_closing.mjs
       - name: Which parts of the repository the change touches
         id: scope
         env:
@@ -84,7 +102,7 @@ jobs:
     needs: conventions
     if: needs.conventions.outputs.godot == 'true'
     runs-on: ubuntu-24.04
-    # The suite is split over eight parallel jobs, `godot (1)` to `godot (8)`, by the seconds each test script takes
+    # The suite is split over ten parallel jobs, `godot (1)` to `godot (10)`, by the seconds each test script takes
     # (tools/ci_test_shards.py deals them out from tools/ci_test_times.json; one job took 15 to 20 minutes, #524; three
     # took 12 to 15 each, #775; six hit the limit again, #1015). A balanced shard takes 6 to 9 minutes (about 1 of setup),
     # and the limit is 15. The last step of each shard (tools/ci_shard_time.py) annotates a job past 9 minutes and fails
@@ -94,7 +112,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
       - name: Start the shard's clock
         # The share-of-the-limit check at the end measures the job from here (the checkout is part of its time).
@@ -126,8 +144,12 @@ jobs:
       - name: Every texture import keeps palettes exact and Detect 3D off
         # Before the import as well: the committed .import files are what the maintainer's editor reads (issue #441).
         run: python3 repos/deadnight/tools/check_texture_imports.py --root repos/deadnight
+      - name: The level icons' SVGs and atlases agree
+        # A hash in the manifest for each: an SVG that changed without a new export fails here (issue #1060).
+        run: python3 repos/deadnight/tools/check_level_icons.py --root repos/deadnight
       - name: Make the workspace and fetch the pinned Godot and GdUnit4
-        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,gdunit4
+        # A download from outside can fail once (#1269): twice at most, 150 s each, so 5 minutes in the worst case.
+        run: bash repos/deadnight/tools/ci/retry.sh -n 2 -p 15 -t 150 -- uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,gdunit4
       - name: Import the project
         run: |
           set -o pipefail
@@ -154,17 +176,26 @@ jobs:
           grep -q "^REPORT" night.log
           ! grep -E "^(SCRIPT )?ERROR|leaked at exit|still in use" night.log
 
+      - name: The budget check still fails a section twice as slow
+        # The label limits (tools/perf/budget.json) must pass every kind of runner measured and fail a section twice as
+        # slow on each (#1255); a limit moved without that proof fails here, in a second, before the 1.5 minutes below.
+        if: matrix.shard == 1
+        run: python3 -m unittest discover -s repos/deadnight/tools/perf -p "test_*.py"
+
       - name: Hold the late-round worst case to its budget
         if: matrix.shard == 1
         # Round 12 at 3x with four players (the person and three bots) and the desktop's crowd, played headless at a fixed
         # step with a sample a second of the engine's counts (`PerfSampler`). The counts are the same on every machine, so
         # they are held tight; the frame is held as a multiple of a fixed piece of GDScript timed in the same process
         # (tools/perf/budget.json, docs/research/performance.md). A leak, a pool that stopped being returned or a cost
-        # that grew fails here, not in the maintainer's hands.
+        # that grew fails here, not in the maintainer's hands. Every player holds an account (`--xp=1`), so the XP award
+        # runs as it does on a game server: how often it tells a seat (a count) and what it costs (a share of the
+        # frame, not of the calibration loop: a section of a few microseconds follows the frame from one runner to the
+        # next, #1255) are held too (#1059).
         run: |
           set -o pipefail
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
-          "$godot" --headless --path repos/deadnight/game --fixed-fps 60 -- --autopilot --rounds=12 --startround=12 --hold=110 --seconds=140 --count=3 --bots=3 --ceiling=desktop --sample=1 --out="$PWD/perf.json" 2>&1 | tee perf.log
+          "$godot" --headless --path repos/deadnight/game --fixed-fps 60 -- --autopilot --rounds=12 --startround=12 --hold=110 --seconds=140 --count=3 --bots=3 --ceiling=desktop --xp=1 --sample=1 --out="$PWD/perf.json" 2>&1 | tee perf.log
           if grep -E "^(SCRIPT )?ERROR" perf.log; then exit 1; fi
           python3 repos/deadnight/tools/perf/check_budget.py perf.json repos/deadnight/tools/perf/budget.json --markdown perf-summary.md
       - name: Show the budget in the job summary
@@ -174,6 +205,9 @@ jobs:
 
       - name: Run the tests (GdUnit4), this shard's scripts
         id: tests
+        # `tools/ci/warm_GdUnitCmdTool.gd` is GdUnit4's command line tool after every game script has been loaded as itself
+        # (`ScriptWarmup`): without it the scripts that only a suite names stay in use at exit, `leaked at exit` below,
+        # for some mixes of suites and not others (#1231, docs/research/test-exit-leaks.md).
         # No `-d`: with the debugger attached, the first script error stops the engine at a prompt and the job hangs.
         # `--ignoreHeadlessMode` is needed because GdUnit4 otherwise refuses to run headless; the report folder is
         # uploaded below even when a test fails.
@@ -184,7 +218,7 @@ jobs:
           python3 repos/deadnight/tools/ci_test_shards.py --root repos/deadnight/game --self-test
           read -r -a folders < <(python3 repos/deadnight/tools/ci_test_shards.py --root repos/deadnight/game --shard "${{ matrix.shard }}")
           echo "shard ${{ matrix.shard }}: ${folders[*]}"
-          "$godot" --headless --path repos/deadnight/game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd "${folders[@]}" -c --ignoreHeadlessMode --verbose 2>&1 | tee tests.log
+          "$godot" --headless --path repos/deadnight/game -s res://tools/ci/warm_GdUnitCmdTool.gd "${folders[@]}" -c --ignoreHeadlessMode --verbose 2>&1 | tee tests.log
           # Godot prints a leak after the run has finished, so only the log shows it (see the night step).
           ! grep -E "leaked at exit|still in use" tests.log
       - name: Hold the shard to its share of the job's limit
@@ -244,7 +278,8 @@ jobs:
           path: cache/downloads
           key: tools-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
       - name: Make the workspace and fetch the pinned Godot
-        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot
+        # Twice at most, 150 s each (#1269).
+        run: bash repos/deadnight/tools/ci/retry.sh -n 2 -p 15 -t 150 -- uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot
       - name: Import the project
         run: |
           set -o pipefail
@@ -275,9 +310,24 @@ jobs:
     # Any console error, page error or failed request fails the job. The export has no threads (preset option
     # `variant/thread_support=false`), so the page needs no cross-origin isolation headers, which a Discord Activity
     # cannot send anyway. Frame times on a runner come from a software renderer: recorded in the artifact, never gated.
+    #
+    # The job takes 1,100 to 1,700 s on a `main` run, nearly all of it the probes below, and was cancelled at 30 minutes
+    # when the browser's install took 471 s on a slow mirror (#1111). So: the install is cached (apt packages and the
+    # browser, below), each install step has a limit of its own that names it when it fails, the job has 40 minutes, and
+    # the last step (tools/ci_shard_time.py web) annotates a job past 30 and fails one past 38, with the install times
+    # in the summary (docs/research/ci-time.md, "The web job").
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
+    env:
+      # One version for the install, the cache keys and every probe: a cached browser always matches the library.
+      PLAYWRIGHT_VERSION: 1.64.1
     steps:
+      - name: Start the web job's clock
+        id: clock
+        # The share-of-the-limit check at the end measures the job from here; the image version keys the apt cache.
+        run: |
+          echo "WEB_CLOCK=$(date +%s)" >> "$GITHUB_ENV"
+          echo "image=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: repos/deadnight
@@ -294,7 +344,8 @@ jobs:
           path: cache/downloads
           key: tools-web-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
       - name: Make the workspace and fetch the pinned Godot and its export templates
-        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,godot-templates
+        # The templates are about 1 GB: twice at most, 300 s each, so 10 minutes in the worst case in a job of 40 (#1269).
+        run: bash repos/deadnight/tools/ci/retry.sh -n 2 -p 15 -t 300 -- uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,godot-templates
       - name: Import the project
         run: |
           set -o pipefail
@@ -311,29 +362,83 @@ jobs:
           test -s repos/deadnight/build/web/index.pck
           # The JSON catalogues are read as plain files: without `*.json` in the export filter they are missing.
           for name in parts.json clips.json zombies.json; do grep -aq "$name" repos/deadnight/build/web/index.pck; done
+      - name: Restore the browser's system packages
+        id: apt-cache
+        # The .deb files `playwright install-deps` fetched (fonts and libraries): the Ubuntu mirror served them with gaps
+        # of 60 to 160 s once (#1111). The key names the runner image, but the runner images rotate every few days and
+        # even between two runs minutes apart, so the newest entry of any image is restored when the exact one is missing:
+        # apt takes the files whose version it wants and fetches the rest, so a stale entry costs time, never
+        # correctness, and the step below adds what it fetched, so the entry saved under the new key is complete.
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: cache/apt-debs
+          key: web-apt-${{ runner.os }}-${{ steps.clock.outputs.image }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
+          restore-keys: web-apt-${{ runner.os }}-
+      - name: Restore the browser
+        id: browser-cache
+        # Playwright's download folder; the version in the key is the one `playwright install` below asks for.
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ~/.cache/ms-playwright
+          key: web-browser-${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
+      - name: Install the browser's system packages
+        # Its own limit: a slow mirror ends red on this step's name, not as a cancelled job. The restored .deb files go
+        # where apt looks first, so `install-deps` downloads only the packages the cache does not have.
+        timeout-minutes: 10
+        run: |
+          started=$(date +%s)
+          touch apt-marker
+          restored=0
+          if [ -d cache/apt-debs ]; then
+            sudo cp cache/apt-debs/*.deb /var/cache/apt/archives/
+            restored=$(find cache/apt-debs -name "*.deb" | wc -l)
+          fi
+          # Twice at most, 240 s each: 8 minutes in the worst case, inside the step's 10 (#1269).
+          bash repos/deadnight/tools/ci/retry.sh -n 2 -p 10 -t 240 -- uv run --with playwright=="$PLAYWRIGHT_VERSION" playwright install-deps chromium-headless-shell
+          # apt gives a download the server's modification time, so "fetched now" is by change time, against a file made before.
+          mkdir -p cache/apt-debs
+          find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -cnewer apt-marker -exec cp -n {} cache/apt-debs/ \;
+          # Keep only the version that is installed now, so an entry never carries the old versions of a package forever.
+          for deb in cache/apt-debs/*.deb; do
+            installed=$(dpkg-query -W -f='${Version}' "$(dpkg-deb -f "$deb" Package)" 2>/dev/null || true)
+            [ "$installed" = "$(dpkg-deb -f "$deb" Version)" ] || rm -f "$deb"
+          done
+          kept=$(find cache/apt-debs -name "*.deb" | wc -l)
+          echo "restored $restored packages, fetched $(( kept - restored )), $kept in the cache"
+          # An empty folder is not worth a cache entry: the next run would hit it and download everything anyway.
+          rmdir cache/apt-debs 2>/dev/null || true
+          seconds=$(( $(date +%s) - started ))
+          echo "$seconds install-deps (restored $restored, fetched $(( kept - restored )) packages)" >> web-steps.txt
       - name: Install the browser
-        run: uv run --with playwright==1.64.1 playwright install --with-deps chromium-headless-shell
+        # A cache hit leaves nothing to download; the command still checks the folder holds this version's build.
+        timeout-minutes: 10
+        run: |
+          started=$(date +%s)
+          # Twice at most, 240 s each: 8 minutes in the worst case, inside the step's 10 (#1269).
+          bash repos/deadnight/tools/ci/retry.sh -n 2 -p 10 -t 240 -- uv run --with playwright=="$PLAYWRIGHT_VERSION" playwright install chromium-headless-shell
+          seconds=$(( $(date +%s) - started ))
+          echo "$seconds playwright install (cache hit: ${{ steps.browser-cache.outputs.cache-hit || 'false' }})" >> web-steps.txt
       - name: Open the build in a browser
-        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/smoke.py repos/deadnight/build/web smoke
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" python repos/deadnight/tools/web_smoke/smoke.py repos/deadnight/build/web smoke
       - name: Count the bridge calls of a plain page
         # A player's page opens no probe: the menu and a night the autopilot plays cross the JavaScript bridge about never (#935).
-        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/bridge_calls.py repos/deadnight/build/web smoke/bridge-calls --max-per-second 1
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" python repos/deadnight/tools/web_smoke/bridge_calls.py repos/deadnight/build/web smoke/bridge-calls --max-per-second 1
       - name: Lose the pointer lock in the browser
         # The browser's first Esc frees the lock and never reaches the page: the night's menu must open at once (#476).
-        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/pointer_lock.py repos/deadnight/build/web smoke/pointer-lock
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" python repos/deadnight/tools/web_smoke/pointer_lock.py repos/deadnight/build/web smoke/pointer-lock
       - name: Press Start on a virtual gamepad in the browser
         # Start is `pause` and `ui_accept`: the night must pause and resume on it, and the pad must play with no mouse lock (#494).
-        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/pad_pause.py repos/deadnight/build/web smoke/pad-pause
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" python repos/deadnight/tools/web_smoke/pad_pause.py repos/deadnight/build/web smoke/pad-pause
       - name: Look through the person in a night with 3 bots in the browser
         # A bot's body must never hold the current camera: the probe's `view_is_players` stays true for a night with 3 bots (#702).
-        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/camera_owner.py repos/deadnight/build/web smoke/camera-owner
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" python repos/deadnight/tools/web_smoke/camera_owner.py repos/deadnight/build/web smoke/camera-owner
       - name: Tour the skin shaders in the browser
         # The menu, the three transitions and the credits: fails on a console error or an all-black or all-white frame.
-        run: uv run --with playwright==1.64.1 --with pillow python repos/deadnight/tools/web_smoke/skin_tour.py repos/deadnight/build/web smoke/skin-tour --size 1280x720 --hold-ms 500
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" --with pillow python repos/deadnight/tools/web_smoke/skin_tour.py repos/deadnight/build/web smoke/skin-tour --size 1280x720 --hold-ms 500
       - name: Start every web probe's menu path
         # The menu paths the probes in tools/web_smoke walk (Loadout, Play together, settings, Solo, the ?dev join screen)
         # through their shared helpers, once: a menu change that breaks one fails here, not the next time a probe is run.
-        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/startup_check.py repos/deadnight/build/web smoke/startup-check
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" python repos/deadnight/tools/web_smoke/startup_check.py repos/deadnight/build/web smoke/startup-check
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
@@ -346,8 +451,14 @@ jobs:
         # share window; a refused token and a refused sign-in must say the Activity is not signed in.
         run: |
           for mode in strict reject-token refuse-authorize; do
-            uv run --with playwright==1.64.1 --with cryptography python repos/deadnight/tools/web_smoke/activity.py repos/deadnight/build/web - "smoke/discord-share-$mode" --embed plain --share --real-bridge --local-backend --host-mode "$mode"
+            uv run --with playwright=="$PLAYWRIGHT_VERSION" --with cryptography python repos/deadnight/tools/web_smoke/activity.py repos/deadnight/build/web - "smoke/discord-share-$mode" --embed plain --share --real-bridge --local-backend --host-mode "$mode"
           done
+      - name: Hold the job to its share of the job's limit
+        # Warns past 75 % of the 40 minutes (the old limit) and fails past 95 %; names a slow install step either way.
+        if: always()
+        run: |
+          python3 repos/deadnight/tools/ci_shard_time.py web --elapsed "$(( $(date +%s) - WEB_CLOCK ))" \
+            --steps web-steps.txt --summary "$GITHUB_STEP_SUMMARY"
       - name: Upload the build
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -394,10 +505,13 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: deploy
+          sparse-checkout: |
+            deploy
+            tools/ci
           fetch-depth: 0 # the check asks whether one commit is an ancestor of another
       - if: env.skip != 'true'
-        run: npm install --global @railway/cli@5.63.1
+        # Up to three installs of 90 s each (#1269).
+        run: bash tools/ci/retry.sh -n 3 -p 10 -t 90 -- npm install --global @railway/cli@5.63.1
       - name: Skip a build that is older than the one the service runs
         if: env.skip != 'true'
         env:
@@ -410,6 +524,11 @@ jobs:
           path: build/web
       - name: Deploy and wait for the health check
         if: env.skip != 'true'
+        # A failed upload is repeated up to three times, never over a deployment that is going (deploy/railway_up.sh, #1269).
+        # The script ends by itself at RAILWAY_DEPLOY_SECONDS: the job's 20 minutes less 4 for the steps before it.
+        env:
+          RAILWAY_DEPLOY_SECONDS: 960
+          RAILWAY_UP_ATTEMPT_SECONDS: 420
         run: bash deploy/web/deploy.sh build/web "$GITHUB_SHA"
 
   deploy-server:
@@ -438,11 +557,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: deploy
+          sparse-checkout: |
+            deploy
+            tools/ci
           fetch-depth: 0 # the check asks whether one commit is an ancestor of another
           path: head-check
       - if: env.skip != 'true'
-        run: npm install --global @railway/cli@5.63.1
+        # Up to three installs of 90 s each (#1269).
+        run: bash head-check/tools/ci/retry.sh -n 3 -p 10 -t 90 -- npm install --global @railway/cli@5.63.1
       - name: Skip a build that is older than the one the service runs
         if: env.skip != 'true'
         env:
@@ -457,6 +579,11 @@ jobs:
           lfs: true
       - name: Deploy and wait until the server is live
         if: env.skip != 'true'
+        # As `deploy`: the script ends by itself at RAILWAY_DEPLOY_SECONDS, the job's 30 minutes less 5 for the steps before it
+        # (the checkout with LFS files is the long one).
+        env:
+          RAILWAY_DEPLOY_SECONDS: 1500
+          RAILWAY_UP_ATTEMPT_SECONDS: 720
         run: bash deploy/server/deploy.sh deadnight-server
 
   deploy-backend:
@@ -488,6 +615,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             deploy
+            tools/ci
             spikes/backend
             game/gameplay/rules
           fetch-depth: 0 # the check asks whether one commit is an ancestor of another
@@ -496,7 +624,8 @@ jobs:
         with:
           node-version: 24
       - if: env.skip != 'true'
-        run: npm install --global @railway/cli@5.63.1
+        # Up to three installs of 90 s each (#1269).
+        run: bash tools/ci/retry.sh -n 3 -p 10 -t 90 -- npm install --global @railway/cli@5.63.1
       - name: Skip a build that is older than the one the service runs
         if: env.skip != 'true'
         env:
@@ -504,6 +633,10 @@ jobs:
         run: bash deploy/check_head.sh "$GITHUB_SHA" backend || { test $? = 3 && echo "skip=true" >> "$GITHUB_ENV"; }
       - name: Deploy, wait until it is live and compare its settings with the game's
         if: env.skip != 'true'
+        # As `deploy`: the script ends by itself at RAILWAY_DEPLOY_SECONDS, the job's 20 minutes less 4.
+        env:
+          RAILWAY_DEPLOY_SECONDS: 960
+          RAILWAY_UP_ATTEMPT_SECONDS: 420
         run: bash deploy/backend/deploy.sh backend
 
   backend:
@@ -536,7 +669,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: spikes/backend
+          # The progression scripts too: test/progression.test.ts holds the backend's copy of the level curve equal to them.
+          # And the maps' data: test/map_gate.test.ts holds the backend's map ids and unlock levels equal to it.
+          sparse-checkout: |
+            spikes/backend
+            game/gameplay/progression
+            game/world/maps
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
@@ -587,19 +725,62 @@ jobs:
     needs: conventions
     if: needs.conventions.outputs.workflows == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # The download script comes from the same commit as the release it fetches (v1.7.12).
+      # The download is tools/ci/fetch_actionlint.sh (up to four attempts, 60 s each, 5 minutes in the worst case) and not
+      # rhysd's download-actionlint.bash, which pipes `curl -L` into `tar` and so turned a 92 byte error body into
+      # "gzip: stdin: not in gzip format" with the lint never run (#1269). It says what it got and retries.
       - name: Download actionlint 1.7.12
-        run: >-
-          bash <(curl -sSfL
-          https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/scripts/download-actionlint.bash)
-          1.7.12
+        run: bash tools/ci/fetch_actionlint.sh 1.7.12 .
       - run: ./actionlint -color .github/workflows/*.yml
+
+  gdlint:
+    # The commit hook itself, so its version (the `rev` in `.pre-commit-config.yaml`), its files and its settings cannot
+    # differ from what a person's machine runs. A `pull_request` run checks out the merged head, so two pull requests
+    # that each stay under a limit and cross it together are judged as one file (#1238). It has a job of its own and is
+    # not a step of `conventions`: 1,800 scripts take a minute or more against that job's seconds, every job waits for
+    # `conventions`, and a lint error should not also stop the tests.
+    needs: conventions
+    if: needs.conventions.outputs.gdscript == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: gdlint on every script of the merged head
+        run: uvx "$PRE_COMMIT" run gdlint --all-files
+
+  gdlint-late:
+    # The last thing before `build-ok`. The merged head above is from the start of the run: #1225's run began eight
+    # minutes before #1214 landed, so it never saw the file the two of them crossed the limit in. This merges the base as
+    # it is now and lints the scripts the pull request changes, in seconds (tools/gdlint_on_base.sh). Nothing to do on a
+    # push: `gdlint` above already reads main as it landed.
+    needs: [conventions, godot, bots-soak, web, backend, gdlint]
+    if: ${{ !cancelled() && !failure() && github.event_name == 'pull_request' && needs.conventions.outputs.gdscript == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the merge base of the pull request and the base; `blob:none` keeps that to commits and trees
+          filter: blob:none
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: gdlint on the changed scripts, merged with the base as it is now
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "refs/heads/$BASE_REF"
+          bash tools/gdlint_on_base.sh "$(git rev-parse FETCH_HEAD)" "$PR_HEAD" uvx "$PRE_COMMIT" run gdlint --files
 
   build-ok:
     if: always()
-    needs: [conventions, godot, bots-soak, web, backend]
+    needs: [conventions, godot, bots-soak, web, backend, gdlint, gdlint-late]
     runs-on: ubuntu-24.04
     steps:
       - name: Every job passed

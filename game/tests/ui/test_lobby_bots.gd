@@ -1,6 +1,6 @@
-# The Bots setting in the lobby (#643): the host's panel has the row, the seats show the bots a
-# night will seat in the seats the people leave free, a guest reads the host's count, and the
-# count rides the host's changes to the backend.
+# The Bots setting in the lobby (#643): the host's panel has the row, the seat list shows the bots a
+# night will seat in rows after the people's seats (a bot holds no seat, #1179), a guest reads the
+# host's count, and the count rides the host's changes to the backend.
 extends GdUnitTestSuite
 
 
@@ -42,7 +42,7 @@ func test_the_hosts_panel_has_a_bots_row_from_zero_to_seven() -> void:
 	screen.free()
 
 
-func test_the_host_asks_for_bots_and_the_lobby_shows_them_in_the_open_seats() -> void:
+func test_the_host_asks_for_bots_and_the_lobby_lists_them_after_the_seats() -> void:
 	var api := _hosted(1)
 	var screen := await _screen(api)
 	assert_array(screen.seat_texts()).is_equal(
@@ -50,15 +50,17 @@ func test_the_host_asks_for_bots_and_the_lobby_shows_them_in_the_open_seats() ->
 	)
 	screen.rules.bots_selector.select(2, true)
 	assert_int(screen.bots_shown()).is_equal(2)
-	# They take the highest seats, as the server seats them.
+	# The seats stay the people's, open ones included; the bots follow, with the ids the server gives.
 	(
 		assert_array(screen.seat_texts())
 		. is_equal(
 			[
 				"1  Ann  HOST",
 				"2  (open)",
-				"3  %s  BOT" % NightBots.name_for(3),
-				"4  %s  BOT" % NightBots.name_for(4),
+				"3  (open)",
+				"4  (open)",
+				"B1  %s  BOT" % NightBots.name_for(NightBots.id_at(0)),
+				"B2  %s  BOT" % NightBots.name_for(NightBots.id_at(1)),
 			]
 		)
 	)
@@ -69,18 +71,31 @@ func test_the_host_asks_for_bots_and_the_lobby_shows_them_in_the_open_seats() ->
 	screen.free()
 
 
-func test_bots_never_take_more_than_the_seats_people_leave_free() -> void:
+func test_bots_take_no_seat_from_the_people_however_many_are_there() -> void:
 	var api := _hosted(3)
 	var screen := await _screen(api)
 	screen.rules.bots_selector.select(3, true)
-	assert_int(screen.bots_shown()).is_equal(1)
-	assert_array(screen.seat_texts()).is_equal(
-		["1  Ann  HOST", "2  Bo", "3  Cy", "4  %s  BOT" % NightBots.name_for(4)]
+	assert_int(screen.bots_shown()).is_equal(3)
+	(
+		assert_array(screen.seat_texts())
+		. is_equal(
+			[
+				"1  Ann  HOST",
+				"2  Bo",
+				"3  Cy",
+				"4  (open)",
+				"B1  %s  BOT" % NightBots.name_for(NightBots.id_at(0)),
+				"B2  %s  BOT" % NightBots.name_for(NightBots.id_at(1)),
+				"B3  %s  BOT" % NightBots.name_for(NightBots.id_at(2)),
+			]
+		)
 	)
 	screen.free()
+	# A full room of people still lists every bot the host set.
 	var crowded := await _screen(_hosted(4))
 	crowded.rules.bots_selector.select(3, true)
-	assert_int(crowded.bots_shown()).is_equal(0)
+	assert_int(crowded.bots_shown()).is_equal(3)
+	assert_int(crowded.seat_texts().size()).is_equal(4 + 3)
 	crowded.free()
 
 
@@ -96,15 +111,18 @@ func test_a_guest_reads_the_hosts_bot_count_and_cannot_move_it() -> void:
 	await screen.watch.poll()
 	assert_int(screen.rules.settings().bots).is_equal(3)
 	assert_str(screen.rules_text()).ends_with("|3 bots")
-	assert_int(screen.bots_shown()).is_equal(2)
+	assert_int(screen.bots_shown()).is_equal(3)
 	(
 		assert_array(screen.seat_texts())
 		. is_equal(
 			[
 				"1  Ann  HOST",
 				"2  Bo",
-				"3  %s  BOT" % NightBots.name_for(3),
-				"4  %s  BOT" % NightBots.name_for(4),
+				"3  (open)",
+				"4  (open)",
+				"B1  %s  BOT" % NightBots.name_for(NightBots.id_at(0)),
+				"B2  %s  BOT" % NightBots.name_for(NightBots.id_at(1)),
+				"B3  %s  BOT" % NightBots.name_for(NightBots.id_at(2)),
 			]
 		)
 	)

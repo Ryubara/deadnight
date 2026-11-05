@@ -20,6 +20,12 @@ const WARM_DECODE_BUDGET_S := 170.0
 const WARM_FRAME_BUDGET := 100
 
 
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
+
+
 func _warmed_night() -> Night:
 	var night := Night.new()
 	night.warm_up = true
@@ -122,7 +128,7 @@ func test_the_sounds_load_in_the_background_before_a_night_asks() -> void:
 		service._process(1.0 / 60.0)
 		frames += 1
 	assert_bool(service.background_preloading()).is_false()
-	for id: StringName in SoundCatalog.ids():
+	for id: StringName in SoundCatalog.ids_for_night():
 		# 0 files left to load: the night's warm-up has nothing to read.
 		assert_int(service.preload_sound(id)).is_equal(0)
 	# Asking again after it finished does not start it over.

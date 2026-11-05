@@ -7,9 +7,13 @@ extends RefCounted
 ##   board.dailies()          -> today's three, each a Dictionary (below)
 ##   board.orders()           -> the open Concession Orders
 ##   board.milestones()       -> every lifetime ladder
+##   board.poster_sets()      every poster set with its panels (below)
 ##   board.seconds_to_refresh(), board.refresh_text()   the time until the next dailies
 ##   board.swap_order(slot)   changes an order (free, unlimited) and saves
 ##   board.refresh()          call when the menu is shown again: a new day deals new dailies
+##   board.reload()           reads the file again when something else wrote it (the account's board
+##                            read at sign-in, a night that ended); `watch_file()` does it by itself
+##                            when `ChallengeUplink` replaces the file
 ##
 ## A daily or order: `{id, text, progress, target, fraction (0..1), done, tier, reward}`; an order
 ## also has `slot` and `pillar`. A daily expires at the next refresh, done or not. A milestone:
@@ -18,6 +22,10 @@ extends RefCounted
 ## `tier` is "short", "medium" or "long". `reward` is a placeholder dictionary (nothing pays yet).
 
 signal changed
+
+## The boards that asked to follow their file (`watch_file`), weakly: a menu that is gone is not
+## kept.
+static var _watching: Array[WeakRef] = []
 
 var catalog: ChallengeCatalog
 var clock: ChallengeClock
@@ -45,6 +53,45 @@ static func open(
 	board.profile = read["profile"] if read["profile"] != null else ChallengeProfile.fresh()
 	board.refresh()
 	return board
+
+
+## Follows the file: when the account's board replaces it (`file_replaced`), this board reads it and
+## says `changed`. The menu's board does; a night's board never does (its tracker holds the
+## profile).
+func watch_file() -> void:
+	_watching = _watching.filter(func(ref: WeakRef) -> bool: return ref.get_ref() != null)
+	_watching.append(weakref(self))
+
+
+## Tells the boards watching `file_path` that it was written by someone else.
+static func file_replaced(file_path: String) -> void:
+	for ref in _watching:
+		var board := ref.get_ref() as ChallengeBoard
+		if board != null and board.path == file_path:
+			board.reload()
+
+
+## Takes the file's board when it is not the one held (another board or the sign-in wrote it).
+## A file that cannot be used (damaged, or a newer game's) changes nothing.
+func reload() -> void:
+	var read := ChallengeSave.read(path)
+	if read["problem"] == ChallengeSave.NEWER_VERSION:
+		problem = ChallengeSave.NEWER_VERSION
+		return
+	var found: ChallengeProfile = read["profile"]
+	if found == null or _same(found, profile):
+		return
+	problem = ChallengeSave.NO_PROBLEM
+	profile = found
+	refresh()
+
+
+static func _same(a: ChallengeProfile, b: ChallengeProfile) -> bool:
+	return (
+		JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict())
+		and a.account == b.account
+		and a.account_revision == b.account_revision
+	)
 
 
 ## Deals the day if it turned, settles finished orders, and saves what changed.
@@ -123,6 +170,57 @@ func milestones() -> Array[Dictionary]:
 					"fraction": fraction,
 					"done": done,
 					"reward": def.reward,
+				}
+			)
+		)
+	return list
+
+
+## Every poster set, as the Challenges tab shows it: `{id, title, lines, palette, motif, count (the
+## panels uncovered), total, done, uncovered (their indices), card, emblem (the prize's piece ids),
+## panels}`, a panel being `{n, id, text, progress, target, fraction, done}`. A panel is uncovered
+## when its challenge is done on this board; nothing is stored for a set.
+func poster_sets() -> Array[Dictionary]:
+	var done := profile.feats_done(catalog)
+	var list: Array[Dictionary] = []
+	for poster_set in PosterSets.shipped().all():
+		var panels: Array[Dictionary] = []
+		for index in poster_set.challenges.size():
+			var def := catalog.get_def(poster_set.challenges[index])
+			if def == null:
+				continue
+			var progress := mini(int(profile.feats.get(def.id, 0)), def.target)
+			(
+				panels
+				. append(
+					{
+						"n": index + 1,
+						"id": def.id,
+						"text": def.words(),
+						"progress": progress,
+						"target": def.target,
+						"fraction": float(progress) / float(def.target),
+						"done": done.has(def.id),
+					}
+				)
+			)
+		var uncovered := poster_set.uncovered(done)
+		(
+			list
+			. append(
+				{
+					"id": poster_set.id,
+					"title": poster_set.title,
+					"lines": poster_set.lines,
+					"palette": poster_set.palette,
+					"motif": poster_set.motif,
+					"count": uncovered.size(),
+					"total": PosterSet.PANELS,
+					"done": poster_set.is_done(done),
+					"uncovered": uncovered,
+					"card": poster_set.piece(&"card"),
+					"emblem": poster_set.piece(&"emblem"),
+					"panels": panels,
 				}
 			)
 		)

@@ -87,6 +87,10 @@ class TabButton:
 	func ui_sound_role() -> StringName:
 		return &"tab"
 
+	## The size of the words it draws itself, for the ruler (`UiAudit`).
+	func drawn_text_sizes() -> Array[int]:
+		return [type_size]
+
 	func _draw() -> void:
 		var lit := has_focus() or is_hovered()
 		if active:

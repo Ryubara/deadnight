@@ -27,10 +27,15 @@ const COMMIT_WORDS: Array[String] = [
 	"play",
 	"save",
 	"join",
-	"quick join",
 	"join with the code",
 	"create a night",
 	"continue",
+]
+
+## The cues of the progression, which have no control to be the source of: the one place the rule
+## "every cue names its source" does not hold (`test_ui_sound_roles.gd`).
+const PROGRESS_CUES: Array[StringName] = [
+	&"challenge_done", &"level_up", &"tier_up", &"unlock", &"card_earned"
 ]
 
 const _HOVER := {"sound": &"ui_hover", "weight": HINT}
@@ -51,6 +56,37 @@ const _OFF := {"sound": &"ui_toggle_off", "weight": MOVE}
 const _PUSH := {"sound": &"ui_push", "weight": MOVE}
 const _POP := {"sound": &"ui_pop", "weight": MOVE}
 const _SIGN := {"sound": &"ui_sign_on", "weight": MOMENT}
+## The progression cues (#1062), played live in a night by the popups and the voice lines. None
+## of them is made by a control: the popup lane, the challenge prompt and the server events play
+## the cue by its name alone (`PROGRESS_CUES`), with no source. `seconds` is how long the sound
+## lasts (`UiSounds` keeps a moment from sounding on top of another); `stack` marks the unlock
+## sounds that climb a pentatonic scale when they come close together; `over` names the moments
+## that make the sound redundant; `fight` marks the cues that are `UiSounds.FIGHT_DB` quieter
+## while a night runs.
+const _CHALLENGE_DONE := {
+	"sound": &"ui_challenge_done",
+	"weight": COMMIT,
+	"seconds": 0.6,
+	"moment": true,
+	"fight": true,
+}
+const _LEVEL_UP := {
+	"sound": &"ui_level_up",
+	"weight": MOMENT,
+	"seconds": 1.1,
+	"moment": true,
+	"fight": true,
+	"over": [&"ui_tier_up"],
+}
+const _TIER_UP := {
+	"sound": &"ui_tier_up",
+	"weight": MOMENT,
+	"seconds": 2.0,
+	"moment": true,
+	"fight": true,
+}
+const _UNLOCK := {"sound": &"ui_unlock", "weight": COMMIT, "stack": true, "fight": true}
+const _CARD_EARNED := {"sound": &"ui_card_earned", "weight": COMMIT, "stack": true, "fight": true}
 
 ## Every role: cue to row. A row is a sound (`sound`, `weight`, an optional `db` trim) or a silence
 ## (`silent` with the `why`).
@@ -121,6 +157,11 @@ const ROLES := {
 		&"on": _ON,
 		&"off": _OFF,
 		&"sign": _SIGN,
+		&"challenge_done": _CHALLENGE_DONE,
+		&"level_up": _LEVEL_UP,
+		&"tier_up": _TIER_UP,
+		&"unlock": _UNLOCK,
+		&"card_earned": _CARD_EARNED,
 	},
 	# A sound nobody in the menu hears (a control of the stage the menu does not sound).
 	&"stage":

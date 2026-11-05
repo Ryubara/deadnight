@@ -3,15 +3,18 @@ extends MenuPanel
 ## The Challenges tab: the dailies with the time to the next refresh, the Concession Orders, and
 ## the milestones, all read from the challenge board. A family chip narrows the list to one family
 ## (and shows all of it); "All" shows the first few of each. A swap on an order is free and
-## unlimited (progression rule), so it needs no confirmation.
+## unlimited (progression rule), so it needs no confirmation. The poster sets (#1073) are their own
+## chip: "All" shows each as a teaser (a small poster and how far it is) and a press opens the chip;
+## the chip shows every set whole, with its poster, its six challenges and its prize.
 
-enum Family { ALL, DAILY, ORDER, MILESTONE }
+enum Family { ALL, DAILY, ORDER, MILESTONE, SETS }
 
 const FAMILY_NAMES := {
 	Family.ALL: "All",
 	Family.DAILY: "Today",
 	Family.ORDER: "Orders",
 	Family.MILESTONE: "Milestones",
+	Family.SETS: "Poster sets",
 }
 ## How many rows of each family "All" shows, and how many a phone's does.
 const ALL_SHOWN := {Family.DAILY: 3, Family.ORDER: 3, Family.MILESTONE: 4}
@@ -51,6 +54,7 @@ func _ready() -> void:
 		chips.add_child(chip)
 		_chips[id] = chip
 	_scroll = ScrollContainer.new()
+	UIScroll.take_touch(_scroll)
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.follow_focus = true
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -96,6 +100,15 @@ func rows() -> Array[ChallengeRow]:
 	return out
 
 
+## The poster sets on show, in order (the teasers of "All", the whole sets of its chip).
+func sets() -> Array[PosterSetView]:
+	var out: Array[PosterSetView] = []
+	for child in _list.get_children():
+		if child is PosterSetView:
+			out.append(child)
+	return out
+
+
 func first_focus() -> Control:
 	return _chips[family]
 
@@ -124,6 +137,8 @@ func refresh() -> void:
 			inner,
 			false
 		)
+	if family in [Family.ALL, Family.SETS] and context.board.has_method(&"poster_sets"):
+		_add_sets(inner)
 	if family in [Family.ALL, Family.ORDER]:
 		_list.add_child(
 			MenuLook.heading("Concession orders", "Open until done", MenuLook.PAPER_MUTED, true)
@@ -142,6 +157,19 @@ func refresh() -> void:
 			inner,
 			false
 		)
+
+
+func _add_sets(inner: float) -> void:
+	_list.add_child(
+		MenuLook.heading("Poster sets", "Six challenges, one poster", MenuLook.PAPER_MUTED, true)
+	)
+	for entry: Dictionary in context.board.poster_sets():
+		if family == Family.SETS:
+			_list.add_child(PosterSetView.make_full(entry, inner, context.compact))
+			continue
+		var teaser := PosterSetView.make_teaser(entry, inner)
+		teaser.pressed.connect(show_family.bind(Family.SETS))
+		_list.add_child(teaser)
 
 
 func _add_rows(entries: Array, limit: int, inner: float, swappable: bool) -> void:

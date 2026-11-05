@@ -29,14 +29,14 @@ they matter, and where each lands. Where this table differs from the earlier pla
 | 3 | **The climb scales upward**: "It shouldn't really be 9 minutes a level unless you're just averaging it out. It should scale upward like call of duty e.g. it takes longer to level up the higher you go. That way users can feel the first level up satisfaction early on" | [The curve](#the-curve), #1058 |
 | 4 | **300 or more kills a game** is the assumption (modifiers raise the count); the curve is measured at count multipliers 1, 2 and 5 | [The curve](#the-curve), research page |
 | 5 | **The game server awards XP, per kill, live**: "Game server is good. We'll see how much it stresses when we do it because XP is earned after every zombie kill and there can be hordes." A signed-in solo night stays on the player's machine, capped by the backend | [Who awards XP](#who-awards-xp-and-live-xp), #1059, #1075 |
-| 6 | **No offline XP**, **no rested XP**, **a first-game-of-the-day XP bonus**: yes; dailies pay XP | [Where XP comes from](#where-xp-comes-from), #1058 |
+| 6 | **No offline XP**, **no rested XP**, **a first-game-of-the-day XP bonus**: yes; dailies pay XP. **Only accounts earn XP, because the server tracks it; a Guest account is one**: "only signed in accounts earn XP since we only track XP on the server. But even \"Guest\" accounts will be tracked on server." A night with no account at all earns nothing. Guest accounts expire after 7 days unless used again (kept in the game's own storage, fine for the Discord Activity); built in #1080, a returning guest within 7 days is the same account | [Where XP comes from](#where-xp-comes-from), [Storage and trust](#storage-and-trust), #1058 |
 | 7 | **No account currency** for now ("Disabled; XP based"). In-night points for buying stay | [In one paragraph](#in-one-paragraph) |
 | 8 | **All weapons and tonics free** from the first night. **A higher level has a slightly better kit**: "yeah the higher level player would ideally have a slightly better kit but that's a reward for them playing more." | [Rules](#rules-we-hold-ourselves-to), [Combat bonuses](#combat-bonuses), #1055 |
 | 9 | **Popups in real time**, as soon as they trigger, during play; XP and milestones credit live, not at a round's end. "Animations for this stuff need to be good" | [Popups, motion and sound](#popups-motion-and-sound), #1064 |
 | 10 | **Sounds**: a record scratch of our own making when a challenge is done; an honourable, battlefield-like sound for a level up (snare and brass; bigger on a tier) | [Popups, motion and sound](#popups-motion-and-sound), #1062 |
-| 11 | **Progression voice lines**: several celebration lines for every progression event, male and female, ElevenLabs, heard by every client; they wait on the maintainer's credits and commercial licence | [Voice lines](#voice-lines), #1063 (blocked), #252 |
+| 11 | **Progression voice lines**: several celebration lines for every progression event, male and female, ElevenLabs, heard by every client; made on the free tier, regenerated under the commercial plan before release | [Voice lines](#voice-lines), #1063, #252 |
 | 12 | **Wardrobe**: a grid; locked names are `???` with a silhouette of the base icon and the unlock instructions on hover; **no fitting room**; mouths are free | [Wardrobe](#wardrobe-costumes-and-the-locks), #1065, #1061 |
-| 13 | **Costumes** in their own tab, in their default colours | [Wardrobe](#wardrobe-costumes-and-the-locks), #1066 |
+| 13 | **Costumes** in their own tab, each with a **"Default"** colour option, and the player's own colours from the palette they have unlocked ("costumes in their default colors will have a Default option, and the users will have the ability to choose their own colors") | [Wardrobe](#wardrobe-costumes-and-the-locks), #1066 |
 | 14 | **Plate frames**: part of levels 1 to 55, plus exclusive ones from challenges ("beat this map"); calling cards and emblems yes; **no title phrases, no ticket book, no applause** | [The plate](#plate-calling-cards-emblems-and-frames), #1070, #1071, #1072 |
 | 15 | **Poster sets**: "a great addition" | [Poster sets](#poster-sets), #1073 |
 | 16 | **Night report credits** yes | [The night report and credits](#the-night-report-and-credits), #1068, #1069 |
@@ -48,10 +48,9 @@ they matter, and where each lands. Where this table differs from the earlier pla
 | 22 | **Left out**: Bad Weather nights, the fitting room, rested XP, the ticket book, applause, title phrases | [What changed](#what-changed-from-the-earlier-plan) |
 
 **Open:** what prestige resets and which rewards are exclusive (after #1055); how slight the combat edge is (#1055);
-the extraction details (#1056, each point a choice); rarity (#1053); the voice lines wait on the credits and licence
-(#252); the sizes of the first-game bonus and the opening night (first guesses); whether level 10 for the second map is
-as wanted when it arrives in about half an hour ([The curve](#the-curve)); and a reading to confirm: "No offline XP"
-is taken to mean XP exists only for a signed-in account ([Storage and trust](#storage-and-trust)).
+the extraction details (#1056, each point a choice); rarity (#1053); the voice lines are free-tier takes to regenerate
+under the commercial plan (#252); the sizes of the first-game bonus and the opening night (first guesses; what they
+are is still with the maintainer).
 
 ## What changed from the earlier plan
 
@@ -66,7 +65,7 @@ the Marquee) was written before the request for a 55-level ladder. The maintaine
 | *Stubs*, a cosmetic currency | **No currency**: items by level and challenge directly | "Disabled; XP based" |
 | No daily first-win bonus | **A first-game-of-the-day XP bonus** | Approved. It is paid for finishing a round, never for logging in |
 | Rested XP replaces login rewards | **No rested XP** | Not wanted |
-| Offline and solo earn like a team, merged on sign-in | **No offline XP**; no merge | XP exists only for an account |
+| Offline and solo earn like a team, merged on sign-in | **No offline XP**; no merge | XP exists only for an account the server tracks, a Guest account included |
 | The client awards XP now, the server later | **The game server awards XP, per kill, live**; a signed-in solo night stays on the player's machine, capped by the backend | Approved |
 | Popups wait for the break between rounds | **Real time**, during play, in the lane under the round banner | Approved |
 | A level never locks you out ("no lock on level") | **Maps are locked by level; the host's level decides** | Approved; a guest below a map's level still plays it in a friend's night |
@@ -74,6 +73,13 @@ the Marquee) was written before the request for a 55-level ladder. The maintaine
 | Title phrases, ticket book, applause, fitting room, Bad Weather | **Dropped** | Not wanted (title phrases: the maintainer was unsure, dropping was recommended) |
 | Night Report lines *Lamps*, *Holdings*, *Mentor* and *Solo +10%*; the Night Report paying stubs | The simpler [XP lines](#where-xp-comes-from) (Rounds, Points, Upkeep, Headliner, Rescue, the bonuses) | The proposal replaced them and the maintainer approved the proposal's XP table; each line is a stat the night already counts |
 | 22 to 32 hours to level 55 (53,250 XP) | **About 8 hours** (18,010 XP), a rising curve | "Gotta make it short" |
+
+!!! note "Rules 1 and 2 are replaced for combat kit (2026-11-04)"
+    The maintainer approved a slightly better kit for players who have played more: "the higher level player would
+    ideally have a slightly better kit but that's a reward for them playing more". Weapons and tonics stay free for
+    everyone, and the night's economy, rounds and fuel stay the same for all. How slight, what resets on a prestige and
+    what stays: [Attachments, modifiers, skills, skins and prestige](../research/weapon-progression.md). The
+    level-1 and level-50 sentence above and rules 1 and 2 below are read with that page.
 
 ## What the research says
 
@@ -141,13 +147,13 @@ today (`NightTally`), except where marked. A kill pays through its points, so XP
 
 | Line | Pays | Counted today | Note |
 | --- | --- | --- | --- |
-| Rounds | 20 a round reached, 10 a round past round 20 | yes (`rounds`) | down or not: playing always counts |
+| Rounds | 20 a round reached, 10 a round past round 20 | yes (`round`, the best round started) | down or not: playing always counts; the round pays when it starts, so the night's last round counts |
 | Points | 1 XP per 100 points you earned yourself | yes (`points_earned`) | kills, headshots and bonuses are already in points, so no kill is stolen. The server adds each kill's points to a running tally as it happens |
-| Upkeep | 2 a board mended (up to 100), 15 a door opened, 15 a fuel can | yes | the lot's chores pay a little |
+| Upkeep | 2 a board mended (up to 100 XP, so 50 boards), 15 a door opened, 15 a fuel can | yes | the lot's chores pay a little |
 | Headliner | 50 a boss brought down | yes (`kills:boss`) | |
 | Rescue | 40 a revive, up to 5 a night | one tally line (`player_revived` names the reviver) | solo has none; no solo penalty |
 | Opening night | 50, once, "your ticket is punched on the way in" | a flag | the first bar is not empty; the first level comes in about a minute |
-| **First game of the day** | 100, once a local day (the day number the dailies use) | `bonus_day` in the profile | **New.** Credited when that day's first round ends, so it pays for playing; a missed day owes nothing. First guess |
+| **First game of the day** | 100, once a day (the day number the dailies use, UTC's) | `bonus_day` in the profile | **New.** Credited when that day's first round ends, so it pays for playing; a missed day owes nothing. First guess |
 | Dailies, orders | 25, 50, 100 and 75, 200, 600 | yes (built) | paid as XP; the stub amounts are dropped |
 
 Capped at **1,500 XP a night** (about twice the strong four-player night's 766), and the backend's clamp below. There
@@ -168,12 +174,11 @@ much it stresses when we do it". The design keeps the cost per kill small and pu
   level.
 - **A signed-in solo night stays on the player's machine**: the same tally runs in the local rules and the client writes
   at round ends; the backend caps how fast XP can rise (about 120 XP a minute, three times a strong four-player night).
-- **The stress is measured** (#1059): a four-player night at **count multiplier 5** on the dedicated server, with and
-  without the tally, three seeds: tick time (mean, p99, worst) and the tally's cost per kill; `xp_gained` events and
-  bytes a second per client at the peak; the client's cost of applying them; the backend writes a night (must be the
-  rounds plus one a seat, never the kills). The balance simulator's nights give the scale: a strong four-player night
-  at x5 kills about 2 a second across the team on average (the simulator's bots die early at x5, so a real horde with
-  people is the number to measure). If too high, events are coalesced further (a 0.25 s window) before anything else.
+- **The stress is measured** (#1059, built): a four-player night at **count multiplier 5** on the dedicated server, with
+  and without the tally, three seeds: tick time (mean, p99, worst) and the tally's cost per kill; `xp_gained` events and
+  bytes a second per client at the peak; the client's cost of applying them; the backend writes a night (the rounds
+  plus the night's own, never the kills). The numbers, the events' keys and the interface with the backend are in
+  [the research page](../research/progression.md#the-game-server-awards-xp-1059).
 
 ### The curve
 
@@ -213,11 +218,16 @@ Reading it: the first level takes about a minute and the last one 15 to 22 minut
 average solo player reaches 55 in 8.5 hours of nights alone (about 7.5 with the lines the model leaves out), the
 strong in 7.8 and the slowest cell in 11. **Level 10, the second map, arrives after 24 to 34 minutes: about half an
 hour, the third night for an average solo player.** The maintainer asked to be told this (it "may arrive in under half
-an hour"): it does for the average and strong cells and for the cells with 300 or more kills. Keeping level 10 as
-asked, or moving the map to 12 or 15 (about 35 or 50 minutes), is one number in the map table; the choice is the
-maintainer's. At count x5 the simulator's bots die in the first rounds, so XP an hour is lower, not higher: a horde
-modifier is not a way to level faster here. Bots are not people: the curve is meant to be retuned from the first real
-nights' telemetry.
+an hour"): it does for the average and strong cells and for the cells with 300 or more kills. The maintainer
+answered that level 10 "is fine" and approved the curve ("The XP simulator is good"). At count x5
+the simulator's bots die in the first rounds, so XP an hour is lower, not higher: a horde modifier is not a way to
+level faster here. Bots are not people: the curve is meant to be retuned from the first real nights' telemetry.
+
+**Held by a test.** `test_xp_pace` reads the gate's cells (average solo, strong solo and average four at count
+multipliers 1, 2 and 5; 60 seeded nights each, seed 4000, [measured](../research/xp-curve.md)) and holds level 55
+between 7 and 11.5 hours for the nights that count 240 or more kills, level 10 between 20 and 40 minutes, the first
+level inside 3 minutes in every cell and the last level between 10 and 30 minutes and slower than every level before
+it, so a retune of the rounds or the economy that moves the pace, or a curve that goes flat, fails.
 
 ### The ladder
 
@@ -324,14 +334,18 @@ to win the night; the edge is audited with a seeded bot night so it stays inside
   gamepad or a phone, focus does what hover does. A locked item can be looked at but not worn: **no fitting room.**
   Face and body tabs carry no lock marks, so what is free is plain (#1065).
 - **Costumes have their own tab** (#1066): the twelve presets (greaser, usher, mechanic...) become costumes that wear
-  their pieces **in the costume's default colours** (a costume needs none of the colour unlocks; assumed from "default
-  colours"). A costume is dark with `???` and hover instructions until the player owns every piece, lit after. Four
-  costumes use starting pieces only, so a new player has a quick start. Equipping a costume sets the look; the player
-  may then change any part they own.
-- The code already has the seam: `LookUnlocks` asks a gate `{"billing": n}`; it becomes `{"level": n}`, and the part and
-  palette gates (`PART_GATES`, `PALETTE_GATES`) are filled from `unlocks.json`. The saved look and the wire format are
-  unchanged (an index per part); a look wearing something the player does not own is repaired on load, and the server
-  drops it for a client that is not the owner.
+  their pieces **in the costume's default colours**, and the colour picker offers a **"Default"** option (the costume's
+  own colours, free) beside the player's own colours from the palette they have unlocked ("costumes in their default
+  colors will have a Default option, and the users will have the ability to choose their own colors"). A costume is
+  dark with `???` and hover instructions until the player owns every piece, lit after. Four costumes use starting
+  pieces only, so a new player has a quick start. *(Built in #1066, [Customization](customization.md#costumes): the
+  data has two such costumes, Soda jerk and Carhop, not four, and the maintainer kept two.)* Equipping a costume sets
+  the look; the player may then change any part they own.
+- **Built (#1065):** `LookUnlocks` asks a gate `{"level": n}`, and the part and palette gates are read from
+  `unlocks.json` (the same table, extended with a `part` key on each wearable's row; `LookCatalog.part_gates()`,
+  `palette_gates()`). The saved look and the wire format are unchanged (an index per part); a look wearing something
+  the player does not own is repaired on load, and the game server drops it for a player whose level it knows. The
+  grid, the silhouettes and the hover words are on [Customization](customization.md#the-screen).
 
 ![The wardrobe grid](../research/progression-grid.png)
 
@@ -340,13 +354,14 @@ text.* The 15 new wearable pieces are art in waves (#1078): eight, then seven; t
 
 ## Maps
 
-`MapRegistry` lists the maps with a `shipped` flag; `unlock_level` is added to each map resource (#1067). The drive-in
+`MapRegistry` lists the maps with a `shipped` flag; `unlock_level` is on each map resource (built in #1067, see
+[Maps](maps.md#levels-open-maps)). The drive-in
 (first map) is level 1; **the back rooms (the second map) is level 10**. Reserved rows at 25 and 40 for maps three and
 four when they exist. The picker shows a locked card dark with "Level 10" in the same `???`-and-hover look as the
 wardrobe. **The host's level decides the lot** (decision 17): a lobby whose host is below a map's level does not offer
 it; a guest below it plays a hosted night there as a visitor; the server checks the host's level from the ticket. The
 balance simulator already runs the back rooms (`--map=small_indoor`); a night there pays about 7 percent more XP an
-hour: not a loophole. Level 10 arrives after about half an hour ([the curve](#the-curve)); moving it is one number.
+hour: not a loophole. Level 10 arrives after about half an hour ([the curve](#the-curve)) and is confirmed; it is one number.
 
 ## Plate: calling cards, emblems and frames
 
@@ -362,6 +377,14 @@ hour: not a loophole. Level 10 arrives after about half an hour ([the curve](#th
   frames wait for **extraction** (#1056) and are their own issue (#1072).
 - Cards are **composed from shared parts** (a scene of reel, ticket, car, bulbs, saucer, a palette, a title), so about
   40 are a week of art, not 40 paintings; emblems are drawn once each.
+- **Built (#1070):** cards and emblems, the 21 feats that give them, the equip screen (Loadout tab, the Plate button), the
+  plate in the bottom-left boxes, the scoreboard, the night report and the lobby; how it works and what it costs:
+  [calling cards](../research/calling-cards.md). **Built (#1071):** plate frames: the four of the ladder (Chrome 29,
+  Brass 37, Neon 50, Gold 55) and three from challenges the night counts today (round 20, 25 revives, 100 nights), a
+  Frames tab on the equip screen and the frame on every plate that shows one. **Built (#1074):** the stats and the 19
+  feats of the odd, easy and together lists below ([the odd and together stats](#the-odd-and-together-stats)).
+  **Built (#1073):** poster sets (below). **Built (#1172):** the five hidden challenges
+  ([the hidden challenges](#the-hidden-challenges)). Not built: the frames for beating a map (#1072).
 - Launch set: **11 tier cards and 11 tier emblems** from the ladder, and **31 challenge cards and 31 emblems**: 42 of
   each. A challenge gives a card, an emblem, a frame or a mix, as the tables say (never two gates in series). The rarity
   of a frame or card is not assumed (#1053).
@@ -397,7 +420,7 @@ decision stands, and what keeps it from becoming a chore is in the table.
 
 | Family | Size | Refresh | Counts | Shown |
 | --- | --- | --- | --- | --- |
-| **Daily** | One short, one medium, one long a day (under a night to a few nights) | Expires at the player's midnight: the date picks the next three, at zero | From the moment it is on the board | Home panel and Challenges tab |
+| **Daily** | One short, one medium, one long a day (under a night to a few nights) | Expires at the reset, 00:00 UTC ([the day](#the-day-the-dailies-follow)): the date picks the next three, at zero | From the moment it is on the board | Home panel and Challenges tab |
 | **Order** (Concession Order) | Three open; short, medium or long (days to weeks) | Never. A finished order is replaced when the night ends; the player may swap any one at any time | Total or best night, per order | Challenges tab; the home panel shows the nearest to done |
 | **Milestone** | A ladder of lifetime steps per stat (kills, nights, rounds, best round, headshots, boards, doors, grenade kills, melee kills, headliners, fuel cans, points) | Never; the rung is derived from the lifetime total | Lifetime | Challenges tab; a step reached shows in the night |
 
@@ -411,7 +434,7 @@ steps, enough of every tier and group for a day to be varied.
 
 | Rule | Value | Why |
 | --- | --- | --- |
-| A day | Local midnight to local midnight (UTC where the platform gives no offset). The day is a whole number; the rotation is a function of it | A test can set any day; the same date gives the same dailies for friends in one call |
+| A day | **UTC midnight to UTC midnight**, for the player's machine and the game server alike ([the day](#the-day-the-dailies-follow)). The day is a whole number; the rotation is a function of it | A test can set any day; the same date gives the same dailies for friends in one call, and a board is one board for the client and the server |
 | The deal | One short, one medium, one long. Two of one group never share a day. A challenge dealt the day before is passed over | A day is varied; a returning player sees different things |
 | Rotation memory | Worked out from the first day of a 30-day block, so a day needs no stored history; only a block's first day can repeat the day before | A pure function: no state, no drift between devices |
 | Expiry | Every daily leaves at the reset, done or not; the new three start at zero, even one dealt again. A player away for a month sees three dailies and nothing else | No debt, no backlog, no catching up |
@@ -435,11 +458,108 @@ A stat is a name; a challenge names one.
 | `rounds` | `round_ended`, for every player in the lot (down or not: playing always counts) |
 | `round` (best) | `round_started`, `game_over` |
 | `nights` | `game_over`, for every player still in the lot |
+| `downs` | `player_downed` |
+| `revives` | `player_revived` with a teammate's `reviver_id` (a round's end gets everyone up with a `reviver_id` of 0: nobody's) |
 
-**Not counted yet, and no challenge asks for them** (a challenge the night cannot finish is a broken promise): rescues
-(no teammate revive exists in the rules; a downed player gets up when the round ends, and `player_revived` names nobody
-who helped), weapon mastery steps (mastery is not built), lighting goals that need the circuits' state (they are the
-generator's, not a player's), and every "Together" order. Each is one stat and a data record the day its event exists.
+The odd, together and hidden stats follow below. **Not counted yet, and no challenge asks for them** (a challenge the
+night cannot finish is a broken promise): weapon mastery steps (mastery is not built), every challenge that needs a
+**win** (extraction, issue number 1056), and every "Together" order. Each is one stat and a data record the day its
+event exists.
+
+### The odd and together stats
+
+Built in #1074 as `NightMoments` (`game/gameplay/challenges/night_moments.gd`): the tally hands it the few events it
+listens to and it credits the tally, so the server, a client and a test count a night the same way. It reads no game
+object: a frame carries the tick (60 a second, `NightMoments.TICK_SECONDS`), the circuits, the doors open and every
+player's position and ammunition. An event takes the time of the last frame, a sixtieth of a second behind. A round's
+stats go to the players who were in the lot when it began, are still there and are on their feet when it ends
+(`round_ended.standing`); a seat taken over, or a player who comes in the middle of a round, counts from the next one.
+
+| Stat | Counts | Challenge |
+| --- | --- | --- |
+| `nights:map:<id>` | `game_over`, for every player in the lot, on the map the settings name (`settings_changed`; the server tells it at the start) | Out the back (`small_indoor`) |
+| `nights:together` | `game_over` with two or more **people** in the lot; a bot (`player_added.bot`) is no one | Two's company |
+| `kills:weapon:*` | **distinct**: a feat counts how many of them the account has a total for (`distinct` in the data), so any nights count | Try the lot (5) |
+| `rounds:unfired` | a round that ended with the player on their feet and no **gun** fired by them (`shot_fired` of a melee weapon is no shot; grenades are none) | Hands in pockets |
+| `round:unspent` (best) | the latest round started by a player who was there at round 1 and had spent nothing at the stand (`purchase_made.price`); a down's loss is no spending | Stingy (6) |
+| `points_spent` | the price of every `purchase_made` | (for the dailies and orders to come) |
+| `blast:best` (best) | the most dead one blast left (`blast_resolved`, new: one event after a grenade's zombie events) | Three for one (3) |
+| `board_rushes` | three boards on one window by one player in 10 s | Carpenter's rush |
+| `boards:shared` | a board put up while a teammate put one up on the same window in the last 6 s | Pit crew |
+| `doors:all_early` | the last way through opened while fewer than 5 rounds had started; for everyone in the lot | Door to door |
+| `doors:early` | a door bought in the first 30 s of the night | Early bird |
+| `round:dark` (best) | the latest round cleared with every circuit off from its start to its end (a circuit lit in it ends it) | Lights out (round 3 or later) |
+| `rounds:dry` | a round that ended with the gun in hand (not melee) at no rounds in the magazine and none in reserve | Last bullet |
+| `crawler_runs` | five crawlers put down with the crowbar in 30 s (a quick melee with a gun in hand does not count) | Whack-a-mole |
+| `rounds:booth` | a round spent whole inside the lot's booth (`data/areas.json`, a rectangle a map names; the back rooms have none) | Booth holder |
+| `downs:early` | a down in the first 5 s of a round | Fell asleep in the car |
+| `rounds:whole_crew` | a round that ended with two or more players in it, all on their feet | Whole crew |
+| `rounds:no_kills` | a round that ended with the player on their feet and no kill of theirs in it | Nobody home |
+| `revives` (night) | five in one night | Hold the line (Hand up is one) |
+
+What it costs, measured (`challenge_award_micro`: the server's tracker alone, four boards, three runs before and after).
+A kill with the four other events it comes with took 102 us before and 66 us after: it adds one lookup, one dictionary
+write and two compares to the tally, and the profile finds the feats a stat can move through an index by stat instead
+of asking all of them, which saved more than the kill pays. A burst of 120 kills in one tick: 8.5 ms median before, 5.4
+ms after. A shot costs 1.5 us before and 2.6 us after, and a frame of four players 2.9 us before and 4.2 us after (a
+frame is one a tick, 60 a second: about 80 us a second more). Every other event the stats listen to is rare (a round, a
+board, a purchase, a blast, a circuit, a down) and an event it ignores costs the same 0.42 us as before.
+
+Rules that make a stat honest: the booth is read at every frame, so one tick outside ends it; a lone player is no
+crew; the dark and the dry gun need the frame to have said the circuits and the ammunition (a night that never said
+them counts neither); a round's players are those present at its start, so a late joiner does not inherit a clear.
+
+### The hidden challenges
+
+Built in #1172. A challenge with `"hidden": true` and a `"riddle"` in `feats.json` is a feat the player is not told of:
+**until it is done, nothing a player can read holds its title or its words.** The equip screen shows its card and
+emblem as a flat silhouette with a `?`, the name `???` and the riddle where the way to earn one goes; pressing it says the
+riddle. A test scans every text of the equip screen, the main menu, the news and the prompt and popup cards for the words
+and the titles of the five (`test_hidden_challenges_ui`). Once done, the pieces show their art and name like any other.
+Hidden challenges are feats only and give a card and an emblem each. **A poster set may not take one**: the Challenges
+tab prints a set's six rows whole, so `PosterSets.problems` reports a set that lists a hidden feat
+(`test_hidden_challenges`, with the failing case), and the leak scan reads every chip of the Challenges tab, the Poster
+sets chip and the sets' own data included (`test_hidden_challenges_ui`). *Standing room only* counts four people, so its
+stat is in `ChallengeStats.CROWD` with the other stats a person cannot make alone: a set may not take it for that reason
+too.
+
+| Challenge (title of its card) | Stat | Counts |
+| --- | --- | --- |
+| *Intermission* (**Snack Break**) | `breaks:stand` | a break between two rounds spent whole at the stand: in the stand's rectangle (`data/areas.json`) in the first frame of the break (`break_started`, `next_round` above 1: the wait before round one is no break between rounds) and in every frame of it until the next round starts; one step out ends it for that player, and a break the night ends in or with no frame in it counts nothing |
+| *The long way round* (**The Long Way Round**) | `round:long_way` (best, round 8 in one night) | the latest round started while the map's second door (`second_door` in `data/areas.json`: `door_booth`, the second of the lot's doors in the opening order) was still shut, for the whole lot; opening it (`door_opened`, or a frame that lists it) stops the count for everyone; the back rooms name no second door and count nothing |
+| *Dead on arrival* (**Dead on Arrival**) | `deaths:round_one` | a death in round 1: a bleed-out (`player_died`), or the night ending with everyone down (`game_over` `all_down`, `round_reached` 1) for each in the lot; once a night for a player |
+| *Standing room only* (**Standing Room Only**) | `nights:full_lot` | `game_over` with four or more **people** (a bot is no one) in the lot who are exactly the people it had when round 1 began: one who left, came in late or was replaced by a bot spoils it |
+| *Final cut* (**Final Cut**) | none: **derived** | done when the player owns every tier card (`ChallengeDef.derived` `tier_cards`) |
+
+*Final cut* is derived, not counted: it has no stat and no progress. `PlateCatalog.is_done` says it is done when the
+level opens every calling card the ladder gives as a tier's (the eleven `tier_card` rows, so level 55 now; a retuned
+ladder moves it with no edit), and ownership of its pieces follows, for the equip screen, the game server's
+`PlateTable` and a ticket alike. It is never in the finished list. Tested at level 54 and 55, with a ladder of three tier
+cards and with none (`test_hidden_challenges`).
+
+Choices made here, not the maintainer's (the issue left them open): **the second door is `door_booth`**; **the stand is
+its whole interior**, the floor of the greybox's `Concession` node (a test checks the rectangle against the scene);
+**"four on the lot" is four or more people**; **Dead on arrival counts the night's end** as well as a bleed-out, since a
+solo player goes down with nobody to bleed out for; each hidden challenge gives **a card and an emblem**; the card of
+*Intermission* is titled **Snack Break**, since *Intermission* is the title of a tier card (level 20) and one title
+names one thing. The riddles are a first draft for the maintainer to rewrite: "The reel stops. Join the line." (Snack
+Break), "Eight reels in, one door shut." (The Long Way Round), "Some never see the second reel." (Dead on Arrival), "A
+full house. Nobody leaves." (Standing Room Only), "Every ticket, then one more." (Final Cut); they are the `riddle`
+lines of `feats.json`.
+
+What it costs: nothing per frame outside a break, and in a break a rectangle test for each player in each frame. The
+other events are rare (a break, a round, a door, a death, the night's end): `NightMoments` calls `HiddenMoments` from its
+own arms for them, with no lookup per event. Measured in the late-round budget case (`server.challenges`, a ratio of the
+calibration loop; six interleaved pairs on a busy machine, whose ratio moves 0.0085 to 0.0125 from run to run): the
+tracker with the hidden calls 0.0093, 0.0094 and 0.0106, and the same code with them switched off 0.0092, 0.0095 and
+0.0099; the limit is 0.012. Two earlier shapes read 0.002 higher (0.0111 to 0.0125 against 0.0085 to 0.0098) and failed
+CI at 0.0135: a stand test in every frame, and then a reference to the last frame (the kit lesson "a held frame moved
+its release into the timer"). The tracker alone (`challenge_award_micro`, four boards) measured a kill at 66 us and
+a shot at 2.7 us, as after #1074.
+
+The game server tells what a night's end finished (`NightServer._step_over` now hands out `challenges.take_events()`: it
+only did when a client sent something that happens to drain them, so a card finished by the last event of a night
+(*Dead on arrival*, *Standing room only*) could go untold).
 
 ### The read API
 
@@ -455,20 +575,68 @@ node.
 | `milestones()` | Each ladder: `text` (the next step), `value`, `rung`, `rungs`, `target` (0 when done), `fraction` toward the next step, `done` |
 | `seconds_to_refresh()`, `refresh_text()` | Time to the next dailies, "6 h 12 min" |
 | `swap_order(slot)`, `refresh()`, signal `changed` | The one write the menu makes; `refresh()` when the screen is shown again |
+| `reload()`, `watch_file()` | Take the file again when another writer replaced it (the account's board read at sign-in, a night that ended); a watching board does it by itself and says `changed` |
 
 ### The save
 
 Facts only, in the platform backend's envelope (`{revision, schemaVersion, data}`, [save
 format](../research/platform-backend.md#save-format)): the day the dailies were dealt for, each daily's day and
 progress, each order's progress, the order seed and its draw count, the lifetime totals by stat, how many dailies and
-orders were ever finished. Today it is the file `user://challenges.json`; the backend's `challenges` slot takes the
-same text for a signed-in account (#1075). The rules: `schemaVersion` is 1; a newer version is never read or
-overwritten (an old client cannot wipe progress); a damaged file is set aside as `.broken` and play starts fresh;
-every number is small (a count or a seed under 2^31), so none needs the backend's string rule for 64-bit values; a
-night saves at the end of every round and at the end of the night, so a quit loses at most the round in progress. Only
+orders were ever finished. A signed-in account's board is the backend's `challenges` slot, and the file
+`user://challenges.json` is its cache ([signed in](#the-board-signed-in)). The rules: `schemaVersion` is 1; a newer
+version is never read or overwritten (an old client cannot wipe progress); a damaged file is set aside as `.broken`
+and play starts fresh; every number is small (a count or a seed under 2^31), so none needs the backend's string rule
+for 64-bit values; a night saves at the end of every round and at the end of the night, so a quit loses at most the
+round in progress. Only
 a night a person plays writes the save (bots, captures and tests have no board). **Online, the server awards (rule
-9)**: the same `NightTally` and `ChallengeTracker` run on the game server, following every player and announcing what
-is done (#1076), and the client's board becomes a cache; a signed-in solo night runs it locally.
+9)**: the same `NightTally` and `ChallengeTracker` run on the game server, following every signed-in seat and announcing
+what is done (built, #1076: [how it works](../research/progression.md#the-game-server-follows-the-challenges-1076)).
+The server reads the account's board from the backend once, when the seat sits down, and writes it back in each round's
+report; the client's local board is a cache that keeps counting as it did, and the in-night prompt shows the server's
+word. A signed-in solo night runs it locally.
+
+### The board, signed in
+
+Built in #1124 (`ChallengeUplink`, `game/net/challenge_uplink.gd`; how it works is in [the research
+page](../research/progression.md#the-challenge-board-signed-in-1124)).
+
+- **The slot is the account's board; the file is its cache.** The file's envelope names the `account` it is the cache of
+  and the `accountRevision` the slot was at, beside `data` (so what the backend holds is exactly the board).
+- **Read at sign-in, one request** (`GET /saves/challenges`): the account's board replaces the cache, so a night
+  another machine or the game server played shows in the menu, which follows its file while it is open. An account
+  with no board yet takes the board of this machine when no other account owns it (a player's nights before sign-in
+  are kept), with orders of its own; if another account owns the file it gets a fresh one. A damaged file is set aside
+  and replaced; a file, or a slot, from a newer game is left alone.
+- **Written at a solo night's round ends and at its end** (`PUT /saves/challenges`): the whole board on the revision it
+  follows. A stale revision (409) is read again and the board written on the latest. **Nothing is merged**: the later
+  round end wins, so a second machine playing at the same time can lose a round of the first. Only one writer plays a
+  board at a time in practice, and merging counters from two histories would invent progress. A board the account does
+  not own (another account's cache, or one that never heard of an account which already has a board) is never written.
+- **Online the game server writes the board** in its round reports, so an online night starts no uplink.
+- **New accounts are dealt different orders.** A fresh board's order seed is made from the account id
+  (`ChallengeProfile.seed_of`, FNV-1a, the same wherever the board is first made); `fresh()` gave every account seed 1,
+  so every new board was dealt the same three orders.
+
+### The day the dailies follow
+
+**Decision (#1124, the engineer's, for the maintainer to overrule): the day is UTC's, for the client and the game
+server.** A board is one board, dealt and counted by both. The client dealt for its local day and the server for UTC's,
+so a player behind UTC (the Americas) playing in the evening, after UTC midnight, would have the server deal a new set
+over the dailies the client dealt and counted for the local day: the evening's progress gone at a time the player's
+own day had not turned. What was weighed:
+
+| Option | Loses a daily in a zone behind UTC? | Cost |
+| --- | --- | --- |
+| The server deals for UTC, the client for local (before) | **Yes**, every evening after UTC midnight | none, and it is the bug |
+| **UTC for both** (chosen) | No: one day for the client and the server, one reset each 24 hours | The reset is not the player's midnight: 00:00 UTC is 16:00 to 20:00 in the Americas, 01:00 to 03:00 in Europe, 09:00 in Japan. "Resets in 3 h" on the board is true |
+| The client's local day sent with the ticket, and the game server dealing for each seat's own day | No | A claim in the ticket the backend signs (the client's word), a per-seat day in the tracker, and a protocol change; a client could pick the day. The board of a player with two machines in two zones still has one day |
+| The server follows whatever day the board holds | Only if the client writes the board before every join | An extra write per join, and a stale board counts yesterday's dailies |
+
+UTC for both is also the backend's own date (`bonusDay` is a UTC day number, which a local day could miss by one), needs
+no new field or claim, and cannot be forged. The price is that the reset lands in the evening for some players; the
+dailies are an offer for the 24 hours that follow, whatever hour they start at, and nothing is lost to a mismatch. If the
+maintainer wants the player's own midnight, the way is the ticket's day (third row); `ChallengeClock` still takes an
+offset for it.
 
 ### The progress prompt in the night
 
@@ -515,8 +683,9 @@ menu, "The program": paper tickets, with progress as punch-card dots; the night'
 
 Every challenge names a stat the night counts, or says what must be added. Marks: **yes** counted today by
 `NightTally`; **line** one tally line, the event already exists; **event** something must be emitted first. A
-challenge with a **line** or **event** is not offered until its stat exists (rule 15), so the first release has
-the **yes** ones (21 of them) and the rest arrive with the stat (#1074). Challenges that need a **win** arrive with
+challenge with a **line** or **event** is not offered until its stat exists (rule 15), so the first release had
+the **yes** ones (21 of them) and the rest arrived with the stat. #1074 built the stats of every **line** and **event**
+challenge below except the hidden ones, and added them as feats (40 in all); challenges that need a **win** arrive with
 extraction (#1056).
 
 **Easy** (one night; each gives an emblem)
@@ -532,9 +701,9 @@ extraction (#1056).
 | Round five | Reach round 5 | yes |
 | Regular customer | Spend at the stand five times in one night | yes (`buys`) |
 | Pocket money | Earn 2,000 points in one night | yes |
-| Try the lot | Kill with five different weapons (any nights) | line (distinct `kills:weapon:*`) |
-| Out the back | Play a night in the back rooms | line (the map id) |
-| Two's company | Play a night with another person | line (seat count) |
+| Try the lot | Kill with five different weapons (any nights) | yes (distinct `kills:weapon:*`) |
+| Out the back | Play a night in the back rooms | yes (`nights:map:small_indoor`) |
+| Two's company | Play a night with another person | yes (`nights:together`) |
 
 **Grind** (lifetime counters, the top rung of the existing ladders; each gives a card and its emblem)
 
@@ -557,34 +726,34 @@ extraction (#1056).
 
 | Title | The act | Counted |
 | --- | --- | --- |
-| Hands in pockets | Clear a round without firing a shot | line (`shot_fired` per round) |
-| Stingy | Reach round 6 without spending a point | line (points spent, per night) |
-| Nobody home | Let a round end with you having killed nothing in it | line (kills per round) |
-| Three for one | Three dead with one grenade | line (kills grouped by blast) |
-| Carpenter's rush | Mend three boards on one window within ten seconds | line (`board_repaired` times) |
-| Door to door | Open every way through before round 5 | line (doors by round) |
-| Early bird | Open a door in the first thirty seconds of a night | line (door time) |
-| Lights out | Clear round 3 with every circuit off | event (the generator's state) |
-| Last bullet | End a round with an empty magazine and nothing in reserve | event (ammo state) |
-| Whack-a-mole | Five crawlers with the crowbar within thirty seconds | line |
-| Booth holder | Stay in the booth for a whole round | event (area presence) |
-| Fell asleep in the car | Be downed in the first five seconds of a round | line |
+| Hands in pockets | Clear a round without firing a shot | yes (`rounds:unfired`) |
+| Stingy | Reach round 6 without spending a point | yes (`round:unspent`) |
+| Three for one | Three dead with one grenade | yes (`blast:best`) |
+| Carpenter's rush | Mend three boards on one window within ten seconds | yes (`board_rushes`) |
+| Door to door | Open every way through before round 5 | yes (`doors:all_early`) |
+| Early bird | Open a door in the first thirty seconds of a night | yes (`doors:early`) |
+| Lights out | Clear round 3 (or later) with every circuit off | yes (`round:dark`) |
+| Last bullet | End a round with an empty magazine and nothing in reserve | yes (`rounds:dry`) |
+| Whack-a-mole | Five crawlers with the crowbar within thirty seconds | yes (`crawler_runs`) |
+| Booth holder | Stay in the booth for a whole round | yes (`rounds:booth`) |
+| Fell asleep in the car | Be downed in the first five seconds of a round | yes (`downs:early`) |
 
 **Together** (solo-safe: never required for a level; the old rule that a solo player is dealt none stands)
 
 | Title | The act | Counted |
 | --- | --- | --- |
-| Hand up | Revive a teammate | line (`player_revived` with a reviver) |
-| Whole crew | Finish a round with everyone upright | line |
-| Pit crew | Mend a board a teammate is also mending | event |
-| Hold the line | Five revives in one night | line |
+| Hand up | Revive a teammate | yes (`revives`) |
+| Whole crew | Finish a round with everyone upright | yes (`rounds:whole_crew`) |
+| Pit crew | Mend a board a teammate is also mending | yes (`boards:shared`) |
+| Hold the line | Five revives in one night | yes (`revives`) |
+| Nobody home | Let a round end with you having killed nothing in it | yes (`rounds:no_kills`) |
 
-**Hidden** (shown as `???` with a riddle until done): *Intermission* (stand at the stand for a whole break: event),
-*The long way round* (reach round 8 without using the second door: event), *Dead on arrival* (die in round 1: line),
-*Standing room only* (a night with four on the lot and the same four at the end: line), *Final cut* (finish all ten
-tier cards: derived).
+**Hidden** (shown as `???` with a riddle until done; built in #1172, [how](#the-hidden-challenges)): *Intermission*
+(stand at the stand for a whole break), *The long way round* (reach round 8 without using the second door), *Dead on
+arrival* (die in round 1), *Standing room only* (a night with four on the lot and the same four at the end) and *Final
+cut* (finish all eleven tier cards: derived).
 
-**Numbers:** 12 easy, 12 grind, 12 odd, 4 together, 5 hidden = 45 challenges. The existing 26 dailies, 12 orders and
+**Numbers:** 12 easy, 12 grind, 11 odd, 5 together, 5 hidden = 45 challenges. The existing 26 dailies, 12 orders and
 12 milestones stay, and **pay XP** (and a card for finishing a family of orders, or a poster set, below). The
 challenge tracker runs on the game server for online nights (#1076) so a finished challenge shows in the popup lane in
 real time and every client can hear its celebration.
@@ -597,19 +766,61 @@ real time and every client can hear its celebration.
 B-movie ("Attack of the Fifty-Foot Generator"): each one done uncovers a panel of the poster, and finishing all six
 wins the set's calling card and emblem. A set shows on the Challenges tab as its poster with its panels and six rows,
 and in the night report when finished. Every challenge in a set is one the night counts (rule 15: the mock's "restart
-the generator" and "kill with shock" need their stats first), so the first release has two sets from the 21 counted
-challenges and sets arrive as their stats do. Posters are composed from shared parts like the cards, and sets are
-solo-safe (no Together challenge in one). Build: #1073.
+the generator" and "kill with shock" need their stats first), so the first release has two sets from the feats
+counted then and a set is a line of data for any six that are counted since. Posters are composed from shared parts
+like the cards, and sets are solo-safe (no Together challenge in one). Build: #1073.
+
+**Built (#1073).** Two sets of six, made of 12 of the feats the night counts (21 when they were chosen, 43 since the
+stats of #1074 arrived; the other feats wait for sets of their own, none of which may list a stat that needs a crowd,
+`ChallengeStats.CROWD`): *Attack of the Fifty-Foot Generator* (a fuel can, ten boards, a door, five buys in a night,
+150 fuel cans, 1,000 boards; a card and an emblem in teal and gold) and *Revenge of the Headliners* (a
+headshot, a grenade kill, 100 headliners, 1,000 melee kills, 1,000 grenade kills, 1,500 headshots; cherry). The panels
+run from the easy challenge to the long one. The mock's own "restart the generator" and "kill with shock" need stats
+the night does not count, so they are not offered (rule 15). A set is **read, never stored**: a panel is uncovered
+when its feat is done, the set is finished when all six are, and the prize is owned from the finished challenges
+(`PlateCatalog`: a piece with `{set}` as its source), so the prize comes once and a retune needs no migration. A set
+is the gate of its own card and emblem (new pieces; each feat in it still gives what it gave). The Challenges tab has a
+**Poster sets** chip with each set whole (its poster, the six rows, the prize) and a teaser of each in All after Today;
+a finished set is a card of the popup lane (live, and in the menu when it was finished away from a night, once) and a
+row of the night report (its poster, title and prize). How
+it works and what was measured: [poster sets](../research/calling-cards.md#poster-sets-1073).
 
 ## The night report and credits
 
 The card at the end of a night: the lines of the report as they paid (Rounds, Points, Upkeep, Headliners, challenges,
 the first game of the day), the level bar toward the next level and what it gives ("next: a lanyard at 19"). XP is
 credited **live** during the night, so the report is the receipt: it repeats the level the popups announced, and never
-first-announces one (#1068). For a player with no account it says "Sign in to keep your XP". **Credits** (decision
+first-announces one (#1068). A Guest account earns and shows XP like any other; a night with no account at all earns
+nothing, and the report shows no XP. **Credits** (decision
 16, #1069): the night ends with a film's credits where each player gets a crew title for what they did most ("Key
 Grip: most boards mended", "Best Boy: most fuel cans", "Stunt Double: most times down") and a line of XP, chosen by
 rule from `NightTally`; solo gets a credit too.
+
+**Built (#1068).** The end board (`HudEndBoard`, the night report) has a ticket under the round line,
+`HudNightReport`: a line for each thing that paid (Rounds, Points, Upkeep, Headliners, Rescues, Challenges, Opening
+night, First game of the day; only those that paid), the night's total, the level (`LEVEL 2 TO 4` when the night
+crossed some) with its bar (what the account had in the level, then what the night added), what the crossed levels
+gave, and the next level that gives something to wear or play (levels whose art is not drawn yet are not promised, as
+in the popups). The report adds no number of its own: `ReportTracker` sums the `sources` of the `xp_gained` events
+the client hears (the game server's tally, or the local rules' in a signed-in solo night, a Guest account included),
+and `NightReport` cuts them into whole XP so that **the lines add up to the total exactly** (the XP a rounded-down
+line loses goes to the lines that lost most; a night over the cap ends in a negative "Night limit" line). A night
+nobody keeps (no account at all) is counted by the client with the same `XpRules.worth` and shown under the heading
+"your night, unsaved" with the XP it would have paid, no bar and "no account: this night was not saved". The
+players' rows are untouched by it (the icon and level beside a name are #1077's).
+
+**Built (#1069).** The credits are a second ticket under the players' ticket on the end board
+(`HudCredits`): a line for every player with their crew title, what it was for, their name and the XP the night paid
+them (nothing where the server told none: a bot, or a night nobody keeps). `NightCredits.award` is a pure function of
+what `NightTally` counted: the titles of `crew_titles.json` are handed out in the order of the file (the rarer deeds
+first, so the top scorer does not take them all), each to the player with the most of its stat among those without a
+title, a tie to the lower seat, a stat of zero to no one; a player has at most one, and the rest are Extras, so a solo
+night has its credit too. The titles name only stats the night counts: Special Effects (headliners felled), Stunt
+Coordinator (revives), Best Boy (fuel cans), Location Manager (doors opened), Key Grip (boards mended), Stunt Double
+(times down; `NightTally` now counts `downs` from `player_downed`) and Executive Producer (points earned). A client
+counts them for every player in `CrewTracker` (only those stats, and only a boss kill of the horde) and reads each
+seat's XP from the `xp_gained` every client hears; `ReportTracker` owns it, so the Night itself gains no line. The rows
+of the two tickets share the screen's height, to a floor, so eight players fit the smallest canvas.
 
 ## Popups, motion and sound
 
@@ -623,8 +834,8 @@ rule from `NightTally`; solo gets a credit too.
   marquee and the boss bar at every canvas, and the phone layout.
 - **Look:** the paper ticket of the menu and the night's prompt ("the program"): cream, dark ink, a notch, a
   perforation. A **level card** is wide: the icon on the left, `LEVEL UP`, the big number, a row of punch holes toward
-  the next. An **unlock card** is half the height: a swatch or thumbnail, `NEW TOP`, the name. A small XP gain is a
-  line on the level bar, not a card.
+  the next. An **unlock card** is half the height: the item's thumbnail (the wardrobe's own), `NEW TOP`, the
+  wardrobe's name for it. A small XP gain is a line on the level bar, not a card.
 - **Motion** (one language; "Animations for this stuff need to be good"): the level card drops in 0.25 s with a small
   overshoot, the icon scales 0.8 to 1.1 to 1 (a stamp); unlock cards follow 0.15 s apart; each holds 2.6 s (unlock 2.0
   s, tier 3.6 s) and slides up when the one above leaves; **three visible at most**, the oldest leaves first; a queue
@@ -649,6 +860,25 @@ rule from `NightTally`; solo gets a credit too.
   still audible. Nothing is sound-only: the cards are the picture. This replaces the first proposal's ticket punch and
   bells for level and tier cues.
 
+### Built (#1064)
+
+The lane is `PopupLane` (`game/ui/hud/`), a HUD part in the night and an overlay of the router's layer in the
+menus (`MenuPopups`); how it works, and what the tests measure, is
+[the research page](../research/popup-lane.md). The choices the design page left open:
+
+- **The tier is the level's card made longer** (one card for the moment, with the marquee's bulbs chasing along its
+  edges), not a second card.
+- **Punch holes** are the levels left to the next unlock (one more punched for each level nearer, eight at most);
+  **the next unlock** reads like everywhere a level sits beside a name: its icon, its level, a little padding, its name.
+- **The lane never goes over the crosshair.** Under a round banner (and a boss bar) there is room for fewer cards on a
+  small canvas: the rest wait, in order, until the banner leaves or a card does.
+- **A finished challenge** is a card of the lane (so the prompt on the left edge says only the steps) unless the player
+  turned the cards off: then the prompt says the finish as before.
+- **Setting:** `Level-up popups` in Settings, Accessibility: All, Big ones only (level, tier, challenge), Off.
+- **In the menu (#1130):** the lane also shows what the account earned while this machine was away (a level, a
+  finished challenge, read at sign-in) and never what the night already showed
+  ([the research page](../research/popup-lane.md#what-tells-the-menus-lane-1130)).
+
 ## Voice lines
 
 The maintainer: **new voice lines for progression events, heard by all clients**, **multiple celebration lines for
@@ -657,9 +887,13 @@ commercial license." So (#1063): several celebration takes each for a level up, 
 (the line after the record scratch), a poster set, a card, emblem or frame, and the first game of the day, male and
 female, made with ElevenLabs. Every client hears them through the server events the XP issues emit: `SoldierVoice`
 already makes a voice from a server event, and a teammate's level up is heard by everyone. **Priority:** they outrank
-combat chatter but not urgent lines (hurt, downed, a boss, a warning). **Blocked on the maintainer**: the lines need
-the new credits and the commercial licence ([#252](https://github.com/Ryubara/deadnight/issues/252)); free-tier sounds
-are not licensed for commercial use.
+combat chatter but not urgent lines (hurt, downed, a boss, a warning). **Made (#1063, 2026-11-04)**: 24 takes in each
+voice on the free tier, at the maintainer's word ("go ahead and get them going, I'll get the package with commercial
+rights in a moment"); they are **not licensed for commercial use** and are regenerated under the commercial plan before
+release ([#252](https://github.com/Ryubara/deadnight/issues/252)). The server's `level_up`, `tier_up` and
+`unlock_earned` and the challenge tracker's `challenge_done` (#1135) are wired to them for every client
+([research](../research/audio.md#the-progression-voice-lines-1063),
+[sound design](audio.md#the-soldiers-voices)).
 
 ## Level icons
 
@@ -678,13 +912,30 @@ are not licensed for commercial use.
 
 ## The level over a head
 
-The HUD's ally marker (`HudMarkers`, drawn in screen space) shows a name above a triangle. It becomes **icon, name,
-level**, the icon from the 64 px atlas at 24 px, in the same marker so it keeps its place rules. **Shown by default**
-(decision 18); a setting hides every level on the viewer's own screen. The level and icon ride with the name: in the
-ticket the backend signs, then in the WELCOME's names and the `player_named` event. **Bots have no level** and keep
-their usual difficulties (the earlier idea of a level near the lobby's average is dropped); a guest has none either.
-Also on the scoreboard, the lobby list and the night report. A name tag never shows a card or an emblem in the night.
-Build: #1077.
+The HUD's ally marker (`HudMarkers`, drawn in screen space) shows a name above a triangle. It becomes **icon, level,
+name**: the icon from the 64 px atlas at 24 px, the level right beside it, a little padding, then the name, in the
+same marker so it keeps its place rules. This is the maintainer's order ("icon, then level to the right of it, with a
+bit of padding to the right and it shows the players name"), and it is the same **everywhere** a level shows: over a
+head, in the bottom-left player boxes, on the scoreboard, in the night report and in the lobby's seat list. Two gaps
+decide it and live in one place, `LevelTag`: `ICON_GAP` (4) between the icon and the level, tight, and `NAME_GAP` (12)
+between the level and the name, visibly larger. A row with no level (a bot, a seat without one, the setting off) is
+the name alone, with no badge and no gap. In a list (the scoreboard, the report, the lobby, the boxes) a level has the
+room of two digits, so the names of the people start on one line and 55 is never cut; over a head the level takes its
+own width and the whole tag is centred as a bare name is. In the compact box the name ends in an ellipsis before the
+badge or the points are cut. **Shown by default**
+(decision 18); a setting hides every level on the viewer's own screen. The level comes from the server's XP tally, which
+every client hears (the WELCOME's `levels`, then `account_seated`, `level_up` and `account_left`); the icon is the
+level's own. **Bots have no level** and keep
+their usual difficulties (the earlier idea of a level near the lobby's average is dropped). A Guest account is an
+account and has a level like any other; only a bot has none.
+Also on the scoreboard, the lobby list, the night report and the player boxes at the bottom left (calling cards
+beside the box come with #1070). A name tag never shows a card or an emblem in the night.
+Built in #1077: [how it travels and what it costs](../research/multiplayer.md#the-level-and-icon-beside-a-name-1077).
+The setting is **Player levels** (Settings, Accessibility). A level gained in a night reaches the tags by the
+`level_up` event the tally already sends (#1114), so a tag changes the moment the level does.
+The icon's **body is centred on the digits' ink**, at every size, in every place (#1161): the icon is set from where
+the font draws the digits and where the art's body is, not from a box
+([how, and the measurements](../research/level-badge-alignment.md)).
 
 ## Prestige
 
@@ -748,10 +999,18 @@ base on rounds reached and points per round.
   migrates. The challenge save keeps its own lifetime counters.
 - **Where:** the backend's saved progress (`PUT/GET /saves/:slot`, an envelope with a revision and a schema version,
   64 KiB; a profile is a few kilobytes): slot `profile`, and slot `challenges` for the board. **No offline XP:** XP
-  exists only for a signed-in account (our reading of the maintainer's "No offline XP"; to confirm). A local file is a
-  cache and a retry queue for that account's own writes, never a second store, and **there is no merge of an offline
-  save**. A guest's night shows "Sign in to keep your XP". A night never waits on the backend: a failed write is sent
-  again.
+  exists only for an account the server tracks, and **a Guest account is one** (the maintainer, 2026-11-04: "only
+  signed in accounts earn XP since we only track XP on the server. But even \"Guest\" accounts will be tracked on
+  server"). A local file is a cache and a retry queue for that account's own writes, never a second store, and **there
+  is no merge of an offline save**. A night with no account at all (the backend cannot be reached) earns nothing. A
+  night never waits on the backend: a failed write is sent again.
+- **A Guest account lasts 7 days without a sign-in** (built, #1080). The backend signs a guest in with a long-lived
+  signed credential (`guestToken`) that the game keeps in its own storage (`user://guest_account.json`, the browser's
+  IndexedDB on the web); the same account, with its saves, comes back each time it is signed in to within 7 days of
+  the last sign-in, and each sign-in restarts the 7 days. An account idle for 7 days is deleted with its saves; a
+  Discord account never is. A forged or expired credential makes a new guest, never another's account. Clearing the
+  browser's data is a new guest. Moving a guest to Discord or another source is not built (the maintainer: "we'll talk
+  about this more down the line"). How: [Guest accounts](../research/platform-backend.md#guest-accounts).
 - **Writes are round-end reports, never per kill.** The game server posts each seat's XP at each round's end and at
   the night's end, keyed by match and round so a retry cannot double-pay; only a server the platform started may post
   one. A signed-in solo client writes its profile at round ends and the backend **caps** it: at most about 120 XP a
@@ -759,6 +1018,15 @@ base on rounds reached and points per round.
   knows, a level that follows from raw XP (#1075).
 - **The first game of the day:** the day number (the dailies' own) comes with the write and is accepted once, within one
   day of the backend's date.
+- **Built (#1075):** the `profile` slot, the round report (`POST /internal/matches/:id/report`, keyed by match, kind,
+  round and account), the ledger and the clamp are in the platform backend; the details, the error names and what the
+  game server must send are in [Progression on the backend](../research/platform-backend.md#progression-the-profile-slot-round-reports-and-the-xp-clamp).
+  One decision there: the server posts XP **without** the two one-offs and claims them (`openingNight`, `bonusDay`); the
+  backend knows the profile and pays each once.
+- **Built (#1106): a signed-in solo night sends its XP.** The queue holds **changes** (`{id, xp, opening_night,
+  bonus_day, done}`), not profiles: the backend takes the whole profile on a revision, so each send reads the account's
+  own latest, puts the change on it and writes that. The account's profile is read at sign-in and replaces the file's
+  (no merge of an offline file). How: [the solo night's write](../research/progression.md#a-signed-in-solo-nights-write-1106).
 - **What a level is seen by:** the ticket the backend mints carries `level`, `icon` and `xp`; never the client's word
   in the night.
 - **What would force more:** a leaderboard, any ranking, anything paid, or a reward a cheater would gain from (none
@@ -842,7 +1110,7 @@ files):
 | 4 | #1060 The 55 level icons and the atlas (art; parallel) | - |
 | 5 | #1061 More mouths, free (art; parallel) | - |
 | 6 | #1062 The record scratch, level-up fanfare and unlock sounds (audio; parallel) | - |
-| 7 | #1063 Progression voice lines (**blocked on the maintainer**: credits and licence, #252) | 3, 6 |
+| 7 | #1063 Progression voice lines (made on the free tier; regenerate under the commercial plan, #252) | 3, 6 |
 | 8 | #1064 The popup lane, live, with motion proved by clips | 3, 4, 6 |
 | 9 | #1065 The wardrobe grid, `???`, locks | 1, 4 |
 | 10 | #1066 The Costumes tab | 9 |
@@ -869,15 +1137,12 @@ curve).
 | --- | --- | --- |
 | 1 | What does prestige reset, and which rewards are exclusive? | After #1055 |
 | 2 | How slight is the combat edge, and what is it (ammunition, reload, an attachment, a skill)? | After #1055 |
-| 3 | Is level 10 for the second map still right when it arrives after about half an hour? | Keep, or 12 to 15 (35 to 50 minutes): one number |
-| 4 | Is "No offline XP" read right: XP only for a signed-in account, nothing earned as a guest? | Yes: a guest's night says "Sign in to keep your XP" |
-| 5 | Are 50 XP for the opening night and 100 for the first game of the day the right size? | First guesses; tune from telemetry |
-| 6 | Do the voice lines wait for the new credits and the commercial licence? | Yes (#252, #1063 is blocked) |
-| 7 | Which rarity tiers, if any, and what do the top ones cost? | #1053 |
-| 8 | Extraction's quota, steps, last stand and what a win pays | #1056 |
-| 9 | Is a weekly bill (live operations) in scope, and who runs it? | Defer |
-| 10 | How do we treat the account of a young player (Discord's age rules, name plates, data retention)? | Word cards only; export and delete from day one |
-| 11 | Costumes wear their default colours: is a costume free of the colour unlocks? | Assumed yes |
+| 3 | Are 50 XP for the opening night and 100 for the first game of the day the right size? | First guesses; tune from telemetry |
+| 4 | Do the voice lines wait for the new credits and the commercial licence? | Made now on the free tier (maintainer, 2026-11-04); regenerated under the commercial plan before release (#252) |
+| 5 | Which rarity tiers, if any, and what do the top ones cost? | #1053 |
+| 6 | Extraction's quota, steps, last stand and what a win pays | #1056 |
+| 7 | Is a weekly bill (live operations) in scope, and who runs it? | Defer |
+| 8 | How do we treat the account of a young player (Discord's age rules, name plates, data retention)? | Word cards only; export and delete from day one |
 
 ## Sources, and what we could not read
 

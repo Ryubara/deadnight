@@ -14,14 +14,17 @@ const PLAY_SCREEN := "res://ui/screens/play_screen.tscn"
 const JOIN_SCREEN := "res://ui/screens/together_screen.tscn"
 const SETTINGS_SCREEN := "res://ui/screens/settings_screen.tscn"
 const CREDITS_SCREEN := "res://ui/screens/credits_screen.tscn"
-## The route of each ask a panel can make. Play together opens the Play together screen. Quick
-## join has no route: it joins from the menu (`QuickJoinOverlay`) and reaches a screen only by its
-## fallback, a night of the player's own (#526).
+const CARDS_SCREEN := "res://ui/screens/cards_screen.tscn"
+const BROWSER_SCREEN := "res://ui/screens/server_browser_screen.tscn"
+## The route of each ask a panel can make. Play together opens the Play together screen; the Server
+## browser opens the list of nights, one press from a night (#1180).
 const ROUTES := {
 	&"solo": [PLAY_SCREEN, UITransition.Kind.IRIS],
 	&"together": [JOIN_SCREEN, UITransition.Kind.SLIDE],
+	&"browser": [BROWSER_SCREEN, UITransition.Kind.SLIDE],
 	&"settings": [SETTINGS_SCREEN, UITransition.Kind.SLIDE],
 	&"credits": [CREDITS_SCREEN, UITransition.Kind.BURN],
+	&"cards": [CARDS_SCREEN, UITransition.Kind.SLIDE],
 }
 
 ## Builds the challenge board the menu reads (a test or a capture sets its own).
@@ -30,7 +33,6 @@ static var board_factory := Callable()
 var shell: MenuShell
 
 var _entered := false
-var _quick_join: QuickJoinOverlay
 
 
 ## Whether this platform gets a Quit item.
@@ -44,8 +46,11 @@ func _ready() -> void:
 	shell.name = "Shell"
 	shell.context.profile = MenuProfile.load_saved()
 	shell.context.board = _open_board()
+	_follow_account_board(shell.context.board)
 	shell.context.action.connect(_on_action)
 	add_child(shell)
+	# The account's profile is read after the menu is up: the plate and the locks follow it.
+	ProfileFeed.shared.adopted.connect(_on_profile_adopted)
 
 
 func screen_enter() -> void:
@@ -71,6 +76,9 @@ func screen_pause() -> void:
 func screen_resume() -> void:
 	MenuAmbience.start()
 	shell.view.set_active(true)
+	# A night that ended wrote the board file; the board held here reads it again.
+	if shell.context.board != null and shell.context.board.has_method(&"reload"):
+		shell.context.board.reload()
 	shell.set_profile(MenuProfile.load_saved())
 	focus_initial()
 
@@ -84,6 +92,25 @@ func focus_initial() -> void:
 ## Whether the screen has been shown.
 func has_entered() -> bool:
 	return _entered
+
+
+## The board shows what the account's board replaces the file with (the read at sign-in lands
+## after the menu is up) without the player leaving the tab.
+func _follow_account_board(board: Object) -> void:
+	if board == null or not board.has_method(&"watch_file"):
+		return
+	board.watch_file()
+	board.changed.connect(shell.refresh_panels)
+
+
+## The profile file was replaced by the account's (`ProfileFeed`): what the XP decides is shown
+## again.
+## Nothing is touched when the XP is the one shown (a cache that was current), so a look being
+## chosen is not disturbed for nothing.
+func _on_profile_adopted() -> void:
+	var fresh := MenuProfile.load_saved()
+	if shell != null and fresh.xp != shell.context.profile.xp:
+		shell.set_profile(fresh)
 
 
 func _open_board() -> Object:
@@ -101,9 +128,6 @@ func _on_action(id: StringName) -> void:
 	if id == &"quit":
 		get_tree().quit()
 		return
-	if id == &"quick_join":
-		_quick_join_now()
-		return
 	if not ROUTES.has(id):
 		return
 	var route: Array = ROUTES[id]
@@ -111,21 +135,3 @@ func _on_action(id: StringName) -> void:
 		UIMotion.shake(shell)
 		return
 	UIRouter.push(route[0], route[1])
-
-
-## Quick join: a card over the menu that finds the first open public night and goes in. Pressed
-## again while it searches, it is the same search.
-func _quick_join_now() -> void:
-	if is_instance_valid(_quick_join):
-		_quick_join.run()
-		return
-	_quick_join = QuickJoinOverlay.new()
-	_quick_join.finished.connect(_on_quick_join_finished)
-	add_child(_quick_join)
-	_quick_join.run()
-
-
-func _on_quick_join_finished(joined: bool, to_lobby: bool) -> void:
-	_quick_join = null
-	if not joined and not to_lobby:
-		focus_initial()

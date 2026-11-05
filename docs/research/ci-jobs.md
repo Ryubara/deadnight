@@ -11,17 +11,19 @@ PRs that are backing us up", with 21 open pull requests, the account's 20 concur
 | | `godot` (17 to 20 minutes on 2026-11-02, limit 30), `web` (about 15) | the change touches something they can see |
 | | `backend` (about a minute) | `spikes/backend/**` (not its Markdown) or `ci.yml` changed; every push to `main` |
 | | `deploy-backend` (a few minutes) | a green push to `main` only: publishes `spikes/backend` to the `backend` service and compares its `/health` settings keys with the game's ([#944](platform-backend.md#a-setting-is-never-dropped-944)) |
+| | `gdlint` (a minute or two), `gdlint-late` (seconds, last) | a script, `.pre-commit-config.yaml` or `ci.yml` changed; `gdlint` also on every push to `main` ([below](#gdlint-on-the-merged-head-1238)) |
 | | `mkdocs`, `markdownlint`, `actionlint` | their own files changed |
 | | `build-ok` | always: the one required name for the build |
 | `pr` (`pull_request_target`) | `pr-rules` (the title, description, docs and commits checks, as steps) | every push and every edit of the description |
 | `pr-status` | `labels` | the push, and once when `ci` ends (not when it was cancelled) |
 | `docs` | `mkdocs` (pages build), `deploy` | a push to `main` only |
 | `bots-nightly` | `plan`, `soak` (a matrix job of ten nights for each cell), `report` | 03:17 UTC every day and by hand; never on a pull request ([the bot soak](bots.md#the-nightly-soak-and-the-parity-batch)) |
+| `ui-windowed` | `windowed` (the `tests/ui` suites in a window under xvfb, about 40 minutes), `report` | 04:47 UTC every day and by hand; never on a pull request, never a required check; opens one issue and fails the run when a suite fails in the window, a pixel suite does not run, or it could not run ([the windowed run](windowed-ui-ci.md)) |
 
 ## Which files start which job
 
 `.github/scripts/ci_scope.py` reads the pull request's changed files (the API, no checkout) and the `conventions` job
-passes its answers on: `godot`, `web`, `docs`, `markdown`, `workflows`, `backend`.
+passes its answers on: `godot`, `web`, `docs`, `markdown`, `workflows`, `backend`, `gdscript`.
 
 - A **documentation-only** pull request (`docs/**`, any `*.md`, `.github/ISSUE_TEMPLATE/**`) skips `godot` and `web`.
 - A pull request that **only adds tests** (`game/tests/**`) skips `web`: the export's `exclude_filter` drops `tests/*`.
@@ -40,8 +42,30 @@ passes its answers on: `godot`, `web`, `docs`, `markdown`, `workflows`, `backend
 A required check whose job is skipped by an `if` reports success, so every required name (`pr-rules`, `conventions`,
 `build-ok`, `mkdocs`, `markdownlint`, `actionlint`) is still reported. A path filter on the
 whole workflow would leave the check missing and block the merge, which is why the filtering is done with `if`.
-`build-ok` fails when `conventions`, `godot` or `web` failed or was cancelled, so a skipped job after a failed
-`conventions` does not pass.
+`build-ok` fails when `conventions`, `godot`, `web`, `gdlint` or `gdlint-late` failed or was cancelled, so a skipped job
+after a failed `conventions` does not pass.
+
+## gdlint on the merged head (#1238)
+
+`gdlint` once ran only in the local hooks, so nothing judged two merges together: #1214 took `lobby_screen.gd` to 996
+lines, #1225 added 10, each passed alone, main stayed green, and the next person's push was refused for a file they had
+not touched (#1239). Two jobs now hold that merge, and `build-ok` waits for both, so the ruleset's list did not change.
+
+- **`gdlint`** is the commit hook itself (`uvx pre-commit@... run gdlint --all-files`), so the version of gdtoolkit, the
+  files and the settings are the ones `.pre-commit-config.yaml` gives a person's machine, not a second copy of them. It
+  reads every script of the merged head a `pull_request` run checks out, and main itself on a push; a failure there goes
+  through `ci-failure` as any other red main does. It is a job of its own, not a step of `conventions`: it takes a minute
+  or two against that job's seconds, every job waits for `conventions`, and a lint error should not also stop the tests.
+- **`gdlint-late`** is what catches the case that started this. A run's merged head is fixed when the run starts and the
+  ruleset does not ask for an up-to-date branch, so a merge that lands during the run is in no merged head: #1225's run
+  began at 10:02 and #1214 landed at 10:10, so `gdlint` alone would have passed #1225. This job runs after every other
+  job, merges the base as it is then (`tools/gdlint_on_base.sh`, `tools/test_gdlint_on_base.sh`) and lints the scripts
+  the pull request changes. Those are enough: `gdlint` reads one file at a time, and an unchanged file is the base's.
+
+What is left: a pull request that stays green and open after `gdlint-late` ran (no auto-merge, or another required check
+still pending) is not judged again, and neither are two that finish in the same seconds. Only the ruleset's
+"require branches to be up to date" closes that, at the cost of a full run after every merge. If it happens, the push
+run on main goes red and opens the `P-critical` issue.
 
 ## The web job's browser steps
 

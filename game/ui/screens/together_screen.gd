@@ -1,22 +1,26 @@
 class_name TogetherScreen
 extends UIScreen
-## Play with other people: Quick join (a public night with room, straight in), Create a night (a
-## lobby of your own: `LobbyScreen`, with the code, the seats and the host's Start) and Join with a
-## code (the lobby of a friend, read first: waiting, or a night in progress). A player never sees a
+## Play with other people: the Server browser (the public nights, one press from a night:
+## `ServerBrowserScreen`), Create a night (a lobby of your own: `LobbyScreen`, with the code, the
+## seats
+## and the host's Start) and Join with a code (the lobby of a friend, read first: waiting, or a
+## night
+## in progress). A player never sees a
 ## server address; the platform backend (`TogetherApi`) makes the lobby, places the night on a game
 ## server when the host starts it and hands over a ticket.
 ##
 ## A page opened with `?room=CODE` reads that night at once (a static here is set before the screen
-## opens). One opened inside a Discord Activity (`?instance_id=...`) opens on the main menu, signed
-## in in the background (`ActivityRoom`): Play together goes straight to the lobby of its voice
-## channel, making it when nobody has. The address of a game server (`JoinScreen`) is a developer
-## setting, shown on the desktop and with `?dev` on the web.
+## opens). The Discord Activity gets this same screen and the same choices as the website: it makes
+## no lobby until the player presses Create, and players reach each other by a code, a link or the
+## Server browser (#1178). The Activity signs in with Discord on the menu in the background
+## (`StartupSignIn`); nothing about the voice channel's instance routes a player here. The address
+## of a game server (`JoinScreen`) is a developer setting, shown on the desktop and with `?dev` on
+## the web.
 
 ## The player answered the name prompt (a name, or no name).
 signal name_decided
 
 const SCREEN := "res://ui/screens/together_screen.tscn"
-const NIGHT_SCREEN := "res://ui/screens/night_screen.tscn"
 const JOIN_SCREEN := "res://ui/screens/join_screen.tscn"
 const FIELD_WIDTH := 620.0
 const CODE_LENGTH := 8
@@ -33,7 +37,7 @@ static var name_skipped := false
 static var dev_enabled := not OS.has_feature("web")
 
 var api: TogetherApi
-var quick_button: UIButton
+var browser_button: UIButton
 var create_button: UIButton
 var code_field: LineEdit
 var join_button: UIButton
@@ -45,12 +49,14 @@ var name_continue_button: UIButton
 var name_skip_button: UIButton
 
 var _menu: VBoxContainer
+## The words that give way on a phone's canvas, so the way to enter a code and Back show (#1227).
+var _overline: UILabel
+var _menu_note: UILabel
+var _phone := false
+## The four choices in a grid: one column on the desktop, two on a phone's canvas (#1227).
+var _choices: GridContainer
 var _naming: VBoxContainer
-var _lobby := {}
 var _busy := false
-## The screen opened a lobby by itself (the Activity's voice channel): coming back from it, the
-## player goes on to the main menu rather than to a menu they never asked for.
-var _opened_for_room := false
 ## In a Discord Activity: whether the window can read a gamepad (`GamepadProbe`), every second.
 var _controller_note: UILabel
 var _controller_since := 1.0
@@ -76,7 +82,8 @@ func _ready() -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override(&"separation", _tokens.space_md)
 	scroll.add_child(box)
-	box.add_child(_label("TOGETHER", UILabel.Style.OVERLINE))
+	_overline = _label("TOGETHER", UILabel.Style.OVERLINE)
+	box.add_child(_overline)
 	box.add_child(_label("Play together", UILabel.Style.TITLE))
 	status = _label("", UILabel.Style.BODY)
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -105,7 +112,27 @@ func _ready() -> void:
 		dev.pressed.connect(func() -> void: UIRouter.push(JOIN_SCREEN, UITransition.Kind.SLIDE))
 		box.add_child(dev)
 	_show_menu()
-	initial_focus = get_path_to(quick_button)
+	initial_focus = get_path_to(browser_button)
+	# On a phone's canvas the fields and buttons are a fingertip high (#1197).
+	resized.connect(_fit_phone)
+	_fit_phone()
+
+
+## On a phone's canvas (540 units high, held sideways) the fields and buttons are a fingertip high,
+## the overline and the note under the title give their room back and the four choices sit two to a
+## row (Server browser and Create a night, the code and Join): all of them and Back are in view
+## with no scrolling (#1197, #1227).
+func _fit_phone() -> void:
+	var phone := TapFloor.phone_canvas(size)
+	_overline.visible = not phone
+	_menu_note.visible = not phone
+	_phone = phone
+	_choices.columns = 2 if phone else 1
+	for choice: Control in _choices.get_children():
+		choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		choice.custom_minimum_size.x = 0.0 if phone else FIELD_WIDTH
+	_show_status()
+	TapFloor.fit(self, phone)
 
 
 func _process(delta: float) -> void:
@@ -128,55 +155,10 @@ func screen_enter() -> void:
 		auto_code = ""
 		code_field.text = code
 		await _join()
-	elif ActivityRoom.current != null:
-		await _use_activity_room(ActivityRoom.current)
-
-
-## Coming back from a lobby that opened by itself: on to the main menu.
-func screen_resume() -> void:
-	if _opened_for_room:
-		_opened_for_room = false
-		UIRouter.pop()
-		return
-	super.screen_resume()
-
-
-## The lobby of the Activity's voice channel: signed in on the menu already (or now), then what the
-## channel has, read fresh. Nobody has made one: the player makes it and hosts. One waiting or
-## started: its preview, with Join (the round of a night in progress is on it).
-func _use_activity_room(room: ActivityRoom) -> void:
-	_busy = true
-	_set_enabled(false)
-	if room.state != ActivityRoom.State.PREPARING and room.state != ActivityRoom.State.READY:
-		room.prepare()
-	if room.state == ActivityRoom.State.PREPARING:
-		_say("Getting your night ready...")
-	if not await room.until_ready():
-		_busy = false
-		_set_enabled(true)
-		_say(room.failure)
-		return
-	var seen := await room.api.preview_instance()
-	if seen["ok"]:
-		_open_preview(room.api, seen["preview"], true)
-		return
-	if seen["error"] != "not_found":
-		_fail(seen)
-		return
-	var made := await room.api.create_lobby()
-	if not made["ok"]:
-		_fail(made)
-		return
-	_opened_for_room = true
-	_busy = false
-	_set_enabled(true)
-	_say("")
-	LobbyScreen.show_lobby(room.api, made["lobby"])
 
 
 ## Shows what a code says, with Join; the lobby screen takes it from here.
-func _open_preview(from: TogetherApi, seen: Dictionary, for_room := false) -> void:
-	_opened_for_room = for_room
+func _open_preview(from: TogetherApi, seen: Dictionary) -> void:
 	_busy = false
 	_set_enabled(true)
 	_say("")
@@ -187,20 +169,31 @@ func _build_menu() -> VBoxContainer:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override(&"separation", _tokens.space_md)
 	var note := _label(
-		"Quick join puts you in a night with room. Or make a night and send the code or link to friends.",
+		(
+			"The server browser lists the nights you can join."
+			+ " Or make a night and send the code or link to friends."
+		),
 		UILabel.Style.BODY
 	)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size.x = FIELD_WIDTH
 	column.add_child(note)
-	quick_button = _button("Quick join", UIButton.Variant.PRIMARY)
-	quick_button.name = "QuickJoin"
-	quick_button.pressed.connect(_quick)
-	column.add_child(quick_button)
+	_menu_note = note
+	_choices = GridContainer.new()
+	_choices.name = "Choices"
+	_choices.columns = 1
+	_choices.custom_minimum_size.x = FIELD_WIDTH
+	_choices.add_theme_constant_override(&"h_separation", _tokens.space_md)
+	_choices.add_theme_constant_override(&"v_separation", _tokens.space_md)
+	column.add_child(_choices)
+	browser_button = _button("Server browser", UIButton.Variant.PRIMARY)
+	browser_button.name = "ServerBrowser"
+	browser_button.pressed.connect(_browse)
+	_choices.add_child(browser_button)
 	create_button = _button("Create a night", UIButton.Variant.SECONDARY)
 	create_button.name = "CreateNight"
 	create_button.pressed.connect(func() -> void: await _create("Making your night..."))
-	column.add_child(create_button)
+	_choices.add_child(create_button)
 	code_field = LineEdit.new()
 	UiSounds.wire_field(code_field)
 	code_field.name = "Code"
@@ -216,11 +209,11 @@ func _build_menu() -> VBoxContainer:
 				code_field.caret_column = at
 	)
 	code_field.text_submitted.connect(func(_text: String) -> void: await _join())
-	column.add_child(code_field)
+	_choices.add_child(code_field)
 	join_button = _button("Join with the code", UIButton.Variant.SECONDARY)
 	join_button.name = "JoinCode"
 	join_button.pressed.connect(_join)
-	column.add_child(join_button)
+	_choices.add_child(join_button)
 	return column
 
 
@@ -258,11 +251,13 @@ func _build_naming() -> VBoxContainer:
 # --- What the buttons do ---
 
 
-func _quick() -> void:
-	if not await _begin("Finding a night..."):
+## The list of public nights, over this screen. Its own sign-in and requests: this screen is covered
+## while
+## the list is up.
+func _browse() -> void:
+	if _busy:
 		return
-	var found := await api.quick()
-	await _finish(found)
+	ServerBrowserScreen.open(api)
 
 
 ## A lobby of your own, waiting for friends and for the host's Start.
@@ -342,30 +337,6 @@ func _decide_name(give: bool) -> void:
 	name_decided.emit()
 
 
-## An answer that is a lobby (Quick join) goes into its night; one that is not says why.
-func _finish(answer: Dictionary) -> void:
-	if not answer["ok"]:
-		_fail(answer)
-		return
-	_lobby = answer["lobby"]
-	await _enter_night()
-
-
-func _enter_night() -> void:
-	_busy = true
-	_set_enabled(false)
-	_say("Going in...")
-	var pass_to := await api.ticket(_lobby)
-	if not pass_to["ok"]:
-		_fail(pass_to)
-		return
-	NightScreen.join_url = server_url_of(pass_to, in_discord())
-	NightScreen.join_ticket = pass_to["ticket"]
-	NightScreen.remember_lobby(api, _lobby, get_tree().root)
-	_busy = false
-	UIRouter.push(NIGHT_SCREEN, UITransition.Kind.IRIS)
-
-
 func _fail(answer: Dictionary) -> void:
 	_busy = false
 	_set_enabled(true)
@@ -403,7 +374,7 @@ func _show_menu() -> void:
 
 
 func _set_enabled(enabled: bool) -> void:
-	for button: UIButton in [quick_button, create_button, join_button]:
+	for button: UIButton in [browser_button, create_button, join_button]:
 		if button != null:
 			button.disabled = not enabled
 	code_field.editable = enabled
@@ -411,6 +382,12 @@ func _set_enabled(enabled: bool) -> void:
 
 func _say(text: String) -> void:
 	status.text = text
+	_show_status()
+
+
+## An empty line says nothing and, on a phone's canvas, takes no room.
+func _show_status() -> void:
+	status.visible = status.text != "" or not _phone
 
 
 # --- Where this page is ---

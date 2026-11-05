@@ -39,6 +39,8 @@ const CIRCUIT_NAMES := {
 
 var _hud: Hud
 var _state: ClientState
+## The popup lane's setting and sounds, held for as long as the night plays.
+var _popup_link: PopupLink
 ## What the map calls its links and breaches; null on the lot, whose words are the defaults above.
 var _words: MapWords
 var _weapon_names: Dictionary[StringName, String] = {}
@@ -48,6 +50,7 @@ var _perks: PerkTuning
 var _economy: EconomyTuning
 ## Units a whole can adds, by shop item: what the card says a can is worth.
 var _can_units: Dictionary[StringName, int] = {}
+var _settings: SettingsService
 
 
 ## `hud` is in the tree or about to be; `state` is the client's; `tuning` is read once, for the
@@ -59,7 +62,8 @@ func _init(
 	state: ClientState,
 	tuning: RulesTuning,
 	looks: LookRegistry = null,
-	words: MapWords = null
+	words: MapWords = null,
+	settings: SettingsService = null
 ) -> void:
 	_hud = hud
 	_state = state
@@ -88,8 +92,18 @@ func _init(
 	hud.state.configure(fuel.capacity, fuel.circuit_drain.keys(), fuel.start_circuits)
 	hud.state.special_schedule = HudSpecials.schedule_of(tuning.specials)
 	state.event_received.connect(_on_event)
+	_popup_link = PopupLink.new(hud.popups)
 	if looks != null:
 		looks.changed.connect(_on_look.bind(looks))
+	# The viewer's choice to see levels beside names, now and when they change it in the pause menu.
+	_settings = settings if settings != null else Settings
+	hud.state.show_levels = bool(_settings.get_value(SettingsService.SHOW_LEVELS))
+	_settings.changed.connect(_on_setting)
+
+
+func _on_setting(key: StringName, value: Variant) -> void:
+	if key == SettingsService.SHOW_LEVELS:
+		_hud.state.show_levels = bool(value)
 
 
 ## A look arrived or changed: the HUD hears it as the `player_look` event it knows, for every
@@ -112,6 +126,9 @@ func _on_look(_player_id: int, looks: LookRegistry) -> void:
 
 
 func _on_event(event: Dictionary) -> void:
+	if event["type"] == &"level_up" and int(event["player_id"]) == _state.player_id:
+		# The lane shows it now: the menu must not show it again (`ProgressSeen`).
+		ProgressSeen.note_level(int(event["level"]))
 	match event["type"]:
 		&"frame":
 			_on_frame()

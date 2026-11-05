@@ -269,7 +269,7 @@ func _load_here(paths: Array[String]) -> void:
 
 
 func _load_sounds() -> void:
-	var ids := SoundCatalog.ids()
+	var ids := SoundCatalog.ids_for_night()
 	var at := 0
 	while at < ids.size():
 		var until := Time.get_ticks_msec() + SOUND_BUDGET_MSEC
@@ -699,6 +699,10 @@ func _replay_effects() -> void:
 			}
 		)
 	)
+	# The flames of a zombie set burning, on no zombie: where they were put.
+	var flames := ElementFx.burn(null, -1, WARMUP_LURE_SECONDS, Color(1.0, 0.5, 0.12))
+	flames.position = sample
+	view.add_child(flames)
 	for fx: ElementFx in view.find_children("*", "ElementFx", true, false):
 		fx.freeze(0.3)
 	await _chunk(SHOT_FRAMES + 1)

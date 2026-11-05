@@ -46,4 +46,5 @@ area_m2 = 600
 min_players = 1
 max_players = 8
 shipped = true
+unlock_level = 10
 end_shots = Array[ExtResource("2_shot")]([SubResource("Shot_hall_east"), SubResource("Shot_hall_west"), SubResource("Shot_rewind"), SubResource("Shot_rewind_east")])

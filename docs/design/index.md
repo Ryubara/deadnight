@@ -8,8 +8,8 @@ The game as it stands. Each subject gets one page here, updated in place as the 
    buy fuel, doors and weapons, so every round asks what stays powered.
 2. **A night that closes in.** Rounds grow harder and the night darker; the map opens outward from the screen to the
    ticket plaza at the back of the lot.
-3. **Played together.** Built for two to eight players (people and bots together) in a browser or a Discord call;
-   solo is supported, never the focus.
+3. **Played together.** Built for two to eight players (people; the bots the host sets come on top) in a browser or a
+   Discord call; solo is supported, never the focus.
 
 ## The loop
 
@@ -32,7 +32,8 @@ The order, prices and layout are in [the lot](map.md); which map a night is play
 ## Between nights
 
 What carries over from one night to the next, and what never does, is in the [permanent progression
-design](progression.md): a night always starts equal, and growth is choice, mastery and identity, never strength.
+design](progression.md): a night's economy always starts equal, and growth is choice, mastery and identity plus a
+slight kit (the maintainer's 2026-11-04 decision; [how slight](../research/weapon-progression.md)).
 
 ## Looks
 
@@ -49,6 +50,10 @@ budgets, palette) are in the [style bible](style.md).
 How big a weapon is, where the stock, the grip and the support hand sit, and where the barrel points: [Weapons in the
 hands](weapon-hold.md).
 
+## Arriving
+
+How a player comes into a night, by helicopter on their own screen, and how the server keeps them safe meanwhile: [the arrival](arrival.md).
+
 ## Shots on screen
 
 What a shot looks like and how the view answers it: [Shot feedback](shot-feedback.md) (the toon muzzle flash and the
@@ -62,3 +67,4 @@ Which scene is which: [Scenes](scenes.md). How to play from the editor and where
 
 Who is in the room before a night starts, who hosts, and how a latecomer joins a night in progress: [the lobby](lobby.md).
 What happens when it ends, from the camera's pull-back to everyone back in the lobby: [the end of a night](end-of-night.md).
+A proposal, not built: a night that can be won, with a kill quota and a chain of steps on each map: [extraction](extraction.md).

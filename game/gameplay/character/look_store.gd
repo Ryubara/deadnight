@@ -5,12 +5,13 @@ extends RefCounted
 
 
 ## The saved look, or the first preset when nothing is saved (a text that cannot be read gives the
-## first option of every slot). Options this player has not unlocked are put back, so a
-## hand-edited file cannot wear a locked item.
+## first option of every slot). Options this player has not unlocked (the account's level, from the
+## profile file, unless `unlocks` is given) are put back, so a hand-edited file or a look saved at
+## a higher level cannot wear a locked item.
 static func load_look(unlocks: LookUnlocks = null) -> CharacterLook:
 	var text: String = Settings.get_value(SettingsService.CHARACTER_LOOK)
 	var look := CharacterLook.from_json(text) if text != "" else CharacterLook.default_look()
-	return look.without_locked(unlocks if unlocks != null else LookUnlocks.new())
+	return look.without_locked(unlocks if unlocks != null else LookUnlocks.saved())
 
 
 ## Writes the look to the file now.

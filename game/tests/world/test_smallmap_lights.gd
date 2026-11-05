@@ -17,6 +17,12 @@ const CAPTURE := "res://tests/captures/smallmap_lights.tscn"
 const DYNAMIC_HEADROOM := 2
 
 
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
+
+
 func _add(path: String) -> Node3D:
 	var node := (load(path) as PackedScene).instantiate() as Node3D
 	add_child(node)

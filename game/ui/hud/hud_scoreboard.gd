@@ -21,8 +21,8 @@ const PING_CELL := 5
 ## Size of the armband chip before the name, and of a row's height.
 const CHIP := Vector2(10.0, 34.0)
 const ROW_HEIGHT := 46.0
-## The most players a night holds (the rows kept).
-const MAX_ROWS := NightHost.MAX_PLAYERS
+## The most bodies a night holds, people and bots (the rows kept).
+const MAX_ROWS := NightHost.MAX_SEATS
 ## A row of the local player is laid on a faint wash of the accent.
 const LOCAL_WASH := 0.14
 
@@ -36,12 +36,16 @@ var clock_text := ""
 var has_ping := false
 ## The player ids in row order.
 var row_ids: Array[int] = []
+## The level each row shows (0 for none), in row order (`HudState.level_of`).
+var row_levels: Array[int] = []
 
 var _t := HudTuning.current()
-var _grid := VBoxContainer.new()
-var _title_row := HBoxContainer.new()
-var _round := HudStyle.label("", HudStyle.MEDIUM, tokens.hot, true)
-var _clock := HudStyle.label("", HudStyle.MEDIUM, tokens.accent, true)
+## The card's rows and its title line are made the first time it is shown (a night's scoreboard is
+## held open now and then): built and hidden they would be eight canvas items of every night.
+var _grid: VBoxContainer
+var _title_row: HBoxContainer
+var _round: Label
+var _clock: Label
 var _stale := true
 
 
@@ -49,6 +53,16 @@ func _init() -> void:
 	super()
 	accent = tokens.hot
 	visible = false
+
+
+## Makes the title line and the list of rows the first time the card is shown.
+func _build() -> void:
+	if _grid != null:
+		return
+	_round = HudStyle.label("", HudStyle.MEDIUM, tokens.hot, true)
+	_clock = HudStyle.label("", HudStyle.MEDIUM, tokens.accent, true)
+	_title_row = HBoxContainer.new()
+	_grid = VBoxContainer.new()
 	_round.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_title_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -106,6 +120,7 @@ func refresh() -> void:
 		_stale = true
 		return
 	_stale = false
+	_build()
 	var ids := order()
 	has_ping = ids.any(func(id: int) -> bool: return int(state.team[id]["ping"]) >= 0)
 	HudStyle.set_text(_round, "ROUND %02d" % state.round_number)
@@ -119,9 +134,11 @@ func refresh() -> void:
 	_grid.add_child(_heading_row())
 	rows_text.clear()
 	row_ids.clear()
+	row_levels.clear()
 	for id in ids.slice(0, MAX_ROWS):
 		var cells := _cells(id)
 		row_ids.append(id)
+		row_levels.append(state.level_of(state.team[id]).x)
 		rows_text.append(cells)
 		_grid.add_child(_player_row(id, cells))
 	update_minimum_size()
@@ -193,12 +210,14 @@ func _player_row(player_id: int, cells: Array[String]) -> Control:
 	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color(tokens.accent, LOCAL_WASH) if local else Color.TRANSPARENT
+	var clear := PlateRow.frame_clear(state.plate_of(member)["frame"], ROW_HEIGHT)
 	wash.add_theme_stylebox_override(&"panel", box)
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override(&"separation", 0)
 	row.custom_minimum_size.y = ROW_HEIGHT
 	wash.add_child(row)
+	PlateRow.card_behind(wash, state.plate_of(member)["card"], ROW_HEIGHT, tokens.bg)
 	var chip_slot := CenterContainer.new()
 	chip_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip_slot.custom_minimum_size.x = CHIP.x + float(HudStyle.MD)
@@ -217,12 +236,24 @@ func _player_row(player_id: int, cells: Array[String]) -> Control:
 			var grades: Array[Color] = [tokens.ink, tokens.accent, tokens.danger]
 			var ping := int(member["ping"])
 			ink = tokens.ink_muted if ping < 0 else grades[ping_grade(ping)]
+		var shown := state.level_of(member)
+		var plate := state.plate_of(member)
+		var room := (
+			widths[i] - (HudLevelCell.taken(shown, plate["emblem"], ROW_HEIGHT) if i == 0 else 0.0)
+		)
+		if i == cells.size() - 1:
+			room -= clear
 		var label := HudStyle.clip(HudStyle.label("", HudStyle.MEDIUM, ink, i > 0))
-		label.custom_minimum_size = Vector2(widths[i], ROW_HEIGHT)
+		label.custom_minimum_size = Vector2(room, ROW_HEIGHT)
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		label.horizontal_alignment = (
 			HORIZONTAL_ALIGNMENT_LEFT if i == 0 else HORIZONTAL_ALIGNMENT_RIGHT
 		)
-		HudStyle.set_fitted(label, cells[i], HudStyle.MEDIUM, widths[i] - float(HudStyle.SM))
-		row.add_child(label)
+		HudStyle.set_fitted(label, cells[i], HudStyle.MEDIUM, room - float(HudStyle.SM))
+		if i == 0:
+			row.add_child(HudLevelCell.wrap(label, shown, tokens.ink, ROW_HEIGHT, plate["emblem"]))
+		else:
+			row.add_child(label)
+	PlateRow.clear_the_frame(row, clear)
+	PlateRow.frame_over(wash, state.plate_of(member)["frame"])
 	return wash

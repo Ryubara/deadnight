@@ -14,8 +14,12 @@ const CLEARS := "RouterFixture.clear("
 ## What puts a screen on the router: a call that shows one, or the game's own root (`main.tscn`),
 ## which resets the router to the main menu when it is ready.
 const OPENS := "(UIRouter\\.(reset|push|replace)\\(|res://main\\.tscn)"
-## The fixture and this scan name the calls without opening a screen.
-const EXEMPT: Array[String] = ["router_fixture.gd", "test_suites_leave_the_router_empty.gd"]
+## The fixture and the scans name the calls without opening a screen.
+const EXEMPT: Array[String] = [
+	"router_fixture.gd",
+	"test_suites_leave_the_router_empty.gd",
+	"test_ui_suites_start_a_night_with_no_drop_due.gd",
+]
 
 
 func test_every_suite_that_opens_a_screen_clears_the_router() -> void:

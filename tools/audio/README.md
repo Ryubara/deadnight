@@ -3,7 +3,7 @@
 Everything in `game/assets/audio/` is rendered by `generate.py` from the recipes in this folder (synthesised, seeded
 from each sound's name), except 29 files generated with ElevenLabs Sound Effects, fetched by `elevenlabs.py` into
 `game/assets/audio/eleven/` and by `elevenlabs_zombies.py` into `game/assets/audio/zombie/`, and the two soldiers'
-115 voice lines each, made with ElevenLabs text to speech by `elevenlabs_voice.py` (lines, voice, model and settings are
+139 voice lines each, made with ElevenLabs text to speech by `elevenlabs_voice.py` (lines, voice, model and settings are
 data in `soldier_voice.json` for the male voice, into `game/assets/audio/voice/soldier/`, and `soldier_voice_female.json`
 for the female one, `--voice female`, into `game/assets/audio/voice/soldier_female/`). Those four folders carry a
 `LICENSE.md` (attribution required, not licensed for commercial use, tracked in issue #252); every other folder holds
@@ -15,9 +15,25 @@ beeps' times, whether their gaps shrink to the blast, their level in the mix aga
 The voice's other tools: `voice_report.py` (the voice's loudness against the guns and the beds, from the stems a night
 capture records) and `voice_sheet.py` (the script as a contact sheet; `--voice female` for hers).
 
+The progression cheers (#1063) are 24 more takes in each voice (139 each), made on the free tier on 2026-11-04 and
+regenerated under the commercial plan before release: `elevenlabs_voice.py ... --only <events> --plan free --generated
+<date> encode` keeps the other takes in the manifest and records the plan in each new entry. `voice_clip.py` turns the
+recording of `game/tests/captures/audio_progression_voice.tscn` (modes `listen`, `beside` and `fight`) into an `.mp4`
+with the sound in it, for the pull request.
+
 The second map's sounds (the depot's room tone, the yard, a debris blocker, feet on wood) are `map_recipes.py`, synthesised
 like the rest; `smallmap_levels.py` measures them (`table`: level and reach from the banks and the files; `capture`: the
 mix of the walk through the map, level by stage). `docs/research/maps/small-map-audio.md` has the numbers.
+
+The progression sounds (#1062): `progress_recipes.py` makes the record scratch for a challenge done, the snare roll and
+brass of a level up and of a tier up, the unlock's ticket punch and bell and the card's paper rustle (synthesised, into
+`game/assets/audio/progress/`); `progress_levels.py` reads the recording of `game/tests/captures/audio_progress_levels.tscn`
+(every cue through the real service and its rules, eight unlocks in two seconds, moments close together, the night's
+sounds a cue must not hide, three bursts, the night's beds) and prints and gates the level, the length, the loudness
+against a pistol shot, the stacks, the moments, how far each cue is under a shot, a groan, a shriek, a beep and a
+soldier's line in their own band, and whether a cue stands out of a burst (`--pin` writes
+`game/tests/core/progress_sound_levels.json`, which `test_progress_sounds.gd` holds the files to).
+`docs/research/menu-sfx.md#the-progression-sounds-1062` has the numbers.
 
 Headroom (#718): `headroom.py` reads recordings of `game/tests/captures/audio_headroom.tscn` (the player's own gun fired
 without a break while a reload, a teammate's gun, the dead's voices or the lot's sounds land on it) and prints, for each
@@ -75,6 +91,10 @@ The second batch of firearms (#790: PPSh, M249, M4A1, .50 calibre, MP5, 870 pump
 built from `weapon_recipes.py`'s `report` and `tail` and listed by `generate.py`; its sounds are `shot_`, `tail_`,
 `equip_` and `dry_` plus the gun id, and `reload_<gun>_<step>`.
 `docs/research/gun-audio.md#the-second-batch-of-firearms-790`.
+
+The helicopter drop's sounds (#1057) are `arrival_recipes.py` (`heli_loop`, a seamless 4 s loop of a piston helicopter's
+rotor beat, wash and engine; `rope_slide`; `drop_land`), in `game/assets/audio/arrival/`, played by the arrival show from
+the `on_demand` `arrival` bank (nothing loads it until a show plays). `docs/design/arrival.md`.
 
 The perk drink (#912) is `drink_recipes.py` (`drink_open`, `drink_gulp`, `drink_discard`), in `game/assets/audio/perks/`,
 played by the drink clip's events from the deferred `perks` bank (`docs/design/animation.md#drink`).

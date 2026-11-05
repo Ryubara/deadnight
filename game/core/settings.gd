@@ -58,6 +58,12 @@ const TOUCH_HINTS_SEEN := &"controls/touch_hints_seen"
 ## Which challenge prompts show in the night: 0 all, 1 only finished challenges and milestone steps,
 ## 2 none (`HudChallenge.Mode`).
 const CHALLENGE_PROMPTS := &"accessibility/challenge_prompts"
+## Which progression popups show (`PopupLane.Mode`): 0 all, 1 big ones only (a level, a tier, a
+## finished challenge), 2 none.
+const PROGRESS_POPUPS := &"accessibility/progress_popups"
+## Whether each player's level and icon show beside their name (the tags over heads, the scoreboard,
+## the lobby and the night report); on by default. A viewer's own choice about their own screen.
+const SHOW_LEVELS := &"accessibility/show_levels"
 ## The player's character look as JSON (`CharacterLook.to_json`); empty means the default look.
 const CHARACTER_LOOK := &"character/look"
 ## The platform profile as last read, for the menu to show (`MenuProfile`): JSON, read-only on the
@@ -86,6 +92,8 @@ const DEFAULTS := {
 	UI_SCALE: 1.0,
 	CAMERA_SHAKE: 100,
 	CHALLENGE_PROMPTS: 0,
+	PROGRESS_POPUPS: 0,
+	SHOW_LEVELS: true,
 	MOUSE_SENSITIVITY: 1.0,
 	INVERT_Y: false,
 	TOUCH_CONTROLS: 0,
@@ -115,6 +123,7 @@ const RANGES := {
 	UI_SCALE: Vector2(0.8, 1.25),
 	CAMERA_SHAKE: Vector2(0, 100),
 	CHALLENGE_PROMPTS: Vector2(0, 2),
+	PROGRESS_POPUPS: Vector2(0, 2),
 	MOUSE_SENSITIVITY: Vector2(0.1, 3.0),
 	TOUCH_CONTROLS: Vector2(0, 2),
 	TOUCH_SCALE: Vector2(0.8, 1.4),
@@ -179,6 +188,7 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	UIScroll.slip_units = TouchSlop.units
 	load_from_disk()
 	apply_all()
 	_flush_when_the_page_hides()

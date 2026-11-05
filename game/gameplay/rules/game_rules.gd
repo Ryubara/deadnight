@@ -39,11 +39,11 @@ extends RefCounted
 ##     breaks into pieces instead of falling)
 ##   zombie_crippled: zombie_id, zombie_type (the crawler it became), player_id, cause (legs or
 ##     wounded), health, speed_scale
+##   blast_resolved: player_id, kills (dead the blast left), hits (zombies it reached); once, after
+##     the zombie events of one blast that killed
 ##   grenade_count_changed: player_id, count, reason (thrown, refill, purchase)
 ##   player_added: player_id, grenades (the count they start with), health, max_health, bot (true
 ##     when a bot plays the seat)
-##   bot_replaced: player_id: a person took the seat of a bot, which is no bot's from now on
-##   bot_seated: player_id: a bot took the seat of a person who left, as it stood
 ##   player_hurt: player_id, damage, health (left), max_health, bearing (radians clockwise from -z,
 ##     seen from above, where the blow came from), source_id (the zombie, -1 for none), harm
 ##     (`grenade`; empty for a zombie), by_id (whose grenade, 0 for none)
@@ -55,6 +55,9 @@ extends RefCounted
 ##   player_died: player_id, cause (bleed_out): a downed player nobody got up in time; down until
 ##     the round ends
 ##   player_removed: player_id
+##   player_dropping: player_id: the player's client began its helicopter drop; they are shielded
+##     and out of the night until `player_landed` (`ArrivalPlay`)
+##   player_landed: player_id: the drop ended; a moment of grace follows
 ##   player_revived: player_id (the one who got up), reviver_id (the teammate; 0 at a round's end)
 ##   points_changed: player_id, total, delta, reason
 ##   purchase_made: player_id, item_id, price, detail (a weapon: `weapon` and `released`, the shop
@@ -100,13 +103,18 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 16 added each player's `drinking` and `drink_left` (the perk drink, #912), 15 took `recuts_lost`
-## out of each player (a re-cut costs the same every time, #909), 14 added each player's
-## `self_revives` and `self_revive_left` (the revive perk), 13 the carry (`weapons`), 12 `revives`,
-## `dead`, `bleed_left`, 11 `downs` and `night_time`, 10 `match_settings`, 9 `upgraded` weapons, 8
-## the crane, 7 `barricades`, 6 health, 5 the plan and a zombie's type. Two older layouts both
+## 17 added each player's `drop_left`, `grace_left` and `dropped` (the helicopter drop, #1057), 16
+## added
+## each player's `drinking` and `drink_left` (the perk drink, #912), 15 took `recuts_lost` out of
+## each
+## player (a re-cut costs the same every time, #909), 14 added each player's `self_revives` and
+## `self_revive_left` (the revive perk), 13 the carry (`weapons`), 12 `revives`, `dead`,
+## `bleed_left`, 11
+## `downs` and `night_time`, 10 `match_settings`, 9 `upgraded` weapons, 8 the crane, 7 `barricades`,
+## 6
+## health, 5 the plan and a zombie's type. Two older layouts both
 ## called themselves 4; older snapshots are `bad_version`.
-const SNAPSHOT_VERSION := 16
+const SNAPSHOT_VERSION := 17
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -418,10 +426,6 @@ func _dispatch(action: Dictionary) -> void:
 				_begin_round()
 		RulesAction.ADD_PLAYER:
 			_add_player(action["player_id"], action.get("bot", false))
-		RulesAction.SEAT_PERSON:
-			_seat(action["player_id"], false, RulesAction.SEAT_PERSON, &"bot_replaced")
-		RulesAction.SEAT_BOT:
-			_seat(action["player_id"], true, RulesAction.SEAT_BOT, &"bot_seated")
 		RulesAction.REMOVE_PLAYER:
 			if players.erase(action["player_id"]):
 				CranePlay.buyer_left(self, action["player_id"])
@@ -429,6 +433,11 @@ func _dispatch(action: Dictionary) -> void:
 				_check_game_over()
 		RulesAction.SET_DOWNED:
 			_set_downed(action["player_id"], action["downed"])
+		RulesAction.ARRIVAL:
+			if action["begin"]:
+				ArrivalPlay.begin(self, action["player_id"])
+			else:
+				ArrivalPlay.land(self, action["player_id"])
 		RulesAction.REVIVE:
 			_revive(action["player_id"], action["target_id"])
 		RulesAction.BLOW:
@@ -505,6 +514,7 @@ func _tick(delta: float, held: Array = []) -> void:
 			generator.tick(delta, round_number, true)
 			CranePlay.tick(self, delta)
 			_events.append_array(PerkPlay.tick(self, delta))
+			ArrivalPlay.tick(self, delta)
 			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))
 			_break_left -= delta
 			if _break_left <= 0.0:
@@ -514,6 +524,7 @@ func _tick(delta: float, held: Array = []) -> void:
 			generator.tick(delta, round_number, false)
 			CranePlay.tick(self, delta)
 			_events.append_array(PerkPlay.tick(self, delta))
+			ArrivalPlay.tick(self, delta)
 			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))
 			RevivePlay.tick(self, delta, held)
 			_tick_spawning(delta)
@@ -751,16 +762,6 @@ func _add_player(player_id: int, bot := false) -> void:
 	)
 
 
-## A person takes a bot's seat (`bot_replaced`) or a bot a person's (`bot_seated`), as it stands.
-func _seat(player_id: int, bot: bool, action: StringName, told: StringName) -> void:
-	var seat := players.get(player_id) as PlayerState
-	if seat == null or seat.bot == bot:
-		_reject(&"unknown_player", action)
-		return
-	seat.bot = bot
-	_emit(told, {"player_id": player_id})
-
-
 func _set_downed(player_id: int, downed: bool) -> void:
 	var player := players.get(player_id) as PlayerState
 	if player == null or player.downed == downed:
@@ -809,6 +810,8 @@ func _blow(action: Dictionary) -> void:
 		_reject(&"unknown_player", RulesAction.BLOW)
 	elif player.downed:
 		_reject(&"player_downed", RulesAction.BLOW)
+	elif player.is_shielded():
+		_reject(&"shielded", RulesAction.BLOW)
 	else:
 		_events.append_array(PlayerHealth.hurt(player, action, tuning.revive.bleed_out_seconds))
 		if player.downed:

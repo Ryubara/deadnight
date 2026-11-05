@@ -4,9 +4,12 @@ A local HTTPS server stands in for `<id>.discordsays.com`: the page and its file
 goes to the platform backend with the prefix kept (Discord forwards it as it is), the Discord bridge is replaced by a
 stub (there is no Discord client to sign in with, so the game signs in as a guest, as it does when Discord refuses),
 and the API answers can be compressed the way Discord's proxy does it. The run opens the Activity's address
-(`?frame_id=...&instance_id=...`), waits for the main menu with the voice channel's night already made, presses Play
-together and checks it shows that same room code. It fails when the Activity opens on Play together, when the room could
-not be made, or when it shows an error instead.
+(`?frame_id=...&instance_id=...`), waits for the main menu, signed in, presses Play together and checks that the screen
+is the website's (the code field and the create button) and that the backend was asked for no lobby at all (#1178: the
+instance id used to find or make the voice channel's lobby, so two players each got their own). It then presses Create a
+night and checks that exactly one lobby is made, with a code. It fails when the Activity opens on Play together, when
+any lobby is asked for before Create, or when it shows an error instead. `--website` runs the same steps as the
+website (a plain host, no instance id) for the capture beside it: `together_activity.png` and `together_website.png`.
 
     uv run --project <kit>/python gds quiet -- \\
         uv run --with playwright==1.64.1 --with cryptography python tools/web_smoke/activity.py <web folder or URL> <backend https address> <out folder>
@@ -82,10 +85,13 @@ from pathlib import Path
 from playwright.sync_api import Page, sync_playwright
 
 sys.path.insert(0, str(Path(__file__).parent))
+import page_closing
 import rooms
 import smoke
 
 HOST = "123456.discordsays.com"
+# `--website`: a host that is not Discord's, so the game is the website's (`TogetherScreen.in_discord` is false).
+WEBSITE_HOST = "play.example.test"
 # The page around the Activity (Discord's client): another origin, as the iframe the browser client makes.
 # `discord.com`: one of the origins the Embedded App SDK takes messages from (the name only resolves in this browser).
 PARENT = "discord.com"
@@ -238,6 +244,23 @@ def build_bridge(source: Path) -> bytes:
         timeout=120,
     )
     return out.read_bytes()
+
+
+def preview_by_code(backend: str, code: str) -> dict:
+    """What another player reads when they type `code` (a new guest, as on the website): the backend's preview."""
+
+    def post(path: str, body: dict, token: str = "") -> dict:
+        headers = {"Content-Type": "application/json", **({"Authorization": f"Bearer {token}"} if token else {})}
+        request = urllib.request.Request(
+            backend.rstrip("/") + path, data=json.dumps(body).encode(), headers=headers, method="POST"
+        )
+        try:
+            return json.loads(urllib.request.urlopen(request, timeout=30).read())
+        except urllib.error.HTTPError as error:
+            return {"error": error.code}
+
+    guest = post("/auth/guest", {})
+    return post("/lobbies/preview", {"code": code}, guest.get("token", ""))
 
 
 def start_local_backend() -> tuple[subprocess.Popen, str]:
@@ -636,14 +659,16 @@ NOT_SIGNED_IN = "not signed in with Discord"
 
 
 def share_real_flow(page: Page, frame, out: Path, mode: str) -> tuple[list[str], bool]:
-    """The Activity as Discord's client sees it (`--real-bridge`): from the main menu to the voice channel's lobby,
+    """The Activity as Discord's client sees it (`--real-bridge`): from the main menu to a lobby made with Create a night,
     Share in Discord pressed once, and the commands the fake client received are read back from its page."""
     lines: list[str] = []
     rooms.wait_for(frame, "the main menu, ready", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
-    rooms.wait_for(frame, "the voice channel's night ready", lambda s: s.get("activity_room") == "ready", 150)
+    rooms.wait_for(frame, "the Activity signed in", lambda s: bool(s.get("signed_in")), 150)
     page.mouse.click(5, 5)
     page.wait_for_timeout(1500)
     rooms.to_together(Driver(page, frame))
+    focus_on(page, frame, "CreateNight")
+    smoke.press(page, "Enter")
     state = rooms.wait_for(
         frame, "the lobby with its code", lambda s: s.get("screen") == "lobby_screen" and bool(s.get("room_code")), 60
     )
@@ -771,12 +796,28 @@ def main() -> int:
         action="store_true",
         help="run spikes/backend with the stub Discord sign-in (backend argument: -)",
     )
+    parser.add_argument(
+        "--closing",
+        action="store_true",
+        help="after making a night, check what a tab closed on the waiting room does (#1188; tools/web_smoke/page_closing.py)",
+    )
     parser.add_argument("--invite-fails", action="store_true", help="the stand-in client's openInviteDialog fails too")
     parser.add_argument("--pad", action="store_true", help="give the page a virtual gamepad (navigator.getGamepads)")
+    parser.add_argument(
+        "--website",
+        action="store_true",
+        help="load the page as the website (a plain host, no instance id) for the capture beside the Activity's",
+    )
     parser.add_argument("--seconds", type=float, default=120.0, help="how long to wait for the night")
     parser.add_argument("--gpu", action="store_true", help="use the machine's Chrome and GPU")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
+    if args.website:
+        if args.share or args.clipboard:
+            raise SystemExit("--website goes with the plain run")
+        global HOST
+        HOST = WEBSITE_HOST
+        args.embed = "none"
     backend_process = None
     bridge_js = None
     if args.real_bridge:
@@ -797,7 +838,7 @@ def run(args: argparse.Namespace, bridge_js: bytes | None) -> int:
     log: list[str] = []
     stages: list[str] = []
     console: list[str] = []
-    # One night for each run: a voice channel's night holds four, and earlier runs sit in the one of an old instance.
+    # A new instance id each run, in the address as Discord gives it; the game sends it nowhere (#1178).
     instance = f"emu-{int(time.time())}"
     # The clipboard check starts on the main menu, as a player who made a night himself does: no instance to join.
     # The real SDK needs an instance and a platform in the address, as Discord gives them.
@@ -805,6 +846,8 @@ def run(args: argparse.Namespace, bridge_js: bytes | None) -> int:
         "" if ((args.clipboard or args.share) and bridge_js is None) else f"&instance_id={instance}&platform=desktop"
     )
     activity_url = f"https://{HOST}/?frame_id=1{instance_part}&guild_id=1&channel_id=1"
+    if args.website:
+        activity_url = f"https://{HOST}/?backend=https://{HOST}/api"
     with tempfile.TemporaryDirectory() as folder:
         cert, key = self_signed(Path(folder))
         server = ThreadingHTTPServer(
@@ -901,41 +944,76 @@ def run(args: argparse.Namespace, bridge_js: bytes | None) -> int:
                 print(chr(10).join(log + lines))
                 print(f"clipboard ({args.embed}): {'both held' if ok else 'FAILED'}")
                 return 0 if ok else 1
-            driver = Driver(page, frame)
             deadline = time.monotonic() + args.seconds
             state: dict = {}
             failed = ""
-            # The Activity opens on the main menu, signed in and ready (#495); Play together then goes straight to the
-            # voice channel's lobby (made there when nobody has one: this player is its host).
+            # The Activity opens on the main menu and signs in in the background (#495); Play together then shows the
+            # website's screen and the backend is asked for no lobby until the player presses Create (#1178).
+            kind = "website" if args.website else "activity"
             menu_ready = False
             while time.monotonic() < deadline:
                 state = rooms.read_probe(frame)
                 if state.get("screen") == "together_screen":
                     failed = "the Activity opened on Play together instead of the main menu"
                     break
-                if state.get("screen") == "main_menu" and state.get("activity_room") == "failed":
-                    failed = "the room could not be made ready on the menu"
-                    break
-                if state.get("screen") == "main_menu" and state.get("activity_room") == "ready":
+                if state.get("screen") == "main_menu" and (args.website or state.get("signed_in")):
                     menu_ready = True
                     break
                 time.sleep(1)
             if menu_ready:
-                print("menu first: the main menu is up with the voice channel ready")
+                print(f"{kind}: the main menu is up{'' if args.website else ', signed in'}")
                 page.wait_for_timeout(1500)
-                page.screenshot(path=args.out / "activity_menu_first.png")
-                rooms.to_together(driver)
-                waited_until = time.monotonic() + 60
-                while time.monotonic() < waited_until:
-                    state = rooms.read_probe(frame)
-                    if state.get("screen") == "lobby_screen" and state.get("room_code"):
-                        break
-                    time.sleep(0.5)
-                if state.get("screen") != "lobby_screen" or not state.get("room_code"):
-                    failed = f"Play together did not open the voice channel's lobby: {state.get('screen')!r}"
-                    state = {}
+                page.screenshot(path=args.out / f"menu_{kind}.png")
+                start_together(page, frame)
+                page.wait_for_timeout(4000)  # long enough for anything the screen asks of the backend
+                state = rooms.read_probe(frame)
+                asked = [line for line in log if "/lobbies" in line]
+                page.screenshot(path=args.out / f"together_{kind}.png")
+                print(
+                    f"{kind}: Play together is open; lobby calls so far: {asked or 'none'}; screen {state.get('screen')!r}"
+                )
+                if state.get("screen") != "together_screen" or state.get("room_code"):
+                    failed = f"Play together did not stay on the website's screen: {state.get('screen')!r}"
+                elif asked:
+                    failed = f"opening Play together asked the backend for a lobby: {asked}"
                 else:
-                    print(f"lobby: {state.get('lobby_seats')} (code {state.get('room_code')})")
+                    focus_on(page, frame, "CreateNight")
+                    smoke.press(page, "Enter")
+                    if args.website:
+                        # A player with no name is asked for one first (Discord has its own).
+                        smoke.give_name(page, "Ann", 20)
+                    waited_until = time.monotonic() + 60
+                    while time.monotonic() < waited_until:
+                        state = rooms.read_probe(frame)
+                        if state.get("screen") == "lobby_screen" and state.get("room_code"):
+                            break
+                        time.sleep(0.5)
+                    made = [line for line in log if line.startswith("POST /api/lobbies ")]
+                    if state.get("screen") != "lobby_screen" or not state.get("room_code"):
+                        failed = f"Create a night did not open a lobby: {state.get('screen')!r}"
+                        state = {}
+                    elif len(made) != 1:
+                        failed = f"Create a night asked for {len(made)} lobbies: {made}"
+                        state = {}
+                    else:
+                        print(f"lobby: {state.get('lobby_seats')} (code {state.get('room_code')}); made by {made}")
+                        shown = preview_by_code(args.backend, state["room_code"])
+                        print(f"a friend who types that code reads: {shown}")
+                        if shown.get("code") != state["room_code"] or shown.get("state") != "open":
+                            failed = f"the code shown in the lobby does not open that night: {shown}"
+                            state = {}
+                        page.screenshot(path=args.out / f"lobby_{kind}.png")
+            if args.closing and state.get("room_code"):
+                # The page behind the Discord stand-in: the list, a tab switch, a quiet host, then the page closed for real.
+                lines, ok = page_closing.closing_checks(
+                    page, frame, page_closing.Backend(args.backend), state["room_code"], args.out
+                )
+                server.shutdown()
+                (args.out / "console.txt").write_text(chr(10).join(console), encoding="utf-8")
+                print(chr(10).join(log + lines))
+                print(f"closing ({kind}): {'held' if ok else 'FAILED'}")
+                browser.close()
+                return 0 if ok else 1
             page.wait_for_timeout(2000)
             if args.parent_focus and args.embed != "none":
                 probe = "window.deadnightGamepad ? window.deadnightGamepad() : ''"
@@ -964,9 +1042,9 @@ def run(args: argparse.Namespace, bridge_js: bytes | None) -> int:
     print(chr(10).join(stages))
     print(f"gamepad page report: {gamepad}\ngamepad note: {note or '(none)'}")
     if state.get("room_code"):
-        print(f"{args.encoding}: the Activity is in its lobby (room {state['room_code']})")
+        print(f"{args.encoding}: {kind} held: Play together made no lobby until Create (room {state['room_code']})")
         return 0
-    print(f"{args.encoding}: the Activity did not get a lobby: {failed or state}")
+    print(f"{args.encoding}: {kind} FAILED: {failed or state}")
     return 1
 
 

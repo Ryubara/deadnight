@@ -109,9 +109,11 @@ func test_each_ask_opens_its_screen() -> void:
 		assert_object(UIRouter.top()).is_same(menu)
 
 
-func test_quick_join_opens_no_screen_of_the_menu() -> void:
-	# It joins from a card over the menu (`test_quick_join.gd`); the route table has no entry for it.
-	assert_bool(MainMenu.ROUTES.has(&"quick_join")).is_false()
+func test_the_server_browser_is_a_route_of_the_menu_and_no_route_is_a_second_way_in() -> void:
+	# The Play tab's second start opens the list of nights (`test_server_browser.gd` presses a row).
+	assert_str(MainMenu.ROUTES[&"browser"][0]).is_equal(MainMenu.BROWSER_SCREEN)
+	for id: StringName in MainMenu.ROUTES:
+		assert_bool(String(id).begins_with("quick")).is_false()
 
 
 func test_solo_opens_the_play_screen() -> void:
@@ -119,3 +121,41 @@ func test_solo_opens_the_play_screen() -> void:
 	# (`test_solo_match_settings.gd` presses Solo and runs it).
 	assert_str(MainMenu.ROUTES[&"solo"][0]).is_equal(MainMenu.PLAY_SCREEN)
 	assert_str(MainMenu.PLAY_SCREEN).is_equal("res://ui/screens/play_screen.tscn")
+
+
+func test_the_board_the_account_replaces_the_file_with_shows_in_the_open_menu() -> void:
+	var path := ChallengeFixture.save_path("menu_account")
+	var clock := ChallengeFixture.clock_on(20401)
+	MainMenu.board_factory = func() -> Object: return ChallengeBoard.open(path, clock)
+	var menu := await _show()
+	var board := menu.shell.context.board as ChallengeBoard
+	assert_int(int(board.profile.lifetime.get(&"kills", 0))).is_zero()
+	# The read at sign-in lands after the menu is up: the account's board has 40 kills.
+	var theirs := ChallengeProfile.fresh_for("an-account")
+	theirs.apply(board.catalog, &"kills", 40, 40)
+	var answer := {
+		"ok": true, "found": true, "revision": 3, "schema_version": 1, "data": theirs.to_dict()
+	}
+	assert_bool(ChallengeUplink.adopt(answer, "an-account", path)).is_true()
+	ChallengeBoard.file_replaced(path)
+	assert_int(int(board.profile.lifetime[&"kills"])).is_equal(40)
+	assert_str(board.profile.account).is_equal("an-account")
+
+
+func test_a_night_that_wrote_the_board_shows_when_the_menu_comes_back() -> void:
+	var path := ChallengeFixture.save_path("menu_night")
+	var clock := ChallengeFixture.clock_on(20401)
+	MainMenu.board_factory = func() -> Object: return ChallengeBoard.open(path, clock)
+	var menu := await _show()
+	var board := menu.shell.context.board as ChallengeBoard
+	UIRouter.push("res://ui/screens/credits_screen.tscn", UITransition.Kind.CUT)
+	await UIRouter.idle
+	# The night, over this screen, counts into a board of its own and saves it.
+	var night_board := ChallengeBoard.open(path, clock)
+	night_board.profile.apply(night_board.catalog, &"kills", 25, 25)
+	night_board.save()
+	assert_int(int(board.profile.lifetime.get(&"kills", 0))).is_zero()
+	UIRouter.pop()
+	await UIRouter.idle
+	await await_idle_frame()
+	assert_int(int(board.profile.lifetime[&"kills"])).is_equal(25)

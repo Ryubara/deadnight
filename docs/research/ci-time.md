@@ -23,21 +23,21 @@ one, which includes its `before()` and `after()`; sorting those gaps gives the l
 After the speed-ups below the same job took 15 min 10 s (suites 853 s, down about 420 s on the suites both runs had; `main`
 had grown by 26 suites and 150 s meanwhile). The rest is compute and real time, so the job is also split.
 
-## Jobs by test folder (three), six (#775), eight by script seconds (#1015)
+## Jobs by test folder (three), six (#775), eight by script seconds (#1015), nine (#1151), ten (#1265)
 
-`godot` is a matrix of parallel shards (`godot (1)` to `godot (8)`), each running its own test scripts. The history:
+`godot` is a matrix of parallel shards (`godot (1)` to `godot (10)`), each running its own test scripts. The history:
 three shards by folder (#524, then single scripts moved by hand, #676), six (#775), and each time the heaviest shard was
 back at the 15-minute limit within a day or two, because the suite grows with every merge (28 new scripts in one
 afternoon, #1015) and the shards were balanced by hand from a table that went stale. A shard that is over its limit is
 cancelled with no failing test.
 
-**Eight shards, dealt by measured seconds (#1015).** `tools/ci_test_shards.py` no longer names folders. Every
-`tests/**/test_*.gd` is one item, weighed by its seconds in `tools/ci_test_times.json`, and the items are dealt out
-heaviest first to the shard with the least so far; a script that is not in the file counts `default_seconds` (10), so a
-new script lands in the lightest shard and is never left out. The self-test (run in every shard) fails when a script is
-in no shard or two, or when the workflow's matrix is not the same shards or the job's limit is not the one the check
-assumes. Shard 1 starts with 60 s already counted, for the main scene, the night run and the late-round budget run it
-alone does (about 120 s of its job, 50 of them the budget run).
+**Dealt by measured seconds (#1015; eight shards then, nine since #1151, ten since #1265).** `tools/ci_test_shards.py`
+no longer names folders. Every `tests/**/test_*.gd` is one item, weighed by its seconds in `tools/ci_test_times.json`,
+and the items are dealt out heaviest first to the shard with the least so far; a script that is not in the file counts
+`default_seconds` (10), so a new script lands in the lightest shard and is never left out. The self-test (run in every
+shard) fails when a script is in no shard or two, or when the workflow's matrix is not the same shards or the job's
+limit is not the one the check assumes. Shard 1 starts with 100 s already counted (60 until #1265), for the main scene,
+the night run and the late-round budget run it alone does (the budget run alone is 54 to 112 s).
 
 Measured on six complete CI runs (five of `main`, one of the late-round budget pull request, #968). The seconds of a
 suite are the duration on its `Statistics:` line (`tools/ci_shard_time.py`, `suite_times`; the same as the gap between
@@ -74,15 +74,90 @@ or 6; shard 1 was cancelled at the limit on one `main` run, and #968 had shard 6
   (it averages the logs and rewrites the times file), commit it, and run `python3 tools/ci_test_shards.py --root game
   --report`: each shard's expected seconds. If the heaviest is over `REPORT_SHARD_BUDGET` (440 s), add a shard (`SHARDS`
   there and the matrix in the workflow; the self-test fails until both agree). The size rule from before still holds:
-  total suite seconds / 480, rounded up, plus a margin for a slow runner and growth (3,250 s / 480 = 6.8, so eight).
+  total suite seconds / 480, rounded up, plus a margin for a slow runner and growth (3,250 s / 480 = 6.8, so eight;
+  3,880 s / 480 = 8.1, so nine).
+- **Refreshed on 2026-11-04 (#1091).** The report on the old times said 3,569 s and 454 s a shard against the 440 s
+  budget, every shard flagged, with 28 scripts at the default. The mean of three green `main` runs (24 logs from
+  artifacts of about 2 MB each, reduced to the times file and deleted) gave 3,254 s and 414 s a shard, none flagged,
+  two scripts (merged after those runs) still at the default: stale times, not growth, had asked for a ninth shard.
+  The same runs took 380 to 559 s a shard with setup. The budget was not raised.
+- **Refreshed again on 2026-11-04 (#1151), and a ninth shard added.** `godot (1)` failed the time check on a green
+  suite (12.2 minutes against the 12-minute fail line), about ten merges after #1091, several with new suites. The report
+  on the file as it stood said 3,991 s and 506 s a shard (53 scripts at the default, every shard flagged). The mean of
+  four green `main` runs (#1136, #1128, #1142 and #1144, 32 logs of about 25 MB each, reduced to the times file and
+  deleted; the runs after them were still going or had a red shard) gave 3,877 s of suites and 492 s a shard on eight
+  shards, **still every shard over the 440 s budget with one script at the default**, so this time the refresh did not
+  make the ninth shard unnecessary: the suite grew (3,254 s on the 24 logs of #1091, 3,709 to 4,019 s a run now, +19 %
+  in a day: the ladder's clip suites, the challenge and menu suites). Nine shards deal 437 s each, 8.1 total / 480
+  rounded up. The real shard suites in those four runs, under the stale split, were 356 to 574 s and the jobs 405 to 647
+  s (6.8 to 10.8 minutes); under the refreshed split the expected job is 437 s plus about 50 s of setup.
+- **Refreshed again on 2026-11-05 (#1265), a tenth shard, and shard 1's head start raised.** `godot (1)` failed the time
+  check on a green suite (12.4 minutes against the 12-minute line; 643 cases, 0 failures) in run 42037762096. Drift or a
+  slow runner? Both, and a constant that was too small. Shard 1 ran the same 74 scripts in four `main` runs: the tests
+  step took 375, 441, 476 and 546 s (jobs 8.3, 9.8, 10.8 and 12.4 minutes), a 1.46 spread on identical suites. The
+  failing job was the slow end: its suites took 1.18 times their mean in the other runs (shards 2, 3 and 8 of the same
+  run: 0.92, 1.04 and 1.14), `Hold the late-round worst case` took 112 s (54 s in the run before it, 73 to 108
+  elsewhere), `test_soldier_ladder_clips` 97 s (54 and 60 s on two faster runners, 96 to 99 s on three others). The
+  times file was also stale: 29 scripts counted at the 10 s default (`rules/test_crane` was 4.2 s in the file and took
+  49 to 79 s; `ui/test_end_board_fit` 3.1 against 10 to 18), so shard 1's suites were expected at 417 s and took 460 s
+  on average. And shard 1's head start was 60 s while its once-per-run steps took 100 s (the budget run averaged 91 s in
+  six runs, plus the night and the main scene), so shard 1's job ran 619 s on average against the other shards' 535: 100
+  s under the fail line before any slow runner. The mean of four green `main` runs (42023432725, 42026421751,
+  42036953273 and 42040292920: 36 logs, reduced to the times file and deleted) gave 4,200 s of suites (4,117 to 4,341 a
+  run, 3,880 in #1151) and, on nine shards, 473 s a shard against the 440 budget with no script at the default: the
+  suite grew 8 % in a day (the server browser, the hidden challenges, the phone-page suites). Ten shards deal 430 s each
+  with shard 1 at 100 s of head start. The limits are as they were. A slow runner can still add 30 % to a shard; the
+  fail line is for that.
 - **Do not hand-edit** a shard's list; there is none. A script that is slow on purpose gets its time from the file.
 
-The slowest suites on the runner (mean seconds): `rules/test_balance_targets` 169 (60 seeded nights per cell, the gate),
-`night/test_bot_bands` 142, `night/test_bot_grenade_soak` 136, `world/test_midway_fence_reach` 126,
-`world/smallmap/test_smallmap_bot_night` 117, `night/test_bot_orders_night` 98, `night/test_bot_soak` 84,
-`night/test_bot_combat` 62, `net/test_room_eight` 61, `night/test_bot_own_ammo` 59. Together they are a third of the
-suite's time. All are seeded bot nights, a walk of the whole map or real sockets. Speed-up candidates are issues of their
-own (#1017 lists them).
+The slowest suites on the runner (mean seconds of four runs, 2026-11-04): `world/test_midway_fence_reach` 128,
+`rules/test_balance_targets` 113 (60 seeded nights per cell, the gate), `night/test_bot_bands` 101,
+`character/test_soldier_clip_fit` 99, `ui/test_menu_grips` 89, `net/test_challenges_online` 88,
+`night/test_bot_orders_night` 86, `world/smallmap/test_smallmap_bot_night` 85, `character/test_soldier_ladder_clips` 82,
+`rules/test_crane_pool` 72. Together they are a quarter of the suite's time (942 of 3,867 s). Most are seeded bot nights,
+a walk of the whole map, real sockets, or the soldier clip sweeps. `test_soldier_clip_fit` is the one that swings: 85
+to 92 s in three runs and 130 to 131 s in two, on whichever runner it got (its change in #1146 added a few lines to the
+shared sampler and is not what moved it: 131 s ran before it merged). Speed-up candidates are issues of their own
+(#1017 lists them).
+
+## The web job (#1111)
+
+The `web` job exports the game and runs eight browser probes (Playwright, headless Chromium). It takes 1,077 to 1,704 s
+on a runner, nearly all of it the probes (each 100 to 300 s; "Open the build in a browser" alone 190 to 307 s). It was
+limited to 30 minutes, and run 41887654023 was cancelled at the limit in its last probe because "Install the browser" had
+taken 471 s (the Azure Ubuntu mirror served font packages with 60 to 160 s gaps) against 13 to 153 s on `main`.
+
+- **The install is cached.** `playwright install-deps` fetches nine `.deb` files (fonts and libraries, 21 MB) and
+  `playwright install` the headless shell (108 MB). Both folders are restored by `actions/cache`: the browser under a key
+  of the Playwright version (`PLAYWRIGHT_VERSION`, a job variable that the install, the keys and every probe read, so a
+  cached browser is always the one the library asks for), the packages under a key of the runner image and the version,
+  with a restore key of any image: the images rotate every few days and even between two runs minutes apart (runs of
+  this pull request got `20261026.354.1` and `20261101.360.1`), and apt fetches again any package whose version it
+  wants and the cache lacks, so a stale entry costs time, never correctness. The restored files are copied into
+  `/var/cache/apt/archives` before `install-deps`; afterwards the files fetched now (found by change time: apt gives a
+  download the server's modification time, so `-newermt` misses them) and only the versions installed are kept, so an
+  entry does not collect old versions.
+- **Each install step has a limit of its own** (10 minutes), so a mirror that stalls ends red on "Install the browser's
+  system packages" or "Install the browser", not as a cancelled job at the end.
+- **The job has 40 minutes** and its last step (`tools/ci_shard_time.py web`, kept equal to the workflow's limit by
+  `ci_test_shards.py --self-test`) annotates past 30 minutes (the old limit), fails past 38, and names an install step
+  past 180 s in the annotation and the job summary. The slowest `main` run plus the 471 s install is 36 minutes:
+  annotated, still green.
+- **Measured on this pull request** (the mirror was fast on all three, 21 MB in 1 s, so the install itself gained
+  little; what changed is that the downloads that stalled once are gone):
+
+    | Run | Cache | Install-deps | Install browser | Job |
+    | --- | --- | --- | --- | --- |
+    | 41895393215 | cold (both) | 14 s, 21.1 MB fetched | 4 s, downloaded | 1,542 s |
+    | 41899862660 | browser warm, packages missed (image rotated) | 11 s | 0 s | 1,077 s |
+    | 41903192638 | both warm | 11 s, "Need to get 0 B/21.1 MB", 9 restored, 0 fetched | 0 s | 1,208 s |
+
+  The job's total moved by 465 s between runs while the install moved by 7 s: the probes ran at different speeds on
+  different runners, so the install is no longer what decides the limit, and none of the three needed more than 26 minutes.
+  `apt-get update` (12.7 MB of indexes) still goes to the mirror on every run; the 10-minute step limit covers it.
+- **A cache is saved by a run that ends green** and restored by the pull requests of the same repository from
+  `main`'s entries: the first `main` run after this merge saves them, every run after that starts warm.
+- **Left alone:** the probes themselves (about 1,100 s of the job) are not sped up here.
 
 ## What a fast test does
 

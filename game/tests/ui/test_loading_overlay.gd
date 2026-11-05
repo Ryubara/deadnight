@@ -30,8 +30,27 @@ func test_finishing_fills_the_bar_and_lets_the_screen_through() -> void:
 	overlay.finish()
 	assert_float(overlay.shown_fraction()).is_equal(1.0)
 	assert_int(overlay.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+	assert_array(_mouse_catchers(overlay)).is_empty()
 	await await_idle_frame()
 	overlay.queue_free()
+
+
+## The screen holds the mouse while the night loads, and only it: the box and bar inside would
+## otherwise go on catching clicks in the fade after `finish`, over a night the player already has
+## (a windowed run of `test_night_menu` clicked Settings into them).
+func test_only_the_screen_itself_holds_the_mouse_while_it_loads() -> void:
+	var overlay := auto_free(LoadingOverlay.new()) as LoadingOverlay
+	add_child(overlay)
+	assert_int(overlay.mouse_filter).is_equal(Control.MOUSE_FILTER_STOP)
+	assert_array(_mouse_catchers(overlay)).is_empty()
+
+
+func _mouse_catchers(overlay: LoadingOverlay) -> Array[String]:
+	var found: Array[String] = []
+	for node in overlay.find_children("*", "Control", true, false):
+		if (node as Control).mouse_filter != Control.MOUSE_FILTER_IGNORE:
+			found.append(str(overlay.get_path_to(node)))
+	return found
 
 
 func test_a_headless_run_skips_the_warm_up() -> void:

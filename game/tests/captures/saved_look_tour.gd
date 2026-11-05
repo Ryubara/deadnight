@@ -5,33 +5,45 @@ extends Node
 ## Settings go to a throwaway file. Run it with Movie Maker, 10 fps:
 ##
 ##     godot --path game res://tests/captures/saved_look_tour.tscn --write-movie <abs>/look.png \
-##         --fixed-fps 10 --quit-after 120
+##         --fixed-fps 10 --quit-after 300
 ##
 ## Prints `SHOT <name> <frame>` for the wardrobe seen from the front and the back and for the night:
-## the frames to read.
+## the frames to read. `-- --look=<spec>` dresses it in another look (`soldier_turntable.gd`'s form:
+## `10:torso=usher,neck=lanyard/primary=7,accent=10`).
 
 const MENU := "res://ui/screens/main_menu.tscn"
 const WARDROBE := "res://ui/screens/customize_screen.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
 const FILE := "user://saved_look_capture.cfg"
+## The look wears pieces a level opens: the profile this capture reads says level 55.
+const PROFILE := "user://saved_look_capture_profile.json"
 ## Frames the wardrobe and the night each stand before the shot.
 const SETTLE_FRAMES := 25
 const SHOT_FRAMES := 25
+const LOOK_SPEC := preload("res://tests/captures/soldier_turntable.gd")
 
 
 func _ready() -> void:
 	Settings.path = FILE
 	Settings.reset_defaults()
+	var profile := Profile.new()
+	profile.xp = LevelCurve.xp_for(LevelCurve.MAX_LEVEL)
+	ProfileSave.write(profile, [], 1, PROFILE)
+	LookUnlocks.profile_path = PROFILE
 	LookStore.save_look(_look())
 	await _wardrobe()
 	await _night()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(FILE))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE))
 	Settings.reset_defaults()
 	get_tree().quit()
 
 
 ## A look no preset has: a red letterman jacket, a cream cap and trousers, yellow trim.
 func _look() -> CharacterLook:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--look="):
+			return LOOK_SPEC.parse_look(arg.substr(7))
 	var look := CharacterLook.from_preset(2)
 	look.parts[&"torso"] = &"letterman"
 	look.parts[&"headwear"] = &"ballcap"
@@ -60,6 +72,7 @@ func _wardrobe() -> void:
 
 
 func _night() -> void:
+	NightScreen.arrival_enabled = false  # the shot is the player's camera, not the helicopter drop
 	UIRouter.reset(MENU, UITransition.Kind.CUT)
 	await UIRouter.idle
 	UIRouter.push(NIGHT, UITransition.Kind.CUT)

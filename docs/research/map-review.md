@@ -273,6 +273,50 @@ lot's test reads, the sweep tests, the map pages) is [#848](https://github.com/R
 "Standing places" counts the places a body came to rest off the walkable ground; a hop is one run of 54 ticks and 24
 to settle. The sweep is a search: a clean row means it found none, not that none exists.
 
+## The pieces of the walking mesh (#1051)
+
+A path never leaves the piece of the mesh it starts on, so a body on a piece joined to nothing is told every place is
+out of reach: the Rookie of #1041 stood so for minutes, and Follow and Hold had nothing to get it off. Measured with
+`tools/world/walking_pieces.gd` on every saved mesh, after `NavmeshSplit`, with the real capsule walked from each piece
+(`test_walking_mesh_pieces.gd`). Every door open:
+
+| Kind | Lot | Second map | What was done |
+| --- | ---: | ---: | --- |
+| The map's own ground | 1 | 1 | stays |
+| Behind a barricade: a pocket, or a yard outside (a sill of 0.9 m stops a walk with the boards torn) | 14 | 4 | stays, the reason below |
+| Outside the perimeter | 1 | 0 | stays: no body gets there |
+| Roofs of 35 m2 or more, which no chain of hops from the ground reaches | 4 | 2 | stays: the flood finds no way |
+| A scrap the cut left: 1.34 m2 at x -15.25 to -13.75, z 31.0 to 32.25 | 1 | 0 | off the walking mesh |
+| An island the bake leaves among the cars: 0.25 m2 at x 34.75 to 35.5, z -31.0 to -30.5 | 1 | 0 | off the walking mesh |
+| Tops a body gets to, in one hop or more (bonnets, car roofs, crates): 0.19 to 24.75 m2 | 129 | 0 | off the walking mesh |
+| Tops no chain of hops reaches, and hollows inside solid boxes (a body fits and cannot get in) | 56 | 3 | off the walking mesh |
+
+So 207 pieces on the lot before and 20 after, 10 and 7 on the second map; each set of doors adds its shut rooms, all
+63 m2 or more.
+
+**The cause of the one in the issue was proved, and it is one of 131.** The two polygons of the scrap join the rest of the
+baked mesh by one edge, and that edge belongs to a polygon that crosses the line of the boards of `mid_w` (local x 1.25
+to 1.5, z -0.5 to 2.0): the cut takes it and leaves them behind. The east midway's mesh is triangulated otherwise and
+leaves nothing. It is the only piece of either map the cut made; the 14 pockets are the far side of their boards. The
+other 130 a body can walk or climb off are in the bake itself (the mesh of a top joins nothing because a body gets there
+by a jump): on the mesh as it was, a bot set on a bonnet stayed there for 15 s for every order, as it did on the scrap.
+The flood runs with every door open; the rooms behind a shut door are the escape sweeps'.
+
+**The fix is in `NavmeshSplit`:** a piece under `LEAST_PIECE` (30 m2) goes with the gaps, on the layer only the dead ask
+for, except the largest. A person's path from such a spot then starts on the nearest walking ground, so Roam, Follow and
+Hold all walk off it with no code of their own, and #1050's walk back is left for what is not on the mesh at all. The
+two ways round were worse: cutting the polygons exactly at the line needs a new vertex in every neighbour and moves the
+mesh at all 16 barricades, right up to the boards; giving the cut polygon back puts a walking polygon across the line.
+Polygons only leave the walking mesh, so no way across the boards can open; the whole mesh stays, so the dead keep their
+paths (compared by length, 440 pairs on the lot and 39 on the second map). Finding the pieces adds about 6 ms on a desktop
+to each mesh a door swaps in (12 ms in all).
+
+**Kept with a reason:** the pockets and yards. They are real ground, the dead's way in, and on the second map 600 to 970
+m2. A person who jumps a torn sill is out there and walks where they like. A bot jumps only on the third rung of the
+stuck ladder, along its way, and its way never crosses a barricade, so it is not reached; `tests/night/test_bot_fence.gd`
+holds that a bot sent at one does not stand there. On the lot the far side of `mid_w` and `mid_e` is the plaza, an area
+once its door is sold, so "the far side of the boards" is not a rule that could take them off.
+
 ## Tools and how to run them
 
 ```text
@@ -281,6 +325,7 @@ godot --headless --path game -s res://tools/world/map_escape_probe.gd -- --scene
 godot --headless --path game -s res://tools/world/map_escape_probe.gd -- <same> --replay=<abs>.json   (one chain, hop by hop)
 godot --headless --path game -s res://tools/world/map_audit.gd -- --scene=<scene> --out=<abs>.json
 godot --headless --path game -s res://tools/world/ledge_probe.gd
+godot --headless --path game -s res://tools/world/walking_pieces.gd -- --png=<abs>.png [--scene=<scene> --meshes=<res>] [--cut-only]
 godot --headless --path game res://tools/world/roost_probe.tscn -- --scene=<scene> --at=x,y,z --dead=10 --seconds=40
 gds godot -- --path game res://tests/captures/map_review_tour.tscn -- --map=lot|small --out=<folder> [--dark] [--plan] [--chain=<json>]
 ```

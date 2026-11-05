@@ -194,7 +194,8 @@ PROBE_JS = """
   const d = window.deadnight;
   return d ? {screen: d.screen, night: d.night, running: d.running, over: d.over,
               round: d.round, remaining: d.remaining, alive: d.alive, yaw: d.yaw,
-              interpolated: d.interpolated, tab: d.tab, stage: d.stage, quick_join: d.quick_join} : null;
+              interpolated: d.interpolated, tab: d.tab, stage: d.stage, browser: d.browser,
+              browser_status: d.browser_status, browser_note: d.browser_note} : null;
 }
 """
 
@@ -246,6 +247,25 @@ def serve(folder: Path, probing: bool = True) -> tuple[http.server.ThreadingHTTP
     return server, server.server_address[1]
 
 
+def machine_info() -> dict:
+    """What the runner is, beside the frame times it produced (#989): the cores the run may use, the CPU model and the
+    load average. The same software renderer is much slower on a machine with fewer or slower cores, and the model
+    tells the runner pools apart, so a run's idle frames can be read against its own machine."""
+    info: dict = {"cpus": os.cpu_count()}
+    if hasattr(os, "sched_getaffinity"):
+        info["usable_cpus"] = len(os.sched_getaffinity(0))
+    if hasattr(os, "getloadavg"):
+        info["loadavg"] = [round(x, 2) for x in os.getloadavg()]
+    try:
+        for line in Path("/proc/cpuinfo").read_text(encoding="utf-8").splitlines():
+            if line.startswith("model name"):
+                info["cpu_model"] = line.split(":", 1)[1].strip()
+                break
+    except OSError:
+        pass
+    return info
+
+
 def stats(deltas: list[float]) -> dict:
     ordered = sorted(deltas)
     return {
@@ -290,6 +310,13 @@ def probing(url: str) -> str:
 
 def probe(page: Page) -> dict:
     return page.evaluate(PROBE_JS) or {}
+
+
+def give_level(page: Page, level: int) -> None:
+    """Makes the game think the player is level `level` (`PlayerLevel`, which a page that asks for the probes reads
+    from `window.deadnight_player_level`): a fresh page has no profile, so the back rooms (level 10) are locked.
+    Call it before the page is opened."""
+    page.add_init_script(f"window.deadnight_probe = true; window.deadnight_player_level = {int(level)};")
 
 
 def give_name(page: Page, name: str, seconds: float = 60.0) -> None:
@@ -365,7 +392,7 @@ def wait_for(page: Page, what: str, test, seconds: float) -> dict:
 def menu_item(page: Page, tab: str, steps: int = 0) -> None:
     """Puts the keyboard on an item of the main menu: the tab bar's Q and E walk (and wrap) to `tab`, and the focus lands
     on the tab's first control whatever it was before, so `steps` presses of Down reach the item. It works from
-    any focus, which the old menu needed six Up presses for. Play's items are Play together, Quick join and Solo;
+    any focus, which the old menu needed six Up presses for. Play's items are Play together, Server browser and Solo;
     More's are Settings, Credits and Quit."""
     for _ in range(MENU_TABS):
         page.wait_for_timeout(400)  # longer than the probe's period, so `before` is the tab on show
@@ -435,7 +462,7 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
     problems: list[str] = []
     console: list[str] = []
-    result: dict = {"viewport": VIEWPORT, "night_samples": []}
+    result: dict = {"viewport": VIEWPORT, "machine": machine_info(), "night_samples": []}
 
     def on_console(message: ConsoleMessage) -> None:
         console.append(f"[{message.type}] {message.text}")

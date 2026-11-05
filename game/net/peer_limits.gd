@@ -31,6 +31,7 @@ const RATES := {
 	LookWire.Type.LOOK: Vector2(1.0, 3.0),
 	NetWire.Type.MARK: Vector2(2.0, 4.0),
 	NetWire.Type.ORDER: Vector2(2.0, 3.0),
+	NetWire.Type.ARRIVAL: Vector2(1.0, 2.0),
 }
 
 ## Counts, for the log and the tests.
@@ -62,16 +63,21 @@ static func size_of(type: int) -> int:
 			return NetWire.MARK_SIZE
 		NetWire.Type.ORDER:
 			return NetWire.ORDER_SIZE
+		NetWire.Type.ARRIVAL:
+			return NetWire.ARRIVAL_SIZE
 		LookWire.Type.LOOK:
 			return 1 + CharacterLook.wire_size()
 	return -1
 
 
 ## Whether a message of this type may be this long: a hello is the version, the resume token when
-## the client is coming back and the backend's ticket, so its length varies.
+## the client is coming back and the backend's ticket, so its length varies; a look may be of an
+## older version.
 static func fits(type: int, size: int) -> bool:
 	if type == NetWire.Type.HELLO:
 		return size >= NetWire.HELLO_MIN and size <= NetWire.MAX_HELLO
+	if type == LookWire.Type.LOOK:
+		return CharacterLook.fits_wire(size - 1)
 	return size_of(type) == size
 
 

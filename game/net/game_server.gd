@@ -39,6 +39,9 @@ const HELLO_WITHIN := 10.0
 const IDLE_ROOM_SECONDS := 60.0
 ## Seconds a refused client has to read why before it is hung up on.
 const REFUSAL_GRACE := 1.0
+## Seconds the backend has to answer the read of a seat's challenge board; after that the night
+## goes on without it (it never waits for it).
+const BOARD_TIMEOUT := 3.0
 
 var port := NetWire.DEFAULT_PORT
 var capacity := DEFAULT_CAPACITY
@@ -67,6 +70,29 @@ var hello_within := HELLO_WITHIN
 var idle_room_seconds := IDLE_ROOM_SECONDS
 ## Seconds between heartbeats (a test sets it shorter).
 var heartbeat_every := HEARTBEAT_EVERY
+## The seconds the connection rules and the rooms are timed by. Empty is the machine's clock; a run
+## that plays faster than real time gives the game's own (`Engine.get_physics_frames` over the tick
+## rate), so a minute of play is a minute to the limits too.
+var clock := Callable()
+
+## The reports of what the seats earned, waiting for the backend (`XpReportQueue`), and how they are
+## sent: a Callable taking `(path, body)` and answering the HTTP status (0: no answer). Unset, the
+## backend's own address and secret are used; a test sets it to see what would be posted.
+var reports := XpReportQueue.new()
+var report_sender := Callable()
+## How a seat's challenge board is read: a Callable taking the account's id and answering
+## `{status, json}` (status 0: no answer). Unset, the backend's own address and secret are used; a
+## test sets it to see what would be read.
+var board_reader := Callable()
+## What the players are asked and the day it is for them (see `NightHost`); unset, the shipped ones.
+var challenge_catalog: ChallengeCatalog
+var challenge_clock: ChallengeClock
+## The poster sets a finished challenge may complete; unset, the shipped ones. Tests set it.
+var poster_sets: PosterSets
+## False: no room follows any challenge board (the measurement's arm without the tracker).
+var challenge_awards := true
+## False: no room awards XP (the measurement's arm without the tally).
+var xp_awards := true
 
 var listener := WsListener.new()
 var heartbeats_sent := 0
@@ -131,6 +157,7 @@ func _physics_process(_delta: float) -> void:
 		_close_if_done(match_id, now)
 	if now >= _beat_at:
 		_heartbeat()
+	_send_reports(now)
 
 
 ## The match ids of the rooms this process runs.
@@ -145,11 +172,11 @@ func room_of_match(match_id: String) -> NightHost:
 	return _rooms.get(match_id)
 
 
-## Players in each room, as a `{match id: count}` for the heartbeat.
+## People in each room (bots not counted), as a `{match id: count}` for the heartbeat.
 func players_by_match() -> Dictionary:
 	var out := {}
 	for match_id: String in _rooms:
-		out[match_id] = _rooms[match_id].player_count()
+		out[match_id] = _rooms[match_id].people_count()
 	return out
 
 
@@ -231,18 +258,32 @@ func _route(transport_id: int, pending: Pending, data: PackedByteArray) -> void:
 			pending.routing = false
 			_refuse(transport_id, pending, NetWire.Refusal.FULL, "ROOMS")
 			return
+		if admitted.get("map_refused", "") != "":
+			_log(
+				"map_locked",
+				{
+					"match": match_id,
+					"map": admitted["map_refused"],
+					"host_level": admitted["host_level"]
+				}
+			)
 		room = await _open_room(match_id, admitted.get("settings"))
 	if not _pending.has(transport_id):
 		return
-	_hand_over(transport_id, room, admitted["user"], admitted["name"], data)
+	_hand_over(transport_id, room, admitted["user"], admitted["name"], data, admitted["account"])
 
 
 func _hand_over(
-	transport_id: int, room: NightHost, user: String, user_name: String, hello: PackedByteArray
+	transport_id: int,
+	room: NightHost,
+	user: String,
+	user_name: String,
+	hello: PackedByteArray,
+	account: Dictionary = {}
 ) -> void:
 	_pending.erase(transport_id)
 	_room_of[transport_id] = room
-	room.attach(transport_id, user, user_name)
+	room.attach(transport_id, user, user_name, account)
 	room.receive(transport_id, hello)
 
 
@@ -279,6 +320,14 @@ func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 	room.listener = listener
 	room.room_id = match_id
 	room.log_enabled = log_enabled
+	room.xp_awards = xp_awards
+	room.challenge_awards = challenge_awards
+	room.challenge_catalog = challenge_catalog
+	room.challenge_clock = challenge_clock
+	room.poster_sets = poster_sets
+	room.clock = clock
+	room.report_ready.connect(_on_report.bind(match_id))
+	room.board_wanted.connect(_read_board.bind(room))
 	room.seed_value = seed_value
 	room.rules_tuning = rules_tuning
 	if settings != null:
@@ -288,6 +337,7 @@ func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 	room.bot_limit = bot_limits.for_room(_rooms.size() + _building.size())
 	room.heavy_parity = _lighter_parity()
 	room.emptied.connect(func() -> void: _end_room(match_id))
+	room.user_left.connect(_on_user_left.bind(match_id))
 	viewport.add_child(room)
 	await room.built
 	_rooms[match_id] = room
@@ -341,10 +391,18 @@ func _close_if_done(match_id: String, now: float) -> void:
 			_end_room(match_id)
 
 
+## A person's seat is empty: the backend takes them out of the match's lobby at once, so nothing of
+## the night holds them and a night with nobody left is over (`POST /internal/matches/:id/left`).
+func _on_user_left(user: String, match_id: String) -> void:
+	_log("user_left", {"match": match_id})
+	_tell_backend("POST", "/internal/matches/%s/left" % match_id.uri_encode(), {"userId": user})
+
+
 func _end_room(match_id: String) -> void:
 	var room: NightHost = _rooms.get(match_id)
 	if room == null:
 		return
+	room.close_reports()
 	_rooms.erase(match_id)
 	_opened_at.erase(match_id)
 	_share_budget()
@@ -381,6 +439,92 @@ func _heartbeat() -> void:
 	)
 
 
+## A room made a report: it is queued as it is and sent in order, again until the backend takes it.
+## `POST /internal/matches/:id/report` with `{kind: "round" | "night", round, seats}`; the backend
+## keys each seat by match, kind, round and account, so a retry pays nothing twice
+## (docs/research/platform-backend.md, "Progression").
+func _on_report(round_number: int, final: bool, seats: Array, match_id: String) -> void:
+	var path := "/internal/matches/%s/report" % match_id.uri_encode()
+	reports.push(
+		path,
+		{"kind": "night" if final else "round", "round": round_number, "seats": _wire_seats(seats)}
+	)
+	_log(
+		"xp_report",
+		{"match": match_id, "round": round_number, "final": final, "seats": seats.size()}
+	)
+
+
+## Reads a seat's challenge board from the backend, once, when the seat sits down, and hands the
+## answer to the room (`GET /internal/users/:id/saves/challenges`). It is not waited for: the night
+## runs, and the seat is followed from the moment the board arrives. No answer within
+## `BOARD_TIMEOUT` is no board, and a seat with none is never written.
+func _read_board(user: String, room: NightHost) -> void:
+	var answer := await _fetch_board(user)
+	if is_instance_valid(room):
+		room.board_arrived(user, answer["status"], answer["json"])
+
+
+func _fetch_board(user: String) -> Dictionary:
+	if board_reader.is_valid():
+		return await board_reader.call(user)
+	if backend_url == "":
+		return {"status": 0, "json": null}
+	return await HttpJson.send(
+		self,
+		"GET",
+		backend_url + "/internal/users/%s/saves/challenges" % user.uri_encode(),
+		{"Authorization": "Bearer " + backend_secret},
+		null,
+		BOARD_TIMEOUT
+	)
+
+
+## The seats of a report as JSON (stat names as plain text).
+func _wire_seats(seats: Array) -> Array:
+	var out: Array = []
+	for seat: Dictionary in seats:
+		var lines := {}
+		for stat: StringName in seat["night_stats"]:
+			lines[String(stat)] = seat["night_stats"][stat]
+		var line := {"userId": seat["user"], "xp": seat["xp"], "lines": lines}
+		if seat.has("board"):
+			# The challenges the seat finished and its board as the tracker holds it: the backend
+			# lists the ids on the profile and stores the board over the `challenges` slot.
+			line["done"] = seat["done"]
+			line["board"] = seat["board"]
+		if seat["finished_round"]:
+			# Claims: the backend knows the profile and pays the two one-offs itself, once.
+			line["openingNight"] = true
+			line["bonusDay"] = seat["day"]
+		out.append(line)
+	return out
+
+
+## Sends the oldest waiting report when it is time. One goes at a time; the answer, or the lack of
+## one, decides whether it waits and is sent again.
+func _send_reports(now: float) -> void:
+	var report := reports.next(now)
+	if report.is_empty():
+		return
+	var status := await _post_report(report["path"], report["body"])
+	reports.answered(status, _now())
+	if status in XpReportQueue.TAKEN:
+		return
+	_log("xp_report_failed", {"path": report["path"], "status": status, "tries": report["tries"]})
+
+
+func _post_report(path: String, body: Dictionary) -> int:
+	if report_sender.is_valid():
+		return await report_sender.call(path, body)
+	if backend_url == "":
+		return 204
+	var answer := await HttpJson.send(
+		self, "POST", backend_url + path, {"Authorization": "Bearer " + backend_secret}, body
+	)
+	return answer["status"]
+
+
 func _tell_backend(method: String, path: String, body: Variant) -> void:
 	if backend_url == "":
 		return
@@ -400,6 +544,8 @@ func _tell_backend(method: String, path: String, body: Variant) -> void:
 
 
 func _now() -> float:
+	if clock.is_valid():
+		return clock.call()
 	return Time.get_ticks_msec() / 1000.0
 
 

@@ -21,7 +21,12 @@ var _rounds := {}
 
 
 func before() -> void:
-	SimWeapons.warm()
+	var specs: Array = []
+	for cell: Array in CELLS:
+		if not specs.has([cell[0], 1]):
+			specs.append([cell[0], 1])
+	# The assist has a script of its own that a night without it never loads (#1156).
+	ShippedCells.warm(specs, 1.0)
 	var tuning := RulesFixture.tuning()
 	var tunings: Array[RulesTuning] = []
 	for _i in CELLS.size():

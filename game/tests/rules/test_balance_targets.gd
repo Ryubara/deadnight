@@ -5,8 +5,8 @@ extends GdUnitTestSuite
 ## ("Balance targets") before changing a range.
 
 ## Nights per cell in CI. Seeds are fixed, so the result is the same every run on every machine.
-const NIGHTS := 60
-const SEED := 4000
+const NIGHTS := ShippedCells.NIGHTS
+const SEED := ShippedCells.SEED
 ## How many rounds further the re-cut and the tonic must carry the good and the many nights. It
 ## was a whole round at 1,500 and a step; at 5,000 flat (#909) the average nights of 4 and 8 players
 ## gain 0.95 and 1.0, because the re-cut comes later. 0.3 since the House Pistol start (#898): the
@@ -45,14 +45,14 @@ var _shipped: Dictionary = {}
 
 
 func before() -> void:
-	_shipped = _batch(RulesFixture.tuning())
+	_shipped = ShippedCells.get_cells(CELLS)
 
 
 ## Runs every cell of the gate, one per worker thread. The cells share nothing: each has its own
 ## copy of the tuning and its own seeded nights, and the weapon cache is filled before the threads
 ## start, so the result is the same as running them one after another (a test below says so).
 func _batch(tuning: RulesTuning, nights: int = NIGHTS, specs: Array = CELLS) -> Dictionary:
-	SimWeapons.warm()
+	ShippedCells.warm(specs)
 	var tunings: Array[RulesTuning] = []
 	for _i in specs.size():
 		tunings.append(tuning.duplicate(true) as RulesTuning)
@@ -176,7 +176,7 @@ func test_the_same_climb_goes_less_far_when_the_re_cut_and_the_tonic_do_nothing(
 ## The mean round of one cell on the longer read, with the shipped tuning and with `inert`, the two
 ## arms side by side on worker threads.
 func _confirm(inert: RulesTuning, cell: Array) -> Array[float]:
-	SimWeapons.warm()
+	ShippedCells.warm([cell])
 	var tunings: Array[RulesTuning] = [RulesFixture.tuning(), inert.duplicate(true) as RulesTuning]
 	var means: Array[float] = [0.0, 0.0]
 	var run := func(arm: int) -> void:

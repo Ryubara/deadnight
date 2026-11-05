@@ -10,8 +10,26 @@ const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
 const MAIN := "res://main.tscn"
 
+var _arrival := false
+
+
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
+
+
+func before_test() -> void:
+	# The helicopter drop a window plays at the start of a night (#1057) holds the look, the
+	# touch layer and the HUD until it ends; a headless run has none. This suite is about
+	# the mouse and the pad, in a night the player has control of (`--noarrival`);
+	# `test_arrival_night` is about the drop.
+	_arrival = NightScreen.arrival_enabled
+	NightScreen.arrival_enabled = false
+
 
 func after_test() -> void:
+	NightScreen.arrival_enabled = _arrival
 	# The menu this suite goes back to would cover the mouse for every suite after it.
 	await RouterFixture.clear(get_tree())
 

@@ -11,6 +11,8 @@ const NECK := ["Neck", "Head", 0.5, 0.27]
 const WAIST := ["Hips", "Abdomen", 0.75, 0.36]
 const ANKLES := [["LowerLeg.L", "Foot.L", 0.62, 0.0], ["LowerLeg.R", "Foot.R", 0.62, 0.0]]
 const ANKLE_RADIUS := 0.2
+## Where a tall boot's top meets the leg it goes over: [bone, towards, along, radius].
+const BOOT_TOPS := [["LowerLeg.L", "Foot.L", 0.3, 0.24], ["LowerLeg.R", "Foot.R", 0.3, 0.24]]
 const WRIST_ALONG := 0.82
 const WRIST_RADIUS := 0.18
 const SHOULDER_RADIUS := 0.22
@@ -146,6 +148,23 @@ func test_every_ankle_is_closed_with_every_trousers_and_shoes() -> void:
 	assert_array(fails).is_empty()
 
 
+## A one-piece top wears its own legs (`hides_legs`, #1078): they meet the shoes in place of the
+## trousers, and the suite above does not see them.
+func test_every_ankle_of_a_one_piece_top_is_closed_with_every_shoes() -> void:
+	var fails: Array[String] = []
+	for body in BODIES:
+		for torso in _options(&"torso"):
+			if not SoldierLook.catalog().slots.torso.parts[String(torso)].get("hides_legs", false):
+				continue
+			for feet in _options(&"feet"):
+				var fit := _dress({&"torso": torso, &"feet": feet}, body)
+				var where := []
+				for spec: Array in ANKLES:
+					where.append([_place(fit, spec), ANKLE_RADIUS])
+				fails.append_array(await _check("%s %s/%s" % [body, torso, feet], fit, where))
+	assert_array(fails).is_empty()
+
+
 func test_every_wrist_and_shoulder_is_closed_with_every_top_and_armwear() -> void:
 	var fails: Array[String] = []
 	for body in BODIES:
@@ -163,6 +182,41 @@ func test_every_wrist_and_shoulder_is_closed_with_every_top_and_armwear() -> voi
 					where.append([fit.bone_point("UpperArm." + side), SHOULDER_RADIUS])
 				fails.append_array(await _check("%s %s/%s" % [body, torso, arm], fit, where))
 	assert_array(fails).is_empty()
+
+
+## The Creature mask (#1078) is a closed shell the neck comes out of: nothing shows under it, on
+## any top and neckwear, where the head's own neck meets it and all over the shell.
+func test_the_creature_mask_is_closed_with_every_top_and_neckwear() -> void:
+	var fails: Array[String] = []
+	for body in BODIES:
+		for torso in _options(&"torso"):
+			for neck in _options(&"neck"):
+				var look := {&"headwear": &"creature", &"torso": torso, &"neck": neck}
+				var fit := _dress(look, body)
+				var head := fit.bone_point("Head")
+				var where := [[_place(fit, NECK), NECK[3]], [head, 0.6]]
+				fails.append_array(await _check("%s %s/%s" % [body, torso, neck], fit, where))
+	assert_array(fails).is_empty()
+
+
+## The Rubber boots' shaft (#1078) goes over every trouser leg, the bare legs and a one-piece's:
+## closed where it ends, under the knee.
+func test_the_top_of_a_tall_boot_is_closed_with_every_leg() -> void:
+	var fails: Array[String] = []
+	for body in BODIES:
+		for legs in _options(&"legs"):
+			fails.append_array(await _boot_tops(body, {&"legs": legs, &"feet": &"rubber"}))
+		for torso in [&"coveralls"]:
+			fails.append_array(await _boot_tops(body, {&"torso": torso, &"feet": &"rubber"}))
+	assert_array(fails).is_empty()
+
+
+func _boot_tops(body: StringName, parts: Dictionary) -> Array[String]:
+	var fit := _dress(parts, body)
+	var where := []
+	for spec: Array in BOOT_TOPS:
+		where.append([_place(fit, spec), spec[3]])
+	return await _check("%s %s" % [body, parts], fit, where)
 
 
 ## Every part on its own (with the defaults round it), looked at all over its own box.

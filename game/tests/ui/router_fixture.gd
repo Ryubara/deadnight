@@ -20,3 +20,17 @@ static func clear(tree: SceneTree) -> void:
 	# The router notices an emptied stack on the next idle moment.
 	await tree.process_frame
 	await tree.process_frame
+
+
+## Forgets the server a lobby or the join screen chose for the next night. `NightScreen` keeps it in
+## statics and takes it once, when a night opens; a suite that only fills it (a lobby's Start with
+## the opener stubbed) leaves it, and the next suite's solo night then tries a server that is not
+## there: no `ready_to_play`, and its first test runs into the five minute limit (#1220).
+static func forget_join() -> void:
+	NightScreen.join_url = ""
+	NightScreen.join_ticket = ""
+	NightScreen.join_map = ""
+	NightScreen.join_as_bot = false
+	# And the lobby a night would hold for its Leave button, which a night takes the same way.
+	NightScreen.return_lobby = {}
+	NightScreen.return_api = null

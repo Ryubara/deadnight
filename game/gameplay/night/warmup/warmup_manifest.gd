@@ -80,7 +80,7 @@ static func held_scenes() -> Array[String]:
 ## Every file of every sound's variants.
 static func sound_paths() -> Array[String]:
 	var paths: Array[String] = []
-	for id: StringName in SoundCatalog.ids():
+	for id: StringName in SoundCatalog.ids_for_night():
 		var def := SoundCatalog.get_def(id)
 		for variant in range(1, def.variants + 1):
 			_add(paths, def.path_for(variant))

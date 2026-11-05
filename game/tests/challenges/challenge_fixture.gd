@@ -61,6 +61,53 @@ static func small_catalog() -> ChallengeCatalog:
 	return catalog
 
 
+## A catalogue a round of three zombies can finish: a daily of each tier, an order and a ladder.
+static func quick_catalog() -> ChallengeCatalog:
+	var catalog := ChallengeCatalog.new()
+	(
+		catalog
+		. add_all(
+			[
+				_quick("d_kills", "kills", 4, "short", "kills"),
+				_quick("d_head", "kills:head", 2, "medium", "aim"),
+				_quick("d_round", "round", 1, "long", "survive", "night"),
+			],
+			ChallengeDef.Family.DAILY
+		)
+	)
+	catalog.add_all(
+		[_quick("o_points", "points_earned", 100, "short", "", "total", "night")],
+		ChallengeDef.Family.ORDER
+	)
+	catalog.add_all(
+		[
+			{
+				"id": "m_kills",
+				"text": "Put down {n}",
+				"stat": "kills",
+				"steps": [1, 3],
+				"reward": {"xp": 5}
+			}
+		],
+		ChallengeDef.Family.MILESTONE
+	)
+	return catalog
+
+
+static func _quick(
+	id: String,
+	stat: String,
+	target: int,
+	tier: String,
+	group: String,
+	mode := "total",
+	pillar := ""
+) -> Dictionary:
+	var record := _record(id, stat, target, tier, group, mode, pillar)
+	record["reward"] = {"xp": 5}
+	return record
+
+
 static func _record(
 	id: String,
 	stat: String,

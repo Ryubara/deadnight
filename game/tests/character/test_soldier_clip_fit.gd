@@ -32,8 +32,19 @@ const HEAD_LOOKS := [
 	[0, {&"headwear": &"helmet", &"torso": &"vest"}],
 	[0, {&"headwear": &"ballcap"}],
 	[0, {&"headwear": &"ranger", &"neck": &"scarf"}],
+	[0, {&"headwear": &"visor", &"eyewear": &"cinema", &"neck": &"lanyard"}],
+	[8, {&"hair": &"bob", &"torso": &"jacket", &"headwear": &"visor", &"neck": &"bolo"}],
+	[8, {&"hair": &"curls", &"torso": &"jacket", &"eyewear": &"cinema", &"neck": &"lanyard"}],
+	[0, {&"hair": &"pompadour", &"torso": &"coveralls", &"neck": &"bolo"}],
 ]
 const HEAD_SAMPLES := 3
+## The ladder's pieces that lie on the trunk: [preset, parts].
+const LADDER_LOOKS := [
+	[0, {&"legs": &"overalls"}],
+	[10, {&"legs": &"overalls"}],
+	[0, {&"torso": &"coveralls"}],
+	[10, {&"torso": &"usher"}],
+]
 
 var _host: Node3D
 var _ticks := 60
@@ -133,6 +144,33 @@ func test_no_clip_puts_an_arm_deeper_into_the_body_than_recorded() -> void:
 							% [preset, clip, check, depth, allowed - SLACK]
 						)
 					)
+		fit.free_bodies()
+		_host.remove_child(model)
+		model.free()
+	assert_array(fails).is_empty()
+
+
+## The ladder's clothes that add to the trunk (#1078): the bib and the buttons stand on the chest,
+## so a forearm laid on it in a carry goes that much deeper. No clip may go deeper than the
+## tolerance here either, but those recorded in `clip_fit_recorded.json` under "ladder".
+func test_the_ladders_clothes_keep_the_arms_out_of_the_body() -> void:
+	var recorded: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(RECORDED))
+	var known: Dictionary = recorded.get("ladder", {})
+	var fails: Array[String] = []
+	for entry: Array in LADDER_LOOKS:
+		var look := CharacterLook.from_preset(entry[0])
+		for slot: StringName in entry[1]:
+			look.parts[slot] = entry[1][slot]
+		var model := _model(look)
+		var skeleton := model.find_child("Skeleton3D", true, false) as Skeleton3D
+		var fit := BodyFit.new(_host, skeleton)
+		var report := await ClipFit.new(fit, model).sample_clips([], ["left arm", "right arm"])
+		for clip: String in report:
+			for check: String in report[clip]:
+				var depth: float = report[clip][check].depth
+				var allowed: float = known.get(clip, {}).get(check, ClipFit.TOLERANCE) + SLACK
+				if depth > allowed:
+					fails.append("%s %s %s: %.3f m" % [entry[1], clip, check, depth])
 		fit.free_bodies()
 		_host.remove_child(model)
 		model.free()
