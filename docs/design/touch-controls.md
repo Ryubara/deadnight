@@ -25,8 +25,8 @@ Each finger has one job until it lifts, tracked by its touch index, so move, loo
 | Crouch | a chevron down onto a floor line, below and left of Fire | `crouch`, a **toggle** (#1277): a tap crouches and stays, the next tap or a Jump stands. The button stays lit while it is on |
 | Weapons and grenades | the HUD's own strip in the bottom corner of the stick's side, under the players' column (a left hand flips it); not buttons of the layer | #1280. There is no Swap button and no Grenade button: a tap on a weapon's place takes that weapon (`weapon_slot_1`..`3`, the key's action), and the grenades' place after the weapons, with their count, is held while the pin is out (`throw_grenade`) and lets go to throw; a drag that starts on it also looks (#599), because the right thumb is on it for the whole hold and the left has the stick, so the throw can be aimed. Every place is at least 44 CSS px wide and high (`MenuScale.tap_units`). The layer asks the HUD where the places are (`TouchControls.zones`, `HudSlots.touch_zones`) and presses the action of the one a finger lands on; a finger that starts on a weapon's place only picks it, it never fires or looks |
 | Shoulder swap (a person, an arrow each way) | small, on the arc round Fire, outside the middle of the screen | `swap_shoulder`: the camera moves to the other shoulder, to see round a corner |
-| Melee (a blade) | small, on the far right edge below Fire and above the ammo card (60 left, 310 up) | `quick_melee` (#588): a tap is one blow with whatever is in hand, at once; the server's 0.6 s cooldown holds a thumb that taps again and a finger that stays down is still one blow ([quick melee](weapons.md#quick-melee)) |
-| Bots (a wheel) | small, on the far right edge above Melee (60 left, 405 up) | `bot_wheel` (#642): **hold** it and the bot command wheel opens over the middle of the screen; **drag** from where the thumb landed toward Follow (up), Roam (down right) or Hold (down left) and let go to give that order; letting go in the middle, or a tap, gives none. The view does not turn while it is held ([bot wheel](../research/bot-wheel.md)) |
+| Strike (a blade), **only while a dead is within reach** | beside Reload, a thumb's roll farther along its row (575 left and 340 up of the corner, about 21 mm from Fire), clear of Interact's place | `quick_melee` (#588, #1285): a tap is one blow with whatever is in hand, at once; the server's 0.6 s cooldown holds a thumb that taps again and a finger that stays down is still one blow ([quick melee](weapons.md#quick-melee)). It shows while a living dead is within the blow's 1.6 m on the ground (`StrikeReach`, this client's picture of the night: no network traffic of its own), stays until the dead is 0.3 m past that, and goes with the last one; a finger on it when it goes lets go. A drag that starts on it also looks, and the world markers keep clear of its place only while it is up. It is the way Call of Duty: Mobile shows its knife (design only), so the sixth circle costs the glass nothing the rest of the time |
+| Bots (a wheel) | small, on the far right edge (60 left, 405 up) | `bot_wheel` (#642): **hold** it and the bot command wheel opens over the middle of the screen; **drag** from where the thumb landed toward Follow (up), Roam (down right) or Hold (down left) and let go to give that order; letting go in the middle, or a tap, gives none. The view does not turn while it is held ([bot wheel](../research/bot-wheel.md)) |
 | Ping (a pin) | small, top edge, right of Pause (538 right of the safe edge, 80 down) | `ping` (#642): a tap marks what the crosshair is on for the team, as Z, the middle mouse button and the pad's d-pad right do; the server's one mark a second per player holds a thumb that taps again |
 | Interact | one thumb-length left of Fire, only with a HUD prompt | `interact`; a tap mark over its word, which says what it does (OPEN, BUY, HOLD for a broken fence, which keeps nailing boards while held, FUEL, SWITCH, TAKE, REVIVE) ([hold at a broken fence](rounds.md#the-fences-boards)) |
 | Pause | top, beside the round card (two bars) | `pause` |
@@ -62,8 +62,9 @@ mirrored without overlap.
 
 The HUD's weapon slot strip (#682) is over the ammo card on a keyboard, where the right thumb's corner is empty. With the
 touch controls up (`TouchControls.active_changed`, which the night screen hands to `Hud.touch_layout`) it moves under the
-health card, as wide as it, because Fire and Melee sit where it would; `slots` is one of the kept cards the buttons are
-tested against. The stick's resting ring is 60 units higher so it clears the players' column and the strip under it.
+health card, as wide as it, because Fire and the buttons sit where it would; `slots` is one of the kept cards the
+buttons are tested against. The stick's resting ring is 60 units higher so it clears the players' column and the strip
+under it.
 
 ## First run and key hints
 
@@ -72,12 +73,13 @@ tested against. The stick's resting ring is 60 units higher so it clears the pla
   ([HUD prompt](hud.md)). A key or a gamepad button brings the keycap back, and so does a real mouse click; mouse
   *motion* does not, because the layer sends its look as motion, and the engine's touch copies are marked as emulated.
 - **Hints once per control** (`TouchHints`, a child of the layer): "DRAG TO MOVE" over the stick's resting ring, "DRAG TO
-  LOOK" in the look area and "TAP TO USE" ("HOLD TO REPAIR" at a fence) beside the Interact button while it shows. Each
-  goes the moment its control is used: a finger on the stick, the first look drag (also one that started on Fire), a
-  press of Interact. The Interact hint waits for the first prompt, and a prompt that goes unused brings it back with the
-  next one. What was used is a bit in the setting `controls/touch_hints_seen`, so a player sees each hint once ever;
-  restoring the defaults in Settings shows them again. A test checks the labels against the safe area, the buttons and
-  the HUD cards on every phone canvas.
+  LOOK" in the look area, "TAP TO USE" ("HOLD TO REPAIR" at a fence) beside the Interact button while it shows and
+  "STRIKE" (with the tap mark) beside the Strike button while it shows. Each goes the moment its control is used: a
+  finger on the stick, the first look drag (also one that started on Fire), a press of Interact or Strike. The
+  Interact and Strike hints wait for their button, and one that goes unused is back with the next prompt or the next
+  dead in reach. What was used is a bit in the setting `controls/touch_hints_seen`, so a player sees each hint once
+  ever; restoring the defaults in Settings shows them again. A test checks the labels against the safe area, the
+  buttons and the HUD cards on every phone canvas.
 - **The look hint stands beside the popup lane**, not over it ([popup lane](../research/popup-lane.md)): the cards
   stand in the middle of the screen under the round banner, so the hint takes the look area's side of their column. It
   steps down past any button that climbs up to it on a short screen, and on a small canvas the stick's hint steps aside

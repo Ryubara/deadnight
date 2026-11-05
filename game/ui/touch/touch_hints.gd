@@ -1,10 +1,11 @@
 class_name TouchHints
 extends Control
 ## First-run labels on the touch controls: "DRAG TO MOVE" over the stick's place, "DRAG TO LOOK" in
-## the look area and "TAP TO USE" beside the Interact button the first time it shows. Each is
-## short, appears once, and goes the moment its control is used; what was used is remembered in the
-## setting `controls/touch_hints_seen` (one bit per hint), so a player sees each hint once, ever.
-## Resetting the settings to their defaults brings them back.
+## the look area, "TAP TO USE" beside the Interact button and "STRIKE" beside the Strike
+## button the first time each shows. Each is short, appears once, and goes the moment its control
+## is used; what was used is remembered in the setting `controls/touch_hints_seen` (one bit per
+## hint), so a player sees each hint once, ever. Resetting the settings to their defaults brings
+## them back.
 ##
 ## It draws over `TouchControls` and only reads its geometry; the controls tell it what was used
 ## (`mark_used`). It takes no touches.
@@ -19,13 +20,17 @@ extends Control
 const MOVE := &"move"
 const LOOK := &"look"
 const INTERACT := &"interact"
+const STRIKE := &"strike"
 ## The order is the bit each hint owns in the saved mask.
-const ORDER: Array[StringName] = [MOVE, LOOK, INTERACT]
+const ORDER: Array[StringName] = [MOVE, LOOK, INTERACT, STRIKE]
+## The hints that sit beside a button and show a tap, not a drag.
+const TAPS: Array[StringName] = [INTERACT, STRIKE]
 
 const TEXT := {
 	MOVE: "DRAG TO MOVE",
 	LOOK: "DRAG TO LOOK",
 	INTERACT: "TAP TO USE",
+	STRIKE: "STRIKE",
 }
 ## The interact button's caption for a prompt that is held, not tapped (the fence).
 const HOLD_VERB := "HOLD"
@@ -37,6 +42,8 @@ const ICON_WIDTH := 64.0
 const ICON_GAP := 14.0
 ## Distance from the stick ring, and from the interact button, to the label.
 const GAP := 26.0
+## How far above its button's row the Strike label stands, canvas units.
+const STRIKE_LIFT := 22.0
 ## Where the look hint sits down the safe rectangle (share of its height, its middle).
 const LOOK_AT_Y := 0.24
 ## The look hint stands beside the column of the HUD's popup lane (cards in the middle of the
@@ -83,8 +90,8 @@ func _ready() -> void:
 			_seen = int(service.call(&"get_value", SettingsService.TOUCH_HINTS_SEEN))
 
 
-## The hints on screen now, in order: controls up, not used yet, and for Interact only while the
-## button shows.
+## The hints on screen now, in order: controls up, not used yet, and for Interact and Strike only
+## while their button shows.
 func showing() -> Array[StringName]:
 	var found: Array[StringName] = []
 	if controls == null or not controls.is_active():
@@ -93,6 +100,8 @@ func showing() -> Array[StringName]:
 		if is_seen(id):
 			continue
 		if id == INTERACT and controls.interact_verb() == "":
+			continue
+		if id == STRIKE and not controls.strike_up:
 			continue
 		found.append(id)
 	return found
@@ -156,12 +165,16 @@ func rect_of(id: StringName) -> Rect2:
 			var left := middle - LANE_HALF - GAP - size.x if mirrored else middle + LANE_HALF + GAP
 			var top := safe.position.y + safe.size.y * LOOK_AT_Y - size.y * 0.5
 			return _below_the_buttons(Rect2(Vector2(left, top), size), safe)
-		INTERACT:
-			var circle := controls.button_circle(TouchLayout.INTERACT)
+		INTERACT, STRIKE:
+			var button := TouchLayout.INTERACT if id == INTERACT else TouchLayout.STRIKE
+			var circle := controls.button_circle(button)
 			var centre: Vector2 = circle[&"centre"]
 			var beside := float(circle[&"radius"]) + GAP * 0.6
 			var left: float = centre.x + beside if mirrored else centre.x - beside - size.x
-			return Rect2(Vector2(left, centre.y - size.y * 0.5), size)
+			# Strike's hint rides a little above its row: on the smallest canvas the perks column
+			# of the stick's side stands where the row's line runs out (#1285).
+			var lift := STRIKE_LIFT if id == STRIKE else 0.0
+			return Rect2(Vector2(left, centre.y - size.y * 0.5 - lift), size)
 	return Rect2()
 
 
@@ -297,7 +310,7 @@ func _icon_box(rect: Rect2) -> Rect2:
 func _draw_icon(id: StringName, tokens: UITokens, box: Rect2, alpha: float) -> void:
 	var centre := box.get_center()
 	var ink := Color(tokens.accent_bright, alpha)
-	if id == INTERACT:
+	if id in TAPS:
 		draw_circle(centre, TAP_DOT, ink)
 		return
 	var half := _track_half()
@@ -333,7 +346,7 @@ func _move_marks(now: Array[StringName]) -> void:
 			continue
 		if mark == null:
 			mark = _Mark.new()
-			mark.ring = id == INTERACT
+			mark.ring = id in TAPS
 			add_child(mark)
 			_marks[id] = mark
 		mark.set_ink(tokens.accent_bright)

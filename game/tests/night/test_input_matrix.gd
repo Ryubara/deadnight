@@ -408,6 +408,8 @@ func test_the_touch_layer_does_every_action_it_offers() -> void:
 	var hud_state := _fixture.hud.state
 	# The interact button shows only where there is something to use.
 	hud_state.set_prompt(&"repair", "Broken fence", 0)
+	# So does Strike, where a dead is within reach of the blow (#1285).
+	_fixture.strike_up = true
 	await get_tree().process_frame
 	await get_tree().process_frame
 	for row in ROWS:

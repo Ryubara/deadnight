@@ -26,8 +26,9 @@ extends Control
 ## the HUD where they are (`zones`) and presses the action of the one a finger lands on, like a
 ## button of its own. A finger that starts on a weapon's place only picks it: it never fires or
 ## looks; one that starts on the grenades' place also looks, as every button of the right thumb.
-## The interact button shows only while the HUD has a prompt: what it does is its word. Every other
-## button shows an icon and no words (`TouchIcons`).
+## The interact button shows only while the HUD has a prompt: what it does is its word. The Strike
+## button shows only while a dead is within reach of the quick melee (`strike_ready`, #1285), and
+## shows the blade. Every other button shows an icon and no words (`TouchIcons`).
 ##
 ## Crouch is a toggle: a tap crouches and stays crouched, a second tap (or a Jump, which cannot be
 ## made crouching) stands, so the right thumb is free for Fire and the look.
@@ -98,6 +99,15 @@ var finger_units := Callable()
 ## () -> Array[Dictionary], the HUD's places a finger presses: `{action, rect}` in the screen's
 ## canvas units (`HudSlots.touch_zones`). Without it the layer has none.
 var zones := Callable()
+## () -> bool, whether a dead is within reach of the quick melee now (`StrikeReach`): the Strike
+## button shows while it says yes. Without it the button never shows.
+var strike_ready := Callable()
+
+## True while the Strike button shows: a dead is within reach of the quick melee. A property, not
+## a method: the class is at the linter's limit of public methods.
+var strike_up: bool:
+	get:
+		return _strike_up
 
 ## Auto-fire on: Aim is held. Off: Aim is a toggle (`_aim_latched`).
 var _aim_is_hold := true
@@ -118,6 +128,7 @@ var _stick_pos := Vector2.ZERO
 var _stick_vector := Vector2.ZERO
 var _sprinting := false
 var _interact_verb := ""
+var _strike_up := false
 var _last_insets := Vector4.ZERO
 var _was_mirrored := false
 ## `_look_key()` at the last draw.
@@ -194,8 +205,9 @@ func button_boxes() -> Array[Rect2]:
 	if not _active:
 		return found
 	var origin := get_global_rect().position
+	var hidden := _hidden()
 	for id: StringName in _circles:
-		if id == TouchLayout.INTERACT and _interact_verb == "":
+		if id in hidden:
 			continue  # not drawn, so nothing to keep clear of
 		var circle: Dictionary = _circles[id]
 		var reach := Vector2.ONE * float(circle[&"radius"])
@@ -208,6 +220,16 @@ func button_boxes() -> Array[Rect2]:
 ## The caption the interact button shows now, "" when it is hidden.
 func interact_verb() -> String:
 	return _interact_verb
+
+
+## The contextual buttons that are not up: not drawn, not touched, nothing to keep clear of.
+func _hidden() -> Array:
+	var hidden := []
+	if _interact_verb == "":
+		hidden.append(TouchLayout.INTERACT)
+	if not _strike_up:
+		hidden.append(TouchLayout.STRIKE)
+	return hidden
 
 
 ## Where the finger on the bot wheel's button is from where it landed (canvas units), and whether
@@ -289,6 +311,12 @@ func _process(delta: float) -> void:
 		if verb == "":
 			_drop_button(TouchLayout.INTERACT)
 		layout_changed.emit()  # the button came or went: the world markers make room (#1218)
+	var strike := _active and strike_ready.is_valid() and bool(strike_ready.call())
+	if strike != _strike_up:
+		_strike_up = strike
+		if not strike:
+			_drop_button(TouchLayout.STRIKE)
+		layout_changed.emit()
 	if _active:
 		_redraw_if_changed()
 
@@ -321,6 +349,7 @@ func _look_key() -> int:
 			stick,
 			_sprinting,
 			_interact_verb,
+			_strike_up,
 			opacity,
 			touch_scale,
 			left_handed,
@@ -352,8 +381,7 @@ func _input(event: InputEvent) -> void:
 func _touch_down(index: int, point: Vector2) -> void:
 	if _touches.has(index):
 		_touch_up(index)
-	var hidden: Array = [] if _interact_verb != "" else [TouchLayout.INTERACT]
-	var button := TouchLayout.button_at(point, _circles, hidden)
+	var button := TouchLayout.button_at(point, _circles, _hidden())
 	if button == &"":
 		button = zone_at(point)
 	if button != &"":
@@ -361,6 +389,8 @@ func _touch_down(index: int, point: Vector2) -> void:
 		_press_button(button)
 		if button == TouchLayout.INTERACT:
 			hints.mark_used(TouchHints.INTERACT)
+		elif button == TouchLayout.STRIKE:
+			hints.mark_used(TouchHints.STRIKE)
 	elif _stick_index < 0 and TouchLayout.stick_zone(_safe, left_handed).has_point(point):
 		hints.mark_used(TouchHints.MOVE)
 		_stick_index = index
@@ -711,8 +741,9 @@ func _draw() -> void:
 	_draw_stick(tokens)
 	# Every icon is one canvas command, flushed after the discs: no two buttons overlap.
 	var icons := HudShapes.new()
+	var hidden := _hidden()
 	for id: StringName in _circles:
-		if id == TouchLayout.INTERACT and _interact_verb == "":
+		if id in hidden:
 			continue
 		_draw_button(tokens, font, icons, id, _circles[id])
 	icons.flush(self)

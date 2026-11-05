@@ -225,7 +225,8 @@ weapon: it is not in the catalogue's `IDS`, nobody buys, carries or wins it, and
   crane's prizes.
 - **Bots:** a bot with no round left and no melee weapon in hand stands and strikes what comes within reach
   (`BotIntent.quick_melee_ok`).
-- **On a phone** it is the MELEE button of the [touch controls](touch-controls.md) (#588).
+- **On a phone** it is the Strike button of the [touch controls](touch-controls.md) (#588, #1285), which shows only
+  while a dead is within its reach.
 
 ### Hits to kill by round
 

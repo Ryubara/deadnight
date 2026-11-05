@@ -35,8 +35,15 @@ const SMALLEST := Vector3(1334, 750, 1.25)
 ## right thumb's ring (#1280, #1277) it holds six markers, not eight, before two meet.
 const CROWDED := Vector3(1334, 750, 1.0)
 const CROWDED_HOLDS := 6
+## With Strike up (#1285) its place, in the one column the markers have, is theirs no more: the
+## smallest page holds two markers (one a diamond) before two meet, and the crowded page holds eight
+## with Strike and Interact both up. They are kept off every card and button all the same.
+const STRIKE_HOLDS_SMALLEST := 2
+const STRIKE_AND_INTERACT_HOLDS_CROWDED := 8
 ## The least size of words, CSS px: what the issue and the written floor say.
 const FLOOR_CSS := 14.0
+## The buttons that show only when they apply.
+const CONTEXTUAL: Array[StringName] = [TouchLayout.INTERACT, TouchLayout.STRIKE]
 
 var _window_size := Vector2i.ZERO
 var _window_factor := 1.0
@@ -104,13 +111,14 @@ func _show_centre_cards(fixture: HudFixture) -> void:
 
 
 ## The touch buttons of a phone held sideways, as the controls lay them out, in the canvas's units.
-## Interact is not one of them while there is nothing to use (`TouchControls.button_boxes` leaves it
-## out then, as it is not drawn): the right thumb's five buttons are always there.
-func _buttons(safe: Rect2, mirrored: bool) -> Array[Rect2]:
+## Interact and Strike are not among them while they are not up (`TouchControls.button_boxes` leaves
+## a button out then, as it is not drawn): the right thumb's five buttons are always there, and
+## `up` names the contextual ones that are.
+func _buttons(safe: Rect2, mirrored: bool, up: Array[StringName] = []) -> Array[Rect2]:
 	var boxes: Array[Rect2] = []
 	var circles := TouchLayout.buttons(safe, 1.0, mirrored)
 	for id: StringName in circles:
-		if id == TouchLayout.INTERACT:
+		if id in CONTEXTUAL and not id in up:
 			continue
 		var circle: Dictionary = circles[id]
 		var reach := Vector2.ONE * float(circle[&"radius"])
@@ -192,8 +200,11 @@ func _faults(fixture: HudFixture, obstacles: Array[Rect2], where: String) -> Arr
 	return found
 
 
-## Every marker of the grid on one page, with the touch layer up or not.
-func _run_page(window: Vector2i, ui_scale: float, ratio: float, touch: bool) -> Array[String]:
+## Every marker of the grid on one page, with the touch layer up or not and `up` of its contextual
+## buttons (Interact, Strike) showing.
+func _run_page(
+	window: Vector2i, ui_scale: float, ratio: float, touch: bool, up: Array[StringName] = []
+) -> Array[String]:
 	var found: Array[String] = []
 	var canvas := _page(window, ui_scale, ratio)
 	TouchMode.device_is_touch = touch
@@ -203,7 +214,7 @@ func _run_page(window: Vector2i, ui_scale: float, ratio: float, touch: bool) -> 
 		await _show_centre_cards(fixture)
 		var held: Array[Rect2] = []
 		if touch:
-			held = _buttons(TouchLayout.safe_rect(canvas, insets), mirrored)
+			held = _buttons(TouchLayout.safe_rect(canvas, insets), mirrored, up)
 		fixture.hud.markers.held = held
 		var obstacles := _obstacles(fixture, held)
 		var where := (
@@ -241,6 +252,17 @@ func test_a_marker_is_never_under_a_card_or_a_button_on_a_phones_page() -> void:
 		for ui_scale in UI_SCALES:
 			found.append_array(
 				await _run_page(Vector2i(int(page.x), int(page.y)), ui_scale, page.z, true)
+			)
+	assert_array(found).is_empty()
+
+
+func test_a_marker_is_never_under_strike_or_interact_while_they_are_up() -> void:
+	var up: Array[StringName] = [TouchLayout.STRIKE, TouchLayout.INTERACT]
+	var found: Array[String] = []
+	for page in PHONES:
+		for ui_scale in UI_SCALES:
+			found.append_array(
+				await _run_page(Vector2i(int(page.x), int(page.y)), ui_scale, page.z, true, up)
 			)
 	assert_array(found).is_empty()
 
@@ -498,18 +520,48 @@ func test_the_smallest_page_keeps_markers_off_the_interact_button_while_it_is_up
 	for mirrored in [false, true]:
 		var fixture := _busy_hud(canvas, insets, mirrored, true)
 		await _show_centre_cards(fixture)
-		var held := _buttons(TouchLayout.safe_rect(canvas, insets), mirrored)
-		var circle: Dictionary = (
-			TouchLayout
-			. buttons(TouchLayout.safe_rect(canvas, insets), 1.0, mirrored)[TouchLayout.INTERACT]
+		var held := _buttons(
+			TouchLayout.safe_rect(canvas, insets), mirrored, [TouchLayout.INTERACT]
 		)
-		var reach := Vector2.ONE * float(circle[&"radius"])
-		held.append(Rect2(Vector2(circle[&"centre"]) - reach, reach * 2.0))
 		fixture.hud.markers.held = held
 		var shown := await _one_on_every_card(fixture, SMALLEST_HOLDS, 1)
 		assert_int(shown.size()).is_equal(SMALLEST_HOLDS)
 		found.append_array(_faults(fixture, _obstacles(fixture, held), "interact up"))
 		fixture.hud.get_parent().queue_free()
+	assert_array(found).is_empty()
+
+
+## One marker on every card of the busiest HUD on `page`, with `up` buttons up as well as the
+## right thumb's five: `count` of them, `diamonds` of those the next door's, none under a card or a
+## button and none meeting another, for either hand.
+func _holds_with(page: Vector3, up: Array[StringName], count: int, diamonds: int) -> Array[String]:
+	var window := Vector2i(int(page.x), int(page.y))
+	var canvas := _page(window, page.z, 2.0)
+	TouchMode.device_is_touch = true
+	var insets := Vector4(96.0, 0.0, 96.0, 24.0)
+	var found: Array[String] = []
+	for mirrored in [false, true]:
+		var fixture := _busy_hud(canvas, insets, mirrored, true)
+		await _show_centre_cards(fixture)
+		var held := _buttons(TouchLayout.safe_rect(canvas, insets), mirrored, up)
+		fixture.hud.markers.held = held
+		var where := "%s at %s%s" % [window, page.z, ", mirrored" if mirrored else ""]
+		var shown := await _one_on_every_card(fixture, count, diamonds)
+		assert_int(shown.size()).is_equal(count)
+		found.append_array(_faults(fixture, _obstacles(fixture, held), where))
+		found.append_array(_touching(shown, where))
+		fixture.hud.get_parent().queue_free()
+	return found
+
+
+func test_the_smallest_page_keeps_markers_off_the_strike_button_while_it_is_up() -> void:
+	var found := await _holds_with(SMALLEST, [TouchLayout.STRIKE], STRIKE_HOLDS_SMALLEST, 1)
+	assert_array(found).is_empty()
+
+
+func test_the_crowded_page_keeps_markers_off_strike_and_interact_while_both_are_up() -> void:
+	var up: Array[StringName] = [TouchLayout.STRIKE, TouchLayout.INTERACT]
+	var found := await _holds_with(CROWDED, up, STRIKE_AND_INTERACT_HOLDS_CROWDED, DIAMONDS)
 	assert_array(found).is_empty()
 
 

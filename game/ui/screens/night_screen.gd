@@ -96,6 +96,7 @@ var _lobby_api: TogetherApi
 var _left := false
 var _loading: LoadingOverlay
 var _touch: TouchControls
+var _strike_reach := StrikeReach.new()
 var _overlay: Control
 var _title: UILabel
 var _note: UILabel
@@ -189,6 +190,8 @@ func _ready() -> void:
 	_touch.zones = _hud.slots.touch_zones
 	_hud.slots_moved.connect(_keep_markers_off_the_buttons)
 	_touch.look_gain = _look_gain
+	# Strike shows while a dead is within the quick melee's reach, on this client's picture (#1285).
+	_touch.strike_ready = _strike_ready
 	# A hit area is never under a fingertip, at the interface size this night runs at (#1217).
 	_touch.finger_units = func() -> float: return MenuScale.tap_units(get_window(), true)
 	add_child(_touch)
@@ -240,6 +243,12 @@ func touch_circles() -> Dictionary:
 ## The HUD's weapon places a finger presses (`HudSlots.touch_zones`): a browser test reads them.
 func touch_zones() -> Array[Dictionary]:
 	return _hud.slots.touch_zones() if _hud != null else []
+
+
+## True while the Strike button shows: a dead is within reach of the quick melee (a browser test
+## reads it).
+func touch_strike_up() -> bool:
+	return _touch != null and _touch.strike_up
 
 
 func touch_held() -> PackedStringArray:
@@ -336,6 +345,12 @@ func _unhandled_input(event: InputEvent) -> void:
 ## The factor on a touch look drag: the aim assist slows it near a zombie.
 func _look_gain() -> float:
 	return night.assist.friction() if night != null and night.assist != null else 1.0
+
+
+## Whether a dead is within reach of the quick melee: the phone's Strike button shows (no traffic of
+## its own, only the picture of the night this client has).
+func _strike_ready() -> bool:
+	return night != null and _strike_reach.update(night.state)
 
 
 ## A left-handed layout swaps the HUD's corner columns with the buttons.
