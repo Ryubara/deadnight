@@ -21,6 +21,8 @@ guests).
   *Night in progress, round N* before the newcomer presses Join, and Join goes straight in.
 - The lobby screen **polls** the backend every 2 seconds. A member who has not polled for a minute has left (a closed
   tab never says so), while someone else is still there; the host role passes on.
+- A player is in **one lobby at a time**, and creating, joining or Quick joining another **moves** them; nobody is told
+  they are in another night ([every state and what ends it](#leaving-and-moving-every-state-and-what-ends-it)).
 - A player never sees an address, an id or a port: only names, seats, a code and a link.
 
 ## The flow, screen by screen
@@ -117,6 +119,77 @@ The voice channel's room (#495, `ActivityRoom`) is this lobby: the first to pres
 host, the rest of the channel land in the same lobby (or, if it started, in the preview of a night in progress). The
 Activity still opens on the main menu. Joining happens when a player opens the lobby screen, not before, so people who
 only opened the Activity are not seats.
+
+## Leaving and moving: every state, and what ends it
+
+The rule (Deadnight #1177, the maintainer: *"we need this streamlined and fixed with a seamless experience in being able
+to easily jump between lobbies"*): a player is in **one lobby at a time, open or started**, and **create, join and Quick
+join move them**: they take the player out of the lobby they were in, and a player is never refused for being somewhere
+else (there is no `already_in_lobby` any more). A lobby with **no person** in it (bots do not count) is gone at once,
+with its code, its seats and its match. Every normal way out ends the state at once; the timers below are only the
+backstop for a client that vanished without a word.
+
+### The states of a lobby
+
+| State | What it holds | Ends when | Backstop |
+| --- | --- | --- | --- |
+| **Open** (waiting room) | code, seats, host, the host's rules | the last member leaves, or moves to another lobby (at once); the host starts it (it becomes **Started**) | 10 minutes without a poll; a member quiet for a minute is dropped while another is still there |
+| **Started** (a night) | the match on a game server, the members, the round | the last member leaves or moves (at once); the game server says the last person's seat is empty (`POST /internal/matches/:id/left`); the game server says the match is over (`/end`, at once when the last person leaves the room, bots or not); a finished night reopens it | the heartbeat stops listing the match (5 minute grace), 2 hours of age |
+| **Reopened** (a finished night's waiting room) | the same code, host and rules, the people who were still in the room | a member reads it (it is an **Open** one from then on); the last member leaves or moves | nobody reads it within a minute (the night screen asks every half second for 10 s), so nobody is coming back to it |
+| **Gone** | nothing: no code, no members, no match, no slot | | |
+
+### The states of a player
+
+| State | Ends when (and what the player can do next) |
+| --- | --- |
+| **Menu** (in no lobby) | create, join or Quick join puts them in a lobby |
+| **Waiting room** (member of an open lobby) | Leave, Back or Esc (`leave`, from `LobbyScreen._exit_tree`); the host's Start (to **Night**); create, join or Quick join elsewhere (moves them); a minute without polling while another member is there (dropped; their next poll says `not_member`) |
+| **Night** (member of a started lobby, connected) | *Leave night* in the Esc menu and the end board's *Leave* (`NightScreen._go_back`: `leave`, then the socket closes); a closed tab or an Activity that closed (the browser closes the socket with code 1001, an abrupt close is a dropped connection; the game server frees the seat and says so, `user_left`); create, join or Quick join elsewhere (moves them); the night ends (to **Reopened**) |
+| **Away** (the socket dropped, not on purpose) | they come back with their token inside 30 s, or the seat is freed and the game server says so; create, join or Quick join elsewhere moves them at once |
+| **End-of-night intermission** | Leave, a closed tab (as above), or the server's clock: the room says `finished` with who was still there, and the lobby reopens for them |
+| **Reopened lobby** (member of a lobby they may never see) | read it on the lobby screen; or create, join or Quick join elsewhere (moves them); a minute unread and it is gone |
+
+### Every way out, once
+
+| Way out | What happens | At once? |
+| --- | --- | --- |
+| Leave / Back / Esc on the waiting room | `leave`; host role passes on; an empty lobby is gone | yes |
+| *Leave night* (Esc menu) | `leave`, then the socket closes; the room frees the seat (a room with only bots ends and tells the backend) | yes |
+| End board's *Leave* | the same | yes |
+| Closing the tab or the Activity during a night | socket 1001 (an abrupt close is the row below), seat freed, `/left` to the backend, the lobby loses the member (or goes with the last one) | yes |
+| A dropped connection | the seat is held 30 s for a resume (a person may come back), then freed and `/left` | after the resume window |
+| A night that ended | `/end` with `finished` and who was in the room: the lobby reopens for them | yes |
+| Closing the tab on the waiting room, alone | the backend hears nothing (no beacon is sent), so the lobby waits for its backstop | no, 10 minutes; but the player is not held by it |
+| Create, join or Quick join from anywhere | takes the player out of the lobby they were in first (a join refused as `full` leaves them where they were) | yes |
+
+### What was wrong
+
+The maintainer's report: leaving a match and trying to join another said *You are in another night already*, and the
+lobby he left had bots in it. The causes, each reproduced first by `game/tests/net/test_leaving_a_night_online.gd` (a
+real `GameServer` and the real backend) and `spikes/backend/test/moving.test.ts`:
+
+1. **A reopened lobby held the people it was opened for.** A finished night reopened its lobby and put every present
+   user back in the "one open lobby per user" index. The player who had gone to the menu, or whose screen gave up
+   waiting after 10 s, or whose tab was closed, never read it, so every create and join said `already_in_lobby` until the
+   10-minute idle timer. A solo night with bots is the one whose reopened lobby only the leaver is in, so nobody else
+   polls it and nothing drops it early: that is why the report mentions the bots. Now a player is never refused, and an
+   unread reopened lobby is gone within a minute.
+2. **The Esc menu's *Leave night* only popped the screen.** It never said `leave`, so the player stayed a member of the
+   started lobby, and Quick join (which returns the public night you are a member of) could hand it back.
+3. **Nothing told the backend that a seat in a started night was empty.** A player who closed the tab or was kicked
+   stayed in the member list of a night with others in it, for the whole night. The game server now says so.
+
+Ruled out by the same tests: **a room with only bots does end at once** (`NightHost` frees the seat on a clean close,
+the room empties, `_end_room` posts `/end`, and the lobby is dropped), and leaving with the button or closing the tab and
+then creating, joining or Quick joining a night all worked before the fix, so "bots do not count as empty" was not a
+cause.
+
+### Not covered
+
+A sole member who **closes the tab on the waiting room** sends nothing (a `pagehide` request with an `Authorization`
+header cannot be proven reliable across browsers and Discord's proxy from here), so that lobby waits for its 10-minute
+backstop. It holds nobody, but a lobby list would show it until then; if that matters, the fix is a beacon on `pagehide`,
+not a shorter timer (a host who goes to a chat to paste the invite is quiet for minutes).
 
 ## Poll or push
 

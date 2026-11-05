@@ -27,7 +27,6 @@ const TEXTS := {
 	"not_found": "There is no night with that code. Check it and try again.",
 	"full": "That night is full.",
 	"no_server": "All the servers are busy. Try again in a minute.",
-	"already_in_lobby": "You are in another night already.",
 	"bad_settings": "Those rules are not ones the game takes. Change them and try again.",
 	"rules_unsupported":
 	"This server is out of date and takes none of these rules. Ask whoever runs it to update it.",

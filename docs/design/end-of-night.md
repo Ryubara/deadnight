@@ -77,7 +77,9 @@ Exact numbers: [research](../research/end-of-night.md#the-shots) and the maps' r
   others' clocks and return are unchanged; the leaver also leaves the lobby, so the host role passes on.
 - On `night_closed` the server tells the backend the match **finished** with the users still present; the backend
   **reopens the lobby** instead of dropping it: the same code, host, settings (map, bots, rules) and the people who
-  were present. Each client then asks the backend for its lobby and opens the lobby screen.
+  were present. Each client then asks the backend for its lobby and opens the lobby screen. A reopened lobby nobody
+  reads within a minute is dropped, and a player in one is never held by it: creating or joining another night moves
+  them ([every state](lobby.md#leaving-and-moving-every-state-and-what-ends-it)).
 
 ## Alone
 
