@@ -11,6 +11,9 @@ extends MenuPanel
 ## leaves: another tab, a screen the menu opens, or closing the menu (`MenuShell`).
 
 const CUSTOMIZE := "res://ui/screens/customize_screen.tscn"
+## The width the Plate button keeps on the mastery line, desktop and phone.
+const PLATE_BUTTON_WIDTH := 300.0
+const PLATE_BUTTON_WIDTH_COMPACT := 110.0
 
 var wardrobe: CustomizeScreen
 
@@ -181,6 +184,9 @@ func _show_plate() -> void:
 	if context.compact:
 		_plate_button.text = "Plate"
 	_plate_button.clip_text = true
+	_plate_button.custom_minimum_size.x = (
+		PLATE_BUTTON_WIDTH_COMPACT if context.compact else PLATE_BUTTON_WIDTH
+	)
 
 
 ## On a phone every picker is at least a tap target high and no text is under the type floor.
