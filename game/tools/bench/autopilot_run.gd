@@ -17,6 +17,8 @@ extends Node
 ##                that stands at once
 ##   `break=S`    seconds of break between rounds (0 is the tuned break)
 ##   `bots=N`     N hosted bots beside the autopilot (a night of N + 1 players; default 0)
+##   `people=N`   N people in all (the autopilot and N - 1 more seats, played by bots' brains:
+##                `StandInPeople`), up to 8; with `bots=7`, the worst room a server holds: 15 bodies
 ##   `startround=R` the night starts at round R (the rules' round counter is set to R - 1 before the
 ##                first round), with `points=P` points for every player (default 20000 once
 ##                `startround` is given) so the bots have bought what a late round has
@@ -70,6 +72,7 @@ var _sampler: PerfSampler
 var _jumped := false
 var _hud_probed := false
 var _accounts: Dictionary[int, bool] = {}
+var _stand_ins: StandInPeople
 ## False for a long run (`frames=0`): the per-frame rows would be the growth being measured.
 var _keep_frames := true
 
@@ -252,6 +255,8 @@ static func _percentile(sorted: Array, share: float) -> float:
 ## Puts the night at the round `startround` asks for (the counter is set before the first round
 ## begins, so round R is the first one played) and gives every player `points`.
 func _start_at_round(night: Night) -> void:
+	if _args.get_int("people", 1) > 1 and night.bots != null:
+		_stand_ins = StandInPeople.seat(night, _args.get_int("people", 1) - 1)
 	var rules := night.server.rules
 	if _args.get_string("ceiling") == "desktop":
 		# The bots count as browsers (`NightServer._join`): a desktop crowd needs them to say not.

@@ -1,6 +1,6 @@
 """Holds the late-round worst case to its budget (issue #906).
 
-    python3 tools/perf/check_budget.py <report.json> [<budget.json>] [--markdown <file>]
+    python3 tools/perf/check_budget.py <report.json> [<budget.json>] [--markdown <file>] [--title <heading>]
 
 `<report.json>` is what the autopilot run writes with `--sample=1 --out=...` (`game/tools/bench/autopilot_run.gd`
 and `perf_sampler.gd`): one row a second of the monitors and counts of a night. The budget (default `budget.json`
@@ -102,6 +102,7 @@ def main() -> int:
     parser.add_argument("report", type=Path)
     parser.add_argument("budget", type=Path, nargs="?", default=HERE / "budget.json")
     parser.add_argument("--markdown", type=Path, help="also write the measured lines there (a job summary)")
+    parser.add_argument("--title", default="Late-round budget", help="the heading of the job summary")
     args = parser.parse_args()
     report = json.loads(args.report.read_text(encoding="utf-8"))
     budget = json.loads(args.budget.read_text(encoding="utf-8"))
@@ -109,7 +110,7 @@ def main() -> int:
     print("\n".join(lines))
     if args.markdown:
         body = "\n".join(f"- {line}" for line in lines)
-        args.markdown.write_text(f"### Late-round budget\n\n{body}\n", encoding="utf-8")
+        args.markdown.write_text(f"### {args.title}\n\n{body}\n", encoding="utf-8")
     if broken:
         print("\nOVER BUDGET:", *broken, sep="\n  ", file=sys.stderr)
         return 1
