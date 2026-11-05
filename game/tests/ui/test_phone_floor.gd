@@ -83,3 +83,20 @@ func test_every_screen_has_text_and_targets_a_person_can_use() -> void:
 		for screen_name in UiFitRun.screen_names():
 			problems.append_array(_run.floor_problems(await _run.open(screen_name)))
 	_assert_none(problems)
+
+
+func test_the_nights_pause_card_and_its_settings_have_text_and_targets_a_person_can_use() -> void:
+	# A night runs at the interface size alone (its HUD is made for 1080 units); the card that opens
+	# over it and the Settings inside it are laid out at the phone factor (#1205). Before, the card
+	# was 12 px type and its Settings a desktop's, 0.36 CSS px to the unit.
+	var screen := await _run.open_night()
+	var problems: Array[String] = []
+	for entry: Array in CASES:
+		await _run.set_window(entry[0], 1.0, entry[1])
+		# One night, a window that changes under it: the card follows the page it is on.
+		await _run.frames()
+		problems.append_array(_run.floor_problems(await _run.open_night_card(screen)))
+		for tab: int in UiFitRun.SETTINGS_TABS:
+			problems.append_array(_run.floor_problems(await _run.open_night_card(screen, tab)))
+		await _run.close_night_card(screen)
+	_assert_none(problems)

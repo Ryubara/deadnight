@@ -270,7 +270,12 @@ static func snapshot(top: Control) -> Dictionary:
 		data["layout"] = _layout(top)
 		data["phone"] = MenuScale.is_phone(window_size)
 		if _audit_asked():
-			data["ui_audit"] = UiAudit.scan(top, PageSize.css_per_pixel(window_size)).summary()
+			# A night's card is measured alone: the night's HUD behind it is another page's (#1192).
+			var seen: Node = top
+			var night := top as NightScreen
+			if night != null and night.card_root() != null:
+				seen = night.card_root()
+			data["ui_audit"] = UiAudit.scan(seen, PageSize.css_per_pixel(window_size)).summary()
 	data["screen"] = top.scene_file_path.get_file().get_basename()
 	if top.is_inside_tree():
 		# The control that has the keyboard, so a browser test walks to a button by its name (a
