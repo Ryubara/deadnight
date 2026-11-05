@@ -129,7 +129,9 @@ func _exit_tree() -> void:
 	# frame later: the factor emits `size_changed`, and this screen's parts have left the tree.
 	var window := get_window()
 	if window != null and is_inside_tree():
-		get_tree().process_frame.connect(MenuScale.restore.bind(window), CONNECT_ONE_SHOT)
+		get_tree().process_frame.connect(
+			MenuShell.restore_scale_of.bind(get_tree()), CONNECT_ONE_SHOT
+		)
 
 
 func _ready() -> void:

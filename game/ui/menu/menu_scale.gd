@@ -40,13 +40,6 @@ static func pixels_per_unit(window_size: Vector2i, scale_factor: float) -> float
 	return base * scale_factor
 
 
-## Puts the menu's factor on a window the night had set to the interface size alone.
-static func restore(window: Window) -> void:
-	if is_instance_valid(window):
-		var ui_scale := float(Settings.get_value(SettingsService.UI_SCALE))
-		window.content_scale_factor = factor(window.size, ui_scale)
-
-
 ## CSS pixels in one design unit: what a person with a ruler measures. It differs from
 ## `pixels_per_unit` on a web page, whose canvas has more pixels than the page has CSS pixels.
 static func css_per_unit(window_size: Vector2i, scale_factor: float) -> float:
