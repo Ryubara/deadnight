@@ -1528,6 +1528,27 @@ transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 9.000,
 [node name="Player8" type="Marker3D" parent="PlayerSpawns"]
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 11.000, 0.000, 9.200)
 
+[node name="Player9" type="Marker3D" parent="PlayerSpawns"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 5.500, 0.000, 11.225)
+
+[node name="Player10" type="Marker3D" parent="PlayerSpawns"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 10.500, 0.000, 11.225)
+
+[node name="Player11" type="Marker3D" parent="PlayerSpawns"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 5.500, 0.000, 13.225)
+
+[node name="Player12" type="Marker3D" parent="PlayerSpawns"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 10.500, 0.000, 13.225)
+
+[node name="Player13" type="Marker3D" parent="PlayerSpawns"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 12.000, 0.000, 12.225)
+
+[node name="Player14" type="Marker3D" parent="PlayerSpawns"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 4.000, 0.000, 12.225)
+
+[node name="Player15" type="Marker3D" parent="PlayerSpawns"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 12.500, 0.000, 10.225)
+
 [node name="Lamp1" parent="Start" instance=ExtResource("lt_pendant_light")]
 transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 4.000, 0.000, 10.500)
 hang = 0.4
