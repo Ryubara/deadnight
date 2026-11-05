@@ -27,10 +27,10 @@ Each finger has one job until it lifts, tracked by its touch index, so move, loo
 | Shoulder swap (a person, an arrow each way) | small, on the arc round Fire, outside the middle of the screen | `swap_shoulder`: the camera moves to the other shoulder, to see round a corner |
 | Melee (a blade) | small, on the far right edge below Fire and above the ammo card (60 left, 310 up) | `quick_melee` (#588): a tap is one blow with whatever is in hand, at once; the server's 0.6 s cooldown holds a thumb that taps again and a finger that stays down is still one blow ([quick melee](weapons.md#quick-melee)) |
 | Bots (a wheel) | small, on the far right edge above Melee (60 left, 405 up) | `bot_wheel` (#642): **hold** it and the bot command wheel opens over the middle of the screen; **drag** from where the thumb landed toward Follow (up), Roam (down right) or Hold (down left) and let go to give that order; letting go in the middle, or a tap, gives none. The view does not turn while it is held ([bot wheel](../research/bot-wheel.md)) |
-| Ping (a pin) | small, top edge, right of Pause (538 right of the safe edge, 80 down) | `ping` (#642): a tap marks what the crosshair is on for the team, as Z, the middle mouse button and the pad's d-pad right do; the server's one mark a second per player holds a thumb that taps again |
+| Ping (a pin) | small, straight under Pause, 56 CSS px (9 mm and a little) from its centre or more, with 2 mm of air between the rims (`TouchLayout.ping_drop`, #1289; it was beside Pause, 27 CSS px away) | `ping` (#642): a tap marks what the crosshair is on for the team, as Z, the middle mouse button and the pad's d-pad right do; the server's one mark a second per player holds a thumb that taps again |
 | Interact | one thumb-length left of Fire, only with a HUD prompt | `interact`; a tap mark over its word, which says what it does (OPEN, BUY, HOLD for a broken fence, which keeps nailing boards while held, FUEL, SWITCH, TAKE, REVIVE) ([hold at a broken fence](rounds.md#the-fences-boards)) |
 | Pause | top, beside the round card (two bars) | `pause` |
-| Scoreboard | under Pause (rows of a table) | `scoreboard` while a finger is on it |
+| Scoreboard | right of Pause, the same length from it as Ping is (rows of a table); the players' column takes it over in #1287 | `scoreboard` while a finger is on it |
 
 **Every control shows an icon and no words** (`TouchIcons`, drawn in code, no file). The one word left is the interact
 button's verb: it is a different thing nine ways (OPEN, BUY, AMMO, PLAY, TAKE, FUEL, HOLD, SWITCH, REVIVE) at a different
@@ -68,9 +68,13 @@ tested against. The stick's resting ring is 60 units higher so it clears the pla
 ## First run and key hints
 
 - **No keycap on a phone.** `UIInputMode.touch` is true while a finger was the last input (and when the layer comes up
-  with nothing else used yet); the prompt card's glyph then draws a round tap mark (rings round a dot) and no letter
-  ([HUD prompt](hud.md)). A key or a gamepad button brings the keycap back, and so does a real mouse click; mouse
-  *motion* does not, because the layer sends its look as motion, and the engine's touch copies are marked as emulated.
+  with nothing else used yet); wherever a glyph is drawn then it is a round tap mark (rings round a dot) and no letter.
+  The night's prompt card has no glyph at all while the touch layer is up (`HudPrompt.touch_layout`, #1275): the Interact
+  button is the control and says the verb, so a key or a mark on the card pointed at nothing and held 64 units of the
+  words' room. A key or a gamepad button brings the keycap back where there is no touch layer, and so does a real mouse
+  click; mouse *motion* does not, because the layer sends its look as motion, and the engine's touch copies are marked
+  as emulated. The health card likewise drops `GRENADES xN` (the strip's grenade place counts them). What each other
+  control does and why is [the phone audit](touch-audit.md).
 - **Hints once per control** (`TouchHints`, a child of the layer): "DRAG TO MOVE" over the stick's resting ring, "DRAG TO
   LOOK" in the look area and "TAP TO USE" ("HOLD TO REPAIR" at a fence) beside the Interact button while it shows. Each
   goes the moment its control is used: a finger on the stick, the first look drag (also one that started on Fire), a

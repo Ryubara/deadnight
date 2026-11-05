@@ -336,6 +336,44 @@ around", and "All of the mobile touch controls icons must be icons instead".
 - **Not measurable without a hand.** Whether 12 mm is comfortable for every hand (small hands, a case, a tablet) is a
   real-device question; the numbers above are from the layout and the 6 CSS px per mm of a 460 ppi phone.
 
+## The audit (#1275)
+
+The maintainer (2026-11-05): "we're not prioritizing a unique set of touch controls for our game, we're still
+treating the users as if they're playing the desktop version but just with touch controls", and "stuff that touch
+players can be taking advantage of on existing components without adding too many bloat controls (basically
+duplicates)". The table of every action and every element, with a verdict each, is
+[the phone audit](../design/touch-audit.md); this is what it rests on.
+
+- **What phone shooters do (design only, nothing copied).** Call of Duty: Mobile's own guide numbers 23 elements in its
+  multiplayer HUD, gives the player a layout editor for "the size and opacity of everything on-screen", and shows the
+  knife only when it applies: "When an enemy gets within striking distance, a big knife icon will appear here"
+  ([Activision, Getting a Grip on the Call of Duty: Mobile Controls, 2019](https://blog.activision.com/call-of-duty/2019-10/Getting-a-Grip-on-the-Call-of-Duty-Mobile-Controls)).
+  A context-only melee is therefore the precedent for Strike, and it is what the game's own Interact button already
+  does. A search summary of a TechRadar review of Apex Legends Mobile says its touch layout is crowded and that pings
+  sometimes fire when the player did not mean them (the page text could not be read here, so this is *unverified*):
+  enough to keep Ping a deliberate button and out of the look surface.
+- **Three rules came out of the review of this game's screen.** One thumb, one job at a time (the right thumb holds Fire
+  and looks, so only what a fight needs is under it). A touch goes to the element that already shows the thing before
+  a control is added (the weapon strip for weapons and grenades, #1284; the players' column for the scoreboard; a tag
+  for the bots' order). A control that shows only when it applies costs no screen the rest of the time (Interact,
+  Strike).
+- **Findings in the code, by what a phone assumed a keyboard for.** The bot order showed for two seconds in the feed
+  and nowhere else (a wheel can be driven blind, a cycle cannot be read blind: the tag shows the state). The Controls
+  tab of Settings holds the phone's own look sensitivity under "Mouse sensitivity". The prompt card kept a 48 unit key
+  and a 16 unit gap for a mark that pointed at nothing, in a card that is 64 units short of room for the words on a
+  phone. The health card said `GRENADES x3` and the strip beside the weapons said `x3`.
+- **Built in the audit's own pull request:** the prompt card without a key while the touch layer is up
+  (`HudPrompt.touch_layout`; a capture from a script is not in touch mode, so it followed "a finger was the last input"
+  and could show "E"), the health card without the grenade count, and bot order notices that say the bots' state
+  rather than a line that reads as an order to the player (`BOTS: HOLD HERE` became `BOTS: HOLDING POSITION`).
+- **Markers.** At 667 x 375 and an interface size of 1.0 the screen held eight markers before two met, six with the
+  Interact button up. With only the ring, Reload and Pause on the glass it holds ten or more either way, and at 1.25
+  it goes from 3 to 5 (three diamonds) and 4 to 7 (one). Measured with the helpers of `test_hud_marker_cards.gd`; the
+  table is in the audit page. The remaining limit at 1.25 is the cards, not the buttons.
+- **Not proved.** Comfort of Strike's place (21 mm from Fire) on a real hand; the double tap against a thumb's own
+  taps; the tag's tap against the stick's zone. Each is in the issue that builds it with a test that sends real touches
+  to the real page.
+
 ## Tap targets in a night (#1192)
 
 A phone's page is 844 x 390 CSS px with a pixel ratio of 2 (the page caps it, `PhoneRender`), so the engine's window is
@@ -492,6 +530,43 @@ the HUD is the phone's weapon control; the Swap and Grenade buttons are gone fro
 - **Not done here:** a first-run hint for the places (the hints label the stick, the look and Interact only); a cancel
   for a cooking grenade (the throw's other action `toss_grenade` has no touch control either).
 
+## Ping under Pause, a thumb apart (#1289)
+
+On the top edge Pause and Ping were 27 CSS px apart at the usual interface size (96 units, 0.36 CSS px a unit), a
+thumb's width: a tap meant for one could pause the night. Ping stays one small button (the phone audit keeps it: the
+one verb no element on screen already shows) and gets the room two controls need.
+
+- **Where.** Straight under Pause, in the same column. How far is a length on the glass, so it is computed from the
+  fingertip (`TouchLayout.ping_drop`, the units of 44 CSS px, `MenuScale.tap_units`): the most of 56 CSS px (9 mm at
+  6 CSS px a millimetre, and a little over), both hit areas with 6 CSS px between them, and 150 units where no fingertip
+  is known (a desktop, a test). A fixed number of units cannot do it: a unit is 0.29 CSS px at 0.8 and 0.45 at 1.25, so
+  a length that is 9 mm at one interface size is 7 or 11 mm at the others.
+- **The Scoreboard button** stood under Pause. #1287 takes it away (the players' column holds the board); until it
+  lands it stands right of Pause, the same length from it, so it is reachable and clear of Ping (the three hit areas
+  share no margin). Its place goes with #1287.
+- **The stick's zone** starts below the bottom of Ping's hit area (`TouchLayout.stick_zone(safe, mirrored, below)`,
+  `TouchControls._stick_zone`) where that is lower than the fifth of the height it always began at (0.8 on an 844 page:
+  81 units, 23 CSS px, lower): a thumb that starts the stick never lands on the button above it.
+- **The move hint** (`TouchHints`) is put through the same search for a free place as the look hint, and the search
+  reads the layer's own circles (with the fingertip rule) instead of laying the buttons out again: on a short canvas
+  (864 units) Ping's circle reached the hint's pill.
+- **Measured in the exported page** (`tools/web_smoke/touch_ping_place.py`, real touches through the DevTools
+  protocol, a solo night, `?touch=1`, ratio 2): the centres are 56.1 to 56.3 CSS px apart at 0.8 and 1.0 and 65.1 to
+  67.7 at 1.25 (the 66 unit hit area floor of every small button is wider than the fingertip there), the hit areas have
+  7.8 to 12.1 CSS px between them, and a finger walked down the line from just under Pause to below Ping, every 4 CSS px,
+  holds Ping inside its hit area and nothing in the gap and never pauses; a finger on the edge of Pause that faces Ping
+  pauses the night and holds no Ping. Nine runs (844 x 390 and 667 x 375, both hands, interface sizes 0.8, 1.0 and
+  1.25), no problem. `test_touch_ping_place` holds the layout (distance, air, top edge, clear of the HUD's parts and the
+  popup lane, the stick zone) at every page, interface size, touch size and hand, and the real touches at the edges.
+- **Marker capacity** (`test_hud_marker_cards.gd`'s procedure, one marker on each card, the most of 1 to 10 that none
+  meet each other, a card or a button), the 667 x 375 page, with Ping at its old place and its new one: the same at every
+  row, the right side of the screen being what bounds it. 0.8: 10+ for 3 and 1 diamonds, Interact up or not. 1.0: 3
+  diamonds 6 (6 with Interact up), 1 diamond 10+. 1.25: 3 diamonds 3 (3), 1 diamond 5 (4). On the 844 x 390 page one
+  row moved: at 1.25 with 3 diamonds the page held 10+ and holds 8 (with Interact up, 10+ as before); the test's own
+  count there is eight (`EIGHT`), so it still passes. The numbers in the audit page's table
+  (docs/design/touch-audit.md, #1291) are the 667 rows of this list; its "today" row for 1.0 with 3 diamonds, 8, was
+  taken before the weapon strip (#1284), which made it 6.
+
 ## Sources
 
 - [Apple HIG, Layout](https://developer.apple.com/design/human-interface-guidelines/layout)
@@ -501,6 +576,8 @@ the HUD is the phone's weapon control; the Swap and Grenade buttons are gone fro
 - [Cursa, Touch controls for mobile games](https://cursa.app/en/page/touch-controls-for-mobile-games-input-patterns-and-feedback)
 - [GGRecon, Call of Duty: Mobile settings guide](https://www.ggrecon.com/guides/best-call-of-duty-mobile-season-9-settings-guide/)
 - [Pistol Arena, mobile controls](https://pistol-arena.pages.dev/controls/mobile/)
+- [Activision, Getting a Grip on the Call of Duty: Mobile Controls (2019)](https://blog.activision.com/call-of-duty/2019-10/Getting-a-Grip-on-the-Call-of-Duty-Mobile-Controls)
+- [TechRadar, Apex Legends Mobile has learned a great lesson from Call of Duty Mobile][techradar] (summary only)
 - MDN: [`touch-action`](https://developer.mozilla.org/en-US/docs/Web/CSS/touch-action),
   [`overscroll-behavior`](https://developer.mozilla.org/en-US/docs/Web/CSS/overscroll-behavior),
   [`env()`](https://developer.mozilla.org/en-US/docs/Web/CSS/env),
@@ -511,3 +588,5 @@ the HUD is the phone's weapon control; the Swap and Grenade buttons are gone fro
   [Exporting for the Web](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html)
 - Discord: [Embedded App SDK](https://docs.discord.com/developers/developer-tools/embedded-app-sdk),
   [Activities, mobile guide](https://docs.discord.com/developers/activities/development-guides/mobile.md)
+
+[techradar]: https://techradar.com/au/news/apex-legends-mobile-has-learned-a-great-lesson-from-call-of-duty-mobile
