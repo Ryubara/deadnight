@@ -21,8 +21,12 @@ then the charts; `--compare <folder>` draws a before and after).
   thread and so sets the time) took 40 s as a whole suite in CI; it took 1 min 53 s when it ran the batch twice, one
   cell after another ("about 30 s" was never true there). The cells now run on worker threads (`WorkerThreadPool`),
   each with its own copy of the tuning, and the shipped batch is run once in `before()`. Nights are node-free
-  `RefCounted` objects, so the only shared state is the weapon cache, filled first by `SimWeapons.warm()`; a test pins
-  that threaded cells equal serial ones.
+  `RefCounted` objects, but they do reach shared state that fills itself on first use (the weapon cache, the maps'
+  table `MapRegistry._maps`, the element definitions, the zombie tuning's first load); two workers doing that together
+  killed the engine silently in 4 of 7 runs of the pace suite (#1149). `ShippedCells.warm` therefore plays one night
+  of every cell on the calling thread first (0.6 s of 29), and `test_shipped_cells_workers.gd` runs the cells in a cold
+  child Godot and fails when a worker is the first to load any project file; a test pins that threaded cells equal
+  serial ones.
 - **Determinism.** Same seed, same night, on every run (tested). A batch is therefore reproducible, and a
   CI range that passes once passes always; only a change to the rules, the tuning or the model moves it.
 - **A fixed player is a cliff.** With one fixed skill per level, every night of a cell ended in the same

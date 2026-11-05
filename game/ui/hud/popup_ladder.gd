@@ -29,35 +29,8 @@ const CAPTIONS := {
 const PLATE_SLOTS: Array[StringName] = [
 	&"calling_cards", &"emblem", &"tier_card", &"tier_emblem", &"plate_frame"
 ]
-## The names that are not their id read aloud.
-const NAMES := {
-	&"ushers_cap": "Usher's cap",
-	&"ushers_jacket": "Usher's jacket",
-	&"projectionists_visor": "Projectionist's visor",
-	&"rolled_sleeves": "Rolled sleeves",
-	&"press_lanyard": "Press lanyard",
-}
-## The cloth colours of the wardrobe (`parts.json`, `palettes.cloth`) as a swatch.
-const COLOURS := {
-	&"black": Color("1c1b1f"),
-	&"cream": Color("e9dfc3"),
-	&"grey": Color("8c8c8c"),
-	&"charcoal": Color("3b3d42"),
-	&"olive": Color("6b6b33"),
-	&"green": Color("3f7a3a"),
-	&"red": Color("c0392b"),
-	&"cherry": Color("9c1c3a"),
-	&"blue": Color("2f5fa8"),
-	&"denim": Color("40608a"),
-	&"mustard": Color("d1a21f"),
-	&"gold": Color("e0b43a"),
-	&"tan": Color("c5a572"),
-	&"brown": Color("7a4a2b"),
-	&"teal": Color("2a8c8c"),
-	&"pink": Color("e58fb0"),
-}
-## The chip of an item that has no swatch (until the wardrobe has thumbnails): a plain dark chip
-## with the first letter of its slot.
+## The chip of an item the wardrobe has no thumbnail for (a plate item whose art is not drawn): a
+## plain dark chip with the first letter of its slot.
 const CHIP_FALLBACK := Color("2b2740")
 
 
@@ -66,25 +39,15 @@ static func caption_of(slot: StringName) -> String:
 	return CAPTIONS.get(slot, "NEW ITEM")
 
 
-## An item's name as a person reads it: its id with spaces, a capital, and the few with an
-## apostrophe as written.
-static func name_of(item: StringName) -> String:
-	if NAMES.has(item):
-		return NAMES[item]
-	var words := String(item).replace("_", " ")
-	return words.substr(0, 1).to_upper() + words.substr(1)
+## An item's name as the wardrobe writes it (`LadderItem`: the part registry's label, the palette's,
+## the map's), or its id spelled out for an item the wardrobe does not hold.
+static func name_of(slot: StringName, item: StringName) -> String:
+	return LadderItem.of(slot, item)["name"]
 
 
 ## The cue an unlock sounds: the rustle for a card, an emblem or a frame, the bell for the rest.
 static func cue_of(slot: StringName) -> StringName:
 	return &"card_earned" if PLATE_SLOTS.has(slot) else &"unlock"
-
-
-## The swatch of a colour item, or null when the slot has no colour to show.
-static func swatch_of(slot: StringName, item: StringName) -> Variant:
-	if slot == &"colour" and COLOURS.has(item):
-		return COLOURS[item]
-	return null
 
 
 ## The letter on the chip of an item without a swatch.

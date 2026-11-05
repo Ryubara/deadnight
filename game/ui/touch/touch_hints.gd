@@ -37,9 +37,15 @@ const ICON_WIDTH := 64.0
 const ICON_GAP := 14.0
 ## Distance from the stick ring, and from the interact button, to the label.
 const GAP := 26.0
-## Where the look hint sits in the safe rectangle (share of its width and height) for a right
-## hand; a left hand has it flipped.
-const LOOK_AT := Vector2(0.58, 0.24)
+## Where the look hint sits down the safe rectangle (share of its height, its middle).
+const LOOK_AT_Y := 0.24
+## The look hint stands beside the column of the HUD's popup lane (cards in the middle of the
+## screen, `PopupCard.WIDTH` wide), the look area's side of it, so a level up that comes while the
+## hint is up covers neither (#1132): the hint is read, and so are the cards.
+const LANE_HALF := PopupCard.WIDTH * 0.5
+## The look hint goes down by this much at a time, and keeps this far from a button, canvas units.
+const SEARCH_STEP := 8.0
+const BUTTON_CLEAR := 8.0
 const FADE_IN := 0.35
 const FADE_OUT := 0.25
 const PULSE_PERIOD := 1.6
@@ -142,11 +148,14 @@ func rect_of(id: StringName) -> Rect2:
 		MOVE:
 			var rest := TouchLayout.stick_rest(safe, scale_value, mirrored)
 			var top := rest.y - TouchLayout.STICK_RADIUS * scale_value - GAP
-			return Rect2(Vector2(rest.x - size.x * 0.5, top - size.y), size)
+			return Rect2(
+				Vector2(_off_the_lane(rest.x - size.x * 0.5, size.x, safe), top - size.y), size
+			)
 		LOOK:
-			var share := Vector2(1.0 - LOOK_AT.x if mirrored else LOOK_AT.x, LOOK_AT.y)
-			var at := safe.position + safe.size * share
-			return Rect2(at - size * 0.5, size)
+			var middle := safe.get_center().x
+			var left := middle - LANE_HALF - GAP - size.x if mirrored else middle + LANE_HALF + GAP
+			var top := safe.position.y + safe.size.y * LOOK_AT_Y - size.y * 0.5
+			return _below_the_buttons(Rect2(Vector2(left, top), size), safe)
 		INTERACT:
 			var circle := controls.button_circle(TouchLayout.INTERACT)
 			var centre: Vector2 = circle[&"centre"]
@@ -154,6 +163,39 @@ func rect_of(id: StringName) -> Rect2:
 			var left: float = centre.x + beside if mirrored else centre.x - beside - size.x
 			return Rect2(Vector2(left, centre.y - size.y * 0.5), size)
 	return Rect2()
+
+
+## The left edge of a hint `width` wide that would have its left edge at `left`, moved sideways off
+## the popup lane's column (a small canvas puts the stick's hint under it) and kept in the safe
+## area.
+func _off_the_lane(left: float, width: float, safe: Rect2) -> float:
+	var middle := safe.get_center().x
+	var lane := Rect2(
+		middle - LANE_HALF - GAP, safe.position.y, (LANE_HALF + GAP) * 2.0, safe.size.y
+	)
+	if left + width <= lane.position.x or left >= lane.end.x:
+		return left
+	if controls.left_handed:
+		return maxf(lane.end.x, safe.position.x)
+	return minf(lane.position.x - width, safe.end.x - width)
+
+
+## `rect` moved down, a step at a time, until no touch button is under it: on a short screen the
+## buttons climb up to the look hint's place beside the lane.
+func _below_the_buttons(rect: Rect2, safe: Rect2) -> Rect2:
+	var circles := TouchLayout.buttons(safe, controls.touch_scale, controls.left_handed)
+	var moved := rect
+	while moved.end.y <= safe.end.y:
+		var clear := true
+		for button: StringName in circles:
+			var centre: Vector2 = circles[button][&"centre"]
+			var reach := float(circles[button][&"radius"]) + BUTTON_CLEAR
+			if centre.clamp(moved.position, moved.end).distance_to(centre) <= reach:
+				clear = false
+		if clear:
+			return moved
+		moved.position.y += SEARCH_STEP
+	return rect
 
 
 func _process(delta: float) -> void:

@@ -37,6 +37,11 @@ const SCRIM_ALPHA := 0.6
 const CHROME_HEIGHT := 190.0
 ## A row of the local player is laid on a faint wash of the accent.
 const LOCAL_WASH := 0.14
+## The smallest the countdown's numerals go when the left column is full (the title and the report
+## take their room first); a short screen with the fullest report is the one that needs it.
+const NUMBER_FLOOR := 48
+## What the countdown's size steps down by.
+const NUMBER_STEP := 4
 
 ## What the board says, for tests and tools.
 var title_text := ""
@@ -131,6 +136,7 @@ func _build_left() -> Control:
 	_round_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	left.add_child(_round_label)
 	_title.minimum_size_changed.connect(_fit_report)
+	_title.resized.connect(_fit_title)
 	report_card.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	left.add_child(report_card)
 	var spacer := Control.new()
@@ -190,18 +196,48 @@ func show_credits(input: Dictionary) -> void:
 
 
 ## The height the report's ticket has: what the screen leaves besides the rest of the left column
-## (the title wraps on a narrow screen, so it is read as it is laid out).
+## (read as it is laid out: the title's type fits one line, the countdown's type steps down).
 func report_room() -> float:
-	var taken := 0.0
+	# A gap of the column lies between every two of its seven parts (the spacer is one).
+	var taken := float(HudStyle.SM)
 	for part: Control in [_title, _round_label, _caption, _number, leave_button]:
 		taken += part.get_combined_minimum_size().y + float(HudStyle.SM)
 	var margins := float(HudStyle.margin()) * 2.0 + _insets.y + _insets.w
 	return size.y - margins - taken
 
 
+## The title on one line: its type steps down from `HudStyle.BIG` until the text fits the column's
+## width (a wrapped title costs a second line of the left column, and Leave is its last part).
+func _fit_title() -> void:
+	if _title.size.x <= 0.0:
+		return
+	HudStyle.set_fitted(_title, TITLE, HudStyle.BIG, _title.size.x - float(HudStyle.SM))
+
+
+## Gives the report the room the left column has, and the countdown's numerals what the report
+## cannot give up: the rows go to their floor first, the numerals after, so Leave stays on screen.
 func _fit_report() -> void:
-	if not _report.is_empty():
-		report_card.show_report(_report, report_room() if size.y > 0.0 else INF)
+	if _report.is_empty():
+		return
+	if size.y <= 0.0:
+		report_card.show_report(_report)
+		return
+	_set_number_size(HudStyle.NUMERAL)
+	report_card.show_report(_report, report_room())
+	var over := report_card.height() - report_room()
+	if over > 0.0:
+		var font := _number.get_theme_font(&"font")
+		var allowed := font.get_height(HudStyle.NUMERAL) - over
+		var size_px := HudStyle.NUMERAL
+		while size_px > NUMBER_FLOOR and font.get_height(size_px) > allowed:
+			size_px -= NUMBER_STEP
+		_set_number_size(size_px)
+		report_card.show_report(_report, report_room())
+
+
+func _set_number_size(size_px: int) -> void:
+	if _number.get_theme_font_size(&"font_size") != size_px:
+		_number.add_theme_font_size_override(&"font_size", size_px)
 
 
 ## The seconds the server says are left; the board counts the end by them. Negative (the clock has

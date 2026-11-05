@@ -5,8 +5,8 @@ extends RefCounted
 ## `[skill, players]` or `[skill, players, count_multiplier]`; its key is "average:4" or
 ## "average:4:x2".
 ## Cells run one per worker thread; each has its own copy of the tuning and its own seeded nights,
-## and the weapon cache is filled before the threads start, so the result is what one after another
-## would give.
+## and one night of every cell is played on this thread first (`warm`), so what the nights load is
+## loaded before the threads start and the result is what one after another would give.
 
 const NIGHTS := 60
 const SEED := 4000
@@ -36,33 +36,9 @@ static func get_cells(specs: Array) -> Dictionary:
 
 static func _run(specs: Array) -> void:
 	var began := Time.get_ticks_msec()
-	SimWeapons.warm()
-	var tunings: Array[RulesTuning] = []
-	for _i in specs.size():
-		tunings.append(RulesFixture.tuning())
-	var results: Array[Dictionary] = []
-	results.resize(specs.size())
-	var run := func(index: int) -> void:
-		var spec: Array = specs[index]
-		var settings: MatchSettings = null
-		if spec.size() > 2:
-			settings = MatchSettings.new()
-			settings.count_multiplier = float(spec[2])
-		results[index] = BalanceBatch.run_cell(
-			tunings[index],
-			StringName(spec[0]),
-			spec[1],
-			NIGHTS,
-			SEED,
-			BalanceBatch.DEFAULT_STEP,
-			BalanceBatch.DEFAULT_MAX_ROUNDS,
-			[],
-			0.0,
-			{},
-			settings
-		)
-	var task := WorkerThreadPool.add_group_task(run, specs.size(), -1, true, "shipped cells")
-	WorkerThreadPool.wait_for_group_task_completion(task)
+	warm(specs)
+	var warmed := Time.get_ticks_msec()
+	var results := play(specs, NIGHTS)
 	for index in specs.size():
 		_done[key_of(specs[index])] = results[index]
 	var keys: Array[String] = []
@@ -70,7 +46,59 @@ static func _run(specs: Array) -> void:
 		keys.append(key_of(spec))
 	print(
 		(
-			"ShippedCells: %d cells of %d nights in %.1f s (%s)"
-			% [specs.size(), NIGHTS, (Time.get_ticks_msec() - began) / 1000.0, ", ".join(keys)]
+			"ShippedCells: %d cells of %d nights in %.1f s, %.1f s of it warming (%s)"
+			% [
+				specs.size(),
+				NIGHTS,
+				(Time.get_ticks_msec() - began) / 1000.0,
+				(warmed - began) / 1000.0,
+				", ".join(keys)
+			]
 		)
+	)
+
+
+## What a night loads or fills the first time it is asked for (the weapon definitions, the maps'
+## table, the zombie tuning, the scripts and enums a rule reaches) is not safe to start from several
+## threads at once: two workers filling the maps' table, or loading the tuning, together crashed
+## the engine (#1149). So one night of every cell is played here, on this thread, before `play`
+## starts the workers; from then on they only read.
+static func warm(specs: Array) -> void:
+	SimWeapons.warm()
+	for spec: Array in specs:
+		cell(spec, RulesFixture.tuning(), 1)
+
+
+## The cells of `specs`, `nights` nights each, one per worker thread, each with a tuning of its own;
+## `warm` first.
+static func play(specs: Array, nights: int) -> Array[Dictionary]:
+	var tunings: Array[RulesTuning] = []
+	for _i in specs.size():
+		tunings.append(RulesFixture.tuning())
+	var results: Array[Dictionary] = []
+	results.resize(specs.size())
+	var run := func(index: int) -> void: results[index] = cell(specs[index], tunings[index], nights)
+	var task := WorkerThreadPool.add_group_task(run, specs.size(), -1, true, "shipped cells")
+	WorkerThreadPool.wait_for_group_task_completion(task)
+	return results
+
+
+## One cell of `nights` nights of `spec` for `tuning`.
+static func cell(spec: Array, tuning: RulesTuning, nights: int) -> Dictionary:
+	var settings: MatchSettings = null
+	if spec.size() > 2:
+		settings = MatchSettings.new()
+		settings.count_multiplier = float(spec[2])
+	return BalanceBatch.run_cell(
+		tuning,
+		StringName(spec[0]),
+		spec[1],
+		nights,
+		SEED,
+		BalanceBatch.DEFAULT_STEP,
+		BalanceBatch.DEFAULT_MAX_ROUNDS,
+		[],
+		0.0,
+		{},
+		settings
 	)
