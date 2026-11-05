@@ -326,8 +326,9 @@ around", and "All of the mobile touch controls icons must be icons instead".
   orders, Ping a pin, Pause two bars, Scoreboard the rows of a table. **Interact keeps its word** under a tap mark:
   OPEN, BUY, AMMO, PLAY, TAKE, FUEL, HOLD, SWITCH, REVIVE are nine different things at different prices that a
   picture would have to teach one by one, and the prompt card above names the object.
-- **What waits for a home.** Swap and the Grenade (#1280), Shoulder, Melee and the Bots stay reachable where they were
-  (Swap and Shoulder moved a little so Interact has room) until the audit's homes are built (#1275); they look when
+- **What waits for a home.** (Swap and the Grenade have theirs since #1280, the HUD's weapon strip below.)
+  Shoulder, Melee and the Bots stay reachable where they were (Swap and Shoulder moved a little so Interact has
+  room) until the audit's homes are built (#1275); they look when
   dragged too, except the Bots.
 - **Interact is out of the markers' way until it shows.** `button_boxes` listed the hidden Interact, and at its new
   place it took the column the world markers need between the cards and the buttons on the smallest page (344 units
@@ -476,6 +477,14 @@ the HUD is the phone's weapon control; the Swap and Grenade buttons are gone fro
   now rests `EDGE_EPSILON` (0.05 units) past the card. (2) A window that is no phone's (a test's 64 pixels) asks
   `tap_units` for a fifth of the screen: the HUD takes a fingertip of at most 12 percent of its height and 160 units
   (`Hud.FINGER_SHARE_MAX`, `FINGER_UNITS_MAX`; a phone's is 11.3 percent and 153 at most), or the strip fills it.
+- **After #1283 (the ring round Fire, the icons).** The strip's places hold their size and clearance with the new right
+  side: the suite's clearance test runs over the ring's buttons (Crouch and Reload on the left of Fire), `TouchIcons` lost
+  its Swap and Grenade drawings with their rows, and the grenades' place looks while it drags like every right button
+  (`TouchControls`, `GRENADE`, as `looks_when_dragged` reads only the layer's own table).
+  One number moved: on the 667 x 375 page at the usual interface size, eight markers (one on every card) no longer all
+  clear each other, as the ring's buttons and the strip leave less free ground in the corner, so
+  `test_markers_one_on_each_card_keep_clear_of_the_cards_and_of_each_other` holds six there (`CROWDED_HOLDS`); every
+  marker still stays off every card and button.
 - **The stick's resting ring** (`TouchLayout.STICK_REST`, #1276's) now overlaps the top of the points card by about
   20 units: the column is a strip's height higher. It is a faint ring and the stick floats to wherever the thumb lands,
   and the move hint is placed from it (`TouchHints`), so moving it moved the hint over the round card and the scoreboard

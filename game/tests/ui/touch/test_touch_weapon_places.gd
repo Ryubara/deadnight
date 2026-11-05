@@ -177,7 +177,9 @@ func test_the_boxes_world_markers_keep_clear_of_hold_every_place() -> void:
 			. override_failure_message(str(zone[&"action"]))
 			. is_true()
 		)
-	assert_int(boxes.size()).is_equal(_fixture.controls.circles().size() + 3)
+	# The buttons that are drawn (Interact only with a prompt) and the three places.
+	var hidden := 1 if _fixture.controls.interact_verb() == "" else 0
+	assert_int(boxes.size()).is_equal(_fixture.controls.circles().size() - hidden + 3)
 
 
 func test_a_tap_on_a_weapon_presses_its_slot_and_never_fires_or_looks() -> void:

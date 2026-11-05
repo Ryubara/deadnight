@@ -31,6 +31,10 @@ const LARGEST_SCALE := 1.25
 const SMALLEST_HOLDS := 4
 ## The smallest page there is.
 const SMALLEST := Vector3(1334, 750, 1.25)
+## The same small phone at the usual interface size: with the weapon strip a fingertip high and the
+## right thumb's ring (#1280, #1277) it holds six markers, not eight, before two meet.
+const CROWDED := Vector3(1334, 750, 1.0)
+const CROWDED_HOLDS := 6
 ## The least size of words, CSS px: what the issue and the written floor say.
 const FLOOR_CSS := 14.0
 
@@ -448,6 +452,8 @@ func test_markers_one_on_each_card_keep_clear_of_the_cards_and_of_each_other() -
 			var largest := ui_scale == LARGEST_SCALE
 			var smallest := Vector3(page.x, page.y, ui_scale) == SMALLEST
 			var count := SMALLEST_HOLDS if smallest else EIGHT
+			if Vector3(page.x, page.y, ui_scale) == CROWDED:
+				count = CROWDED_HOLDS
 			for mirrored in [false, true]:
 				var fixture := _busy_hud(canvas, insets, mirrored, true)
 				await _show_centre_cards(fixture)
