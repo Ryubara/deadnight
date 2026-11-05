@@ -18,6 +18,9 @@
     {"id": "f_headliner_hunter", "text": "Bring down 100 headliners", "stat": "kills:boss", "target": 100, "grants": ["card:headliner_hunter", "emblem:headliner_hunter"]},
     {"id": "f_long_run", "text": "Reach round 30", "stat": "round", "mode": "night", "target": 30, "grants": ["card:long_run", "emblem:long_run"]},
     {"id": "f_house_regular", "text": "Play 250 nights", "stat": "nights", "target": 250, "grants": ["card:house_regular", "emblem:house_regular"]},
+    {"id": "f_filmstrip", "text": "Reach round 20", "stat": "round", "mode": "night", "target": 20, "grants": ["frame:filmstrip"]},
+    {"id": "f_velvet_rope", "text": "Get 25 teammates back on their feet", "stat": "revives", "target": 25, "grants": ["frame:velvet_rope"]},
+    {"id": "f_searchlight", "text": "Play 100 nights", "stat": "nights", "target": 100, "grants": ["frame:searchlight"]},
     {"id": "f_big_take", "text": "Take in 1,000,000 points", "stat": "points_earned", "target": 1000000, "grants": ["card:the_big_take", "emblem:the_big_take"]},
     {
       "id": "f_full_rack",

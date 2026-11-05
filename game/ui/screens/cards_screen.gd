@@ -1,10 +1,11 @@
 class_name CardsScreen
 extends UIScreen
-## The calling cards and emblems of the player's plate: what they wear (the card behind their box
-## and the emblem after their name, for every client), what else they own, and what is still to
-## earn with how to earn it (the level, or the challenge itself). A tile pressed puts the piece on;
-## a piece not earned shakes and says what it takes. What is worn is the profile's `equipped`
-## (`ProfileStore.equip`) and goes to the account (`PlateEquip`).
+## The calling cards, emblems and frames of the player's plate: what they wear (the card behind
+## their box, the emblem after their name and the frame round the box, for every client), what else
+## they own, and what is still to earn with how to earn it (the level, or the challenge itself). A
+## tab each for the three kinds (#1071); a tab shows its page when it is pressed. A tile pressed
+## puts the piece on; a piece not earned shakes and says what it takes. What is worn is the
+## profile's `equipped` (`ProfileStore.equip`) and goes to the account (`PlateEquip`).
 ##
 ## `params` (a test or a capture sets them): `path` the profile file, `account` a Callable
 ## answering whether there is an account (`TogetherApi.signed_in`).
@@ -13,6 +14,12 @@ extends UIScreen
 const PREVIEW_WIDTH := 330.0
 const TILE_CARD_WIDTH := 240.0
 const TILE_EMBLEM := 64.0
+## A frame's swatch: a plate with the frame round it.
+const TILE_FRAME := Vector2(160.0, 56.0)
+## The tabs, in order, and their words.
+const TAB_WORDS := {
+	PlateCatalog.CARD: "Calling cards", PlateCatalog.EMBLEM: "Emblems", PlateCatalog.FRAME: "Frames"
+}
 ## At or below this width the screen is a phone's: one column of cards, three of emblems.
 const PHONE_WIDTH := 960.0
 ## Below this height the screen is a short one: a phone held sideways.
@@ -24,10 +31,14 @@ var back_button: UIButton
 var _catalog := PlateCatalog.shipped()
 var _preview_card: CardArt
 var _preview_emblem: EmblemArt
+var _preview_frame: FrameArt
 var _note: Label
 var _tiles: Array[PlateTile] = []
-var _card_grid: GridContainer
-var _emblem_grid: GridContainer
+## Kind -> the grid of its tiles, and the tab that shows it.
+var _grids: Dictionary = {}
+var _tab_buttons: Dictionary = {}
+var _tab: StringName = PlateCatalog.CARD
+var _phone := false
 var _done: Array[StringName] = []
 
 
@@ -38,6 +49,7 @@ func _ready() -> void:
 	store = ProfileStore.open(path, account)
 	_done = store.profile.done.duplicate()
 	var phone := get_viewport_rect().size.x <= PHONE_WIDTH
+	_phone = phone
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
@@ -71,12 +83,15 @@ func _ready() -> void:
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list.add_theme_constant_override(&"separation", _tokens.space_sm)
 	scroll.add_child(list)
-	list.add_child(_label("CALLING CARDS", UILabel.Style.OVERLINE))
-	_card_grid = _grid(1 if phone else 2)
-	list.add_child(_card_grid)
-	list.add_child(_label("EMBLEMS", UILabel.Style.OVERLINE))
-	_emblem_grid = _grid(3 if phone else 4)
-	list.add_child(_emblem_grid)
+	_grids = {
+		PlateCatalog.CARD: _grid(1 if phone else 2),
+		PlateCatalog.EMBLEM: _grid(3 if phone else 4),
+		PlateCatalog.FRAME: _grid(2 if phone else 3),
+	}
+	for kind in PlateCatalog.KINDS:
+		list.add_child(_grids[kind])
+	card.add_child(_tab_row())
+	card.move_child(card.get_child(card.get_child_count() - 1), _note.get_index() + 1)
 	back_button = UIButton.new()
 	back_button.name = "Back"
 	back_button.text = "Back"
@@ -87,6 +102,7 @@ func _ready() -> void:
 		get_viewport_rect().size.x - 4.0 * _tokens.space_lg,
 		(TILE_CARD_WIDTH * 2.0 + 140.0) if not phone else TILE_CARD_WIDTH + 200.0
 	)
+	_show_tab(PlateCatalog.CARD)
 	_rebuild()
 	initial_focus = get_path_to(back_button)
 	_read_account()
@@ -122,9 +138,23 @@ func note_text() -> String:
 	return _note.text
 
 
-## The card and emblem on show in the preview, for tests.
+## The card, emblem and frame on show in the preview, for tests.
 func previewed() -> Dictionary:
-	return {"card": _preview_card.card_id, "emblem": _preview_emblem.emblem_id}
+	return {
+		"card": _preview_card.card_id,
+		"emblem": _preview_emblem.emblem_id,
+		"frame": _preview_frame.frame_id,
+	}
+
+
+## The kind whose tiles are on show, for tests.
+func shown_tab() -> StringName:
+	return _tab
+
+
+## Shows the page of `kind` (what pressing its tab does).
+func show_tab(kind: StringName) -> void:
+	_show_tab(kind)
 
 
 ## Wears `id` of `kind` (`&""` for none) if the player owns it; a piece not earned shakes the tile
@@ -158,11 +188,48 @@ func _preview_row(share := 1.0) -> Control:
 		Vector2(PREVIEW_WIDTH, PREVIEW_WIDTH * 120.0 / 440.0) * share
 	)
 	row.add_child(_preview_card)
+	# The frame runs round the card, outside it so it never covers the printed title, and the row
+	# keeps that room clear.
+	var room := ceilf(PlateFrames.width_for(_preview_card.custom_minimum_size.y) * 3.0) + 2.0
+	_preview_frame = FrameArt.new()
+	_preview_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_preview_frame.grow = Vector2.ONE * room
+	_preview_card.add_child(_preview_frame)
 	_preview_emblem = EmblemArt.new()
 	_preview_emblem.custom_minimum_size = Vector2.ONE * TILE_EMBLEM * share
 	_preview_emblem.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_preview_emblem)
+	var margin := MarginContainer.new()
+	margin.name = "Preview"
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, int(room))
+	margin.add_child(row)
+	return margin
+
+
+## The tabs: one button for each kind, the one on show lit.
+func _tab_row() -> Control:
+	var row := HBoxContainer.new()
+	row.name = "Tabs"
+	row.add_theme_constant_override(&"separation", _tokens.space_sm)
+	for kind in PlateCatalog.KINDS:
+		var button := UIButton.new()
+		button.name = "Tab" + String(kind).capitalize()
+		button.text = TAB_WORDS[kind]
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.pressed.connect(_show_tab.bind(kind))
+		row.add_child(button)
+		_tab_buttons[kind] = button
 	return row
+
+
+func _show_tab(kind: StringName) -> void:
+	_tab = kind
+	for each: StringName in _grids:
+		(_grids[each] as GridContainer).visible = each == kind
+		(_tab_buttons[each] as UIButton).variant = (
+			UIButton.Variant.PRIMARY if each == kind else UIButton.Variant.GHOST
+		)
 
 
 func _grid(columns: int) -> GridContainer:
@@ -176,7 +243,8 @@ func _grid(columns: int) -> GridContainer:
 
 ## Makes every tile again from what the profile holds now.
 func _rebuild() -> void:
-	for grid: GridContainer in [_card_grid, _emblem_grid]:
+	for kind: StringName in _grids:
+		var grid := _grids[kind] as GridContainer
 		for child in grid.get_children():
 			grid.remove_child(child)
 			child.queue_free()
@@ -185,10 +253,15 @@ func _rebuild() -> void:
 	var worn := _catalog.worn(store.profile.equipped, level, _done)
 	_preview_card.card_id = worn[PlateCatalog.CARD]
 	_preview_emblem.emblem_id = worn[PlateCatalog.EMBLEM]
+	_preview_frame.frame_id = worn[PlateCatalog.FRAME]
 	var card_size := Vector2(TILE_CARD_WIDTH, TILE_CARD_WIDTH * 120.0 / 440.0)
 	for kind in PlateCatalog.KINDS:
-		var grid := _card_grid if kind == PlateCatalog.CARD else _emblem_grid
-		var size := card_size if kind == PlateCatalog.CARD else Vector2.ONE * TILE_EMBLEM
+		var grid := _grids[kind] as GridContainer
+		var size := Vector2.ONE * TILE_EMBLEM
+		if kind == PlateCatalog.CARD:
+			size = card_size
+		elif kind == PlateCatalog.FRAME:
+			size = TILE_FRAME
 		# What the player can put on comes first, the rest follow in the catalogue's order.
 		var ids: Array[StringName] = [&""]
 		var earned := _catalog.owned(kind, level, _done)
@@ -213,17 +286,20 @@ func _rebuild() -> void:
 		_say(_summary(level))
 
 
-## "3 of 23 calling cards and 5 of 33 emblems are yours."
+## "3 of 23 calling cards, 5 of 33 emblems and 1 of 7 frames are yours."
 func _summary(level: int) -> String:
 	var cards := _catalog.owned(PlateCatalog.CARD, level, _done).size()
 	var emblems := _catalog.owned(PlateCatalog.EMBLEM, level, _done).size()
+	var frames := _catalog.owned(PlateCatalog.FRAME, level, _done).size()
 	var line := (
-		"%d of %d calling cards and %d of %d emblems are yours."
+		"%d of %d calling cards, %d of %d emblems and %d of %d frames are yours."
 		% [
 			cards,
 			_catalog.ids(PlateCatalog.CARD).size(),
 			emblems,
 			_catalog.ids(PlateCatalog.EMBLEM).size(),
+			frames,
+			_catalog.ids(PlateCatalog.FRAME).size(),
 		]
 	)
 	if not store.has_account():

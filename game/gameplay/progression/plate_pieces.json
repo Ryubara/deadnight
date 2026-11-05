@@ -58,5 +58,14 @@
     {"id": "the_big_take", "title": "The Big Take", "motif": "coins", "palette": "gold", "shape": "hex"},
     {"id": "full_rack", "title": "Full Rack", "motif": "rack", "palette": "violet", "shape": "hex"},
     {"id": "pest_control", "title": "Pest Control", "motif": "target", "palette": "ivory", "shape": "hex"}
+  ],
+  "frames": [
+    {"id": "chrome", "title": "Chrome", "palette": "chrome", "style": "double"},
+    {"id": "brass", "title": "Brass", "palette": "brass", "style": "rivets"},
+    {"id": "neon", "title": "Neon", "palette": "neon", "style": "glow"},
+    {"id": "gold", "title": "Gold", "palette": "gold", "style": "bulbs"},
+    {"id": "filmstrip", "title": "Filmstrip", "palette": "ivory", "style": "holes"},
+    {"id": "velvet_rope", "title": "Velvet Rope", "palette": "cherry", "style": "rope"},
+    {"id": "searchlight", "title": "Searchlight", "palette": "ice", "style": "glow"}
   ]
 }

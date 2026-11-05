@@ -9,10 +9,10 @@ extends RefCounted
 ##     item["kind"]    # LadderItem.Kind.PART, with item["slot"] = &"torso", item["id"] = &"rolled"
 ##
 ## A wearable is read from the part registry (`LookCatalog`), a colour from the cloth palette, a map
-## from `MapRegistry`; a calling card or an emblem of the plate from `PlateCatalog` (its title, its
-## art); anything else (a plate item whose art is not drawn) is its id spelled out.
+## from `MapRegistry`; a calling card, an emblem or a frame of the plate from `PlateCatalog` (its
+## title, its art); anything else (a plate item whose art is not drawn) is its id spelled out.
 
-enum Kind { PART, COLOUR, MAP, OTHER, CARD, EMBLEM }
+enum Kind { PART, COLOUR, MAP, OTHER, CARD, EMBLEM, FRAME }
 
 ## The ladder's slots that give a piece of the plate, and the kind of piece. The `calling_cards`
 ## row (level 2) opens the feature and shows the first card.
@@ -20,6 +20,7 @@ const PLATE_SLOTS := {
 	&"tier_card": PlateCatalog.CARD,
 	&"tier_emblem": PlateCatalog.EMBLEM,
 	&"emblem": PlateCatalog.EMBLEM,
+	&"plate_frame": PlateCatalog.FRAME,
 }
 const CALLING_CARDS_SLOT := &"calling_cards"
 
@@ -28,8 +29,8 @@ const COLOUR_CHANNEL := &"primary"
 
 
 ## The item `item` of `slot` gives. `{kind, name}` and, by kind: a PART has `slot` and `id` (the
-## catalogue's), a COLOUR has `colour`, a MAP has `info`, a CARD or an EMBLEM has `plate` (the
-## piece's id). `table` is `unlocks.json`.
+## catalogue's), a COLOUR has `colour`, a MAP has `info`, a CARD, an EMBLEM or a FRAME has `plate`
+## (the piece's id). `table` is `unlocks.json`.
 static func of(slot: StringName, item: StringName, table: LadderUnlocks = null) -> Dictionary:
 	var rows := table if table != null else LadderUnlocks.shipped()
 	var row := rows.find(slot, item)
@@ -73,6 +74,8 @@ static func plate_item(slot: StringName, item: StringName) -> Dictionary:
 	var title := plates.title(kind, item)
 	if kind == PlateCatalog.CARD:
 		return {"kind": Kind.CARD, "name": "%s calling card" % title, "plate": item}
+	if kind == PlateCatalog.FRAME:
+		return {"kind": Kind.FRAME, "name": "%s plate frame" % title, "plate": item}
 	return {"kind": Kind.EMBLEM, "name": "%s emblem" % title, "plate": item}
 
 
