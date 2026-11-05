@@ -28,6 +28,12 @@ var _server: GameServer
 var _nights: Array[Night] = []
 
 
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
+
+
 func before_test() -> void:
 	await _start_stack()
 

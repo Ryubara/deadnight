@@ -14,11 +14,20 @@ extends RefCounted
 ## it is done when the lowest of them reaches the target ("250 kills with every weapon"). A feat
 ## may instead count how many stats under a prefix the player has ever moved (`distinct`, such as
 ## `kills:weapon:`): "Kill with five different weapons".
+##
+## A HIDDEN challenge (`hidden`, a feat) is shown as `???` with a `riddle` and a silhouette until it
+## is done: nothing a player can read before then holds its title or its words (`hint()` is what a
+## screen asks for, never `text`). A challenge may also be DERIVED (`derived`): it counts nothing
+## and is done when something else is true (`DERIVED_TIER_CARDS`: every tier card owned), so it has
+## no stat and `PlateCatalog` answers whether it is done from the level.
 
 enum Family { DAILY, ORDER, MILESTONE, FEAT }
 enum Mode { TOTAL, ONE_NIGHT }
 enum Tier { SHORT, MEDIUM, LONG }
 
+## Derived: done when the player owns every calling card the ladder gives for a tier.
+const DERIVED_TIER_CARDS := &"tier_cards"
+const DERIVED: Array[StringName] = [DERIVED_TIER_CARDS]
 const TIER_NAMES := {&"short": Tier.SHORT, &"medium": Tier.MEDIUM, &"long": Tier.LONG}
 
 var id: StringName = &""
@@ -40,6 +49,11 @@ var grants: Array[StringName] = []
 var stats: Array[StringName] = []
 ## A feat over how many stats starting with this have a lifetime total: its progress.
 var distinct := ""
+## Shown as `???` with the riddle until done (a feat only).
+var hidden := false
+var riddle := ""
+## Done when this is true, with no stat to count (one of `DERIVED`), or empty.
+var derived: StringName = &""
 
 
 ## The definition a data record describes.
@@ -61,6 +75,9 @@ static func from_dict(record: Dictionary, p_family: Family) -> ChallengeDef:
 	for each: Variant in record.get("stats", []):
 		def.stats.append(StringName(str(each)))
 	def.distinct = String(record.get("distinct", ""))
+	def.hidden = bool(record.get("hidden", false))
+	def.riddle = String(record.get("riddle", ""))
+	def.derived = StringName(record.get("derived", ""))
 	if def.stat == &"" and not def.stats.is_empty():
 		def.stat = def.stats[0]
 	return def
@@ -80,6 +97,11 @@ func words(at: int = -1) -> String:
 	return text.replace("{n}", str(at if at >= 0 else target))
 
 
+## What a screen says of this challenge before it is done: its riddle when hidden, else its words.
+func hint() -> String:
+	return riddle if hidden else words()
+
+
 ## What is wrong with this definition, or an empty list when it is sound.
 func problems(weapon_ids: Array[StringName], type_ids: Array[StringName]) -> Array[String]:
 	var found: Array[String] = []
@@ -90,9 +112,21 @@ func problems(weapon_ids: Array[StringName], type_ids: Array[StringName]) -> Arr
 			found.append("%s: distinct '%s' is not a prefix of stats" % [id, distinct])
 		if family != Family.FEAT or mode != Mode.TOTAL or not stats.is_empty():
 			found.append("%s: only a feat counted in total goes over distinct stats" % id)
+	elif derived != &"":
+		if not DERIVED.has(derived):
+			found.append("%s: derived '%s' is not a rule that exists" % [id, derived])
+		if stat != &"" or not stats.is_empty() or family != Family.FEAT:
+			found.append("%s: only a feat with no stat is derived" % id)
 	elif not ChallengeStats.is_known(stat, weapon_ids, type_ids):
 		found.append("%s: unknown stat '%s'" % [id, stat])
-	if target <= 0:
+	if hidden:
+		if family != Family.FEAT or riddle.strip_edges() == "":
+			found.append("%s: a hidden challenge is a feat with a riddle" % id)
+		elif riddle.to_lower().contains(text.to_lower()):
+			found.append("%s: the riddle says the challenge" % id)
+	elif riddle != "":
+		found.append("%s: only a hidden challenge has a riddle" % id)
+	if target <= 0 and derived == &"":
 		found.append("%s: the target must be above zero" % id)
 	if ChallengeStats.is_best(stat) and mode != Mode.ONE_NIGHT and family != Family.MILESTONE:
 		found.append("%s: a best stat can only be reached in one night" % id)
