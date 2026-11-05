@@ -10,8 +10,7 @@ extends RefCounted
 ## It is a plain, heavy shape in the button's ink, read at a glance with a thumb over it:
 ## Fire a bullet, Aim a scope, Jump two chevrons up, Crouch a chevron down onto the floor, Reload a
 ## circle of arrow, Swap two arrows across, the Grenade a grenade, Side a person with an arrow each
-## way, Melee a blade, Bots a wheel of orders, Ping a pin, Pause two bars, Scoreboard the rows of a
-## table.
+## way, Melee a blade, Ping a pin, Pause two bars, Scoreboard the rows of a table.
 ## Interact is the one that keeps a word (`TouchControls`); it has a tap mark above it.
 
 ## How much of the button's radius the icon's box takes: a little over half, so the rim and the

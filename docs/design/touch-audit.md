@@ -102,7 +102,7 @@ a keyboard.
 | "BOTS: HOLD HERE" at the top right | Fixed here: the notices say the state (`BOTS: FOLLOWING YOU`, `ROAMING`, `HOLDING POSITION`). A ping's own `HOLD HERE` stays: it is what a ping says |
 | Touch tab: descriptions cut with "...", `1.00x` against the scrollbar | #1290 (copy that fits, a gap for the bar, a test that no hint is cut, the look settings on the Touch tab) |
 | Six markers before two meet at 667 x 375, 1.0 | Clearing the right side wins it all back: see below |
-| Pause and Ping 27 CSS px apart | Moves with the Ping verdict (#1289) |
+| Pause and Ping 27 CSS px apart | Fixed in #1289: Ping stands under Pause, 56 CSS px or more from it, hit areas apart |
 
 ### Markers if the right side is cleared
 
@@ -140,5 +140,28 @@ fingertip high (#1280) with the right thumb's ring (#1277).
 | 1.25 | 3 | 3 | 3 |
 | 1.25 | 1 | 5 | 5 |
 
-The 844 x 390 page holds 10+ at every size and with or without the tag. A tag in the column's cards would have taken a
-fingertip's height from the column, which is why it is in the strip's row.
+The 844 x 390 page holds 10+ at every size and with or without the tag, but for the one row Ping's move under Pause
+took to 8 (below, #1289), which the tag does not change. A tag in the column's cards would have taken a fingertip's
+height from the column, which is why it is in the strip's row.
+
+### Markers with Ping under Pause (#1289)
+
+The same measure (one marker on each card, the most of 1 to 10 that none meet another or a card or a button, both
+hands), on main after the weapon strip (#1284) with Ping beside Pause, and with Ping under it; both the 667 x 375 and the
+844 x 390 page. Only the right side of the screen bounds the 667 page, so Ping's move changes nothing there; one row of
+the 844 page moves.
+
+| Page | Interface size | Diamonds | Before | After | After, Interact up |
+| --- | --- | --- | --- | --- | --- |
+| 667 x 375 | 0.8 | 3 | 10+ | 10+ | 10+ |
+| 667 x 375 | 1.0 | 3 | 6 | 6 | 6 |
+| 667 x 375 | 1.0 | 1 | 10+ | 10+ | 10+ |
+| 667 x 375 | 1.25 | 3 | 3 | 3 | 3 |
+| 667 x 375 | 1.25 | 1 | 5 | 5 | 4 |
+| 844 x 390 | 0.8, 1.0 | 3 or 1 | 10+ | 10+ | 10+ |
+| 844 x 390 | 1.25 | 3 | 10+ | **8** | 10+ |
+| 844 x 390 | 1.25 | 1 | 10+ | 10+ | 10+ |
+
+The six at 1.0 on the 667 page is the weapon strip's, not Ping's (the table above was taken before #1284, when it was
+eight). The 844 row that moved still holds eight, the count `test_hud_marker_cards.gd` asks of every page that is not
+crowded.

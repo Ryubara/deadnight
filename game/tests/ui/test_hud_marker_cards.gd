@@ -113,7 +113,9 @@ func _show_centre_cards(fixture: HudFixture) -> void:
 ## out then, as it is not drawn): the right thumb's five buttons are always there.
 func _buttons(safe: Rect2, mirrored: bool) -> Array[Rect2]:
 	var boxes: Array[Rect2] = []
-	var circles := TouchLayout.buttons(safe, 1.0, mirrored)
+	# The night's fingertip rule: Ping stands a fingertip-sized length under Pause (#1289).
+	var finger := MenuScale.tap_units(get_window(), true)
+	var circles := TouchLayout.buttons(safe, 1.0, mirrored, finger)
 	for id: StringName in circles:
 		if id == TouchLayout.INTERACT:
 			continue
