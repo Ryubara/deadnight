@@ -52,6 +52,7 @@ MIN_TAP_PX = 44.0
 SETTLE_MS = 1800
 # Console errors so far, so a result says on which screen the first one came.
 ERRORS: list[str] = []
+SETTINGS_TABS = ["Video", "Audio", "Accessibility", "Controls", "Touch"]
 TAB_NAMES = ["Play", "Loadout", "Shop", "Challenges", "More"]
 # The backend the page is pointed at: nothing answers on this name, the script does.
 STUB_BACKEND = "http://backend.stub"
@@ -102,6 +103,8 @@ class StubBackend:
         # The one lobby a player of the page can make, and every visibility the page has sent for it, in order.
         self.lobby: dict | None = None
         self.visibility_sent: list[str] = []
+        # Every call the page makes to the lobby made, as `METHOD /route` (a press of Start is `POST /start`).
+        self.lobby_calls: list[str] = []
         # The requests nothing here answers (a 404), so a run says what the page asked for.
         self.unknown: list[str] = []
 
@@ -150,6 +153,7 @@ class StubBackend:
 
     def lobby_route(self, route, rest: str, request) -> None:
         """The routes of the lobby made: its poll, the rules, the visibility, leaving."""
+        self.lobby_calls.append(f"{request.method} {rest or '/'}")
         if rest == "/visibility" and request.method == "PUT":
             self.visibility_sent.append(request.post_data_json["visibility"])
             self.lobby["visibility"] = self.visibility_sent[-1]
@@ -263,6 +267,8 @@ def snap(frame: Frame, out: Path, label: str, results: list[dict], what: str) ->
         "tab": state.get("tab"),
         "phone": state.get("phone"),
         "console_errors": len(ERRORS),
+        "header_overlap": state.get("header_overlap"),
+        "loadout_items": state.get("loadout_items"),
         "inner": inner,
         **layout,
         **{f"audit_{k}": v for k, v in audit.items()},
@@ -474,6 +480,22 @@ def turn(frame: Frame, out: Path, label: str, results: list[dict], size: dict) -
     snap(frame, out, label, results, "menu after")
 
 
+def click_spot(frame: Frame, name: str) -> bool:
+    """Taps the visible button called `name` the way a finger does; False when the page lists none."""
+    spots = {}
+    for part in str(frame.state().get("menu_buttons", "")).split("|"):
+        if ":" in part:
+            key, at = part.rsplit(":", 1)
+            spots[key] = [float(n) for n in at.split(",")]
+    spot = spots.get(name)
+    if not spot:
+        return False
+    size = frame.frame.evaluate("() => [window.innerWidth, window.innerHeight]")
+    frame.page.mouse.click(spot[0] * size[0], spot[1] * size[1])
+    frame.page.wait_for_timeout(600)
+    return True
+
+
 def night(frame: Frame, out: Path, label: str, results: list[dict]) -> None:
     """A solo night entered and left: what scale the night runs at and whether the menu's comes back."""
     to_tab(frame, "Play")
@@ -485,15 +507,14 @@ def night(frame: Frame, out: Path, label: str, results: list[dict]) -> None:
     press(frame, "Escape")
     frame.page.wait_for_timeout(1500)
     snap(frame, out, label, results, "night menu open")
-    spots = {}
-    for part in str(frame.state().get("menu_buttons", "")).split("|"):
-        if ":" in part:
-            name, at = part.rsplit(":", 1)
-            spots[name] = [float(n) for n in at.split(",")]
-    leave = spots.get("Leave night")
-    if leave:
-        size = frame.frame.evaluate("() => [window.innerWidth, window.innerHeight]")
-        frame.page.mouse.click(leave[0] * size[0], leave[1] * size[1])
+    # Its Settings (#1205): each tab, measured alone (the probe scans the card, not the HUD behind it).
+    if click_spot(frame, "Settings"):
+        for tab in SETTINGS_TABS:
+            if click_spot(frame, tab):
+                snap(frame, out, label, results, f"night settings {tab}")
+        press(frame, "Escape")
+        frame.page.wait_for_timeout(1000)
+    if click_spot(frame, "Leave night"):
         # Leave night returns to the Play screen the night was started from.
         wait_for(frame, "the Play screen again", lambda s: s.get("screen") == "play_screen", 60)
         snap(frame, out, label, results, "play screen after the night")
@@ -504,7 +525,7 @@ def night(frame: Frame, out: Path, label: str, results: list[dict]) -> None:
 def problems(results: list[dict]) -> list[str]:
     found = []
     for entry in results:
-        if entry["what"].startswith(("in the night", "night menu", "turned upright", "together name")):
+        if entry["what"].startswith(("in the night", "turned upright", "together name")):
             continue
         low_text = entry.get("audit_text_min")
         low_tap = entry.get("audit_tap_min")
@@ -512,6 +533,12 @@ def problems(results: list[dict]) -> list[str]:
             found.append(f"{entry['what']}: text {low_text} px {entry.get('audit_text_small')}")
         if low_tap is not None and low_tap < MIN_TAP_PX - 0.05:
             found.append(f"{entry['what']}: tap {low_tap} px {entry.get('audit_tap_small')}")
+        # The plate over the end of the tab bar (MORE read MOR), and a Loadout card with no item to
+        # choose from before it is scrolled (#1271).
+        if (entry.get("header_overlap") or 0.0) > 0.5:
+            found.append(f"{entry['what']}: the plate covers {entry['header_overlap']} units of a tab")
+        if entry.get("loadout_items") is not None and entry["loadout_items"] == 0:
+            found.append(f"{entry['what']}: no item is whole in the Loadout card's view")
     return found
 
 

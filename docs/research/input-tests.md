@@ -85,4 +85,38 @@ tests. The same hole is open for any action.
   `RouterFixture.forget_join()` in `after_test` now; a solo night takes them at its start in any case, so they did not
   hang one); `ui_tab_prev`, `ui_tab_next` (`test_settings_layout`), `ui_accept` (`test_stagger_in`) and `ui_cancel`
   (`test_menu_shell`) left held, `NightArrival.shown` set by `test_arrival_night` and `test_night_screen_end`, and
-  `TouchMode.device_is_touch` by `test_lobby_framed_fit`: filed, not fixed here.
+  `TouchMode.device_is_touch` by `test_lobby_framed_fit`. The held actions and `NightArrival.shown` are fixed in #1254
+  (below), the touch flag in #1253, the join statics in #1212.
+
+## Finding what a suite leaves for the next
+
+A CI shard runs its suites in one process, in the order GdUnit lists them, so anything a suite sets and does not undo
+is read by the suite after it. Nothing fails until an order puts a reader there (#1220), so look for the leftovers
+before they fail (#1254).
+
+- **The probe.** A throwaway suite (never committed) with one test that waits a frame and prints what is left:
+  `InputFixture.held()` (every action that is down, however it was pressed), `Input.is_mouse_button_pressed` for the
+  three buttons, and the public statics a suite is known to set (`NightArrival.shown`, `TouchMode.device_is_touch`,
+  `NightScreen.join_url`). Run it between the suites in one process: GdUnit takes several `-a` arguments and runs
+  them in the order given, so `-a res://tests/ui/test_x.gd -a res://tests/core/test_probe.gd -a ...` puts the probe
+  after every suite. The line it prints after a suite is what that suite left. GdUnit drops a suite named twice, so
+  give each probe its own copy (`test_zz_probe1.gd`, `test_zz_probe2.gd`, ...) and have it print the suite before it.
+  For a whole shard, take the order from `python3 tools/ci_test_shards.py --root game --shard N`, the one CI uses.
+- **Read frames, not the call.** `Input.parse_input_event` only buffers: `Input.is_action_pressed` is still `false`
+  in the same frame and turns `true` at the next frame's flush (or at `Input.flush_buffered_events()`). The probe
+  waits one frame, and a release made in the same frame as the press comes first and the press lands after it.
+  `InputFixture.release_all()` flushes first and then releases every action that is down; call it first in
+  `after_test`. It works for `Input.action_press`, an `InputEventAction` and a key event alike (probed on Godot 4.7).
+- **The check in the repository.** `tests/core/test_input_left_clean.gd` reads the suites' text and fails a function
+  that presses (`Input.action_press`, or `parse_input_event` with `pressed = true`) with no release in it and no
+  `after_test`/`after` that releases (`Input.action_release` or `InputFixture.release_all`; a node's
+  `pressed = false` in a hook does not count). It was red on `test_settings_layout` (`ui_tab_next`/`ui_tab_prev`),
+  `test_stagger_in` (`ui_accept`) and `test_menu_shell` (`ui_cancel`) before their hooks, which the older
+  `Input.action_press`-only scan never saw. `test_no_action_is_held_when_this_suite_runs` only reads: it fails when
+  the suite before it in the process left an action down, and it never releases (a check that releases would hide the
+  leak it exists to find).
+- **Statics have no scan yet.** A static a suite sets (`NightArrival.shown` after a night with the drop) is undone by
+  the suite's own `after_test` (`NightArrival.reset()`); find the others with the probe. The probe over all nine
+  shards (#1254) found `NightArrival.shown` left by `test_arrival_night`, `test_night_screen_end` and
+  `test_night_crosshair` (all reset now), no action held after any suite once the three UI suites above release, and
+  `TouchMode.device_is_touch` left by `test_lobby_framed_fit` (fixed in #1253, #1251).

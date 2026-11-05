@@ -17,9 +17,9 @@ const DESIGN := Vector2(1920.0, 1080.0)
 ## The least size of anything pressed on a touch screen, in CSS pixels, which is what a finger
 ## meets (the written minimum). On a phone's page one CSS pixel is the page's pixel ratio (2, capped
 ## by `PhoneRender`) pixels of the window: 844 x 390 CSS px is a 1688 x 780 window. The menu's
-## `MenuLook.TAP_TARGET` is the same size: 62 units at the menu's phone factor (0.36 CSS px a unit
-## at the interface size, so 0.72 at the factor) is 44.8 CSS px. A night runs at the interface size
-## alone: 44 CSS px are 122 units there.
+## `MenuLook.TAP_TARGET` is the same size: 64 units at the menu's phone factor (0.36 CSS px a unit
+## at the interface size, so 0.72 at the factor; 0.694 on the narrowest page, 667 x 375) is 46.2 CSS
+## px (44.4 there). A night runs at the interface size alone: 44 CSS px are 122 units there.
 const TAP_PIXELS := 44.0
 ## The least size of the words a finger-held screen shows, in CSS pixels (the written floor).
 const TEXT_PIXELS := 14.0
@@ -58,12 +58,13 @@ static func pixels_per_unit(window_size: Vector2i, scale_factor: float) -> float
 ## The least height and width of a control the player presses, in the units of `window` at its
 ## `content_scale_factor` now: `TAP_PIXELS` CSS pixels. Zero when no finger is meant to press it
 ## (`touch`: `TouchMode.wanted`), so a desktop's controls keep their own size. It does not ask
-## whether the window is small: a phone's page is 1688 x 780 in window pixels.
-static func tap_units(window: Window, touch: bool) -> float:
+## whether the window is small: a phone's page is 1688 x 780 in window pixels. `inner_scale` is the
+## scale of the part the control is in (`PhoneScale`): its unit is that much bigger.
+static func tap_units(window: Window, touch: bool, inner_scale := 1.0) -> float:
 	if not touch:
 		return 0.0
 	var ratio := pixel_ratio if pixel_ratio > 0.0 else MouseMotion.device_pixel_ratio()
-	var per_unit := pixels_per_unit(window.size, window.content_scale_factor)
+	var per_unit := pixels_per_unit(window.size, window.content_scale_factor) * inner_scale
 	# Never more than a fifth of the screen's height: a window too small for a finger (a headless
 	# test's 64 x 64) would otherwise ask for a button taller than the screen.
 	var canvas_height := float(window.size.y) / per_unit

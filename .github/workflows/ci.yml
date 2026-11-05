@@ -67,6 +67,12 @@ jobs:
         run: bash deploy/test_check_head.sh
       - name: The backend deploy finds a backend that is behind the game's match settings
         run: bash deploy/backend/test_check_keys.sh
+      - name: A command is run again after an outside failure, a bounded number of times
+        run: bash tools/ci/test_retry.sh
+      - name: The actionlint download retries and says what it got in place of an archive
+        run: bash tools/ci/test_fetch_actionlint.sh
+      - name: A failed Railway upload is repeated only when no deployment is alive, and inside the job's time
+        run: bash deploy/test_railway_up.sh
       - name: The Discord bridge's share half refuses nothing it could have asked for first
         # A client that wants `authenticate` before any command (RPC 4006 otherwise, #627); no packages, node is on the runner.
         run: node --test deploy/web/test_discord_share.mjs
@@ -96,7 +102,7 @@ jobs:
     needs: conventions
     if: needs.conventions.outputs.godot == 'true'
     runs-on: ubuntu-24.04
-    # The suite is split over nine parallel jobs, `godot (1)` to `godot (9)`, by the seconds each test script takes
+    # The suite is split over ten parallel jobs, `godot (1)` to `godot (10)`, by the seconds each test script takes
     # (tools/ci_test_shards.py deals them out from tools/ci_test_times.json; one job took 15 to 20 minutes, #524; three
     # took 12 to 15 each, #775; six hit the limit again, #1015). A balanced shard takes 6 to 9 minutes (about 1 of setup),
     # and the limit is 15. The last step of each shard (tools/ci_shard_time.py) annotates a job past 9 minutes and fails
@@ -106,7 +112,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
       - name: Start the shard's clock
         # The share-of-the-limit check at the end measures the job from here (the checkout is part of its time).
@@ -142,7 +148,8 @@ jobs:
         # A hash in the manifest for each: an SVG that changed without a new export fails here (issue #1060).
         run: python3 repos/deadnight/tools/check_level_icons.py --root repos/deadnight
       - name: Make the workspace and fetch the pinned Godot and GdUnit4
-        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,gdunit4
+        # A download from outside can fail once (#1269): twice at most, 150 s each, so 5 minutes in the worst case.
+        run: bash repos/deadnight/tools/ci/retry.sh -n 2 -p 15 -t 150 -- uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,gdunit4
       - name: Import the project
         run: |
           set -o pipefail
@@ -271,7 +278,8 @@ jobs:
           path: cache/downloads
           key: tools-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
       - name: Make the workspace and fetch the pinned Godot
-        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot
+        # Twice at most, 150 s each (#1269).
+        run: bash repos/deadnight/tools/ci/retry.sh -n 2 -p 15 -t 150 -- uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot
       - name: Import the project
         run: |
           set -o pipefail
@@ -336,7 +344,8 @@ jobs:
           path: cache/downloads
           key: tools-web-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
       - name: Make the workspace and fetch the pinned Godot and its export templates
-        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,godot-templates
+        # The templates are about 1 GB: twice at most, 300 s each, so 10 minutes in the worst case in a job of 40 (#1269).
+        run: bash repos/deadnight/tools/ci/retry.sh -n 2 -p 15 -t 300 -- uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,godot-templates
       - name: Import the project
         run: |
           set -o pipefail
@@ -384,7 +393,8 @@ jobs:
             sudo cp cache/apt-debs/*.deb /var/cache/apt/archives/
             restored=$(find cache/apt-debs -name "*.deb" | wc -l)
           fi
-          uv run --with playwright=="$PLAYWRIGHT_VERSION" playwright install-deps chromium-headless-shell
+          # Twice at most, 240 s each: 8 minutes in the worst case, inside the step's 10 (#1269).
+          bash repos/deadnight/tools/ci/retry.sh -n 2 -p 10 -t 240 -- uv run --with playwright=="$PLAYWRIGHT_VERSION" playwright install-deps chromium-headless-shell
           # apt gives a download the server's modification time, so "fetched now" is by change time, against a file made before.
           mkdir -p cache/apt-debs
           find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -cnewer apt-marker -exec cp -n {} cache/apt-debs/ \;
@@ -404,7 +414,8 @@ jobs:
         timeout-minutes: 10
         run: |
           started=$(date +%s)
-          uv run --with playwright=="$PLAYWRIGHT_VERSION" playwright install chromium-headless-shell
+          # Twice at most, 240 s each: 8 minutes in the worst case, inside the step's 10 (#1269).
+          bash repos/deadnight/tools/ci/retry.sh -n 2 -p 10 -t 240 -- uv run --with playwright=="$PLAYWRIGHT_VERSION" playwright install chromium-headless-shell
           seconds=$(( $(date +%s) - started ))
           echo "$seconds playwright install (cache hit: ${{ steps.browser-cache.outputs.cache-hit || 'false' }})" >> web-steps.txt
       - name: Open the build in a browser
@@ -506,10 +517,13 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: deploy
+          sparse-checkout: |
+            deploy
+            tools/ci
           fetch-depth: 0 # the check asks whether one commit is an ancestor of another
       - if: env.skip != 'true'
-        run: npm install --global @railway/cli@5.63.1
+        # Up to three installs of 90 s each (#1269).
+        run: bash tools/ci/retry.sh -n 3 -p 10 -t 90 -- npm install --global @railway/cli@5.63.1
       - name: Skip a build that is older than the one the service runs
         if: env.skip != 'true'
         env:
@@ -522,6 +536,11 @@ jobs:
           path: build/web
       - name: Deploy and wait for the health check
         if: env.skip != 'true'
+        # A failed upload is repeated up to three times, never over a deployment that is going (deploy/railway_up.sh, #1269).
+        # The script ends by itself at RAILWAY_DEPLOY_SECONDS: the job's 20 minutes less 4 for the steps before it.
+        env:
+          RAILWAY_DEPLOY_SECONDS: 960
+          RAILWAY_UP_ATTEMPT_SECONDS: 420
         run: bash deploy/web/deploy.sh build/web "$GITHUB_SHA"
 
   deploy-server:
@@ -550,11 +569,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: deploy
+          sparse-checkout: |
+            deploy
+            tools/ci
           fetch-depth: 0 # the check asks whether one commit is an ancestor of another
           path: head-check
       - if: env.skip != 'true'
-        run: npm install --global @railway/cli@5.63.1
+        # Up to three installs of 90 s each (#1269).
+        run: bash head-check/tools/ci/retry.sh -n 3 -p 10 -t 90 -- npm install --global @railway/cli@5.63.1
       - name: Skip a build that is older than the one the service runs
         if: env.skip != 'true'
         env:
@@ -569,6 +591,11 @@ jobs:
           lfs: true
       - name: Deploy and wait until the server is live
         if: env.skip != 'true'
+        # As `deploy`: the script ends by itself at RAILWAY_DEPLOY_SECONDS, the job's 30 minutes less 5 for the steps before it
+        # (the checkout with LFS files is the long one).
+        env:
+          RAILWAY_DEPLOY_SECONDS: 1500
+          RAILWAY_UP_ATTEMPT_SECONDS: 720
         run: bash deploy/server/deploy.sh deadnight-server
 
   deploy-backend:
@@ -600,6 +627,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             deploy
+            tools/ci
             spikes/backend
             game/gameplay/rules
           fetch-depth: 0 # the check asks whether one commit is an ancestor of another
@@ -608,7 +636,8 @@ jobs:
         with:
           node-version: 24
       - if: env.skip != 'true'
-        run: npm install --global @railway/cli@5.63.1
+        # Up to three installs of 90 s each (#1269).
+        run: bash tools/ci/retry.sh -n 3 -p 10 -t 90 -- npm install --global @railway/cli@5.63.1
       - name: Skip a build that is older than the one the service runs
         if: env.skip != 'true'
         env:
@@ -616,6 +645,10 @@ jobs:
         run: bash deploy/check_head.sh "$GITHUB_SHA" backend || { test $? = 3 && echo "skip=true" >> "$GITHUB_ENV"; }
       - name: Deploy, wait until it is live and compare its settings with the game's
         if: env.skip != 'true'
+        # As `deploy`: the script ends by itself at RAILWAY_DEPLOY_SECONDS, the job's 20 minutes less 4.
+        env:
+          RAILWAY_DEPLOY_SECONDS: 960
+          RAILWAY_UP_ATTEMPT_SECONDS: 420
         run: bash deploy/backend/deploy.sh backend
 
   backend:
@@ -704,14 +737,14 @@ jobs:
     needs: conventions
     if: needs.conventions.outputs.workflows == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # The download script comes from the same commit as the release it fetches (v1.7.12).
+      # The download is tools/ci/fetch_actionlint.sh (up to four attempts, 60 s each, 5 minutes in the worst case) and not
+      # rhysd's download-actionlint.bash, which pipes `curl -L` into `tar` and so turned a 92 byte error body into
+      # "gzip: stdin: not in gzip format" with the lint never run (#1269). It says what it got and retries.
       - name: Download actionlint 1.7.12
-        run: >-
-          bash <(curl -sSfL
-          https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/scripts/download-actionlint.bash)
-          1.7.12
+        run: bash tools/ci/fetch_actionlint.sh 1.7.12 .
       - run: ./actionlint -color .github/workflows/*.yml
 
   gdlint:

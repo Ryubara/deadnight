@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 ## What a player presses in a night on a phone is a tap target (Deadnight #1192). A night runs at
 ## the interface size alone (`NightScreen._ready` takes the menu's phone factor off), so one unit is
 ## 0.36 CSS px on a phone's page (844 x 390 CSS px) and a button the theme makes 79 units high is
-## 28 CSS px: under the 44 the menu keeps (`MenuLook.TAP_TARGET`, 62 units at the menu's factor).
+## 28 CSS px: under the 44 the menu keeps (`MenuLook.TAP_TARGET`, 64 units at the menu's factor).
 ## A phone's page is a 1688 x 780 window (the page's pixel ratio is 2), so sizes are read in CSS px:
 ## window pixels over the ratio. These run in a real `NightScreen` opened through the router (so
 ## with the game's theme), at the factor it really runs at: the end board's Leave, the pause card's
@@ -123,9 +123,13 @@ func test_a_phones_page_is_a_big_window_and_a_unit_is_a_third_of_a_css_pixel() -
 
 
 func test_the_menus_tap_target_and_the_nights_are_the_same_size_in_css_pixels() -> void:
-	# 62 units at the menu's phone factor (one unit 0.72 CSS px) are what 44 CSS px are at the night's.
+	# 64 units at the menu's phone factor are what 44 CSS px are at the night's: 46.2 on the 844 x 390
+	# page (one unit 0.72 CSS px), 44.4 on the narrowest, 667 x 375 (0.694).
 	var menu := MenuLook.TAP_TARGET * MenuScale.pixels_per_unit(Vector2i(844, 390), 2.0)
-	assert_float(menu).is_between(MenuScale.TAP_PIXELS, MenuScale.TAP_PIXELS + 1.5)
+	assert_float(menu).is_between(MenuScale.TAP_PIXELS, MenuScale.TAP_PIXELS + 2.5)
+	# The page's window is its canvas, 1334 x 750 at the ratio of 2.
+	var narrowest := MenuLook.TAP_TARGET * MenuScale.pixels_per_unit(Vector2i(1334, 750), 2.0) / 2.0
+	assert_float(narrowest).is_between(MenuScale.TAP_PIXELS, MenuScale.TAP_PIXELS + 1.0)
 	get_window().size = Vector2i(1688, 780)
 	get_window().content_scale_factor = 1.0
 	MenuScale.pixel_ratio = 2.0

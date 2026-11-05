@@ -74,6 +74,9 @@ func _init() -> void:
 	UiSounds.wire(self)
 	flat = true
 	focus_mode = Control.FOCUS_ALL
+	# Inside a scroll area a drag that starts here reaches it (`UIScroll`); anywhere else the button
+	# stops the pointer, as a button does.
+	UIScroll.pass_touch_in_scroll(self)
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_fit()

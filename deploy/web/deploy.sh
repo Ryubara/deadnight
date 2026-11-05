@@ -5,6 +5,8 @@
 #
 # With a project token the CLI needs no project or environment; locally, `railway link` the stage's parent or pass
 # RAILWAY_TOKEN. Prints the deployment id; exits non-zero if the deploy fails or is not live after ten minutes.
+# A failed upload or build is repeated up to three times when the service holds no live deployment of it, and never
+# while one is going (deploy/railway_up.sh, #1269); $RAILWAY_DEPLOY_SECONDS caps the whole script (CI: below the job's limit).
 #
 # The service is shared and serves the head of main, so only main may be deployed to it: any other branch (or a
 # detached checkout) is refused with one line unless `--force-branch` is given. The Railway message names the real
@@ -26,6 +28,8 @@ build=${args[0]:?$usage}
 sha=${args[1]:?$usage}
 stage=${args[2]:-$(mktemp -d)}
 here=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=deploy/railway_up.sh
+. "$here/../railway_up.sh"
 
 branch=${DEPLOY_BRANCH:-}
 if [ -z "$branch" ] && [ "${GITHUB_ACTIONS:-}" = true ]; then
@@ -53,18 +57,19 @@ mkdir -p "$stage/build"
 cp "$here/Dockerfile" "$here/Caddyfile" "$here/railway.toml" "$here/discord-bridge.js" "$here/discord-share.js" "$stage/"
 cp -r "$build" "$stage/build/web"
 
-railway up "$stage" --path-as-root --service web --ci --message "$message"
+railway_up_retry web "$message" "$stage" || exit $?
 
 # `up --ci` returns when the build is done; the deployment is live once Railway's health check (/healthz) passes.
 for _ in $(seq 1 60); do
-    # the list is newest first; its first top-level "status" is the deployment just made
-    status=$(railway deployment list --service web --json | grep -m1 '^    "status"' | cut -d'"' -f4)
-    echo "deployment: $status"
+    [ "$(railway_time_left)" -gt 0 ] || break
+    # the list is newest first; its first top-level "status" is the deployment just made (nothing: the CLI did not answer)
+    status=$(railway_status web)
+    echo "deployment: ${status:-unreadable}"
     case $status in
         SUCCESS) exit 0 ;;
         FAILED | CRASHED | REMOVED) exit 1 ;;
     esac
-    sleep 10
+    sleep "${RAILWAY_POLL_SECONDS:-10}"
 done
-echo "deployment did not become live in ten minutes" >&2
+echo "deployment did not become live in ten minutes (or the time the job had left)" >&2
 exit 1

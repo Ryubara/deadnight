@@ -263,7 +263,11 @@ static func snapshot(top: Control) -> Dictionary:
 		# and the canvas in units, as `page_w,page_h|canvas_w,canvas_h|factor|units_w,units_h`.
 		"layout": "",
 		"phone": false,
-		"ui_audit": ""
+		"ui_audit": "",
+		# The menu's header and the Loadout card (#1271): the units of a tab the plate covers, and
+		# how many wardrobe items are whole in the card's view (-1 off the Loadout tab).
+		"header_overlap": 0.0,
+		"loadout_items": -1
 	}
 	if top == null:
 		return data
@@ -272,7 +276,12 @@ static func snapshot(top: Control) -> Dictionary:
 		data["layout"] = _layout(top)
 		data["phone"] = MenuScale.is_phone(window_size)
 		if _audit_asked():
-			data["ui_audit"] = UiAudit.scan(top, PageSize.css_per_pixel(window_size)).summary()
+			# A night's card is measured alone: the night's HUD behind it is another page's (#1192).
+			var seen: Node = top
+			var night := top as NightScreen
+			if night != null and night.card_root() != null:
+				seen = night.card_root()
+			data["ui_audit"] = UiAudit.scan(seen, PageSize.css_per_pixel(window_size)).summary()
 	data["screen"] = top.scene_file_path.get_file().get_basename()
 	if top.is_inside_tree():
 		# The control that has the keyboard, so a browser test walks to a button by its name (a
@@ -298,14 +307,18 @@ static func snapshot(top: Control) -> Dictionary:
 		top is MainMenu
 		or top is PlayScreen
 		or top is LobbyScreen
-		or top is TogetherScreen
 		or top is ServerBrowserScreen
+		or top is TogetherScreen
 	):
 		# Where a finger taps each start and button, as fractions of the window.
 		data["spots"] = _spots(top)
 	var menu := top as MainMenu
 	if menu != null and menu.shell != null:
 		data["tab"] = MenuTab.label(menu.shell.tab)
+		data["header_overlap"] = menu.shell.header_overlap()
+		if menu.shell.tab == MenuTab.Id.LOADOUT:
+			var loadout := menu.shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
+			data["loadout_items"] = loadout.wardrobe.whole_cells_in_view()
 		data["stage"] = ["live", "half", "still"][menu.shell.view.level]
 	var together := top as TogetherScreen
 	if together != null:

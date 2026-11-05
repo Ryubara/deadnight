@@ -85,6 +85,31 @@ func test_what_it_built_is_freed_and_the_black_comes_away() -> void:
 	assert_bool(is_instance_valid(_show)).is_false()
 
 
+func test_the_black_bars_are_the_shows_and_go_with_it() -> void:
+	# The bands a night shows at the top and bottom of a phone page (#1261) are these: deliberate,
+	# a share of the picture's height each, there for the show and the 0.45 s after it, never after.
+	_begin()
+	var cover := _show.find_child("ShowCover", true, false) as CanvasLayer
+	assert_object(cover).is_not_null()
+	var bars: Array[ColorRect] = []
+	for child in cover.get_children():
+		var rect := child as ColorRect
+		if rect != null and rect.anchor_right == 1.0 and rect.anchor_left == 0.0:
+			if rect.anchor_bottom - rect.anchor_top < 0.5:
+				bars.append(rect)
+	assert_int(bars.size()).is_equal(2)
+	for bar in bars:
+		assert_float(bar.anchor_bottom - bar.anchor_top).is_equal_approx(
+			ArrivalCutscene.BAR_SHARE, 0.0001
+		)
+	_run(_tuning.night_seconds + 0.1)
+	_show.spawn_in()
+	_run(ArrivalCutscene.SPAWN_IN_SECONDS + 0.1)
+	await get_tree().process_frame
+	assert_bool(is_instance_valid(_show)).is_false()
+	assert_bool(is_instance_valid(cover)).is_false()
+
+
 func test_a_press_skips_it_only_after_the_moment_the_tuning_gives() -> void:
 	_begin()
 	_run(_tuning.skip_after - 0.3)
