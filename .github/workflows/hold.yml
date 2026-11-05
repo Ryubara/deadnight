@@ -1,0 +1,57 @@
+# The hold: a pull request that carries the label S-hold cannot merge by any route, because this workflow's `hold` job
+# fails while the label is there and the `Main` ruleset requires it (docs/hooks.md#hold). GitHub checks the required
+# check itself, so `gh pr merge`, `gh api`, the web page and auto-merge turned on before or after the label all stop;
+# a hook on this machine could not see most of those.
+#
+# What keeps it reliable. Each of these has its test (python/tests/test_hold.py) and is a reason not to "simplify":
+#   - `pull_request_target`, not `pull_request`: it runs on every pull request with no approval and no merge commit, so
+#     one from a fork or one with a conflict still reports. The file that runs is the default branch's, so a pull
+#     request cannot edit its own hold away. There are no `paths:` filters: a required check that does not run stays
+#     pending for ever.
+#   - `labeled` and `unlabeled` re-run the check with no new commit, so taking the label off is enough.
+#   - No `if:` on the job or the step. A job skipped by `if:` reports success, so a filter such as "only when the label
+#     is S-hold" would let any other label replace a failed run with a skipped one, and the pull request would merge.
+#   - The label is read from the API when the job runs, not from the event, so the last run to finish tells the truth
+#     however the events were ordered. If the read fails the job fails: a hold nobody could read stays a hold.
+#   - No checkout and no `uv`: nothing from the pull request is run, and the job takes seconds.
+# `edited` is here for a pull request moved onto the default branch from a base that has no copy of this file.
+# A label set with a workflow's GITHUB_TOKEN starts no workflow, so nothing but a person's or an agent's token may set
+# this one. `merge_group` is left out: the ruleset has no merge queue. Actions are pinned by not using any.
+name: hold
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+# The newest event wins: an older run still going is cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  hold:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - name: Fail while the pull request carries the hold label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          HOLD_LABEL: S-hold
+        run: |
+          set -euo pipefail
+          [[ "$NUMBER" =~ ^[0-9]+$ ]] || { echo "unexpected pull request number" >&2; exit 1; }
+          labels=$(gh api --paginate "repos/$GH_REPO/issues/$NUMBER/labels" --jq '.[].name')
+          if grep -qxF -- "$HOLD_LABEL" <<< "$labels"; then
+            echo "::error::#$NUMBER carries $HOLD_LABEL: a maintainer holds it. Only the maintainer takes the label off."
+            exit 1
+          fi
+          echo "#$NUMBER carries no $HOLD_LABEL label."
