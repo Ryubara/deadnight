@@ -103,6 +103,8 @@ class StubBackend:
         # The one lobby a player of the page can make, and every visibility the page has sent for it, in order.
         self.lobby: dict | None = None
         self.visibility_sent: list[str] = []
+        # Every call the page makes to the lobby made, as `METHOD /route` (a press of Start is `POST /start`).
+        self.lobby_calls: list[str] = []
         # The requests nothing here answers (a 404), so a run says what the page asked for.
         self.unknown: list[str] = []
 
@@ -151,6 +153,7 @@ class StubBackend:
 
     def lobby_route(self, route, rest: str, request) -> None:
         """The routes of the lobby made: its poll, the rules, the visibility, leaving."""
+        self.lobby_calls.append(f"{request.method} {rest or '/'}")
         if rest == "/visibility" and request.method == "PUT":
             self.visibility_sent.append(request.post_data_json["visibility"])
             self.lobby["visibility"] = self.visibility_sent[-1]

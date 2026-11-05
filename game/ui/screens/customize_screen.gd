@@ -411,6 +411,7 @@ func _build_pickers() -> Control:
 	# The pages of the tabs sit one over the other in a scrolling area that follows the focus; the
 	# host's own rows (the Loadout tab's weapon row on a phone) go above them.
 	var scroll := ScrollContainer.new()
+	UIScroll.take_touch(scroll)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.follow_focus = true
 	scroll.custom_minimum_size.y = 0.0 if _embedded else SCROLL_HEIGHT
