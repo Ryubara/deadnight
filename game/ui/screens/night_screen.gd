@@ -173,6 +173,7 @@ func _ready() -> void:
 	_touch.safe_insets_changed.connect(_on_safe_insets_changed)
 	_touch.mirrored_changed.connect(_on_mirrored_changed)
 	_touch.active_changed.connect(func(active: bool) -> void: _hud.touch_layout = active)
+	_touch.layout_changed.connect(func() -> void: _hud.markers.held = _touch.button_boxes())
 	_touch.look_gain = _look_gain
 	add_child(_touch)
 	wheel = BotWheelDriver.new()

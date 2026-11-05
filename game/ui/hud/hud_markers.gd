@@ -21,11 +21,22 @@ const DOWNED_RADIUS := 22.0
 const DOWNED_WIDTH := 6.0
 ## Text stays this far inside the screen.
 const TEXT_MARGIN := 12.0
+## The size of a marker's words at the desktop's scale, which is also the least anywhere.
 const LABEL_SIZE := HudStyle.MIN_TEXT
+## The width of the dark outline round the words at `LABEL_SIZE`.
+const OUTLINE := 7
+## How far a marker's shape reaches round its place: a diamond's shadow, and the gap between its
+## edge and the arrow that points back to where it really stands.
+const SHADOW_REACH := 3.0
+const ARROW_GAP := 6.0
 ## Steps of a canvas unit a marker's place is told apart in: a marker follows the world, so the
 ## state holds a new float place nearly every frame, and the part is drawn when the picture would
 ## change by a quarter of a unit (a quarter of a pixel at 1080p), not when a float does (#948).
 const PLACE_STEPS := 4.0
+## The most places a draw tries for all the markers it moves, and how many of the nearest places of
+## the first round a second round starts from.
+const MAX_TRIES := 1500
+const SECOND_ROUND := 4
 ## How far an objective's words keep from a card of the HUD (the outline of the letters is 3.5).
 const CLEAR_GAP := 8.0
 
@@ -34,6 +45,12 @@ var placed: Dictionary = {}
 ## Where each ally's tag (icon, level, name and what follows) was drawn on the last frame, canvas
 ## units: {id: Rect2}. Every tag stays inside the screen.
 var tags: Dictionary = {}
+## What each marker took on the last frame, in this part's units: {id: {"at": where it is drawn,
+## "box": the rectangle of its shape, its arrow and its words, "moved": whether it is not on the
+## place it points to, "arrow": which way its arrow points (zero for none)}}. A marker whose shape
+## or words would be under a card of the HUD is drawn on the nearest place that is under none, with
+## an arrow back toward the place it marks (#1218).
+var shown: Dictionary = {}
 ## The parts of a tag with a level, as laid out, for tests and captures (a tag with no level has
 ## none): {id: {"icon": Rect2, "level": Rect2, "name": Rect2}}.
 var tag_parts: Dictionary = {}
@@ -55,6 +72,23 @@ var keep_clear: Array[Control] = []:
 			card.visibility_changed.connect(queue_redraw)
 		queue_redraw()
 
+## The size of the words, canvas units: `LABEL_SIZE`, or what 14 CSS px come to where a finger holds
+## the screen and a unit is under 0.7 CSS px (a phone's night: 0.36). `Hud` sets it
+## (`MenuScale.text_units`); the icon beside a level and the gaps follow it.
+var label_size := LABEL_SIZE:
+	set(value):
+		value = maxi(value, LABEL_SIZE)
+		if value != label_size:
+			label_size = value
+			queue_redraw()
+
+## What else holds the screen's canvas, which a marker stays out of as it does the cards: the touch
+## buttons under a finger (`TouchControls.button_boxes`), in the canvas's units. Set by the screen.
+var held: Array[Rect2] = []:
+	set(value):
+		held = value
+		queue_redraw()
+
 ## What the last draw was made from (`_key`).
 var _drawn_key: Array = []
 ## What a draw collects: every marker's shapes, their smoothed rings [centre, radius, from, to,
@@ -68,6 +102,12 @@ var _icons: Array[Array] = []
 ## words that need it (`_cards`), not by a draw with no objective on screen.
 var _blocked: Array[Rect2] = []
 var _blocked_read := false
+## The places tried so far in this draw (`MAX_TRIES`).
+var _tries := 0
+## What the markers moved off the cards took in this draw: the next to move keeps clear of it.
+var _moved: Array[Rect2] = []
+## The widths of the words a draw has measured (`_width`).
+var _widths := {}
 
 
 func _ready() -> void:
@@ -89,7 +129,7 @@ func refresh() -> void:
 ## Everything `_draw` reads, as the picture tells it apart: the screen, where each marker stands in
 ## quarter units, how far it says it is in whole metres, its words and its state.
 func _key() -> Array:
-	var key: Array = [size]
+	var key: Array = [size, label_size]
 	if state == null:
 		return key
 	var spots := _place_all()
@@ -138,13 +178,17 @@ func _draw() -> void:
 	tags.clear()
 	tag_parts.clear()
 	labels.clear()
+	shown.clear()
+	_widths.clear()
+	_moved.clear()
+	_tries = 0
 	_blocked_read = false
 	for marker in state.markers:
 		var spot: Dictionary = placed.get(marker["id"], {})
 		if spot.is_empty():
 			continue
 		if marker["kind"] == &"ally":
-			_draw_ally(font, marker, spot["at"])
+			_draw_ally(font, marker, spot)
 		else:
 			_draw_objective(font, marker, spot)
 	_shapes.flush(self)
@@ -156,10 +200,17 @@ func _draw() -> void:
 			draw_texture_rect_region(atlas, icon[0], icon[1])
 	for word: Array in _words:
 		draw_string_outline(
-			word[0], word[1], word[2], HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, 7, tokens.shadow
+			word[0],
+			word[1],
+			word[2],
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			label_size,
+			roundi(OUTLINE * _grown()),
+			tokens.shadow
 		)
 	for word: Array in _words:
-		draw_string(word[0], word[1], word[2], HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, word[3])
+		draw_string(word[0], word[1], word[2], HORIZONTAL_ALIGNMENT_LEFT, -1, label_size, word[3])
 
 
 func _place_all() -> Dictionary:
@@ -171,9 +222,9 @@ func _place_all() -> Dictionary:
 		var on_screen := Rect2(0.0, 0.0, 1.0, 1.0).has_point(norm)
 		var at := norm * size
 		if on_screen:
-			out[marker["id"]] = {"at": at, "pinned": false}
+			out[marker["id"]] = {"at": at, "pinned": false, "target": at}
 		elif bool(marker.get("important", false)):
-			out[marker["id"]] = {"at": _pin(at), "pinned": true}
+			out[marker["id"]] = {"at": _pin(at), "pinned": true, "target": at}
 	return out
 
 
@@ -198,9 +249,18 @@ func _pin(at: Vector2) -> Vector2:
 
 
 func _draw_objective(font: Font, marker: Dictionary, spot: Dictionary) -> void:
-	var at: Vector2 = spot["at"]
 	var t := clampf(float(marker["distance"]) / FAR_METRES, 0.0, 1.0)
-	var half := lerpf(DIAMOND_NEAR, DIAMOND_FAR, t)
+	var half := lerpf(DIAMOND_NEAR, DIAMOND_FAR, t) * _grown()
+	var text := "%d m" % roundi(float(marker["distance"]))
+	if str(marker.get("label", "")) != "":
+		text = "%s  %s" % [str(marker["label"]).to_upper(), text]
+	var pinned: bool = spot["pinned"]
+	var box_of := func(place: Vector2, arrowed: bool) -> Rect2:
+		return _objective_box(font, text, half, place, arrowed or pinned)
+	var at := _settle(spot["at"], box_of)
+	var moved := not at.is_equal_approx(spot["at"])
+	if moved:
+		_moved.append(box_of.call(at, true))
 	var diamond := PackedVector2Array(
 		[
 			at + Vector2(0, -half),
@@ -209,101 +269,187 @@ func _draw_objective(font: Font, marker: Dictionary, spot: Dictionary) -> void:
 			at + Vector2(-half, 0)
 		]
 	)
+	var drop := Vector2(SHADOW_REACH, SHADOW_REACH) * _grown()
 	_shapes.polygon(
 		PackedVector2Array(
-			[
-				diamond[0] + Vector2(3, 3),
-				diamond[1] + Vector2(3, 3),
-				diamond[2] + Vector2(3, 3),
-				diamond[3] + Vector2(3, 3)
-			]
+			[diamond[0] + drop, diamond[1] + drop, diamond[2] + drop, diamond[3] + drop]
 		),
 		tokens.shadow
 	)
 	_shapes.polygon(diamond, tokens.accent_bright)
 	var inner := half * 0.45
 	_shapes.rect(Rect2(at - Vector2.ONE * inner * 0.5, Vector2.ONE * inner), tokens.ink_on_accent)
-	if spot["pinned"]:
-		var direction := (at - size * 0.5).normalized()
-		var tip := at + direction * (half + ARROW + 6.0)
-		var side := direction.orthogonal() * ARROW * 0.6
-		_shapes.polygon(
-			PackedVector2Array(
-				[tip, at + direction * (half + 6.0) + side, at + direction * (half + 6.0) - side]
-			),
-			tokens.accent_bright
-		)
-	var text := "%d m" % roundi(float(marker["distance"]))
-	if str(marker.get("label", "")) != "":
-		text = "%s  %s" % [str(marker["label"]).to_upper(), text]
-	var baseline := at + Vector2(0.0, half + LABEL_SIZE + 8.0)
-	# Under the diamond, or over it when the screen ends there.
-	if baseline.y > size.y - TEXT_MARGIN:
-		baseline.y = at.y - half - 8.0
-	var words := _clear_of_cards(_on_screen(_words_rect(font, text, baseline)))
+	var words := _clear_of_cards(_objective_words(font, text, half, at))
+	var direction := Vector2.ZERO
+	if pinned or moved:
+		direction = (at - size * 0.5).normalized()
+		if moved:
+			direction = (Vector2(spot["target"]) - at).normalized()
+		_arrow(at, half, direction, tokens.accent_bright, words)
 	labels[marker["id"]] = words
 	_words.append([font, Vector2(words.position.x, words.end.y), text, tokens.ink])
+	shown[marker["id"]] = {
+		"at": at, "box": box_of.call(at, moved or pinned), "moved": moved, "arrow": direction
+	}
 
 
-func _draw_ally(font: Font, marker: Dictionary, at: Vector2) -> void:
+## The words of an objective: under its diamond, or over it when the screen ends there.
+func _objective_words(font: Font, text: String, half: float, at: Vector2) -> Rect2:
+	var baseline := at + Vector2(0.0, half + label_size + 8.0)
+	if baseline.y > size.y - TEXT_MARGIN:
+		baseline.y = at.y - half - 8.0
+	return _on_screen(_words_rect(font, text, baseline))
+
+
+## Everything an objective draws when its diamond is on `at`: the diamond with its shadow (and the
+## arrow beside it when `arrowed`) and the words.
+func _objective_box(font: Font, text: String, half: float, at: Vector2, arrowed: bool) -> Rect2:
+	var reach := half + (ARROW + ARROW_GAP if arrowed else SHADOW_REACH) * _grown()
+	return Rect2(at, Vector2.ZERO).grow(reach).merge(_objective_words(font, text, half, at))
+
+
+## An arrow of the marker's colour beside its shape (`reach` from `at`), pointing along
+## `direction`: toward the edge an off-screen marker is pinned to, or toward the place a marker that
+## was moved off a card really stands. It stands on the side of the shape that `direction` faces,
+## or on the shape's flank when that would be over the words (`avoid`: the words or the tag).
+func _arrow(at: Vector2, reach: float, direction: Vector2, colour: Color, avoid: Rect2) -> void:
+	var points := _arrow_points(at, reach, direction, direction)
+	var box := Rect2(points[0], Vector2.ZERO).expand(points[1]).expand(points[2])
+	if box.intersects(avoid):
+		var flank := Vector2(1.0 if direction.x >= 0.0 else -1.0, 0.0)
+		points = _arrow_points(at, reach, flank, direction)
+	_shapes.polygon(points, colour)
+
+
+## The three corners of an arrow that points along `direction` from the side of the shape that
+## `anchor` faces: the tip, then the two corners of its base.
+func _arrow_points(
+	at: Vector2, reach: float, anchor: Vector2, direction: Vector2
+) -> PackedVector2Array:
+	var grown := _grown()
+	var base := at + anchor * (reach + ARROW_GAP * grown)
+	var side := direction.orthogonal() * ARROW * grown * 0.6
+	return PackedVector2Array([base + direction * ARROW * grown, base + side, base - side])
+
+
+func _draw_ally(font: Font, marker: Dictionary, spot: Dictionary) -> void:
+	var box_of := func(place: Vector2, arrowed: bool) -> Rect2:
+		return _ally_box(font, marker, place, arrowed)
+	var at := _settle(spot["at"], box_of)
+	var moved := not at.is_equal_approx(spot["at"])
+	if moved:
+		_moved.append(box_of.call(at, true))
+	var colour := tokens.accent_bright
 	if bool(marker.get("downed", false)):
+		colour = _downed_colour(marker)
 		_draw_downed(font, marker, at)
-		return
-	var tip := at + Vector2(0.0, -10.0)
-	_shapes.polygon(
-		PackedVector2Array([tip + Vector2(0, 14), tip + Vector2(-10, 0), tip + Vector2(10, 0)]),
-		tokens.accent
-	)
-	_tag(font, marker, tip + Vector2(0.0, -10.0), tokens.accent_bright, "")
+	else:
+		var grown := _grown()
+		var tip := at + Vector2(0.0, -10.0) * grown
+		_shapes.polygon(
+			PackedVector2Array(
+				[
+					tip + Vector2(0, 14) * grown,
+					tip + Vector2(-10, 0) * grown,
+					tip + Vector2(10, 0) * grown
+				]
+			),
+			tokens.accent
+		)
+		_tag(font, marker, _ally_baseline(marker, at), colour)
+	var direction := Vector2.ZERO
+	if moved:
+		direction = (Vector2(spot["target"]) - at).normalized()
+		_arrow(at, _ally_reach(marker), direction, colour, tags[marker["id"]])
+	shown[marker["id"]] = {
+		"at": at, "box": box_of.call(at, moved), "moved": moved, "arrow": direction
+	}
+
+
+func _downed_colour(marker: Dictionary) -> Color:
+	return tokens.ink_muted if bool(marker.get("dead", false)) else tokens.danger
+
+
+## How far a teammate's shape reaches from its place.
+func _ally_reach(marker: Dictionary) -> float:
+	return (DOWNED_RADIUS + 4.0 if bool(marker.get("downed", false)) else 14.0) * _grown()
+
+
+## Where the baseline of a teammate's tag is, over the shape that is on `at`.
+func _ally_baseline(marker: Dictionary, at: Vector2) -> Vector2:
+	if bool(marker.get("downed", false)):
+		return at + Vector2(0.0, -DOWNED_RADIUS - 10.0) * _grown()
+	return at + Vector2(0.0, -20.0) * _grown()
+
+
+## Everything a teammate draws when it is on `at`: the pointer or the ring (and the arrow beside it
+## when `arrowed`) and the tag.
+func _ally_box(font: Font, marker: Dictionary, at: Vector2, arrowed: bool) -> Rect2:
+	var reach := _ally_reach(marker)
+	var grown := _grown()
+	var shape := Rect2(at.x - 10.0 * grown, at.y - 10.0 * grown, 20.0 * grown, 14.0 * grown)
+	if arrowed:
+		shape = Rect2(at, Vector2.ZERO).grow(reach + (ARROW + ARROW_GAP) * grown)
+	elif bool(marker.get("downed", false)):
+		shape = Rect2(at, Vector2.ZERO).grow(reach)
+	return shape.merge(_tag_geometry(font, marker, _ally_baseline(marker, at))["box"])
 
 
 ## A teammate on the ground: a red marker with their name and the seconds they have left, and a ring
 ## that fills while somebody holds the revive on them. Bled out, it says so and carries no clock.
 func _draw_downed(font: Font, marker: Dictionary, at: Vector2) -> void:
 	var dead := bool(marker.get("dead", false))
-	var colour := tokens.ink_muted if dead else tokens.danger
-	_shapes.circle(at, DOWNED_RADIUS + 4.0, Color(tokens.shadow, 0.6))
-	_rings.append([at, DOWNED_RADIUS, 0.0, TAU, Color(colour, 0.35), DOWNED_WIDTH])
+	var colour := _downed_colour(marker)
+	var grown := _grown()
+	var radius := DOWNED_RADIUS * grown
+	var width := DOWNED_WIDTH * grown
+	_shapes.circle(at, radius + 4.0 * grown, Color(tokens.shadow, 0.6))
+	_rings.append([at, radius, 0.0, TAU, Color(colour, 0.35), width])
 	var progress := float(marker.get("revive", 0.0))
 	if progress > 0.0:
 		_rings.append(
 			[
 				at,
-				DOWNED_RADIUS,
+				radius,
 				-PI * 0.5,
 				-PI * 0.5 + TAU * clampf(progress, 0.0, 1.0),
 				tokens.accent_bright,
-				DOWNED_WIDTH
+				width
 			]
 		)
 	elif not dead:
-		_rings.append([at, DOWNED_RADIUS, -PI * 0.5, PI * 1.5, colour, DOWNED_WIDTH * 0.5])
+		_rings.append([at, radius, -PI * 0.5, PI * 1.5, colour, width * 0.5])
 	# A cross, the mark of someone who needs a hand.
-	var arm := DOWNED_RADIUS * 0.45
-	_shapes.line(at + Vector2(-arm, 0.0), at + Vector2(arm, 0.0), colour, 4.0)
-	_shapes.line(at + Vector2(0.0, -arm), at + Vector2(0.0, arm), colour, 4.0)
-	var tail := "  DEAD" if dead else "  %d S" % int(marker.get("bleed", 0))
-	_tag(font, marker, at + Vector2(0.0, -DOWNED_RADIUS - 10.0), colour, tail)
+	var arm := radius * 0.45
+	_shapes.line(at + Vector2(-arm, 0.0), at + Vector2(arm, 0.0), colour, 4.0 * grown)
+	_shapes.line(at + Vector2(0.0, -arm), at + Vector2(0.0, arm), colour, 4.0 * grown)
+	_tag(font, marker, _ally_baseline(marker, at), colour)
 
 
-## A teammate's tag, centred on `baseline_centre`: the icon, the level right beside it and then the
-## name, in the order and with the gaps of `LevelTag`, when the marker has a level (0 for none: a
-## bot, or the viewer turned levels off), else the name alone as it always was, centred the same
-## way; `tail` follows the name (the clock of a body on the ground). The whole tag is kept inside
-## the screen like any other text, and its place is told in `tags` and `tag_parts`.
-func _tag(
-	font: Font, marker: Dictionary, baseline_centre: Vector2, colour: Color, tail: String
-) -> void:
-	var who := str(marker.get("label", "")).to_upper()
+## What follows a teammate's name: the clock of a body on the ground.
+func _tail(marker: Dictionary) -> String:
+	if not bool(marker.get("downed", false)):
+		return ""
+	return "  DEAD" if bool(marker.get("dead", false)) else "  %d S" % int(marker.get("bleed", 0))
+
+
+## Where the parts of a teammate's tag go, centred on `baseline_centre`: the icon, the level right
+## beside it and then the name, in the order and with the gaps of `LevelTag` (grown with the words),
+## when the marker has a level (0 for none: a bot, or the viewer turned levels off), else the name
+## alone as it always was, centred the same way. The whole tag is kept inside the screen like any
+## other text. Read by the draw and by the search for a place clear of the cards.
+func _tag_geometry(font: Font, marker: Dictionary, baseline_centre: Vector2) -> Dictionary:
+	var who := str(marker.get("label", "")).to_upper() + _tail(marker)
 	var level := int(marker.get("level", 0))
 	if level < 1:
-		_text(font, who + tail, baseline_centre, colour)
-		tags[marker["id"]] = _words_rect(font, who + tail, baseline_centre)
-		return
-	var level_text := str(level)
-	var name_width := _width(font, who + tail)
-	var level_width := _width(font, level_text)
-	var total := LevelTag.taken(level_width) + name_width
+		return {"box": _words_rect(font, who, baseline_centre), "who": who, "level": 0}
+	var grown := _grown()
+	var icon_side := LevelTag.ICON * grown
+	var level_width := _width(font, str(level))
+	var name_width := _width(font, who)
+	var total := (
+		icon_side + LevelTag.ICON_GAP * grown + level_width + LevelTag.NAME_GAP * grown + name_width
+	)
 	var left := clampf(
 		baseline_centre.x - total * 0.5,
 		TEXT_MARGIN,
@@ -312,21 +458,107 @@ func _tag(
 	# The icon's body is centred on the digits' ink, as the font draws them on this baseline.
 	var icon_level := int(marker.get("icon", level))
 	var icon_top := LevelTag.icon_top(
-		LevelTag.digits_centre(font, LABEL_SIZE, baseline_centre.y), icon_level
+		LevelTag.digits_centre(font, label_size, baseline_centre.y), icon_level, icon_side
 	)
-	var icon := Rect2(left, icon_top, LevelTag.ICON, LevelTag.ICON)
-	_icons.append([icon, LevelIcons.region(icon_level)])
-	var level_at := icon.end.x + LevelTag.ICON_GAP
-	var name_at := level_at + level_width + LevelTag.NAME_GAP
-	_words.append([font, Vector2(level_at, baseline_centre.y), level_text, tokens.ink])
-	_words.append([font, Vector2(name_at, baseline_centre.y), who + tail, colour])
-	var top := minf(icon_top, baseline_centre.y - LABEL_SIZE)
-	tags[marker["id"]] = Rect2(left, top, total, maxf(LevelTag.ICON, LABEL_SIZE))
+	var top := minf(icon_top, baseline_centre.y - label_size)
+	return {
+		"box": Rect2(left, top, total, maxf(icon_side, label_size)),
+		"who": who,
+		"level": level,
+		"icon_level": icon_level,
+		"icon": Rect2(left, icon_top, icon_side, icon_side),
+		"level_width": level_width,
+		"name_width": name_width,
+	}
+
+
+## A teammate's tag, centred on `baseline_centre` (`_tag_geometry`); its place is told in `tags`
+## and `tag_parts`.
+func _tag(font: Font, marker: Dictionary, baseline_centre: Vector2, colour: Color) -> void:
+	var tag := _tag_geometry(font, marker, baseline_centre)
+	tags[marker["id"]] = tag["box"]
+	if int(tag["level"]) < 1:
+		_text(font, tag["who"], baseline_centre, colour)
+		return
+	var grown := _grown()
+	var icon: Rect2 = tag["icon"]
+	_icons.append([icon, LevelIcons.region(int(tag["icon_level"]))])
+	var level_at := icon.end.x + LevelTag.ICON_GAP * grown
+	var name_at := level_at + float(tag["level_width"]) + LevelTag.NAME_GAP * grown
+	_words.append([font, Vector2(level_at, baseline_centre.y), str(tag["level"]), tokens.ink])
+	_words.append([font, Vector2(name_at, baseline_centre.y), tag["who"], colour])
 	tag_parts[marker["id"]] = {
 		"icon": icon,
-		"level": Rect2(level_at, baseline_centre.y - LABEL_SIZE, level_width, LABEL_SIZE),
-		"name": Rect2(name_at, baseline_centre.y - LABEL_SIZE, name_width, LABEL_SIZE),
+		"level":
+		Rect2(level_at, baseline_centre.y - label_size, float(tag["level_width"]), label_size),
+		"name":
+		Rect2(name_at, baseline_centre.y - label_size, float(tag["name_width"]), label_size),
 	}
+
+
+## How much bigger than at the desktop's scale the words are.
+func _grown() -> float:
+	return float(label_size) / LABEL_SIZE
+
+
+## `at`, or when what a marker draws there (`box_of(at, arrowed)`: its rectangle, with the arrow
+## beside its shape when `arrowed`) is under a card of the HUD, the nearest place where it is under
+## none: slid against the edge of a card, and once more from there when that meets another card
+## (#1218). A screen with no such place keeps the marker where it was.
+func _settle(at: Vector2, box_of: Callable) -> Vector2:
+	if not _touches(box_of.call(at, false)):
+		return at
+	var round_one := _by_distance(at, _steps(at, box_of))
+	var round_two: Array[Vector2] = []
+	# Clear of the markers already moved too when there is a place for that, else of the cards only.
+	for apart in [true, false]:
+		var best := _first_clear(round_one, box_of, apart)
+		if best.is_finite():
+			return best
+		if round_two.is_empty():
+			for step in round_one.slice(0, SECOND_ROUND):
+				round_two.append_array(_steps(step, box_of))
+			round_two = _by_distance(at, round_two)
+		best = _first_clear(round_two, box_of, apart)
+		if best.is_finite():
+			return best
+	return at
+
+
+## `places` nearest to `at` first.
+func _by_distance(at: Vector2, places: Array[Vector2]) -> Array[Vector2]:
+	var sorted: Array[Vector2] = places.duplicate()
+	sorted.sort_custom(
+		func(one: Vector2, other: Vector2) -> bool:
+			return one.distance_squared_to(at) < other.distance_squared_to(at)
+	)
+	return sorted
+
+
+## The first of `places` where what a marker draws (with an arrow) is under no card (and clear of
+## the markers already moved when `apart`), or `Vector2.INF` when there is none or the draw has
+## tried as many places as it may (`MAX_TRIES`: a screen that has no room for a marker costs a few
+## milliseconds, not a hitch).
+func _first_clear(places: Array[Vector2], box_of: Callable, apart: bool) -> Vector2:
+	for place in places:
+		if _tries >= MAX_TRIES:
+			break
+		_tries += 1
+		if not _touches(box_of.call(place, true), apart):
+			return place
+	return Vector2.INF
+
+
+## The places beside each card to try for a marker on `at`: where its rectangle (with an arrow)
+## would stand against each side of each card.
+func _steps(at: Vector2, box_of: Callable) -> Array[Vector2]:
+	var box: Rect2 = box_of.call(at, true)
+	var found: Array[Vector2] = []
+	for slid in _slid(box):
+		var to := at + (slid.position - box.position)
+		if not found.has(to):
+			found.append(to)
+	return found
 
 
 ## `words` where it stays out of the HUD's cards (#1192). Unmoved when it touches none, else the
@@ -354,10 +586,14 @@ func _clear_of_cards(words: Rect2) -> Rect2:
 
 
 ## Whether `words` meets a card.
-func _touches(words: Rect2) -> bool:
+func _touches(words: Rect2, apart := false) -> bool:
 	for card in _cards():
 		if words.intersects(card):
 			return true
+	if apart:
+		for taken in _moved:
+			if words.intersects(taken):
+				return true
 	return false
 
 
@@ -404,11 +640,16 @@ func _keep_clear_rects() -> Array[Rect2]:
 		if is_instance_valid(card) and card.is_visible_in_tree() and card.size != Vector2.ZERO:
 			var rect := card.get_global_rect()
 			found.append(Rect2(rect.position - origin, rect.size).grow(CLEAR_GAP))
+	for box in held:
+		found.append(Rect2(box.position - origin, box.size).grow(CLEAR_GAP))
 	return found
 
 
+## How wide `text` is, shaped once a draw: a marker is laid out again for every place tried.
 func _width(font: Font, text: String) -> float:
-	return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE).x
+	if not _widths.has(text):
+		_widths[text] = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, label_size).x
+	return _widths[text]
 
 
 ## Where `_text` puts `text`: the box of its letters.
@@ -419,13 +660,13 @@ func _words_rect(font: Font, text: String, baseline_centre: Vector2) -> Rect2:
 		TEXT_MARGIN,
 		maxf(size.x - TEXT_MARGIN - width, TEXT_MARGIN)
 	)
-	return Rect2(left, baseline_centre.y - LABEL_SIZE, width, LABEL_SIZE)
+	return Rect2(left, baseline_centre.y - label_size, width, label_size)
 
 
 ## Centred text with a dark outline, so it holds on a lit or dark ground: kept for the end of the
 ## draw.
 func _text(font: Font, text: String, baseline_centre: Vector2, colour: Color) -> void:
-	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE).x
+	var width := _width(font, text)
 	var at := baseline_centre - Vector2(width * 0.5, 0.0)
 	at.x = clampf(at.x, TEXT_MARGIN, maxf(size.x - TEXT_MARGIN - width, TEXT_MARGIN))
 	_words.append([font, at, text, colour])
