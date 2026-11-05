@@ -43,7 +43,7 @@ const ROWS: Array = [
 	[&"look_up", &""],
 	[&"look_down", &""],
 	[&"sprint", &"stick"],
-	[&"crouch", &""],
+	[&"crouch", &"crouch"],
 	[&"jump", &"jump"],
 	[&"aim", &"aim"],
 	[&"swap_shoulder", &"swap_shoulder"],
@@ -152,6 +152,8 @@ func _read(action: StringName, c: NightCommand) -> bool:
 			return c.fire
 		&"reload":
 			return c.reload
+		&"crouch":
+			return c.motion.crouch
 		&"interact":
 			return c.use and c.use_held
 		&"swap_weapon":
@@ -184,6 +186,8 @@ func _shown(action: StringName, before: Dictionary) -> bool:
 			return player.camera_rig.yaw != before[&"yaw"]
 		&"look_up", &"look_down":
 			return player.camera_rig.pitch != before[&"pitch"]
+		&"crouch":
+			return player.state.crouching
 		&"jump":
 			return _jumps > before[&"jumps"]
 		&"aim":
@@ -414,6 +418,10 @@ func test_the_touch_layer_does_every_action_it_offers() -> void:
 			await _fixture.touch(0, _fixture.at(how))
 			await _hold("touch", row[0])
 			await _fixture.lift(0)
+			if how == TouchLayout.CROUCH:
+				# A toggle: a second tap stands, or every row after it would be a crouch.
+				await _fixture.tap(_fixture.at(how))
+				await await_millis(250)
 			_let_go()
 
 

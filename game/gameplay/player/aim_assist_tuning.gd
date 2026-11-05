@@ -1,10 +1,11 @@
 class_name AimAssistTuning
 extends Resource
 ## Every number of the touch aim assist (`AimAssist`), in one resource. Distances are metres at the
-## target, angles radians, rates per second. The player's own strength (0 to 1, the setting
-## `controls/touch_aim_assist`) scales what is here; the reasoning and the measured effect are in
-## docs/research/aim-assist.md. The shipped values are in `aim_assist_tuning_default.tres`: edit
-## that file in the inspector; `AimAssistTuning.shipped()` is how the game and the tests read it.
+## target, angles radians, rates per second. The strength (0 to 1; the setting
+## `controls/touch_aim_assist` is on at 1, off at 0) scales what is here; the reasoning and the
+## measured effect are in docs/research/aim-assist.md. The shipped values are in
+## `aim_assist_tuning_default.tres`: edit that file in the inspector; `AimAssistTuning.shipped()` is
+## how the game and the tests read it.
 
 const SHIPPED_PATH := "res://gameplay/player/aim_assist_tuning_default.tres"
 

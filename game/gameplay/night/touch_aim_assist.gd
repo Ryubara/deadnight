@@ -6,10 +6,11 @@ extends RefCounted
 ## the night (`ClientState`), so it runs the same on a local night and on a game server.
 ##
 ## It is for touch alone: nothing happens unless the touch layer is up and a finger, not a mouse
-## or a pad, was the last input (`UIInputMode.touch`). The strength is the setting
-## `controls/touch_aim_assist`; the auto-fire choice is `controls/touch_auto_fire` (on by default,
-## the maintainer's decision in #470: while aiming, the weapon fires as if Fire were held with the
-## crosshair on a zombie; off, the touch layer makes Aim a toggle and the player shoots by hand).
+## or a pad, was the last input (`UIInputMode.touch`). The assist is the toggle
+## `controls/touch_aim_assist` (on is `ON_STRENGTH`); the auto-fire choice is
+## `controls/touch_auto_fire` (on by default, the maintainer's decision in #470: while aiming, the
+## weapon fires as if Fire were held with the crosshair on a zombie; off, the touch layer makes Aim
+## a toggle and the player shoots by hand).
 
 ## When the trigger pulls itself with the crosshair on a zombie: never, or while the player aims.
 enum AutoFire { OFF, WHILE_AIMING }
@@ -18,12 +19,14 @@ const SETTINGS_PATH := ^"/root/Settings"
 const ACTION_AIM := &"aim"
 const ACTION_FIRE := &"fire"
 const MIN_AMMO := 1
+## The strength of the assist when the setting is on: the far right of the slider it replaced.
+const ON_STRENGTH := 1.0
 
 var tuning := AimAssistTuning.shipped()
 ## () -> bool, whether the touch layer is up. Without one the assist is off.
 var touch_active := Callable()
-## 0 (off) to 1; read from the settings.
-var strength := 0.5
+## 0 (off) or `ON_STRENGTH`; read from the settings. A test may set any value from 0 to 1.
+var strength := ON_STRENGTH
 var auto_fire: int = AutoFire.WHILE_AIMING
 
 var _tree: SceneTree
@@ -157,8 +160,8 @@ func _read_settings() -> void:
 	if service == null or not service.has_method(&"get_value"):
 		return
 	var level: Variant = service.call(&"get_value", &"controls/touch_aim_assist")
-	if level is float or level is int:
-		strength = clampf(float(level), 0.0, 1.0)
+	if level is bool:
+		strength = ON_STRENGTH if level else 0.0
 	var mode: Variant = service.call(&"get_value", &"controls/touch_auto_fire")
 	if mode is int:
 		# A saved 2 ("always", gone with #470) counts as on.
