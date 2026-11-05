@@ -460,7 +460,7 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 	_bodies[player_id].dead = _dead_fields[player_id]
 	if not bot:
 		crowd.join(player_id, OS.has_feature("web") if local else true)
-	looks.join(player_id)
+	looks.join(player_id, bot)
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
 	_repairing[player_id] = &""

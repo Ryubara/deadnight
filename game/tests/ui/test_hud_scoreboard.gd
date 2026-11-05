@@ -29,11 +29,11 @@ func _release_all() -> void:
 	Input.flush_buffered_events()
 
 
-func _hud(players := 2, canvas := Vector2(1920.0, 1080.0)) -> HudFixture:
+func _hud(players := 2, canvas := Vector2(1920.0, 1080.0), bots := 0) -> HudFixture:
 	var host: Control = auto_free(Control.new())
 	host.size = canvas
 	add_child(host)
-	var fixture := HudFixture.make(host, players)
+	var fixture := HudFixture.make(host, players, 1958, false, bots)
 	fixture.into_round_one()
 	return fixture
 
@@ -281,6 +281,30 @@ func test_the_fullest_board_fits_every_canvas_with_no_text_cut() -> void:
 			assert_float(rect.get_center().x)
 			. override_failure_message("not centred on %s" % canvas)
 			. is_equal_approx(safe.get_center().x, 2.0)
+		)
+		_assert_nothing_cut(board)
+		_assert_rows_do_not_overlap(board, canvas)
+
+
+func test_the_fullest_room_eight_people_and_seven_bots_has_a_row_each_on_every_canvas() -> void:
+	for canvas in CANVASES:
+		var fixture := _hud(NightHost.MAX_PLAYERS, canvas, MatchSettings.MAX_BOTS)
+		_fill_worst_case(fixture)
+		fixture.hud.offset_left = PHONE_INSETS.x if canvas.x > 2000.0 else 0.0
+		fixture.hud.offset_right = -PHONE_INSETS.z if canvas.x > 2000.0 else 0.0
+		var board := fixture.hud.scoreboard
+		board.set_shown(true)
+		await await_idle_frame()
+		await await_idle_frame()
+		# Every body has its row: no one is cut off the list.
+		assert_int(board.row_ids.size()).is_equal(NightHost.MAX_SEATS)
+		var bots := board.row_ids.filter(NightBots.is_bot_id)
+		assert_int(bots.size()).is_equal(MatchSettings.MAX_BOTS)
+		var rect := board.get_global_rect()
+		(
+			assert_bool(Rect2(Vector2.ZERO, canvas).encloses(rect))
+			. override_failure_message("the board %s leaves the canvas %s" % [rect, canvas])
+			. is_true()
 		)
 		_assert_nothing_cut(board)
 		_assert_rows_do_not_overlap(board, canvas)

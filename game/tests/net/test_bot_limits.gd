@@ -52,15 +52,12 @@ func test_a_budget_is_shared_by_the_open_rooms_and_never_raises_the_cap() -> voi
 	assert_int(capped.for_room(5)).is_equal(1)
 
 
-func test_the_seats_a_night_fills_obey_the_setting_the_free_seats_and_the_cap() -> void:
+func test_the_bots_a_night_seats_obey_the_setting_and_the_cap_and_never_the_people() -> void:
 	for wanted in range(0, MatchSettings.MAX_BOTS + 1):
-		for people in range(1, NightBots.SEATS + 1):
-			for cap in range(0, MatchSettings.MAX_BOTS + 1):
-				var seated := NightBots.target(wanted, people, cap)
-				assert_int(seated).is_less_equal(wanted)
-				assert_int(seated).is_less_equal(cap)
-				assert_int(seated + people).is_less_equal(NightBots.SEATS)
-	assert_int(NightBots.target(3, 1, 1)).is_equal(1)
-	assert_int(NightBots.target(3, 1, 0)).is_equal(0)
+		for cap in range(0, MatchSettings.MAX_BOTS + 1):
+			var seated := NightBots.target(wanted, cap)
+			assert_int(seated).is_equal(mini(wanted, cap))
+	assert_int(NightBots.target(3, 1)).is_equal(1)
+	assert_int(NightBots.target(3, 0)).is_equal(0)
 	# No cap given is the setting's own maximum.
-	assert_int(NightBots.target(3, 1)).is_equal(3)
+	assert_int(NightBots.target(3)).is_equal(3)

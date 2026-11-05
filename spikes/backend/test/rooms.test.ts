@@ -122,8 +122,9 @@ test("quick join puts strangers in one public night, then starts another when it
   assert.notEqual(next.id, first.id); // the first is full: a new night
   assert.equal((await call("POST", "/lobbies/quick", d.headers)).json().id, next.id);
 
-  // A private night is never handed to a stranger.
-  const mine = (await call("POST", "/lobbies", e.headers, {})).json();
+  // A private night is never handed to a stranger (a new night is public: its host makes it private).
+  const mine = (await call("POST", "/lobbies", e.headers, { visibility: "private" })).json();
+  assert.equal(mine.visibility, "private");
   await call("POST", `/lobbies/${mine.id}/start`, e.headers);
   const stranger = await guest("stranger");
   const picked = (await call("POST", "/lobbies/quick", stranger.headers)).json();

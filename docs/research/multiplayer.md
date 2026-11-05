@@ -22,9 +22,9 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | | The game (issue #302) | Still the spike's design |
 | --- | --- | --- |
 | Transport | `WebSocketLink` (client) and `WsListener` (server) from the spike's `WebSocketPeer`/`TCPServer` code; `GameLink` is the interface `LoopbackLink` (single-player) and `WebSocketLink` share. Port 8910 | `ConditionedTransport` (delay, jitter, loss) is not ported |
-| Server | `NightHost`: `godot --headless --path game -- --server [--port N]`, one `NightServer`, up to 8 players (`NightHost.MAX_PLAYERS`, [measured](#eight-players-690)), the lowest free id is the seat, a new night is built when the last player leaves | `GameServer`'s per-client baselines and acks |
+| Server | `NightHost`: `godot --headless --path game -- --server [--port N]`, one `NightServer`, up to 8 people (`NightHost.MAX_PLAYERS`, [measured](#eight-players-690)) and the bots on top (`NightHost.MAX_SEATS` = 15 bodies, [below](#eight-people-and-bots-1179)), the lowest free id is the seat, a new night is built when the last player leaves | `GameServer`'s per-client baselines and acks |
 | Tick | the night's own **60 Hz** step; a `TICK` to each client every 2nd step (30 a second) | the spike's 30 Hz tick |
-| Protocol | `NetWire`, version 15 (the layout is in its header; 15 added the `ARRIVAL` message, a client's word that its helicopter drop began and ended, two bytes, [the arrival](../design/arrival.md); 14 put a zombie's status effect in its mode byte, [status effects](status-effects.md); 13 added the `ORDER` message and the frame's `bot_orders`, [bot orders](bots.md#orders-follow-roam-and-hold-641); 11 put the quick melee in a flag of the command, #411; 5 put the client's measured round trip in the ping, [Scoreboard](scoreboard.md); 6 put the view step in a command; 7 sent the zombies of a frame as deltas, #57; 8 added the aim pose and look to each player of the frame, [below](#other-players-weapons-518); 9 put every seat's name in the WELCOME and a `player_named` event on a join, #485; 10 added the `PLATFORM` message; 12 added each player's `stance` to the frame, [below](#other-players-sprint-crouch-and-jump-549)); a command is a fixed 25 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks; a `PLATFORM` message (type 12, two bytes) says after the welcome whether the client is a browser, because the crowd a night stands is the weakest client's ([crowd budget](crowd-budget.md#decision-120-for-a-desktop-and-a-server-40-with-a-browser-in-the-match-453)); a client that does not send it counts as a browser; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone; `ORDER` (type 13, nine bytes: the order's index, the spot in centimetres, the bot it is for) a person's order to the bots, rate limited at 2 a second and answered with a `bot_order_set` event for everyone | the version only in the handshake; refusal of another version |
+| Protocol | `NetWire`, version 16 (the layout is in its header; 16 gave the bots ids of their own, 101 and up, and left them out of the eight places: no layout changed, [below](#eight-people-and-bots-1179); 15 added the `ARRIVAL` message, a client's word that its helicopter drop began and ended, two bytes, [the arrival](../design/arrival.md); 14 put a zombie's status effect in its mode byte, [status effects](status-effects.md); 13 added the `ORDER` message and the frame's `bot_orders`, [bot orders](bots.md#orders-follow-roam-and-hold-641); 11 put the quick melee in a flag of the command, #411; 5 put the client's measured round trip in the ping, [Scoreboard](scoreboard.md); 6 put the view step in a command; 7 sent the zombies of a frame as deltas, #57; 8 added the aim pose and look to each player of the frame, [below](#other-players-weapons-518); 9 put every seat's name in the WELCOME and a `player_named` event on a join, #485; 10 added the `PLATFORM` message; 12 added each player's `stance` to the frame, [below](#other-players-sprint-crouch-and-jump-549)); a command is a fixed 25 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks; a `PLATFORM` message (type 12, two bytes) says after the welcome whether the client is a browser, because the crowd a night stands is the weakest client's ([crowd budget](crowd-budget.md#decision-120-for-a-desktop-and-a-server-40-with-a-browser-in-the-match-453)); a client that does not send it counts as a browser; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone; `ORDER` (type 13, nine bytes: the order's index, the spot in centimetres, the bot it is for) a person's order to the bots, rate limited at 2 a second and answered with a `bot_order_set` event for everyone | the version only in the handshake; refusal of another version |
 | Snapshots | the `NightServer` frame, sent as a **difference against the frame that client had before** (`FrameDelta`): TCP never reorders or loses, so the previous frame is the baseline and no ack is needed. Compressed with Zstandard above 256 bytes | the spike's centimetre deltas against an acked baseline (they were for a protocol over an unreliable link) |
 | Events | every client hears every event (shots, hits, rules); a late joiner gets the rules' snapshot in `WELCOME` (`HudState.load_snapshot`) and the doors, boards and circuits from the frames (`WorldMirror`) | |
 | The local player | **predicted**: the client moves its own body at once and records where each numbered command left it; the frame's `ack` says which command the server used, and `Reconciler` moves the body a share (25 %) of the way to the server's answer per frame, snapping over 2.5 m | the spike replays the unacknowledged inputs on the server's position; the game does not replay yet |
@@ -405,8 +405,9 @@ numbers are in [rounds](../design/rounds.md#match-settings).
 
 The Bots setting (#643) adds no byte and no version: `bots` is a key of `match_settings` (a snapshot without it reads
 as 0, and a ticket or snapshot with it is taken by a build that does not know it, which ignores the key), a
-`player_added` event carries `bot`, a `bot_replaced` event says a person took a bot's seat, and each player of the
-snapshot has `bot`. The bots' names ride the WELCOME's `names` like any seat's. See [rounds](../design/rounds.md#bots).
+`player_added` event carries `bot`, a `bot_replaced` event said a person took a bot's seat (nothing sends it since
+issue 1179, when a bot stopped holding a seat), and each player of the snapshot has `bot`. The bots' names ride the
+WELCOME's `names` like any seat's. See [rounds](../design/rounds.md#bots).
 
 ## The level and icon beside a name (#1077)
 
@@ -485,7 +486,8 @@ headless server and the single-threaded web export.
 
 ## Eight players (#690)
 
-A room holds eight seats, people and bots together (`NightHost.MAX_PLAYERS`; the maintainer's decision of 2026-11-03).
+A room held eight seats, people and bots together (`NightHost.MAX_PLAYERS`; the maintainer's decision of 2026-11-03;
+since #1179 the eight are people only, [below](#eight-people-and-bots-1179)).
 **The wire did not change** (still version 12): a frame is a keyed variable, so more players are more entries and no
 layout moved; a command is still 25 bytes, a player's entry in the frame is the same, the protocol's player id is a
 byte (the limit is 255). What moved is how many entries a client is sent, and the places that assumed four seats
@@ -537,6 +539,50 @@ server step's mean was 5 to 18 ms (median 7.8) and a second run of 6 minutes (se
 388 ms, clustered where the crowd was largest; the first run's worst was 2.6 s), all in one process that also holds the
 three clients' worlds, eight players' worth of bots and the machine's other work: they say the room holds together, not
 that a server's step is that long (the bench above is the server alone).
+
+## Eight people and bots (#1179)
+
+The maintainer: bots are no longer in the 8 player cap, and balance is for later. The eight are **people**; the bots the
+host sets (0 to 7) come on top, so a night holds up to 15 bodies (`NightHost.MAX_SEATS`). Where the cap was written, and
+what it became:
+
+| Place | Before | Now |
+| --- | --- | --- |
+| `NightBots.SEATS` (8) and `_highest_free` (`range(SEATS, 0, -1)`) | bots took the highest free seat of the eight | gone: a bot's id is the lowest free from `NightBots.FIRST_ID` = 101 (101 to 107), so it never collides with a person's (1 to 8) |
+| `NightBots.target(setting, people, cap)` | cut by the seats the people leave free | `target(setting, cap)`: the setting, cut only by the server's limit (`BotLimits`) |
+| `hand_over`, `adopt`, `wants_more` | a person without a seat took the lowest bot's; a leaving person's seat became a bot's | gone: nobody inherits a seat, a person who leaves takes only their own body |
+| `NightHost.MAX_PLAYERS` (8) | people and bots | people only; `MAX_SEATS` = 15 is new; the test that held `NightBots.SEATS`, `LookServer.SEATS` and `MAX_PLAYERS` equal now holds `LookServer.SEATS` (8 people) and `BOT_SEATS` (7) to them |
+| the heartbeat's `players` | connected people (bots were never in it) | `NightHost.people_count()`: connected people and those whose socket dropped and whose seat is held; never a bot |
+| backend `MAX_PLAYERS`, `maxPlayers` of a lobby | people and bots | people; a bot is in no lobby (the `bots` setting is kept in the settings). The ticket carries no cap |
+| the wire | WELCOME's `player_id` is a byte, ORDER's bot byte, MARK's subject 16 bits | nothing packs ids into a smaller range than the 101 to 107 of the bots; no layout changed. **`NetWire.VERSION` is 16** anyway (and `MIN_VERSION`): a client of 15 keeps eight rows and eight seats and would draw a 15 body night wrongly |
+| `LookServer` seats (armband colour, lot seat) | 8, lowest free | people 0 to 7, bots 8 to 14 |
+| the lobby's seat list | bots filled the highest of the eight rows | the people's rows, then the bots in rows of their own (`B1` ...) |
+| scoreboard and end board | kept the first 8 rows | `NightHost.MAX_SEATS` rows |
+
+**Measured** (`test_room_eight.gd`, real sockets, the 60 Hz step, the same gather and measure time as the eight player
+case above): a person is sent 11.0 KB/s with 4 people, 12.8 KB/s with 8 people, 14.4 KB/s with 5 people and 3 bots, and
+**21.3 KB/s with 8 people and 7 bots** (15 players in every frame, 37 dead alive against 11), and sends 1.5 KB/s in
+all of them. The suite holds the 8 + 7 case under 30 KB/s. The list call (`GET /lobbies`, [the lobby](../design/lobby.md#the-list-of-nights-the-server-browsers-data-1179))
+costs 0.014 ms at 10 nights, 0.12 ms at 1,000 and 0.62 ms at 5,000 in the process (a 50 row page is 9 KB).
+
+**Limits found** (nothing tuned):
+
+- **The HUD's column.** Fifteen boxes would stand 598 units high and overlap the round and objective cards on a 864 high
+  canvas (`test_hud_layout`, 31 to 123 units). Past eight bodies the bots are a strip of chips under the people's boxes
+  (`HudBotChips`, 397 units in all); a bot's points are on the scoreboard only.
+- **The end board.** Fifteen rows and eight credits do not fit under 948 canvas units: past eight bodies the credits
+  are the people's only, and on a canvas too short for every row at its floor (a 864 high canvas, a phone) the credits
+  are left off;
+  the players' ticket keeps all 15 rows, with smaller type where a row is shorter than its font.
+- **The scoreboard** fits 15 rows on every canvas of its test (1536 by 864 up), a phone's 844 by 390 at the 1.25 UI scale
+  included (the touch buttons sit over it, as they do for eight).
+- **Armband colours repeat.** There are 8 colours; a bot's seat is 8 to 14, so with 8 people and 7 bots every bot
+  wears a person's colour (told apart by `BOT` after its name and by being a chip in the HUD).
+- **Spawn markers.** Each map has 8 player markers; with more than 8 bodies the ninth starts on the first's marker
+  (`NightWorld.player_spawn` wraps), so bodies overlap at the start of the night.
+- **Balance and performance are not retuned.** The rules count 15 players (the count and alive scaling, one boss headliner
+  for every 3 beyond the first), and the late-round budget CI holds is still four players; a night of 8 people and
+  7 bots has no budget of its own yet.
 
 ## Measured
 

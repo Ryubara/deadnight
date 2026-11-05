@@ -1,12 +1,12 @@
 extends Node
-## The soak of bot slot filling (#230): a game server's room over a real WebSocket on this
+## The soak of bot filling (#230, #1179): a game server's room over a real WebSocket on this
 ## machine, people who are autopilot clients (each drives its own predicted body from its own
 ## shoulder camera, as a person's client does) and the room's bots, for game minutes. It checks
-## what a match with bots must keep: the bots fill the seats the people leave free and go when
-## people take them, the night is never rebuilt and the round never goes back, a person who takes
-## a bot's seat keeps its points, and the clients stay with the server (no predicted body far
-## from the server's, no seat a client shows that the server does not hold). An engine error
-## anywhere fails the run (the log is read).
+## what a match with bots must keep: the bots are the setting however many people come and go (they
+## hold no seat of the eight people, so none gives way), the night is never rebuilt and the round
+## never goes back, and the clients stay with the server (no predicted body far from the server's,
+## no seat a client shows that the server does not hold). An engine error anywhere fails the run
+## (the log is read).
 ##
 ## `godot --headless --path game res://tests/captures/bots_slots_soak.tscn --fixed-fps 60
 ##   -- --scenario=pair --minutes=10`
@@ -16,8 +16,8 @@ extends Node
 ## game minute).
 ##
 ## pair:  two people and a Bots setting of 2 for the whole run.
-## churn: a Bots setting of 3; people join at 0, 10, 30 and 50% of the run (the bots give way, one
-##        seat at a time) and leave at 70, 80 and 90% (the bots come back).
+## churn: a Bots setting of 3; people join at 0, 10, 30 and 50% of the run (every bot stays, on top
+##        of the people) and leave at 70, 80 and 90% (every bot still stays).
 ## Run it with `--fixed-fps 60` so the minutes pass as fast as the machine can step them. Prints
 ## `SLOTS {json}` and exits 1 when any check failed.
 
@@ -27,7 +27,6 @@ const HZ := 60
 const MOST_AHEAD := 2.5
 ## Ticks after a seat change in which the clients' seat lists may still lag the server's.
 const SETTLE_TICKS := 120
-const SEATS := NightHost.MAX_PLAYERS
 ## Ticks the lot takes to warm up; the host's worst step is read after them.
 const WARM_TICKS := 1200
 ## Ticks between two comparisons of the solid things the clients' worlds and the server's hold.
@@ -47,7 +46,7 @@ var _seat_checks := 0
 var _last_change := 0
 var _round_seen := 0
 var _changes: Array[Dictionary] = []
-var _takeovers := 0
+var _bodies_kept := 0
 
 
 func _ready() -> void:
@@ -122,18 +121,14 @@ func _churn_plan(total: int) -> Array[Dictionary]:
 	return plan
 
 
-## A person joins (an autopilot client takes the lowest free seat, or a bot's) or the person in the
-## highest seat leaves; then the room is given a moment and the bots are counted against the rule.
+## A person joins (an autopilot client takes the lowest free seat) or the person in the highest seat
+## leaves; then the room is given a moment and the bots are counted against the rule, and each is
+## the body it was.
 func _change(step: Dictionary) -> void:
-	var kills_before := -1
-	var body_before: Node = null
-	var bot_seat := -1
+	var bodies_before := {}
+	for bot_id in _host.bots.seats():
+		bodies_before[bot_id] = _host.server.body_of(bot_id)
 	if step["join"]:
-		# With no free seat the newcomer takes the lowest bot's seat as it stands.
-		if _clients.size() + _host.bots.count() >= SEATS and _host.bots.count() > 0:
-			bot_seat = _host.bots.seats()[0]
-			kills_before = (_host.server.rules.players[bot_seat] as PlayerState).kills
-			body_before = _host.server.body_of(bot_seat)
 		await _join()
 	else:
 		var ids: Array = _clients.keys()
@@ -144,7 +139,7 @@ func _change(step: Dictionary) -> void:
 		await get_tree().physics_frame
 	# A client that joins builds its lot on this thread: that stall is not the server's.
 	_host.worst_ms = 0.0
-	var expected := NightBots.target(_host.match_settings.bots, _clients.size())
+	var expected := NightBots.target(_host.match_settings.bots, _host.bot_limit)
 	(
 		_changes
 		. append(
@@ -159,13 +154,15 @@ func _change(step: Dictionary) -> void:
 	)
 	if _host.bots.count() != expected:
 		_fail("at tick %d: %d bots, expected %d" % [_tick(), _host.bots.count(), expected])
-	if bot_seat > 0 and _host.server.rules.players.has(bot_seat):
-		var now: PlayerState = _host.server.rules.players[bot_seat]
-		_takeovers += 1
-		# The seat is the bot's as it stood: the same body and the count of kills kept (points are
-		# not compared, the autopilot that is the person spends them at once).
-		if now.bot or now.kills < kills_before or _host.server.body_of(bot_seat) != body_before:
-			_fail("the person at seat %d did not get the bot's seat as it stood" % bot_seat)
+	for bot_id: int in bodies_before:
+		_bodies_kept += 1
+		# A bot has no seat for a person to take: each is the body it was, still a bot.
+		if (
+			not _host.server.rules.players.has(bot_id)
+			or not (_host.server.rules.players[bot_id] as PlayerState).bot
+			or _host.server.body_of(bot_id) != bodies_before[bot_id]
+		):
+			_fail("the bot %d is not the body it was after a person came or went" % bot_id)
 
 
 func _join() -> void:
@@ -329,7 +326,7 @@ func _report(total: int, first_night: int) -> void:
 		"bots_at_end": _host.bots.count(),
 		"bot_profile": profile,
 		"changes": _changes,
-		"takeovers": _takeovers,
+		"bot_bodies_kept": _bodies_kept,
 		"seat_checks": _seat_checks,
 		"worst_gap_m": snappedf(_worst_gap, 0.01),
 		"worst_reconcile_error_m": snappedf(worst_error, 0.01),

@@ -968,7 +968,7 @@ func _free_seat() -> int:
 	var taken: Array = []
 	for member: Dictionary in team.values():
 		taken.append(member["seat"])
-	for seat in NightHost.MAX_PLAYERS:
+	for seat in NightHost.MAX_SEATS:
 		if not taken.has(seat):
 			return seat
 	return 0

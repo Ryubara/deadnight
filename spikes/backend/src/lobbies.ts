@@ -24,18 +24,23 @@ export interface Match {
   hostLevel: number;
 }
 
+export type Visibility = "private" | "public";
+
 export interface Lobby {
   id: string;
   /** Short code to join by hand. */
   code: string;
   hostId: string;
   maxPlayers: number;
-  /** A public night is one Quick join may put a stranger in; a private one is for whoever has its code. */
-  visibility: "private" | "public";
+  /**
+   * A public night is listed (`listed`, the Server Browser) and one Quick join may put a stranger in; a private one is for
+   * whoever has its code. A new night is public: its host makes it private (`setVisibility`).
+   */
+  visibility: Visibility;
   members: Member[];
   /** When each member was last heard from (create, join, a poll): who is still on the lobby screen. */
   seen: Map<string, number>;
-  /** Players on the game server now, as it last said (null until it has, or before the match starts). */
+  /** People on the game server now, as it last said, bots left out (null until it has, or before the match starts). */
   players: number | null;
   /** The round the night is in, as the game server last said (null until it has, or before the match starts). */
   round: number | null;
@@ -63,7 +68,8 @@ export type LobbyError =
   | "no_server"
   | "not_member"
   | "not_started"
-  | "bad_settings";
+  | "bad_settings"
+  | "bad_visibility";
 
 export class LobbyFailure extends Error {
   readonly reason: LobbyError;
@@ -90,7 +96,7 @@ export interface LobbyLimits {
 
 /** Most people who may ever hold a seat of one started night (who left is not tracked, only who is there now). */
 export const MAX_SEATS_EVER = 32;
-/** Seats in a room, people and bots together: the game server's `NightHost.MAX_PLAYERS`, which a lobby may not exceed. */
+/** People in a room, bots not counted: the game server's `NightHost.MAX_PLAYERS`, which a lobby may not exceed. */
 export const MAX_PLAYERS = 8;
 
 // A tab in the background stops polling (the game's frames stop), so a host who goes to a chat to paste the invite is
@@ -173,7 +179,7 @@ export class LobbyService {
     return dropped;
   }
 
-  create(host: Member, maxPlayers: number, visibility: "private" | "public" = "private"): Lobby {
+  create(host: Member, maxPlayers: number, visibility: Visibility = "public"): Lobby {
     this.depart(host.userId);
     let code = makeCode();
     while (this.byCode.has(code)) code = makeCode();
@@ -321,6 +327,35 @@ export class LobbyService {
     lobby.settings = checked.settings;
     lobby.lastActiveAt = this.now();
     return lobby;
+  }
+
+  /** The host makes the night private (only its code gets anyone in) or public again (listed). Any time, even in progress. */
+  setVisibility(id: string, userId: string, visibility: unknown): Lobby {
+    const lobby = this.get(id);
+    if (lobby.hostId !== userId) throw new LobbyFailure("not_host");
+    if (visibility !== "public" && visibility !== "private") throw new LobbyFailure("bad_visibility");
+    lobby.visibility = visibility;
+    lobby.lastActiveAt = this.now();
+    return lobby;
+  }
+
+  /**
+   * The nights a player may be shown to join: public ones, waiting or in progress, that have not run out. An expired night
+   * is dropped here and now, and a member who stopped polling has left (as `get` does), so the people count is today's.
+   * A cost of one pass over the lobbies and nothing kept between calls: a night that ended or emptied is gone from the very
+   * next call.
+   */
+  listed(): Lobby[] {
+    const out: Lobby[] = [];
+    for (const lobby of [...this.lobbies.values()]) {
+      if (this.expired(lobby)) {
+        this.remove(lobby);
+        continue;
+      }
+      this.dropAbsent(lobby);
+      if (lobby.visibility === "public" && lobby.members.length > 0) out.push(lobby);
+    }
+    return out;
   }
 
   /**
