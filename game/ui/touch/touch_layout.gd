@@ -72,10 +72,16 @@ const DRAG_OWNERS: Array[StringName] = [BOT_WHEEL]
 ## Pause sits on the top edge, right of the HUD's left column.
 const PAUSE_OFFSET := Vector2(442.0, 80.0)
 const PAUSE_RADIUS := 36.0
-## The ping button sits right of Pause on the top edge, clear of the HUD's left column and of the
-## middle of the screen.
-const PING_OFFSET := Vector2(538.0, 80.0)
+## The ping button stands under Pause (#1289), in the same column, so the one finger that
+## reaches the top edge has Pause above and Ping below with a thumb's room between them. How far
+## below is a length on the glass, not in units (`ping_drop`): at least `PING_CENTRES_CSS` CSS
+## pixels (9 mm and a little) from Pause's centre, and the hit areas never touch. `PING_DROP` is
+## the answer where no fingertip is known (a desktop, a test): 54 CSS px at 0.36 CSS px a unit.
 const PING_RADIUS := 36.0
+const PING_DROP := 150.0
+const PING_CENTRES_CSS := 56.0
+## The air kept between Pause's hit area and Ping's, as a share of a fingertip (6 of 44 CSS px).
+const PING_HIT_GAP := 6.0 / MenuScale.TAP_PIXELS
 ## The floating stick: its resting place (a faint ring, above the HUD's players column and the
 ## weapon strip under it), its radius and where it may start.
 const STICK_REST := Vector2(330.0, 390.0)
@@ -109,17 +115,35 @@ static func buttons(
 	var pause_radius := PAUSE_RADIUS * touch_scale
 	var pause_x := safe.end.x - PAUSE_OFFSET.x if mirrored else safe.position.x + PAUSE_OFFSET.x
 	found[PAUSE] = _circle(Vector2(pause_x, safe.position.y + PAUSE_OFFSET.y), pause_radius, finger)
-	var ping_x := safe.end.x - PING_OFFSET.x if mirrored else safe.position.x + PING_OFFSET.x
+	var drop := ping_drop(touch_scale, finger)
 	found[PING] = _circle(
-		Vector2(ping_x, safe.position.y + PING_OFFSET.y), PING_RADIUS * touch_scale, finger
+		Vector2(pause_x, safe.position.y + PAUSE_OFFSET.y + drop), PING_RADIUS * touch_scale, finger
 	)
 	return found
 
 
+## How far below Pause's centre Ping's centre stands, canvas units: the most of `PING_CENTRES_CSS`
+## CSS pixels (a fingertip is `finger` units for `MenuScale.TAP_PIXELS` of them), Pause's and
+## Ping's hit areas with `PING_HIT_GAP` of a fingertip between them, and `PING_DROP` where no
+## fingertip is known.
+static func ping_drop(touch_scale: float, finger := 0.0) -> float:
+	var pause_hit := _hit(PAUSE_RADIUS * touch_scale, finger)
+	var ping_hit := _hit(PING_RADIUS * touch_scale, finger)
+	return maxf(
+		PING_DROP,
+		maxf(
+			finger * PING_CENTRES_CSS / MenuScale.TAP_PIXELS,
+			pause_hit + ping_hit + finger * PING_HIT_GAP
+		)
+	)
+
+
 ## Where a finger may land to start the move stick, and the side it is on (the left for a right
-## hand, the right for a left hand).
-static func stick_zone(safe: Rect2, mirrored := false) -> Rect2:
-	var top := safe.size.y * STICK_ZONE_TOP
+## hand, the right for a left hand). It starts below `below` (a y of the canvas) when that is
+## lower than its own top: the touch layer gives the bottom of Ping's hit area, so a thumb that
+## starts the stick never lands on the button above it (#1289).
+static func stick_zone(safe: Rect2, mirrored := false, below := -INF) -> Rect2:
+	var top := maxf(safe.size.y * STICK_ZONE_TOP, below - safe.position.y)
 	var width := safe.size.x * STICK_ZONE_WIDTH
 	var left := safe.end.x - width if mirrored else safe.position.x
 	return Rect2(Vector2(left, safe.position.y + top), Vector2(width, safe.size.y - top))
@@ -127,7 +151,13 @@ static func stick_zone(safe: Rect2, mirrored := false) -> Rect2:
 
 static func _circle(centre: Vector2, radius: float, finger: float) -> Dictionary:
 	var was := maxf(radius + HIT_PAD, MIN_HIT)
-	return {&"centre": centre, &"radius": radius, &"hit": maxf(was, finger * 0.5), &"was": was}
+	return {&"centre": centre, &"radius": radius, &"hit": _hit(radius, finger), &"was": was}
+
+
+## The radius of a hit area: the drawn button and a pad round it, at least `MIN_HIT`, and a
+## fingertip's half when `finger` is known.
+static func _hit(radius: float, finger: float) -> float:
+	return maxf(maxf(radius + HIT_PAD, MIN_HIT), finger * 0.5)
 
 
 static func stick_rest(safe: Rect2, touch_scale: float, mirrored := false) -> Vector2:
