@@ -18,16 +18,28 @@ Each finger has one job until it lifts, tracked by its touch index, so move, loo
 | --- | --- | --- |
 | Move | anywhere on the left, below the top fifth | a stick that floats under the thumb and follows it past the rim; the rim is a sprint |
 | Look | the rest of the screen | a drag turns the view; one swipe across the screen's height turns about 92 degrees at sensitivity 1 (100 px on a 390 px tall phone is 23 degrees), a fast flick gains up to 1.6 times; the view follows the finger a few frames behind, evenly (`LookSmoother`, 40 ms, [why](../research/touch-look-smoothness.md)) |
-| Fire | big, right thumb | `fire` held, wherever the player aims (hip, aimed, auto-fire on or off); a drag that starts on it also looks, at the look sensitivity (#497) |
-| Aim | an arc round Fire | `aim`, **held** with auto-fire on (the default), a **toggle** with auto-fire off: a tap aims, the next tap leaves the aim, so the player can aim and shoot by hand. The button stays lit while the toggle is on. A drag that starts on it also looks, held or toggled (#497), so one thumb can aim and turn |
-| Jump, Reload, Swap, Grenade | an arc round Fire | `jump`, `reload`, `swap_weapon`, `throw_grenade`. Grenade is held while the pin is out and lets go to throw; a drag that starts on it also looks (#599), because the right thumb is on it for the whole hold and the left has the stick, so the throw can be aimed |
-| Shoulder swap ("SIDE") | small, above Swap, outside the middle of the screen | `swap_shoulder`: the camera moves to the other shoulder, to see round a corner |
-| Melee | small, on the far right edge below Fire and above the ammo card (60 left, 310 up) | `quick_melee` (#588): a tap is one blow with whatever is in hand, at once; the server's 0.6 s cooldown holds a thumb that taps again and a finger that stays down is still one blow ([quick melee](weapons.md#quick-melee)) |
-| Bots ("BOTS") | small, on the far right edge above Melee (60 left, 405 up) | `bot_wheel` (#642): **hold** it and the bot command wheel opens over the middle of the screen; **drag** from where the thumb landed toward Follow (up), Roam (down right) or Hold (down left) and let go to give that order; letting go in the middle, or a tap, gives none. The view does not turn while it is held ([bot wheel](../research/bot-wheel.md)) |
-| Ping | small, top edge, right of Pause (538 right of the safe edge, 80 down) | `ping` (#642): a tap marks what the crosshair is on for the team, as Z, the middle mouse button and the pad's d-pad right do; the server's one mark a second per player holds a thumb that taps again |
-| Interact | left of Fire, only with a HUD prompt | `interact`; its caption says what it does (OPEN, BUY, HOLD for a broken fence, which keeps nailing boards while held, FUEL, SWITCH, TAKE, REVIVE) ([hold at a broken fence](rounds.md#the-fences-boards)) |
-| Pause | top, beside the round card | `pause` |
-| Scoreboard | under Pause | `scoreboard` while a finger is on it |
+| Fire | big, right thumb (a bullet) | `fire` held, wherever the player aims (hip, aimed, auto-fire on or off); a drag that starts on it also looks, at the look sensitivity (#497) |
+| Aim | a scope, up and to the left of Fire | `aim`, **held** with auto-fire on (the default), a **toggle** with auto-fire off: a tap aims, the next tap leaves the aim, so the player can aim and shoot by hand. The button stays lit while the toggle is on. A drag that starts on it also looks, held or toggled (#497), so one thumb can aim and turn |
+| Reload | a circle of arrow, right next to Fire on its left, in Fire's row | `reload` (#1277) |
+| Jump | two chevrons up, above Fire | `jump`. A press while crouched stands the body up first, and the jump goes on |
+| Crouch | a chevron down onto a floor line, below and left of Fire | `crouch`, a **toggle** (#1277): a tap crouches and stays, the next tap or a Jump stands. The button stays lit while it is on |
+| Swap, Grenade | the old places (arrows across; a grenade), until the weapon strip takes them (#1280) | `swap_weapon`, `throw_grenade`. Grenade is held while the pin is out and lets go to throw; a drag that starts on it also looks (#599) |
+| Shoulder swap (a person, an arrow each way) | small, above Swap, outside the middle of the screen | `swap_shoulder`: the camera moves to the other shoulder, to see round a corner |
+| Melee (a blade) | small, on the far right edge below Fire and above the ammo card (60 left, 310 up) | `quick_melee` (#588): a tap is one blow with whatever is in hand, at once; the server's 0.6 s cooldown holds a thumb that taps again and a finger that stays down is still one blow ([quick melee](weapons.md#quick-melee)) |
+| Bots (a wheel) | small, on the far right edge above Melee (60 left, 405 up) | `bot_wheel` (#642): **hold** it and the bot command wheel opens over the middle of the screen; **drag** from where the thumb landed toward Follow (up), Roam (down right) or Hold (down left) and let go to give that order; letting go in the middle, or a tap, gives none. The view does not turn while it is held ([bot wheel](../research/bot-wheel.md)) |
+| Ping (a pin) | small, top edge, right of Pause (538 right of the safe edge, 80 down) | `ping` (#642): a tap marks what the crosshair is on for the team, as Z, the middle mouse button and the pad's d-pad right do; the server's one mark a second per player holds a thumb that taps again |
+| Interact | one thumb-length left of Fire, only with a HUD prompt | `interact`; a tap mark over its word, which says what it does (OPEN, BUY, HOLD for a broken fence, which keeps nailing boards while held, FUEL, SWITCH, TAKE, REVIVE) ([hold at a broken fence](rounds.md#the-fences-boards)) |
+| Pause | top, beside the round card (two bars) | `pause` |
+| Scoreboard | under Pause (rows of a table) | `scoreboard` while a finger is on it |
+
+**Every control shows an icon and no words** (`TouchIcons`, drawn in code, no file). The one word left is the interact
+button's verb: it is a different thing nine ways (OPEN, BUY, AMMO, PLAY, TAKE, FUEL, HOLD, SWITCH, REVIVE) at a different
+price, the card above it names the object, and a word is read faster than nine new pictures to learn.
+
+**Every button of the right thumb is a right button** (`TouchLayout.looks_when_dragged`): a finger that starts on any of
+them presses it and also turns the view for the rest of its drag, so Reload and Jump fire on the press and hand the drag
+to the look, as Fire and Aim always did. The one exception is the bot wheel, whose drag picks an order. A finger that
+starts on free ground beside a button looks, and does not press the button it later drags across.
 
 Everything presses the game's own input actions, so the player and the night read touch like a key. Look goes out as mouse
 motion in mouse pixels, so the sensitivity setting, the ADS slow-down and invert Y apply. A press lasts at least 90 ms so
@@ -84,8 +96,8 @@ input ([Touch aim assist](../research/aim-assist.md)).
 
 ## Not done yet
 
-Crouch (the simulation does not act on `crouch` yet, issue #73, so there is no button), gyro, a layout
-editor and asking Discord for landscape. Each is an open question on the research page.
+Gyro, a layout editor
+and asking Discord for landscape. Each is an open question on the research page.
 
 ## Gotchas found while building it
 

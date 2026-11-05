@@ -13,6 +13,7 @@ const ACTIONS: Array[StringName] = [
 	&"throw_grenade",
 	&"quick_melee",
 	&"sprint",
+	&"crouch",
 	&"swap_shoulder",
 	&"bot_wheel",
 	&"ping"

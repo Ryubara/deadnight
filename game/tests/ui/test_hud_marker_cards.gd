@@ -100,10 +100,14 @@ func _show_centre_cards(fixture: HudFixture) -> void:
 
 
 ## The touch buttons of a phone held sideways, as the controls lay them out, in the canvas's units.
+## Interact is not one of them while there is nothing to use (`TouchControls.button_boxes` leaves it
+## out then, as it is not drawn): the right thumb's five buttons are always there.
 func _buttons(safe: Rect2, mirrored: bool) -> Array[Rect2]:
 	var boxes: Array[Rect2] = []
 	var circles := TouchLayout.buttons(safe, 1.0, mirrored)
 	for id: StringName in circles:
+		if id == TouchLayout.INTERACT:
+			continue
 		var circle: Dictionary = circles[id]
 		var reach := Vector2.ONE * float(circle[&"radius"])
 		boxes.append(Rect2(Vector2(circle[&"centre"]) - reach, reach * 2.0))
@@ -474,6 +478,31 @@ func test_the_smallest_page_keeps_eight_markers_off_every_card_and_button() -> v
 		var shown := await _one_on_every_card(fixture, EIGHT, DIAMONDS)
 		assert_int(shown.size()).is_equal(EIGHT)
 		found.append_array(_faults(fixture, _obstacles(fixture, held), "smallest"))
+		fixture.hud.get_parent().queue_free()
+	assert_array(found).is_empty()
+
+
+func test_the_smallest_page_keeps_markers_off_the_interact_button_while_it_is_up() -> void:
+	# Something to use: the interact button is up too, and a marker is under none of the buttons.
+	var window := Vector2i(int(SMALLEST.x), int(SMALLEST.y))
+	var canvas := _page(window, SMALLEST.z, 2.0)
+	TouchMode.device_is_touch = true
+	var insets := Vector4(96.0, 0.0, 96.0, 24.0)
+	var found: Array[String] = []
+	for mirrored in [false, true]:
+		var fixture := _busy_hud(canvas, insets, mirrored, true)
+		await _show_centre_cards(fixture)
+		var held := _buttons(TouchLayout.safe_rect(canvas, insets), mirrored)
+		var circle: Dictionary = (
+			TouchLayout
+			. buttons(TouchLayout.safe_rect(canvas, insets), 1.0, mirrored)[TouchLayout.INTERACT]
+		)
+		var reach := Vector2.ONE * float(circle[&"radius"])
+		held.append(Rect2(Vector2(circle[&"centre"]) - reach, reach * 2.0))
+		fixture.hud.markers.held = held
+		var shown := await _one_on_every_card(fixture, SMALLEST_HOLDS, 1)
+		assert_int(shown.size()).is_equal(SMALLEST_HOLDS)
+		found.append_array(_faults(fixture, _obstacles(fixture, held), "interact up"))
 		fixture.hud.get_parent().queue_free()
 	assert_array(found).is_empty()
 
