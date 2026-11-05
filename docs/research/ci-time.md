@@ -23,21 +23,21 @@ one, which includes its `before()` and `after()`; sorting those gaps gives the l
 After the speed-ups below the same job took 15 min 10 s (suites 853 s, down about 420 s on the suites both runs had; `main`
 had grown by 26 suites and 150 s meanwhile). The rest is compute and real time, so the job is also split.
 
-## Jobs by test folder (three), six (#775), eight by script seconds (#1015)
+## Jobs by test folder (three), six (#775), eight by script seconds (#1015), nine (#1151)
 
-`godot` is a matrix of parallel shards (`godot (1)` to `godot (8)`), each running its own test scripts. The history:
+`godot` is a matrix of parallel shards (`godot (1)` to `godot (9)`), each running its own test scripts. The history:
 three shards by folder (#524, then single scripts moved by hand, #676), six (#775), and each time the heaviest shard was
 back at the 15-minute limit within a day or two, because the suite grows with every merge (28 new scripts in one
 afternoon, #1015) and the shards were balanced by hand from a table that went stale. A shard that is over its limit is
 cancelled with no failing test.
 
-**Eight shards, dealt by measured seconds (#1015).** `tools/ci_test_shards.py` no longer names folders. Every
-`tests/**/test_*.gd` is one item, weighed by its seconds in `tools/ci_test_times.json`, and the items are dealt out
-heaviest first to the shard with the least so far; a script that is not in the file counts `default_seconds` (10), so a
-new script lands in the lightest shard and is never left out. The self-test (run in every shard) fails when a script is
-in no shard or two, or when the workflow's matrix is not the same shards or the job's limit is not the one the check
-assumes. Shard 1 starts with 60 s already counted, for the main scene, the night run and the late-round budget run it
-alone does (about 120 s of its job, 50 of them the budget run).
+**Dealt by measured seconds (#1015; eight shards then, nine since #1151).** `tools/ci_test_shards.py` no longer names
+folders. Every `tests/**/test_*.gd` is one item, weighed by its seconds in `tools/ci_test_times.json`, and the items
+are dealt out heaviest first to the shard with the least so far; a script that is not in the file counts
+`default_seconds` (10), so a new script lands in the lightest shard and is never left out. The self-test (run in every
+shard) fails when a script is in no shard or two, or when the workflow's matrix is not the same shards or the job's
+limit is not the one the check assumes. Shard 1 starts with 60 s already counted, for the main scene, the night run
+and the late-round budget run it alone does (about 120 s of its job, 50 of them the budget run).
 
 Measured on six complete CI runs (five of `main`, one of the late-round budget pull request, #968). The seconds of a
 suite are the duration on its `Statistics:` line (`tools/ci_shard_time.py`, `suite_times`; the same as the gap between
@@ -74,20 +74,34 @@ or 6; shard 1 was cancelled at the limit on one `main` run, and #968 had shard 6
   (it averages the logs and rewrites the times file), commit it, and run `python3 tools/ci_test_shards.py --root game
   --report`: each shard's expected seconds. If the heaviest is over `REPORT_SHARD_BUDGET` (440 s), add a shard (`SHARDS`
   there and the matrix in the workflow; the self-test fails until both agree). The size rule from before still holds:
-  total suite seconds / 480, rounded up, plus a margin for a slow runner and growth (3,250 s / 480 = 6.8, so eight).
+  total suite seconds / 480, rounded up, plus a margin for a slow runner and growth (3,250 s / 480 = 6.8, so eight;
+  3,880 s / 480 = 8.1, so nine).
 - **Refreshed on 2026-11-04 (#1091).** The report on the old times said 3,569 s and 454 s a shard against the 440 s
   budget, every shard flagged, with 28 scripts at the default. The mean of three green `main` runs (24 logs from
   artifacts of about 2 MB each, reduced to the times file and deleted) gave 3,254 s and 414 s a shard, none flagged,
   two scripts (merged after those runs) still at the default: stale times, not growth, had asked for a ninth shard.
   The same runs took 380 to 559 s a shard with setup. The budget was not raised.
+- **Refreshed again on 2026-11-04 (#1151), and a ninth shard added.** `godot (1)` failed the time check on a green
+  suite (12.2 minutes against the 12-minute fail line), about ten merges after #1091, several with new suites. The report
+  on the file as it stood said 3,991 s and 506 s a shard (53 scripts at the default, every shard flagged). The mean of
+  four green `main` runs (#1136, #1128, #1142 and #1144, 32 logs of about 25 MB each, reduced to the times file and
+  deleted; the runs after them were still going or had a red shard) gave 3,877 s of suites and 492 s a shard on eight
+  shards, **still every shard over the 440 s budget with one script at the default**, so this time the refresh did not
+  make the ninth shard unnecessary: the suite grew (3,254 s on the 24 logs of #1091, 3,709 to 4,019 s a run now, +19 %
+  in a day: the ladder's clip suites, the challenge and menu suites). Nine shards deal 437 s each, 8.1 total / 480
+  rounded up. The real shard suites in those four runs, under the stale split, were 356 to 574 s and the jobs 405 to 647
+  s (6.8 to 10.8 minutes); under the refreshed split the expected job is 437 s plus about 50 s of setup.
 - **Do not hand-edit** a shard's list; there is none. A script that is slow on purpose gets its time from the file.
 
-The slowest suites on the runner (mean seconds): `rules/test_balance_targets` 169 (60 seeded nights per cell, the gate),
-`night/test_bot_bands` 142, `night/test_bot_grenade_soak` 136, `world/test_midway_fence_reach` 126,
-`world/smallmap/test_smallmap_bot_night` 117, `night/test_bot_orders_night` 98, `night/test_bot_soak` 84,
-`night/test_bot_combat` 62, `net/test_room_eight` 61, `night/test_bot_own_ammo` 59. Together they are a third of the
-suite's time. All are seeded bot nights, a walk of the whole map or real sockets. Speed-up candidates are issues of their
-own (#1017 lists them).
+The slowest suites on the runner (mean seconds of four runs, 2026-11-04): `world/test_midway_fence_reach` 128,
+`rules/test_balance_targets` 113 (60 seeded nights per cell, the gate), `night/test_bot_bands` 101,
+`character/test_soldier_clip_fit` 99, `ui/test_menu_grips` 89, `net/test_challenges_online` 88,
+`night/test_bot_orders_night` 86, `world/smallmap/test_smallmap_bot_night` 85, `character/test_soldier_ladder_clips` 82,
+`rules/test_crane_pool` 72. Together they are a quarter of the suite's time (942 of 3,867 s). Most are seeded bot nights,
+a walk of the whole map, real sockets, or the soldier clip sweeps. `test_soldier_clip_fit` is the one that swings: 85
+to 92 s in three runs and 130 to 131 s in two, on whichever runner it got (its change in #1146 added a few lines to the
+shared sampler and is not what moved it: 131 s ran before it merged). Speed-up candidates are issues of their own
+(#1017 lists them).
 
 ## The web job (#1111)
 

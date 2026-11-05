@@ -26,10 +26,11 @@ from pathlib import Path
 
 from ci_shard_time import JOB_LIMIT_SECONDS, WEB_JOB_LIMIT_SECONDS
 
-# Eight shards: 3,000 s of suites on the runner (3,350 s on a slow one) is 380 to 420 s each, about 8 to 9 minutes in all
-# on the slowest runner seen with the setup, against a limit of 15; the rule of thumb is total / 480 s, rounded up, with
-# a margin for a slow runner and for growth (the suite grew 5 % in a day, #1015). The workflow's matrix must list them.
-SHARDS = 8
+# Nine shards: 3,880 s of suites on the runner (3,710 to 4,020 s in four green `main` runs) is 431 s each, about 8 to 9
+# minutes in all with the setup, against a limit of 15; the rule of thumb is total / 480 s, rounded up, with a margin for
+# a slow runner and for growth (the suite grew 5 % in a day, #1015; 8 % in a day, #1151). Eight were enough for 3,250 s
+# (#1091). The workflow's matrix must list them.
+SHARDS = 9
 # Seconds the once-per-run steps of shard 1 take beyond the setup every shard does (main scene, a night, the late-round
 # budget run; 70 to 120 s on a runner), so shard 1 is dealt that much less test time.
 EXTRA_SECONDS = {1: 60.0}
