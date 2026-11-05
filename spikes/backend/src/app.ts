@@ -72,7 +72,6 @@ const LOBBY_STATUS: Record<string, number> = {
   no_server: 503,
   not_started: 409,
   not_member: 403,
-  already_in_lobby: 409,
   bad_settings: 400,
   bad_visibility: 400,
 };
@@ -628,6 +627,23 @@ export function buildApp(deps: Deps): FastifyInstance {
         "round report",
       );
       return { matchId: request.params.matchId, kind, round, seats: results };
+    },
+  );
+
+  // The game server says a person's seat in a match is empty (Leave, a closed tab, a dropped connection not taken back):
+  // they are out of its lobby at once, so nothing of the night holds them, and a night with nobody left is over.
+  app.post<{ Params: { matchId: string }; Body: { userId: string } }>(
+    "/internal/matches/:matchId/left",
+    {
+      onRequest: requireGameServer,
+      schema: {
+        params: { type: "object", properties: { matchId: { type: "string", minLength: 1, maxLength: 64 } } },
+        body: { type: "object", required: ["userId"], properties: { userId: { type: "string", minLength: 1, maxLength: 64 } } },
+      },
+    },
+    async (request, reply) => {
+      lobbies.memberLeft(request.params.matchId, request.body.userId);
+      return reply.code(204).send();
     },
   );
 

@@ -334,6 +334,7 @@ func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 	room.bot_limit = bot_limits.for_room(_rooms.size() + _building.size())
 	room.heavy_parity = _lighter_parity()
 	room.emptied.connect(func() -> void: _end_room(match_id))
+	room.user_left.connect(_on_user_left.bind(match_id))
 	viewport.add_child(room)
 	await room.built
 	_rooms[match_id] = room
@@ -385,6 +386,13 @@ func _close_if_done(match_id: String, now: float) -> void:
 	if room.users_present() == 0 and room.away_count() == 0 and room.peer_count() == 0:
 		if now - _opened_at[match_id] > idle_room_seconds:
 			_end_room(match_id)
+
+
+## A person's seat is empty: the backend takes them out of the match's lobby at once, so nothing of
+## the night holds them and a night with nobody left is over (`POST /internal/matches/:id/left`).
+func _on_user_left(user: String, match_id: String) -> void:
+	_log("user_left", {"match": match_id})
+	_tell_backend("POST", "/internal/matches/%s/left" % match_id.uri_encode(), {"userId": user})
 
 
 func _end_room(match_id: String) -> void:
