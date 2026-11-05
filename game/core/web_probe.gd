@@ -250,6 +250,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"touch_held": "",
 		"touch_strike": false,
 		"kills": 0,
+		"quick_melees": 0,
+		"dead_gap_m": -1.0,
 		"grenade_cooking": false,
 		"grenade_count": 0,
 		"tab": "",
@@ -436,6 +438,8 @@ static func snapshot(top: Control) -> Dictionary:
 	data["touch_held"] = ",".join(night_screen.touch_held())
 	data["touch_strike"] = night_screen.touch_strike_up()  # a dead is in reach: Strike shows (#1285)
 	data["kills"] = state.kills
+	data["quick_melees"] = state.quick_melees
+	data["dead_gap_m"] = StrikeReach.nearest(state)
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)

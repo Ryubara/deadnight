@@ -40,16 +40,25 @@ func _limit() -> float:
 
 ## A living dead within `limit` metres on the ground, the player on its feet.
 func _reached(state: ClientState, limit: float) -> bool:
+	var gap := nearest(state)
+	return gap >= 0.0 and gap < limit
+
+
+## Metres on the ground from the player to the nearest living dead, -1 when there is none or the
+## player cannot strike (no frame yet, or downed). A browser test reads it beside the button.
+static func nearest(state: ClientState) -> float:
 	if state == null or not state.has_frame():
-		return false
+		return -1.0
 	var me := state.me()
 	if me.is_empty() or me.get("downed", false):
-		return false
+		return -1.0
 	var here: Vector3 = me.get("pos", Vector3.ZERO)
+	var gap := -1.0
 	for zombie in state.zombies:
 		if int(zombie.get("mode", 0)) == ZombieBody.Mode.DYING:
 			continue
 		var there: Vector3 = zombie["position"]
-		if Vector2(there.x - here.x, there.z - here.z).length() < limit:
-			return true
-	return false
+		var away := Vector2(there.x - here.x, there.z - here.z).length()
+		if gap < 0.0 or away < gap:
+			gap = away
+	return gap

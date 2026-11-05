@@ -71,3 +71,10 @@ func test_a_dead_at_the_edge_does_not_flicker_it() -> void:
 	assert_bool(_reach.update(_state)).is_false()
 	_zombies([_dead_at(edge - 0.05)])
 	assert_bool(_reach.update(_state)).is_true()
+
+
+func test_the_nearest_dead_is_the_gap_a_browser_test_reads_and_minus_one_with_none() -> void:
+	assert_float(StrikeReach.nearest(_state)).is_equal(-1.0)
+	_zombies([_dead_at(3.0), _dead_at(0.5, ZombieBody.Mode.DYING), _dead_at(1.25)])
+	assert_float(StrikeReach.nearest(_state)).is_equal_approx(1.25, 0.0001)
+	assert_float(StrikeReach.nearest(null)).is_equal(-1.0)

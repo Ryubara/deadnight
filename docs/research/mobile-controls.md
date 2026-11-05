@@ -530,6 +530,36 @@ the HUD is the phone's weapon control; the Swap and Grenade buttons are gone fro
 - **Not done here:** a first-run hint for the places (the hints label the stick, the look and Interact only); a cancel
   for a cooking grenade (the throw's other action `toss_grenade` has no touch control either).
 
+## Strike: a button that shows only while a dead is in reach (#1285)
+
+The audit (`docs/design/touch-audit.md`) made the Melee circle a contextual button: a sixth permanent circle is the
+bloat the maintainer named, and Call of Duty: Mobile shows its knife only when an enemy is within striking distance
+([Activision](https://blog.activision.com/call-of-duty/2019-10/Getting-a-Grip-on-the-Call-of-Duty-Mobile-Controls),
+design only).
+
+- **The rule** is `StrikeReach` (`game/gameplay/night/`), the rule the bots strike by (`BotMotor`): a living dead
+  (not `DYING`) within the quick melee's `melee_range` (1.6 m) on the ground from the player, read from the client's
+  own picture of the night (`ClientState`), so it costs no traffic and runs the same on a game server. It goes at 0.3 m
+  past the reach, so a dead that shuffles on the edge does not flicker it and a thumb on the button is not dropped by
+  a step back; a downed player has no blow. The night screen hands it to the layer as `TouchControls.strike_ready`.
+- **Facing is not part of it.** The blow goes along the view, from the head (`NightServer._quick_melee`), so a dead at
+  the player's side or back brings the button and a tap swings at air: a real run (below) made seven blows for no
+  kill with the dead beside the crosshair. The issue's rule is reach, as the audit's, and a facing gate would copy the
+  server's hit shapes into the client; left as a decision (a follow-up issue).
+- **It is a hidden state in every suite that lists the buttons.** The first blow kills a round-one dead in a test
+  night and the button goes with it, so a cooldown test holds the button up by hand
+  (`test_night_touch_melee.gd`); the fixture has a switch (`TouchFixture.strike_up`) and the marker, hint, box-count,
+  hit-area and input-matrix suites each had an assumption (kit lesson
+  `2026-11-05-a-button-that-shows-only-sometimes-broke-seven-suites-that-listed-it.md`).
+- **The hint is one word.** "TAP TO STRIKE" is 407 units wide and met the Perks card of the 667 x 375 page at 1.25
+  with the notch's insets (`test_popup_lane` caught it); "STRIKE" is 268 and stands 22 units above its button's row
+  (`TouchHints.STRIKE_LIFT`) to clear the Perks column, which starts 3 units under the row's line there.
+- **`TouchControls` is at gdlint's limit of 20 public methods,** so the layer says whether Strike shows with a property
+  (`strike_up`), not a method.
+- **Markers.** Strike stands in the one column the markers use: with it up the 667 x 375 page at 1.25 holds two
+  markers before two meet (four with Interact up); the table is in the audit page. Every marker is still off every
+  card and button.
+
 ## Sources
 
 - [Apple HIG, Layout](https://developer.apple.com/design/human-interface-guidelines/layout)

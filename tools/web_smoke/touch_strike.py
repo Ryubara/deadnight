@@ -6,9 +6,11 @@ ratio of 2, real touch events through the DevTools protocol), starts a solo nigh
 - with no dead near, there is no Strike button (the probe's `touch_strike` is false) and a finger on its place holds
   nothing; the screenshot with the fingers lifted shows no sixth circle;
 - the dead come for the player on their own; when one is within reach of the quick melee the button is there (a
-  screenshot with the fingers lifted, the hint "STRIKE" beside it), a finger on its centre holds `quick_melee`
-  (a screenshot with the finger down) and the blow kills the dead (`kills` goes up);
-- with the last dead gone the button goes again, and the next dead that comes brings it back;
+  screenshot with the fingers lifted, the hint "STRIKE" beside it), a finger on its centre holds `quick_melee` (a
+  screenshot with the finger down) and the thumb taps again while the button shows: each tap is a blow the game counts
+  (`quick_melees`; whether it lands depends on where the view looks, as the blow goes along it);
+- every reading of the whole fight obeys the rule: the button is up with a dead inside the blow's 1.6 m and down with
+  none (the probe publishes `dead_gap_m` beside `touch_strike`), and it goes when the last dead is killed;
 - the button's hit area is at least 44 CSS px across, on the hand's side of the screen, inside the page, and clear of
   every other button's hit area.
 
@@ -45,7 +47,13 @@ SLACK_CSS_PX = 0.5
 DEAD_TIMEOUT_S = 150.0
 REACT_S = 8.0
 HOLD_S = 0.3
+MAX_TAPS = 24
 STRIKE = "quick_melee"
+# The quick melee's reach and how much farther a dead may go before the button goes (`StrikeReach`), and the slack
+# for the frame between the probe's two numbers.
+REACH_M = 1.6
+LEAVE_M = 0.3
+EDGE_M = 0.15
 
 
 def hit_areas(state: dict, page: dict) -> dict[str, tuple[float, float, float]]:
@@ -69,12 +77,28 @@ def seed_settings(page, left: bool) -> None:
         raise RuntimeError("could not write the settings file into the page's storage")
 
 
-def wait_strike(page, up: bool, seconds: float) -> dict:
+def sample(page, samples: list) -> dict:
+    """One probe reading, kept as (gap in metres to the nearest dead, whether Strike shows)."""
+    state = menu.probe(page)
+    samples.append((round(float(state.get("dead_gap_m", -1.0)), 2), bool(state.get("touch_strike"))))
+    return state
+
+
+def check_sample(gap: float, up: bool) -> str:
+    """The rule: up with a dead inside the blow's reach, down with none (or past the reach and the margin)."""
+    if 0 <= gap < REACH_M - EDGE_M and not up:
+        return f"the strike button was down with a dead {gap} m away (reach {REACH_M} m)"
+    if (gap < 0 or gap > REACH_M + LEAVE_M + EDGE_M) and up:
+        return f"the strike button was up with the nearest dead {gap} m away (reach {REACH_M} m, leaves at {REACH_M + LEAVE_M} m)"
+    return ""
+
+
+def wait_strike(page, up: bool, seconds: float, samples: list | None = None) -> dict:
     """The probe once `touch_strike` is `up`, polled every 50 ms (the button can stand only a moment)."""
     end = time.monotonic() + seconds
     state: dict = {}
     while time.monotonic() < end:
-        state = menu.probe(page)
+        state = menu.probe(page) if samples is None else sample(page, samples)
         if bool(state.get("touch_strike")) == up:
             return state
         page.wait_for_timeout(50)
@@ -133,7 +157,8 @@ def run(browser_type, url: str, out: Path, result: dict, size: dict, left: bool)
             problems.append(f"[check] the strike hit area is {-gap:.1f} CSS px into the {name} hit area")
 
     # No dead near: no button, and a finger on its place holds nothing.
-    state = menu.probe(page)
+    samples: list = []
+    state = sample(page, samples)
     result["at_the_start"] = {"touch_strike": state.get("touch_strike"), "alive": state.get("alive")}
     if state.get("touch_strike"):
         problems.append("[check] the strike button shows with no dead in reach at the start")
@@ -147,48 +172,76 @@ def run(browser_type, url: str, out: Path, result: dict, size: dict, left: bool)
         problems.append(f"[check] a finger on the hidden strike place held {held!r}")
     page.wait_for_timeout(300)
 
-    # The dead come: the button is there, a finger on it strikes, the dead falls and the button goes.
-    result["rounds"] = []
-    for attempt in range(2):
-        state = wait_strike(page, True, DEAD_TIMEOUT_S)
-        kills_before = int(state.get("kills", 0))
-        page.screenshot(path=out / f"{2 + attempt * 3}_dead_in_reach_fingers_lifted.png")
-        state = menu.probe(page)
-        up_at_shot = bool(state.get("touch_strike"))
+    # The dead come: the button is there, a finger on it strikes, the thumb taps again while the button shows (the
+    # cooldown is 0.6 s), and with no dead left in reach the button goes. Every probe reading is a sample of
+    # (gap to the nearest dead in metres, button up) and the whole fight must obey the rule (`check_sample`).
+    state = wait_strike(page, True, DEAD_TIMEOUT_S, samples)
+    kills_before = int(state.get("kills", 0))
+    blows_before = int(state.get("quick_melees", 0))
+    page.screenshot(path=out / "2_dead_in_reach_fingers_lifted.png")
+    state = sample(page, samples)
+    up_at_shot = bool(state.get("touch_strike"))
+    taps = 0
+    held = ""
+    killed = kills_before
+    blows = blows_before
+    while taps < MAX_TAPS:
+        state = sample(page, samples)
+        if not state.get("touch_strike") or state.get("over"):
+            break  # no dead in reach: the button is gone, as it should be
         circle = hit_areas(state, size).get(STRIKE, strike)
         finger(client, "touchStart", (circle[0], circle[1]))
-        held = ""
+        taps += 1
         end = time.monotonic() + 1.0
-        while time.monotonic() < end and held != STRIKE:
-            held = str(menu.probe(page).get("touch_held", ""))
+        seen = ""
+        while time.monotonic() < end and seen != STRIKE:
+            seen = str(menu.probe(page).get("touch_held", ""))
             page.wait_for_timeout(30)
-        page.screenshot(path=out / f"{3 + attempt * 3}_finger_down_on_strike.png")
-        killed = kills_before
-        end = time.monotonic() + REACT_S
-        while time.monotonic() < end and killed <= kills_before:
-            killed = int(menu.probe(page).get("kills", 0))
-            page.wait_for_timeout(50)
+        if taps == 1:
+            held = seen
+            page.screenshot(path=out / "3_finger_down_on_strike.png")
+        else:
+            page.wait_for_timeout(HOLD_S * 1000)
         finger(client, "touchEnd", None)
-        page.wait_for_timeout(600)
-        after = menu.probe(page)
-        page.screenshot(path=out / f"{4 + attempt * 3}_finger_lifted_after.png")
-        result["rounds"].append(
-            {
-                "up_when_photographed": up_at_shot,
-                "held": held,
-                "kills_before": kills_before,
-                "kills_after": killed,
-                "strike_up_after": bool(after.get("touch_strike")),
-                "alive_after": after.get("alive"),
-            }
-        )
-        if held != STRIKE:
-            problems.append(f"[check] a finger on the strike button held {held!r}, not {STRIKE!r}")
-        if killed <= kills_before:
-            problems.append(f"[check] a tap on the strike button killed nothing (kills {kills_before} then {killed})")
-        # A button that goes: no dead in reach after the blow, or it is up for the next one.
-        if bool(after.get("touch_strike")):
-            page.wait_for_timeout(1500)
+        page.wait_for_timeout(700)
+        state = sample(page, samples)
+        killed = int(state.get("kills", 0))
+        blows = int(state.get("quick_melees", 0))
+        if killed > kills_before and not state.get("touch_strike"):
+            break
+    gone = False
+    end = time.monotonic() + REACT_S
+    while time.monotonic() < end:
+        state = sample(page, samples)
+        if not state.get("touch_strike"):
+            gone = True
+            break
+        page.wait_for_timeout(100)
+    page.screenshot(path=out / "4_finger_lifted_after.png")
+    final = menu.probe(page)
+    result["fight"] = {
+        "up_when_photographed": up_at_shot,
+        "held": held,
+        "taps": taps,
+        "blows": blows - blows_before,
+        "kills": killed - kills_before,
+        "strike_gone_after": gone,
+        "player_killed": bool(final.get("over")),
+        "samples": len(samples),
+        "samples_up": sum(1 for _gap, up in samples if up),
+    }
+    result["samples"] = samples
+    if held != STRIKE:
+        problems.append(f"[check] a finger on the strike button held {held!r}, not {STRIKE!r}")
+    if blows <= blows_before:
+        problems.append(f"[check] {taps} taps on the strike button made no blow (blows {blows_before} then {blows})")
+    if not gone and not final.get("over"):
+        problems.append("[check] the strike button never went with the dead killed or out of reach")
+    for gap, up in samples:
+        wrong = check_sample(gap, up)
+        if wrong:
+            problems.append(f"[check] {wrong}")
+            break
     browser.close()
 
 

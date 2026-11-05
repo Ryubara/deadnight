@@ -118,4 +118,27 @@ Fire, Reload, Aim, Jump, Crouch and Pause only.
 
 The six is the Interact button being up (without it the page holds eight). The right side cleared gives all of it back
 at 1.0 and more than doubles the page at 1.25, whose limit then is the cards. One Strike circle is added back only
-while a dead is in reach; the issue that builds it repeats this table with it up.
+while a dead is in reach (built in #1285, below).
+
+### Markers with Strike up (#1285)
+
+Strike is a circle of radius 52 at 575 left and 340 up of the corner, in the one column the markers have, so it costs
+the page its room while it is up. The same page and the same helpers, run on the branch that builds it (Melee gone,
+Strike and Interact only when named): the most markers, counted up from one, before two meet or one is under a card or
+a button, for both hands. A count stops at its first failure, so a bigger one can still pass past it; the sizes that
+matter are pinned by `test_hud_marker_cards.gd`. The "Today" column above reads 8 at 1.0 with three diamonds where the
+suite's own constant on main (`CROWDED_HOLDS`) was 6, so compare the columns of this table with each other.
+
+| Interface size | Diamonds | Neither up | Strike up | Interact up | Strike and Interact up |
+| --- | --- | --- | --- | --- | --- |
+| 0.8 | 3 | 10+ | 10+ | 10+ | 10+ |
+| 1.0 | 3 | 6 | 10+ | 6 | 8 |
+| 1.0 | 1 | 10+ | 10+ | 10+ | 10+ |
+| 1.25 | 3 | 3 | **2** | 3 | **2** |
+| 1.25 | 1 | 5 | **2** | 4 | **2** |
+
+Only the 667 x 375 page at 1.25 loses: two markers where Interact alone leaves four, the price of a button that stands
+in the markers' column in a fight. They stay off every card and every button all the same
+(`test_a_marker_is_never_under_strike_or_interact_while_they_are_up`).
+Nothing was lowered: the base pins (`CROWDED_HOLDS` 6, `SMALLEST_HOLDS` 4) hold with Strike hidden, and two new pins
+(`STRIKE_HOLDS_SMALLEST` 2, `STRIKE_AND_INTERACT_HOLDS_CROWDED` 8) cover it up.
