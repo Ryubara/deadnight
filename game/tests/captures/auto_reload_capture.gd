@@ -1,13 +1,14 @@
 extends Node
-## A phone aiming with auto-fire until the gun runs dry and reloads by itself (Deadnight #1278): the
-## real `NightScreen` with the touch layer up, Aim held (a finger on it), a zombie held on the
-## crosshair, the trigger never touched. The pistol is loaded with `--rounds` (3 by default) so the
-## magazine runs out in the first second. Prints `CAPTURE <frame> ammo reserve reloading` for every
-## frame, so the contact sheet can be read against the numbers. Not part of the game. Run it through
-## the no-focus launcher with Movie Maker, a phone-sized window:
+## A phone aiming with auto-fire until the gun runs dry and reloads by itself (Deadnight #1278):
+## the real `NightScreen` with the touch layer up, the `aim` action held (what the Aim button
+## holds), a zombie held on the crosshair, the trigger never touched. The pistol is loaded with
+## `--rounds` (3 by default) so the magazine runs out in the first second. Prints
+## `CAPTURE <frame> ammo reserve reloading` for every frame, so the contact sheet can be read
+## against the numbers. Not part of the game. Run it through the no-focus launcher with Movie Maker,
+## the touch layer on a 16:9 window:
 ##
 ## `gds godot -- --path game res://tests/captures/auto_reload_capture.tscn --write-movie <abs>/f.png
-##  --fixed-fps 10 --resolution 844x390 --quit-after 70 -- --rounds=3`
+##  --fixed-fps 10 --quit-after 300 -- --rounds=3`
 
 const PLAY := "res://ui/screens/play_screen.tscn"
 const SETTINGS_PATH := "user://auto_reload_capture.cfg"

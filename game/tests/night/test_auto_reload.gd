@@ -156,8 +156,9 @@ func test_aiming_with_auto_fire_reloads_at_an_empty_magazine() -> void:
 		. is_equal(1)
 	)
 	assert_int(finished.size()).is_equal(1)
-	assert_int(int(finished[0]["ammo"])).is_equal(10)
-	assert_int(int(finished[0]["reserve"])).is_equal(30)
+	if finished.size() == 1:
+		assert_int(int(finished[0]["ammo"])).is_equal(10)
+		assert_int(int(finished[0]["reserve"])).is_equal(30)
 
 
 # --- Every device: the trigger lets go at the last round ---
