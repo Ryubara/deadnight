@@ -216,7 +216,68 @@ shard runs it (about 1.5 minutes) and writes what it measured into the job summa
 - **the frame over a multiple of the calibration** (limit 15; 3.0 measured in a quiet minute here, 7 to 26 on a
   loaded machine): a catcher of a large regression
   that holds on a slow runner and a busy machine; it is deliberately loose until three runs of the real runner's
-  summary say where it should sit.
+  summary say where it should sit;
+- **a labelled section over its share of the frame** (`server.xp`, `server.challenges`): see the next section.
+
+### What the label limits mean
+
+`server.challenges` and `server.xp` are `PerfProbe` sections of a few microseconds a frame (the median of the steady
+rows is 0.03 to 0.05 ms and 0.005 to 0.01 ms, against a frame of 8 to 16 ms). Their limit is a **share of the frame**:
+the median over the steady rows of the section's mean milliseconds a frame, over the median of the rows' `frame_ms`
+(the mean wall time of a frame). Read it as "this much of a tick goes to the section", and a limit of 0.0045 as "the
+challenge tracker may cost 0.45 % of a frame on the runner it runs on". The limits sit above the highest share the
+runners gave and below twice the lowest, so a section twice as slow fails on every runner measured and an unchanged one
+passes on every one:
+
+| | Share of the frame, 46 runs of `godot (1)` | Limit | A section twice as slow, lowest of the 46 |
+| --- | --- | --- | --- |
+| `server.challenges` | 0.00270 to 0.00368 (median 0.0030) | 0.0045 | 0.0054 |
+| `server.xp` | 0.00047 to 0.00074 (median 0.0006) | 0.00085 | 0.00094 |
+
+**Why not the calibration (the first rule, #1129 and #1114).** The limit was a multiple of the calibration (a fixed
+loop of arithmetic of 3 ms, best of five), 0.012 for the challenges and 0.01 for the XP award. Over the 46 runs of
+`godot (1)` that came after the tracker's last change (2026-11-05, 07:40 to 12:10 UTC, 46 different commits, no commit
+ran twice) the ratio moved from 0.0057 to 0.0123 (a factor of 2.1), and failed two unrelated runs (0.0123 on a UI-only
+pull request, 0.0120 on `main`):
+
+- The runners come in three kinds, told apart by the calibration: about 3.1 ms (8 of the 46), 4.5 ms (16) and 6.0 ms
+  (22). The section costs almost the same on all three (0.032, 0.039 and 0.041 ms), so a ratio of the calibration
+  reads 0.0101, 0.0087 and 0.0068: the fastest kind of runner sat at 84 % of the limit with unchanged code. The
+  calibration is a hot loop that a fast core runs twice as fast; a few microseconds of cold script do not speed up in
+  step.
+- Within a kind, a busy neighbour slows the frame and the section together (frames of 10.0 to 16.6 ms at about 4.5 ms of
+    calibration) and the best-of-five calibration does not see it.
+- Across the 46 runs the log of the section's time rose with the log of the frame with a slope of 0.98 (r 0.92) and
+  with the log of the calibration with a slope of 0.35 (r 0.49): the calibration cancels a third of what the host does
+  to this section, the frame cancels all of it. The spread of the ratio fell from 2.1 to 1.36 (challenges) and from
+  2.3 to 1.57 (XP).
+- The old limit could not both pass the fast kind and catch a slower section: the same 46 runs with the section made
+  twice as slow failed the old rule 42 times (the four it missed were the slow-calibration runners), the new rule 46;
+  at 1.5 times as slow 19 against 29. The XP award's old limit (0.01, seen at 0.0010 to 0.0026) failed none of the 46
+  at twice the time: it needed about four times.
+
+**Timer resolution and sample.** `Time.get_ticks_usec` counts microseconds, and a row used to round a mean to
+0.001 ms: the challenges' median moves 0.3 % by that, the XP award's up to 7 % (0.0054 read as 0.0050), so rows now keep
+0.0001 ms. A row is the mean of 60 frames; a single row can read five times the median (a preempted frame), so the
+rule takes the median of the 78 to 81 steady rows, not their mean.
+**Same commit, four local runs** (this machine, other work running): frames of 9.6 to 18.1 ms, the challenges' section
+0.029 to 0.038 ms, its share 0.0021 to 0.0030, the old ratio 0.0083 to 0.0091. On a loaded desktop the frame slows more
+than the section, so a local share reads low (a twice-as-slow section at 0.0042 would pass a 0.0045 limit); CI is
+the gate and its runners read 0.0027 to 0.0037.
+
+**Proof the limit still has teeth.** A throwaway change (not committed) made both sections wait for as long as they had
+just taken, so each took twice as long, in the budget's own command: the challenges read 0.0057 of the frame (limit
+0.0045) and the XP award 0.00098 (limit 0.00085), and `check_budget.py` exited 1 on both. The same command without
+the change, on the same machine, read 0.0021 to 0.0030 and 0.00037 to 0.00056 and passed.
+`tools/perf/test_check_budget.py` runs in CI before the budget and keeps the two facts for eight runners made from the
+numbers above (the three kinds, a busy one, and the highest and lowest share of each section): unchanged passes, twice
+as slow fails, for each section.
+
+**What it does not do.** A section that takes a third of a runner's frame still passes if the frame slows with it, and a
+frame that slows without the section lowers the share; the frame has its own limit (15 times the calibration), and
+the counts (`challenge.advance` a tick) catch more work. The XP award's margin is the thinnest (the limit is 15 % above
+the highest and 10 % below twice the lowest of the 46); if its rows at the finer resolution say it can be tighter, move
+it with a run of the test.
 
 Canvas items (limit 200) count every `CanvasItem` in the tree, so the HUD's nodes are counted as built, empty or not.
 What only a bigger night needs is built when a night reaches it and freed on the way down: the bots' chip strip

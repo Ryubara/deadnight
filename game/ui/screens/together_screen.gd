@@ -49,6 +49,12 @@ var name_continue_button: UIButton
 var name_skip_button: UIButton
 
 var _menu: VBoxContainer
+## The words that give way on a phone's canvas, so the way to enter a code and Back show (#1227).
+var _overline: UILabel
+var _menu_note: UILabel
+var _phone := false
+## The four choices in a grid: one column on the desktop, two on a phone's canvas (#1227).
+var _choices: GridContainer
 var _naming: VBoxContainer
 var _busy := false
 ## In a Discord Activity: whether the window can read a gamepad (`GamepadProbe`), every second.
@@ -76,7 +82,8 @@ func _ready() -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override(&"separation", _tokens.space_md)
 	scroll.add_child(box)
-	box.add_child(_label("TOGETHER", UILabel.Style.OVERLINE))
+	_overline = _label("TOGETHER", UILabel.Style.OVERLINE)
+	box.add_child(_overline)
 	box.add_child(_label("Play together", UILabel.Style.TITLE))
 	status = _label("", UILabel.Style.BODY)
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -107,8 +114,25 @@ func _ready() -> void:
 	_show_menu()
 	initial_focus = get_path_to(browser_button)
 	# On a phone's canvas the fields and buttons are a fingertip high (#1197).
-	resized.connect(func() -> void: TapFloor.fit(self, TapFloor.phone_canvas(size)))
-	TapFloor.fit(self, TapFloor.phone_canvas(size))
+	resized.connect(_fit_phone)
+	_fit_phone()
+
+
+## On a phone's canvas (540 units high, held sideways) the fields and buttons are a fingertip high,
+## the overline and the note under the title give their room back and the four choices sit two to a
+## row (Server browser and Create a night, the code and Join): all of them and Back are in view
+## with no scrolling (#1197, #1227).
+func _fit_phone() -> void:
+	var phone := TapFloor.phone_canvas(size)
+	_overline.visible = not phone
+	_menu_note.visible = not phone
+	_phone = phone
+	_choices.columns = 2 if phone else 1
+	for choice: Control in _choices.get_children():
+		choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		choice.custom_minimum_size.x = 0.0 if phone else FIELD_WIDTH
+	_show_status()
+	TapFloor.fit(self, phone)
 
 
 func _process(delta: float) -> void:
@@ -154,14 +178,22 @@ func _build_menu() -> VBoxContainer:
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size.x = FIELD_WIDTH
 	column.add_child(note)
+	_menu_note = note
+	_choices = GridContainer.new()
+	_choices.name = "Choices"
+	_choices.columns = 1
+	_choices.custom_minimum_size.x = FIELD_WIDTH
+	_choices.add_theme_constant_override(&"h_separation", _tokens.space_md)
+	_choices.add_theme_constant_override(&"v_separation", _tokens.space_md)
+	column.add_child(_choices)
 	browser_button = _button("Server browser", UIButton.Variant.PRIMARY)
 	browser_button.name = "ServerBrowser"
 	browser_button.pressed.connect(_browse)
-	column.add_child(browser_button)
+	_choices.add_child(browser_button)
 	create_button = _button("Create a night", UIButton.Variant.SECONDARY)
 	create_button.name = "CreateNight"
 	create_button.pressed.connect(func() -> void: await _create("Making your night..."))
-	column.add_child(create_button)
+	_choices.add_child(create_button)
 	code_field = LineEdit.new()
 	UiSounds.wire_field(code_field)
 	code_field.name = "Code"
@@ -178,13 +210,13 @@ func _build_menu() -> VBoxContainer:
 				code_field.caret_column = at
 	)
 	code_field.text_submitted.connect(func(_text: String) -> void: await _join())
-	column.add_child(code_field)
+	_choices.add_child(code_field)
 	# A finger types a code on the game's own keypad: no system keyboard has to open for it (#1183).
 	CodeKeypad.attach(code_field, self)
 	join_button = _button("Join with the code", UIButton.Variant.SECONDARY)
 	join_button.name = "JoinCode"
 	join_button.pressed.connect(_join)
-	column.add_child(join_button)
+	_choices.add_child(join_button)
 	return column
 
 
@@ -354,6 +386,12 @@ func _set_enabled(enabled: bool) -> void:
 
 func _say(text: String) -> void:
 	status.text = text
+	_show_status()
+
+
+## An empty line says nothing and, on a phone's canvas, takes no room.
+func _show_status() -> void:
+	status.visible = status.text != "" or not _phone
 
 
 # --- Where this page is ---

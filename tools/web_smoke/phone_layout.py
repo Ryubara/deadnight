@@ -17,7 +17,9 @@ the Server Browser shows each of its states without a network.
         [--label after] [--size 844x390] [--dpr 3] [--iframe] [--section tour,turn,night] [--no-fail]
 
 `--iframe` shows the game in an iframe of another origin that fills the page, as Discord's client shows an Activity.
-Sections: `tour` (the screens), `browser` (the Server Browser's four states alone), `turn` (the page turned upright and back, and resized across the phone limit), `night`
+Sections: `tour` (the screens), `browser` (the Server Browser's four states alone), `lobby` (a night of your own: the
+host's lobby, and the Private night switch tapped with a finger, on and off, until the stand-in backend has been told
+each time), `turn` (the page turned upright and back, and resized across the phone limit), `night`
 (a solo night entered and left: does the menu's factor come back). What it cannot show: a real phone, a real iOS
 Safari, Discord's own webview.
 """
@@ -97,6 +99,11 @@ class StubBackend:
         self.mode = "many"
         self.held: list = []
         self.lists = 0
+        # The one lobby a player of the page can make, and every visibility the page has sent for it, in order.
+        self.lobby: dict | None = None
+        self.visibility_sent: list[str] = []
+        # The requests nothing here answers (a 404), so a run says what the page asked for.
+        self.unknown: list[str] = []
 
     def attach(self, context) -> None:
         context.route(f"{STUB_BACKEND}/**", self.handle)
@@ -117,8 +124,41 @@ class StubBackend:
             else:
                 rows = NIGHTS if self.mode == "many" else []
                 self.answer(route, {"maxPlayers": 8, "total": len(rows), "nights": rows})
+        elif path == "/lobbies" and request.method == "POST":
+            self.make_lobby(route, request.post_data_json or {})
+        elif self.lobby and path.startswith(f"/lobbies/{self.lobby['id']}"):
+            self.lobby_route(route, path.removeprefix(f"/lobbies/{self.lobby['id']}"), request)
         else:
+            self.unknown.append(f"{request.method} {path}")
             self.answer(route, {"error": "not_found"}, 404)
+
+    def make_lobby(self, route, body: dict) -> None:
+        """`POST /lobbies`: a waiting lobby of the player's own, as the backend answers it."""
+        self.lobby = {
+            "id": "stub-lobby",
+            "code": "ABC234",
+            "hostId": "stub-1",
+            "maxPlayers": body.get("maxPlayers", 8),
+            "members": [{"userId": "stub-1", "name": "Guest 4242", "seat": 1, "host": True, "away": False}],
+            "state": "open",
+            "round": None,
+            "players": None,
+            "settings": None,
+            "visibility": body.get("visibility", "public"),
+        }
+        self.answer(route, self.lobby)
+
+    def lobby_route(self, route, rest: str, request) -> None:
+        """The routes of the lobby made: its poll, the rules, the visibility, leaving."""
+        if rest == "/visibility" and request.method == "PUT":
+            self.visibility_sent.append(request.post_data_json["visibility"])
+            self.lobby["visibility"] = self.visibility_sent[-1]
+        elif rest == "/settings" and request.method == "PUT":
+            self.lobby["settings"] = request.post_data_json
+        elif rest not in ("", "/leave"):
+            self.answer(route, {"error": "not_found"}, 404)
+            return
+        self.answer(route, self.lobby if rest != "/leave" else {})
 
     def answer(self, route, body: dict, status: int = 200) -> None:
         route.fulfill(
@@ -299,6 +339,47 @@ def browser_states(frame: Frame, out: Path, label: str, results: list[dict], bac
     backend.release()
 
 
+def together_states(frame: Frame, out: Path, label: str, results: list[dict]) -> None:
+    """Play together as a phone's page shows it: at the top, and at the foot of its scroll (Down to Back)."""
+    to_tab(frame, "Play")
+    go(frame, "Play", 0, "together_screen")
+    snap(frame, out, label, results, "together top")
+    for _ in range(6):
+        press(frame, "ArrowDown")
+    snap(frame, out, label, results, "together foot")
+    back(frame)
+
+
+def open_create(frame: Frame) -> None:
+    """Play together, then a press of Create a night, which is under Server browser in a desktop's column and beside it
+    in a phone's two: the focus says which, so no section counts the arrows of one layout."""
+    go(frame, "Play", 0, "together_screen")
+    for key in ("ArrowRight", "ArrowDown"):
+        press(frame, key)
+        frame.page.wait_for_timeout(500)
+        if frame.state().get("focus") == "CreateNight":
+            break
+    wait_for(frame, "the Create button", lambda s: s.get("focus") == "CreateNight", 5)
+    press(frame, "Enter")
+
+
+def lobby_states(frame: Frame, out: Path, label: str, results: list[dict]) -> None:
+    """Create a night (the stub backend answers with a lobby of one): the lobby with its rules, then scrolled to the end."""
+    to_tab(frame, "Play")
+    open_create(frame)
+    wait_for(frame, "the name prompt or the lobby", lambda s: s.get("naming") or s.get("screen") == "lobby_screen", 40)
+    if frame.state().get("naming"):
+        frame.page.keyboard.type("Alex", delay=40)
+        press(frame, "Enter")
+    wait_for(frame, "the lobby", lambda s: s.get("screen") == "lobby_screen", 40)
+    snap(frame, out, label, results, "lobby")
+    # The focus starts on Start, at the foot of the card: Up walks the rules backwards (skill, bots, the break).
+    for step in range(1, 5):
+        press(frame, "ArrowUp")
+        snap(frame, out, label, results, f"lobby rules up {step}")
+    back(frame)
+
+
 def tour(frame: Frame, out: Path, label: str, results: list[dict], backend: StubBackend) -> None:
     for tab in TAB_NAMES:
         to_tab(frame, tab)
@@ -324,6 +405,48 @@ def tour(frame: Frame, out: Path, label: str, results: list[dict], backend: Stub
     back(frame)
     go(frame, "More", 1, "credits_screen")
     snap(frame, out, label, results, "credits")
+    back(frame)
+
+
+def together_name(frame: Frame) -> None:
+    """Gets past the name prompt of the Play together screen (Create asks for it), if it asks."""
+    if frame.state().get("naming"):
+        frame.page.keyboard.type("Alex", delay=40)
+        press(frame, "Enter")
+        frame.page.wait_for_timeout(1500)
+
+
+def spot(frame: Frame, name: str) -> list[float]:
+    """The centre of the control the page names `name` in its `spots`, in CSS pixels."""
+    for part in str(frame.state().get("spots", "")).split("|"):
+        if ":" in part and part.rsplit(":", 1)[0] == name:
+            at = [float(n) for n in part.rsplit(":", 1)[1].split(",")]
+            width, height = frame.frame.evaluate("() => [window.innerWidth, window.innerHeight]")
+            return [at[0] * width, at[1] * height]
+    raise LookupError(f"the page does not name a spot {name!r}: {frame.state().get('spots')!r}")
+
+
+def lobby(frame: Frame, out: Path, label: str, results: list[dict], backend: StubBackend) -> None:
+    """A night of your own, from the Play tab: the host's lobby, and the Private night switch tapped with a finger.
+
+    The page must show the switch on screen, read it as public, and after each tap say so and have told the backend (the
+    stand-in keeps every visibility it was sent): private, then public again."""
+    open_create(frame)
+    # A player with no saved name is asked for one first.
+    wait_for(frame, "the name prompt or the lobby", lambda s: s.get("naming") or s.get("room_code"), 20)
+    together_name(frame)
+    wait_for(frame, "the host's lobby", lambda s: s.get("screen") == "lobby_screen" and s.get("room_code"), 60)
+    wait_for(frame, "the Private night switch", lambda s: s.get("lobby_private") == "off", 20)
+    snap(frame, out, label, results, "lobby public")
+    for tap_number, (word, shown) in enumerate((("private", "on"), ("public", "off")), 1):
+        x, y = spot(frame, "private")
+        frame.page.touchscreen.tap(x, y)
+        wait_for(frame, f"the switch {shown}", lambda s, shown=shown: s.get("lobby_private") == shown, 10)
+        deadline = time.monotonic() + 10
+        while len(backend.visibility_sent) < tap_number and time.monotonic() < deadline:
+            frame.page.wait_for_timeout(100)
+        assert backend.visibility_sent == ["private", "public"][:tap_number], backend.visibility_sent
+        snap(frame, out, label, results, f"lobby {word}")
     back(frame)
 
 
@@ -462,8 +585,14 @@ def main() -> int:
             if "browser" in sections:
                 to_tab(game, "Play")
                 browser_states(game, args.out, args.label, results, backend)
+            if "together" in sections:
+                together_states(game, args.out, args.label, results)
+            if "lobby" in sections:
+                lobby_states(game, args.out, args.label, results)
             if "tour" in sections:
                 tour(game, args.out, args.label, results, backend)
+            if "lobby" in sections:
+                lobby(game, args.out, args.label, results, backend)
             if "turn" in sections:
                 turn(game, args.out, args.label, results, size)
             if "night" in sections:
@@ -476,6 +605,7 @@ def main() -> int:
     (args.out / f"{args.label}.json").write_text(json.dumps({"results": results, "errors": errors}, indent=1))
     found = problems(results)
     print("\nconsole errors:", errors[:5] if errors else "none")
+    print("requests the stand-in backend did not answer:", sorted(set(backend.unknown)) or "none")
     print(f"{len(found)} floor problems")
     for line in found:
         print("  ", line)

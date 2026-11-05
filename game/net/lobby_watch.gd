@@ -34,7 +34,8 @@ var _me := ""
 
 ## The events between two answers about one lobby, for the player whose id is `me`: a seat taken
 ## (`joined`), a seat left (`left`), the host role moving (`host`, with `you` when it came to this
-## player), the night starting (`started`) and the round moving on (`round`). Names are what the
+## player), the night starting (`started`), the host switching the night private or public
+## (`visibility`, told to the others) and the round moving on (`round`). Names are what the
 ## backend has. A lobby that was empty (`{}`) has nothing to compare with and says nothing.
 static func diff(before: Dictionary, after: Dictionary, me: String = "") -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
@@ -54,6 +55,23 @@ static func diff(before: Dictionary, after: Dictionary, me: String = "") -> Arra
 	if before.get("state") != "started" and after.get("state") == "started":
 		var starter := _name_of(before, str(before.get("hostId", "")))
 		out.append({"kind": &"started", "name": starter})
+	# The host is told by their own switch; the guests read that the night went private or public.
+	if (
+		before.has("visibility")
+		and after.has("visibility")
+		and before["visibility"] != after["visibility"]
+		and after.get("hostId") != me
+	):
+		(
+			out
+			. append(
+				{
+					"kind": &"visibility",
+					"name": _name_of(after, str(after.get("hostId", ""))),
+					"private": after["visibility"] == "private",
+				}
+			)
+		)
 	if after.get("round") != null and before.get("round") != after.get("round"):
 		out.append({"kind": &"round", "round": int(after["round"])})
 	return out
@@ -125,6 +143,7 @@ static func _fingerprint(from: Dictionary) -> String:
 			from.get("hostId"),
 			from.get("round"),
 			from.get("settings"),
+			from.get("visibility"),
 			from.get("players"),
 			from.get("members")
 		]

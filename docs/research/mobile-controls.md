@@ -301,13 +301,61 @@ sizes in window px, and do not detect a phone by the window's short side there (
   read. The cause of the 14 was not found.) Now 122 units, 44.1 CSS px, in the
   engine's capture and in the exported page (`tools/web_smoke/night_taps.py`, a real touch just inside the top edge of
   Leave night leaves the night).
-- **Touch layer hit areas** (`TouchLayout`: radius plus 24, never under 66 units): 47.7 CSS px at the night's factor and
-  at 1.25; at 0.8 the Pause, Ping, Scoreboard, Bot wheel and Melee circles are 38 to 39 CSS px, and Pause, Ping and
-  Scoreboard overlap their neighbours. Left as it is (its own issue).
+- **Touch layer hit areas** (`TouchLayout`: radius plus 24, never under 66 units, and now never under a fingertip, #1217):
+  before, at 0.8 the Pause, Ping, Scoreboard and Bot wheel circles were 38.1 CSS px across and Melee 39.3 (Swap
+  shoulder 43.9); at 1.0 and 1.25 all were 47.7 or more. `NightScreen` gives `TouchControls.finger_units`
+  (`MenuScale.tap_units`: 153 units at 0.8, 122 at 1.0, 98 at 1.25), the layout never makes a hit area narrower than
+  that, so the five are 44.2 CSS px at 0.8 and nothing else changes at 1.0 and 1.25. The drawn buttons are unchanged;
+  only the area a touch counts for grew (a ring 8 to 10 units, about 3 CSS px, at 0.8).
+- **Who wins a touch where hit areas overlap** (`TouchLayout.button_at`), decided on purpose: (1) inside the area a
+  button had before, the first in order wins exactly as it always did (Pause, Ping, Scoreboard, then the table: Interact
+  first, Fire, Aim, Reload, Swap, Jump, Grenade, Side, Melee, Bots); so a touch that pressed a button before presses the
+  same one now; (2) in the new ring nobody owned, the nearest centre wins (a tie goes to the first in order). Growing a
+  button therefore takes no touch from a neighbour, and the only touches that change meaning are ones that fell to the
+  stick or the look inside a 3 CSS px ring. Left as they were, so a person can see them: Pause beats Ping and
+  Scoreboard in the overlap (their centres are 96 and 98 units apart, 27 CSS px at 0.8), and Melee beats the Bot wheel
+  (95 apart) even when the finger is nearer the wheel. At 0.8 Ping and Scoreboard (137 apart) now touch in the ring
+  only, where the nearest centre decides. `test_touch_hit_areas` holds all of it with real touch events and a sweep of
+  every point of the page at three interface sizes and both hands.
+- **Measured in the exported page** (`tools/web_smoke/night_taps.py --ui 0.8|1.0|1.25`, 1688 x 780 canvas, ratio 2): the
+  probe reports every circle; a touch 1 CSS px inside the edge of Ping, Scoreboard, Melee, the Bot wheel and Pause
+  presses that button, and one 1.5 CSS px outside presses none. The interface size is written into the page's saved
+  settings (IndexedDB `/userfs`) and the page reloaded.
+- **Still for a real phone:** thumb reach and accidental presses of the larger Pause and Ping next to each other
+  (27 CSS px apart at 0.8) are not something an emulated touch can judge; a real device is needed to say whether 44 CSS
+  px is enough there or whether the buttons should be spread (a layout change, not made here).
 - **The objective's words** (`HudMarkers`) slide to the nearest place that is on the screen and under no corner card
-  (`Hud.corner_cards`): they were drawn under the health card (`SSION STAND 30 m`). The diamond itself can still stand
-  under a card; only its words move.
-- **HUD text at this factor** is small: the 20 unit marker words are 7 CSS px.
+  (`Hud.corner_cards`): they were drawn under the health card (`SSION STAND 30 m`).
+
+## World markers on a phone's night (#1218)
+
+- **Words at 14 CSS px.** The marker words were 20 units, 7 CSS px. `MenuScale.text_units(window, touch, 20)` is 14
+  CSS px in the screen's units (39 at the night's factor on a 1688 x 780 or a 2532 x 1170 page, 49 at an interface
+  size of 0.8, 32 at 1.25), never under the 20 a desktop has, never more than 6 % of the canvas's height, and the 20
+  itself when `TouchMode.wanted` is false: a desktop's scale does not change. `Hud._fit_markers` hands it to
+  `HudMarkers.label_size` (on `resized`, and when the touch layer comes up).
+- **The shapes grow with the words** (`HudMarkers._grown()`: the size over 20, 1.95 on the phone): the diamond, the
+  pointer over a teammate, the ring of a body, the arrow, the level icon and its gaps, and the outline of the letters.
+  The words alone at 39 units beside a 26 unit diamond read as a caption with no mark. A capture with the words alone
+  is kept as the option in the pull request.
+- **A marker whose shape, words or arrow would be under a card or a touch button is moved** (`HudMarkers._settle`) to
+  the nearest place where its whole rectangle is under none: the places beside each side of each card, nearest first,
+  then once more from the nearest four of those. An arrow beside it points back at the place it marks (a pinned
+  marker's arrow already did that), on the side of the shape that faces the place or on its flank when that would be
+  over the words. The touch buttons are in the same list (`TouchControls.button_boxes`, `layout_changed`, set by
+  `NightScreen`): a diamond moved off the ammo card landed under Fire in the first capture. The resting ring of the
+  stick is not in it (a faint ring over a name still reads). `HudMarkers.shown` tells where each marker was drawn and
+  whether it moved; `placed` is where it points.
+- **Markers moved off neighbouring cards keep clear of each other** when there is room (the objective off the health
+  card and a teammate down on the round card both took the pocket between the cards).
+- **Cost.** No node: it is the one canvas item of `HudMarkers`. A place is tried by arithmetic on rectangles, the
+  strings of a draw are measured once (`_width`), and a draw tries 1500 places at most for all its markers
+  (`MAX_TRIES`). The first version laid the marker out again, strings included, for every place of two full rounds
+  (about 2000 layouts a marker) and a suite of 300 markers ran past ten minutes.
+- **Not done:** a 667 x 375 CSS px phone at the largest interface size (a 1536 x 864 canvas) has no place the search
+  reaches for a tag beside the cards and the buttons: its markers can stay under a card (its words are 14 CSS px all
+  the same). A tag near the top of the screen is cut by it (only x is kept inside the screen). The banner, the prompt
+  and the popup cards in the middle are not kept clear of.
 
 ## Sources
 

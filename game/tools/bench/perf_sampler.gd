@@ -182,7 +182,7 @@ func _row() -> Dictionary:
 func _label_means(frames: int) -> Dictionary:
 	var means := {}
 	for label: StringName in _usec:
-		means[String(label)] = snappedf(float(_usec[label]) / 1000.0 / frames, 0.001)
+		means[String(label)] = snappedf(float(_usec[label]) / 1000.0 / frames, 0.0001)
 	return means
 
 

@@ -224,6 +224,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"lobby_buttons": "",
 		"lobby_rules": "",
 		"lobby_rules_editable": false,
+		# The Private night switch: "" when the lobby has none, else "on" (private) or "off".
+		"lobby_private": "",
 		"play_rules": "",
 		"play_map": "",
 		"lobby_map": "",
@@ -242,6 +244,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"settings_open": false,
 		"menu_buttons": "",
 		"menu_button_sizes": "",
+		"touch_hits": "",
+		"touch_held": "",
 		"tab": "",
 		"stage": "",
 		"browser": "",
@@ -334,6 +338,9 @@ static func snapshot(top: Control) -> Dictionary:
 		data["lobby_buttons"] = "|".join(buttons)
 		data["lobby_rules"] = lobby.rules_text() if lobby.rules.is_visible_in_tree() else ""
 		data["lobby_rules_editable"] = lobby.rules_editable()
+		var private_row := lobby.private_switch
+		if private_row != null and private_row.toggle.is_visible_in_tree():
+			data["lobby_private"] = "on" if private_row.is_private() else "off"
 		# The map the lobby shows: the picker's choice in a lobby, the ticket of a code looked at.
 		data["lobby_map"] = (
 			lobby.rules.map_picker.selected_id
@@ -404,6 +411,8 @@ static func snapshot(top: Control) -> Dictionary:
 	data["settings_open"] = night_screen.settings_open()
 	data["menu_buttons"] = _button_spots(night_screen)
 	data["menu_button_sizes"] = _button_sizes(night_screen)
+	data["touch_hits"] = _touch_hits(night_screen)
+	data["touch_held"] = ",".join(night_screen.touch_held())
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)
@@ -496,6 +505,27 @@ static func _button_sizes(screen: NightScreen) -> String:
 	return "|".join(found)
 
 
+## The touch layer's hit areas as `id:x,y,hit,was`: the centre as fractions of the window's width
+## and height, the two radii as fractions of its height, so a browser test reads CSS pixels and taps
+## inside a hit area (#1217).
+static func _touch_hits(screen: NightScreen) -> String:
+	if not screen.is_inside_tree() or not screen.touch_active():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var circles := screen.touch_circles()
+	var found: Array[String] = []
+	for id: StringName in circles:
+		var circle: Dictionary = circles[id]
+		var at: Vector2 = circle[&"centre"] / size
+		found.append(
+			(
+				"%s:%.5f,%.5f,%.5f,%.5f"
+				% [id, at.x, at.y, float(circle[&"hit"]) / size.y, float(circle[&"was"]) / size.y]
+			)
+		)
+	return "|".join(found)
+
+
 ## The screen's shown buttons as `text:x,y` (the centre, as fractions of the window): the
 ## `UIButton`s and the menu's `MenuItemButton`s (by their title).
 static func _spots(screen: Control) -> String:
@@ -543,4 +573,10 @@ static func _spots(screen: Control) -> String:
 		for card in panel.map_picker.cards:
 			var middle := card.get_global_rect().get_center() / size
 			spots.append("map_%s:%.4f,%.4f" % [card.info.id, middle.x, middle.y])
+	if lobby != null and lobby.private_switch != null:
+		# The host's Private night switch, to tap it: `private`.
+		var toggle := lobby.private_switch.toggle
+		if toggle != null and lobby.private_switch.editable and toggle.is_visible_in_tree():
+			var at := toggle.get_global_rect().get_center() / size
+			spots.append("private:%.4f,%.4f" % [at.x, at.y])
 	return "|".join(spots)

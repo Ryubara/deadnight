@@ -67,6 +67,29 @@ nobody had seen at a layout no page reached, all the same fix (`TapFloor`, 62 un
   `phone_layout.py` answers for the backend itself (`StubBackend`) and shows the list, the empty list, the one still
   loading and the one that failed (`--section browser`).
 
+## Play together and the lobby's rules (#1227)
+
+Measured again on main after the Server Browser (#1180, PR #1232) replaced Quick join: the fold had not moved for the
+better. On a 1688 x 780 page (a 1168 x 540 canvas) the card's view is 436 units high, a button is 79 units (57 CSS px)
+and the code field 62. The overline, the title, a two-line note and Server browser filled it, with Create a night half
+cut; the code field, Join and Back were three screens' worth of scrolling away, under a scrollbar only.
+
+Chosen: everything visible, because a fold cannot be made plain on a canvas that small. Five controls of 79 units and a
+title are 470 units against 436, so no ordering of one column shows the code field and Back without a scroll. Play
+together on a phone's canvas (`TogetherScreen._fit_phone`) drops the overline, the note and the empty status line, and
+puts its four choices two to a row (`GridContainer`: Server browser and Create a night, the code and Join), then Back.
+The desktop keeps its column (one grid column). `test_phone_fold` checks that all five controls lie inside the scroll's
+view on every page of `UiFitRun.PAGES`.
+
+The lobby's "Break between ro..." was the row's title column: `UIRow` asks for a column `control_width * 0.5` (220 units)
+and trims the title with an ellipsis, a label that trims asks for no width of its own, and the lobby's card is only as
+wide as its rows' minimums. `UIRow.show_whole_title` stops the trimming on the phone's form
+(`MatchSettingsPanel.set_compact(phone)`, whole titles by default), so the column grows to the longest title, and
+`UIRow.title_cut` is what the test asks. The solo Play screen is not cut at 844 x 390, as the issue says, and is still
+cut at the narrowest phone (667 x 375, a 960 unit canvas): the whole title overflows that card by 20 units
+(`test_ui_fit` fails), so the Play screen asks for whole titles only from 1100 units wide
+(`PlayScreen.WHOLE_TITLES_WIDTH`).
+
 Not fixed here, filed: the night's pause card and Settings from a night (#1205), tablets and small desktop windows (#1206).
 
 ## Numbers
@@ -110,5 +133,16 @@ On the real page the menu came back to the factor 2 after a night, and the Play 
 ## What this does not prove
 
 A real phone, a real iOS Safari (Chromium in emulation is not one), Discord's own webview (an iframe of another origin
-stands in, `--iframe`), the lobby on a page (it needs a backend; `test_phone_floor` opens it with a fixture), text
-drawn by custom `_draw` (ticket titles, the plate), which `UiAudit` does not see, and the night's HUD (#1192, #1189).
+stands in, `--iframe`), text drawn by custom `_draw` (ticket titles, the plate), which `UiAudit` does not see, and the
+night's HUD (#1192, #1189).
+
+## The host's lobby on a page (#1186)
+
+`phone_layout.py --section lobby` opens Create a night against the stand-in backend (`POST /lobbies`, the poll, the
+rules, the visibility), reads the lobby on a 844 x 390 page at ratio 3 (a 1688 x 780 canvas, factor 2: text 18.8 CSS px,
+targets 44.8) and taps the Private night switch with a finger (`window.deadnight.spots` names it `private`,
+`lobby_private` reads it back), then taps it again; the script fails unless the stand-in was told `private`, then
+`public`. Before `LobbyPrivateSwitch.reveal` the lobby came up scrolled to the end of its area (Start with the copy
+buttons and the Server Browser under it) and the switch sat half out of the top: the fixture lobbies of the suites could
+not show it (their scroll stops at Start), only the real page could. What it cannot show: a real backend (the lobby's own
+suites `test_lobby_private_online` use one).
