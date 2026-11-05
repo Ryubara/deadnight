@@ -1,6 +1,5 @@
 # Bots are labelled as bots in the HUD (#643, bots.md decision 2): BOT after the name on every part
-# that writes a name, no "joined" notice for a bot seated at the start, and a notice when a person
-# takes a bot's seat and the label goes.
+# that writes a name and no "joined" notice for a bot seated at the start.
 extends GdUnitTestSuite
 
 var _host: Control
@@ -43,14 +42,13 @@ func test_the_boxes_and_the_scoreboard_show_the_label() -> void:
 	assert_str(fixture.hud.scoreboard._cells(1)[0]).is_equal("RUBY")
 
 
-func test_a_bot_seated_at_the_start_is_no_notice_and_a_person_taking_its_seat_is() -> void:
+func test_a_bot_at_the_start_is_no_notice_and_a_person_is() -> void:
 	var fixture := _with_bot()
 	# The person's own seat said so; the bot's said nothing.
 	assert_array(fixture.hud.notices.history).is_equal(["RUBY JOINED"])
-	fixture.hud.state.set_player_name(2, "Cy")
-	fixture.act(RulesAction.seat_person(2))
-	assert_bool(fixture.hud.state.team[2]["bot"]).is_false()
-	assert_str(HudState.name_of(fixture.hud.state.team[2])).is_equal("CY")
+	fixture.hud.state.set_player_name(3, "Cy")
+	fixture.act(RulesAction.add_player(3))
+	assert_str(HudState.name_of(fixture.hud.state.team[3])).is_equal("CY")
 	assert_array(fixture.hud.notices.history).is_equal(["RUBY JOINED", "CY JOINED"])
 
 
@@ -62,14 +60,12 @@ func test_a_snapshot_marks_the_bots_for_a_late_joiner() -> void:
 	assert_bool(late.hud.state.team[1]["bot"]).is_false()
 
 
-func test_a_person_who_leaves_for_a_bot_is_a_left_notice_and_the_seat_turns_into_a_bot() -> void:
-	var fixture := HudFixture.make(_host, 1)
-	fixture.hud.state.set_player_name(2, "Cy")
-	fixture.act(RulesAction.add_player(2))
-	assert_str(HudState.name_of(fixture.hud.state.team[2])).is_equal("CY")
-	fixture.act(RulesAction.seat_bot(2))
-	# The bot's own name is told right after the seat change.
-	fixture.hud.state.set_player_name(2, "Ash")
+func test_a_person_who_leaves_is_a_left_notice_and_a_bot_beside_them_is_not() -> void:
+	var fixture := _with_bot()
+	fixture.hud.state.set_player_name(3, "Cy")
+	fixture.act(RulesAction.add_player(3))
+	fixture.act(RulesAction.remove_player(3))
+	assert_str(fixture.hud.notices.history[-1]).is_equal("CY LEFT")
+	# The bot's seat is its own: it stays a bot and is still labelled.
 	assert_bool(fixture.hud.state.team[2]["bot"]).is_true()
 	assert_str(HudState.name_of(fixture.hud.state.team[2])).is_equal("ASH BOT")
-	assert_str(fixture.hud.notices.history[-1]).is_equal("CY LEFT")

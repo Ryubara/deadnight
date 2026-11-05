@@ -66,7 +66,7 @@ static var own_look: CharacterLook
 static var challenge_path := ""
 ## The profile file a person's night adds its XP to ('' for tests and captures: no file is touched).
 static var profile_path := ""
-## The lobby the night was entered from (a lobby screen, the Together screen, Quick join set them:
+## The lobby the night was entered from (a lobby screen, the Server Browser set them:
 ## `remember_lobby`) and the way to ask the backend about it; taken once, as `join_url` is. At the
 ## end of the night the player goes back to this lobby, which the backend opens again for them.
 static var return_api: TogetherApi
@@ -124,6 +124,14 @@ static func look_from_flag(text: String) -> CharacterLook:
 
 func _exit_tree() -> void:
 	MenuPopups.set_night(false)
+	# The screen under a night (the Play screen Leave night returns to) is the menu's and runs on
+	# the menu's factor: the shell is hidden under it and cannot put the factor back (#1197). A
+	# frame later: the factor emits `size_changed`, and this screen's parts have left the tree.
+	var window := get_window()
+	if window != null and is_inside_tree():
+		get_tree().process_frame.connect(
+			MenuShell.restore_scale_of.bind(get_tree()), CONNECT_ONE_SHOT
+		)
 
 
 func _ready() -> void:

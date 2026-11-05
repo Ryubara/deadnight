@@ -58,6 +58,8 @@ var play_button: UIButton
 var join_button: UIButton
 var copy_link_button: UIButton
 var copy_code_button: UIButton
+## Opens the Server Browser over this lobby: a press on a night there moves the player to it.
+var browse_button: UIButton
 ## In a Discord Activity: Discord's own window for sending the code to friends, which needs no
 ## clipboard (`discord-bridge.js`, `shareLink`).
 var share_button: UIButton
@@ -230,6 +232,9 @@ func _ready() -> void:
 	rules.custom_minimum_size.x = FIELD_WIDTH
 	rules.changed.connect(_on_rules_changed)
 	box.add_child(rules)
+	# A phone's canvas gets the panel's phone form, as the Play screen does (#1197).
+	resized.connect(_fit_phone)
+	_fit_phone()
 	_rules_note = _label(RULES_UNSUPPORTED, UILabel.Style.CAPTION)
 	_rules_note.name = "RulesNote"
 	_rules_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -273,6 +278,10 @@ func _ready() -> void:
 	copy_code_button = _button("Copy the code", UIButton.Variant.SECONDARY, "CopyCode")
 	copy_code_button.pressed.connect(func() -> void: await _copy(code_label.text, "Code copied."))
 	_in_row(copies, copy_code_button, half, true)
+	var browse := _row(box, "Browse")
+	browse_button = _button("Server browser", UIButton.Variant.SECONDARY, "Browse")
+	browse_button.pressed.connect(browse_nights)
+	_in_row(browse, browse_button, FIELD_WIDTH, true)
 	_shares = _row(box, "Shares")
 	share_button = _button("Share in Discord", UIButton.Variant.SECONDARY, "ShareDiscord")
 	share_button.pressed.connect(_share)
@@ -326,6 +335,7 @@ func focus_initial() -> void:
 
 func screen_enter() -> void:
 	super.screen_enter()
+
 	if mode == Mode.LIVE and api != null and not _over:
 		watch.watch(api, lobby, _me)
 	elif mode == Mode.PREVIEW and api != null:
@@ -335,10 +345,30 @@ func screen_enter() -> void:
 func _exit_tree() -> void:
 	if watch != null:
 		watch.stop()
+	PageClosing.disarm(str(lobby.get("id", "")))
 	if mode != Mode.LIVE or _entering or _over or lobby.is_empty() or api == null:
 		return
 	# Gone by Back or Esc: the seat goes with it, said from a caller that outlives this screen.
 	api.detached(get_tree().root).leave(lobby)
+
+
+## Opens the Server Browser over this lobby. The lobby stays as it is until the player presses a
+## night there,
+## and is freed then (`moved_on`); Back from the browser returns here.
+func browse_nights() -> void:
+	if _busy or mode != Mode.LIVE or _over:
+		return
+	ServerBrowserScreen.open(api, lobby)
+
+
+## The player moved to another night from the Server Browser: this screen is freed without saying
+## `leave`
+## (the backend took the player out of this lobby with the join), and its poll stops.
+func moved_on() -> void:
+	_entering = true
+	if watch != null:
+		watch.stop()
+	queue_free()
 
 
 ## Whether this player is the host of the lobby they are in.
@@ -460,6 +490,7 @@ func _go_in(held: bool) -> void:
 	NightScreen.remember_lobby(api, lobby, get_tree().root)
 	_entering = true
 	watch.stop()
+	_sync_page_closing()
 	if opener.is_valid():
 		opener.call()
 	else:
@@ -483,18 +514,40 @@ func _on_happened(events: Array) -> void:
 
 func _on_ended(text: String) -> void:
 	_over = true
+	_sync_page_closing()
 	_set_enabled(true)
 	start_button.visible = false
 	play_button.visible = false
 	join_button.visible = false
 	copy_link_button.visible = false
 	copy_code_button.visible = false
+	browse_button.visible = false
 	_shares.visible = false
 	copy_field.visible = false
 	map_card.visible = false
 	leave_button.text = "Back"
 	status.text = text if text != "" else TogetherApi.TEXTS["not_found"]
 	note.text = ""
+
+
+## Holds the closing page's word ready while this screen is a waiting room the player is in, and
+## takes it back when it is not (the night started and the socket speaks for them, the lobby ended,
+## the screen is going): `PageClosing`, Deadnight #1188.
+func _sync_page_closing() -> void:
+	var id := str(lobby.get("id", ""))
+	var waiting: bool = (
+		mode == Mode.LIVE
+		and api != null
+		and not _over
+		and not _entering
+		and id != ""
+		and str(lobby.get("state", "")) != "started"
+	)
+	var request := api.page_closing_request(lobby) if waiting else {}
+	if request.is_empty():
+		PageClosing.disarm(id)
+	else:
+		PageClosing.arm(id, request)
 
 
 # --- What the screen shows ---
@@ -523,11 +576,13 @@ func _show() -> void:
 	join_button.visible = (not live) and not preview.get("full", false)
 	copy_link_button.visible = live and link_label.visible
 	copy_code_button.visible = live
+	browse_button.visible = live and not _over
 	_shares.visible = live and TogetherScreen.can_share()
 	leave_button.text = "Leave" if live else "Back"
 	if not _over:
 		status.text = status_text(lobby, _me) if live else preview_text(preview)
 	_set_enabled(not _busy)
+	_sync_page_closing()
 
 
 ## Whether the player can move the panel now.
@@ -593,6 +648,13 @@ func send_rules() -> void:
 
 
 ## The panel: the host's while the lobby waits, otherwise what the lobby holds.
+## The rules panel's phone form on a phone's canvas, and every control a fingertip high.
+func _fit_phone() -> void:
+	var phone := TapFloor.phone_canvas(size)
+	rules.set_compact(phone)
+	TapFloor.fit(self, phone)
+
+
 func _show_rules() -> void:
 	var live := mode == Mode.LIVE
 	_rules_title.visible = live
@@ -813,7 +875,13 @@ func _make_seat_row() -> Dictionary:
 
 func _set_enabled(enabled: bool) -> void:
 	for button: UIButton in [
-		start_button, play_button, join_button, copy_link_button, copy_code_button, share_button
+		start_button,
+		play_button,
+		join_button,
+		copy_link_button,
+		copy_code_button,
+		browse_button,
+		share_button
 	]:
 		button.disabled = not enabled
 	leave_button.disabled = false
