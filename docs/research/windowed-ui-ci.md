@@ -18,10 +18,11 @@ renderer: Godot 4.7.2 and GdUnit4 6.2.2 as pinned, no change to `tools.toml`. Go
 | `apt` packages (xvfb, Mesa, X libraries) | 9 |
 | Workspace, pinned Godot and GdUnit4 | 2 (cached) |
 | Import | 14 |
-| All 114 suites, one process each (the run of 05:54 UTC) | 2,605 (43 min 25 s), 40.3 min of suite time |
+| All 114 suites, one process each (the first full run, two of them timing out at 300 s) | 2,605 (43 min 25 s) |
+| The 110 suites the schedule runs (the last full run, 997 cases, none skipped) | 2,376 (39 min 36 s) |
 | A failed suite run again headless | 186 for all of them |
 
-The whole job took 45 min 40 s. The same folder on a real window (Windows, a GPU) took 23.2 min.
+The whole job takes about 41 minutes (setup 50 s). The same folder on a real window (Windows, a GPU) took 23.2 min.
 
 - **Skips.** 1,002 test cases ran on the runner with 0 skipped (the real window: 1,007, 0 skipped). Headless,
   as CI runs it, `test_level_ink` and `test_poster_art_pixels` skip 14 of their 15 cases; on the runner they run,

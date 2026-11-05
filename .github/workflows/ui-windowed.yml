@@ -35,7 +35,7 @@ concurrency:
 jobs:
   windowed:
     runs-on: ubuntu-24.04
-    # The suites take about 30 minutes (docs/research/windowed-ui-ci.md); the run step's own limit is below the job's,
+    # The suites take about 40 minutes (docs/research/windowed-ui-ci.md); the run step's own limit is below the job's,
     # so a run that stops there still uploads what it ran and the `report` job says it stopped.
     timeout-minutes: 90
     steps:
