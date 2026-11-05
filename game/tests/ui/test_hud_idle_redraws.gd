@@ -6,6 +6,10 @@
 extends GdUnitTestSuite
 
 const SECOND_OF_FRAMES := 60
+## One turn of the low-fuel pulse, in seconds.
+const PULSE_PERIOD := TAU / HudFuel.PULSE_RATE
+## A cap on the frames of the pulse window, so a stuck clock fails instead of hanging.
+const MOST_FRAMES := 3000
 
 
 func _late_round() -> HudFixture:
@@ -51,21 +55,48 @@ func test_the_low_fuel_pulse_redraws_nothing() -> void:
 	var hud := fixture.hud
 	hud.state.apply_event({"type": &"fuel_low"})
 	hud.fuel.peek()
-	# The panel slides in, then holds for longer than the second counted.
+	# The panel slides in, then holds for longer than the pulse's period.
 	fixture.advance(HudTuning.current().fuel_in + 0.1)
 	await _frames(10)
 	var redraws := _watch(hud)
 	var low := 1.0
 	var high := 0.0
-	for _i in SECOND_OF_FRAMES:
+	# The pulse is a function of time, so the window is a whole period of it in seconds of frame time,
+	# not a number of frames: a frame of 4 ms (a window with no cap) or of 33 ms sees the same swing.
+	var elapsed := 0.0
+	var frames := 0
+	while elapsed < PULSE_PERIOD and frames < MOST_FRAMES:
 		await get_tree().process_frame
+		elapsed += get_process_delta_time()
+		frames += 1
 		var alpha := hud.fuel._lit.self_modulate.a
 		low = minf(low, alpha)
 		high = maxf(high, alpha)
-	# The pulse is the alpha of the lit segments' layer: a second of it redraws no canvas item, and the
+	# The pulse is the alpha of the lit segments' layer: a period of it redraws no canvas item, and the
 	# layer's alpha really moved.
 	assert_dict(redraws).is_empty()
 	assert_float(high - low).is_greater(0.2)
+
+
+## The pulse is a function of the HUD's clock alone: the same time in steps of 30, 60 or 144 frames
+## a second gives the same alpha (a player on a slow or a fast screen sees the same pulse).
+func test_the_low_fuel_pulse_is_the_same_at_any_frame_rate() -> void:
+	var host: Control = auto_free(Control.new())
+	host.size = Vector2(1920, 1080)
+	add_child(host)
+	var alphas := []
+	for rate in [30.0, 60.0, 144.0, 240.0]:
+		var fixture := HudFixture.make(host, 1)
+		fixture.hud.state.apply_event({"type": &"fuel_low"})
+		for _i in int(rate * PULSE_PERIOD):
+			fixture.hud.fuel.advance(1.0 / rate)
+		# The same time, to the frame: the whole count of frames of one period is the period only to
+		# the last frame, so the clock is topped up to it before reading.
+		fixture.hud.fuel.advance(PULSE_PERIOD - int(rate * PULSE_PERIOD) / rate)
+		alphas.append(fixture.hud.fuel._lit.self_modulate.a)
+		fixture.hud.queue_free()
+	for alpha in alphas:
+		assert_float(alpha).is_equal_approx(alphas[0], 0.001)
 
 
 func test_a_change_redraws_only_what_it_changes() -> void:

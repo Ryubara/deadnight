@@ -38,6 +38,11 @@ const TEXTS := {
 	"network": "Could not reach the game's servers. Check your connection.",
 }
 
+## Whether this run is a Discord Activity (the page address has `instance_id`, set by `Main`): it
+## signs in with Discord and keeps no guest credential. Nothing else differs from the website: the
+## id is never sent to the backend, so a player makes a night or joins one by code like anyone
+## (#1178).
+static var activity := false
 static var _token := ""
 static var _user := {}
 ## The Discord code this run traded in already: Discord takes a code once (a second try is a 400).
@@ -50,9 +55,6 @@ static var _flight: SignInFlight = null
 
 ## The backend's base address; a test or `?backend=` changes it.
 var base_url := DEFAULT_BACKEND
-## The Discord Activity instance this player is in (empty on the web): everyone with the same one
-## lands in the same night.
-var instance_id := ""
 ## Keeps this API's own session instead of the run's: a test with several players in one process
 ## gives each its own (the game itself has one player per run).
 var isolated := false
@@ -139,7 +141,7 @@ func sign_in(display_name: String = "") -> Dictionary:
 
 
 func _sign_in_request(display_name: String) -> Dictionary:
-	if instance_id != "" and OS.has_feature("web"):
+	if activity and OS.has_feature("web"):
 		var code := await _discord_code()
 		if code != "" and code != _spent_code:
 			_spent_code = code
@@ -182,11 +184,9 @@ func _sign_in_call(path: String, body: Dictionary) -> Dictionary:
 ## A night of your own: made, started on a game server, and its invite code. `{"ok", "lobby"}`.
 ## `settings` are the rules its host chose (`MatchSettingsPanel`); the backend keeps them on the
 ## lobby and signs them into every ticket, and the game server's room starts with them. Null is
-## the usual rules. A night of this Activity that is already started keeps the rules it began with.
+## the usual rules.
 func create(settings: MatchSettings = null) -> Dictionary:
-	var made := await _call(
-		"POST", "/lobbies", {"maxPlayers": NightHost.MAX_PLAYERS, "instanceId": instance_id}
-	)
+	var made := await _call("POST", "/lobbies", {"maxPlayers": NightHost.MAX_PLAYERS})
 	if not made["ok"]:
 		return made
 	if made["state"] != "started":
@@ -202,12 +202,9 @@ func create(settings: MatchSettings = null) -> Dictionary:
 
 
 ## A lobby of your own, still waiting: the player is its host and seat 1, and nobody has a night
-## until `start`. In a Discord Activity the lobby of the voice channel is found or made.
-## `{"ok", "lobby"}`.
+## until `start`. Always a new lobby, in the Activity as on the website. `{"ok", "lobby"}`.
 func create_lobby() -> Dictionary:
-	var made := await _call(
-		"POST", "/lobbies", {"maxPlayers": NightHost.MAX_PLAYERS, "instanceId": instance_id}
-	)
+	var made := await _call("POST", "/lobbies", {"maxPlayers": NightHost.MAX_PLAYERS})
 	return {"ok": true, "lobby": made} if made["ok"] else made
 
 
@@ -264,13 +261,26 @@ func preview(code: String) -> Dictionary:
 	return {"ok": true, "preview": seen} if seen["ok"] else seen
 
 
-## What the Discord Activity's voice channel has: `{"ok", "preview"}` of its lobby (waiting, or a
-## night in progress), or `not_found` when nobody has opened one yet. Joins nobody.
-func preview_instance() -> Dictionary:
-	if instance_id == "":
-		return _failed("not_found")
-	var seen := await _call("POST", "/lobbies/preview", {"instanceId": instance_id})
-	return {"ok": true, "preview": seen} if seen["ok"] else seen
+## The Server Browser's rows (#1179; the screen is #1180): the public nights a player can join,
+## waiting or in progress, with room first. `{"ok", "nights", "total", "maxPlayers"}`, a row being
+## `{id, code, map, hostName, players, maxPlayers, bots, kind, state, round, full}`: `players` is
+## people only (a bot holds no seat, it is in `bots`), `kind` is `lobby` (waiting) or `match` (in
+## progress, with its `round`; `state` says the same as `open` or `started`). Joins nobody:
+## `join_code(row["code"])` does. Meant to be polled every few seconds; the backend answers
+## `too_many_requests` (429) past 20 asks in 10 seconds.
+func list_nights() -> Dictionary:
+	return await _call("GET", "/lobbies")
+
+
+## The host makes the night private (not in the Server Browser, not handed to a stranger; its code
+## still joins) or public again. A new night is public. `{"ok", "lobby"}`.
+func set_visibility(lobby: Dictionary, public_night: bool) -> Dictionary:
+	var answer := await _call(
+		"PUT",
+		"/lobbies/%s/visibility" % lobby["id"],
+		{"visibility": "public" if public_night else "private"}
+	)
+	return {"ok": true, "lobby": answer} if answer["ok"] else answer
 
 
 ## The node the requests of this API are made under (they stop when it stops processing).
@@ -283,7 +293,6 @@ func owner_node() -> Node:
 ## says `leave` through one under the root, which outlasts it.
 func detached(parent: Node) -> TogetherApi:
 	var other := TogetherApi.new(parent, base_url)
-	other.instance_id = instance_id
 	other.isolated = isolated
 	other.guest_path = guest_path
 	other._own_token = _own_token
@@ -440,7 +449,7 @@ func _call(
 ## The credential the last visit kept, or "" (a Discord Activity signs in with Discord and keeps
 ## none; a failed sign-in never removes it, the backend decides when it has run out).
 func _kept_credential() -> String:
-	if instance_id != "":
+	if activity:
 		return ""
 	return GuestAccount.load_credential(base_url, guest_path)
 
@@ -450,7 +459,7 @@ func _kept_credential() -> String:
 func _remember(answer: Dictionary) -> void:
 	_returning = bool(answer.get("returning", false))
 	var credential := str(answer.get("guestToken", ""))
-	if credential != "" and instance_id == "":
+	if credential != "" and not activity:
 		GuestAccount.save_credential(base_url, credential, guest_path)
 
 

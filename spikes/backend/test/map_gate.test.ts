@@ -92,6 +92,8 @@ test("a host with no profile is level 1, and a quick-join night signs the host's
   const { app, player, lobbyOf, start, claims, call } = await platform();
   const fresh = await player("fresh");
   const lobby = await lobbyOf(fresh);
+  // A new night is public, so Quick join would seat the veteran in it: the fresh host makes it private.
+  await call("PUT", `/lobbies/${lobby.id}/visibility`, fresh.headers, { visibility: "private" });
   await start(lobby.id, fresh);
   assert.equal((await claims(lobby.id, fresh)).hostLevel, 1);
   const veteran = await player("veteran", 12);

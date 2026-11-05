@@ -7,10 +7,12 @@ extends UIScreen
 ## server when the host starts it and hands over a ticket.
 ##
 ## A page opened with `?room=CODE` reads that night at once (a static here is set before the screen
-## opens). One opened inside a Discord Activity (`?instance_id=...`) opens on the main menu, signed
-## in in the background (`ActivityRoom`): Play together goes straight to the lobby of its voice
-## channel, making it when nobody has. The address of a game server (`JoinScreen`) is a developer
-## setting, shown on the desktop and with `?dev` on the web.
+## opens). The Discord Activity gets this same screen and the same choices as the website: it makes
+## no lobby until the player presses Create, and players reach each other by a code, a link or Quick
+## join (#1178). The Activity signs in with Discord on the menu in the background
+## (`StartupSignIn`); nothing about the voice channel's instance routes a player here. The address
+## of a game server (`JoinScreen`) is a developer setting, shown on the desktop and with `?dev` on
+## the web.
 
 ## The player answered the name prompt (a name, or no name).
 signal name_decided
@@ -48,9 +50,6 @@ var _menu: VBoxContainer
 var _naming: VBoxContainer
 var _lobby := {}
 var _busy := false
-## The screen opened a lobby by itself (the Activity's voice channel): coming back from it, the
-## player goes on to the main menu rather than to a menu they never asked for.
-var _opened_for_room := false
 ## In a Discord Activity: whether the window can read a gamepad (`GamepadProbe`), every second.
 var _controller_note: UILabel
 var _controller_since := 1.0
@@ -131,55 +130,10 @@ func screen_enter() -> void:
 		auto_code = ""
 		code_field.text = code
 		await _join()
-	elif ActivityRoom.current != null:
-		await _use_activity_room(ActivityRoom.current)
-
-
-## Coming back from a lobby that opened by itself: on to the main menu.
-func screen_resume() -> void:
-	if _opened_for_room:
-		_opened_for_room = false
-		UIRouter.pop()
-		return
-	super.screen_resume()
-
-
-## The lobby of the Activity's voice channel: signed in on the menu already (or now), then what the
-## channel has, read fresh. Nobody has made one: the player makes it and hosts. One waiting or
-## started: its preview, with Join (the round of a night in progress is on it).
-func _use_activity_room(room: ActivityRoom) -> void:
-	_busy = true
-	_set_enabled(false)
-	if room.state != ActivityRoom.State.PREPARING and room.state != ActivityRoom.State.READY:
-		room.prepare()
-	if room.state == ActivityRoom.State.PREPARING:
-		_say("Getting your night ready...")
-	if not await room.until_ready():
-		_busy = false
-		_set_enabled(true)
-		_say(room.failure)
-		return
-	var seen := await room.api.preview_instance()
-	if seen["ok"]:
-		_open_preview(room.api, seen["preview"], true)
-		return
-	if seen["error"] != "not_found":
-		_fail(seen)
-		return
-	var made := await room.api.create_lobby()
-	if not made["ok"]:
-		_fail(made)
-		return
-	_opened_for_room = true
-	_busy = false
-	_set_enabled(true)
-	_say("")
-	LobbyScreen.show_lobby(room.api, made["lobby"])
 
 
 ## Shows what a code says, with Join; the lobby screen takes it from here.
-func _open_preview(from: TogetherApi, seen: Dictionary, for_room := false) -> void:
-	_opened_for_room = for_room
+func _open_preview(from: TogetherApi, seen: Dictionary) -> void:
 	_busy = false
 	_set_enabled(true)
 	_say("")

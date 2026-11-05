@@ -194,7 +194,7 @@ func wear(kind: StringName, id: StringName) -> bool:
 		var locked := tile(kind, id)
 		if locked != null:
 			UIMotion.shake(locked)
-		_say("%s: %s." % [_catalog.title(kind, id), _catalog.how_to_get(kind, id)])
+		_say("%s: %s." % [_catalog.shown_title(kind, id, false), _catalog.how_to_get(kind, id)])
 		return false
 	if not PlateEquip.choose(get_tree().root, store, kind, id):
 		if not store.has_account():

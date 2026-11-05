@@ -7,15 +7,20 @@ players are in your lobby before you start"; Deadnight #515). The platform side 
 [networking](networking.md).
 
 **Status:** built and played in the browser: the backend (open and started lobbies, presence, the round, the
-preview by code or by Activity instance), the lobby screen and its poll (`LobbyScreen`, `LobbyWatch`), Play together
+preview by code), the lobby screen and its poll (`LobbyScreen`, `LobbyWatch`), Play together
 opening it, the join notice in the night, and a web probe (`tools/web_smoke/lobby.py`). Not built: the host's match
 settings are built too (the host's `MatchSettingsPanel`, sent live with `PUT /lobbies/:id/settings`, read only for
 guests).
 
 ## The rules in one place
 
-- A **lobby** has a short code, up to **8 seats** (people and bots together: `NightHost.MAX_PLAYERS`), one **host**
-  (the first seat) and a status: **open** (waiting for the host) or **started** (a night is running, with a round).
+- A **lobby** has a short code, up to **8 seats** for people (`NightHost.MAX_PLAYERS`; the bots the host sets hold no
+  seat and are never counted, #1179), one **host** (the first seat) and a status: **open** (waiting for the host) or
+  **started** (a night is running, with a round).
+- A night is **public or private**. A new night is **public**: it is in the Server Browser's list (below) and Quick join
+  may seat a stranger in it. Its host can make it **private** (`PUT /lobbies/:id/visibility`, at any time, in progress
+  too); a private night is in no list, and its code still joins it. The game has no switch for it yet (the backend and
+  `TogetherApi.set_visibility` have), so every night made from the game today is public.
 - **Only the host starts.** Guests wait and can leave.
 - **Late joining stays on.** A started night takes newcomers while the game server has room (the same 8). The code says
   *Night in progress, round N* before the newcomer presses Join, and Join goes straight in.
@@ -115,10 +120,11 @@ the same message from the refusal (`409 full`). Nobody is queued: Back, or Creat
 
 ### 8. In the Discord Activity
 
-The voice channel's room (#495, `ActivityRoom`) is this lobby: the first to press Play together makes it and is the
-host, the rest of the channel land in the same lobby (or, if it started, in the preview of a night in progress). The
-Activity still opens on the main menu. Joining happens when a player opens the lobby screen, not before, so people who
-only opened the Activity are not seats.
+The Activity plays the website's Play together, nothing more (#1178). It opens on the main menu (#495) and signs in with
+Discord in the background (`StartupSignIn`); Play together is the same screen with Quick join, Create a night and the
+code field, and makes no lobby until the player presses Create. Players reach each other by the code, the link or Quick
+join, like on the website: the voice channel's instance id is not sent to the backend and names no lobby (it used to,
+and two players who each pressed Play together got a lobby of their own). Share in Discord and the invite window stay.
 
 ## Leaving and moving: every state, and what ends it
 
@@ -226,10 +232,34 @@ sign in (once), `POST /lobbies/quick`, `POST /lobbies/:id/ticket`, then the nigh
 - **If no night is found or the call fails** the card says the same words as the Together screen (`TogetherApi.TEXTS`) and
   offers **Create a night** (a lobby of the player's own, opened on its lobby screen with the code) and **Close**.
   The Together screen is therefore never in the path.
-- In a **Discord Activity** the card waits for the room that signed in on the menu (`ActivityRoom`), then asks as
-  above.
+- In a **Discord Activity** the card asks as above: its sign-in is the one the menu started (`StartupSignIn`), which
+  the card waits for if it is still out.
 - Proof: `game/tests/ui/test_quick_join.gd` (found, failed and cancelled paths with a stubbed `TogetherApi`, and a
   press that lands in a joined room over a real socket) and the browser probe `tools/web_smoke/quick_join.py`.
+
+## The list of nights (the Server Browser's data, #1179)
+
+`GET /lobbies` (signed in; `TogetherApi.list_nights`) lists the **public** nights a player can be shown to join: waiting
+or in progress, with room first, then the most people, then the newest, at most 50 (`total` says how many there are).
+The list carries both **lobbies** that still wait and **matches** in progress (the maintainer: "server browsers should
+show both lobbies and existing matches"). A row is
+`{id, code, map, hostName, players, maxPlayers, bots, kind, state, round, full}`:
+
+- `players` is **people only**, out of `maxPlayers` (8): a bot holds no seat, so it is in `bots` (what the host set), never
+  in `players`. A waiting night counts its lobby's members; a started one the game server's own count from its heartbeat
+  (the people who hold a seat, one whose socket dropped included).
+- `kind` says which it is: `lobby` (waiting for its host, `state` `open`, `round` null) or `match` (in progress, `state`
+  `started`, with the `round` the game server last said; null until it has said one).
+  `full` is no room for another person; a full night is listed last, so a screen can show it greyed.
+- `map` is the map's id; the game knows its name and its picture. `code` joins: `POST /lobbies/join-by-code` with the
+  row's code is the Join of a row (it works on a night in progress).
+- A night that ended, whose last person left, or that ran out of time is gone from the very next call (the list reads
+  the lobbies as they are and keeps nothing between calls), and a member who stopped polling is not counted.
+- It is polled, so it is **limited**: 20 asks in 10 seconds for one account, then `429 too_many_requests` with a
+  `Retry-After`. A screen polling every 3 to 5 seconds, with a Refresh button, stays well inside it.
+
+The screen that draws it is the Server Browser (#1180); until it lands, Quick join and the Together screen are the
+ways in.
 
 ## What is not in this
 

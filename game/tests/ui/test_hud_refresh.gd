@@ -80,7 +80,11 @@ func test_the_party_rows_are_made_once_for_the_roster_not_per_change() -> void:
 	assert_str(hud.points.shown[1]["name"]).is_equal("Moe the Second")
 	fixture.act(RulesAction.remove_player(3))
 	assert_array(hud.points.shown).has_size(3)
-	assert_int(hud.points._column.get_child_count()).is_equal(3)
+	# The column also holds the bots' strip (`HudBotChips`), which has no chips with four players.
+	var boxes := hud.points._column.get_children().filter(
+		func(child: Node) -> bool: return child is HudPlayerBox
+	)
+	assert_int(boxes.size()).is_equal(3)
 
 
 func test_readings_that_did_not_change_announce_nothing() -> void:

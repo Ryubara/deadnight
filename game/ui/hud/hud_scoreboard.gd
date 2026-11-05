@@ -21,8 +21,8 @@ const PING_CELL := 5
 ## Size of the armband chip before the name, and of a row's height.
 const CHIP := Vector2(10.0, 34.0)
 const ROW_HEIGHT := 46.0
-## The most players a night holds (the rows kept).
-const MAX_ROWS := NightHost.MAX_PLAYERS
+## The most bodies a night holds, people and bots (the rows kept).
+const MAX_ROWS := NightHost.MAX_SEATS
 ## A row of the local player is laid on a faint wash of the accent.
 const LOCAL_WASH := 0.14
 

@@ -12,8 +12,11 @@ extends RefCounted
 ## server answers it from the levels it knows, `NightServer.player_levels`); without one every
 ## player has the starting unlocks.
 
-## Seats in the lot: `NightHost.MAX_PLAYERS` (a test holds them equal).
+## Seats in the lot for people: `NightHost.MAX_PLAYERS` (a test holds them equal). The bots' seats
+## follow them (`BOT_SEATS`, 8 to 14), so a person's seat and armband never depend on the bots.
 const SEATS := 8
+## Seats in the lot for bots: `MatchSettings.MAX_BOTS` (a test holds them equal).
+const BOT_SEATS := 7
 
 var looks: Dictionary = {}
 var seats: Dictionary = {}
@@ -27,13 +30,13 @@ func _init(send: Callable, unlocks_for: Callable = Callable()) -> void:
 	_unlocks_for = unlocks_for
 
 
-## A player has connected: gives them the lowest free seat and sends them everyone's look so far.
-## Returns the seat, or -1 when the lot is full.
-func join(player_id: int) -> int:
-	var seat := 0
+## A player has connected: gives them the lowest free seat (a person one of the first `SEATS`, a bot
+## one after them) and sends them everyone's look so far. Returns the seat, or -1 when it is full.
+func join(player_id: int, bot := false) -> int:
+	var seat := SEATS if bot else 0
 	while seats.values().has(seat):
 		seat += 1
-	if seat >= SEATS:
+	if seat >= (SEATS + BOT_SEATS if bot else SEATS):
 		return -1
 	seats[player_id] = seat
 	# Until their own look arrives, a player wears the preset of their seat, so a lot starts out

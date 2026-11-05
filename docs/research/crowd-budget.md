@@ -139,8 +139,9 @@ deltas. Bandwidth is not the limit at this size.
   (`GameRules.crowd_ceiling`) and the sim's hard cap are set together.
 - **A bot is not a client** (#946): it has no screen, so the ceiling follows the **people's** platforms, not the seats'.
   `NightServer` registers no platform for a bot's seat (before, a hosted bot was registered as a browser and any night
-  with a bot stood 40 on a desktop). A person who takes a bot's seat counts as a browser until its client says what it
-  is; a bot that inherits a seat drops the leaver's platform. A night with nobody but bots follows this process's own
+  with a bot stood 40 on a desktop). (A person who took a bot's seat counted as a browser until its client said what it
+  was, and a bot that inherited a seat dropped the leaver's platform; since #1179 a bot holds no seat of a person's, so
+  neither happens.) A night with nobody but bots follows this process's own
   platform. The cost at the higher ceiling is in [the bots section](#bots-and-the-desktop-ceiling-946).
 - The match settings' slider offers the host's platform's ceiling (a browser host 40, a desktop host 120).
 - **A server operator's cap**: `MAX_ALIVE` (`ServerConfig`) caps every night of the process. The rooms of one process

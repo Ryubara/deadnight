@@ -211,6 +211,10 @@ func _fit_for_fingers() -> void:
 	_plate_button.custom_minimum_size.y = maxf(
 		_plate_button.custom_minimum_size.y, MenuLook.TAP_TARGET
 	)
+	# At the theme's button size the Plate button is 79 units tall: with its ring and its growth
+	# that is more than the strip of 99 units the phone leaves the tab, and the ring was cut at the
+	# strip's edges (#1187). The body size keeps it a tap target and inside the strip.
+	_plate_button.add_theme_font_size_override(&"font_size", MenuLook.SIZE_BODY)
 
 
 func _on_weapon_selected(index: int) -> void:
