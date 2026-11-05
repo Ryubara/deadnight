@@ -42,6 +42,33 @@ A suite that is about something other than the drop sets `NightScreen.arrival_en
 puts it back in `after_test` (`--noarrival`, what a headless run always has); `test_arrival_night` and
 `test_night_crosshair` are the ones that play it.
 
+## The second suite of a windowed session hung (#1207)
+
+`test_night_screen` passed alone in a window and timed out on its first test ("Test timed out after 5min") when it ran
+after `test_night_crosshair` in one session; the reverse order hung the same way (crosshair, 7 tests, 25 s, then the
+hang). It was on `main`; headless (CI) never saw it.
+
+| Await | Result |
+| --- | --- |
+| `UIRouter.idle` (reset and push) | returns |
+| `screen.night.ready_to_play` | never: `NightWarmup` is inside its lot pass |
+| `await RenderingServer.frame_post_draw` in `NightWarmup._shots` | the one that hangs: `Engine.get_frames_drawn()` stands still |
+
+The state left behind is not a static of the game but the window: GdUnit minimizes it after every suite
+(`GdUnitTestSuiteAfterStage`), and a minimized window draws no frame, so the warm-up's frame never comes. A print of
+`DisplayServer.window_get_mode()` before the await gave `0` (windowed) in the first suite of a session and `1`
+(minimized) in the second. The first suite finds the window as the game's `Settings` left it, which is why every suite
+passed alone. The game is right to wait for a frame (a player who minimizes a loading game finds it finishing when the
+window returns), so the suites fix it: `WindowFixture.make_drawable` (`tests/ui/window_fixture.gd`) puts a minimized
+window back and waits for two drawn frames, and 21 suites that open a night with its warm-up call it from `before()`.
+`test_window_fixture` has the cause on the real window (a minimized window draws 0 frames in 30; after the fixture the
+frames come; without the restore the fixture's own error names it after 5 s) and a headless guard that lists a suite
+that opens a night (`night_screen.tscn`, or `warm_up = true`) and does not call the fixture (21 listed before the fix).
+The kit's page is [A minimized window draws nothing](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/minimized-window.md).
+
+Windowed, with the fix: crosshair then screen 15 of 15 in 54.7 s, screen then crosshair 15 of 15 in 53.6 s, no
+failures, no timeout changed. Before: both orders killed at 200 s and 150 s.
+
 ## The end board under the drop (`test_night_screen_end`)
 
 `test_the_board_replaces_the_hud_and_the_clock_ends_on_the_play_screen_with_its_rules` failed windowed with two lines

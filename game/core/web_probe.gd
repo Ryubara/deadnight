@@ -241,6 +241,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"weapon_slot_held": 0,
 		"settings_open": false,
 		"menu_buttons": "",
+		"menu_button_sizes": "",
 		"tab": "",
 		"stage": "",
 		"quick_join": "",
@@ -386,6 +387,7 @@ static func snapshot(top: Control) -> Dictionary:
 	data["reticle"] = night_screen.reticle_shown()
 	data["settings_open"] = night_screen.settings_open()
 	data["menu_buttons"] = _button_spots(night_screen)
+	data["menu_button_sizes"] = _button_sizes(night_screen)
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)
@@ -442,6 +444,21 @@ static func _audit_asked() -> bool:
 	if not OS.has_feature("web"):
 		return false
 	return int(JavaScriptBridge.eval("window.deadnight_audit ? 1 : 0", true)) == 1
+
+
+## The night's shown buttons as `text:w,h`: the size as fractions of the window, so a browser test
+## reads the size a finger meets in CSS pixels (#1192).
+static func _button_sizes(screen: NightScreen) -> String:
+	if not screen.is_inside_tree():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var found: Array[String] = []
+	for node in screen.find_children("*", "UIButton", true, false):
+		var button := node as UIButton
+		if button.is_visible_in_tree():
+			var share := button.get_global_rect().size / size
+			found.append("%s:%.5f,%.5f" % [button.text, share.x, share.y])
+	return "|".join(found)
 
 
 ## The screen's shown buttons as `text:x,y` (the centre, as fractions of the window): the
