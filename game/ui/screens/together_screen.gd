@@ -106,6 +106,9 @@ func _ready() -> void:
 		box.add_child(dev)
 	_show_menu()
 	initial_focus = get_path_to(quick_button)
+	# On a phone's canvas the fields and buttons are a fingertip high (#1197).
+	resized.connect(func() -> void: TapFloor.fit(self, TapFloor.phone_canvas(size)))
+	TapFloor.fit(self, TapFloor.phone_canvas(size))
 
 
 func _process(delta: float) -> void:

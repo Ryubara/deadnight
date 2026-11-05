@@ -208,6 +208,10 @@ func _is_compact() -> bool:
 func _apply_scale() -> void:
 	if not is_visible_in_tree():
 		return
+	_set_scale()
+
+
+func _set_scale() -> void:
 	var ui_scale := float(Settings.get_value(SettingsService.UI_SCALE))
 	var window := get_window()
 	window.content_scale_factor = ui_scale * (MenuScale.PHONE_FACTOR if _compact else 1.0)
@@ -220,6 +224,11 @@ func _on_window_resized() -> void:
 	_compact = now
 	context.compact = now
 	_apply_scale()
+	# A screen over the menu (Settings, Play together) hides it, and runs on the menu's factor all
+	# the same: a page turned or resized across the phone limit under it puts the factor right
+	# there too. A night sets its own and keeps it (#1197).
+	if not is_visible_in_tree() and is_inside_tree() and not UIRouter.top() is NightScreen:
+		_set_scale()
 
 
 ## The canvas changed (the window was resized, a phone turned): the panel on show is placed again

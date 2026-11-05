@@ -124,6 +124,12 @@ static func look_from_flag(text: String) -> CharacterLook:
 
 func _exit_tree() -> void:
 	MenuPopups.set_night(false)
+	# The screen under a night (the Play screen Leave night returns to) is the menu's and runs on
+	# the menu's factor: the shell is hidden under it and cannot put the factor back (#1197). A
+	# frame later: the factor emits `size_changed`, and this screen's parts have left the tree.
+	var window := get_window()
+	if window != null and is_inside_tree():
+		get_tree().process_frame.connect(MenuScale.restore.bind(window), CONNECT_ONE_SHOT)
 
 
 func _ready() -> void:

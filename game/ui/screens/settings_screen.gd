@@ -407,6 +407,7 @@ func _fit() -> void:
 	)
 	_column.custom_minimum_size.x = minf(float(PANEL_WIDTH), size.x - 2.0 * edge)
 	_rows_scroll.margin = float(vertical)
+	TapFloor.fit(self, phone)
 
 
 func _build_tabs() -> HBoxContainer:

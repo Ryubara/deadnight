@@ -59,3 +59,11 @@ a bot in the night (`--late --godot <the pinned Godot>`); it counts the WebGL ca
 (`smoke.trace`) and fails on a console error, a show that never began or ended, or a HUD that did not give way. A page that
 asks for the probes does not play the show unless it has `?arrival` (`--unasked` checks that it does not). Numbers:
 [the arrival](arrival.md).
+
+## Which scale a page runs at, and the ruler (#1197)
+
+`phone_layout.py` walks the menu screens in Chromium as a phone (or `--desktop`, or `--iframe` for the Activity's frame)
+and prints, from `window.deadnight` (`layout`, `phone`, `ui_audit`), the page in CSS px, the canvas, the content scale
+factor, the canvas in units and the smallest text and tap target in CSS px. It fails under 14 and 44. Sections: `tour`,
+`turn` (upright and back, a tablet page, a covering screen), `night` (a night entered and left). Details and numbers:
+[phone-page-scale.md](phone-page-scale.md).

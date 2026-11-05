@@ -250,10 +250,21 @@ static func snapshot(top: Control) -> Dictionary:
 		"controller_hint": false,
 		"clipboard": "",
 		"clipboard_detail": "",
-		"focus": ""
+		"focus": "",
+		# Which scale the page runs at (#1197): its CSS size, the canvas, the content scale factor
+		# and the canvas in units, as `page_w,page_h|canvas_w,canvas_h|factor|units_w,units_h`.
+		"layout": "",
+		"phone": false,
+		"ui_audit": ""
 	}
 	if top == null:
 		return data
+	if top.is_inside_tree():
+		var window_size := top.get_window().size
+		data["layout"] = _layout(top)
+		data["phone"] = MenuScale.is_phone(window_size)
+		if _audit_asked():
+			data["ui_audit"] = UiAudit.scan(top, PageSize.css_per_pixel(window_size)).summary()
 	data["screen"] = top.scene_file_path.get_file().get_basename()
 	if top.is_inside_tree():
 		# The control that has the keyboard, so a browser test walks to a button by its name (a
@@ -409,6 +420,33 @@ static func snapshot(top: Control) -> Dictionary:
 ## so a browser test taps them without knowing the layout.
 static func _button_spots(screen: NightScreen) -> String:
 	return _spots(screen)
+
+
+## `page_w,page_h|canvas_w,canvas_h|factor|units_w,units_h|css_per_unit` of the screen's window.
+static func _layout(top: Control) -> String:
+	var window := top.get_window()
+	var units := top.get_viewport().get_visible_rect().size
+	var page := PageSize.css(window.size)
+	return (
+		"%.1f,%.1f|%d,%d|%.3f|%.1f,%.1f|%.4f"
+		% [
+			page.x,
+			page.y,
+			window.size.x,
+			window.size.y,
+			window.content_scale_factor,
+			units.x,
+			units.y,
+			MenuScale.css_per_unit(window.size, window.content_scale_factor)
+		]
+	)
+
+
+## Whether the page wants the ruler's numbers of each screen (`window.deadnight_audit`).
+static func _audit_asked() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	return int(JavaScriptBridge.eval("window.deadnight_audit ? 1 : 0", true)) == 1
 
 
 ## The screen's shown buttons as `text:x,y` (the centre, as fractions of the window): the

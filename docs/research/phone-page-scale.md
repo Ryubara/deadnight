@@ -1,0 +1,105 @@
+# A phone page's scale: the menu on a real page (#1197)
+
+The menu's phone layout (`MenuScale`, factor 2: a 1169 x 540 canvas, 0.72 CSS px to the unit at 844 x 390) was tuned and
+captured in a Godot window of 844 x 390, and never applied on a phone's web page. Measured in the web export in
+Chromium as a phone (844 x 390 CSS px, pixel ratio 3, touch), a unit was 0.36 CSS px, body text 6.5 to 9.4 px and tap
+targets 19 to 23 px.
+
+## Why
+
+A web page's window is its canvas in device pixels, and the page reports a pixel ratio of at most 2
+(`PhoneRender.PIXEL_RATIO_CAP`, `head_include`): an 844 x 390 page is a 1688 x 780 window. `MenuScale.is_phone` asked for
+a window whose short side is under 500, so no phone page was a phone. Every test (`test_ui_fit`, `test_level_ink`, the
+lobby fit) and every capture made a window of 844 x 390, which no phone page has.
+
+## The test for a phone
+
+`MenuScale.is_phone(window)` is true when either holds:
+
+1. the window's own short side is under 500 (a native window; a desktop browser window at ratio 1; as it was);
+2. the device is a touch screen (`TouchMode.detect`: a coarse pointer) and the page's short side in CSS pixels is under
+   500. `PageSize.css` reads the canvas element's `getBoundingClientRect()`, so an iframe (Discord's Activity) reports
+   its own size.
+
+The layout does not depend on the ratio: the factor multiplies the base stretch, so 844 x 390, 1688 x 780 (ratio 2),
+2532 x 1170 (ratio 3, `?dprcap=3`) and 1864 x 860 (a 932 x 430 page) all lay the menu out on 1169 or 1170 x 540 units.
+
+| Case | Phone? | Test (`test_page_size.gd`) |
+| --- | --- | --- |
+| Phone page 844 x 390 at ratio 1, 2, 3 | yes | `test_a_phone_page_is_a_phone_at_every_pixel_ratio` |
+| Biggest and narrowest phones, upright | yes | `test_the_biggest_phones_and_the_narrowest_are_phones`, `test_a_phone_held_upright_is_a_phone_too` |
+| The limit: 499 and 500 CSS px | yes / no | `test_the_limit_is_500_css_pixels_on_the_short_side` |
+| Tablet 1024 x 768, 1133 x 744 | no (as before) | `test_a_tablet_keeps_the_desktop_layout` |
+| Desktop browser window, any ratio | no (as before) | `test_a_desktop_browser_window_keeps_the_layout_it_had` |
+| Small desktop window 800 x 450 at ratio 1 | yes (as before, by its canvas) | `test_a_small_desktop_browser_window_is_a_phone_by_its_canvas_as_before` |
+| A native window (844 x 390, 1920 x 1080), a native phone build | by its own size | `test_a_native_window_is_read_by_its_own_size` |
+
+## Turning, resizing, the night
+
+- The check runs on `size_changed`. A page turned upright (390 x 844: factor 2, the "turn your phone" prompt covers it),
+  back, resized to a tablet and to a bigger phone ended right on the real page (`phone_layout.py --section turn`).
+- A screen over the menu (Settings, Play together) hides the shell, which used to be the one place the factor was set:
+  a page that crossed the limit under it kept the old layout. `MenuShell._on_window_resized` now sets it there too
+  (`test_menu_scale_cover.gd`); a night keeps its own.
+- A night runs on the interface size alone (`NightScreen._ready`, left as it is: #1192 and #1189). Leaving it did not give
+  the menu's factor back to the Play screen it returns to (the shell is hidden below it): on a real page the Play screen
+  stayed at 0.36 CSS px to the unit until Back. `NightScreen._exit_tree` now restores it, a frame later
+  (`test_night_scale.gd`; changing the factor in `_exit_tree` made the night's own parts, already out of the tree, answer
+  `size_changed` with errors).
+
+## What the ruler found once the layout was on
+
+`UiAudit` measures the smallest text and the smallest thing a finger presses in CSS pixels (a node's rectangle and font
+size times the window's stretch and the page's CSS pixels per window pixel). The web probe publishes it
+(`window.deadnight_audit`, `tools/web_smoke/phone_layout.py`), `test_phone_floor.gd` fails under 14 and 44. Faults that
+nobody had seen at a layout no page reached, all the same fix (`TapFloor`, 62 units on a phone's canvas) or a size:
+
+- sliders, toggles, selectors and text fields: 37.6 CSS px (`control_height` is 52 units): `TapFloor.fit`, in the match
+  rules panel, Settings, Play together, Join and the name field;
+- the lobby's rules were not in the panel's phone form (the Play screen's is): `rules.set_compact` in the lobby;
+- the plate screen's short tabs: 10 CSS px type (14 units) and 24 px high: 20 units and a tap target;
+- the Play screen after Leave night (above).
+
+Not fixed here, filed: the night's pause card and Settings from a night (#1205), tablets and small desktop windows (#1206).
+
+## Numbers
+
+Before and after, the web export, 844 x 390 CSS px on a screen of ratio 3 (the page reports 2 to the engine, so the
+canvas is 1688 x 780; `phone_layout.py --section tour`). Settings is one row: the first run did not move between its
+tabs (the later one did: every tab at 44.8 px targets and 18.8 px text or more).
+
+| Screen | CSS px per unit | Smallest text (CSS px) | Smallest tap target (CSS px) |
+| --- | --- | --- | --- |
+| menu Play | 0.36 to 0.72 | 7.9 to 15.9 | 23.1 to 46.2 |
+| menu Loadout | 0.36 to 0.72 | 7.9 to 15.9 | 20.2 to 44.8 |
+| menu Shop | 0.36 to 0.72 | 7.9 to 15.9 | 23.1 to 46.2 |
+| menu Challenges | 0.36 to 0.72 | 6.5 to 15.9 | 22.4 to 44.8 |
+| menu More | 0.36 to 0.72 | 7.9 to 15.9 | 19.1 to 44.8 |
+| together | 0.36 to 0.72 | 9.4 to 18.8 | 19.1 to 44.8 |
+| play solo | 0.36 to 0.72 | 9.4 to 23.1 | 18.8 to 44.8 |
+| settings tab 1 | 0.36 to 0.72 | 9.4 to 18.8 | 18.8 to 44.8 |
+| credits | 0.36 to 0.72 | 9.4 to 18.8 | 28.5 to 57.1 |
+
+Other pages, the same probe (CSS px per unit, factor, phone?):
+
+| Page | Canvas | Factor | CSS px per unit | Phone? |
+| --- | --- | --- | --- | --- |
+| Phone 844 x 390, ratio 2 (the game's cap) | 1688 x 780 | 2 | 0.72 | yes |
+| Phone 844 x 390, ratio 3 (`?dprcap=3`) | 2532 x 1170 | 2 | 0.72 | yes |
+| The same page in an iframe of another origin (Discord's Activity) | 1688 x 780 | 2 | 0.72 | yes |
+| Phone 932 x 430 | 1864 x 860 | 2 | 0.80 | yes |
+| Phone held upright, 390 x 844 (the turn prompt covers it) | 780 x 1688 | 2 | 0.41 | yes |
+| Tablet 1024 x 768, touch | 2048 x 1536 | 1 | 0.53 | no (#1206) |
+| Desktop window 1280 x 720 | 1280 x 720 | 1 | 0.67 | no |
+| Desktop window 800 x 450, ratio 1 | 800 x 450 | 2 | 0.83 | yes (by its canvas, as before) |
+| Desktop window 900 x 450, ratio 2 | 1800 x 900 | 1 | 0.42 | no (as before, #1206) |
+| A night (844 x 390 page), left as it is | 1688 x 780 | 1 | 0.36 | phone, HUD at the interface size (#1192, #1189, #1205) |
+
+On the real page the menu came back to the factor 2 after a night, and the Play screen under it did too once
+`NightScreen._exit_tree` restored it (it stayed at 0.36 before).
+
+## What this does not prove
+
+A real phone, a real iOS Safari (Chromium in emulation is not one), Discord's own webview (an iframe of another origin
+stands in, `--iframe`), the lobby on a page (it needs a backend; `test_phone_floor` opens it with a fixture), text
+drawn by custom `_draw` (ticket titles, the plate), which `UiAudit` does not see, and the night's HUD (#1192, #1189).
