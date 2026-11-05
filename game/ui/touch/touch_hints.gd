@@ -188,7 +188,7 @@ func rect_of(id: StringName) -> Rect2:
 			var found := Rect2(Vector2(left, column.get_center().y - size.y * 0.5), size)
 			if badges.has_area() and found.grow(BUTTON_CLEAR).intersects(badges):
 				found.position.y = badges.position.y - BUTTON_CLEAR - size.y
-			return found
+			return _off_the_places(found, safe, size)
 		INTERACT:
 			var circle := controls.button_circle(TouchLayout.INTERACT)
 			var centre: Vector2 = circle[&"centre"]
@@ -196,6 +196,36 @@ func rect_of(id: StringName) -> Rect2:
 			var left: float = centre.x + beside if mirrored else centre.x - beside - size.x
 			return Rect2(Vector2(left, centre.y - size.y * 0.5), size)
 	return Rect2()
+
+
+## `rect` moved, a step at a time, up or down to the nearest place that is not over a place a finger
+## presses (the weapon strip, the column and the perk badges beside it), the stick's resting ring
+## (#1276, #1294), the move hint above it or a button; `rect` itself when there is none.
+func _off_the_places(rect: Rect2, safe: Rect2, size: Vector2) -> Rect2:
+	var keep: Array[Rect2] = []
+	for zone: Dictionary in controls.zones.call():
+		keep.append(zone[&"rect"])
+		var beside: Rect2 = zone.get(&"beside", Rect2())
+		if beside.has_area():
+			keep.append(beside)
+	var scale := controls.touch_scale
+	var ring := TouchLayout.stick_rest(safe, scale, controls.left_handed)
+	var reach := TouchLayout.STICK_RADIUS * scale
+	keep.append(Rect2(ring - Vector2.ONE * reach, Vector2.ONE * reach * 2.0))
+	keep.append(rect_of(MOVE))
+	var circles := controls.circles()
+	var steps := int(safe.size.y / SEARCH_STEP)
+	for step in steps:
+		for way in [-1.0, 1.0]:
+			var moved := Rect2(rect.position + Vector2(0.0, way * float(step) * SEARCH_STEP), size)
+			if moved.position.y < safe.position.y or moved.end.y > safe.end.y:
+				continue
+			var clear := _clear_of(moved, circles)
+			for box in keep:
+				clear = clear and not moved.grow(BUTTON_CLEAR).intersects(box)
+			if clear:
+				return moved
+	return rect
 
 
 ## The HUD's players' column, the place a finger holds for the scoreboard: its zone (`rect`, and

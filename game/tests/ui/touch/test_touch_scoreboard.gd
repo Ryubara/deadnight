@@ -397,6 +397,23 @@ func test_the_hints_say_it_once_beside_the_column_and_a_hold_ends_it() -> void:
 					. override_failure_message("%s is over %s" % [what, zone[&"action"]])
 					. is_false()
 				)
+			# The stick's resting ring (#1276, #1294) is a place a finger makes the stick: the hint
+			# is not over it, at the touch scale the controls have.
+			var touch := _fixture.controls.touch_scale
+			var ring := {
+				&"centre": TouchLayout.stick_rest(_fixture.controls.safe_rect(), touch, left),
+				&"radius": TouchLayout.STICK_RADIUS * touch,
+			}
+			(
+				assert_float(_clearance(rect, ring))
+				. override_failure_message("%s is over the stick's resting ring" % what)
+				. is_greater(0.0)
+			)
+			(
+				assert_bool(rect.intersects(hints.rect_of(TouchHints.MOVE)))
+				. override_failure_message("%s is over the move hint" % what)
+				. is_false()
+			)
 			await _fixture.touch(0, column.get_center())
 			assert_bool(hints.is_seen(TouchHints.SCOREBOARD)).is_true()
 			assert_array(hints.showing()).not_contains([TouchHints.SCOREBOARD])

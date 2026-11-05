@@ -561,7 +561,10 @@ column already shows the points and names: the scoreboard's short form. A finger
   left bound: 502 units where the column had made it 376, and the strip was 417 wide for a ticket 448 wide at the
   least step). The text is then 8 to 10 CSS px, as the ticket's already is at the usual size on that page; the test
   holds the least at 0.60.
-- **The hint.** "HOLD FOR SCORES" stands beside the column (above the perk badges when they stand there), goes with
+- **The hint.** "HOLD FOR SCORES" stands beside the column, moved up or down to the nearest place clear of the
+  weapon strip, the column and the badges, the stick's resting ring (#1294: the ring's left edge is right of the
+  badges, so a hint level with the column's middle was over it in all 48 rooms of the matrix, found when the check
+  was added), the "DRAG TO MOVE" hint above the ring and every button; it goes with
   the first hold, and takes the next bit of `controls/touch_hints_seen`, so nobody who has seen the others sees
   anything else new except this one.
 - **Proof.** `test_touch_scoreboard` (every page, interface size, hand and party), `test_board_fit`, and the browser
