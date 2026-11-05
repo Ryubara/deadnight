@@ -51,8 +51,12 @@ const EMBEDDED_CONTROL_WIDTH := 380.0
 const PART_PREFIX := "part:"
 const COLOUR_PREFIX := "colour:"
 const CUSTOM_LABEL := "Custom"
-## What the detail line says while nothing is pointed at.
+## What the detail line says while nothing is pointed at, and on a phone, where nothing is pointed
+## at and the line shares its row with the Randomize button.
 const REST_HINT := "Point at an item to read it; press to wear it."
+const REST_HINT_COMPACT := "Tap an item to wear it."
+## A phone's card keeps this room round its content (the theme's is 24 and 32 units).
+const CARD_MARGIN_COMPACT := Vector2(8.0, 6.0)
 ## The cells of the costumes, and of the Default option, in `_cells`.
 const COSTUME_KEY := "costume:costumes"
 const DEFAULT_KEY := "costume:default"
@@ -114,6 +118,7 @@ var _embedded := false
 var _compact := false
 var _rows: Control
 var _pickers: Control
+var _card_column: VBoxContainer
 var _picker_scroll: ScrollContainer
 var _link_pending := false
 
@@ -231,7 +236,7 @@ func show_tab(key: Variant) -> void:
 	if _picker_scroll != null:
 		_picker_scroll.scroll_vertical = 0
 	if _hint != null and changed:
-		_hint.text = REST_HINT
+		_hint.text = _rest_hint()
 	_relink_soon()
 
 
@@ -246,6 +251,17 @@ func tab_keys() -> Array[StringName]:
 	for tab: Dictionary in TABS:
 		out.append(tab["key"])
 	return out
+
+
+## How many of the grid's items lie whole inside the scroll area's view now: what the card shows
+## to choose from before the player scrolls (the web probe publishes it, #1271).
+func whole_cells_in_view() -> int:
+	var view := _picker_scroll.get_global_rect().grow(0.5)
+	var count := 0
+	for found in _cells_on(_tab):
+		if found.is_visible_in_tree() and view.encloses(found.get_global_rect()):
+			count += 1
+	return count
 
 
 ## The button of the tab `key`.
@@ -348,7 +364,27 @@ func _build_embedded() -> void:
 	var pickers := _build_pickers()
 	pickers.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(pickers)
-	column.add_child(_build_footer(false))
+	var footer := _build_footer(false)
+	if _compact:
+		_fold_footer(footer)
+	else:
+		column.add_child(footer)
+
+
+## A phone's footer is the last row of the card: the Randomize button and the detail line, side by
+## side. A phone leaves the tab 372 units, and a card with a footer of its own under it and a
+## detail line above the footer left the scroll area 33 of them, no item to see (#1271). The saved
+## state is kept up to date and left unshown: it is written when the player leaves the tab.
+func _fold_footer(footer: HBoxContainer) -> void:
+	_card_column.remove_child(_hint)
+	footer.add_child(_hint)
+	footer.move_child(_hint, 1)
+	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_hint.max_lines_visible = 2
+	_status.visible = false
+	_card_column.add_child(footer)
 
 
 ## A tab's way down is the first cell of its page, and the way up from the cells of the page's first
@@ -403,9 +439,12 @@ func _build_pickers() -> Control:
 	for side in [&"margin_left", &"margin_right", &"margin_top", &"margin_bottom"]:
 		inner.add_theme_constant_override(side, MARGIN_COMPACT if _compact else MARGIN)
 	panel.add_child(inner)
+	if _embedded and _compact:
+		panel.add_theme_stylebox_override(&"panel", _compact_card_room())
 	var holder := VBoxContainer.new()
 	holder.add_theme_constant_override(&"separation", _tokens.space_sm)
 	inner.add_child(holder)
+	_card_column = holder
 	_pickers = panel
 	holder.add_child(_build_tab_strip())
 	# The pages of the tabs sit one over the other in a scrolling area that follows the focus; the
@@ -429,15 +468,31 @@ func _build_pickers() -> Control:
 		_pages[tab["key"]] = page
 	if _embedded:
 		resized.connect(_restack)
-	_hint = _label(REST_HINT, UILabel.Style.CAPTION if _compact else UILabel.Style.BODY)
+	_hint = _label(_rest_hint(), UILabel.Style.CAPTION if _compact else UILabel.Style.BODY)
 	_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	holder.add_child(_hint)
 	return panel
 
 
+## The room a phone's card keeps round its content: the theme's is 24 units above and below and
+## 32 at the sides, which on a card 277 units high was a fifth of it.
+func _compact_card_room() -> StyleBoxEmpty:
+	var room := StyleBoxEmpty.new()
+	room.content_margin_left = CARD_MARGIN_COMPACT.x
+	room.content_margin_right = CARD_MARGIN_COMPACT.x
+	room.content_margin_top = CARD_MARGIN_COMPACT.y
+	room.content_margin_bottom = CARD_MARGIN_COMPACT.y
+	return room
+
+
+## What the detail line says while nothing is pointed at.
+func _rest_hint() -> String:
+	return REST_HINT_COMPACT if _compact else REST_HINT
+
+
 func _build_tab_strip() -> Control:
 	var strip := HFlowContainer.new()
-	strip.add_theme_constant_override(&"h_separation", 3 if _compact else 6)
+	strip.add_theme_constant_override(&"h_separation", 0 if _compact else 6)
 	strip.add_theme_constant_override(&"v_separation", 4)
 	for tab: Dictionary in TABS:
 		var button := WardrobeTab.new(tab["key"], tab["title"], _compact)
@@ -641,6 +696,11 @@ func prepend_row(row: Control) -> void:
 	page.move_child(row, 0)
 
 
+## The host's own row at the end of the Body tab's page (see `prepend_row`).
+func append_row(row: Control) -> void:
+	(_pages[&"body"] as Control).add_child(row)
+
+
 ## Scrolls the grid so that `item` is whole in view (a pad or a key does it by focusing).
 func reveal(item: Control) -> void:
 	_picker_scroll.ensure_control_visible(item)
@@ -697,7 +757,7 @@ func _sync_all() -> void:
 	_refresh_preview()
 	_refresh_status()
 	if _hint != null:
-		_hint.text = REST_HINT
+		_hint.text = _rest_hint()
 
 
 ## What a cell wears and is called, for the look and the character it has now.
@@ -801,7 +861,7 @@ func _on_cell_shown(on: bool, item: WardrobeCell) -> void:
 	if holder is WardrobeCell and holder != item:
 		_hint.text = (holder as WardrobeCell).detail()
 	else:
-		_hint.text = REST_HINT
+		_hint.text = _rest_hint()
 
 
 func _label(text: String, style: UILabel.Style) -> UILabel:

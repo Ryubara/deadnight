@@ -261,7 +261,11 @@ static func snapshot(top: Control) -> Dictionary:
 		# and the canvas in units, as `page_w,page_h|canvas_w,canvas_h|factor|units_w,units_h`.
 		"layout": "",
 		"phone": false,
-		"ui_audit": ""
+		"ui_audit": "",
+		# The menu's header and the Loadout card (#1271): the units of a tab the plate covers, and
+		# how many wardrobe items are whole in the card's view (-1 off the Loadout tab).
+		"header_overlap": 0.0,
+		"loadout_items": -1
 	}
 	if top == null:
 		return data
@@ -307,6 +311,10 @@ static func snapshot(top: Control) -> Dictionary:
 	var menu := top as MainMenu
 	if menu != null and menu.shell != null:
 		data["tab"] = MenuTab.label(menu.shell.tab)
+		data["header_overlap"] = menu.shell.header_overlap()
+		if menu.shell.tab == MenuTab.Id.LOADOUT:
+			var loadout := menu.shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
+			data["loadout_items"] = loadout.wardrobe.whole_cells_in_view()
 		data["stage"] = ["live", "half", "still"][menu.shell.view.level]
 	var together := top as TogetherScreen
 	if together != null:
