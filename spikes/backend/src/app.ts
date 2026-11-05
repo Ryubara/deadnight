@@ -192,7 +192,12 @@ export function buildApp(deps: Deps): FastifyInstance {
   // ---- operations
   // `settingsKeys` are the match settings this build takes: the deploy checks them against the game's, so a backend
   // that is behind the client is found before a host's choices are lost to it (Deadnight #944).
-  app.get("/health", async () => ({ status: "ok", settingsKeys: SETTINGS_KEYS }));
+  //
+  // `boot` names this run of the backend (new on every start): lobbies live in its memory, so a client that held one
+  // across a deploy and now reads another `boot` knows every lobby it had is gone (the deployed probe says "backend
+  // restarted" instead of failing a check nobody could pass, Deadnight #1240).
+  const boot = randomUUID();
+  app.get("/health", async () => ({ status: "ok", settingsKeys: SETTINGS_KEYS, boot }));
   app.get("/ready", async (_request, reply) => {
     try {
       await store.ping();
