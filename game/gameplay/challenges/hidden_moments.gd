@@ -8,7 +8,7 @@ extends RefCounted
 ## are in the events a client hears.
 ##
 ## Where the stand is and which door is the second are data lines (`ChallengeAreas`). A person is a
-## seat no bot plays (`player_added.bot`, `bot_replaced`, `bot_seated`), as for *Two's company*.
+## seat no bot plays (`player_added.bot`), as for *Two's company*.
 ##
 ## What it costs: nothing in the events it does not listen to, and nothing in a frame outside a
 ## break. `NightMoments` calls the few methods below from its own arms for the rare events (a door,

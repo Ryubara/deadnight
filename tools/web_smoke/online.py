@@ -56,7 +56,7 @@ def open_address(page: Page) -> None:
     """Menu, Play together, its developer button for the server address: the join screen (the page is opened with
     `?dev`). Shared with `startup_check.py`, which fails when the menu or that screen changes under it."""
     smoke.open_together(page)
-    # The server address is the last control of the Play together screen: Quick join, Create a night, the code field,
+    # The server address is the last control of the Play together screen: Server browser, Create a night, the code field,
     # Join, Back, then the address button.
     for _ in range(5):
         smoke.press(page, "ArrowDown")

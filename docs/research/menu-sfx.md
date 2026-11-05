@@ -55,7 +55,7 @@ the random spread of every play (a level jitter of +-0.8 dB is on every play too
 | --- | --- | --- | --- | --- | --- | --- |
 | Every control | hover (pointer), focus (key, pad) | `ui_hover` / `ui_focus` | 1 hint | -27 / -26 | 4 and 4, +-0.5 st | 80 ms between hints, at most 5 in a second, none within 150 ms of a heavier sound, none on touch; focus only for keys and the pad, hover only for a pointer that moved |
 | `ticket` (Play, Shop, More rows) | press | `ui_press` | 3 press | -17 | 3, +-0.4 st | |
-| `ticket_start` (Play together, Quick join, Solo) | press | `ui_confirm` | 4 commit | -13 | 2, +-0.3 st | |
+| `ticket_start` (Play together, Server browser, Solo) | press | `ui_confirm` | 4 commit | -13 | 2, +-0.3 st | |
 | `ticket_soon` (a "Coming" row) | hover, focus; press | the hint 4 dB under; `ui_refuse` | 1; 3 | -31 / -30; -18 | 2, +-0.3 st | |
 | `tab` (a button of the bar) | hover, focus | as every control | 1 | | | the press is silent: the bar's change plays the tab sound once |
 | `tab_bar` (the bar, the Settings tabs) | the tab changes (click, Q E, bumpers, PageUp PageDown) | `ui_tab`, +1.5 st going on, -1.5 st coming back | 2 move | -21 | 3, +-0.4 st | none for the tab already showing |
@@ -65,7 +65,7 @@ the random spread of every play (a level jitter of +-0.8 dB is on every play too
 | `map_card` / `map_card_locked` | press | `ui_select` / `ui_refuse` | 2 / 3 | -23 / -18 | | |
 | `button_primary` / `_secondary` / `_ghost` | press | `ui_press`, 0 / -2 / -3 dB | 3 press | -17 / -19 / -20 | 3, +-0.4 st | |
 | `back_button` (a button named Back, Cancel, Close, Leave) | press | `ui_back` | 3 | -18 | 3, +-0.4 st | |
-| `commit_button` (Start the night, Play, Save, Join, Quick join, Create a night, Continue) | press | `ui_confirm` | 4 commit | -13 | 2 | |
+| `commit_button` (Start the night, Play, Save, Join, Create a night, Continue) | press | `ui_confirm` | 4 commit | -13 | 2 | |
 | `toggle` (switch, check box) | on / off | `ui_toggle_on` / `ui_toggle_off` | 2 | -22 | 2 each, +-0.3 st | |
 | `slider` | a step crossed | `ui_tick`, -3 to +5 st with the value | 1 | -25 | 3, +-0.3 st | 70 ms between ticks; none for a value set by code |
 | `option`, `choice_strip` | a step | `ui_select` | 2 | -23 | 3 | |

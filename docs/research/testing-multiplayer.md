@@ -19,7 +19,8 @@ Postgres) makes the nights and the game servers (`deadnight-server`) run them, o
 
 1. Open the web build, <https://web-production-f401d1.up.railway.app>, and wait for the menu.
 2. Choose **Play together** (the second item). Then one of:
-   - **Quick join**: you land in a public night with room, or a new one starts.
+   - **Server browser** (the Play tab's second item, or the first on this screen): the public nights, lobbies that wait
+     and nights in progress, one row each; press a row to land in it.
    - **Create a night**: the lobby opens with a code, an invite link and eight seats, you as host. **Copy the link** and
      send it. A friend who opens the link (`?room=CODE`) reads your lobby first (*Waiting room, Ann is hosting, 1 of 4
      here.*) and presses **Join**; or types the code under **Join with the code**. Everyone sees who is there within a
@@ -48,7 +49,7 @@ date, when the server is the newer: reload). To read what the server sees: `rail
 (one JSON line a `room_opened`, `joined`, `left` and every ten seconds a `stats` for each night).
 
 `tools/web_smoke/rooms.py` plays the whole flow in headless Chromium with four pages (A creates a night, B opens the
-invite link, C and D press Quick join) and fails unless each pair sees exactly two players:
+invite link, C makes a night and D finds it in the Server Browser) and fails unless each pair sees exactly two players:
 
 ```text
 uv run --project <kit>/python gds quiet --   uv run --with playwright==1.64.1 python tools/web_smoke/rooms.py <web URL or build/web> <backend https address> <out folder> --gpu
@@ -63,6 +64,18 @@ runs against a deployed backend, or a local one: `node spikes/backend/src/main.t
 
 ```text
 uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/lobby.py <web URL or build/web> <backend address> <out folder>
+```
+
+`tools/web_smoke/page_closing.py` closes a real tab on the waiting room (#1188): the night must stay listed through a
+tab switch, leave the list while its host is quiet and come back with the host's next poll, and be gone from the list
+within 3 s of `page.close()`. It starts a backend of its own (or takes `--backend <deployed address>` with
+`CORS_ORIGINS=http://127.0.0.1:8082`); `--control` sends no word to show the fallback alone, and `activity.py
+--closing` runs the same checks behind the Discord stand-in. `page_closing_transport.py` measures which request a
+closing tab can still send, in Chromium, Firefox and WebKit:
+
+```text
+uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/page_closing.py build/web <out folder>
+uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/page_closing_transport.py <out folder> --runs 5
 ```
 
 `tools/web_smoke/guest_account.py` proves a Guest account lasts (#1080) against a backend of its own: a guest signs in
