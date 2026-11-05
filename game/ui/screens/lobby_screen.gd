@@ -691,12 +691,15 @@ func _show_plate(row: Dictionary, plate: Dictionary) -> void:
 	var frame := row["frame"] as FrameArt
 	frame.frame_id = plate.get("frame", &"")
 	frame.visible = frame.frame_id != &""
-	# The seat keeps the border's room clear at both ends, so the number is not under it.
+	# The seat keeps the border's room clear on every side, so the number is not under it and the
+	# level's icon (as tall as the row) is not covered by its top and bottom.
 	var clear := PlateRow.frame_clear(frame.frame_id, SEAT_ROW_HEIGHT)
 	var inset := (row["box"] as Control).get_theme_stylebox(&"panel") as StyleBoxEmpty
 	inset.content_margin_left = clear
 	inset.content_margin_right = clear
-	frame.grow = Vector2(clear, 0.0)
+	inset.content_margin_top = clear
+	inset.content_margin_bottom = clear
+	frame.grow = Vector2(clear, clear)
 
 
 ## The icon and the level of a seat's row, the badge before the name (`LevelTag`): gone for a bot,
@@ -708,6 +711,20 @@ func _show_level(row: Dictionary, held: Vector2i) -> void:
 	level.text = str(held.x) if held.x > 0 else ""
 	if held.x > 0:
 		LevelTag.set_icon(row["icon"] as TextureRect, held.y)
+		_place_icon(row["icon"] as TextureRect, level, held.y)
+
+
+## The icon's top in its slot: its body is centred on the level's digits, which sit at the font's
+## height in a line that starts at the top of the label (`LevelTag.icon_top`).
+func _place_icon(icon: TextureRect, level: Label, icon_level: int) -> void:
+	icon.position.y = LevelTag.icon_top_in_line(
+		0.0, level.get_theme_font(&"font"), level.get_theme_font_size(&"font_size"), icon_level
+	)
+	# The row is as tall as the icon reaches (the icon was a child of the row's box, which was as
+	# tall as it).
+	(icon.get_parent() as Control).custom_minimum_size.y = (
+		maxf(icon.position.y, 0.0) + LevelTag.ICON
+	)
 
 
 func _make_seat_row() -> Dictionary:
@@ -724,19 +741,28 @@ func _make_seat_row() -> Dictionary:
 	badge.name = &"Badge"
 	badge.add_theme_constant_override(&"separation", int(LevelTag.ICON_GAP))
 	badge.visible = false
+	# The icon is set on the digits (`_place_icon`), in a slot of its own width that takes the row's
+	# height from the level beside it.
+	var slot := Control.new()
+	slot.name = &"IconSlot"
+	slot.custom_minimum_size.x = LevelTag.ICON
 	var icon := LevelTag.icon_rect(1)
 	icon.name = &"Icon"
-	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.size = Vector2.ONE * LevelTag.ICON
+	slot.add_child(icon)
 	var level := _label("", UILabel.Style.BODY)
 	level.name = &"Level"
 	level.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	# The line starts at the top of the row's box, where `_place_icon` counts from.
+	level.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	level.size_flags_vertical = Control.SIZE_FILL
 	var seat_name := _label("", UILabel.Style.BODY)
 	seat_name.name = &"Name"
 	seat_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	seat_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	var tag := _label("", UILabel.Style.OVERLINE)
 	tag.custom_minimum_size.x = TAG_WIDTH
-	badge.add_child(icon)
+	badge.add_child(slot)
 	badge.add_child(level)
 	who.add_child(badge)
 	who.add_child(seat_name)

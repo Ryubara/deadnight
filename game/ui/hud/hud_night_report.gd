@@ -189,19 +189,33 @@ func _add_level() -> void:
 	var level := HBoxContainer.new()
 	level.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	level.add_theme_constant_override(&"separation", HudStyle.SM)
+	var name_label := _stepped(
+		HudStyle.label(level_text, HudStyle.TEXT, _tokens.ink, true), HudStyle.TEXT, row_height
+	)
+	name_label.name = &"LevelText"
+	name_label.custom_minimum_size.y = ICON
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	# The icon's body is centred on the words' capitals (`LevelTag.icon_top_in_row`), in a slot as
+	# tall as the row.
+	var slot := Control.new()
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.custom_minimum_size = Vector2(ICON, ICON)
 	var icon := TextureRect.new()
+	icon.name = &"LevelIcon"
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.texture = LevelIcons.texture(to)
 	icon.texture_filter = LevelIcons.FILTER
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.custom_minimum_size = Vector2(ICON, ICON)
-	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	level.add_child(icon)
-	var name_label := _stepped(
-		HudStyle.label(level_text, HudStyle.TEXT, _tokens.ink, true), HudStyle.TEXT, row_height
+	icon.size = Vector2(ICON, ICON)
+	icon.position.y = LevelTag.icon_top_in_row(
+		ICON,
+		name_label.get_theme_font(&"font"),
+		name_label.get_theme_font_size(&"font_size"),
+		to,
+		ICON
 	)
-	name_label.custom_minimum_size.y = ICON
-	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	slot.add_child(icon)
+	level.add_child(slot)
 	level.add_child(name_label)
 	var amount := HudStyle.clip(HudStyle.label(progress_text, HudStyle.SMALL, _tokens.ink_muted))
 	amount.size_flags_horizontal = Control.SIZE_EXPAND_FILL

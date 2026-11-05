@@ -818,6 +818,9 @@ beside the box come with #1070). A name tag never shows a card or an emblem in t
 Built in #1077: [how it travels and what it costs](../research/multiplayer.md#the-level-and-icon-beside-a-name-1077).
 The setting is **Player levels** (Settings, Accessibility). A level gained in a night reaches the tags by the
 `level_up` event the tally already sends (#1114), so a tag changes the moment the level does.
+The icon's **body is centred on the digits' ink**, at every size, in every place (#1161): the icon is set from where
+the font draws the digits and where the art's body is, not from a box
+([how, and the measurements](../research/level-badge-alignment.md)).
 
 ## Prestige
 

@@ -44,19 +44,25 @@ static func wrap(
 	badge.name = &"Badge"
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	badge.add_theme_constant_override(&"separation", int(LevelTag.ICON_GAP))
-	var slot := CenterContainer.new()
-	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	slot.custom_minimum_size = Vector2(LevelTag.ICON, height)
-	var icon := LevelTag.icon_rect(shown.y)
-	icon.name = &"Icon"
-	slot.add_child(icon)
-	badge.add_child(slot)
 	var level := HudStyle.clip(HudStyle.label("", HudStyle.MEDIUM, ink, true))
 	level.name = &"Level"
 	HudStyle.set_fitted(level, str(shown.x), HudStyle.MEDIUM, level_room())
 	level.custom_minimum_size = Vector2(level_room(), height)
 	level.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	level.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	# The icon sits on the digits, which are where the font puts them in the line the label
+	# centres in the row (`LevelTag.icon_top_in_row`), not on the row's middle.
+	var slot := Control.new()
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.custom_minimum_size = Vector2(LevelTag.ICON, height)
+	var icon := LevelTag.icon_rect(shown.y)
+	icon.name = &"Icon"
+	icon.size = Vector2.ONE * LevelTag.ICON
+	icon.position.y = LevelTag.icon_top_in_row(
+		height, level.get_theme_font(&"font"), level.get_theme_font_size(&"font_size"), shown.y
+	)
+	slot.add_child(icon)
+	badge.add_child(slot)
 	badge.add_child(level)
 	row.add_child(badge)
 	name_label.name = &"Name"

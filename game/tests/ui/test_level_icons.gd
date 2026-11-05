@@ -186,6 +186,39 @@ func _part(svg: String, id: String) -> String:
 	return ""
 
 
+## The body of an icon (#1161): the ink above the strip of bulbs, whose middle is what a place
+## centres on the digits beside it. The manifest holds the rows the export read from the atlas.
+func test_every_levels_body_in_the_manifest_is_what_the_atlas_holds() -> void:
+	var atlas := LevelIcons.atlas(LevelIcons.CELL_SMALL).get_image()
+	if atlas.is_compressed():
+		atlas.decompress()
+	for level in range(1, LevelIcons.LEVELS + 1):
+		var origin := (
+			Vector2i(LevelIcons.column(level), LevelIcons.row(level)) * LevelIcons.CELL_SMALL
+		)
+		var rows := LevelIcons.body_rows(atlas, origin)
+		var centre := (rows.x + rows.y) * 0.5 / LevelIcons.CELL_SMALL
+		(
+			assert_float(LevelIcons.body_centre(level))
+			. override_failure_message(
+				"level %d: the manifest is not the atlas (run the export)" % level
+			)
+			. is_equal_approx(centre, 0.0001)
+		)
+
+
+func test_an_icons_body_is_above_the_middle_of_its_cell_by_its_frame() -> void:
+	# The bulbs take the bottom: every body is above the middle, a ticket (levels 1 to 5) by less
+	# than a token (6 to 10) or a sign (11 to 15), and all three frames repeat by tier.
+	for level in range(1, LevelIcons.LEVELS + 1):
+		assert_float(LevelIcons.body_centre(level)).is_between(0.43, 0.47)
+	assert_float(LevelIcons.body_centre(3)).is_greater(LevelIcons.body_centre(7) + 0.01)
+	assert_float(LevelIcons.body_centre(7)).is_not_equal(LevelIcons.body_centre(12))
+	assert_float(LevelIcons.body_centre(3)).is_equal(LevelIcons.body_centre(18))
+	# A level past the last reads as the last, as the icons do.
+	assert_float(LevelIcons.body_centre(99)).is_equal(LevelIcons.body_centre(LevelIcons.LEVELS))
+
+
 func _cover(image: Image) -> float:
 	var opaque := 0
 	var data := image.get_data()
