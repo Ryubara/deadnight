@@ -12,15 +12,25 @@ extends GdUnitTestSuite
 const DESKTOPS: Array[Vector2i] = [
 	Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(2560, 1440), Vector2i(1024, 768)
 ]
+## The last is a 667 x 375 CSS px phone: at 1.25 its canvas is 1536 x 864 units, the smallest.
 const PHONES: Array[Vector3] = [
 	Vector3(1688, 780, 2.0), Vector3(2532, 1170, 3.0), Vector3(1334, 750, 2.0)
 ]
 const UI_SCALES: Array[float] = [0.8, 1.0, 1.25]
-## The page whose HUD leaves no room the search can reach at the largest interface size: a 667 x 375
-## CSS px phone at 1.25 is a 1536 x 864 canvas, the smallest, with a 32 unit word beside a column of
-## cards and a column of buttons that leave strips narrower than a tag. The grid below leaves it out
-## (its words are still held to 14 CSS px); a marker there can stay under a card (Deadnight #1218).
-const CRAMPED := Vector3(1334, 750, 1.25)
+## How many markers `_one_on_every_card` puts under the cards at once, and how many of them are the
+## next door's diamond (the night has one or two of those, and a teammate for every other marker).
+## At the largest interface size the diamonds are fewer: one.
+const EIGHT := 8
+const DIAMONDS := 3
+## How many markers each page keeps clear of each other as well as of the cards, in the test below:
+## at the largest interface size (1.25) the cards, the buttons and the words are as big as they get,
+## and the one column left between them on the smallest canvas (a 667 x 375 CSS px phone is
+## 1536 x 864 units, a diamond's words 319 of the column's 344) holds four markers, a diamond and
+## three teammates. More are kept off the cards and the buttons but meet each other (#1230).
+const LARGEST_SCALE := 1.25
+const SMALLEST_HOLDS := 4
+## The smallest page there is.
+const SMALLEST := Vector3(1334, 750, 1.25)
 ## The least size of words, CSS px: what the issue and the written floor say.
 const FLOOR_CSS := 14.0
 
@@ -74,6 +84,21 @@ func _busy_hud(canvas: Vector2, insets: Vector4, mirrored: bool, touch: bool) ->
 	return fixture
 
 
+## The cards of the middle of the screen up as well as the banner of round one: the prompt of a door
+## in reach and the card of a level gained (the lane of the progression's cards, stepped by hand).
+func _show_centre_cards(fixture: HudFixture) -> void:
+	var hud := fixture.hud
+	hud.popups.process_mode = Node.PROCESS_MODE_DISABLED
+	hud.state.set_prompt(&"buy_door", "Projection booth", 750)
+	hud.state.apply_event({"type": &"level_up", "player_id": 1, "level": 15, "total": 0})
+	await await_idle_frame()
+	await await_idle_frame()
+	for _i in 20:
+		hud.popups.advance(0.05)
+	await await_idle_frame()
+	await await_idle_frame()
+
+
 ## The touch buttons of a phone held sideways, as the controls lay them out, in the canvas's units.
 func _buttons(safe: Rect2, mirrored: bool) -> Array[Rect2]:
 	var boxes: Array[Rect2] = []
@@ -85,12 +110,13 @@ func _buttons(safe: Rect2, mirrored: bool) -> Array[Rect2]:
 	return boxes
 
 
-## What a marker must stay out of: the cards that are shown and the touch buttons, in the
+## What a marker must stay out of: the cards that are shown (those of the corners and of the middle)
+## and the touch buttons, in the
 ## markers' own units.
 func _obstacles(fixture: HudFixture, held: Array[Rect2]) -> Array[Rect2]:
 	var found: Array[Rect2] = []
 	var origin := fixture.hud.markers.get_global_rect().position
-	for card in fixture.hud.corner_cards():
+	for card in fixture.hud.corner_cards() + fixture.hud.centre_cards():
 		if card.is_visible_in_tree() and card.size != Vector2.ZERO:
 			found.append(Rect2(card.get_global_rect().position - origin, card.size))
 	found.append_array(held)
@@ -166,8 +192,7 @@ func _run_page(window: Vector2i, ui_scale: float, ratio: float, touch: bool) -> 
 	var insets := Vector4(96.0, 0.0, 96.0, 24.0) if touch else Vector4.ZERO
 	for mirrored in [false, true]:
 		var fixture := _busy_hud(canvas, insets, mirrored, touch)
-		await await_idle_frame()
-		await await_idle_frame()
+		await _show_centre_cards(fixture)
 		var held: Array[Rect2] = []
 		if touch:
 			held = _buttons(TouchLayout.safe_rect(canvas, insets), mirrored)
@@ -206,8 +231,6 @@ func test_a_marker_is_never_under_a_card_or_a_button_on_a_phones_page() -> void:
 	var found: Array[String] = []
 	for page in PHONES:
 		for ui_scale in UI_SCALES:
-			if Vector3(page.x, page.y, ui_scale) == CRAMPED:
-				continue
 			found.append_array(
 				await _run_page(Vector2i(int(page.x), int(page.y)), ui_scale, page.z, true)
 			)
@@ -360,3 +383,174 @@ func test_markers_moved_off_neighbouring_cards_do_not_land_on_each_other() -> vo
 				. is_false()
 			)
 	fixture.hud.get_parent().queue_free()
+
+
+## One marker on the middle of every card shown, in turn an objective, a teammate and a body on the
+## ground (the night's capture of the eight): the boxes they took on the last frame.
+func _one_on_every_card(fixture: HudFixture, count: int, diamonds: int) -> Dictionary:
+	var markers := fixture.hud.markers
+	var origin := markers.get_global_rect().position
+	var list: Array[Dictionary] = []
+	var n := 0
+	for card in fixture.hud.corner_cards():
+		if not card.is_visible_in_tree() or card.size == Vector2.ZERO or n >= count:
+			continue
+		var share := (card.get_global_rect().get_center() - origin) / markers.size
+		var marker := HudFixture.late_marker(
+			StringName("m%d" % n),
+			&"objective" if n % 3 == 0 and n / 3 < diamonds else &"ally",
+			share.x,
+			share.y,
+			30.0,
+			(
+				"Concession Stand"
+				if n % 3 == 0 and n / 3 < diamonds
+				else ["Ruby", "Moe", "Cal", "Dee"][n % 4]
+			),
+			n % 3 == 2
+		)
+		if n % 3 == 1:
+			marker["level"] = 3 + n * 7
+			marker["icon"] = marker["level"]
+		list.append(marker)
+		n += 1
+	fixture.hud.state.set_markers(list)
+	await await_idle_frame()
+	await await_idle_frame()
+	return markers.shown
+
+
+## The sentences of every pair of markers whose rectangles meet.
+func _touching(shown: Dictionary, where: String) -> Array[String]:
+	var found: Array[String] = []
+	var ids := shown.keys()
+	for i in ids.size():
+		for j in range(i + 1, ids.size()):
+			var one: Rect2 = shown[ids[i]]["box"]
+			var other: Rect2 = shown[ids[j]]["box"]
+			if one.intersects(other):
+				found.append("%s: %s %s meets %s %s" % [where, ids[i], one, ids[j], other])
+	return found
+
+
+func test_markers_one_on_each_card_keep_clear_of_the_cards_and_of_each_other() -> void:
+	var found: Array[String] = []
+	for page in PHONES:
+		for ui_scale in UI_SCALES:
+			var window := Vector2i(int(page.x), int(page.y))
+			var canvas := _page(window, ui_scale, page.z)
+			TouchMode.device_is_touch = true
+			var insets := Vector4(96.0, 0.0, 96.0, 24.0)
+			var largest := ui_scale == LARGEST_SCALE
+			var smallest := Vector3(page.x, page.y, ui_scale) == SMALLEST
+			var count := SMALLEST_HOLDS if smallest else EIGHT
+			for mirrored in [false, true]:
+				var fixture := _busy_hud(canvas, insets, mirrored, true)
+				await _show_centre_cards(fixture)
+				var held := _buttons(TouchLayout.safe_rect(canvas, insets), mirrored)
+				fixture.hud.markers.held = held
+				var where := "%s at %s%s" % [window, ui_scale, ", mirrored" if mirrored else ""]
+				var shown := await _one_on_every_card(fixture, count, 1 if largest else DIAMONDS)
+				assert_int(shown.size()).is_equal(count)
+				found.append_array(_faults(fixture, _obstacles(fixture, held), where))
+				found.append_array(_touching(shown, where))
+				fixture.hud.get_parent().queue_free()
+	assert_array(found).is_empty()
+
+
+func test_the_smallest_page_keeps_eight_markers_off_every_card_and_button() -> void:
+	# Eight, three of them diamonds, one on each card: more than the one column left holds, so some
+	# meet each other, and none is under a card, a button, the banner, the prompt or a popup card.
+	var window := Vector2i(int(SMALLEST.x), int(SMALLEST.y))
+	var canvas := _page(window, SMALLEST.z, 2.0)
+	TouchMode.device_is_touch = true
+	var insets := Vector4(96.0, 0.0, 96.0, 24.0)
+	var found: Array[String] = []
+	for mirrored in [false, true]:
+		var fixture := _busy_hud(canvas, insets, mirrored, true)
+		await _show_centre_cards(fixture)
+		var held := _buttons(TouchLayout.safe_rect(canvas, insets), mirrored)
+		fixture.hud.markers.held = held
+		var shown := await _one_on_every_card(fixture, EIGHT, DIAMONDS)
+		assert_int(shown.size()).is_equal(EIGHT)
+		found.append_array(_faults(fixture, _obstacles(fixture, held), "smallest"))
+		fixture.hud.get_parent().queue_free()
+	assert_array(found).is_empty()
+
+
+func test_a_marker_keeps_clear_of_the_banner_the_prompt_and_a_popup_card() -> void:
+	# A desktop, a phone's page, and the smallest page there is: the window, the interface size and
+	# the pixel ratio.
+	var pages: Array[Array] = [
+		[Vector2i(1920, 1080), 1.0, 1.0],
+		[Vector2i(1688, 780), 1.0, 2.0],
+		[Vector2i(1334, 750), 1.25, 2.0]
+	]
+	for page in pages:
+		var desktop: bool = page[2] == 1.0
+		var window: Vector2i = page[0]
+		var canvas := _page(window, page[1], page[2])
+		TouchMode.device_is_touch = not desktop
+		var insets := Vector4.ZERO if desktop else Vector4(96.0, 0.0, 96.0, 24.0)
+		var fixture := _busy_hud(canvas, insets, false, not desktop)
+		await _show_centre_cards(fixture)
+		var hud := fixture.hud
+		var held: Array[Rect2] = []
+		if not desktop:
+			held = _buttons(TouchLayout.safe_rect(canvas, insets), false)
+		hud.markers.held = held
+		var origin := hud.markers.get_global_rect().position
+		var cards := hud.centre_cards()
+		var middle: Array[Rect2] = []
+		for card in [hud.banner, hud.prompt, hud.popups]:
+			assert_bool(card.is_visible_in_tree()).is_true()
+			assert_vector(card.size).is_not_equal(Vector2.ZERO)
+			middle.append(Rect2(card.get_global_rect().position - origin, card.size))
+		assert_int(cards.size()).is_equal(5)
+		for rect in middle:
+			for spot in 5:
+				hud.state.set_markers(_markers([rect], hud.markers.size, spot))
+				await await_idle_frame()
+				await await_idle_frame()
+				var found := _faults(fixture, _obstacles(fixture, held), "%s" % window)
+				assert_array(found).is_empty()
+		fixture.hud.get_parent().queue_free()
+
+
+func test_a_tag_at_the_top_edge_stays_on_the_screen() -> void:
+	for page in [Vector3(1920, 1080, 1.0), Vector3(1688, 780, 2.0)]:
+		var desktop: bool = page.z == 1.0
+		var window := Vector2i(int(page.x), int(page.y))
+		var canvas := _page(window, 1.0, page.z)
+		TouchMode.device_is_touch = not desktop
+		var fixture := _busy_hud(canvas, Vector4.ZERO, false, not desktop)
+		await await_idle_frame()
+		var markers := fixture.hud.markers
+		var list: Array[Dictionary] = []
+		var n := 0
+		for top in [0.0, 0.004, 0.02, 0.05]:
+			for across in [0.4, 0.5, 0.6, 0.95]:
+				var marker := HudFixture.late_marker(
+					StringName("t%d" % n), &"ally", across, top, 12.0, "Ruby", n % 4 >= 2
+				)
+				marker["dead"] = n % 4 == 3
+				if n % 2 == 1:
+					marker["level"] = 7 + n
+					marker["icon"] = marker["level"]
+				list.append(marker)
+				n += 1
+		fixture.hud.state.set_markers(list)
+		await await_idle_frame()
+		await await_idle_frame()
+		assert_int(markers.tags.size()).is_equal(n)
+		for id: StringName in markers.tags:
+			var tag: Rect2 = markers.tags[id]
+			var inside := Rect2(Vector2.ZERO, markers.size)
+			(
+				assert_bool(inside.encloses(tag))
+				. override_failure_message(
+					"%s: the tag %s is not on the screen %s" % [id, tag, inside]
+				)
+				. is_true()
+			)
+		fixture.hud.get_parent().queue_free()

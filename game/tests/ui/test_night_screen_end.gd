@@ -23,6 +23,8 @@ func before_test() -> void:
 
 func after_test() -> void:
 	NightScreen.arrival_enabled = _arrival
+	# A night that opened here with the drop shown leaves it seen for the next suite (#1254).
+	NightArrival.reset()
 	PlayerLevel.reset()
 	await RouterFixture.clear(get_tree())
 	NightScreen.match_settings = null
