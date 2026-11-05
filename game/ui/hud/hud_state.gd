@@ -617,10 +617,6 @@ func _handler(type: StringName) -> Callable:
 			handler = _on_zombie_removed
 		&"player_added":
 			handler = _on_player_added
-		&"bot_replaced":
-			handler = _on_bot_replaced
-		&"bot_seated":
-			handler = _on_bot_seated
 		&"grenade_count_changed":
 			handler = _on_grenade_count_changed
 		&"player_removed":
@@ -937,23 +933,6 @@ func _on_account_event(event: Dictionary) -> void:
 			StringName(str(event.get("emblem", ""))),
 			StringName(str(event.get("frame", "")))
 		)
-
-
-## A person took the seat of a bot.
-func _on_bot_replaced(event: Dictionary) -> void:
-	var member := _member(int(event["player_id"]))
-	if member["bot"]:
-		member["bot"] = false
-		_mark(TEAM)
-
-
-## A bot took the seat of a person who left: the person is gone from the roster (their name is kept
-## for the notice) and the seat is a bot's; the bot's own name arrives as a `player_named`.
-func _on_bot_seated(event: Dictionary) -> void:
-	var member := _member(int(event["player_id"]))
-	left_name = str(member.get("name", "PLAYER %d" % int(event["player_id"])))
-	member["bot"] = true
-	_mark(TEAM)
 
 
 ## The name a roster shows for a team member (an entry of `team`): the name, then BOT for a bot, so

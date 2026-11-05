@@ -73,8 +73,7 @@ var drinking: StringName = &""
 var drink_left: float = 0.0
 var points_earned: int = 0
 var points_spent: int = 0
-## Whether a bot plays this seat. A person who joins takes a bot's seat as it stands (points,
-## weapons, health) and the flag goes (`RulesAction.seat_person`).
+## Whether a bot plays this seat (`player_added` says so; a bot holds a seat of its own).
 var bot: bool = false
 ## Seconds left of the player's arrival from the helicopter (`ArrivalTuning`, `GameRules`
 ## `arrival`):

@@ -70,22 +70,21 @@ func test_a_browser_joining_a_desktop_room_of_bots_takes_the_crowd_down() -> voi
 	assert_int(_ceiling()).is_equal(native)
 
 
-func test_a_person_taking_a_bots_seat_counts_and_a_bot_taking_a_seat_does_not() -> void:
+func test_a_bot_joining_or_leaving_never_moves_the_ceiling_a_person_does() -> void:
 	await _start()
 	_join(1, false)
 	_night.server.crowd.set_platform(1, false)
-	_join(2, false, true)
 	var native := RoundTuning.new().alive_cap_ceiling
 	var web := RoundTuning.new().web_alive_cap_ceiling
-	# A person (a browser until it says otherwise) takes the bot's seat: the room goes down.
-	_night.server.apply({"type": NightServer.SEAT_PERSON, "player_id": 2})
-	assert_int(_ceiling()).is_equal(web)
-	_night.server.crowd.set_platform(2, false)
+	_join(101, false, true)
 	assert_int(_ceiling()).is_equal(native)
-	# It leaves a browser and a bot inherits the seat: the bot's seat carries no platform.
-	_night.server.crowd.set_platform(2, true)
+	# A person (a browser until it says otherwise) joins: the room goes down.
+	_join(2, false)
 	assert_int(_ceiling()).is_equal(web)
-	_night.server.apply({"type": RulesAction.SEAT_BOT, "player_id": 2})
+	# The bot leaves and nothing changes; the browser leaves and the desktop crowd is back.
+	_night.server.apply({"type": NightServer.LEAVE, "player_id": 101})
+	assert_int(_ceiling()).is_equal(web)
+	_night.server.apply({"type": NightServer.LEAVE, "player_id": 2})
 	assert_int(_ceiling()).is_equal(native)
 
 
