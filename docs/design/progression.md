@@ -379,9 +379,11 @@ hour: not a loophole. Level 10 arrives after about half an hour ([the curve](#th
   40 are a week of art, not 40 paintings; emblems are drawn once each.
 - **Built (#1070):** cards and emblems, the 21 feats that give them, the equip screen (Loadout tab, the Plate button), the
   plate in the bottom-left boxes, the scoreboard, the night report and the lobby; how it works and what it costs:
-  [calling cards](../research/calling-cards.md). **Built (#1074):** the stats and the 19 feats of the odd, easy and
-  together lists below ([the odd and together stats](#the-odd-and-together-stats)). Not built: frames (#1071, #1072),
-  poster sets (#1073), the hidden challenges.
+  [calling cards](../research/calling-cards.md). **Built (#1071):** plate frames: the four of the ladder (Chrome 29,
+  Brass 37, Neon 50, Gold 55) and three from challenges the night counts today (round 20, 25 revives, 100 nights), a
+  Frames tab on the equip screen and the frame on every plate that shows one. **Built (#1074):** the stats and the 19
+  feats of the odd, easy and together lists below ([the odd and together stats](#the-odd-and-together-stats)). Not
+  built: the frames for beating a map (#1072), poster sets (#1073), the hidden challenges (#1172).
 - Launch set: **11 tier cards and 11 tier emblems** from the ladder, and **31 challenge cards and 31 emblems**: 42 of
   each. A challenge gives a card, an emblem, a frame or a mix, as the tables say (never two gates in series). The rarity
   of a frame or card is not assumed (#1053).

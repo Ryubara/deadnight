@@ -209,7 +209,8 @@ func _set_unlock() -> void:
 	if _item["kind"] == LadderItem.Kind.MAP:
 		_picture = (_item["info"] as MapInfo).preview()
 	_chip.visible = true
-	_chip.size = Vector2(CARD_CHIP_WIDTH if _item["kind"] == LadderItem.Kind.CARD else CHIP, CHIP)
+	var wide: bool = _item["kind"] in [LadderItem.Kind.CARD, LadderItem.Kind.FRAME]
+	_chip.size = Vector2(CARD_CHIP_WIDTH if wide else CHIP, CHIP)
 	_chip.position = Vector2(float(HudStyle.PAD_LEFT) + 2.0, (size.y - CHIP) * 0.5)
 	HudStyle.set_text(_chip_letter, "" if has_thumbnail() else PopupLadder.chip_letter(slot))
 	_chip.queue_redraw()
@@ -335,6 +336,8 @@ func _draw_chip() -> void:
 			PlateDraw.card(_chip, inner, _item["plate"])
 		LadderItem.Kind.EMBLEM:
 			PlateDraw.emblem(_chip, inner, _item["plate"])
+		LadderItem.Kind.FRAME:
+			PlateDraw.frame(_chip, inner, _item["plate"], _tokens.bg)
 		LadderItem.Kind.MAP:
 			var wide := Vector2(inner.size.x, inner.size.x * 9.0 / 16.0)
 			var at := inner.position + (inner.size - wide) * 0.5

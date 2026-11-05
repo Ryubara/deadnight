@@ -22,7 +22,7 @@ const CAPTIONS := {
 	&"emblem": "NEW EMBLEM",
 	&"tier_card": "NEW TIER CARD",
 	&"tier_emblem": "NEW TIER EMBLEM",
-	&"plate_frame": "NEW PLATE FRAME",
+	&"plate_frame": "NEW FRAME",
 }
 ## The slots whose card is a card, an emblem or a frame of the plate (the unlock sound with a paper
 ## rustle): the rest are clothes, colours and maps.

@@ -169,13 +169,13 @@ func _build_weapon_row() -> Control:
 	return box
 
 
-## The button's words: the card and the emblem worn, or what to do when there are none.
+## The button's words: the card, the emblem and the frame worn, or what to do when there are none.
 func _show_plate() -> void:
 	if _plate_button == null:
 		return
 	var read: Variant = ProfileSave.read(MenuProfile.profile_path)["profile"]
 	var catalog := PlateCatalog.shipped()
-	var worn := {"card": &"", "emblem": &""}
+	var worn := {"card": &"", "emblem": &"", "frame": &""}
 	if read != null:
 		var profile := read as Profile
 		worn = catalog.worn(profile.equipped, profile.level(), profile.done)
@@ -184,7 +184,7 @@ func _show_plate() -> void:
 		if worn[kind] != &"":
 			words.append(catalog.title(kind, worn[kind]))
 	_plate_button.text = (
-		"Plate: " + " + ".join(words) if not words.is_empty() else "Plate: cards and emblems"
+		"Plate: " + " + ".join(words) if not words.is_empty() else "Plate: cards, emblems, frames"
 	)
 	# A phone's tab has 372 units: the button says only what it opens.
 	if context.compact:

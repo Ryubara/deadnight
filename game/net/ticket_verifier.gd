@@ -93,12 +93,12 @@ func admit(ticket: String, now: int) -> Dictionary:
 
 
 ## What the ticket says about the player's progression: `xp` (whole, never negative), and when the
-## player chose them `card` and `emblem` (the calling card and emblem ids) with `done` (the
-## challenges they finished, which `PlateTable` holds the two choices to). Anything that is not a
-## string is left out.
+## player chose them `card`, `emblem` and `frame` (the calling card, emblem and frame ids) with
+## `done` (the challenges they finished, which `PlateTable` holds the choices to). Anything that is
+## not a string is left out.
 static func account_of(claims: Dictionary) -> Dictionary:
 	var account := {"xp": _whole(claims.get("xp"))}
-	for key in ["card", "emblem"]:
+	for key in ["card", "emblem", "frame"]:
 		if typeof(claims.get(key)) == TYPE_STRING:
 			account[key] = claims[key]
 	var finished: Variant = claims.get("done")
