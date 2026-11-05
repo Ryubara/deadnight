@@ -326,8 +326,7 @@ and which take speaks; the table of moments, takes and ranks is `SoldierVoiceCat
   emblem or frame by its slot, else an unlock; 2 each, the first told of equals) over the level (1). A challenge is
   what the player did and the level is what it paid, so a challenge that levels you up is cheered as the challenge;
   a tier is rarer than any of them. Players who finish or level up in the same window are cheered one after the
-  other. A bot has no level and no cheer. **Open (the maintainer's):** whether a challenge or a tier is big enough
-  next to a level up as weighted here.
+  other. A bot has no level and no cheer. The maintainer accepted these weights (2026-11-04).
 - **Cooldown and chance.** Each moment has a cooldown for each speaker (a reload 6 s, a streak 20 s, a kill 5 s) and a
   chance (a kill is voiced 45% of the time, a reload 70%), so the commonest moments are not a running commentary.
 - **Variety.** A moment never repeats one of its last three takes, from a seeded generator, so a night repeats

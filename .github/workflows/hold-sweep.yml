@@ -1,0 +1,54 @@
+# Gives the `hold` check to every open pull request whose head commit has none (docs/hooks.md#hold). hold.yml runs on
+# pull request events only, so a pull request opened before the check became required has no run on its head, and a
+# required check with no run stays pending for ever. Run this by hand once, after the ruleset starts requiring `hold`
+# (`gh workflow run hold-sweep.yml`), and after an outage that dropped events.
+#
+# It writes a check run through the Checks API, so the pull request itself is not touched: no event, no new commit, and
+# its auto-merge stays as it was. The run comes from the GitHub Actions app like hold.yml's, which is the only source
+# the ruleset accepts. It reads the label the same way, so a held pull request gets a failure. A commit that already
+# has a `hold` check is left alone. Nothing is checked out and the token can write only checks.
+name: hold-sweep
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: read
+    steps:
+      - name: Report the hold check on the open pull requests that have none
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BASE: ${{ github.event.repository.default_branch }}
+          HOLD_LABEL: S-hold
+        run: |
+          set -euo pipefail
+          gh pr list --state open --base "$BASE" --limit 1000 --json number,headRefOid,labels \
+            --jq '.[] | [.number, .headRefOid, ([.labels[].name] | index(env.HOLD_LABEL) != null)] | @tsv' |
+          while IFS=$'\t' read -r number sha held; do
+            [[ "$number" =~ ^[0-9]+$ && "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "unexpected row" >&2; exit 1; }
+            have=$(gh api "repos/$GH_REPO/commits/$sha/check-runs?check_name=hold&per_page=1" --jq '.total_count')
+            if [ "$have" != "0" ]; then
+              echo "#$number already has a hold check"
+              continue
+            fi
+            conclusion=success
+            if [ "$held" = "true" ]; then conclusion=failure; fi
+            gh api --method POST "repos/$GH_REPO/check-runs" -f name=hold -f "head_sha=$sha" -f status=completed \
+              -f "conclusion=$conclusion" -f 'output[title]=hold-sweep' \
+              -f "output[summary]=No hold run existed on this commit." --silent
+            echo "#$number: hold $conclusion"
+          done
