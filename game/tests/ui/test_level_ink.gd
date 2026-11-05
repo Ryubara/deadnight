@@ -18,8 +18,9 @@ extends GdUnitTestSuite
 ## - `exact`: a viewport four times the canvas (the geometry, with no pixel rounding in it), the
 ##   gap in canvas units (a unit is a pixel at 1080p).
 ## - `real`: the game's own window at the size and content scale a player has (a desktop at the
-##   three interface sizes; a phone, 844 x 390 at the menu's phone factor 2), the gap in the pixels
-##   a player sees.
+##   three interface sizes; a phone, 844 x 390, at the factor the place really runs at: the HUD's
+##   places at the night's, the interface size alone, 0.36 pixels to the unit; the lobby at the
+##   menu's phone factor 2), the gap in the pixels a player sees.
 ##
 ## Needs a real renderer (the tests of a headless run skip: CI does not run them): `gds godot --
 ## --path game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests/ui/test_level_ink.gd
@@ -46,6 +47,10 @@ const LEVELS: Array[int] = [3, 7, 12, 55]
 const PARTY: Array[int] = [3, 7, 12, 55, 30, 41, 9, 23]
 ## The interface sizes the settings offer on a desktop (`SettingsService.UI_SCALE`: 0.8 to 1.25).
 const UI_SCALES: Array[float] = [0.8, 1.0, 1.25]
+## The interface sizes read on a phone in a night. Not 0.8: there a unit is 0.29 pixels, the digits
+## are one to four rows tall and a row reading cannot tell a half unit from a unit and a half (the
+## `exact` reading has the geometry at every size).
+const PHONE_NIGHT_SCALES: Array[float] = [1.0, 1.25]
 ## The colour the digits and the icons are drawn in to be read: no other thing in a place is it.
 const MARKER := Color(1.0, 0.0, 1.0, 1.0)
 const SKIP_WHY := "reads pixels: needs a renderer, not the headless dummy"
@@ -122,14 +127,16 @@ func _exact() -> Reading:
 	return reading
 
 
-## The game's window at `size`, at the player's interface size `ui_scale` and the menu's phone
-## factor when it is a phone.
-func _real(size: Vector2i, ui_scale := 1.0) -> Reading:
+## The game's window at `size`, at the player's interface size `ui_scale`. The factor is the one the
+## screen under test really runs at: the menus and the lobby have the menu's phone factor (2 on a
+## phone, `MenuScale.factor`); a night has the interface size alone (`NightScreen._ready`), which on
+## a phone is about 0.36 pixels to the unit, half the menu's 0.72. `night` asks for the second.
+func _real(size: Vector2i, ui_scale := 1.0, night := false) -> Reading:
 	var reading := Reading.new()
-	reading.name = "real_%dx%d_x%.2f" % [size.x, size.y, ui_scale]
+	reading.name = "real_%dx%d_%sx%.2f" % [size.x, size.y, "night_" if night else "", ui_scale]
 	var window := get_tree().root
 	window.size = size
-	window.content_scale_factor = MenuScale.factor(size, ui_scale)
+	window.content_scale_factor = ui_scale if night else MenuScale.factor(size, ui_scale)
 	var host := Control.new()
 	host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	window.add_child(host)
@@ -302,11 +309,14 @@ func _gaps(
 			. is_false()
 		)
 		# Whole: every frame's ink is at least 57 of 64 rows (the ticket's), so a shorter picture
-		# is an icon that something is drawn over (a plate's frame).
+		# is an icon that something is drawn over (a plate's frame). Where a pixel is more than a
+		# unit (a phone in a night: 0.36 pixels to the unit) the first and last row, read at half
+		# coverage, may each lose half a pixel: one pixel of slack.
+		var slack := 1.0 / s if s < 1.0 else 0.0
 		(
 			assert_float((icon_rows.y - icon_rows.x) / s)
 			. override_failure_message(name + ": the icon is covered (%s rows)" % [icon_rows])
-			. is_greater_equal(LevelTag.ICON * 55.0 / 64.0)
+			. is_greater_equal(LevelTag.ICON * 55.0 / 64.0 - slack)
 		)
 		var digits_at := (digit_rows.x + digit_rows.y) * 0.5
 		var whole := (icon_rows.x + icon_rows.y) * 0.5
@@ -507,17 +517,19 @@ func _night_report(reading: Reading) -> Array[Badge]:
 	return [_node_badge("report", icon, words, words.get_theme_color(&"font_color"), to)]
 
 
-func _lobby(reading: Reading, plates: bool) -> Array[Badge]:
+## The lobby with one seat for each of `levels`. On a phone the panel scrolls and only the first
+## seat is on the screen, so a phone reading is one lobby for each level.
+func _lobby(reading: Reading, plates: bool, levels: Array = LEVELS) -> Array[Badge]:
 	var members: Array = []
-	for i in LEVELS.size():
+	for i in levels.size():
 		var member := {
 			"userId": "u%d" % i,
-			"name": ["Ruby", "Moe", "Dee", "Cal"][i],
+			"name": ["Ruby", "Moe", "Dee", "Cal"][LEVELS.find(levels[i])],
 			"seat": i + 1,
 			"host": i == 0,
 			"away": false,
-			"level": LEVELS[i],
-			"icon": "level_%02d" % LEVELS[i],
+			"level": levels[i],
+			"icon": "level_%02d" % levels[i],
 		}
 		if plates:
 			member["card"] = "cartoon"
@@ -528,7 +540,7 @@ func _lobby(reading: Reading, plates: bool) -> Array[Badge]:
 		"id": "l1",
 		"code": "ABC234",
 		"hostId": "u0",
-		"maxPlayers": 4,
+		"maxPlayers": levels.size(),
 		"members": members,
 		"state": "open",
 		"round": null,
@@ -538,13 +550,16 @@ func _lobby(reading: Reading, plates: bool) -> Array[Badge]:
 	LobbyScreen.opener = func() -> void: pass
 	var screen := (load(LobbyScreen.SCREEN) as PackedScene).instantiate() as LobbyScreen
 	screen.params = {"lobby": held, "api": api}
+	# The router's stage gives every screen the game's theme (fonts, sizes): without it the seats are
+	# set in Godot's default and a row is half as tall.
+	reading.host.theme = UIThemeBuilder.build(UITokens.active())
 	reading.host.add_child(screen)
 	screen.watch.every = 3600.0
 	await screen.screen_enter()
 	await get_tree().process_frame
 	var badges: Array[Badge] = []
 	var rows: Array = screen.get("_seat_rows")
-	for i in LEVELS.size():
+	for i in levels.size():
 		var level := rows[i]["level"] as Label
 		badges.append(
 			_node_badge(
@@ -552,7 +567,7 @@ func _lobby(reading: Reading, plates: bool) -> Array[Badge]:
 				rows[i]["icon"] as CanvasItem,
 				level,
 				level.get_theme_color(&"font_color"),
-				LEVELS[i]
+				levels[i]
 			)
 		)
 	return badges
@@ -604,20 +619,47 @@ func _tags(reading: Reading, out: Array) -> Array[Badge]:
 
 
 ## Builds a place in each reading and checks it. `build` takes the reading and returns the badges.
-func _every_reading(place: String, shot: String, build: Callable, exact_only := false) -> void:
+## `in_night` is whether the place is shown in a night (the HUD: the interface size is the whole
+## scale) or in the menus (the lobby: the menu's phone factor). `build` is told the levels to show;
+## `by_level` has a phone reading build one place for each level, for a place that scrolls.
+func _every_reading(
+	place: String, shot: String, build: Callable, in_night := true, by_level := false
+) -> void:
 	var readings: Array[Callable] = [_exact]
-	if not exact_only:
-		# The sizes a player has: a desktop at the three interface sizes, a phone held sideways.
-		for ui_scale in UI_SCALES:
-			readings.append(func() -> Reading: return _real(CANVAS, ui_scale))
+	# The sizes a player has: a desktop at the three interface sizes, a phone held sideways.
+	for ui_scale in UI_SCALES:
+		readings.append(func() -> Reading: return _real(CANVAS, ui_scale))
+	if in_night:
+		for ui_scale in PHONE_NIGHT_SCALES:
+			readings.append(func() -> Reading: return _real(PHONE, ui_scale, true))
+	else:
 		readings.append(func() -> Reading: return _real(PHONE))
 	for make: Callable in readings:
-		var reading: Reading = make.call()
-		var hook: Array = []
-		var badges: Array[Badge] = await build.call(reading, hook)
-		await _check(reading, badges, place, shot, hook[0] if not hook.is_empty() else Callable())
-		(reading.host.get_parent() if reading.name == "exact" else reading.host).queue_free()
-		await get_tree().process_frame
+		var probe: Reading = make.call()
+		var phone := probe.name.begins_with("real_%dx%d" % [PHONE.x, PHONE.y])
+		_dispose(probe)
+		# What each place built shows: all the levels, or on a scrolling phone one at a time.
+		var groups: Array = [LEVELS]
+		if by_level and phone:
+			groups = LEVELS.map(func(level: int) -> Array: return [level])
+		for group: Array in groups:
+			var reading: Reading = make.call()
+			var hook: Array = []
+			var badges: Array[Badge] = (
+				await build.call(reading, hook, group)
+				if by_level
+				else await build.call(reading, hook)
+			)
+			await _check(
+				reading, badges, place, shot, hook[0] if not hook.is_empty() else Callable()
+			)
+			_dispose(reading)
+			await get_tree().process_frame
+
+
+## Takes down what a reading built.
+func _dispose(reading: Reading) -> void:
+	(reading.host.get_parent() if reading.name == "exact" else reading.host).queue_free()
 
 
 func test_the_tag_over_a_head(_do_skip := _skip(), _skip_reason := SKIP_WHY) -> void:
@@ -680,7 +722,10 @@ func test_the_lobby_seats(_do_skip := _skip(), _skip_reason := SKIP_WHY) -> void
 	await _every_reading(
 		"lobby seat",
 		"lobby",
-		func(r: Reading, _hook: Array) -> Array[Badge]: return await _lobby(r, false)
+		func(r: Reading, _hook: Array, levels: Array) -> Array[Badge]:
+			return await _lobby(r, false, levels),
+		false,
+		true
 	)
 
 
@@ -688,7 +733,10 @@ func test_the_lobby_seats_with_a_plate(_do_skip := _skip(), _skip_reason := SKIP
 	await _every_reading(
 		"lobby seat with a plate",
 		"lobby_plate",
-		func(r: Reading, _hook: Array) -> Array[Badge]: return await _lobby(r, true)
+		func(r: Reading, _hook: Array, levels: Array) -> Array[Badge]:
+			return await _lobby(r, true, levels),
+		false,
+		true
 	)
 
 

@@ -47,8 +47,9 @@ and a headless test checks the manifest against the atlas, so a redrawn icon mov
 The places: the name tag over a head (`HudMarkers`) and the bottom-left box (`HudPlayerBox`) pass their baseline (the
 box's baseline is now a whole unit, so the glyphs are where the maths puts them); the scoreboard and the end board
 (`HudLevelCell`), the night report's level row and the lobby's seat (`LobbyScreen`) pass their label's font and row.
-The lobby's framed seat also keeps the frame's room above and below, so the border no longer covers the top and bottom
-of the icon (it did, by 2 to 3 units: the icon is as tall as the row).
+The lobby's framed seat needs no more room than it had: the frame is drawn over the row's top and bottom 7 units and
+the icon (24 units) sits 10 to 12 units in from each edge, so a framed seat is as tall as a plain one (45 units; see
+"The lobby with eight framed seats").
 
 ## How it is measured
 
@@ -60,9 +61,20 @@ that works. Two readings of every place:
 
 - **exact**: a viewport four times the canvas: the geometry, with no pixel rounding in it. Tolerance 0.75 units (half a
   unit is the best a place can do, since the glyphs land on whole units).
-- **real**: the game's own window, 1920 x 1080 at the three interface sizes (0.8, 1.0, 1.25) and a phone held sideways
-  (844 x 390 at the menu's phone factor 2: a unit is 0.72 px), rows of whole pixels. Tolerance 1 px at one pixel to the
-  unit, 1.5 px otherwise.
+- **real**: the game's own window, 1920 x 1080 at the three interface sizes (0.8, 1.0, 1.25) and a phone held sideways,
+  rows of whole pixels. Tolerance 1 px at one pixel to the unit, 1.5 px otherwise. **The phone is read at the factor the
+  place really runs at**: the menus and the lobby have the menu's phone factor 2 (a unit is 0.72 px), but a night has
+  the interface size alone (`NightScreen._ready`), so the HUD (tag, boxes, scoreboard, end board, night report) is read
+  at 0.36 px to the unit at 1.0 and 0.45 at 1.25. Not at 0.8 (0.29 px: the digits are one to four rows tall and a row
+  reading cannot tell a half unit from a unit and a half; the exact reading covers every size). The tolerance is the
+  same 1.5 px as for any reading where a unit is not a pixel: it is the reading's resolution (a whole-pixel row on each
+  side), not a widened bound. At 0.36 px to the unit it is 4 units: the reading still fails the boxes before the fix
+  (3.0 to 3.5 px) and two of the compact box's (2.0 px), but a gap of a unit or two is below its resolution, and the
+  exact reading is the guard for that.
+- **A lobby is built under the router's theme** (`reading.host.theme = UIThemeBuilder.build(...)`): without it the seats
+  are set in Godot's default font and a row is 24 units instead of 45, which once made the frame look as if it covered
+  the icon (a first reading; it did not, and a margin added for it cost 144 units of scrolling in a lobby of eight).
+  On a phone the lobby scrolls and shows one seat, so a phone reading is one lobby for each level.
 
 Each with a one-digit and a two-digit level of each of the three frames (3, 7, 12, 55), and a framed plate (card,
 emblem, frame) beside the bare one, in the tag, the box (four players, and eight for the compact box), the scoreboard,
@@ -73,20 +85,59 @@ run `gds godot -- --path game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a re
 
 ## Numbers
 
-The gap of the digits' centre below the icon body's centre, worst of four levels, before the fix and after: in units
-for the exact reading, in pixels for the real 1920 x 1080 window and the phone.
+The gap of the digits' centre below the icon body's centre, worst of four levels (and of the interface sizes read for
+the window), before the fix and after. Exact: canvas units. 1080p: pixels at the three interface sizes. Phone: pixels
+at the factor the place runs at (a night, 0.36 to 0.45 px to the unit; the lobby, 0.72). Readings out of tolerance:
+**121 of 262 before, 0 of 262 after**.
 
 | Place | Exact before | Exact after | 1080p before | 1080p after | Phone before | Phone after |
 | --- | --- | --- | --- | --- | --- | --- |
-| Name tag over a head | -0.50 | +0.13 | -0.50 | +0.50 | -0.50 | +0.50 |
-| Player box (yours 66 high, a friend's 48) | +9.50 | -0.50 | +9.50 | +0.50 | +6.50 | 0.00 |
-| Player box with a plate | +6.88 | -0.50 | +7.00 | +0.50 | +5.50 | +0.50 |
-| Compact player box (32 high) | +3.50 | -0.50 | +3.50 | +0.50 | +2.50 | -0.50 |
-| Scoreboard (and with a plate) | +0.38 | +0.25 | +0.50 | +0.50 | +1.00 | +1.00 |
-| End board (and with a plate) | +0.38 | +0.25 | +0.50 | +0.50 | +1.00 | +1.00 |
-| Night report, level row | +0.63 | +0.63 | +1.00 | +1.00 | +1.00 | 0.00 |
-| Lobby seat | +1.38 | +0.25 | +1.50 | +0.50 | +1.50 | +1.00 |
-| Lobby seat with a plate | +1.13 | +0.25 | +1.00 | +0.50 | +1.50 | +1.50 |
+| Name tag over a head | 0.50 | 0.13 | 0.50 | 1.00 | 1.00 | 1.00 |
+| Player box (yours 66 high, a friend's 48) | 9.50 | 0.50 | 12.00 | 1.00 | 3.50 | 1.00 |
+| Player box with a plate | 6.88 | 0.50 | 9.50 | 1.00 | 3.00 | 1.00 |
+| Compact player box (32 high) | 3.50 | 0.50 | 4.50 | 1.50 | 2.00 | 1.00 |
+| Scoreboard (and with a plate) | 0.38 | 0.25 | 1.50 | 1.00 | 0.50 | 0.50 |
+| End board (and with a plate) | 0.38 | 0.25 | 1.50 | 1.50 | 0.50 | 0.50 |
+| Night report, level row | 0.63 | 0.63 | 2.00 | 1.00 | 1.50 | 1.00 |
+| Lobby seat | 2.88 | 0.50 | 4.00 | 1.00 | 2.50 | 0.50 |
+| Lobby seat with a plate | 2.88 | 0.50 | 4.50 | 1.00 | 2.50 | 0.50 |
 
 The scoreboard, the end board, the tag and the report were within the tolerance before the fix (their tests pass
-without it; they guard the helper); the boxes and the lobby were not. What the maintainer saw was the box.
+without it; they guard the helper); the boxes and the lobby were not. What the maintainer saw was the box. A 1 px gap
+at a night's 0.36 px to the unit is 2.8 units: one row of the picture, and the exact reading says the geometry is within
+half a unit.
+
+## The lobby with eight framed seats
+
+A lobby of eight seats, each with a card, emblem and frame, is as tall as one with none: `test_lobby_framed_fit.gd`
+(headless, and it prints the numbers). Rows 360 units (45 each), everything in the scrolling area 1787, before and
+after the fix and with or without frames:
+
+| Window | Canvas | Scroll area | Left to scroll | Panel bottom |
+| --- | --- | --- | --- | --- |
+| 1920 x 1080, interface size 1.0 | 1920 x 1080 | 960 | 827 | 1044 of 1080 |
+| 1920 x 1080, interface size 1.25 | 1536 x 864 | 744 | 1043 | 828 of 864 |
+| 844 x 390, menu factor 2 | 1168 x 540 | 420 | 1367 | 504 of 540 |
+
+The lobby scrolls at every one of them with eight seats (the rules and the buttons are in the same scroll), before and
+after; `UiFit` finds nothing cut or under another control. A first version of the fix kept a margin of 9 units above
+and below each framed seat (+18 per row, +144 over eight: 971 left to scroll at 1080p instead of 827); it answered a
+problem the theme-less test lobby had made up, and it is gone.
+
+## The words on a plated player box in a night (not changed here)
+
+On a plated box the name and the level are drawn dark with a seat-coloured outline (`HALO`, 3 units, #1158) over the
+card. Measured over all 23 cards in a party of four (the eight seat colours of a party of eight are in the same range;
+`ink/halo` is 5.6 to 14.9, as designed), the strongest pixel of the words against the card under them, WCAG ratio
+(4.5 is AA for text):
+
+| Reading | Red seat (1) median / worst | Blue (2) | Yellow (3) | Green (4) |
+| --- | --- | --- | --- | --- |
+| 1080p | 3.25 / 2.49 | 4.28 / 3.59 | 5.19 / 4.17 | 5.47 / 4.03 |
+| Phone in a night (0.36 px to the unit) | 4.22 / 2.43 | 2.96 / 1.97 | 2.88 / 2.39 | 3.23 / 1.96 |
+
+At 1080p the outline is a visible ring in the seat's colour (a quarter of the word's pixels); in a night on a phone it
+is about one pixel wide, as wide as the word's strokes, and none of the word's pixels is the seat's colour, so the
+words are a smear of the ring and the dark ink (the capture shows "3 RUBY" and "7 MOE" as dark red and blue marks).
+It is on main (the box code is the same before and after this change) and in a real night (the same `HudPlayerBox` and
+plates the HUD gets from the server).

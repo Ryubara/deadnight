@@ -691,15 +691,12 @@ func _show_plate(row: Dictionary, plate: Dictionary) -> void:
 	var frame := row["frame"] as FrameArt
 	frame.frame_id = plate.get("frame", &"")
 	frame.visible = frame.frame_id != &""
-	# The seat keeps the border's room clear on every side, so the number is not under it and the
-	# level's icon (as tall as the row) is not covered by its top and bottom.
+	# The seat keeps the border's room clear at both ends, so the number is not under it.
 	var clear := PlateRow.frame_clear(frame.frame_id, SEAT_ROW_HEIGHT)
 	var inset := (row["box"] as Control).get_theme_stylebox(&"panel") as StyleBoxEmpty
 	inset.content_margin_left = clear
 	inset.content_margin_right = clear
-	inset.content_margin_top = clear
-	inset.content_margin_bottom = clear
-	frame.grow = Vector2(clear, clear)
+	frame.grow = Vector2(clear, 0.0)
 
 
 ## The icon and the level of a seat's row, the badge before the name (`LevelTag`): gone for a bot,
