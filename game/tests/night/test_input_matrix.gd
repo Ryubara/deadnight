@@ -50,13 +50,16 @@ const ROWS: Array = [
 	[&"fire", &"fire"],
 	[&"reload", &"reload"],
 	[&"interact", &"interact"],
-	[&"swap_weapon", &"swap_weapon"],
+	# The swap button is the pad's and the key's: a phone taps the weapon on the HUD instead.
+	[&"swap_weapon", &""],
 	# The numbered weapon slots (#682): the keys 1, 2 and 3 take that slot's weapon in hand. A pad
-	# and a phone go on swapping with the swap button, so these have no pad binding and no touch
-	# control (`KEYBOARD_ONLY`). The third slot is for the perk that carries three (#687): with two
-	# weapons carried its key picks nothing, which is what the row proves.
-	[&"weapon_slot_1", &""],
-	[&"weapon_slot_2", &""],
+	# goes on swapping with the swap button, so these have no pad binding (`KEYBOARD_ONLY`); a phone
+	# taps the weapon's place on the HUD (#1280), which presses the slot's action: the row's control
+	# is the place's action. The third slot is for the perk that carries three (#687): with two
+	# weapons carried its key picks nothing, which is what the row proves, and there is no third
+	# place to tap.
+	[&"weapon_slot_1", &"weapon_slot_1"],
+	[&"weapon_slot_2", &"weapon_slot_2"],
 	[&"weapon_slot_3", &""],
 	# The quick melee (#411, #588): V, the mouse's back button, the d-pad's down and the touch
 	# button. Before the grenades: the arm that is throwing one is busy, and a blow asked for then is
@@ -402,8 +405,8 @@ func test_a_gamepad_that_is_not_device_zero_does_every_action() -> void:
 
 
 func test_the_touch_layer_does_every_action_it_offers() -> void:
-	var hud_state := HudState.new()
-	_fixture = TouchFixture.make(self, TouchFixture.PHONE, hud_state)
+	_fixture = TouchFixture.make(self, TouchFixture.PHONE, null, false, true)
+	var hud_state := _fixture.hud.state
 	# The interact button shows only where there is something to use.
 	hud_state.set_prompt(&"repair", "Broken fence", 0)
 	await get_tree().process_frame
@@ -415,7 +418,9 @@ func test_the_touch_layer_does_every_action_it_offers() -> void:
 		if how == &"stick":
 			await _push_stick(row[0])
 		else:
-			await _fixture.touch(0, _fixture.at(how))
+			# A weapon's or the grenades' place on the HUD, or one of the layer's buttons.
+			var spot := _fixture.zone_centre(how)
+			await _fixture.touch(0, spot if spot.is_finite() else _fixture.at(how))
 			await _hold("touch", row[0])
 			await _fixture.lift(0)
 			if how == TouchLayout.CROUCH:

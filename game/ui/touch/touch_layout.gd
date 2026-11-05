@@ -24,8 +24,6 @@ const RELOAD := &"reload"
 ## Crouch (#1277): the simulation acts on `crouch` held; on a phone a tap toggles it, so the right
 ## thumb is free for Fire and the look again (`TouchControls`).
 const CROUCH := &"crouch"
-const SWAP := &"swap_weapon"
-const GRENADE := &"throw_grenade"
 const INTERACT := &"interact"
 const PAUSE := &"pause"
 const SCOREBOARD := &"scoreboard"
@@ -55,8 +53,9 @@ const RING_GAP := 42.0
 ## touch tests them in: the contextual button first, so it wins where it overlaps. The ring's
 ## buttons stand `FIRE_RADIUS + radius + RING_GAP` from Fire's centre, Crouch at 40 degrees below
 ## straight left, Reload at 8 above it (the same row), Aim at 56 and Jump at 104 (nearly straight
-## up); `test_touch_layout` checks the air. Swap, the Grenade, Shoulder, Melee and the Bots keep
-## their old places until the homes the audit names are built (#1275, #1280).
+## up); `test_touch_layout` checks the air. Shoulder, Melee and the Bots keep their old places until
+## the homes the audit names are built (#1275). The weapons and the grenades are the HUD's own
+## places, not buttons of this layer (#1280).
 const BUTTONS := [
 	[INTERACT, Vector2(540.0, 500.0), 80.0],
 	[FIRE, FIRE_OFFSET, FIRE_RADIUS],
@@ -64,8 +63,6 @@ const BUTTONS := [
 	[AIM, Vector2(325.0, 527.0), 72.0],
 	[JUMP, Vector2(154.0, 556.0), 70.0],
 	[CROUCH, Vector2(361.0, 219.0), 62.0],
-	[SWAP, Vector2(575.0, 340.0), 56.0],
-	[GRENADE, Vector2(520.0, 165.0), 56.0],
 	[SHOULDER, Vector2(545.0, 672.0), 48.0],
 	[MELEE, Vector2(60.0, 310.0), 44.0],
 	[BOT_WHEEL, Vector2(60.0, 405.0), 40.0],

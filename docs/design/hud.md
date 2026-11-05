@@ -94,11 +94,16 @@ the card.
   needed; the part tints it. A new weapon model has its silhouette with its hold file. Sizes follow the weapons' lengths
   (never under 58 percent of the longest) so a pistol reads as a pistol; a club that stands on its end in the model is
   laid along the width, its long side from the grip pointing right like a barrel.
-- **On a phone the strip moves** under the health card (`Hud.touch_layout`, set when the touch layer comes up): the
-  bottom right corner is the right thumb's (Fire and Melee sit exactly where the strip would). A left hand flips the
-  column and the strip with it.
+- **On a phone the strip is the weapon control** (#1280; `Hud.touch_layout`, set when the touch layer comes up): it
+  leaves the bottom right corner, which is the right thumb's (Fire and Melee sit exactly where the strip would), for
+  a column of its own at the bottom of the stick's side, the players' column lifted by its height. Every place is a
+  fingertip (44 CSS px, `MenuScale.tap_units`) wide and high, the weapons a quarter wider, and a place for the grenades
+  (`HudGrenadeCell`: a grenade and `x3`, lit while the pin is out) follows them. The touch layer reads the boxes
+  (`HudSlots.touch_zones`) and presses the key's action or the throw ([touch controls](touch-controls.md)); the HUD's
+  nodes keep ignoring the pointer. A left hand flips the column and the strip with it. A desktop's or a pad's strip is
+  what it was: 64 high, one card wide, no grenade place.
 - **Keys:** `1` and `2` (and `3`) pick that slot's weapon; the slot in hand and an empty slot do nothing; the swap
-  button (F, the pad's d-pad up, the touch SWAP) goes on to the next one ([weapons](weapons.md#carrying-weapons)).
+  button (F, the pad's d-pad up; a phone has none, it taps the weapon) goes on to the next one ([weapons](weapons.md#carrying-weapons)).
 
 ## Players' points
 

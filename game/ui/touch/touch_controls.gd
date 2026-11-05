@@ -3,8 +3,8 @@ class_name TouchControls
 extends Control
 ## The touch controls of a night: a floating move stick on the left, a look area on the right,
 ## and buttons under the right thumb. They press the game's own input actions (`move_*`, `fire`,
-## `aim`, `jump`, `reload`, `swap_weapon`, `throw_grenade`, `quick_melee`, `interact`, `sprint`,
-## `pause`, `scoreboard`, `ping`, `bot_wheel`), so
+## `aim`, `jump`, `reload`, `quick_melee`, `interact`, `sprint`, `pause`, `scoreboard`, `ping`,
+## `bot_wheel`, and from the HUD's weapon places `weapon_slot_*` and `throw_grenade`), so
 ## the player and the night read them like a key or a pad and nothing else forks.
 ##
 ## Aim is held while the thumb is on it when auto-fire is on (`controls/touch_auto_fire`, the
@@ -29,6 +29,10 @@ extends Control
 ## While it is up the engine's touch-to-mouse emulation is off, or every touch would also click
 ## Fire, and the player turns only for the layer's own look (`TouchLook.is_stray`): in a browser a
 ## finger is also a pointer move, which the web runtime reads as a mouse motion (#470).
+## The weapons are the HUD's own places (`HudSlots`, #1280): the layer does not draw them, it asks
+## the HUD where they are (`zones`) and presses the action of the one a finger lands on, like a
+## button of its own. A finger that starts on a weapon's place only picks it: it never fires or
+## looks; one that starts on the grenades' place also looks, as every button of the right thumb.
 ## The interact button shows only while the HUD has a prompt: what it does is its word. Every other
 ## button shows an icon and no words (`TouchIcons`).
 ##
@@ -72,6 +76,8 @@ const VERBS := {
 	&"revive": "REVIVE",
 }
 const DEFAULT_VERB := "USE"
+## The grenades' place on the HUD's strip presses this action (held while the pin is out).
+const GRENADE := &"throw_grenade"
 const AUTO_FIRE_SETTING := &"controls/touch_auto_fire"
 ## The feel numbers (dead zone, sprint, hold, look): `touch_tuning_default.tres`.
 var tuning: TouchTuning = TouchLook.tuning
@@ -105,6 +111,9 @@ var finger_units := Callable()
 ## the margin past it are the same movement of the thumb on every phone (#1276). Without it the
 ## unit of a phone's night (`DEFAULT_CSS_PER_UNIT`).
 var css_per_unit := Callable()
+## () -> Array[Dictionary], the HUD's places a finger presses: `{action, rect}` in the screen's
+## canvas units (`HudSlots.touch_zones`). Without it the layer has none.
+var zones := Callable()
 
 ## Auto-fire on: Aim is held. Off: Aim is a toggle (`_aim_latched`).
 var _aim_is_hold := true
@@ -204,6 +213,8 @@ func button_boxes() -> Array[Rect2]:
 		var circle: Dictionary = _circles[id]
 		var reach := Vector2.ONE * float(circle[&"radius"])
 		found.append(Rect2(origin + Vector2(circle[&"centre"]) - reach, reach * 2.0))
+	for zone in _zones():
+		found.append(zone[&"rect"])
 	return found
 
 
@@ -381,6 +392,8 @@ func _touch_down(index: int, point: Vector2) -> void:
 		_touch_up(index)
 	var hidden: Array = [] if _interact_verb != "" else [TouchLayout.INTERACT]
 	var button := TouchLayout.button_at(point, _circles, hidden)
+	if button == &"":
+		button = zone_at(point)
 	if button != &"":
 		_touches[index] = _own(&"button", point, {&"button": button, &"start": point})
 		_press_button(button)
@@ -393,6 +406,18 @@ func _touch_down(index: int, point: Vector2) -> void:
 		_set_stick(Vector2.ZERO)
 	elif not _has_role(&"look"):
 		_touches[index] = _own(&"look", point)
+
+
+## The action of the HUD's place under `point`, or "" (a weapon's slot, or the grenade).
+func zone_at(point: Vector2) -> StringName:
+	for zone in _zones():
+		if (zone[&"rect"] as Rect2).has_point(point):
+			return zone[&"action"]
+	return &""
+
+
+func _zones() -> Array:
+	return zones.call() if zones.is_valid() else []
 
 
 func _touch_up(index: int) -> void:
@@ -431,7 +456,8 @@ func _touch_drag(index: int, point: Vector2, velocity: Vector2) -> void:
 		&"look":
 			_look(relative, _trusted_velocity(touch, velocity))
 		&"button":
-			if TouchLayout.looks_when_dragged(touch[&"button"]):
+			# The grenades' place on the HUD looks too: the thumb is on it for the whole cook (#599).
+			if touch[&"button"] == GRENADE or TouchLayout.looks_when_dragged(touch[&"button"]):
 				_look(relative, _trusted_velocity(touch, velocity))
 
 

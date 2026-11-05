@@ -20,6 +20,8 @@ const ACTIONS: Array[StringName] = [
 ]
 
 var controls: TouchControls
+## The HUD under the controls, wired to them as the night screen does (`make` with `with_hud`).
+var hud: Hud
 var host: Control
 var _suite: GdUnitTestSuite
 var _hand_before: Variant = null
@@ -29,7 +31,11 @@ var _owns_host := true
 
 
 static func make(
-	suite: GdUnitTestSuite, canvas := PHONE, state: HudState = null, persist_hints := false
+	suite: GdUnitTestSuite,
+	canvas := PHONE,
+	state: HudState = null,
+	persist_hints := false,
+	with_hud := false
 ) -> TouchFixture:
 	var fixture := TouchFixture.new()
 	fixture._suite = suite
@@ -40,12 +46,27 @@ static func make(
 	suite.add_child(fixture.host)
 	fixture.controls = TouchControls.new()
 	fixture.controls.state = state
+	if with_hud:
+		fixture._add_hud()
 	# The hints would write what a test used into the player's own settings file.
 	fixture.controls.persist_hints = persist_hints
 	fixture.host.add_child(fixture.controls)
 	fixture.controls.size = canvas
 	fixture.controls.refresh()
 	return fixture
+
+
+## The HUD under the controls, wired to them as `NightScreen` does (#1280): the controls ask the
+## HUD's weapon places where they are, the HUD takes the touch layout and the hand from them.
+func _add_hud() -> void:
+	hud = (load(Hud.SCENE) as PackedScene).instantiate() as Hud
+	host.add_child(hud)
+	controls.state = hud.state
+	controls.zones = hud.slots.touch_zones
+	controls.finger_units = func() -> float: return MenuScale.tap_units(host.get_window(), true)
+	controls.active_changed.connect(func(active: bool) -> void: hud.touch_layout = active)
+	controls.mirrored_changed.connect(func(on: bool) -> void: hud.mirrored = on)
+	controls.safe_insets_changed.connect(func(insets: Vector4) -> void: hud.set_safe_insets(insets))
 
 
 ## A fixture over touch controls that already exist (the night screen's own), instead of a new set.
@@ -111,6 +132,15 @@ static func _release_mouse() -> void:
 ## The centre of a button, in canvas units.
 func at(id: StringName) -> Vector2:
 	return controls.button_circle(id)[&"centre"]
+
+
+## The centre of the HUD's weapon place that presses `action` (a slot's key or the grenade), in
+## canvas units; `Vector2.INF` where there is none.
+func zone_centre(action: StringName) -> Vector2:
+	for zone in hud.slots.touch_zones():
+		if zone[&"action"] == action:
+			return (zone[&"rect"] as Rect2).get_center()
+	return Vector2.INF
 
 
 func touch(index: int, position: Vector2, pressed := true) -> void:

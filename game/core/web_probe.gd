@@ -246,10 +246,13 @@ static func snapshot(top: Control) -> Dictionary:
 		"menu_buttons": "",
 		"menu_button_sizes": "",
 		"touch_hits": "",
+		"touch_zones": "",
 		"touch_held": "",
 		"touch_stick": "",
 		"ground_speed": 0.0,
 		"sprinting": false,
+		"grenade_cooking": false,
+		"grenade_count": 0,
 		"tab": "",
 		"stage": "",
 		"browser": "",
@@ -429,6 +432,11 @@ static func snapshot(top: Control) -> Dictionary:
 	data["menu_buttons"] = _button_spots(night_screen)
 	data["menu_button_sizes"] = _button_sizes(night_screen)
 	data["touch_hits"] = _touch_hits(night_screen)
+	data["touch_zones"] = _touch_zones(night_screen)
+	var night := night_screen.night
+	if night != null and night.server != null and night.server.grenades != null:
+		data["grenade_cooking"] = night.server.grenades.is_cooking(night.state.player_id)
+		data["grenade_count"] = night.hud.state.grenades if night.hud != null else 0
 	data["touch_held"] = ",".join(night_screen.touch_held())
 	data["touch_stick"] = night_screen.touch_stick()
 	if state.has_frame():
@@ -522,6 +530,21 @@ static func _touch_hits(screen: NightScreen) -> String:
 				% [id, at.x, at.y, float(circle[&"hit"]) / size.y, float(circle[&"was"]) / size.y]
 			)
 		)
+	return "|".join(found)
+
+
+## The HUD's weapon places as `action:x,y,w,h`: the centre and the size as fractions of the window's
+## width and height, so a browser test reads CSS pixels (#1280).
+static func _touch_zones(screen: NightScreen) -> String:
+	if not screen.is_inside_tree() or not screen.touch_active():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var found: Array[String] = []
+	for zone in screen.touch_zones():
+		var rect: Rect2 = zone[&"rect"]
+		var at := rect.get_center() / size
+		var share := rect.size / size
+		found.append("%s:%.5f,%.5f,%.5f,%.5f" % [zone[&"action"], at.x, at.y, share.x, share.y])
 	return "|".join(found)
 
 
