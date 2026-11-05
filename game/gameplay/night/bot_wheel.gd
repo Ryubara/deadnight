@@ -15,11 +15,12 @@ const ORDERS: Array[StringName] = [FOLLOW, ROAM, HOLD]
 ## What the wheel and the HUD call each order, and a line under the name.
 const NAMES := {FOLLOW: "FOLLOW", ROAM: "ROAM", HOLD: "HOLD"}
 const CAPTIONS := {FOLLOW: "STICK WITH ME", ROAM: "FAN OUT", HOLD: "STAY HERE"}
-## What the HUD says briefly after the order changed.
+## What the HUD says briefly after the order changed: the state the bots are in, never a line that
+## reads as an order to the player ("HOLD HERE" at the top right, #1275).
 const NOTICES := {
-	FOLLOW: "BOTS: FOLLOW ME",
-	ROAM: "BOTS: ROAM",
-	HOLD: "BOTS: HOLD HERE",
+	FOLLOW: "BOTS: FOLLOWING YOU",
+	ROAM: "BOTS: ROAMING",
+	HOLD: "BOTS: HOLDING POSITION",
 }
 ## The standing order of a team that was never told one (`BotOrders`'s default).
 const DEFAULT_ORDER := ROAM
