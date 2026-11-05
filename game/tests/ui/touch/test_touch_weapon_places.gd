@@ -177,8 +177,11 @@ func test_the_boxes_world_markers_keep_clear_of_hold_every_place() -> void:
 			. override_failure_message(str(zone[&"action"]))
 			. is_true()
 		)
-	# The buttons that are drawn (Interact only with a prompt) and the three places.
-	var hidden := 1 if _fixture.controls.interact_verb() == "" else 0
+	# The buttons that are drawn (Interact only with a prompt, Strike only with a dead in reach) and
+	# the three places.
+	var hidden := 0
+	hidden += 1 if _fixture.controls.interact_verb() == "" else 0
+	hidden += 0 if _fixture.controls.strike_up else 1
 	assert_int(boxes.size()).is_equal(_fixture.controls.circles().size() - hidden + 3)
 
 
