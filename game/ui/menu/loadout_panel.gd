@@ -16,7 +16,6 @@ var wardrobe: CustomizeScreen
 
 var _weapon_selector: UIOptionSelector
 var _weapon_row: UIRow
-var _plate_row: UIRow
 var _plate_button: UIButton
 var _mastery_label: Label
 var _weapons: Array[StringName] = []
@@ -50,10 +49,8 @@ func _ready() -> void:
 		wardrobe.prepend_row(weapon_box)
 	# The weapon row lines up with the wardrobe's rows, and is as narrow as they are.
 	_weapon_row.set_widths(wardrobe.row_widths.x, wardrobe.row_widths.y)
-	_plate_row.set_widths(wardrobe.row_widths.x, wardrobe.row_widths.y)
 	wardrobe.look_changed.connect(_on_look_changed)
 	wardrobe.rows_stacked.connect(_weapon_row.set_stacked)
-	wardrobe.rows_stacked.connect(_plate_row.set_stacked)
 	if context.compact:
 		_fit_for_fingers()
 	refresh()
@@ -73,7 +70,7 @@ func plate_button() -> UIButton:
 	return _plate_button
 
 
-## What the plate row's button says: the card and emblem the player wears.
+## What the plate button says: the card and emblem the player wears.
 func plate_text() -> String:
 	return _plate_button.text
 
@@ -153,24 +150,14 @@ func _build_weapon_row() -> Control:
 	_mastery_label = MenuLook.label("", MenuLook.SIZE_CAPTION, MenuLook.MUTED, &"wide")
 	_mastery_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	line.add_child(_mastery_label)
-	box.add_child(_build_plate_row())
-	return box
-
-
-## The plate's row: what the player wears, and a button to change it (the cards screen).
-func _build_plate_row() -> Control:
-	_plate_row = UIRow.new()
-	_plate_row.title = "Plate"
-	_plate_row.hint = (
-		"" if context.compact else "The calling card behind your name and the emblem after it."
-	)
+	# The plate's button shares the mastery line, so the tab is no taller than it was.
 	_plate_button = UIButton.new()
 	_plate_button.name = "PlateButton"
-	_plate_button.variant = UIButton.Variant.SECONDARY
+	_plate_button.variant = UIButton.Variant.GHOST
 	_plate_button.pressed.connect(func() -> void: context.request(&"cards"))
-	_plate_row.set_control(_plate_button)
+	line.add_child(_plate_button)
 	_show_plate()
-	return _plate_row
+	return box
 
 
 ## The button's words: the card and the emblem worn, or what to do when there are none.
@@ -187,7 +174,13 @@ func _show_plate() -> void:
 	for kind in PlateCatalog.KINDS:
 		if worn[kind] != &"":
 			words.append(catalog.title(kind, worn[kind]))
-	_plate_button.text = " + ".join(words) if not words.is_empty() else "Cards and emblems"
+	_plate_button.text = (
+		"Plate: " + " + ".join(words) if not words.is_empty() else "Plate: cards and emblems"
+	)
+	# A phone's tab has 372 units: the button says only what it opens.
+	if context.compact:
+		_plate_button.text = "Plate"
+	_plate_button.clip_text = true
 
 
 ## On a phone every picker is at least a tap target high and no text is under the type floor.

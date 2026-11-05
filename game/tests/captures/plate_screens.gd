@@ -1,6 +1,7 @@
 extends Node
 ## The plate's screens (#1070), one PNG into `--out=<file>`: `--page=cards` the equip screen,
-## `--page=loadout` the Loadout tab's Plate row, `--page=scoreboard` the Tab board, `--page=report`
+## `--page=loadout` the Loadout tab's Plate button, `--page=scoreboard` the Tab board,
+## `--page=report`
 ## the night's end board, `--page=lobby` the lobby's seats, `--page=unlock` the unlock cards of a
 ## card and an emblem. `--empty` shows the same without cards or emblems (the before). Run it
 ## through the no-focus launcher, not headless:

@@ -377,7 +377,7 @@ hour: not a loophole. Level 10 arrives after about half an hour ([the curve](#th
   frames wait for **extraction** (#1056) and are their own issue (#1072).
 - Cards are **composed from shared parts** (a scene of reel, ticket, car, bulbs, saucer, a palette, a title), so about
   40 are a week of art, not 40 paintings; emblems are drawn once each.
-- **Built (#1070):** cards and emblems, the 21 feats that give them, the equip screen (Loadout tab, Plate row), the
+- **Built (#1070):** cards and emblems, the 21 feats that give them, the equip screen (Loadout tab, the Plate button), the
   plate in the bottom-left boxes, the scoreboard, the night report and the lobby; how it works and what it costs:
   [calling cards](../research/calling-cards.md). Not built: frames (#1071, #1072), poster sets (#1073), the odd
   challenges' stats and the hidden ones (#1074).

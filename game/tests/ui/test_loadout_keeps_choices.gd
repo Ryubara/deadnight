@@ -255,7 +255,7 @@ func test_the_plate_row_says_what_is_worn_and_asks_the_menu_for_the_cards_screen
 	var shell := await _open()
 	await _go_to(shell, MenuTab.Id.LOADOUT)
 	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
-	assert_str(panel.plate_text()).is_equal("Dead Eye + Cartoon")
+	assert_str(panel.plate_text()).is_equal("Plate: Dead Eye + Cartoon")
 	await _click(panel.plate_button())
 	assert_array(_actions).contains([&"cards"])
 	MenuProfile.profile_path = ProfileSave.DEFAULT_PATH
