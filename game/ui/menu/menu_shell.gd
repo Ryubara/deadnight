@@ -24,6 +24,9 @@ const DRAG_SPEED := 0.011
 const ARRIVE_SECONDS := 0.28
 const ARRIVE_SLIDE := 28.0
 
+## The group of the shells in the tree: a night that ends asks them to put the factor back.
+const GROUP := &"menu_shell"
+
 ## Set before the shell enters the tree: -1 follows the window, 0 forces the desktop layout, 1 the
 ## phone's (a test or a capture).
 var phone_mode := -1
@@ -44,6 +47,7 @@ var _compact := false
 
 
 func _ready() -> void:
+	add_to_group(GROUP)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_compact = _is_compact()
@@ -205,9 +209,24 @@ func _is_compact() -> bool:
 ## The phone factor is the menu's: it is on while the menu shows, and a screen pushed over it (the
 ## night) runs on the player's own scale, the one its HUD and touch layer are made for (#606: the
 ## night at the factor was 540 units high, with half the touch buttons off the top).
+## Puts the menu's factor back on the window after a night, which set the interface size alone
+## (`NightScreen._exit_tree`). The shell is hidden under the screen the night returns to and cannot
+## hear that; whoever owns the factor, the shell, says what it is (a headless run has no phone).
+static func restore_scale_of(tree: SceneTree) -> void:
+	if tree == null:
+		return
+	for node in tree.get_nodes_in_group(GROUP):
+		(node as MenuShell)._set_scale()
+		return
+
+
 func _apply_scale() -> void:
 	if not is_visible_in_tree():
 		return
+	_set_scale()
+
+
+func _set_scale() -> void:
 	var ui_scale := float(Settings.get_value(SettingsService.UI_SCALE))
 	var window := get_window()
 	window.content_scale_factor = ui_scale * (MenuScale.PHONE_FACTOR if _compact else 1.0)
@@ -220,6 +239,11 @@ func _on_window_resized() -> void:
 	_compact = now
 	context.compact = now
 	_apply_scale()
+	# A screen over the menu (Settings, Play together) hides it, and runs on the menu's factor all
+	# the same: a page turned or resized across the phone limit under it puts the factor right
+	# there too. A night sets its own and keeps it (#1197).
+	if not is_visible_in_tree() and is_inside_tree() and not UIRouter.top() is NightScreen:
+		_set_scale()
 
 
 ## The canvas changed (the window was resized, a phone turned): the panel on show is placed again

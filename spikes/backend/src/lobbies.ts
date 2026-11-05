@@ -33,8 +33,8 @@ export interface Lobby {
   hostId: string;
   maxPlayers: number;
   /**
-   * A public night is listed (`listed`, the Server Browser) and one Quick join may put a stranger in; a private one is for
-   * whoever has its code. A new night is public: its host makes it private (`setVisibility`).
+   * A public night is listed (`listed`, the Server Browser) for any player to join; a private one is for whoever has its
+   * code. A new night is public: its host makes it private (`setVisibility`).
    */
   visibility: Visibility;
   members: Member[];
@@ -265,6 +265,16 @@ export class LobbyService {
     return this.now() - (lobby.seen.get(userId) ?? 0) > this.limits.memberQuietMs;
   }
 
+  /**
+   * Whether a stranger may be shown the lobby in the list: a waiting lobby with nobody heard from for
+   * `memberQuietMs` is left out (every member shows as away: a closed tab that said nothing, or a host in another tab
+   * pasting the invite). It is hidden, not ended: its code still joins it, and the first poll of a member puts it back.
+   * A started night is not polled by anyone (its people are on the game server), so it is judged by its match instead.
+   */
+  isHeard(lobby: Lobby): boolean {
+    return lobby.state === "started" || lobby.members.some((m) => !this.isQuiet(lobby, m.userId));
+  }
+
   /** A member reads the lobby (a poll): that counts as activity. */
   view(id: string, userId: string): Lobby {
     const lobby = this.get(id);
@@ -314,6 +324,26 @@ export class LobbyService {
   }
 
   /**
+   * A member's page is being unloaded (a closed tab, a reload; `POST /lobbies/:id/page-closed`, sent by the page itself on
+   * `pagehide`): in a waiting lobby that is a Leave, so the host role passes on and a lobby left with nobody is gone at
+   * once. Anything else is ignored and says so: a lobby that is gone already, a person who is not in it any more, and a
+   * night in progress (its people are on the game server, whose socket close frees the seat). Returns whether the
+   * member was taken out. The page sends it only for a page that is going for good, never for one that is hidden or
+   * kept for a return (`docs/design/lobby.md`), so it is final like a Leave.
+   */
+  pageClosed(id: string, userId: string): boolean {
+    let lobby: Lobby;
+    try {
+      lobby = this.get(id);
+    } catch {
+      return false;
+    }
+    if (lobby.state !== "open" || !this.isMember(lobby, userId)) return false;
+    this.leave(id, userId);
+    return true;
+  }
+
+  /**
    * The host sets the rules of the night while the lobby waits: every member reads them on their next poll. Only the
    * host, only before the start (they are fixed from then on), and only a value the game takes: a map must be one the
    * host's level (`hostLevel`, read by the caller from the stored profile) opens.
@@ -353,7 +383,7 @@ export class LobbyService {
         continue;
       }
       this.dropAbsent(lobby);
-      if (lobby.visibility === "public" && lobby.members.length > 0) out.push(lobby);
+      if (lobby.visibility === "public" && lobby.members.length > 0 && this.isHeard(lobby)) out.push(lobby);
     }
     return out;
   }
@@ -390,26 +420,6 @@ export class LobbyService {
     lobby.match = { id: matchId, server, hostLevel };
     this.byMatch.set(matchId, lobby.id);
     return lobby;
-  }
-
-  /** Quick join: a public night with room (open or started), else a new public one, started at once. */
-  quick(member: Member, hostLevel: number, maxPlayers = MAX_PLAYERS): Lobby {
-    for (const lobby of [...this.lobbies.values()]) {
-      if (lobby.visibility !== "public" || this.expired(lobby)) continue;
-      if (lobby.members.some((m) => m.userId === member.userId)) return lobby;
-      try {
-        return this.join(lobby.id, member);
-      } catch (error) {
-        if (!(error instanceof LobbyFailure)) throw error;
-      }
-    }
-    const lobby = this.create(member, maxPlayers, "public");
-    try {
-      return this.start(lobby.id, member.userId, hostLevel);
-    } catch (error) {
-      this.remove(lobby);
-      throw error;
-    }
   }
 
   /** The game server's count of the players in a match, from its heartbeat. Unknown matches are ignored. */

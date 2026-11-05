@@ -53,7 +53,10 @@ var row_ids: Array[int] = []
 ## The level each row shows (0 for none), in row order.
 var row_levels: Array[int] = []
 ## The way out: Leave online, Back alone.
-var leave_button: UIButton
+var leave_button: UIButton:
+	get:
+		_build()
+		return leave_button
 ## The least height and width of the way out, canvas units: a tap target on a phone
 ## (`MenuScale.tap_units`: 44 CSS px), none (0) with no touch screen. A negative value reads the
 ## window's own; a test says its own.
@@ -63,10 +66,16 @@ var tap_units := -1.0:
 		_fit_tap()
 ## The night report: the local player's XP lines and level bar, on a ticket under the round
 ## (`show_report`); hidden until a report is given.
-var report_card := HudNightReport.new()
+var report_card: HudNightReport:
+	get:
+		_build()
+		return report_card
 ## The film credits: a crew title for every player, under the players' ticket (`show_credits`);
 ## hidden until given.
-var credits_card := HudCredits.new()
+var credits_card: HudCredits:
+	get:
+		_build()
+		return credits_card
 
 var _tokens := UITokens.active()
 ## Player id -> what the board last heard of them, kept after they leave.
@@ -75,11 +84,30 @@ var _local_id := 0
 var _round := 0
 var _clock := 0
 var _signature := ""
-var _margin := MarginContainer.new()
-var _title := HudStyle.label(TITLE, HudStyle.BIG, _tokens.danger, true, 2.0)
-var _round_label := HudStyle.label("", HudStyle.MEDIUM, _tokens.hot, true)
-var _caption := HudStyle.label("", HudStyle.SMALL, _tokens.ink_muted, false, 2.0)
-var _number := HudStyle.label("", HudStyle.NUMERAL, _tokens.accent, true)
+## The board's parts are made the first time something asks for one (`_build`, the night's end): a
+## board built and hidden would be twenty canvas items of every night, and the late-round budget
+## counts every one of the tree.
+var _built := false
+var _margin: MarginContainer:
+	get:
+		_build()
+		return _margin
+var _title: Label:
+	get:
+		_build()
+		return _title
+var _round_label: Label:
+	get:
+		_build()
+		return _round_label
+var _caption: Label:
+	get:
+		_build()
+		return _caption
+var _number: Label:
+	get:
+		_build()
+		return _number
 ## The left column, and (made when a screen is too short for the report, #1192) the row that holds
 ## the countdown beside Leave. A row built for every board would be two canvas items more in every
 ## night the late-round budget plays.
@@ -87,18 +115,45 @@ var _left: VBoxContainer
 var _beside_row: HBoxContainer
 var _beside_count: VBoxContainer
 var _beside := false
-var _ticket := HudTicket.new()
-var _grid := VBoxContainer.new()
+var _ticket: HudTicket:
+	get:
+		_build()
+		return _ticket
+var _grid: VBoxContainer:
+	get:
+		_build()
+		return _grid
 var _insets := Vector4.ZERO
 var _report := {}
 var _crew := {}
-var _right := VBoxContainer.new()
+var _right: VBoxContainer:
+	get:
+		_build()
+		return _right
 
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = false
+	resized.connect(_rebuild_later)
+
+
+## Makes the board's parts, once.
+func _build() -> void:
+	if _built:
+		return
+	_built = true
+	report_card = HudNightReport.new()
+	credits_card = HudCredits.new()
+	_margin = MarginContainer.new()
+	_title = HudStyle.label(TITLE, HudStyle.BIG, _tokens.danger, true, 2.0)
+	_round_label = HudStyle.label("", HudStyle.MEDIUM, _tokens.hot, true)
+	_caption = HudStyle.label("", HudStyle.SMALL, _tokens.ink_muted, false, 2.0)
+	_number = HudStyle.label("", HudStyle.NUMERAL, _tokens.accent, true)
+	_ticket = HudTicket.new()
+	_grid = VBoxContainer.new()
+	_right = VBoxContainer.new()
 	_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_margin)
@@ -118,7 +173,7 @@ func _init() -> void:
 	_right.add_child(_ticket)
 	_right.add_child(credits_card)
 	across.add_child(_right)
-	resized.connect(_rebuild_later)
+	_fit_tap()
 
 
 func _notification(what: int) -> void:
@@ -244,7 +299,7 @@ func report_room() -> float:
 ## shown and when the window changes: the night runs at the interface size alone (a unit is 0.36 px
 ## at 844 x 390 CSS px), where the theme's 79 unit button is 28 px (#1192).
 func _fit_tap() -> void:
-	if leave_button == null:
+	if not _built:
 		return
 	var least := tap_units
 	if least < 0.0:
@@ -431,6 +486,8 @@ func _crew_input(ids: Array[int]) -> Dictionary:
 
 
 func _set_margins() -> void:
+	if not _built:
+		return
 	var margin := HudStyle.margin()
 	_margin.add_theme_constant_override(&"margin_left", margin + int(_insets.x))
 	_margin.add_theme_constant_override(&"margin_top", margin + int(_insets.y))

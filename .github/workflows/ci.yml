@@ -63,6 +63,9 @@ jobs:
       - name: The Discord bridge's share half refuses nothing it could have asked for first
         # A client that wants `authenticate` before any command (RPC 4006 otherwise, #627); no packages, node is on the runner.
         run: node --test deploy/web/test_discord_share.mjs
+      - name: The page's last word is sent by a page that is going, and by none that is only kept
+        # `pagehide` with `persisted` true (a phone that switched app, the back-forward cache) sends nothing (#1188); no packages.
+        run: node --test tools/web_smoke/test_page_closing.mjs
       - name: Which parts of the repository the change touches
         id: scope
         env:
