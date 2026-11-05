@@ -1,10 +1,11 @@
 extends Node
 ## The bottom-left player boxes with each player's calling card behind the box and emblem after the
-## name (#1070): a HUD fed with a party of `--players` (up to eight, the compact size from five).
-## One PNG into `--out=<file>`. Run it through the no-focus launcher, not headless:
-## `gds godot -- --path game res://tests/captures/plate_boxes.tscn --resolution 1280x720
-## -- --out=<abs>/boxes.png [--players=4] [--down=2] [--touch] [--bare] [--long]`. `--bare` is the
-## boxes as they were (no card, no emblem). Not part of the game.
+## name, and the frame round the box (#1071): a HUD fed with a party of `--players` (up to eight,
+## the compact size from five). One PNG into `--out=<file>`. Run it through the no-focus launcher,
+## not headless: `gds godot -- --path game res://tests/captures/plate_boxes.tscn --resolution
+## 1280x720 -- --out=<abs>/boxes.png [--players=4] [--down=2] [--touch] [--bare] [--long]
+## [--noframes]`. `--bare` is the boxes as they were (no card, no emblem, no frame); `--noframes`
+## keeps the cards and emblems. Not part of the game.
 
 const NAMES: Array[String] = ["Ruby", "Moe", "Dee", "Cal", "Ned", "Ivy", "Sal", "Pat"]
 const LONG_NAMES: Array[String] = [
@@ -31,6 +32,9 @@ const EMBLEMS: Array[StringName] = [
 	&"headliner",
 	&"pocket_money"
 ]
+const FRAMES: Array[StringName] = [
+	&"gold", &"neon", &"brass", &"chrome", &"filmstrip", &"velvet_rope", &"searchlight", &"gold"
+]
 
 
 func _ready() -> void:
@@ -51,7 +55,9 @@ func _ready() -> void:
 		)
 		state.set_player_level(i + 1, LEVELS[i], LEVELS[i])
 		if not args.has("bare"):
-			state.set_player_plate(i + 1, CARDS[i], EMBLEMS[i])
+			state.set_player_plate(
+				i + 1, CARDS[i], EMBLEMS[i], &"" if args.has("noframes") else FRAMES[i]
+			)
 	var down := args.get_int("down", 0)
 	if down > 0:
 		state.team[down]["downed"] = true

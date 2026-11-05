@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
-## The calling card behind a player's box and the emblem after the name (#1070): what the HUD's
+## The calling card behind a player's box and the emblem after the name (#1070), and the frame round
+## the box (#1071): what the HUD's
 ## state keeps of them, the box in all three sizes (your own, a teammate's, the compact one) with
 ## the order of icon, level and name untouched, the words readable on every card for every seat
 ## colour, the card cut to the box's own shape, and a box with neither exactly what it was.
@@ -91,7 +92,64 @@ func test_a_late_joiner_reads_every_plate_from_the_welcome_and_a_bot_has_none() 
 	assert_str(state.plate_of(state.team[2])["card"]).is_equal("")
 
 
+func test_the_state_keeps_the_frame_of_a_seat_with_its_card() -> void:
+	var state := HudState.new()
+	state.apply_event({"type": &"player_named", "player_id": 2, "name": "Moe"})
+	assert_str(state.plate_of(state.team[2])["frame"]).is_equal("")
+	state.apply_event({"type": &"account_seated", "player_id": 2, "level": 30, "frame": &"chrome"})
+	assert_str(state.plate_of(state.team[2])["frame"]).is_equal("chrome")
+	state.set_player_plate(2, &"cartoon", &"", &"")
+	assert_str(state.plate_of(state.team[2])["frame"]).is_equal("")
+	state.load_snapshot({"players": {1: {}, 2: {}}, "plates": {2: {"frame": &"gold"}}})
+	assert_str(state.plate_of(state.team[2])["frame"]).is_equal("gold")
+	state.team[2]["bot"] = true
+	assert_str(state.plate_of(state.team[2])["frame"]).is_equal("")
+	state.team[2]["bot"] = false
+	state.apply_event({"type": &"account_left", "player_id": 2})
+	assert_str(state.plate_of(state.team[2])["frame"]).is_equal("")
+
+
 # --- The boxes ---
+
+
+func test_a_frame_runs_round_the_box_in_all_three_sizes_and_moves_nothing() -> void:
+	for players in [3, BIG_PARTY]:
+		var hud := _hud(players)
+		var before := {}
+		for id in [LOCAL, OTHER]:
+			var box := _box(hud, id)
+			assert_bool(box._frame.visible).is_false()
+			before[id] = {"badge": box.badge_parts.duplicate(), "number": box.number_right()}
+		for id in [LOCAL, OTHER]:
+			hud.state.set_player_plate(id, &"", &"", &"neon")
+		for id in [LOCAL, OTHER]:
+			var box := _box(hud, id)
+			var frame := box._frame as FrameArt
+			assert_bool(frame.visible).is_true()
+			assert_str(frame.frame_id).is_equal("neon")
+			assert_vector(frame.position).is_equal(box._box().position)
+			assert_vector(frame.size).is_equal(box._box().size)
+			assert_int(frame.outline.size()).is_equal(6)
+			assert_int(frame.op_count()).is_greater(0)
+			# The icon, the level, the name and the points are where they were.
+			assert_dict(box.badge_parts).is_equal(before[id]["badge"])
+			assert_float(box.number_right()).is_equal(before[id]["number"])
+			# The border is thinner than the room the words keep at the box's edge.
+			assert_float(frame.depth()).is_less(HudPlayerBox.PADDING)
+
+
+func test_a_frame_comes_off_with_the_seat_and_dims_with_a_downed_player() -> void:
+	var hud := _hud(3)
+	hud.state.set_player_plate(OTHER, &"", &"", &"gold")
+	var box := _box(hud, OTHER)
+	assert_float((box._frame as FrameArt).dim).is_equal(0.0)
+	hud.state.team[OTHER]["downed"] = true
+	hud.state.set_player_plate(OTHER, &"", &"", &"gold")
+	hud.state.set_player_name(OTHER, "Moe")
+	box = _box(hud, OTHER)
+	assert_float((box._frame as FrameArt).dim).is_equal(HudPlayerBox.CARD_DOWN)
+	hud.state.set_player_plate(OTHER, &"", &"", &"")
+	assert_bool(_box(hud, OTHER)._frame.visible).is_false()
 
 
 func test_a_box_with_no_card_or_emblem_is_exactly_what_it_was() -> void:

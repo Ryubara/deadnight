@@ -117,9 +117,21 @@ func test_the_item_is_read_from_the_registries_the_wardrobe_reads() -> void:
 
 
 func test_a_row_the_wardrobe_does_not_hold_keeps_the_letter_chip_and_the_spelled_name() -> void:
-	var card := _card(&"plate_frame", &"chrome")
+	var card := _card(&"plate_frame", &"no_such_frame")
 	assert_bool(card.has_thumbnail()).is_false()
-	assert_array(card.lines()).is_equal(["NEW PLATE FRAME", "Chrome"])
+	assert_array(card.lines()).is_equal(["NEW FRAME", "No such frame"])
+
+
+func test_a_frame_shows_its_own_border_on_a_plate_and_the_plates_name() -> void:
+	var item := LadderItem.of(&"plate_frame", &"chrome")
+	assert_int(item["kind"]).is_equal(LadderItem.Kind.FRAME)
+	assert_str(item["name"]).is_equal("Chrome plate frame")
+	assert_bool(PlateCatalog.shipped().has(PlateCatalog.FRAME, item["plate"])).is_true()
+	var card := _card(&"plate_frame", &"chrome")
+	assert_bool(card.has_thumbnail()).is_true()
+	assert_array(card.lines()).is_equal(["NEW FRAME", "Chrome plate frame"])
+	# A frame is a border round a plate, so its chip is as wide as a card's.
+	assert_float(card._chip.size.x).is_equal(PopupCard.CARD_CHIP_WIDTH)
 
 
 func test_a_card_and_an_emblem_show_their_own_art_and_the_plates_name() -> void:

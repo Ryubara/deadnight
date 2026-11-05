@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
-## The feats (#1070): lasting goals that give a calling card or an emblem. The shipped ones name
-## only stats the night counts, a feat over several stats is as far as the lowest of them, and a
-## feat finishes once, says nothing on the way and survives a save.
+## The feats (#1070, #1071): lasting goals that give a calling card, an emblem or a frame. The
+## shipped ones name only stats the night counts, a feat over several stats is as far as the lowest
+## of them, and a feat finishes once, says nothing on the way and survives a save.
 
 const DAY := 20401
 
@@ -39,7 +39,7 @@ func _count(stat: StringName, value: int, delta: int = 1) -> Array[Dictionary]:
 
 func test_the_shipped_feats_are_the_launch_set_and_sound() -> void:
 	var feats := _catalog.of_family(ChallengeDef.Family.FEAT)
-	assert_int(feats.size()).is_equal(21)
+	assert_int(feats.size()).is_equal(24)
 	assert_array(_catalog.problems(_weapon_ids(), _type_ids())).is_empty()
 	for def in feats:
 		(

@@ -434,9 +434,9 @@ level, name, kept inside the screen like any other word, its rectangle in `HudMa
 (`HudLevelCell`) and the lobby's seat list lay out the same badge; the lobby reads them from the backend's member list
 (`level`, `icon` on each member, from the profile as the ticket reads it). A row with no level is the name alone.
 
-The calling card and emblem beside a name (#1070) ride the same way, as keys of what was sent: `card` and `emblem` on
-`account_seated`, `plates` (player id to `{card, emblem}`) in the WELCOME, from the ticket's `card`, `emblem` and `done`
-claims held to what the seat owns (`PlateTable`). Protocol still 15; [how](calling-cards.md#how-a-card-reaches-every-client).
+The calling card, emblem and frame beside a name (#1070, #1071) ride the same way, as keys of what was sent: `card`,
+`emblem` and `frame` on `account_seated`, `plates` (player id to `{card, emblem, frame}`) in the WELCOME, from the
+ticket's `card`, `emblem`, `frame` and `done` claims held to what the seat owns (`PlateTable`). Protocol still 15; [how](calling-cards.md#how-a-card-reaches-every-client).
 
 ## Revives
 

@@ -25,6 +25,12 @@ func test_the_chosen_card_and_emblem_and_the_finished_challenges_are_read_when_t
 	)
 
 
+func test_the_chosen_frame_is_read_with_them() -> void:
+	var account := TicketVerifier.account_of({"xp": 10, "frame": "filmstrip", "done": []})
+	assert_str(account["frame"]).is_equal("filmstrip")
+	assert_bool(TicketVerifier.account_of({"xp": 10, "frame": 3}).has("frame")).is_false()
+
+
 func test_a_card_or_a_list_that_is_not_text_is_left_out() -> void:
 	var account := TicketVerifier.account_of(
 		{"xp": 5, "card": 7, "emblem": ["a"], "done": ["ok", 3, null, {"a": 1}]}

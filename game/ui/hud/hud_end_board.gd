@@ -176,6 +176,7 @@ func refresh(state: HudState) -> void:
 		var plate := state.plate_of(state.team[id])
 		_members[id]["card"] = plate["card"]
 		_members[id]["emblem"] = plate["emblem"]
+		_members[id]["frame"] = plate["frame"]
 	_round = state.round_number
 	_clock = state.night_clock
 	title_text = TITLE
@@ -397,6 +398,7 @@ func _player_row(id: int, cells: Array[String], height: float) -> Control:
 	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color(_tokens.accent, LOCAL_WASH) if id == _local_id else Color.TRANSPARENT
+	var clear := PlateRow.frame_clear(StringName(member.get("frame", &"")), height)
 	wash.add_theme_stylebox_override(&"panel", box)
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -417,6 +419,8 @@ func _player_row(id: int, cells: Array[String], height: float) -> Control:
 		var shown := Vector2i(int(member.get("level", 0)), int(member.get("icon", 0)))
 		var emblem := StringName(member.get("emblem", &""))
 		var room := _width(i) - (HudLevelCell.taken(shown, emblem, height) if i == 0 else 0.0)
+		if i == cells.size() - 1:
+			room -= clear
 		var label := HudStyle.clip(HudStyle.label("", HudStyle.MEDIUM, _tokens.ink, i > 0))
 		label.custom_minimum_size = Vector2(room, height)
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -428,4 +432,6 @@ func _player_row(id: int, cells: Array[String], height: float) -> Control:
 			row.add_child(HudLevelCell.wrap(label, shown, _tokens.ink, height, emblem))
 		else:
 			row.add_child(label)
+	PlateRow.clear_the_frame(row, clear)
+	PlateRow.frame_over(wash, StringName(member.get("frame", &"")))
 	return wash

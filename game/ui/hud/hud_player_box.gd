@@ -16,8 +16,10 @@ extends Control
 ## (`HudPointsTab`), exactly as they are with no card; the name and the level are drawn over the
 ## card with an outline in the seat's colour (`HALO`), so each glyph sits on the colour its ink was
 ## chosen for and the words keep their contrast on any card. An emblem follows the name, like the
-## badge before it takes room from the points when those are long. A bot or a seat with no card or
-## emblem draws neither tab nor card, and the box is what it was.
+## badge before it takes room from the points when those are long. A frame (#1071) is a border run
+## just inside the box's outline, over the card and the tab and under the words (`FrameArt`): it
+## changes no layout. A bot or a seat with no card, emblem or frame draws none of them, and the box
+## is what it was.
 ##
 ## The two texts share one baseline (the bottom of the numerals' capitals), so a small name and a
 ## big number read as one line; the numbers of every box end on the same vertical line.
@@ -69,9 +71,10 @@ var shown_level := Vector2i.ZERO
 ## Where the icon, the level and the name sit in the box on the last layout, box coordinates, for
 ## tests: {"icon": Rect2, "level": Rect2, "name": Rect2}; empty without a level.
 var badge_parts: Dictionary = {}
-## The calling card and the emblem on show (`&""` for none).
+## The calling card, the emblem and the frame on show (`&""` for none).
 var shown_card: StringName = &""
 var shown_emblem: StringName = &""
+var shown_frame: StringName = &""
 
 var _tokens := UITokens.active()
 var _shown_seat := -1
@@ -81,6 +84,7 @@ var _number := HudStyle.clip(HudStyle.label("0", HudStyle.MEDIUM, Color.BLACK, t
 var _card := CardArt.new()
 var _tab := HudPointsTab.new()
 var _emblem := EmblemArt.new()
+var _frame := FrameArt.new()
 var _icon := LevelTag.icon_rect(1)
 var _level := HudStyle.clip(HudStyle.label("", HudStyle.SMALL, Color.BLACK, false, 1.0))
 
@@ -93,7 +97,8 @@ func _init() -> void:
 	_emblem.visible = false
 	_tab.visible = false
 	_card.motif_at = CARD_PICTURE_AT
-	for node in [_card, _tab, portrait, _icon, _level, _name, _emblem, _number]:
+	_frame.visible = false
+	for node in [_card, _tab, _frame, portrait, _icon, _level, _name, _emblem, _number]:
 		add_child(node)
 	for label in [_name, _level, _number]:
 		# Dark ink on the seat's colour needs no outline or shadow.
@@ -157,7 +162,7 @@ static func height_for(local: bool, small := false) -> float:
 
 ## Fills the box from one entry of the party (`HudState.team`).
 ## `level` is `Vector2i(level, icon)` as the viewer is to see it (`HudState.level_of`); `plate` is
-## the calling card and emblem (`HudState.plate_of`).
+## the calling card, emblem and frame (`HudState.plate_of`).
 func show_player(
 	id: int, member: Dictionary, local: bool, small := false, level := Vector2i.ZERO, plate := {}
 ) -> void:
@@ -167,6 +172,7 @@ func show_player(
 	shown_level = level if level.x > 0 else Vector2i.ZERO
 	shown_card = StringName(plate.get("card", &""))
 	shown_emblem = StringName(plate.get("emblem", &""))
+	shown_frame = StringName(plate.get("frame", &""))
 	downed = bool(member["downed"])
 	var seat := int(member.get("seat", 0))
 	colour = LookCatalog.armband_colour(seat)
@@ -267,14 +273,23 @@ func _show_plate() -> void:
 	if _emblem.emblem_id != shown_emblem:
 		_emblem.emblem_id = shown_emblem
 	_emblem.visible = shown_emblem != &""
+	if _frame.frame_id != shown_frame:
+		_frame.frame_id = shown_frame
+	if not is_equal_approx(_frame.dim, darkened):
+		_frame.dim = darkened
+	_frame.visible = shown_frame != &""
 
 
 func _layout() -> void:
 	var box := _box()
 	_card.position = box.position
+	_frame.position = box.position
 	if _card.size != box.size:
 		_card.size = box.size
-		_card.clip = HudStyle.ticket_points(Rect2(Vector2.ZERO, box.size), HudStyle.NOTCH * 0.6)
+		_frame.size = box.size
+		var outline := HudStyle.ticket_points(Rect2(Vector2.ZERO, box.size), HudStyle.NOTCH * 0.6)
+		_card.clip = outline
+		_frame.outline = outline
 	portrait.position = Vector2.ONE * FRAME
 	portrait.size = Vector2.ONE * (box.size.y - 2.0 * FRAME)
 	var number_font := _number.get_theme_font(&"font")
