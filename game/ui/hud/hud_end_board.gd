@@ -121,6 +121,12 @@ func _init() -> void:
 	resized.connect(_rebuild_later)
 
 
+func _notification(what: int) -> void:
+	# The row that holds the countdown beside Leave is out of the tree while they are stacked.
+	if what == NOTIFICATION_PREDELETE and _beside_row != null and _beside_row.get_parent() == null:
+		_beside_row.free()
+
+
 func _draw() -> void:
 	var dark := Color(0.0, 0.0, 0.0, SCRIM_ALPHA)
 	var clear := Color(0.0, 0.0, 0.0, 0.0)
@@ -223,8 +229,12 @@ func report_room() -> float:
 	# A gap of the column lies between every two of its parts (the spacer is one): seven, or five
 	# with the countdown beside Leave.
 	var taken := float(HudStyle.SM)
-	var way_out: Array[Control] = [_beside_row] if _beside else [_caption, _number, leave_button]
-	for part: Control in [_title, _round_label] + way_out:
+	var parts: Array[Control] = [_title, _round_label]
+	if _beside:
+		parts.append(_beside_row)
+	else:
+		parts.append_array([_caption, _number, leave_button])
+	for part: Control in parts:
 		taken += part.get_combined_minimum_size().y + float(HudStyle.SM)
 	var margins := float(HudStyle.margin()) * 2.0 + _insets.y + _insets.w
 	return size.y - margins - taken
