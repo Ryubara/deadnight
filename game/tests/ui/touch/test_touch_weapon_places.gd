@@ -177,8 +177,10 @@ func test_the_boxes_world_markers_keep_clear_of_hold_every_place() -> void:
 			. override_failure_message(str(zone[&"action"]))
 			. is_true()
 		)
-	# The buttons that are drawn (Interact only with a prompt) and the three places.
+	# The buttons that are drawn (Interact only with a prompt) and every place of the HUD: the three
+	# of the strip, and the players' column when there is a player (#1287).
 	var hidden := 1 if _fixture.controls.interact_verb() == "" else 0
+	assert_int(_fixture.hud.touch_zones().size()).is_equal(3)
 	assert_int(boxes.size()).is_equal(_fixture.controls.circles().size() - hidden + 3)
 
 

@@ -247,6 +247,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"menu_button_sizes": "",
 		"touch_hits": "",
 		"touch_zones": "",
+		"scoreboard": "",
+		"touch_buttons": "",
 		"touch_held": "",
 		"grenade_cooking": false,
 		"grenade_count": 0,
@@ -427,6 +429,8 @@ static func snapshot(top: Control) -> Dictionary:
 	data["menu_button_sizes"] = _button_sizes(night_screen)
 	data["touch_hits"] = _touch_hits(night_screen)
 	data["touch_zones"] = _touch_zones(night_screen)
+	data["scoreboard"] = _scoreboard(night_screen)
+	data["touch_buttons"] = _touch_buttons(night_screen)
 	var night := night_screen.night
 	if night != null and night.server != null and night.server.grenades != null:
 		data["grenade_cooking"] = night.server.grenades.is_cooking(night.state.player_id)
@@ -539,6 +543,37 @@ static func _touch_zones(screen: NightScreen) -> String:
 		var share := rect.size / size
 		found.append("%s:%.5f,%.5f,%.5f,%.5f" % [zone[&"action"], at.x, at.y, share.x, share.y])
 	return "|".join(found)
+
+
+## The touch layer's drawn buttons as `id:x,y,r`: the centre as fractions of the window's width and
+## height and the radius as a fraction of its height, so a browser test checks what is drawn under
+## what, not the larger areas a finger presses (#1287).
+static func _touch_buttons(screen: NightScreen) -> String:
+	if not screen.is_inside_tree() or not screen.touch_active():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var circles := screen.touch_circles()
+	var found: Array[String] = []
+	for id: StringName in circles:
+		var circle: Dictionary = circles[id]
+		var at: Vector2 = circle[&"centre"] / size
+		found.append("%s:%.5f,%.5f,%.5f" % [id, at.x, at.y, float(circle[&"radius"]) / size.y])
+	return "|".join(found)
+
+
+## The scoreboard's ticket while it is up, as `x,y,w,h`: its box as fractions of the window's width
+## and height, `""` while it is down (#1287).
+static func _scoreboard(screen: NightScreen) -> String:
+	if not screen.is_inside_tree() or screen.night == null or screen.night.hud == null:
+		return ""
+	var board := screen.night.hud.scoreboard
+	if not board.is_visible_in_tree():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var rect := board.card_rect()
+	var at := rect.position / size
+	var share := rect.size / size
+	return "%.5f,%.5f,%.5f,%.5f" % [at.x, at.y, share.x, share.y]
 
 
 ## The screen's shown buttons as `text:x,y` (the centre, as fractions of the window): the

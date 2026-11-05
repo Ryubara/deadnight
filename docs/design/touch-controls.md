@@ -30,7 +30,7 @@ Each finger has one job until it lifts, tracked by its touch index, so move, loo
 | Ping (a pin) | small, top edge, right of Pause (538 right of the safe edge, 80 down) | `ping` (#642): a tap marks what the crosshair is on for the team, as Z, the middle mouse button and the pad's d-pad right do; the server's one mark a second per player holds a thumb that taps again |
 | Interact | one thumb-length left of Fire, only with a HUD prompt | `interact`; a tap mark over its word, which says what it does (OPEN, BUY, HOLD for a broken fence, which keeps nailing boards while held, FUEL, SWITCH, TAKE, REVIVE) ([hold at a broken fence](rounds.md#the-fences-boards)) |
 | Pause | top, beside the round card (two bars) | `pause` |
-| Scoreboard | under Pause (rows of a table) | `scoreboard` while a finger is on it |
+| Scoreboard | none: the HUD's players' column is the place, not a circle (#1287) | `scoreboard` while a finger is held on the column; the ticket shows and the lift hides it ([the scoreboard](hud.md#the-scoreboard)) |
 
 **Every control shows an icon and no words** (`TouchIcons`, drawn in code, no file). The one word left is the interact
 button's verb: it is a different thing nine ways (OPEN, BUY, AMMO, PLAY, TAKE, FUEL, HOLD, SWITCH, REVIVE) at a different
@@ -75,7 +75,9 @@ tested against. The stick's resting ring is 60 units higher so it clears the pla
   LOOK" in the look area and "TAP TO USE" ("HOLD TO REPAIR" at a fence) beside the Interact button while it shows. Each
   goes the moment its control is used: a finger on the stick, the first look drag (also one that started on Fire), a
   press of Interact. The Interact hint waits for the first prompt, and a prompt that goes unused brings it back with the
-  next one. What was used is a bit in the setting `controls/touch_hints_seen`, so a player sees each hint once ever;
+  next one. "HOLD FOR SCORES" stands beside the players' column (the side of it that is not the screen's edge, level with
+  its middle, above the perk badges when they stand there) and goes with the first hold on it (#1287). What was used
+  is a bit in the setting `controls/touch_hints_seen`, so a player sees each hint once ever;
   restoring the defaults in Settings shows them again. A test checks the labels against the safe area, the buttons and
   the HUD cards on every phone canvas.
 - **The look hint stands beside the popup lane**, not over it ([popup lane](../research/popup-lane.md)): the cards

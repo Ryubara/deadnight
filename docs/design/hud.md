@@ -128,8 +128,8 @@ event (`player_id`, `seat`, `look`) replaces it. Until a client sends looks, the
 
 ## The scoreboard
 
-Hold **Tab** (the pad's **Back / Select** button; on a phone a small button under Pause) and a ticket comes up over the
-middle of the night; let go and it leaves. One row per player in the night, in seat order on every screen:
+Hold **Tab** (the pad's **Back / Select** button; on a phone a finger held on the players' column) and a ticket comes up
+over the middle of the night; let go and it leaves. One row per player in the night, in seat order on every screen:
 `[armband][name][kills][downs][revives][points][ping]`, with the round and the night's clock above (`TIME 12:34`, hours
 after the first). A downed player's name goes red and says `(DOWN)`, one who bled out `(DEAD)`; your own row has a faint
 wash. **Ping** is a column only when some player has one (a night over a link), and each ping reads good, fair or bad in
@@ -138,9 +138,19 @@ when a round ends is nobody's revive (see [Scoreboard](../research/scoreboard.md
 never counted on the client.
 
 It is `HudScoreboard`, a part like the others, drawn last and not part of any column; it takes no space while hidden. It
-is held by the `scoreboard` input action, which the key, the pad and the touch button all press, so the HUD polls the
+is held by the `scoreboard` input action, which the key, the pad and the held finger all press, so the HUD polls the
 action instead of listening for one kind of event. A pause menu or the result switches it off
 (`Hud.scoreboard_enabled`).
+
+On a phone the players' column is the place for the finger (#1287): `Hud.scoreboard_zone` is the points part's box grown
+upward to a fingertip (44 CSS px, `MenuScale.tap_units`) when it is smaller, one of `Hud.touch_zones` after the weapon
+places, so `TouchControls` presses the `scoreboard` action for as long as a finger that began there is down; that finger
+never looks, fires or starts the stick. The ticket is centred over the night, which at the smaller interface sizes is
+under the right thumb's buttons and, with a full room, as tall as the page. While the touch layout is up `BoardFit`
+moves it along the screen and then shrinks it, a step of 5 percent at a time and no further than half, until it is
+24 units clear of every button, weapon place and the column; `Hud.set_touch_boxes` gives it the boxes, and the holder
+the ticket stands in is moved and scaled (a container puts its child's scale back to one). A desktop's ticket is
+where it was, whole.
 
 ## The bot command wheel
 

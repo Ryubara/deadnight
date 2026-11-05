@@ -539,6 +539,8 @@ func _hint_problems(canvas: Vector2, mirrored: bool, boss: bool) -> Array[String
 			)
 		)
 	var touch := TouchFixture.make(self, canvas, _hud.state)
+	# The players' column is the last hint's place (#1287), as the night screen wires it.
+	touch.controls.zones = _hud.touch_zones
 	if mirrored:
 		touch.left_handed()
 	touch.controls.insets_override = insets

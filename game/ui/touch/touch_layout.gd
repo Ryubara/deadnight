@@ -26,7 +26,6 @@ const RELOAD := &"reload"
 const CROUCH := &"crouch"
 const INTERACT := &"interact"
 const PAUSE := &"pause"
-const SCOREBOARD := &"scoreboard"
 const SHOULDER := &"swap_shoulder"
 ## The quick melee (#411, #588): a blow with whatever is in hand; the button presses its action. It
 ## sits on the far right edge above the ammo card, close enough to the corner to be on screen on a
@@ -77,10 +76,6 @@ const PAUSE_RADIUS := 36.0
 ## middle of the screen.
 const PING_OFFSET := Vector2(538.0, 80.0)
 const PING_RADIUS := 36.0
-## The scoreboard button sits under Pause, held to show the board (it presses the `scoreboard`
-## action while a finger is on it).
-const SCOREBOARD_OFFSET := Vector2(442.0, 178.0)
-const SCOREBOARD_RADIUS := 34.0
 ## The floating stick: its resting place (a faint ring, above the HUD's players column and the
 ## weapon strip under it), its radius and where it may start.
 const STICK_REST := Vector2(330.0, 390.0)
@@ -118,14 +113,6 @@ static func buttons(
 	found[PING] = _circle(
 		Vector2(ping_x, safe.position.y + PING_OFFSET.y), PING_RADIUS * touch_scale, finger
 	)
-	var board_x := (
-		safe.end.x - SCOREBOARD_OFFSET.x if mirrored else safe.position.x + SCOREBOARD_OFFSET.x
-	)
-	found[SCOREBOARD] = _circle(
-		Vector2(board_x, safe.position.y + SCOREBOARD_OFFSET.y),
-		SCOREBOARD_RADIUS * touch_scale,
-		finger
-	)
 	return found
 
 
@@ -151,7 +138,7 @@ static func stick_rest(safe: Rect2, touch_scale: float, mirrored := false) -> Ve
 ## The button under `point`, or "" (`skip` lists hidden ones). Who wins a touch where hit areas
 ## overlap is decided in two steps (#1217):
 ## 1. The area a button had before `finger` (`was`): the first in `BUTTONS` order wins (Pause, Ping,
-##    Scoreboard, then the table's order, the contextual Interact first), exactly as it always did.
+##    then the table's order, the contextual Interact first), exactly as it always did.
 ##    A touch that pressed a button before presses the same button now.
 ## 2. The margin `finger` added, which no button owned: the nearest centre wins (a tie goes to the
 ##    first in order). Growing a button never takes a touch from its neighbour.
@@ -188,7 +175,7 @@ static func looks_when_dragged(id: StringName) -> bool:
 
 
 static func _order() -> Array:
-	var order: Array = [PAUSE, PING, SCOREBOARD]
+	var order: Array = [PAUSE, PING]
 	for row in BUTTONS:
 		order.append(row[0])
 	return order

@@ -96,7 +96,7 @@ static func ping_grade(ping_ms: int) -> int:
 
 ## Where the card sits, for the layout test.
 func card_rect() -> Rect2:
-	return get_global_rect()
+	return get_global_transform() * Rect2(Vector2.ZERO, size)
 
 
 func set_shown(shown: bool) -> void:

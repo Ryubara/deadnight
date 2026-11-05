@@ -11,7 +11,7 @@ const CANVASES: Array[Vector2] = [
 	Vector2(2340.0, 1080.0 * 0.8),
 ]
 const KEPT_PARTS: Array[StringName] = [
-	&"ammo", &"prompt", &"health", &"perks", &"points", &"round_part"
+	&"ammo", &"prompt", &"health", &"perks", &"points", &"round_part", &"slots"
 ]
 const ON_THE_STICK := Vector2(300.0, 760.0)
 const ON_THE_LOOK_AREA := Vector2(1700.0, 330.0)
@@ -53,7 +53,10 @@ func test_a_new_player_sees_move_and_look_and_interact_waits_for_a_prompt() -> v
 	assert_array(_hints().showing()).is_equal([TouchHints.MOVE, TouchHints.LOOK])
 	state.set_prompt(&"buy_door", "Concession door", 350)
 	await _frames()
-	assert_array(_hints().showing()).is_equal(TouchHints.ORDER)
+	# The column's hint waits for a HUD with a column (`test_touch_scoreboard`).
+	assert_array(_hints().showing()).is_equal(
+		[TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT]
+	)
 	assert_str(_hints().text_for(TouchHints.INTERACT)).is_equal("TAP TO USE")
 	state.clear_prompt()
 	await _frames()
@@ -258,6 +261,8 @@ func test_the_labels_keep_clear_of_the_buttons_and_the_hud_for_either_hand() -> 
 			add_child(host)
 			var hud_fixture := HudFixture.make(host, 4)
 			hud_fixture.hud.mirrored = mirrored
+			# The touch layout: the strip under the players' column, which the last hint points at.
+			hud_fixture.hud.touch_layout = true
 			hud_fixture.into_round_one()
 			var state := hud_fixture.hud.state
 			state.set_ammo(30, 150, "Shotgun")
@@ -267,6 +272,7 @@ func test_the_labels_keep_clear_of_the_buttons_and_the_hud_for_either_hand() -> 
 			var fixture := TouchFixture.make(self, canvas, state)
 			if mirrored:
 				fixture.left_handed()
+			fixture.controls.zones = hud_fixture.hud.touch_zones
 			fixture.controls.insets_override = insets
 			fixture.controls.refresh()
 			# The HUD keeps inside the notch as it does in the night screen.

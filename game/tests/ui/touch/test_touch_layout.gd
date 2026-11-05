@@ -139,7 +139,7 @@ func test_every_button_but_the_wheel_is_a_right_button_that_looks_while_it_drags
 			. override_failure_message("%s" % id)
 			. is_equal(id != TouchLayout.BOT_WHEEL)
 		)
-	for id in [TouchLayout.PAUSE, TouchLayout.PING, TouchLayout.SCOREBOARD, &"nothing"]:
+	for id in [TouchLayout.PAUSE, TouchLayout.PING, &"scoreboard", &"nothing"]:
 		assert_bool(TouchLayout.looks_when_dragged(id)).is_false()
 
 

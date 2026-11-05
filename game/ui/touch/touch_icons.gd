@@ -10,8 +10,7 @@ extends RefCounted
 ## It is a plain, heavy shape in the button's ink, read at a glance with a thumb over it:
 ## Fire a bullet, Aim a scope, Jump two chevrons up, Crouch a chevron down onto the floor, Reload a
 ## circle of arrow, Swap two arrows across, the Grenade a grenade, Side a person with an arrow each
-## way, Melee a blade, Bots a wheel of orders, Ping a pin, Pause two bars, Scoreboard the rows of a
-## table.
+## way, Melee a blade, Bots a wheel of orders, Ping a pin, Pause two bars.
 ## Interact is the one that keeps a word (`TouchControls`); it has a tap mark above it.
 
 ## How much of the button's radius the icon's box takes: a little over half, so the rim and the
@@ -34,7 +33,6 @@ const IDS: Array[StringName] = [
 	TouchLayout.BOT_WHEEL,
 	TouchLayout.PING,
 	TouchLayout.PAUSE,
-	TouchLayout.SCOREBOARD,
 	TouchLayout.INTERACT,
 ]
 
@@ -71,8 +69,6 @@ static func add(
 			_ping(box)
 		TouchLayout.PAUSE:
 			_pause(box)
-		TouchLayout.SCOREBOARD:
-			_scoreboard(box)
 		TouchLayout.INTERACT:
 			_tap(box)
 
@@ -177,14 +173,6 @@ static func _ping(box: _Box) -> void:
 static func _pause(box: _Box) -> void:
 	box.rect(Vector2(-0.55, -0.7), Vector2(-0.15, 0.7))
 	box.rect(Vector2(0.15, -0.7), Vector2(0.55, 0.7))
-
-
-static func _scoreboard(box: _Box) -> void:
-	# Three rows of a table: a dot and a line each.
-	for row in 3:
-		var y := (float(row) - 1.0) * 0.6
-		box.dot(Vector2(-0.7, y), 0.14)
-		box.rect(Vector2(-0.4, y - 0.1), Vector2(0.8, y + 0.1))
 
 
 static func _tap(box: _Box) -> void:

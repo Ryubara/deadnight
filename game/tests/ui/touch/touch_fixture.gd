@@ -62,7 +62,9 @@ func _add_hud() -> void:
 	hud = (load(Hud.SCENE) as PackedScene).instantiate() as Hud
 	host.add_child(hud)
 	controls.state = hud.state
-	controls.zones = hud.slots.touch_zones
+	controls.zones = hud.touch_zones
+	controls.layout_changed.connect(func() -> void: hud.set_touch_boxes(controls.button_boxes()))
+	hud.slots_moved.connect(func() -> void: hud.set_touch_boxes(controls.button_boxes()))
 	controls.finger_units = func() -> float: return MenuScale.tap_units(host.get_window(), true)
 	controls.active_changed.connect(func(active: bool) -> void: hud.touch_layout = active)
 	controls.mirrored_changed.connect(func(on: bool) -> void: hud.mirrored = on)

@@ -17,11 +17,7 @@ const HANDS: Array[bool] = [false, true]
 const SLACK := 0.5
 ## The buttons that grow at the default touch size and the smallest interface size.
 const SMALL: Array[StringName] = [
-	TouchLayout.PAUSE,
-	TouchLayout.PING,
-	TouchLayout.SCOREBOARD,
-	TouchLayout.BOT_WHEEL,
-	TouchLayout.MELEE
+	TouchLayout.PAUSE, TouchLayout.PING, TouchLayout.BOT_WHEEL, TouchLayout.MELEE
 ]
 ## Where a point's step is checked on the grid sweep, in canvas units.
 const GRID_STEP := 7.0
@@ -192,35 +188,18 @@ func test_a_touch_that_pressed_a_button_presses_the_same_button_and_the_rest_is_
 	assert_int(gained).is_greater(200)
 
 
-## Ping and Scoreboard: no old overlap, a new one in the margin. The nearest centre wins there.
-func test_in_the_new_margin_between_ping_and_scoreboard_the_nearest_centre_wins() -> void:
-	_controls(0.8)
-	var ping := _centre(TouchLayout.PING)
-	var board := _centre(TouchLayout.SCOREBOARD)
-	var middle := ping.lerp(board, 0.5)
-	# Both hit areas reach the middle, neither old one did.
-	assert_float(middle.distance_to(ping)).is_less(_hit(TouchLayout.PING))
-	assert_float(middle.distance_to(ping)).is_greater(_was(TouchLayout.PING))
-	assert_object(await _press(ping.lerp(board, 0.45))).is_equal(TouchLayout.PING)
-	assert_object(await _press(ping.lerp(board, 0.55))).is_equal(TouchLayout.SCOREBOARD)
-
-
-## Where old areas overlapped, the first in the order wins, as before: Pause over Ping over
-## Scoreboard, and Melee over the Bot wheel, whatever the nearest centre.
+## Where old areas overlapped, the first in the order wins, as before: Pause over Ping, and Melee
+## over the Bot wheel, whatever the nearest centre.
 func test_where_old_areas_overlap_the_first_in_order_still_wins() -> void:
 	_controls(0.8)
 	var pause := _centre(TouchLayout.PAUSE)
 	var ping := _centre(TouchLayout.PING)
-	var board := _centre(TouchLayout.SCOREBOARD)
 	# Inside Pause's old area and nearer to Ping's centre: Pause.
 	var toward_ping := pause + (ping - pause).normalized() * (_was(TouchLayout.PAUSE) - 4.0)
 	assert_float(toward_ping.distance_to(ping)).is_less(toward_ping.distance_to(pause))
 	assert_object(await _press(toward_ping)).is_equal(TouchLayout.PAUSE)
-	# Pause and Scoreboard: the middle of the two is Pause's.
-	assert_object(await _press(pause.lerp(board, 0.5))).is_equal(TouchLayout.PAUSE)
 	# The centres themselves are their own.
 	assert_object(await _press(ping)).is_equal(TouchLayout.PING)
-	assert_object(await _press(board)).is_equal(TouchLayout.SCOREBOARD)
 	var melee := _centre(TouchLayout.MELEE)
 	var wheel := _centre(TouchLayout.BOT_WHEEL)
 	var toward_wheel := melee + (wheel - melee).normalized() * (_was(TouchLayout.MELEE) - 4.0)
