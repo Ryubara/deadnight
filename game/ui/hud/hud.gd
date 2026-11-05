@@ -96,6 +96,8 @@ var touch_layout := false:
 	set(value):
 		if value != touch_layout:
 			touch_layout = value
+			prompt.touch_layout = value
+			health.grenades_shown = not value
 			if is_node_ready():
 				_home_slots()
 				_fit_markers()
