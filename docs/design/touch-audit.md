@@ -125,12 +125,12 @@ while a dead is in reach; the issue that builds it repeats this table with it up
 
 ### Markers with the bots' tag (#1286)
 
-The same page and the same measure, on the branch of #1286: main after #1284's strip (a place a fingertip high and the
-right thumb's ring) and #1291, with one body of the eight a bot, so the tag stands at the strip's end. "No bot" is the
-same HUD with no tag. The tag is in the strip's row, under the stick's ring, so it takes nothing from the cards: the
-numbers do not move, and `CROWDED_HOLDS` (6) and `SMALLEST_HOLDS` (4) stand. With the Interact button up the numbers
-are the same ones in this measure. The 8 of the table above is 6 here: `CROWDED_HOLDS` names the cause, the strip a
-fingertip high (#1280) with the right thumb's ring (#1277).
+The same page and the same measure, on the branch of #1286: main after #1284's strip (a place a fingertip high and
+the right thumb's ring), #1291 and #1293, with one body of the eight a bot, so the tag stands at the strip's end.
+"No bot" is the same HUD with no tag. The tag is in the strip's row, under the stick's ring, so it takes nothing
+from the cards: the numbers do not move, and `CROWDED_HOLDS` (6) and `SMALLEST_HOLDS` (4) stand. With the Interact
+button up the numbers are the same ones in this measure. The 8 of the table above is 6 here: `CROWDED_HOLDS` names
+the cause, the strip a fingertip high (#1280) with the right thumb's ring (#1277).
 
 | Interface size | Diamonds | No bot | With the tag |
 | --- | --- | --- | --- |
@@ -140,9 +140,10 @@ fingertip high (#1280) with the right thumb's ring (#1277).
 | 1.25 | 3 | 3 | 3 |
 | 1.25 | 1 | 5 | 5 |
 
-The 844 x 390 page holds 10+ at every size and with or without the tag, but for the one row Ping's move under Pause
-took to 8 (below, #1289), which the tag does not change. A tag in the column's cards would have taken a fingertip's
-height from the column, which is why it is in the strip's row.
+The 844 x 390 page holds 10+ at every size, with or without the tag. That sweep was run again after #1289 (Ping under
+Pause) landed and still gives 10+ for the 844 row where the #1289 table below has an 8 (1.25, 3 diamonds); the cause of
+the difference was not found (it is that table's measure), and the tag changes neither. A tag in the column's cards
+would have taken a fingertip's height from the column, which is why it is in the strip's row.
 
 ### Markers with Ping under Pause (#1289)
 
