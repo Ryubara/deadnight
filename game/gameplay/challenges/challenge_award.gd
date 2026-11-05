@@ -44,8 +44,6 @@ const HEARD: Dictionary[StringName, bool] = {
 	&"purchase_made": true,
 	&"player_revived": true,
 	&"player_downed": true,
-	&"bot_replaced": true,
-	&"bot_seated": true,
 	&"settings_changed": true,
 	&"blast_resolved": true,
 	&"circuit_changed": true,

@@ -19,8 +19,6 @@ extends RefCounted
 const LISTENS: Dictionary[StringName, bool] = {
 	&"frame": true,
 	&"player_added": true,
-	&"bot_replaced": true,
-	&"bot_seated": true,
 	&"settings_changed": true,
 	&"shot_fired": true,
 	&"zombie_removed": true,
@@ -156,10 +154,6 @@ func observe(event: Dictionary, tally: NightTally) -> void:
 			_on_frame(event)
 		&"player_added":
 			_bots[int(event["player_id"])] = event.get("bot", false)
-		&"bot_replaced":
-			_bots[int(event["player_id"])] = false
-		&"bot_seated":
-			_bots[int(event["player_id"])] = true
 		&"settings_changed":
 			var settings: Dictionary = event.get("settings", {})
 			_set_map(String(settings.get("map", "")))

@@ -540,7 +540,7 @@ func test_the_snapshot_and_a_configure_action_carry_the_bot_count() -> void:
 	assert_int(log.of(&"settings_changed").size()).is_equal(1)
 
 
-func test_a_bot_seat_is_told_and_a_person_takes_it_as_it_stands() -> void:
+func test_a_bot_seat_is_told_and_kept_in_the_snapshot() -> void:
 	var rules := RulesFixture.make_rules(0, 5)
 	var log := RulesFixture.record(rules)
 	rules.apply(RulesAction.add_player(1))
@@ -549,18 +549,10 @@ func test_a_bot_seat_is_told_and_a_person_takes_it_as_it_stands() -> void:
 	assert_bool(log.of(&"player_added")[1]["bot"]).is_true()
 	assert_bool(rules.players[2].bot).is_true()
 	assert_bool(rules.to_dict()["players"][2]["bot"]).is_true()
+	# The flag is the seat's for the night: points and the like change nothing about it.
 	rules.apply(RulesAction.grant_points(2, 500))
-	var points := rules.players[2].points
-	rules.apply(RulesAction.seat_person(2))
-	assert_bool(rules.players[2].bot).is_false()
-	assert_int(rules.players[2].points).is_equal(points)
-	assert_int(log.of(&"bot_replaced").size()).is_equal(1)
-	# A seat that is no bot's, or none, cannot be taken again.
-	rules.apply(RulesAction.seat_person(2))
-	rules.apply(RulesAction.seat_person(1))
-	rules.apply(RulesAction.seat_person(9))
-	assert_int(log.of(&"bot_replaced").size()).is_equal(1)
-	assert_int(log.of(&"action_rejected").size()).is_equal(3)
+	assert_bool(rules.players[2].bot).is_true()
+	assert_bool(rules.players[1].bot).is_false()
 
 
 func test_the_bot_skill_is_rookie_regular_or_veteran_and_the_regular_is_the_usual() -> void:
@@ -615,30 +607,6 @@ func test_the_skill_never_changes_the_night_only_the_bots_profile() -> void:
 			veteran.spawn_interval(rounds, round_number, 3)
 		)
 		assert_float(rookie.break_for(rounds)).is_equal(veteran.break_for(rounds))
-
-
-func test_a_person_who_leaves_gives_the_seat_to_a_bot_as_it_stands() -> void:
-	var rules := RulesFixture.make_rules(0, 5)
-	var log := RulesFixture.record(rules)
-	rules.apply(RulesAction.add_player(1))
-	rules.apply(RulesAction.add_player(2))
-	rules.apply(RulesAction.grant_points(2, 700))
-	var points := rules.players[2].points
-	rules.apply(RulesAction.seat_bot(2))
-	assert_bool(rules.players[2].bot).is_true()
-	assert_int(rules.players[2].points).is_equal(points)
-	assert_int(log.of(&"bot_seated").size()).is_equal(1)
-	assert_int(log.of(&"bot_seated")[0]["player_id"]).is_equal(2)
-	assert_bool(rules.to_dict()["players"][2]["bot"]).is_true()
-	# A seat that is a bot's already, or none, cannot be given to a bot again.
-	rules.apply(RulesAction.seat_bot(2))
-	rules.apply(RulesAction.seat_bot(9))
-	assert_int(log.of(&"bot_seated").size()).is_equal(1)
-	assert_int(log.of(&"action_rejected").size()).is_equal(2)
-	# And back: the seat goes round as many times as people and bots come and go.
-	rules.apply(RulesAction.seat_person(2))
-	assert_bool(rules.players[2].bot).is_false()
-	assert_int(rules.players[2].points).is_equal(points)
 
 
 func test_a_key_the_game_does_not_know_is_named_and_the_known_ones_are_not() -> void:
