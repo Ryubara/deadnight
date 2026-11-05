@@ -246,6 +246,9 @@ static func snapshot(top: Control) -> Dictionary:
 		"menu_button_sizes": "",
 		"touch_hits": "",
 		"touch_held": "",
+		"touch_stick": "",
+		"ground_speed": 0.0,
+		"sprinting": false,
 		"tab": "",
 		"stage": "",
 		"browser": "",
@@ -394,6 +397,9 @@ static func snapshot(top: Control) -> Dictionary:
 	var player: Player = night_screen.night.player() if night_screen.night.server != null else null
 	if player != null:
 		data["yaw"] = player.camera_rig.yaw  # so a browser test can see the mouse turn the view
+		# So a browser test can measure the walk and the sprint the stick asks for (#1276).
+		data["ground_speed"] = player.ground_speed()
+		data["sprinting"] = player.is_sprinting()
 		# So a browser test can see the view is the person's own soldier, not a bot's (#702).
 		data["view_is_players"] = (
 			player.get_viewport().get_camera_3d() == player.camera_rig.camera()
@@ -422,6 +428,7 @@ static func snapshot(top: Control) -> Dictionary:
 	data["menu_button_sizes"] = _button_sizes(night_screen)
 	data["touch_hits"] = _touch_hits(night_screen)
 	data["touch_held"] = ",".join(night_screen.touch_held())
+	data["touch_stick"] = night_screen.touch_stick()
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)
