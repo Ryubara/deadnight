@@ -141,8 +141,10 @@ what happens underneath:
    everything goes through the proxy (`/api`, `/server`) and is same-origin.
 2. **A night.** *Create a night* is `POST /lobbies`: a lobby that waits ([the lobby](#the-lobby-before-the-night)) until
    its host calls `POST /lobbies/:id/start`, which allocates the least loaded game server with room; the lobby keeps a
-   short code. *Quick join* is `POST /lobbies/quick`: a public night with
-   room (open or already started), else a new public one. *Join with the code* is `POST /lobbies/join-by-code`, and it
+   short code. A new night is **public**; its host makes it private with `PUT /lobbies/:id/visibility` (or
+   `visibility` in the create). *Quick join* is `POST /lobbies/quick`: a public night with
+   room (open or already started), else a new public one. The public nights are listed by `GET /lobbies`
+   ([the list](#the-list-of-nights-1179)). *Join with the code* is `POST /lobbies/join-by-code`, and it
    works on a night that has already started (a started night takes newcomers while the game server says it has room:
    its heartbeat carries `players`, the count in each match); the screen reads the code with `POST /lobbies/preview`
    first. A Discord Activity does the same as the website.
@@ -349,11 +351,23 @@ host calls `POST /lobbies/:id/start`, and every member polls `GET /lobbies/:id` 
 - **The view** (`GET /lobbies/:id`, members only) has `members` as `[{userId, name, seat, host, away}]` in the order people
   came (seats close up when someone leaves), `hostId`, `state` (`open` or `started`), `players` (the game server's count
   once started), `round` (the night's round, null until the game server has said one), `matchId` and the usual code.
-- **Seats.** A lobby holds 1 to `MAX_PLAYERS` = 8 (`src/lobbies.ts`, the game server's `NightHost.MAX_PLAYERS`; #690): the
-  default for a lobby made without `maxPlayers` and for Quick join, and the most `POST /lobbies` takes (`400` above). The
-  seats are people and bots together: the host's `bots` setting (0 to 7) fills the open ones on the game server. A
-  lobby's own `MAX_SEATS_EVER` (32) stays the guard on a started night's member list. The tests (`lobby.test.ts`) fill a
-  default room with eight, turn the ninth away with `409 full` and refuse a limit of nine.
+- **Seats.** A lobby holds 1 to `MAX_PLAYERS` = 8 **people** (`src/lobbies.ts`, the game server's `NightHost.MAX_PLAYERS`;
+  #690): the default for a lobby made without `maxPlayers` and for Quick join, and the most `POST /lobbies` takes (`400`
+  above). Bots hold no seat (#1179): the host's `bots` setting (0 to 7) is kept in the settings and the game server runs
+  that many on top of the eight, so a lobby (and a night, through the heartbeat's `players`, which is people) is full on
+  people alone. A lobby's own `MAX_SEATS_EVER` (32) stays the guard on a started night's member list. The tests
+  (`lobby.test.ts`, `server_browser.test.ts`) fill a default room with eight, turn the ninth away with `409 full` and
+  refuse a limit of nine; with seven bots set eight people still fill it and the ninth is still turned away.
+- <a id="the-list-of-nights-1179"></a>**The list of nights** (#1179, the Server Browser's data). `GET /lobbies`: the public
+  nights,
+  `{maxPlayers, total, nights: [{id, code, map, hostName, players, maxPlayers, bots, kind, state, round, full}]}`;
+  `kind` is `lobby` (waiting) or `match` (in progress, with its `round`); the shape and the reasons are in
+  [the lobby](../design/lobby.md#the-list-of-nights-the-server-browsers-data-1179). It is one
+  pass over the in-memory lobbies (an expired one is dropped on the way, a silent member is not counted) and keeps
+  nothing, so an ended or emptied night is gone from the very next call; at most 50 rows; limited to 20 asks in 10 seconds
+  per account (`429 too_many_requests`). `PUT /lobbies/:id/visibility` `{visibility: "public" | "private"}` is the host's
+  (`403 not_host`, `400 bad_visibility`); `POST /lobbies` also takes `visibility`. A new night is public. Quick join still
+  exists and is removed with the Server Browser screen (#1180).
 - **Start is the host's only** (`403 not_host`; a second one is `409 already_started`; every server busy is
   `503 no_server` and the lobby stays open). Members get a ticket only after it (`409 not_started` before).
 - **Host handover.** A host who leaves, or who is dropped, passes the role to the next seat. The last member out closes

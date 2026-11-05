@@ -1,11 +1,12 @@
 # A room with bots (#643), over a real WebSocket on this machine: the host's Bots setting seats
-# bots in the seats the people leave free, a person who joins takes a bot's seat as it stands while
-# the round goes on, and a person who leaves hands the seat to a bot again. The server and its
-# clients each live in their own SubViewport world.
+# that many bots in ids of their own (101 and up), and they take no seat of the 8 people (#1179): a
+# person who joins takes the next free person's seat while the round goes on and every bot stays
+# as it is, 8 people and 7 bots hold one night together, and a person who leaves takes only their
+# own body away. The server and its clients each live in their own SubViewport world.
 extends GdUnitTestSuite
 
 const STEP := Night.STEP
-## The points the test puts in a bot's pocket, to find them with the person who takes the seat.
+## The points the test puts in a bot's pocket, to find them still there after the people come.
 const POCKET := 4321
 
 var _host: NightHost
@@ -98,22 +99,21 @@ func _people_seats() -> Array:
 	return seats
 
 
-func test_a_room_with_two_people_and_seven_bots_asked_seats_six_bots() -> void:
+func test_a_room_with_two_people_and_seven_bots_asked_seats_all_seven() -> void:
 	await _server(MatchSettings.MAX_BOTS)
 	await _client()
 	await _client()
 	await _ticks(10)
 	assert_array(_people_seats()).is_equal([1, 2])
-	assert_array(_bot_seats()).is_equal([3, 4, 5, 6, 7, 8])
-	assert_int(_host.bots.count()).is_equal(6)
+	assert_array(_bot_seats()).is_equal([101, 102, 103, 104, 105, 106, 107])
+	assert_int(_host.bots.count()).is_equal(MatchSettings.MAX_BOTS)
 
 
 func test_a_lone_person_gets_the_bots_asked_for_and_the_night_has_started() -> void:
 	await _server(3)
 	var first := await _client()
 	await _ticks(10)
-	# The bots take the highest seats, so a person who joins finds seat 2 empty.
-	assert_array(_bot_seats()).is_equal([6, 7, 8])
+	assert_array(_bot_seats()).is_equal([101, 102, 103])
 	assert_int(_host.server.rules.phase).is_not_equal(GameRules.Phase.IDLE)
 	# The client's roster of the room shows them as bots, by name.
 	assert_int(first.state.names.size()).is_greater_equal(3)
@@ -127,44 +127,56 @@ func test_no_bots_asked_for_seats_none() -> void:
 	assert_int(_host.server.rules.players.size()).is_equal(1)
 
 
-func test_a_second_person_takes_a_bots_seat_and_the_round_goes_on() -> void:
+func test_a_second_person_takes_their_own_seat_and_no_bot_moves() -> void:
 	await _server(MatchSettings.MAX_BOTS)
 	await _client()
 	await _ticks(10)
-	assert_array(_bot_seats()).is_equal([2, 3, 4, 5, 6, 7, 8])
-	# The night is on: round 1 has begun and the bot at seat 2 holds something of its own.
+	assert_array(_bot_seats()).is_equal([101, 102, 103, 104, 105, 106, 107])
+	# The night is on: round 1 has begun and the first bot holds something of its own.
 	_host.server.rules.apply(RulesAction.skip_break())
-	_host.server.rules.apply(RulesAction.grant_points(2, POCKET))
+	_host.server.rules.apply(RulesAction.grant_points(101, POCKET))
 	var round_before := _host.server.rules.round_number
 	var phase_before := _host.server.rules.phase
 	var nights_before := _host.nights
-	var body_before := _host.server.body_of(2)
+	var body_before := _host.server.body_of(101)
 	var second := await _client()
 	await _ticks(20)
-	# The person is at seat 2, in the bot's body, with the bot's points; one bot fewer is left.
+	# The person is at seat 2, in a body of their own; all seven bots are where they were.
 	assert_int(second.state.player_id).is_equal(2)
 	assert_array(_people_seats()).is_equal([1, 2])
-	assert_array(_bot_seats()).is_equal([3, 4, 5, 6, 7, 8])
-	assert_int(_host.bots.count()).is_equal(6)
-	assert_object(_host.server.body_of(2)).is_same(body_before)
-	assert_bool(_host.server.rules.players[2].points >= POCKET).is_true()
+	assert_array(_bot_seats()).is_equal([101, 102, 103, 104, 105, 106, 107])
+	assert_int(_host.bots.count()).is_equal(MatchSettings.MAX_BOTS)
+	assert_object(_host.server.body_of(101)).is_same(body_before)
+	assert_bool(_host.server.rules.players[101].points >= POCKET).is_true()
+	assert_bool((_host.server.rules.players[2] as PlayerState).bot).is_false()
 	# The round did not end and the night was not rebuilt.
 	assert_int(_host.server.rules.round_number).is_equal(round_before)
 	assert_int(_host.server.rules.phase).is_equal(phase_before)
 	assert_int(_host.nights).is_equal(nights_before)
 	assert_int(_host.server.rules.phase).is_not_equal(GameRules.Phase.OVER)
-	# Every client heard it: the seat is no bot's.
+	# Every client heard it: both people and the bot are in the frame.
 	for night in _nights:
-		assert_bool(bool(night.state.frame.get("players", {}).has(2))).is_true()
+		var players: Dictionary = night.state.frame.get("players", {})
+		assert_bool(players.has(2)).is_true()
+		assert_bool(players.has(101)).is_true()
 
 
-func test_the_last_bot_goes_to_the_eighth_person_and_a_ninth_is_turned_away() -> void:
+func test_eight_people_and_seven_bots_hold_one_night_and_a_ninth_person_is_turned_away() -> void:
 	await _server(MatchSettings.MAX_BOTS)
 	for _i in NightHost.MAX_PLAYERS:
 		await _client()
 	await _ticks(10)
-	assert_int(_host.bots.count()).is_equal(0)
+	# No bot gave way for a person: the cap of 8 is people alone.
+	assert_int(_host.bots.count()).is_equal(MatchSettings.MAX_BOTS)
 	assert_array(_people_seats()).is_equal(range(1, NightHost.MAX_PLAYERS + 1))
+	assert_int(_host.server.rules.players.size()).is_equal(NightHost.MAX_SEATS)
+	assert_int(_host.people_count()).is_equal(NightHost.MAX_PLAYERS)
+	assert_int(_host.player_count()).is_equal(NightHost.MAX_PLAYERS)
+	# Every client sees the whole room, the people and the bots.
+	for night in _nights:
+		assert_int((night.state.frame["players"] as Dictionary).size()).is_equal(
+			NightHost.MAX_SEATS
+		)
 	var ws := WebSocketPeer.new()
 	ws.connect_to_url("ws://127.0.0.1:%d" % _host.listener.port())
 	_raw.append(ws)
@@ -184,17 +196,18 @@ func test_the_last_bot_goes_to_the_eighth_person_and_a_ninth_is_turned_away() ->
 	assert_int(refusal["reason"]).is_equal(NetWire.Refusal.FULL)
 
 
-func test_a_person_who_leaves_gives_the_seat_to_a_bot_again() -> void:
+func test_a_person_who_leaves_takes_only_their_own_body_and_the_bots_stay() -> void:
 	await _server(MatchSettings.MAX_BOTS)
 	await _client()
 	var second := await _client()
 	await _ticks(10)
-	assert_array(_bot_seats()).is_equal([3, 4, 5, 6, 7, 8])
+	assert_array(_bot_seats()).is_equal([101, 102, 103, 104, 105, 106, 107])
 	second.link.close()
 	await _until(func() -> bool: return _host.player_count() == 1, 10.0)
 	await _ticks(10)
 	assert_array(_people_seats()).is_equal([1])
-	assert_array(_bot_seats()).is_equal([2, 3, 4, 5, 6, 7, 8])
+	assert_array(_bot_seats()).is_equal([101, 102, 103, 104, 105, 106, 107])
+	assert_int(_host.people_count()).is_equal(1)
 
 
 func test_bots_play_the_night_they_are_seated_in() -> void:
