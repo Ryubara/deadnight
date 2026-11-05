@@ -16,7 +16,7 @@
     "sounds_playing": 50,
     "skeletons": 160,
     "mesh_instances": 2600,
-    "canvas_items": 230,
+    "canvas_items": 200,
     "pairs": 50
   },
   "max_per_tick": {

@@ -159,8 +159,7 @@ func _draw() -> void:
 	var plate_width := _plate_width()
 	var room := size.x - left - plate_width - pad * 2.0
 	var info := entry.map()
-	var title_size := TITLE_SIZE_COMPACT if compact else TITLE_SIZE
-	var fitted := _fit_size(tokens.font_display, info.title.to_upper(), room, title_size)
+	var fitted := _title_size()
 	var ink := Color(MenuLook.INK, dim)
 	draw_string(
 		tokens.font_display,
@@ -289,6 +288,29 @@ func _draw_facts(left: float, baseline: float, room: float, dim: float) -> void:
 		MenuLook.SIZE_CAPTION,
 		Color(MenuLook.INK, dim)
 	)
+
+
+## The size, in units, the map's name is drawn at: the row's own, cut down until the name fits the
+## room it has (never under `TITLE_SIZE_MIN`).
+func _title_size() -> int:
+	var pad := PAD_COMPACT if compact else PAD
+	var room := size.x - STRIPE - pad * 3.0 - _plate_width()
+	var start := TITLE_SIZE_COMPACT if compact else TITLE_SIZE
+	return _fit_size(UITokens.active().font_display, entry.map().title.to_upper(), room, start)
+
+
+## The sizes, in units, of every word the row draws: the name, the badge, the host, the count and
+## its seats. The words are drawn, not theme text, so `UiAudit` asks for them here.
+func drawn_text_sizes() -> Array[int]:
+	if entry == null:
+		return []
+	return [
+		_title_size(),
+		MenuLook.SIZE_CAPTION,
+		MenuLook.SIZE_CAPTION,
+		NUMBER_SIZE_COMPACT if compact else NUMBER_SIZE,
+		MenuLook.SIZE_BODY,
+	]
 
 
 func _plate_width() -> float:

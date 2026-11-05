@@ -25,6 +25,8 @@ extends Node
 ##   `frames=0`   keep no row per frame (a long run's memory is what it measures)
 ##   `labels=0`   with `sample=1`, rows without the labelled times and counts (a long run)
 ##   `sample=1`   a `PerfSampler` row each second (monitors, counts, labelled times) in the report
+##   `canvasparts=1` with `sample=1`, each row also counts the canvas items of every part of the
+##                screen (`canvas_parts`; `tools/perf/canvas_parts.py` reads them into a table)
 ##   `xp=1`       every player (the bots too: only here) holds an account, so the night awards XP
 ##                as a game server would and the XP's counts and time are in the rows
 ##                (`xp.gained`, `server.xp`; tools/perf/budget.json holds them)
@@ -114,6 +116,7 @@ func _process(delta: float) -> void:
 			_sampler = PerfSampler.new()
 			_sampler.night_state = _state_of_night
 			_sampler.keep_labels = _args.get_int("labels", 1) != 0
+			_sampler.keep_canvas_parts = _args.get_int("canvasparts") == 1
 			add_child(_sampler)
 	if not _jumped:
 		_jumped = true

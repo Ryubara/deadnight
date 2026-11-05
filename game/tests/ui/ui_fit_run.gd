@@ -33,6 +33,16 @@ const SIZES: Array[Vector2i] = [
 	Vector2i(932, 430),
 	Vector2i(667, 375),
 ]
+## The canvases a phone's web page really has: [canvas, pixel ratio]. A page of 844 x 390 CSS pixels
+## is a 1688 x 780 canvas at the ratio of 2 the game reports on a touch device (`PhoneRender`) and a
+## 2532 x 1170 one at the phone's own 3. The window is the canvas; the page is the canvas over the
+## ratio, and the menu must lay out as it does in a 844 x 390 window (#1197).
+const PAGES: Array = [
+	[Vector2i(1688, 780), 2.0],
+	[Vector2i(2532, 1170), 3.0],
+	[Vector2i(1864, 860), 2.0],
+	[Vector2i(1334, 750), 2.0],
+]
 ## Frames a screen is given to lay out after it is shown.
 const SETTLE_FRAMES := 4
 
@@ -64,14 +74,21 @@ func restore() -> void:
 	var window := tree.root
 	window.size = _saved_size
 	window.content_scale_factor = _saved_scale
+	PageSize.css_override = null
 	UIMotion.reduced = false
 
 
 ## Sizes the window as a player's is, and applies the menu's phone factor when the short side
-## calls for it.
-func set_window(size: Vector2i, interface_scale := 1.0) -> void:
+## calls for it. `page_ratio` over 1 makes it a touch device's web page: the window is the canvas
+## and the page's size in CSS pixels the canvas over the ratio.
+func set_window(size: Vector2i, interface_scale := 1.0, page_ratio := 1.0) -> void:
 	var window := tree.root
 	window.size = size
+	if page_ratio > 1.0:
+		TouchMode.device_is_touch = true
+		PageSize.css_override = Vector2(size) / page_ratio
+	else:
+		PageSize.css_override = null
 	phone = MenuScale.is_phone(size)
 	ui_scale = interface_scale
 	Settings.set_value(SettingsService.UI_SCALE, interface_scale)
@@ -109,6 +126,24 @@ func problems(subject: Dictionary) -> Array[String]:
 	var lines: Array[String] = []
 	for line in found:
 		lines.append("%s: %s" % [subject["name"], line])
+	return lines
+
+
+## The sentences for the text under 14 CSS pixels and the targets under 44 that a person with a
+## ruler finds on the subject's screen (`UiAudit`, #1197). A tab's subject is read with its header
+## and footer: the whole shell.
+func floor_problems(subject: Dictionary) -> Array[String]:
+	var root: Node = subject.get("shell", subject["root"])
+	var audit := UiAudit.scan(root, PageSize.css_per_pixel(tree.root.size))
+	var lines: Array[String] = []
+	if not audit.text_small.is_empty():
+		lines.append(
+			"%s: text under %d px: %s" % [subject["name"], UiAudit.MIN_TEXT_PX, audit.text_small]
+		)
+	if not audit.tap_small.is_empty():
+		lines.append(
+			"%s: target under %d px: %s" % [subject["name"], UiAudit.MIN_TAP_PX, audit.tap_small]
+		)
 	return lines
 
 

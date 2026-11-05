@@ -124,6 +124,14 @@ static func look_from_flag(text: String) -> CharacterLook:
 
 func _exit_tree() -> void:
 	MenuPopups.set_night(false)
+	# The screen under a night (the Play screen Leave night returns to) is the menu's and runs on
+	# the menu's factor: the shell is hidden under it and cannot put the factor back (#1197). A
+	# frame later: the factor emits `size_changed`, and this screen's parts have left the tree.
+	var window := get_window()
+	if window != null and is_inside_tree():
+		get_tree().process_frame.connect(
+			MenuShell.restore_scale_of.bind(get_tree()), CONNECT_ONE_SHOT
+		)
 
 
 func _ready() -> void:
@@ -173,6 +181,7 @@ func _ready() -> void:
 	_touch.safe_insets_changed.connect(_on_safe_insets_changed)
 	_touch.mirrored_changed.connect(_on_mirrored_changed)
 	_touch.active_changed.connect(func(active: bool) -> void: _hud.touch_layout = active)
+	_touch.layout_changed.connect(func() -> void: _hud.markers.held = _touch.button_boxes())
 	_touch.look_gain = _look_gain
 	add_child(_touch)
 	wheel = BotWheelDriver.new()
