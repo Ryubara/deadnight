@@ -184,7 +184,7 @@ test("Discord saying the code is bad is a 401; Discord failing is a 502", async 
 test("the Discord proxy's /api prefix is dropped, whether or not the proxy strips it itself", async () => {
   assert.equal(stripApiPrefix("/auth/guest"), "/auth/guest");
   assert.equal(stripApiPrefix("/api/auth/guest"), "/auth/guest");
-  assert.equal(stripApiPrefix("/api/lobbies/quick?x=1"), "/lobbies/quick?x=1");
+  assert.equal(stripApiPrefix("/api/lobbies?x=1"), "/lobbies?x=1");
   assert.equal(stripApiPrefix("/api"), "/");
   assert.equal(stripApiPrefix("/api?x=1"), "/?x=1");
   assert.equal(stripApiPrefix("/apiary/x"), "/apiary/x");

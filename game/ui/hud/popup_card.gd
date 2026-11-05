@@ -58,17 +58,21 @@ var _tokens := UITokens.active()
 var _caption := _ink(HudStyle.label("", HudStyle.MEDIUM, _tokens.hot, true, HudStyle.TRACK_CAPTION))
 var _number := _ink(HudStyle.label("", HudStyle.BIG, _tokens.ink_on_accent, true))
 var _words := _ink(HudStyle.label("", HudStyle.TEXT, _tokens.ink_on_accent))
-var _next := HBoxContainer.new()
-var _next_label := _ink(HudStyle.label("NEXT", HudStyle.SMALL, _tokens.ink_disabled, false, 1.0))
-var _badge := HBoxContainer.new()
-var _next_icon := LevelTag.icon_rect(1)
-var _next_level := _ink(HudStyle.label("", HudStyle.SMALL, _tokens.hot, true))
-var _next_name := _ink(HudStyle.label("", HudStyle.SMALL, _tokens.ink_on_accent))
-var _poster := PosterArt.new()
-var _prize_card := CardArt.new()
-var _prize_emblem := EmblemArt.new()
-var _chip := Control.new()
-var _chip_letter := _ink(HudStyle.label("", HudStyle.TEXT, _tokens.ink, true))
+## What only some kinds of card show is made the first time a card of that kind is set (a level
+## card's "next" line, an unlock's thumbnail chip, a poster set's poster and prizes): every card in
+## the late-round night would otherwise hold them all, built and hidden, and the budget counts
+## every canvas item of the tree.
+var _next: HBoxContainer
+var _next_label: Label
+var _badge: HBoxContainer
+var _next_icon: TextureRect
+var _next_level: Label
+var _next_name: Label
+var _poster: PosterArt
+var _prize_card: CardArt
+var _prize_emblem: EmblemArt
+var _chip: Control
+var _chip_letter: Label
 var _item: Dictionary = {}
 var _picture: Texture2D = null
 var _punched := 0
@@ -77,7 +81,7 @@ var _chase := 0
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for label: Label in [_caption, _number, _words, _next_label, _next_level, _next_name]:
+	for label: Label in [_caption, _number, _words]:
 		HudStyle.clip(label)
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -85,6 +89,21 @@ func _init() -> void:
 	icon.texture_filter = LevelIcons.FILTER
 	icon.size = Vector2(ICON, ICON)
 	icon.pivot_offset = Vector2(ICON, ICON) * 0.5
+	for part: Control in [_caption, _number, _words, icon]:
+		add_child(part)
+	_words.autowrap_mode = TextServer.AUTOWRAP_OFF
+
+
+## The level card's line of the next unlock, made once.
+func _ensure_next() -> void:
+	if _next != null:
+		return
+	_next = HBoxContainer.new()
+	_next_label = _ink(HudStyle.label("NEXT", HudStyle.SMALL, _tokens.ink_disabled, false, 1.0))
+	_badge = HBoxContainer.new()
+	_next_icon = LevelTag.icon_rect(1)
+	_next_level = _ink(HudStyle.label("", HudStyle.SMALL, _tokens.hot, true))
+	_next_name = _ink(HudStyle.label("", HudStyle.SMALL, _tokens.ink_on_accent))
 	_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_badge.add_theme_constant_override(&"separation", int(LevelTag.ICON_GAP))
 	_badge.add_child(_next_icon)
@@ -94,19 +113,40 @@ func _init() -> void:
 	_next_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for part: Control in [_next_label, _badge, _next_name]:
 		_next.add_child(part)
+	for label: Label in [_next_label, _next_level, _next_name]:
+		HudStyle.clip(label)
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_next.visible = false
+	add_child(_next)
+
+
+## The unlock card's thumbnail chip, made once.
+func _ensure_chip() -> void:
+	if _chip != null:
+		return
+	_chip = Control.new()
+	_chip_letter = _ink(HudStyle.label("", HudStyle.TEXT, _tokens.ink, true))
 	_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_chip.size = Vector2(CHIP, CHIP)
 	_chip.draw.connect(_draw_chip)
 	_chip_letter.size = Vector2(CHIP, CHIP)
 	_chip_letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_chip.add_child(_chip_letter)
+	_chip.visible = false
+	add_child(_chip)
+
+
+## The poster set card's poster and prizes, made once.
+func _ensure_prizes() -> void:
+	if _poster != null:
+		return
+	_poster = PosterArt.new()
+	_prize_card = CardArt.new()
+	_prize_emblem = EmblemArt.new()
 	_poster.titled = false
-	for part: Control in [_caption, _number, _words, icon, _next, _chip]:
-		add_child(part)
 	for part: Control in [_poster, _prize_card, _prize_emblem]:
 		part.visible = false
 		add_child(part)
-	_words.autowrap_mode = TextServer.AUTOWRAP_OFF
 
 
 ## The size a card of `of_kind` has.
@@ -141,10 +181,11 @@ func setup(card_kind: PopupQueue.Kind, card_data: Dictionary) -> void:
 	data = card_data
 	size = size_of(kind)
 	custom_minimum_size = size
-	for part: Control in [_caption, _number, _words, icon, _next, _chip]:
-		part.visible = false
-	for part: Control in [_poster, _prize_card, _prize_emblem]:
-		part.visible = false
+	for part: Control in [
+		_caption, _number, _words, icon, _next, _chip, _poster, _prize_card, _prize_emblem
+	]:
+		if part != null:
+			part.visible = false
 	match kind:
 		PopupQueue.Kind.LEVEL, PopupQueue.Kind.TIER:
 			_set_level()
@@ -188,6 +229,8 @@ func punched() -> int:
 func lines() -> Array[String]:
 	var out: Array[String] = []
 	for part: Label in [_caption, _number, _words, _next_level, _next_name]:
+		if part == null:
+			continue
 		var shown := part.visible and (part.get_parent() != _next or _next.visible)
 		if shown and part.text != "":
 			out.append(part.text)
@@ -218,8 +261,9 @@ func _set_level() -> void:
 		return
 	var next := PopupLadder.next_unlock(level)
 	_punched = PopupLadder.punched(level)
-	_next.visible = not next.is_empty()
 	if not next.is_empty():
+		_ensure_next()
+		_next.visible = true
 		_next.position = Vector2(words_at, 46.0)
 		_next.size = Vector2(room, 24.0)
 		LevelTag.set_icon(_next_icon, int(next["level"]))
@@ -239,6 +283,7 @@ func _set_unlock() -> void:
 	_picture = null
 	if _item["kind"] == LadderItem.Kind.MAP:
 		_picture = (_item["info"] as MapInfo).preview()
+	_ensure_chip()
 	_chip.visible = true
 	var wide: bool = _item["kind"] in [LadderItem.Kind.CARD, LadderItem.Kind.FRAME]
 	_chip.size = Vector2(CARD_CHIP_WIDTH if wide else CHIP, CHIP)
@@ -272,6 +317,7 @@ func _set_challenge() -> void:
 
 
 func _set_poster_set() -> void:
+	_ensure_prizes()
 	var poster_set := PosterSets.shipped().get_set(StringName(data.get("id", &"")))
 	var top := (size.y - POSTER_WIDTH * PosterCompose.SIZE.y / PosterCompose.SIZE.x) * 0.5
 	_poster.poster = poster_set
@@ -348,7 +394,7 @@ func _draw() -> void:
 
 ## The punch holes of a level card, under the next unlock, from the left.
 func _add_holes(shapes: HudShapes) -> void:
-	var at := _next.position.x + HOLE_RADIUS + 1.0
+	var at := (_next.position.x if _next != null else 0.0) + HOLE_RADIUS + 1.0
 	var y := size.y - 22.0
 	for i in PopupLadder.HOLES:
 		var centre := Vector2(at + i * HOLE_GAP, y)

@@ -15,12 +15,13 @@ const JOIN_SCREEN := "res://ui/screens/together_screen.tscn"
 const SETTINGS_SCREEN := "res://ui/screens/settings_screen.tscn"
 const CREDITS_SCREEN := "res://ui/screens/credits_screen.tscn"
 const CARDS_SCREEN := "res://ui/screens/cards_screen.tscn"
-## The route of each ask a panel can make. Play together opens the Play together screen. Quick
-## join has no route: it joins from the menu (`QuickJoinOverlay`) and reaches a screen only by its
-## fallback, a night of the player's own (#526).
+const BROWSER_SCREEN := "res://ui/screens/server_browser_screen.tscn"
+## The route of each ask a panel can make. Play together opens the Play together screen; the Server
+## browser opens the list of nights, one press from a night (#1180).
 const ROUTES := {
 	&"solo": [PLAY_SCREEN, UITransition.Kind.IRIS],
 	&"together": [JOIN_SCREEN, UITransition.Kind.SLIDE],
+	&"browser": [BROWSER_SCREEN, UITransition.Kind.SLIDE],
 	&"settings": [SETTINGS_SCREEN, UITransition.Kind.SLIDE],
 	&"credits": [CREDITS_SCREEN, UITransition.Kind.BURN],
 	&"cards": [CARDS_SCREEN, UITransition.Kind.SLIDE],
@@ -32,7 +33,6 @@ static var board_factory := Callable()
 var shell: MenuShell
 
 var _entered := false
-var _quick_join: QuickJoinOverlay
 
 
 ## Whether this platform gets a Quit item.
@@ -128,9 +128,6 @@ func _on_action(id: StringName) -> void:
 	if id == &"quit":
 		get_tree().quit()
 		return
-	if id == &"quick_join":
-		_quick_join_now()
-		return
 	if not ROUTES.has(id):
 		return
 	var route: Array = ROUTES[id]
@@ -138,21 +135,3 @@ func _on_action(id: StringName) -> void:
 		UIMotion.shake(shell)
 		return
 	UIRouter.push(route[0], route[1])
-
-
-## Quick join: a card over the menu that finds the first open public night and goes in. Pressed
-## again while it searches, it is the same search.
-func _quick_join_now() -> void:
-	if is_instance_valid(_quick_join):
-		_quick_join.run()
-		return
-	_quick_join = QuickJoinOverlay.new()
-	_quick_join.finished.connect(_on_quick_join_finished)
-	add_child(_quick_join)
-	_quick_join.run()
-
-
-func _on_quick_join_finished(joined: bool, to_lobby: bool) -> void:
-	_quick_join = null
-	if not joined and not to_lobby:
-		focus_initial()

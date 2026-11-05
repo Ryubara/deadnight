@@ -11,8 +11,8 @@ and this run, in the CI `web` job, fails on the change instead of a probe failin
 4. Solo: a running night (`smoke.py`, `judder.py` and so `flash.py` and `hip_fire.py`, `first_use.py`, `skin_tour.py`,
    `touch_look.py`, `resolution_scale.py`, `flare_first.py`)
 5. a second page with `?dev`: Play together, then its server address button: the join screen (`online.py`, `freeze.py`)
-6. on that page, pointed at a backend that is not there: Quick join on the main menu opens its card (and never the Play
-   together screen), the card ends in the network text, and Esc closes it (`quick_join.py`)
+6. on that page, pointed at a backend that is not there: the Server browser on the main menu opens its screen, which
+   ends in the network text, and Esc is back to the menu (`server_browser.py`)
 
 `kill_spike.py` (`?bench`) and `menu_stage.py` (`?stage`) start from the address, `audio_load.py`, `door_swap.py`,
 `touch_assist.py` and `gun_levels_web.py` from their own scene: they walk no menu.
@@ -84,22 +84,22 @@ def main_page(page: Page, url: str, steps: Steps) -> None:
     ok = ok and steps.run("Solo", lambda: (smoke.start_solo(page), smoke.wait_for_night(page)))
 
 
-def quick_join_card(page: Page) -> None:
-    """Quick join on the Play tab: the card shows (the backend is not there, so it ends in the network text), the page
-    never leaves the main menu, and Esc closes the card."""
+def server_browser_failed(page: Page) -> None:
+    """The Server browser on the Play tab: its screen shows (the backend is not there, so it ends in the network text,
+    with no Play together screen on the way), and Esc is back to the main menu."""
     smoke.menu_item(page, "Play", 1)
     smoke.press(page, "Enter")
-    smoke.wait_for(page, "the Quick join card", lambda s: s.get("quick_join", "") != "", smoke.SCREEN_TIMEOUT_S)
-    seen = smoke.wait_for(
+    smoke.wait_for(
+        page, "the Server Browser", lambda s: s.get("screen") == "server_browser_screen", smoke.SCREEN_TIMEOUT_S
+    )
+    smoke.wait_for(
         page,
-        "the card's failure text",
-        lambda s: s.get("quick_join", "").startswith("Could not"),
+        "the failure text",
+        lambda s: s.get("browser_status", "").startswith("Could not"),
         smoke.SCREEN_TIMEOUT_S,
     )
-    if seen.get("screen") != "main_menu":
-        raise TimeoutError(f"Quick join left the main menu, the game reports {seen}")
     smoke.press(page, "Escape")
-    smoke.wait_for(page, "the card to close", lambda s: s.get("quick_join", "") == "", smoke.SCREEN_TIMEOUT_S)
+    smoke.wait_for(page, "the menu again", lambda s: s.get("screen") == "main_menu", smoke.SCREEN_TIMEOUT_S)
     expect_screen(page, "main_menu")
 
 
@@ -110,7 +110,7 @@ def join_page(page: Page, url: str, steps: Steps) -> None:
     ok = ok and steps.run("the join screen is the screen", lambda: expect_screen(page, "join_screen"))
     ok = ok and steps.run("back to the menu", lambda: (smoke.back_to_menu(page), expect_screen(page, "main_menu")))
     if ok:
-        steps.run("Quick join", lambda: quick_join_card(page))
+        steps.run("Server browser", lambda: server_browser_failed(page))
 
 
 def check(browser: Browser, url: str, out: Path) -> dict:

@@ -218,12 +218,10 @@ func _grenade_down(event: Dictionary, who: String) -> String:
 
 
 func _notice(type: StringName, event: Dictionary) -> String:
-	# A bot seated at the start of the night is no news; a person who takes its seat is.
+	# A bot seated at the start of the night is no news.
 	if type == &"player_added" and not event.get("bot", false):
 		return "%s JOINED" % _who(event)
-	if type == &"bot_replaced":
-		return "%s JOINED" % _who(event)
-	if type == &"player_removed" or type == &"bot_seated":
+	if type == &"player_removed":
 		return "%s LEFT" % state.left_name.to_upper()
 	return ""
 

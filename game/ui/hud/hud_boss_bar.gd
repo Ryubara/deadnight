@@ -17,24 +17,33 @@ const NAMES := {&"headliner": "THE PROJECTIONIST"}
 var fractions: Array[float] = []
 var caption_text: String:
 	get:
-		return _caption.text
+		return _caption.text if _caption != null else ""
 
 var _t := HudTuning.current()
-var _caption := HudStyle.clip(
-	HudStyle.label("", HudStyle.SMALL, tokens.accent, false, HudStyle.TRACK_CAPTION)
-)
-var _bars := Control.new()
+## The caption and the bars are made the first time a boss stands (`_build`): the part is hidden
+## the whole of a night with none, and the late-round budget counts every canvas item of the tree.
+var _caption: Label
+var _bars: Control
 
 
 func _init() -> void:
 	super()
 	accent = tokens.hot
+	visible = false
+
+
+func _build() -> void:
+	if _bars != null:
+		return
+	_caption = HudStyle.clip(
+		HudStyle.label("", HudStyle.SMALL, tokens.accent, false, HudStyle.TRACK_CAPTION)
+	)
+	_bars = Control.new()
 	body.custom_minimum_size.x = WIDTH - float(HudStyle.PAD + HudStyle.PAD_LEFT)
 	body.add_child(_caption)
 	_bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bars.draw.connect(_draw_bars)
 	body.add_child(_bars)
-	visible = false
 
 
 func topics() -> Array[StringName]:
@@ -47,10 +56,13 @@ func refresh() -> void:
 		fractions.append(clampf(boss["health"] / maxf(boss["max_health"], 1.0), 0.0, 1.0))
 	visible = not fractions.is_empty()
 	if visible:
+		_build()
 		var type: StringName = state.bosses[0]["type"]
 		var named: String = NAMES.get(type, String(type).to_upper())
 		var extra := state.bosses.size() - 1
 		HudStyle.set_text(_caption, named if extra == 0 else "%s  +%d" % [named, extra])
+	if _bars == null:
+		return
 	var rows := mini(fractions.size(), MAX_BARS)
 	_bars.custom_minimum_size.y = (
 		float(rows) * (BAR_HEIGHT + BAR_GAP) - BAR_GAP if rows > 0 else 0.0
