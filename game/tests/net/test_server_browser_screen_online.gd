@@ -38,10 +38,8 @@ func before_test() -> void:
 func after_test() -> void:
 	ServerBrowserScreen.opener = Callable()
 	ServerBrowserScreen.api_factory = Callable()
-	NightScreen.join_url = ""
-	NightScreen.join_ticket = ""
-	NightScreen.return_lobby = {}
-	NightScreen.return_api = null
+	# A join through the browser fills the map too, which only a night takes.
+	RouterFixture.forget_join()
 	await RouterFixture.clear(get_tree())
 	_backend.stop()
 	await get_tree().process_frame
