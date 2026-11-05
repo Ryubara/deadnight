@@ -257,7 +257,7 @@ test("a lobby service drops an absent member and counts the round, with no HTTP 
   });
   const ann = { userId: "ann", name: "Ann" };
   const bo = { userId: "bo", name: "Bo" };
-  const made = lobbies.create(ann, 4, null);
+  const made = lobbies.create(ann, 4);
   lobbies.join(made.id, bo);
   clock.now = DEFAULT_LOBBY_LIMITS.memberAwayMs + 1;
   lobbies.view(made.id, "ann"); // Ann is there, Bo has not been heard from
@@ -268,15 +268,17 @@ test("a lobby service drops an absent member and counts the round, with no HTTP 
   lobbies.setRound("unknown-match", 9); // ignored, as setPlayers does
 });
 
-test("the Activity's voice channel is looked at by its instance: nothing yet, then a waiting room, then a night in round N", async () => {
+test("a night is looked at by its code: nothing for an unknown code, then a waiting room, then a night in round N", async () => {
   const { app, guest, call, beat } = await platform();
   const [ann, bo] = [await guest("Ann"), await guest("Bo")];
-  // Nobody has opened the lobby of this channel: nothing to read, and looking made none.
-  assert.equal((await call("POST", "/lobbies/preview", bo, { instanceId: "voice-9" })).statusCode, 404);
+  // No such code: nothing to read, and looking made none. The Activity's instance id names no lobby (#1178).
+  assert.equal((await call("POST", "/lobbies/preview", bo, { code: "NOSUCH" })).statusCode, 404);
+  assert.equal((await call("POST", "/lobbies/preview", bo, { instanceId: "voice-9" })).statusCode, 400);
   assert.equal((await call("POST", "/lobbies/preview", bo, {})).statusCode, 400);
 
-  const made = (await call("POST", "/lobbies", ann, { instanceId: "voice-9" })).json();
-  const waiting = (await call("POST", "/lobbies/preview", bo, { instanceId: "voice-9" })).json();
+  const made = (await call("POST", "/lobbies", ann, {})).json();
+  assert.equal("instanceId" in made, false);
+  const waiting = (await call("POST", "/lobbies/preview", bo, { code: made.code })).json();
   assert.deepEqual(
     { code: waiting.code, state: waiting.state, players: waiting.players, host: waiting.hostName },
     { code: made.code, state: "open", players: 1, host: "Ann" },
@@ -285,7 +287,7 @@ test("the Activity's voice channel is looked at by its instance: nothing yet, th
 
   const started = (await call("POST", `/lobbies/${made.id}/start`, ann)).json();
   await beat([started.matchId], { players: { [started.matchId]: 1 }, rounds: { [started.matchId]: 6 } });
-  const inProgress = (await call("POST", "/lobbies/preview", bo, { instanceId: "voice-9" })).json();
+  const inProgress = (await call("POST", "/lobbies/preview", bo, { code: made.code })).json();
   assert.deepEqual({ state: inProgress.state, round: inProgress.round, full: inProgress.full }, { state: "started", round: 6, full: false });
   await app.close();
 });

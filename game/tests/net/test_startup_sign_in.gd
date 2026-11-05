@@ -47,6 +47,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	TogetherApi.activity = false
 	if _backend != null:
 		_backend.stop()
 		_backend = null
@@ -112,10 +113,23 @@ func test_a_run_with_no_credential_file_starts_nothing() -> void:
 	assert_object(StartupSignIn.begin(self, BACKEND)).is_null()
 
 
-func test_a_discord_activity_is_not_signed_in_at_start_up() -> void:
+func test_a_discord_activity_signs_in_at_start_up_with_discord_and_not_with_the_credential(
+) -> void:
 	GuestAccount.save_credential(BACKEND, "kept", FILE)
+	TogetherApi.activity = true
 	var api := _api()
-	api.instance_id = "activity-1"
+	assert_bool(StartupSignIn.wanted(api)).is_true()
+	# No credential kept either: an Activity signs in with Discord every time.
+	GuestAccount.forget(BACKEND, FILE)
+	assert_bool(StartupSignIn.wanted(_api())).is_true()
+	# It is the sign-in, not a lobby: `/auth/guest` here (no Discord in a test) and nothing else.
+	var answer := await StartupSignIn.run(api)
+	assert_bool(answer["ok"]).is_true()
+	(
+		assert_array(api.sent.map(func(call: Dictionary) -> String: return call["path"]))
+		. is_equal(["/auth/guest"])
+	)
+	assert_bool(TogetherApi.signed_in()).is_true()
 	assert_bool(StartupSignIn.wanted(api)).is_false()
 
 

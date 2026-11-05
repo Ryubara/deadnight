@@ -288,7 +288,6 @@ export function buildApp(deps: Deps): FastifyInstance {
   const lobbyView = (lobby: Lobby) => ({
     id: lobby.id,
     code: lobby.code,
-    instanceId: lobby.instanceId,
     hostId: lobby.hostId,
     maxPlayers: lobby.maxPlayers,
     visibility: lobby.visibility,
@@ -332,23 +331,22 @@ export function buildApp(deps: Deps): FastifyInstance {
     return { userId: user.id, name: user.name };
   };
 
-  app.post<{ Body: { maxPlayers?: number; instanceId?: string } }>(
+  app.post<{ Body: { maxPlayers?: number } }>(
     "/lobbies",
     {
       onRequest: requireUser,
       schema: {
         body: {
           type: "object",
-          properties: { maxPlayers: { type: "integer", minimum: 1, maximum: MAX_PLAYERS }, instanceId: { type: "string", maxLength: 128 } },
+          properties: { maxPlayers: { type: "integer", minimum: 1, maximum: MAX_PLAYERS } },
         },
       },
     },
     async (request, reply) => {
-      const { maxPlayers = MAX_PLAYERS, instanceId = null } = request.body ?? {};
-      // One open lobby per Activity instance: friends in the same voice-channel Activity land in the same lobby.
-      const existing = instanceId ? lobbies.findByInstance(instanceId) : null;
-      const lobby = existing ? lobbies.join(existing.id, await member(request.userId)) : lobbies.create(await member(request.userId), maxPlayers, instanceId);
-      return reply.code(existing ? 200 : 201).send(lobbyView(lobby));
+      // Always a new lobby, on the website and in a Discord Activity alike: players reach each other by code, link or
+      // Quick join, never by the Activity instance they share (#1178).
+      const { maxPlayers = MAX_PLAYERS } = request.body ?? {};
+      return reply.code(201).send(lobbyView(lobbies.create(await member(request.userId), maxPlayers)));
     },
   );
 
@@ -362,23 +360,22 @@ export function buildApp(deps: Deps): FastifyInstance {
     },
   );
 
-  // Looking at a night by its code, or by the Discord Activity instance it belongs to (a body, not the URL, so a code
-  // stays out of the request log): is it waiting for its host, or in round N, and is there room? It joins nobody.
-  app.post<{ Body: { code?: string; instanceId?: string } }>(
+  // Looking at a night by its code (a body, not the URL, so a code stays out of the request log): is it waiting for its
+  // host, or in round N, and is there room? It joins nobody.
+  app.post<{ Body: { code: string } }>(
     "/lobbies/preview",
     {
       onRequest: requireUser,
       schema: {
         body: {
           type: "object",
-          properties: { code: { type: "string", maxLength: 16 }, instanceId: { type: "string", maxLength: 128 } },
-          anyOf: [{ required: ["code"] }, { required: ["instanceId"] }],
+          required: ["code"],
+          properties: { code: { type: "string", maxLength: 16 } },
         },
       },
     },
     async (request) => {
-      const { code, instanceId } = request.body;
-      const found = code !== undefined ? lobbies.findByCode(code) : lobbies.findByInstance(instanceId!);
+      const found = lobbies.findByCode(request.body.code);
       if (!found) throw new LobbyFailure("not_found");
       return lobbyPreview(found);
     },
