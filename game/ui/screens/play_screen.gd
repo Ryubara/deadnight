@@ -10,8 +10,6 @@ const NIGHT_SCREEN := "res://ui/screens/night_screen.tscn"
 const PANEL_WIDTH := 1000.0
 ## A canvas this high or lower is a phone held sideways (the phone factor makes it 540 units).
 const COMPACT_HEIGHT := 600.0
-## The least canvas width that holds the rows' whole titles (a phone's 960 units do not, #1227).
-const WHOLE_TITLES_WIDTH := 1100.0
 const MARGIN_SIDES: Array[StringName] = [
 	&"margin_left", &"margin_right", &"margin_top", &"margin_bottom"
 ]
@@ -99,19 +97,17 @@ func start() -> void:
 ## the buttons and the panel's edge already fill most of it, #671).
 func _fit_for_fingers() -> void:
 	var phone := size.y <= COMPACT_HEIGHT
-	panel.set_compact(phone, size.x >= WHOLE_TITLES_WIDTH)
+	panel.set_compact(phone)
 	_overline.visible = not phone
 	_title.visible = not phone
 	_column.add_theme_constant_override(
 		&"separation", _tokens.space_sm if phone else _tokens.space_md
 	)
-	var margin_size := _tokens.space_md if phone else _tokens.space_xl
+	# A thin edge on every side of a phone's canvas, 540 units high and, narrowest, 960 wide: the
+	# widest row's title shows whole only with it (#1250).
+	var margin_size := _tokens.space_sm if phone else _tokens.space_xl
 	for side in MARGIN_SIDES:
 		_margin.add_theme_constant_override(side, margin_size)
-	if phone:
-		# The canvas is only 540 units high: the panel keeps a thin edge above and below.
-		_margin.add_theme_constant_override(&"margin_top", _tokens.space_sm)
-		_margin.add_theme_constant_override(&"margin_bottom", _tokens.space_sm)
 	_rules_scroll.margin = float(_tokens.space_sm if phone else _tokens.space_xl)
 	# The column is as wide as the canvas leaves: a phone's narrowest canvas is 960 units wide.
 	var around := 2.0 * float(margin_size) + _card.get_theme_stylebox(&"panel").get_minimum_size().x

@@ -85,10 +85,15 @@ The lobby's "Break between ro..." was the row's title column: `UIRow` asks for a
 and trims the title with an ellipsis, a label that trims asks for no width of its own, and the lobby's card is only as
 wide as its rows' minimums. `UIRow.show_whole_title` stops the trimming on the phone's form
 (`MatchSettingsPanel.set_compact(phone)`, whole titles by default), so the column grows to the longest title, and
-`UIRow.title_cut` is what the test asks. The solo Play screen is not cut at 844 x 390, as the issue says, and is still
-cut at the narrowest phone (667 x 375, a 960 unit canvas): the whole title overflows that card by 20 units
-(`test_ui_fit` fails), so the Play screen asks for whole titles only from 1100 units wide
-(`PlayScreen.WHOLE_TITLES_WIDTH`).
+`UIRow.title_cut` is what the test asks. The solo Play screen was not cut at 844 x 390 and was still cut at the
+narrowest phone (667 x 375, a 960 unit canvas) until #1250: the widest row (the break between rounds: a 254 unit
+title, a 440 unit control, a 78 unit value, two 24 unit gaps) is 820 units, the scroll adds its 48 unit bar, and the
+card's column was left 848 (960 less two 16 unit margins and the card's 80). `test_ui_fit` failed by 20 units, and the
+first try (`PlayScreen.WHOLE_TITLES_WIDTH`) kept the trimmed titles below 1100 units. The fix gives the room back
+without touching a font: `UIRow.set_tight` (the panel's compact form) makes the gaps in a row 16 units (8 less each,
+16 on the widest row), and the Play screen's margins are 8 units on every side of a phone (the top and bottom already
+were), 16 less across. The widest row is then 788 and the card 836 of 848, with every title whole at every page of
+`UiFitRun.PAGES` (`test_phone_fold`: the solo screen walks all four).
 
 Not fixed here, filed: the night's pause card and Settings from a night (#1205), tablets and small desktop windows (#1206).
 
