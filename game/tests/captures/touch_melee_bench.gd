@@ -118,7 +118,7 @@ func _publish() -> void:
 	if not OS.has_feature("web"):
 		return
 	var ratio := maxf(float(JavaScriptBridge.eval("window.devicePixelRatio", true)), 1.0)
-	var centre: Vector2 = _controls.button_circle(TouchLayout.MELEE)[&"centre"]
+	var centre: Vector2 = _controls.button_circle(TouchLayout.STRIKE)[&"centre"]
 	var window := get_viewport().get_final_transform() * centre
 	var buttons := {}
 	var zoom := get_viewport().get_final_transform().get_scale().x / ratio

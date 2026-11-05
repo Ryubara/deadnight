@@ -248,6 +248,10 @@ static func snapshot(top: Control) -> Dictionary:
 		"touch_hits": "",
 		"touch_zones": "",
 		"touch_held": "",
+		"touch_strike": false,
+		"kills": 0,
+		"quick_melees": 0,
+		"dead_gap_m": -1.0,
 		"touch_stick": "",
 		"ground_speed": 0.0,
 		"sprinting": false,
@@ -438,6 +442,10 @@ static func snapshot(top: Control) -> Dictionary:
 		data["grenade_cooking"] = night.server.grenades.is_cooking(night.state.player_id)
 		data["grenade_count"] = night.hud.state.grenades if night.hud != null else 0
 	data["touch_held"] = ",".join(night_screen.touch_held())
+	data["touch_strike"] = night_screen.touch_strike_up()  # a dead is in reach: Strike shows (#1285)
+	data["kills"] = state.kills
+	data["quick_melees"] = state.quick_melees
+	data["dead_gap_m"] = StrikeReach.nearest(state)
 	data["touch_stick"] = night_screen.touch_stick()
 	if state.has_frame():
 		data["round"] = state.round_number()
