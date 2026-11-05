@@ -1,0 +1,93 @@
+# The UI suites in a window, on a schedule (#1196). CI runs every GdUnit suite headless, where the game's own switches
+# that a window turns the other way are off (the helicopter drop, the loading screen, a 64 pixel window that never makes
+# the menu shell a phone's), so three suites failed for days only in a window (#1187) and three more still do (#1195).
+# This runs `game/tests/ui` on a Linux runner under a virtual display (`xvfb-run`, Mesa's software GL, the Compatibility
+# renderer), one Godot process a suite with its own timeout, and reports the suites that fail there.
+# SPIKE: the push trigger below is for the first trials of this branch only.
+name: ui-windowed
+
+on:
+  push:
+    branches: [ci-run-the-ui-suites-windowed-on-a-schedule-so]
+    paths: [.github/workflows/ui-windowed.yml]
+  workflow_dispatch:
+    inputs:
+      suites:
+        description: "Comma-separated suites (test_level_ink,test_night_crosshair); empty: all of tests/ui"
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  windowed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Start the clock
+        run: echo "CLOCK=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: repos/deadnight
+          persist-credentials: false
+          lfs: true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Ryubara/gdstudio
+          path: repos/gdstudio
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: cache/downloads
+          key: tools-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
+      - name: Install the virtual display and Mesa's software GL
+        timeout-minutes: 10
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 libegl1 \
+            libxcursor1 libxinerama1 libxi6 libxrandr2 libxkbcommon0 libfontconfig1 libasound2t64
+          echo "setup done at $(( $(date +%s) - CLOCK )) s"
+      - name: Make the workspace and fetch the pinned Godot and GdUnit4
+        timeout-minutes: 10
+        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,gdunit4
+      - name: Import the project
+        timeout-minutes: 15
+        run: |
+          set -o pipefail
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          "$godot" --headless --path repos/deadnight/game --import 2>&1 | tee import.log
+          ! grep -E "^(SCRIPT )?ERROR" import.log
+          echo "import done at $(( $(date +%s) - CLOCK )) s"
+      - name: What the display and the renderer are
+        timeout-minutes: 3
+        run: |
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          xvfb-run -a -s "-screen 0 1920x1080x24" "$godot" --path repos/deadnight/game --quit-after 5 --verbose 2>&1 | grep -iE "OpenGL|Mesa|llvmpipe|Vulkan|Renderer|GLES|display|X11" | head -20 || true
+      - name: Run the suites in a window
+        timeout-minutes: 80
+        env:
+          SUITES: ${{ inputs.suites || 'test_level_ink,test_poster_art_pixels,test_night_crosshair,test_night_mouse_look,test_hover_room,test_main_menu,test_hud_layout' }}
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          python3 repos/deadnight/tools/ui_windowed.py --self-test
+          python3 repos/deadnight/tools/ui_windowed.py run --project repos/deadnight/game --out out --suites "$SUITES" \
+            --headless-godot "$godot" -- xvfb-run -a -s "-screen 0 1920x1080x24" "$godot"
+          echo "suites done at $(( $(date +%s) - CLOCK )) s"
+      - name: Upload the logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-windowed
+          path: |
+            out
+            import.log
+          if-no-files-found: warn
+      - name: Show the result
+        if: always()
+        run: |
+          python3 repos/deadnight/tools/ui_windowed.py report --out out --job-result "${{ job.status }}" \
+            --markdown summary.md --known repos/deadnight/tools/ui_windowed_known.json || true
+          [ -f summary.md ] && cat summary.md >> "$GITHUB_STEP_SUMMARY" || true
