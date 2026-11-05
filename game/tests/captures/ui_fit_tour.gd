@@ -13,6 +13,7 @@ var _label := "run"
 var _sizes: Array[Vector2i] = []
 var _scales: Array[float] = [1.0]
 var _only := ""
+var _pages := false
 var _run: UiFitRun
 var _problems := 0
 var _subjects := 0
@@ -30,6 +31,8 @@ func _ready() -> void:
 			_scales.clear()
 			for text in arg.trim_prefix("--scales=").split(","):
 				_scales.append(float(text))
+		elif arg == "--pages":
+			_pages = true
 		elif arg.begins_with("--sizes="):
 			for text in arg.trim_prefix("--sizes=").split(","):
 				var parts := text.split("x")
@@ -47,6 +50,11 @@ func _ready() -> void:
 		for factor in _scales:
 			await _run.set_window(size, factor)
 			await _tour()
+	if _pages:
+		for page: Array in UiFitRun.PAGES:
+			for factor in _scales:
+				await _run.set_window(page[0], factor, page[1])
+				await _tour()
 	await _run.close()
 	_run.restore()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))

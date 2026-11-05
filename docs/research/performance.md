@@ -216,9 +216,70 @@ shard runs it (about 1.5 minutes) and writes what it measured into the job summa
 - **the frame over a multiple of the calibration** (limit 15; 3.0 measured in a quiet minute here, 7 to 26 on a
   loaded machine): a catcher of a large regression
   that holds on a slow runner and a busy machine; it is deliberately loose until three runs of the real runner's
-  summary say where it should sit.
+  summary say where it should sit;
+- **a labelled section over its share of the frame** (`server.xp`, `server.challenges`): see the next section.
 
-Canvas items (limit 230) count every `CanvasItem` in the tree, so the HUD's nodes are counted as built, empty or not.
+### What the label limits mean
+
+`server.challenges` and `server.xp` are `PerfProbe` sections of a few microseconds a frame (the median of the steady
+rows is 0.03 to 0.05 ms and 0.005 to 0.01 ms, against a frame of 8 to 16 ms). Their limit is a **share of the frame**:
+the median over the steady rows of the section's mean milliseconds a frame, over the median of the rows' `frame_ms`
+(the mean wall time of a frame). Read it as "this much of a tick goes to the section", and a limit of 0.0045 as "the
+challenge tracker may cost 0.45 % of a frame on the runner it runs on". The limits sit above the highest share the
+runners gave and below twice the lowest, so a section twice as slow fails on every runner measured and an unchanged one
+passes on every one:
+
+| | Share of the frame, 46 runs of `godot (1)` | Limit | A section twice as slow, lowest of the 46 |
+| --- | --- | --- | --- |
+| `server.challenges` | 0.00270 to 0.00368 (median 0.0030) | 0.0045 | 0.0054 |
+| `server.xp` | 0.00047 to 0.00074 (median 0.0006) | 0.00085 | 0.00094 |
+
+**Why not the calibration (the first rule, #1129 and #1114).** The limit was a multiple of the calibration (a fixed
+loop of arithmetic of 3 ms, best of five), 0.012 for the challenges and 0.01 for the XP award. Over the 46 runs of
+`godot (1)` that came after the tracker's last change (2026-11-05, 07:40 to 12:10 UTC, 46 different commits, no commit
+ran twice) the ratio moved from 0.0057 to 0.0123 (a factor of 2.1), and failed two unrelated runs (0.0123 on a UI-only
+pull request, 0.0120 on `main`):
+
+- The runners come in three kinds, told apart by the calibration: about 3.1 ms (8 of the 46), 4.5 ms (16) and 6.0 ms
+  (22). The section costs almost the same on all three (0.032, 0.039 and 0.041 ms), so a ratio of the calibration
+  reads 0.0101, 0.0087 and 0.0068: the fastest kind of runner sat at 84 % of the limit with unchanged code. The
+  calibration is a hot loop that a fast core runs twice as fast; a few microseconds of cold script do not speed up in
+  step.
+- Within a kind, a busy neighbour slows the frame and the section together (frames of 10.0 to 16.6 ms at about 4.5 ms of
+    calibration) and the best-of-five calibration does not see it.
+- Across the 46 runs the log of the section's time rose with the log of the frame with a slope of 0.98 (r 0.92) and
+  with the log of the calibration with a slope of 0.35 (r 0.49): the calibration cancels a third of what the host does
+  to this section, the frame cancels all of it. The spread of the ratio fell from 2.1 to 1.36 (challenges) and from
+  2.3 to 1.57 (XP).
+- The old limit could not both pass the fast kind and catch a slower section: the same 46 runs with the section made
+  twice as slow failed the old rule 42 times (the four it missed were the slow-calibration runners), the new rule 46;
+  at 1.5 times as slow 19 against 29. The XP award's old limit (0.01, seen at 0.0010 to 0.0026) failed none of the 46
+  at twice the time: it needed about four times.
+
+**Timer resolution and sample.** `Time.get_ticks_usec` counts microseconds, and a row used to round a mean to
+0.001 ms: the challenges' median moves 0.3 % by that, the XP award's up to 7 % (0.0054 read as 0.0050), so rows now keep
+0.0001 ms. A row is the mean of 60 frames; a single row can read five times the median (a preempted frame), so the
+rule takes the median of the 78 to 81 steady rows, not their mean.
+**Same commit, four local runs** (this machine, other work running): frames of 9.6 to 18.1 ms, the challenges' section
+0.029 to 0.038 ms, its share 0.0021 to 0.0030, the old ratio 0.0083 to 0.0091. On a loaded desktop the frame slows more
+than the section, so a local share reads low (a twice-as-slow section at 0.0042 would pass a 0.0045 limit); CI is
+the gate and its runners read 0.0027 to 0.0037.
+
+**Proof the limit still has teeth.** A throwaway change (not committed) made both sections wait for as long as they had
+just taken, so each took twice as long, in the budget's own command: the challenges read 0.0057 of the frame (limit
+0.0045) and the XP award 0.00098 (limit 0.00085), and `check_budget.py` exited 1 on both. The same command without
+the change, on the same machine, read 0.0021 to 0.0030 and 0.00037 to 0.00056 and passed.
+`tools/perf/test_check_budget.py` runs in CI before the budget and keeps the two facts for eight runners made from the
+numbers above (the three kinds, a busy one, and the highest and lowest share of each section): unchanged passes, twice
+as slow fails, for each section.
+
+**What it does not do.** A section that takes a third of a runner's frame still passes if the frame slows with it, and a
+frame that slows without the section lowers the share; the frame has its own limit (15 times the calibration), and
+the counts (`challenge.advance` a tick) catch more work. The XP award's margin is the thinnest (the limit is 15 % above
+the highest and 10 % below twice the lowest of the 46); if its rows at the finer resolution say it can be tighter, move
+it with a run of the test.
+
+Canvas items (limit 200) count every `CanvasItem` in the tree, so the HUD's nodes are counted as built, empty or not.
 What only a bigger night needs is built when a night reaches it and freed on the way down: the bots' chip strip
 (`HudBotChips`, two nodes) first sat in the points column at four bodies and took the peak from 215 to 217 here (229 to
 232 on CI, main 229); `HudPoints` now makes it past eight bodies only. The HUD at four bodies is the same 164 canvas
@@ -252,6 +313,54 @@ its limits are the peaks of the first CI run and a local one with 5 to 35 percen
 
 The tick of the server, which is what the capacity decision rests on, is not in this case (CI has no Railway
 container): it is in [the crowd budget](crowd-budget.md#rooms-of-fifteen-bodies-1193).
+
+### Canvas items by part
+
+`--canvasparts=1` on the budget's command (headless, `--xp=1`, as CI plays it) adds each part's item count to every row
+(`canvas_parts`), and `python tools/perf/canvas_parts.py <report.json> [--markdown]` prints the steady rows' least and
+most. Round 12, 3x, four players, the same 81 steady rows, local run (the CI runner reads 13 to 15 higher, 230 for
+215 and 185 for 172: the CI peak is the number that counts):
+
+| Part | Before | Now |
+| --- | ---: | ---: |
+| Hud/Points (four player boxes) | 46 | 46 |
+| EndBoard | 21 | 1 |
+| NightScreen touch layer | 12 | 12 |
+| Hud/Ammo, Hud/Slots | 10, 10 | 10, 10 |
+| Hud/Gains (a pool of rows) | 8 to 10 | 8 to 10 |
+| Hud columns (nine containers) | 9 | 9 |
+| Hud/Challenge | 9 | 1 |
+| Hud/Fuel, Hud/Health, Hud/Prompt | 9, 9, 9 | 9, 9, 9 |
+| Hud/Round | 8 | 8 |
+| Hud/Scoreboard | 7 | 1 |
+| Hud/Events (a pool of rows) | 3 to 6 | 3 to 6 |
+| Hud/Marquee | 6 | 1 |
+| Hud/Banner, Hud/Objective, Hud/BossBar | 5, 5, 5 | 5, 5, 1 |
+| Hud/Notices, ControllerHint, MenuPopups | 3, 2, 2 | 3, 2, 2 |
+| 14 parts of one item each | 14 | 14 |
+| **Peak of the steady rows** | **215** | **172** |
+
+What was freed is what the night builds and hides the whole of the budget's night: the end board, the challenge
+prompt, the scoreboard, the marquee and the boss bar (43 items). Each makes its words the first time it is needed (the
+end board's parts are properties whose getter builds; `HudTicket.body` makes its padding and box on first use), so a
+test (`test_hud_idle_canvas_items.gd`) holds both ends. A popup card makes the next-unlock line, the thumbnail chip and
+the poster and prizes only for the kind of card that shows them (4 to 5 items a card, not 16): a card is up for a few
+seconds and each one in a steady second counts. Not touched, with the room each would give: the player boxes'
+card, tab, frame, emblem, level icon and level (up to 4 of the 11 items of a box without a plate, #1199), the fuel
+card (8, hidden until a fuel night), and the labels the gains and events pools hold.
+
+**What the peak moves with.** On one commit the local run is the same every time (four runs, two of them at once on
+a loaded machine, the same 81 rows). What moves is the transient part: the gains and event rows (a pool that grows to
+its cap as a second has more events: 8 to 10 and 3 to 6 items) and the popup cards, whose number and kind follow the
+night's events, so a runner whose float arithmetic or timing differs by a hair lands a different event in a steady
+second (a guess: main read 229, 230, 230 and 229 on four commits that changed no UI, which no local run reproduces,
+and this change read 185 on two commits). That is the spread, about 1 on the runner, and the limit is set above it
+rather than on the peak.
+
+**The limit.** 230 became **200**: the CI peak 185, the spread of 1 to 3, and about 12 kept for the planned night UI
+that each took the old limit over by 1 to 4 (the plated boxes #1199, the phone keyboard #1200, the corner cards #1218
+and the touch layer #1217). A pull request that adds items spends that room; one that needs more than is left frees
+some first (`--canvasparts=1`, then the hidden parts above) and does not raise the number.
 
 Teeth: the report of a run with the node limit set under the peak fails and names it (output in the pull request).
 `max_per_tick` (a counted piece of work a tick, from `PerfProbe.count`) is built in for the fixes of #930 and #931 to

@@ -85,13 +85,6 @@ func test_a_person_with_only_bots_beside_them_has_not_played_together() -> void:
 	_b.join(3, true)
 	_b.feed({"type": &"game_over", "reason": &"all_down", "round_reached": 2})
 	assert_int(_b.n(1, ChallengeStats.NIGHTS_TOGETHER)).is_equal(0)
-	# A person who took a bot's seat is one, and a bot who took a person's seat is not.
-	_b.tally.reset()
-	_b.join(1)
-	_b.join(2, true)
-	_b.feed({"type": &"bot_replaced", "player_id": 2})
-	_b.feed({"type": &"game_over", "reason": &"all_down", "round_reached": 2})
-	assert_int(_b.n(1, ChallengeStats.NIGHTS_TOGETHER)).is_equal(1)
 
 
 func test_the_map_is_the_one_the_settings_name_and_a_night_that_left_before_the_end_has_none(

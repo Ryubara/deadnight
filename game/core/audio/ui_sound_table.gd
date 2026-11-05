@@ -27,7 +27,6 @@ const COMMIT_WORDS: Array[String] = [
 	"play",
 	"save",
 	"join",
-	"quick join",
 	"join with the code",
 	"create a night",
 	"continue",

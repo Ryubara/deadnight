@@ -253,8 +253,8 @@ started. The defaults are today's game exactly, and every shipped test runs on t
   night, and a person who joins or leaves changes nothing about them: a joining person takes the lowest free person id
   (a seat of their own), and a person who leaves takes only their own body away. (Until #1179 the bots took the highest
   free seats of the eight, a person with no seat took the lowest bot's seat as it stood and a leaving person's seat
-  became a bot's; those two hand-overs, `NightBots.hand_over` and `adopt`, are gone. The rules still know the
-  `seat_person` and `seat_bot` actions and their `bot_replaced` and `bot_seated` events, which nothing sends now.)
+  became a bot's; those two hand-overs, `NightBots.hand_over` and `adopt`, are gone, and with them the rules' two seat
+  actions and their two events, removed in #1185; the wire never carried the actions.)
   A seat is a bot's when `player_added` says `bot: true` (`PlayerState.bot`, in the snapshot too): the HUD writes `BOT`
   after the name everywhere (`HudState.name_of`), a bot seated at the start is no "joined" notice, and the lobby lists
   the bots the host's setting will seat in rows after the seats (`LobbyScreen.bots_shown`, `B1`, `B2`, ...). Bots

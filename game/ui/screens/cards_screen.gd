@@ -28,9 +28,12 @@ const TAB_WORDS := {
 const PHONE_WIDTH := 960.0
 ## Below this height the screen is a short one: a phone held sideways.
 const SHORT_HEIGHT := 700.0
-## A short screen's tabs are low and small, so the list keeps its room.
-const SHORT_TAB_HEIGHT := 34.0
-const SHORT_TAB_FONT := 14
+## A short screen's tabs are low and small, so the list keeps its room. 21 units of type are 14.6
+## CSS px on the narrowest page (14.4 at 844 x 390), over the floor of 14.
+const SHORT_TAB_HEIGHT := MenuLook.TAP_TARGET
+const SHORT_TAB_FONT := 21
+## The title beside them, in units.
+const SHORT_TITLE_FONT := 30
 
 var store: ProfileStore
 var back_button: UIButton
@@ -112,6 +115,8 @@ func _ready() -> void:
 		card.move_child(line, title.get_index())
 		card.remove_child(title)
 		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# The three tabs are a tap target high and over the type floor, so the title yields width.
+		title.add_theme_font_size_override(&"font_size", SHORT_TITLE_FONT)
 		line.add_child(title)
 		tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		line.add_child(tabs)

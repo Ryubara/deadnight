@@ -11,9 +11,15 @@ extends Node
 ## and a finger meets CSS pixels: the sizes it prints are in both.
 ##
 ## Arguments after `--`: `--shot=end` (the end board with the fullest report and credits),
-## `--shot=pause` (the pause card), `--shot=hud` (the HUD with an objective in the bottom left,
-## `--at=0.2,0.93` is where it stands on the screen), `--scale=X` (the interface size, default 1)
-## and `--out=FILE`.
+## `--shot=pause` (the pause card), `--shot=settings` (its Settings, `--tab=N`),
+## `--shot=hud` (the HUD with an objective in the bottom left,
+## `--at=0.2,0.93` is where it stands on the screen), `--shot=markers` (an objective and an ally,
+## standing and down, on the middle of every card of the HUD's corners: Deadnight #1218),
+## `--shot=middle` (a diamond on the round banner, a teammate on the prompt and another on a popup
+## card, and tags at the top edge: Deadnight #1230),
+## `--on=objective@health,ally@ammo,downed@round` puts only those, `--on=free` three on free ground,
+## `--touch=0` is a desktop, `--ratio=X` the page's pixel ratio, `--scale=X` (the interface size,
+## default 1) and `--out=FILE`.
 
 const PLAY := "res://ui/screens/play_screen.tscn"
 const SETTINGS_PATH := "user://night_phone_capture.cfg"
@@ -27,13 +33,17 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	TouchMode.device_is_touch = true
+	TouchMode.device_is_touch = str(_args.get("touch", "1")) != "0"
 	# By the script object, so the capture also runs on a game that has no `pixel_ratio` (a "before").
 	var scale_script: Object = load("res://ui/menu/menu_scale.gd")
 	scale_script.set(&"pixel_ratio", float(_args.get("ratio", 2.0)))
+	# The window is the canvas: the page is the canvas over the ratio (844 x 390 CSS px at 1688 x 780).
+	PageSize.css_override = Vector2(get_window().size) / float(_args.get("ratio", 2.0))
 	Settings.path = SETTINGS_PATH
 	Settings.reset_defaults()
 	Settings.set_value(SettingsService.UI_SCALE, float(_args.get("scale", 1.0)))
+	# The first-run hints ("DRAG TO MOVE") are over the HUD once, and cover what is measured here.
+	Settings.set_value(SettingsService.TOUCH_HINTS_SEEN, 255)
 	PlayerLevel.use(10)
 	var chosen := MatchSettings.new()
 	chosen.map = "small_indoor"
@@ -50,6 +60,14 @@ func _run() -> void:
 	await screen.night.ready_to_play
 	if screen.night.is_arriving():
 		await screen.night.arrival_ended
+	# The show's black bars (7.5% of the height at the top and the bottom, `ArrivalCutscene.BAR_SHARE`)
+	# and its fade stay for 0.45 s after `arrival_ended`, stepped by the physics clock: a shot taken
+	# in that time shows bands a night does not have (#1261). Wait until the show has gone.
+	var show_node: Node = screen.night.arrival_show
+	var guard := 0
+	while is_instance_valid(show_node) and guard < 600:
+		await get_tree().physics_frame
+		guard += 1
 	var window := get_window()
 	var per_unit := MenuScale.pixels_per_unit(window.size, window.content_scale_factor)
 	var ratio := float(_args.get("ratio", 2.0))
@@ -68,6 +86,12 @@ func _run() -> void:
 			await _end(screen)
 		"pause":
 			await _pause(screen)
+		"settings":
+			await _settings(screen)
+		"markers":
+			await _markers(screen)
+		"middle":
+			await _middle(screen)
 		_:
 			await _hud(screen)
 	# The end sequence's own cards give way to the board over about two seconds of the clock.
@@ -102,6 +126,15 @@ func _pause(screen: NightScreen) -> void:
 	screen._pause()
 
 
+## The Settings opened from the pause card (`--tab=N` is the tab, 0 to 4).
+func _settings(screen: NightScreen) -> void:
+	screen._pause()
+	screen._open_settings()
+	await get_tree().process_frame
+	screen._settings.select_tab(int(_args.get("tab", 0)), false)
+	await get_tree().process_frame
+
+
 func _hud(screen: NightScreen) -> void:
 	var night := screen.night
 	night.link.broadcast(night.server.rules.apply(RulesAction.skip_break()))
@@ -116,6 +149,106 @@ func _hud(screen: NightScreen) -> void:
 		&"door", &"objective", float(at[0]), float(at[1]), 30.0, "Concession Stand", false
 	)
 	hud.state.set_markers([marker] as Array[Dictionary])
+
+
+## Every card of the corners with an objective, a teammate or a body on its middle, in turn, so each
+## kind stands under each card: the night's own markers give way to these.
+func _markers(screen: NightScreen) -> void:
+	var night := screen.night
+	night.link.broadcast(night.server.rules.apply(RulesAction.skip_break()))
+	NightFixture.run(night, 3)
+	night.set_paused(true)
+	night.markers.set_process(false)
+	var hud := screen._hud
+	hud.state.set_area("The Concession Stand", "Light the booth to open the back lot")
+	hud.state.set_ammo(30, 150, "Shotgun")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var names: Array[String] = ["Ruby", "Moe", "Cal", "Dee", "Vera"]
+	var list: Array[Dictionary] = []
+	var size := hud.markers.size
+	var origin := hud.markers.get_global_rect().position
+	if str(_args.get("on", "")) == "free":
+		# On free ground, under no card: what a desktop must draw as it always did.
+		(
+			hud
+			. state
+			. set_markers(
+				(
+					[
+						HudFixture.late_marker(
+							&"a", &"objective", 0.5, 0.3, 30.0, "Concession Stand", false
+						),
+						HudFixture.late_marker(&"b", &"ally", 0.62, 0.55, 12.0, "Moe", false),
+						HudFixture.late_marker(&"c", &"ally", 0.4, 0.6, 12.0, "Ruby", true),
+					]
+					as Array[Dictionary]
+				)
+			)
+		)
+		return
+	var n := 0
+	# `--on=objective@health,ally@ammo,downed@round`: only these, on the cards of that name.
+	var only := str(_args.get("on", "")).split(",", false)
+	for card in hud.corner_cards():
+		if not card.is_visible_in_tree() or card.size == Vector2.ZERO:
+			continue
+		var middle := (card.get_global_rect().get_center() - origin) / size
+		var kind := &"objective" if n % 3 == 0 else &"ally"
+		var down := n % 3 == 2
+		if not only.is_empty():
+			kind = &""
+			for entry in only:
+				var pair := entry.split("@")
+				if pair[1].to_lower() == str(card.name).to_lower():
+					kind = &"objective" if pair[0] == "objective" else &"ally"
+					down = pair[0] == "downed"
+			if kind == &"":
+				continue
+		var shown := "Concession Stand" if kind == &"objective" else names[n % names.size()]
+		var marker := HudFixture.late_marker(
+			StringName("m%d" % n), kind, middle.x, middle.y, 30.0, shown, down
+		)
+		if kind == &"ally":
+			marker["level"] = 3 + n * 7
+			marker["icon"] = marker["level"]
+		list.append(marker)
+		n += 1
+	hud.state.set_markers(list)
+	print("night: markers ", n)
+
+
+## Markers over the cards of the middle of the screen and at the top edge: a diamond on the round
+## banner, a teammate on the prompt of a door, another on the card of a level gained, and teammates
+## with and without a level on the top edge, where a tag over them would be cut.
+func _middle(screen: NightScreen) -> void:
+	var night := screen.night
+	night.link.broadcast(night.server.rules.apply(RulesAction.skip_break()))
+	NightFixture.run(night, 3)
+	night.set_paused(true)
+	night.markers.set_process(false)
+	var hud := screen._hud
+	hud.state.set_area("The Concession Stand", "Light the booth to open the back lot")
+	hud.state.set_ammo(30, 150, "Shotgun")
+	hud.state.set_prompt(&"buy_door", "Projection booth", 750)
+	hud.state.apply_event(
+		{"type": &"level_up", "player_id": hud.state.local_player_id, "level": 15, "total": 0}
+	)
+	for _i in 30:
+		await get_tree().process_frame
+		hud.popups.advance(0.05)
+	var list: Array[Dictionary] = [
+		HudFixture.late_marker(&"a", &"objective", 0.5, 0.1, 30.0, "Concession Stand", false),
+		HudFixture.late_marker(&"b", &"ally", 0.5, 0.93, 12.0, "Ruby", false),
+		HudFixture.late_marker(&"c", &"ally", 0.5, 0.3, 12.0, "Moe", false),
+		HudFixture.late_marker(&"d", &"ally", 0.9, 0.0, 12.0, "Cal", false),
+		HudFixture.late_marker(&"e", &"ally", 0.8, 0.0, 12.0, "Dee", true),
+	]
+	list[2]["level"] = 22
+	list[2]["icon"] = 22
+	list[3]["level"] = 41
+	list[3]["icon"] = 41
+	hud.state.set_markers(list)
 
 
 func _report(screen: NightScreen, per_unit: float, ratio: float) -> void:

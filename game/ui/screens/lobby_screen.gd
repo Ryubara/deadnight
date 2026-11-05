@@ -17,10 +17,6 @@ enum Mode { LIVE, PREVIEW }
 const SCREEN := "res://ui/screens/lobby_screen.tscn"
 const NIGHT_SCREEN := "res://ui/screens/night_screen.tscn"
 const FIELD_WIDTH := 620.0
-const SEAT_NUMBER_WIDTH := 48.0
-const TAG_WIDTH := 96.0
-## A seat row's height, which the card behind it fits and the emblem is cut to.
-const SEAT_ROW_HEIGHT := 40.0
 const LEAVE_WIDTH := 150.0
 ## How long the host's last change waits for another before it is sent (a slider drag is a stream).
 const RULES_DELAY := 0.35
@@ -58,6 +54,8 @@ var play_button: UIButton
 var join_button: UIButton
 var copy_link_button: UIButton
 var copy_code_button: UIButton
+## Opens the Server Browser over this lobby: a press on a night there moves the player to it.
+var browse_button: UIButton
 ## In a Discord Activity: Discord's own window for sending the code to friends, which needs no
 ## clipboard (`discord-bridge.js`, `shareLink`).
 var share_button: UIButton
@@ -75,6 +73,10 @@ var rules: MatchSettingsPanel
 ## A night looked at by its code (the preview): the map it is on, as a ticket nobody can press. The
 ## lobby of a member shows the map in `rules` (the host's picker, a guest's read-only one).
 var map_card: MapCard
+
+## The night's visibility, a row of its own after the rules (`LobbyPrivateSwitch`): its `row`,
+## `toggle`, `is_private()` and `editable`.
+var private_switch: LobbyPrivateSwitch
 
 var _rules_title: UILabel
 ## Said under the panel when the backend keeps no rules at all (a build from before them): the
@@ -171,6 +173,12 @@ static func event_text(event: Dictionary) -> String:
 			)
 		&"started":
 			return "%s started the night." % who
+		&"visibility":
+			return (
+				"%s made the night private. Only the code gets in." % who
+				if event.get("private", false)
+				else "%s made the night public. It is in the Server Browser." % who
+			)
 	return ""
 
 
@@ -194,6 +202,7 @@ func _ready() -> void:
 	# The panel never grows past the window: a screen taller than it (the copy field and the long
 	# link all up) scrolls rather than push Start and Leave off the bottom.
 	_scroll = ScrollContainer.new()
+	UIScroll.take_touch(_scroll)
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.follow_focus = true
 	panel.add_child(_scroll)
@@ -230,12 +239,22 @@ func _ready() -> void:
 	rules.custom_minimum_size.x = FIELD_WIDTH
 	rules.changed.connect(_on_rules_changed)
 	box.add_child(rules)
+	# A phone's canvas gets the panel's phone form, as the Play screen does (#1197).
+	resized.connect(_fit_phone)
+	_fit_phone()
 	_rules_note = _label(RULES_UNSUPPORTED, UILabel.Style.CAPTION)
 	_rules_note.name = "RulesNote"
 	_rules_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_rules_note.custom_minimum_size.x = FIELD_WIDTH
 	_rules_note.visible = false
 	box.add_child(_rules_note)
+	# After the rules, with Start: the screen opens scrolled to the button the host presses, and
+	# this is the last thing they set before it.
+	private_switch = LobbyPrivateSwitch.new()
+	box.add_child(private_switch.build(get_tree(), FIELD_WIDTH))
+	private_switch.pressed.connect(_send_visibility)
+	private_switch.said.connect(_say)
+	private_switch.appeared.connect(func() -> void: private_switch.reveal(_scroll, start_button))
 	_rules_timer = Timer.new()
 	_rules_timer.one_shot = true
 	_rules_timer.wait_time = RULES_DELAY
@@ -254,6 +273,10 @@ func _ready() -> void:
 	var actions := _row(box, "Actions")
 	start_button = _button("Start the night", UIButton.Variant.PRIMARY, "Start")
 	start_button.pressed.connect(start)
+	# The scroll follows the focus to Start when the screen is up, after the row has come on screen.
+	start_button.focus_entered.connect(
+		func() -> void: private_switch.reveal(_scroll, start_button), CONNECT_ONE_SHOT
+	)
 	play_button = _button("Play", UIButton.Variant.PRIMARY, "Play")
 	play_button.pressed.connect(func() -> void: await _go_in(false))
 	join_button = _button("Join", UIButton.Variant.PRIMARY, "Join")
@@ -273,6 +296,10 @@ func _ready() -> void:
 	copy_code_button = _button("Copy the code", UIButton.Variant.SECONDARY, "CopyCode")
 	copy_code_button.pressed.connect(func() -> void: await _copy(code_label.text, "Code copied."))
 	_in_row(copies, copy_code_button, half, true)
+	var browse := _row(box, "Browse")
+	browse_button = _button("Server browser", UIButton.Variant.SECONDARY, "Browse")
+	browse_button.pressed.connect(browse_nights)
+	_in_row(browse, browse_button, FIELD_WIDTH, true)
 	_shares = _row(box, "Shares")
 	share_button = _button("Share in Discord", UIButton.Variant.SECONDARY, "ShareDiscord")
 	share_button.pressed.connect(_share)
@@ -326,6 +353,7 @@ func focus_initial() -> void:
 
 func screen_enter() -> void:
 	super.screen_enter()
+
 	if mode == Mode.LIVE and api != null and not _over:
 		watch.watch(api, lobby, _me)
 	elif mode == Mode.PREVIEW and api != null:
@@ -335,10 +363,30 @@ func screen_enter() -> void:
 func _exit_tree() -> void:
 	if watch != null:
 		watch.stop()
+	PageClosing.disarm(str(lobby.get("id", "")))
 	if mode != Mode.LIVE or _entering or _over or lobby.is_empty() or api == null:
 		return
 	# Gone by Back or Esc: the seat goes with it, said from a caller that outlives this screen.
 	api.detached(get_tree().root).leave(lobby)
+
+
+## Opens the Server Browser over this lobby. The lobby stays as it is until the player presses a
+## night there,
+## and is freed then (`moved_on`); Back from the browser returns here.
+func browse_nights() -> void:
+	if _busy or mode != Mode.LIVE or _over:
+		return
+	ServerBrowserScreen.open(api, lobby)
+
+
+## The player moved to another night from the Server Browser: this screen is freed without saying
+## `leave`
+## (the backend took the player out of this lobby with the join), and its poll stops.
+func moved_on() -> void:
+	_entering = true
+	if watch != null:
+		watch.stop()
+	queue_free()
 
 
 ## Whether this player is the host of the lobby they are in.
@@ -397,6 +445,7 @@ func start() -> void:
 	_rules_waiting = null
 	_set_enabled(false)
 	_say("Starting the night...")
+	await private_switch.flush(api, lobby, is_host())
 	# The rules as the panel shows them now: a change still waiting to be sent goes with the start.
 	var started := await api.start(lobby, rules.settings())
 	if not started["ok"]:
@@ -460,6 +509,7 @@ func _go_in(held: bool) -> void:
 	NightScreen.remember_lobby(api, lobby, get_tree().root)
 	_entering = true
 	watch.stop()
+	_sync_page_closing()
 	if opener.is_valid():
 		opener.call()
 	else:
@@ -483,18 +533,41 @@ func _on_happened(events: Array) -> void:
 
 func _on_ended(text: String) -> void:
 	_over = true
+	_sync_page_closing()
 	_set_enabled(true)
 	start_button.visible = false
 	play_button.visible = false
 	join_button.visible = false
 	copy_link_button.visible = false
 	copy_code_button.visible = false
+	browse_button.visible = false
 	_shares.visible = false
 	copy_field.visible = false
 	map_card.visible = false
+	private_switch.hide_row()
 	leave_button.text = "Back"
 	status.text = text if text != "" else TogetherApi.TEXTS["not_found"]
 	note.text = ""
+
+
+## Holds the closing page's word ready while this screen is a waiting room the player is in, and
+## takes it back when it is not (the night started and the socket speaks for them, the lobby ended,
+## the screen is going): `PageClosing`, Deadnight #1188.
+func _sync_page_closing() -> void:
+	var id := str(lobby.get("id", ""))
+	var waiting: bool = (
+		mode == Mode.LIVE
+		and api != null
+		and not _over
+		and not _entering
+		and id != ""
+		and str(lobby.get("state", "")) != "started"
+	)
+	var request := api.page_closing_request(lobby) if waiting else {}
+	if request.is_empty():
+		PageClosing.disarm(id)
+	else:
+		PageClosing.arm(id, request)
 
 
 # --- What the screen shows ---
@@ -509,6 +582,7 @@ func _show() -> void:
 	link_label.text = page_link
 	link_label.visible = live and page_link != code_label.text
 	_show_seats()
+	private_switch.show_lobby(lobby, live and not _over, is_host())
 	_show_rules()
 	map_card.visible = not live and not _over
 	if not live:
@@ -523,11 +597,18 @@ func _show() -> void:
 	join_button.visible = (not live) and not preview.get("full", false)
 	copy_link_button.visible = live and link_label.visible
 	copy_code_button.visible = live
+	browse_button.visible = live and not _over
 	_shares.visible = live and TogetherScreen.can_share()
 	leave_button.text = "Leave" if live else "Back"
 	if not _over:
 		status.text = status_text(lobby, _me) if live else preview_text(preview)
 	_set_enabled(not _busy)
+	_sync_page_closing()
+
+
+## Sends the host's latest press of the switch (a press calls this).
+func _send_visibility() -> void:
+	await private_switch.send(api, lobby, is_host())
 
 
 ## Whether the player can move the panel now.
@@ -593,6 +674,13 @@ func send_rules() -> void:
 
 
 ## The panel: the host's while the lobby waits, otherwise what the lobby holds.
+## The rules panel's phone form on a phone's canvas, and every control a fingertip high.
+func _fit_phone() -> void:
+	var phone := TapFloor.phone_canvas(size)
+	rules.set_compact(phone)
+	TapFloor.fit(self, phone)
+
+
 func _show_rules() -> void:
 	var live := mode == Mode.LIVE
 	_rules_title.visible = live
@@ -632,7 +720,7 @@ func _show_seats() -> void:
 			away.append(bool(member.get("away", false)))
 			var tag := LevelCurve.member_tag(member.get("level"), member.get("icon"))
 			levels.append(tag if show_levels else Vector2i.ZERO)
-			plates.append(_plate_of(member))
+			plates.append(LobbySeatRow.plate_of(member))
 	else:
 		max_players = int(preview.get("maxPlayers", NightHost.MAX_PLAYERS))
 		for who: Variant in preview.get("names", []):
@@ -642,15 +730,15 @@ func _show_seats() -> void:
 	# The seats are the people's; the bots follow them in rows of their own (`NightBots`).
 	var bots := bots_shown()
 	while _seat_rows.size() < max_players + bots:
-		_seat_rows.append(_make_seat_row())
+		_seat_rows.append(LobbySeatRow.make(_seats, _tokens))
 	for i in _seat_rows.size():
 		var row := _seat_rows[i]
 		var is_bot := i >= max_players
 		(row["box"] as Control).visible = i < max_players + bots
 		(row["number"] as Label).text = "B%d" % (i - max_players + 1) if is_bot else str(i + 1)
 		var held: Vector2i = levels[i] if i < levels.size() else Vector2i.ZERO
-		_show_level(row, held)
-		_show_plate(row, plates[i] if i < plates.size() else {})
+		LobbySeatRow.show_level(row, held)
+		LobbySeatRow.show_plate(row, plates[i] if i < plates.size() else {})
 		if is_bot:
 			(row["name"] as Label).text = NightBots.name_for(
 				NightBots.id_at(i - max_players), bots_skill()
@@ -670,150 +758,15 @@ func _show_seats() -> void:
 			(row["tag"] as Label).text = ""
 
 
-## The calling card, emblem and frame a member chose, only those the game has (the backend lists
-## what the account chose; the night holds it to what the account owns).
-func _plate_of(member: Dictionary) -> Dictionary:
-	var catalog := PlateCatalog.shipped()
-	var card := StringName(str(member.get("card", "")))
-	var emblem := StringName(str(member.get("emblem", "")))
-	var frame := StringName(str(member.get("frame", "")))
-	return {
-		"card": card if catalog.has(PlateCatalog.CARD, card) else &"",
-		"emblem": emblem if catalog.has(PlateCatalog.EMBLEM, emblem) else &"",
-		"frame": frame if catalog.has(PlateCatalog.FRAME, frame) else &"",
-	}
-
-
-## The card behind a seat's row, the emblem after the name and the frame round it (`PlateRow`);
-## gone for none.
-func _show_plate(row: Dictionary, plate: Dictionary) -> void:
-	var card := row["card"] as CardArt
-	card.card_id = plate.get("card", &"")
-	card.visible = card.card_id != &""
-	var emblem := row["emblem"] as EmblemArt
-	emblem.emblem_id = plate.get("emblem", &"")
-	emblem.visible = emblem.emblem_id != &""
-	var frame := row["frame"] as FrameArt
-	frame.frame_id = plate.get("frame", &"")
-	frame.visible = frame.frame_id != &""
-	# The seat keeps the border's room clear at both ends, so the number is not under it.
-	var clear := PlateRow.frame_clear(frame.frame_id, SEAT_ROW_HEIGHT)
-	var inset := (row["box"] as Control).get_theme_stylebox(&"panel") as StyleBoxEmpty
-	inset.content_margin_left = clear
-	inset.content_margin_right = clear
-	frame.grow = Vector2(clear, 0.0)
-
-
-## The icon and the level of a seat's row, the badge before the name (`LevelTag`): gone for a bot,
-## an open seat or a seat without a level, and then the name starts right after the seat number.
-func _show_level(row: Dictionary, held: Vector2i) -> void:
-	var badge := row["badge"] as Control
-	badge.visible = held.x > 0
-	var level := row["level"] as Label
-	level.text = str(held.x) if held.x > 0 else ""
-	if held.x > 0:
-		LevelTag.set_icon(row["icon"] as TextureRect, held.y)
-		_place_icon(row["icon"] as TextureRect, level, held.y)
-
-
-## The icon's top in its slot: its body is centred on the level's digits, which sit at the font's
-## height in a line that starts at the top of the label (`LevelTag.icon_top`).
-func _place_icon(icon: TextureRect, level: Label, icon_level: int) -> void:
-	icon.position.y = LevelTag.icon_top_in_line(
-		0.0, level.get_theme_font(&"font"), level.get_theme_font_size(&"font_size"), icon_level
-	)
-	# The row is as tall as the icon reaches (the icon was a child of the row's box, which was as
-	# tall as it).
-	(icon.get_parent() as Control).custom_minimum_size.y = (
-		maxf(icon.position.y, 0.0) + LevelTag.ICON
-	)
-
-
-func _make_seat_row() -> Dictionary:
-	var box := HBoxContainer.new()
-	box.add_theme_constant_override(&"separation", _tokens.space_md)
-	var number := _label("", UILabel.Style.BODY)
-	number.custom_minimum_size.x = SEAT_NUMBER_WIDTH
-	# The seat's player: badge (icon, level), then the name, with the gaps of `LevelTag`.
-	var who := HBoxContainer.new()
-	who.name = &"Who"
-	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	who.add_theme_constant_override(&"separation", int(LevelTag.NAME_GAP))
-	var badge := HBoxContainer.new()
-	badge.name = &"Badge"
-	badge.add_theme_constant_override(&"separation", int(LevelTag.ICON_GAP))
-	badge.visible = false
-	# The icon is set on the digits (`_place_icon`), in a slot of its own width that takes the row's
-	# height from the level beside it.
-	var slot := Control.new()
-	slot.name = &"IconSlot"
-	slot.custom_minimum_size.x = LevelTag.ICON
-	var icon := LevelTag.icon_rect(1)
-	icon.name = &"Icon"
-	icon.size = Vector2.ONE * LevelTag.ICON
-	slot.add_child(icon)
-	var level := _label("", UILabel.Style.BODY)
-	level.name = &"Level"
-	level.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	# The line starts at the top of the row's box, where `_place_icon` counts from.
-	level.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	level.size_flags_vertical = Control.SIZE_FILL
-	var seat_name := _label("", UILabel.Style.BODY)
-	seat_name.name = &"Name"
-	seat_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	seat_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	var tag := _label("", UILabel.Style.OVERLINE)
-	tag.custom_minimum_size.x = TAG_WIDTH
-	badge.add_child(slot)
-	badge.add_child(level)
-	who.add_child(badge)
-	who.add_child(seat_name)
-	# The emblem follows the name's room; the card is a chip behind the whole row.
-	var emblem := EmblemArt.make(&"", PlateRow.emblem_side(SEAT_ROW_HEIGHT))
-	emblem.name = &"Emblem"
-	emblem.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	emblem.visible = false
-	box.add_child(number)
-	box.add_child(who)
-	box.add_child(emblem)
-	box.add_child(tag)
-	var holder := PanelContainer.new()
-	holder.name = &"Seat"
-	holder.add_theme_stylebox_override(&"panel", StyleBoxEmpty.new())
-	var card := CardArt.new()
-	card.name = &"Card"
-	card.by_height = true
-	card.veil = Color(_tokens.bg, PlateRow.VEIL)
-	card.visible = false
-	holder.add_child(card)
-	holder.add_child(box)
-	var frame := FrameArt.new()
-	frame.name = &"Frame"
-	frame.visible = false
-	holder.add_child(frame)
-	_seats.add_child(holder)
-	# Two digits of room, so the names of the people start on one line (a level of 55 is whole).
-	level.custom_minimum_size.x = LevelTag.level_room(
-		level.get_theme_font(&"font"), level.get_theme_font_size(&"font_size")
-	)
-	return {
-		"box": holder,
-		"card": card,
-		"emblem": emblem,
-		"frame": frame,
-		"number": number,
-		"who": who,
-		"badge": badge,
-		"icon": icon,
-		"name": seat_name,
-		"level": level,
-		"tag": tag
-	}
-
-
 func _set_enabled(enabled: bool) -> void:
 	for button: UIButton in [
-		start_button, play_button, join_button, copy_link_button, copy_code_button, share_button
+		start_button,
+		play_button,
+		join_button,
+		copy_link_button,
+		copy_code_button,
+		browse_button,
+		share_button
 	]:
 		button.disabled = not enabled
 	leave_button.disabled = false

@@ -44,8 +44,12 @@ image):
   is refused when `NODE_ENV=production`. Returns a one-hour session token and the Discord
   `access_token` (the Embedded App SDK needs it for `authenticate()`).
 - `POST /lobbies` always creates a lobby (the Activity's `instanceId` is not read any more, #1178),
-  `POST /lobbies/join-by-code`, `GET /lobbies/:id`, `POST /lobbies/:id/leave`, `POST /lobbies/:id/start` (host only;
-  allocates a game server). A user is in one lobby at a time, open or started: creating or joining another takes them out
+  `POST /lobbies/join-by-code`, `GET /lobbies/:id`, `POST /lobbies/:id/leave`, `POST /lobbies/:id/page-closed` (the closing
+  page's own Leave, a `text/plain` beacon carrying the token in its body; always `200 {left}` for a good token),
+  `POST /lobbies/:id/start` (host only; allocates a game server). `GET /lobbies` leaves out a waiting lobby nobody has
+  been heard from in for 15 s (hidden, not ended:
+  [what the list shows](../design/lobby.md#what-the-list-shows-and-the-pages-last-word-1188)).
+  A user is in one lobby at a time, open or started: creating or joining another takes them out
   of it, so no call is refused for it ([every state](../design/lobby.md#leaving-and-moving-every-state-and-what-ends-it)).
 - `POST /lobbies/:id/ticket` returns `{address: {url, activityPath}, ticket}` for the caller's seat. The ticket names
   the game server it is for (`serverId`) and has a unique id (`jti`); see [the ticket](#the-game-server-ticket).
@@ -84,7 +88,7 @@ The Activity opens on the main menu, like every platform (#495), and plays the w
 sign-in runs in the background from the menu (`StartupSignIn`, with Discord; `main.gd` sets `TogetherApi.activity` when
 the page has `instance_id`), and that is all the Activity does by itself: Play together shows the code field and the
 Create button and makes no lobby until the player asks ([the lobby](../design/lobby.md)). Players meet by a code, a
-link (`?room=CODE`) or Quick join; a code opens its night (waiting, or in progress with its round) with Join. Nothing
+link (`?room=CODE`) or the Server Browser; a code opens its night (waiting, or in progress with its round) with Join. Nothing
 joins a lobby before a player asks, so people who only opened the Activity hold no seat. The instance id was used to
 find or make "the voice channel's lobby" (`POST /lobbies {instanceId}`, `POST /lobbies/preview
 {instanceId}`); two players who each pressed Play together got a lobby each, because the first one's was not yet
@@ -142,9 +146,9 @@ what happens underneath:
 2. **A night.** *Create a night* is `POST /lobbies`: a lobby that waits ([the lobby](#the-lobby-before-the-night)) until
    its host calls `POST /lobbies/:id/start`, which allocates the least loaded game server with room; the lobby keeps a
    short code. A new night is **public**; its host makes it private with `PUT /lobbies/:id/visibility` (or
-   `visibility` in the create). *Quick join* is `POST /lobbies/quick`: a public night with
-   room (open or already started), else a new public one. The public nights are listed by `GET /lobbies`
-   ([the list](#the-list-of-nights-1179)). *Join with the code* is `POST /lobbies/join-by-code`, and it
+   `visibility` in the create). The public nights are listed by `GET /lobbies`
+   ([the list](#the-list-of-nights-1179)), which the game's Server Browser shows, and a row is joined by its code.
+   *Join with the code* is `POST /lobbies/join-by-code`, and it
    works on a night that has already started (a started night takes newcomers while the game server says it has room:
    its heartbeat carries `players`, the count in each match); the screen reads the code with `POST /lobbies/preview`
    first. A Discord Activity does the same as the website.
@@ -353,7 +357,7 @@ host calls `POST /lobbies/:id/start`, and every member polls `GET /lobbies/:id` 
   came (seats close up when someone leaves), `hostId`, `state` (`open` or `started`), `players` (the game server's count
   once started), `round` (the night's round, null until the game server has said one), `matchId` and the usual code.
 - **Seats.** A lobby holds 1 to `MAX_PLAYERS` = 8 **people** (`src/lobbies.ts`, the game server's `NightHost.MAX_PLAYERS`;
-  #690): the default for a lobby made without `maxPlayers` and for Quick join, and the most `POST /lobbies` takes (`400`
+  #690): the default for a lobby made without `maxPlayers`, and the most `POST /lobbies` takes (`400`
   above). Bots hold no seat (#1179): the host's `bots` setting (0 to 7) is kept in the settings and the game server runs
   that many on top of the eight, so a lobby (and a night, through the heartbeat's `players`, which is people) is full on
   people alone. A lobby's own `MAX_SEATS_EVER` (32) stays the guard on a started night's member list. The tests
@@ -367,8 +371,7 @@ host calls `POST /lobbies/:id/start`, and every member polls `GET /lobbies/:id` 
   pass over the in-memory lobbies (an expired one is dropped on the way, a silent member is not counted) and keeps
   nothing, so an ended or emptied night is gone from the very next call; at most 50 rows; limited to 20 asks in 10 seconds
   per account (`429 too_many_requests`). `PUT /lobbies/:id/visibility` `{visibility: "public" | "private"}` is the host's
-  (`403 not_host`, `400 bad_visibility`); `POST /lobbies` also takes `visibility`. A new night is public. Quick join still
-  exists and is removed with the Server Browser screen (#1180).
+  (`403 not_host`, `400 bad_visibility`); `POST /lobbies` also takes `visibility`. A new night is public.
 - **Start is the host's only** (`403 not_host`; a second one is `409 already_started`; every server busy is
   `503 no_server` and the lobby stays open). Members get a ticket only after it (`409 not_started` before).
 - **Host handover.** A host who leaves, or who is dropped, passes the role to the next seat. The last member out closes
@@ -395,7 +398,7 @@ injected clock.
 
 | What | Ends when |
 | --- | --- |
-| Open lobby | Its last member leaves or moves to another lobby (at once). The backstop: idle for 10 minutes (create, join, leave, start and a member's `GET` all count as activity). A member not seen for a minute is dropped while another is still there ([presence](#the-lobby-before-the-night)). |
+| Open lobby | Its last member leaves or moves to another lobby, or the member's page says it is going (`page-closed`), at once. The backstop: idle for 10 minutes (create, join, leave, start and a member's `GET` all count as activity). A member not seen for a minute is dropped while another is still there ([presence](#the-lobby-before-the-night)). |
 | Started lobby | Its last member leaves or moves, or the game server says the last person's seat is empty (`/left`), or calls `POST /internal/matches/:id/end` (a finished night reopens the lobby), at once. The backstop: its heartbeat stops listing the match, or it is 2 hours old. |
 | Reopened lobby | A member reads it (then it is an open one), else it is dropped a minute after it opened. |
 | A user's place | A user is in one lobby, open or started. Leaving it, its end, or creating or joining another frees them: a move takes the player out of the old lobby first (the host role passes to the next member), and a join refused as `full` leaves them where they were. |
@@ -420,7 +423,11 @@ runs; it does not report a load number.
    membership is gone with the lobby). The same happens when a lobby expired or the match ended.
 3. A client that lost its game-server connection after a restart cannot get a new ticket for that match. The match
    keeps running on the server and is counted again from the next heartbeat, but this backend cannot rejoin a player to
-   it. Persisting lobbies in Postgres is the fix and is not built.
+   it. Persisting lobbies in Postgres is the fix and is not built (#1241).
+
+`GET /health` names the run of the backend (`boot`, a new random id on every start), so a client or a probe that held
+lobbies across a deploy can tell that they are gone: the deployed leaving probe ends `INCONCLUSIVE` (exit code 2)
+when it changed during a failing run (#1240).
 
 ## The game-server ticket
 

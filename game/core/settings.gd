@@ -188,6 +188,7 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	UIScroll.slip_units = TouchSlop.units
 	load_from_disk()
 	apply_all()
 	_flush_when_the_page_hides()

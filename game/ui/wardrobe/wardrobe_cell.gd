@@ -36,7 +36,7 @@ const SIZE_CHIP := Vector2(96.0, 112.0)
 const SIZE_CHIP_COMPACT := Vector2(84.0, 100.0)
 ## A free choice with no drawing (a face, a mouth) is its name on a low plate, a tap target high.
 const SIZE_NAME := Vector2(148.0, 76.0)
-const SIZE_NAME_COMPACT := Vector2(104.0, 62.0)
+const SIZE_NAME_COMPACT := Vector2(104.0, MenuLook.TAP_TARGET)
 const ICON := 96.0
 const ICON_COMPACT := 64.0
 const ICON_CHIP := 64.0
@@ -108,6 +108,9 @@ func _init() -> void:
 	UiSounds.wire(self)
 	flat = true
 	focus_mode = Control.FOCUS_ALL
+	# Inside a scroll area a drag that starts here reaches it (`UIScroll`); anywhere else the button
+	# stops the pointer, as a button does.
+	UIScroll.pass_touch_in_scroll(self)
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	toggle_mode = false
 	_ring = UIFocusRing.new(_tokens, _tokens.radius_md)

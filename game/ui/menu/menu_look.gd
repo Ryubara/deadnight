@@ -15,9 +15,11 @@ const SIZE_TITLE := 32
 const SIZE_ITEM := 46
 const SIZE_TAB := 34
 const SIZE_NUMBER := 28
-## The least height of anything that can be pressed, in units: 44 real pixels on a phone (a unit
-## is 0.72 px there).
-const TAP_TARGET := 62.0
+## The least height of anything that can be pressed, in units: 44 CSS pixels on the narrowest phone
+## page, 667 x 375 (a unit is 0.694 CSS px there: 64 units are 44.4; the 844 x 390 page's 0.722
+## makes it 46.2). Every phone page is 540 units high, so the shortest page has the smallest unit
+## and asks for the most of them.
+const TAP_TARGET := 64.0
 ## Letter spacing of the wide face, in pixels.
 const TRACKING := 2
 
