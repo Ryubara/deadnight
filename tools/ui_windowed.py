@@ -144,7 +144,20 @@ def cmd_run(args: argparse.Namespace) -> int:
         raise SystemExit("run: give the launcher after `--`, for example: -- xvfb-run -a godot")
     names = suites_in(project, [s.strip() for s in args.suites.split(",") if s.strip()])
     started = time.time()
-    results = []
+    results: list[dict] = []
+
+    def write(complete: bool) -> None:
+        # After every suite: a job that is stopped by its time limit still leaves what it ran, marked incomplete.
+        body = {
+            "started": started,
+            "finished": time.time(),
+            "complete": complete,
+            "planned": len(names),
+            "suites": results,
+        }
+        (out / "result.json").write_text(json.dumps(body, indent=1), encoding="utf-8")
+
+    write(False)
     for index, name in enumerate(names, 1):
         log, timed_out, seconds = run_one(
             launcher + godot_args(args.project, name, False), args.timeout, logs / f"{name}.log"
@@ -163,14 +176,13 @@ def cmd_run(args: argparse.Namespace) -> int:
             row["headless"] = PASSED if h_outcome == NOT_RUN else h_outcome
             row["headless_seconds"] = round(h_seconds, 1)
         results.append(row)
+        write(False)
         print(
             f"[{index}/{len(names)}] {name}: {outcome} in {seconds:.0f}s"
             + (f", headless {row['headless']}" if "headless" in row else ""),
             flush=True,
         )
-    (out / "result.json").write_text(
-        json.dumps({"started": started, "finished": time.time(), "suites": results}, indent=1), encoding="utf-8"
-    )
+    write(True)
     return 0
 
 
@@ -198,11 +210,28 @@ def classify(result: dict, known: dict[str, str]) -> dict[str, list]:
 
 def state_of(job_result: str, result: dict | None, groups: dict[str, list] | None) -> str:
     """`clean`, `known-only`, `failing` or `could-not-run`. Anything but a finished run of suites is `could-not-run`."""
-    if job_result != "success" or not result or not result.get("suites") or groups is None:
+    if (
+        job_result != "success"
+        or not result
+        or not result.get("suites")
+        or not result.get("complete")
+        or groups is None
+    ):
         return "could-not-run"
     if groups["window_only"] or groups["both"] or groups["not_run"] or groups["stale"]:
         return "failing"
     return "known-only" if groups["known"] else "clean"
+
+
+def why_not(result: dict | None) -> str:
+    """What the result file says about a run that did not finish."""
+    if not result:
+        return "its result file is missing"
+    if not result.get("suites"):
+        return "it ran no suite"
+    if not result.get("complete"):
+        return f"it stopped after {len(result['suites'])} of {result.get('planned', '?')} suites"
+    return "its result file is complete"
 
 
 def describe(row: dict) -> str:
@@ -228,7 +257,7 @@ def render(
         lines += [
             "**The windowed run could not run**, so nothing is known about the window today.",
             "",
-            f"- The run job ended `{job_result}`; its result file {'is missing' if not result else 'holds no suites'}.",
+            f"- The run job ended `{job_result}`; {why_not(result)}.",
             "- Read the failed step in the run's log: setup (packages, Godot, GdUnit4), the import, or the launcher.",
         ]
     else:
@@ -260,8 +289,28 @@ def render(
         pixel = [r for r in suites if r["suite"] in PIXEL_SUITES]
         lines.append("Pixel suites: " + ", ".join(f"`{r['suite']}` {r['outcome']}" for r in pixel) + ".")
     summary = "\n".join(lines) + "\n"
-    issue = summary + (f"\nRun: {run_url}\n" if run_url else "")
-    return summary, issue
+    return summary, issue_body(summary, state, run_url)
+
+
+def issue_body(summary: str, state: str, run_url: str, today: str | None = None) -> str:
+    """The text of the issue the workflow opens: the task form's sections, and a marker that holds the state."""
+    today = today or time.strftime("%Y-%m-%d", time.gmtime())
+    findings = summary.split("\n", 2)[2] if summary.startswith("## ") else summary
+    return (
+        f"From: the ui-windowed workflow, {today}, the scheduled windowed run of tests/ui (#1196)\n\n"
+        f"## Summary\n\n{findings.rstrip()}\n\n"
+        + (f"Run: {run_url}\n\n" if run_url else "")
+        + "The job rewrites this text on every run and closes the issue itself on the first clean one.\n\n"
+        "## Area\n\nA-tests\n\n"
+        '## What "done" means\n\n'
+        "A scheduled run is clean: every suite passes in the window, or is listed in "
+        "`tools/ui_windowed_known.json` with the issue that fixes it.\n\n"
+        f"{state_marker(state)}\n"
+    )
+
+
+def state_marker(state: str) -> str:
+    return f"<!-- ui-windowed-state: {state} -->"
 
 
 def cmd_report(args: argparse.Namespace) -> int:
@@ -283,6 +332,9 @@ def cmd_report(args: argparse.Namespace) -> int:
         Path(args.issue).write_text(issue, encoding="utf-8")
     print(summary)
     print(f"state={state}")
+    if args.github_output:
+        with open(args.github_output, "a", encoding="utf-8") as handle:
+            handle.write(f"state={state}\n")
     return 0
 
 
@@ -317,24 +369,43 @@ def self_test() -> int:
         {"suite": "test_level_ink", "outcome": NOT_RUN, "seconds": 5.0, "headless": PASSED},
     ]
     known = {"test_known": "#1", "test_fixed": "#2"}
-    groups = classify({"suites": rows}, known)
+    groups = classify({"suites": rows, "complete": True}, known)
     assert [r["suite"] for r in groups["window_only"]] == ["test_win", "test_hang"]
     assert [r["suite"] for r in groups["both"]] == ["test_red"]
     assert [r["suite"] for r in groups["known"]] == ["test_known"]
     assert [r["suite"] for r in groups["stale"]] == ["test_fixed"]
     assert [r["suite"] for r in groups["not_run"]] == ["test_level_ink"]
-    assert state_of("success", {"suites": rows}, groups) == "failing"
-    only_known = classify({"suites": rows[:1] + rows[4:5]}, known)
-    assert state_of("success", {"suites": rows[:1]}, classify({"suites": rows[:1]}, known)) == "clean"
-    assert state_of("success", {"suites": rows[:1] + rows[4:5]}, only_known) == "known-only"
+    assert state_of("success", {"suites": rows, "complete": True}, groups) == "failing"
+    only_known = classify({"suites": rows[:1] + rows[4:5], "complete": True}, known)
+    assert (
+        state_of(
+            "success", {"suites": rows[:1], "complete": True}, classify({"suites": rows[:1], "complete": True}, known)
+        )
+        == "clean"
+    )
+    assert state_of("success", {"suites": rows[:1] + rows[4:5], "complete": True}, only_known) == "known-only"
     # Never `clean` when the job did not finish, or left no result, or an empty one.
     for job in ("failure", "cancelled", "skipped", ""):
-        assert state_of(job, {"suites": rows[:1]}, classify({"suites": rows[:1]}, known)) == "could-not-run"
+        assert (
+            state_of(
+                job, {"suites": rows[:1], "complete": True}, classify({"suites": rows[:1], "complete": True}, known)
+            )
+            == "could-not-run"
+        )
+    # A run stopped part way (the step's time limit) is not a clean one, whatever it had run by then.
+    assert (
+        state_of("success", {"suites": rows[:1], "complete": False}, classify({"suites": rows[:1]}, known))
+        == "could-not-run"
+    )
+    assert "stopped after 1 of 9 suites" in why_not({"suites": rows[:1], "complete": False, "planned": 9})
     assert state_of("success", None, None) == "could-not-run"
     assert state_of("success", {"suites": []}, None) == "could-not-run"
     text, issue = render("could-not-run", "failure", None, None, known, "https://x/run/1")
     assert "could not run" in text and "https://x/run/1" in issue
-    text, _ = render("failing", "success", {"suites": rows}, groups, known, "")
+    body = issue_body(text, "failing", "https://x/run/2", "2026-11-05")
+    assert body.startswith("From: the ui-windowed workflow, 2026-11-05") and "## Summary" in body
+    assert "## Windowed UI suites" not in body and state_marker("failing") in body and "Run: https://x/run/2" in body
+    text, _ = render("failing", "success", {"suites": rows, "complete": True}, groups, known, "")
     assert "`test_win`" in text and "(#1)" in text and "test_x" in text and "`test_level_ink` not-run" in text
     # A timeout really ends a process group that holds a child (POSIX: the runner's; Windows has no process groups).
     if hasattr(os, "killpg"):
@@ -370,6 +441,7 @@ def main() -> int:
     report.add_argument("--markdown", default="")
     report.add_argument("--issue", default="")
     report.add_argument("--run-url", default="")
+    report.add_argument("--github-output", default="", help="append `state=...` to this file (the step's output)")
     report.set_defaults(func=cmd_report)
     args = parser.parse_args()
     return args.func(args)

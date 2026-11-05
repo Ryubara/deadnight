@@ -10,9 +10,13 @@ const NIGHT := "res://ui/screens/night_screen.tscn"
 const TEST_PATH := "user://night_scale_test.cfg"
 
 var _saved_path: String
+var _arrival := false
 
 
 func before_test() -> void:
+	_arrival = NightScreen.arrival_enabled
+	# No drop due, as headless always has it (`--noarrival`): this suite is not about the drop.
+	NightScreen.arrival_enabled = false
 	await RouterFixture.clear(get_tree())
 	_saved_path = Settings.path
 	Settings.path = TEST_PATH
@@ -20,6 +24,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	NightScreen.arrival_enabled = _arrival
 	await RouterFixture.clear(get_tree())
 	Settings.reset_defaults()
 	Settings.path = _saved_path
