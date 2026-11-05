@@ -148,6 +148,11 @@ def cmd_run(args: argparse.Namespace) -> int:
         raise SystemExit("run: give the launcher after `--`, for example: -- xvfb-run -a godot")
     requested = [s.strip() for s in args.suites.split(",") if s.strip()]
     names = suites_in(project, requested)
+    if not requested:
+        # The whole folder leaves out the suites the runner's software GL cannot judge (they cost 18 minutes of the
+        # 45 and prove nothing); the report names them. Asking for them by name runs them.
+        known = load_known(Path(args.known))
+        names = [n for n in names if not known.get(n, "").startswith(SOFTWARE_GL)]
     started = time.time()
     results: list[dict] = []
 
@@ -304,6 +309,11 @@ def render(
                 issue = f" ({known[row['suite']]})" if row["suite"] in known else ""
                 lines.append(f"- `{row['suite']}`{issue}: {describe(row)}")
             lines.append("")
+        ran = {r["suite"] for r in suites}
+        left_out = [n for n, why in known.items() if why.startswith(SOFTWARE_GL) and n not in ran]
+        if left_out and not result.get("subset"):
+            lines += [f"### Not run here: the runner's software GL cannot judge them ({len(left_out)})", ""]
+            lines += [f"- `{n}` ({known[n]})" for n in left_out] + [""]
         slow = sorted(suites, key=lambda r: -r["seconds"])[:5]
         lines += ["Slowest: " + ", ".join(f"`{r['suite']}` {r['seconds']:.0f}s" for r in slow), ""]
         pixel = [r for r in suites if r["suite"] in PIXEL_SUITES]
@@ -439,6 +449,9 @@ def self_test() -> int:
     body = issue_body(text, "failing", "https://x/run/2", "2026-11-05")
     assert body.startswith("From: the ui-windowed workflow, 2026-11-05") and "## Summary" in body
     assert "## Windowed UI suites" not in body and state_marker("failing") in body and "Run: https://x/run/2" in body
+    few = {"suites": rows[:2], "complete": True}
+    left, _ = render("failing", "success", few, classify(few, known), known, "")
+    assert "Not run here" in left and "`test_slow_ok`" in left
     sub, _ = render("failing", "success", {"suites": rows, "complete": True, "subset": True}, groups, known, "")
     assert "A subset of the suites was run" in sub
     text, _ = render("failing", "success", {"suites": rows, "complete": True}, groups, known, "")
@@ -465,6 +478,7 @@ def main() -> int:
     )
     run.add_argument("--timeout", type=float, default=SUITE_TIMEOUT_SECONDS)
     run.add_argument("--headless-timeout", type=float, default=HEADLESS_TIMEOUT_SECONDS)
+    run.add_argument("--known", default=str(KNOWN_FILE))
     run.add_argument("--headless-godot", default="", help="Godot to run a failed suite again headless; empty: do not")
     run.add_argument("launcher", nargs=argparse.REMAINDER, help="after `--`: the program that starts Godot in a window")
     run.set_defaults(func=cmd_run)

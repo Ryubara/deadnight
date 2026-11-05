@@ -12,7 +12,7 @@
 name: ui-windowed
 
 on:
-  push: # TRIAL, removed before the pull request is ready: the branch's own runs of the three paths of the report
+  push: # TRIAL
     branches: [ci-run-the-ui-suites-windowed-on-a-schedule-so]
     paths: [.github/workflows/ui-windowed.yml]
   schedule:
@@ -25,7 +25,7 @@ on:
         type: string
       timeout:
         description: "Seconds a suite may take before it is stopped"
-        default: "300"
+        default: "480"
         type: string
 
 permissions:
@@ -38,7 +38,7 @@ concurrency:
 jobs:
   windowed:
     runs-on: ubuntu-24.04
-    # The suites take about 35 minutes (docs/research/windowed-ui-ci.md); the run step's own limit is below the job's,
+    # The suites take about 30 minutes (docs/research/windowed-ui-ci.md); the run step's own limit is below the job's,
     # so a run that stops there still uploads what it ran and the `report` job says it stopped.
     timeout-minutes: 90
     steps:
@@ -81,8 +81,8 @@ jobs:
         # suites fail; only a run that could not run ends it red.
         timeout-minutes: 75
         env:
-          SUITES: ${{ inputs.suites || 'test_night_screen,test_night_menu,test_night_mouse_look,test_night_screen_end,test_night_crosshair,test_bot_wheel_input,test_hover_room,test_level_ink,test_poster_art_pixels' }}
-          SUITE_TIMEOUT: ${{ inputs.timeout || '300' }}
+          SUITES: ${{ inputs.suites }}
+          SUITE_TIMEOUT: ${{ inputs.timeout || '480' }}
           LIBGL_ALWAYS_SOFTWARE: "1"
         run: |
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
@@ -149,7 +149,7 @@ jobs:
           [[ "$STATE" =~ ^(clean|known-only|failing|could-not-run)$ ]] || { echo "::error::no state from the report"; exit 1; }
           title="Windowed UI suites need a look"
           if [ "$EVENT" = push ]; then
-            title="$title (trial run of the branch)" # TRIAL: a branch run has an issue of its own, never the real one
+            title="$title (trial run of the branch)" # TRIAL
           elif [ "$SUBSET" = true ]; then
             # A run of a few suites by hand says nothing about the folder: it neither opens nor closes the issue.
             echo "A subset was run ($STATE): the issue is left alone."

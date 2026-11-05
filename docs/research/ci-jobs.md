@@ -17,6 +17,7 @@ PRs that are backing us up", with 21 open pull requests, the account's 20 concur
 | `pr-status` | `labels` | the push, and once when `ci` ends (not when it was cancelled) |
 | `docs` | `mkdocs` (pages build), `deploy` | a push to `main` only |
 | `bots-nightly` | `plan`, `soak` (a matrix job of ten nights for each cell), `report` | 03:17 UTC every day and by hand; never on a pull request ([the bot soak](bots.md#the-nightly-soak-and-the-parity-batch)) |
+| `ui-windowed` | `windowed` (the `tests/ui` suites in a window under xvfb, about 45 minutes), `report` | 04:47 UTC every day and by hand; never on a pull request, never a required check; opens one issue and fails the run when a suite fails in the window, a pixel suite does not run, or it could not run ([the windowed run](windowed-ui-ci.md)) |
 
 ## Which files start which job
 
