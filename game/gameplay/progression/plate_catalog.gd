@@ -15,8 +15,9 @@ extends RefCounted
 ## done when its rule is true of the level (`is_done`), so it needs no stored finish.
 ##
 ## A new piece is a line in `plate_pieces.json` and a row in `unlocks.json` or a `grants` entry in
-## a challenge file; the poster sets (#1073) and the stats the odd challenges need (#1074) add
-## theirs the same way.
+## a challenge file, or a `grants` entry of a poster set (`poster_sets.json`: a set gives a piece
+## once all six of its challenges are done); the stats the odd challenges need (#1074) add theirs
+## the same way.
 
 const PATH := "res://gameplay/progression/plate_pieces.json"
 const CARD := &"card"
@@ -37,7 +38,7 @@ static var _shared: PlateCatalog
 var _pieces: Dictionary = {CARD: {}, EMBLEM: {}, FRAME: {}}
 ## kind -> piece ids in the order they are listed: the ladder by level, then the challenges.
 var _order: Dictionary = {CARD: [], EMBLEM: [], FRAME: []}
-## kind -> piece id -> `{level}` or `{challenge: ChallengeDef}`.
+## kind -> piece id -> `{level}`, `{challenge: ChallengeDef}` or `{set: PosterSet}`.
 var _sources: Dictionary = {CARD: {}, EMBLEM: {}, FRAME: {}}
 var _problems: Array[String] = []
 ## The cards the ladder gives as a tier's (`tier_card` rows), for the derived *Final cut*.
@@ -50,14 +51,16 @@ static func shipped() -> PlateCatalog:
 		_shared = from_parts(
 			FileAccess.get_file_as_string(PATH),
 			LadderUnlocks.shipped(),
-			ChallengeCatalog.load_default()
+			ChallengeCatalog.load_default(),
+			PosterSets.shipped()
 		)
 	return _shared
 
 
-## A catalogue from the pieces' JSON text, the ladder's table and the challenges.
+## A catalogue from the pieces' JSON text, the ladder's table, the challenges and the poster sets
+## (none when a test passes none).
 static func from_parts(
-	text: String, ladder: LadderUnlocks, challenges: ChallengeCatalog
+	text: String, ladder: LadderUnlocks, challenges: ChallengeCatalog, sets: PosterSets = null
 ) -> PlateCatalog:
 	var catalog := PlateCatalog.new()
 	var json := JSON.new()
@@ -71,6 +74,8 @@ static func from_parts(
 				catalog._add_piece(kind, record)
 	catalog._add_ladder(ladder)
 	catalog._add_grants(challenges)
+	if sets != null:
+		catalog._add_sets(sets)
 	return catalog
 
 
@@ -120,8 +125,8 @@ func title(kind: StringName, id: StringName) -> String:
 	return String(piece(kind, id).get("title", ""))
 
 
-## Where a piece comes from: `{level}` for the ladder or `{challenge}` (a `ChallengeDef`); empty
-## for a piece nothing gives.
+## Where a piece comes from: `{level}` for the ladder, `{challenge}` (a `ChallengeDef`) or `{set}`
+## (a `PosterSet`); empty for a piece nothing gives.
 func source(kind: StringName, id: StringName) -> Dictionary:
 	return _sources.get(kind, {}).get(id, {})
 
@@ -133,6 +138,8 @@ func owns(kind: StringName, id: StringName, level: int, done: Array[StringName])
 		return level >= int(from["level"])
 	if from.has("challenge"):
 		return is_done(from["challenge"], level, done)
+	if from.has("set"):
+		return (from["set"] as PosterSet).is_done(done)
 	return false
 
 
@@ -158,14 +165,16 @@ func owned(kind: StringName, level: int, done: Array[StringName]) -> Array[Strin
 	return found
 
 
-## What it takes to get a piece, in words: "Reach level 10", the challenge's own, or a hidden
-## challenge's riddle.
+## What it takes to get a piece, in words: "Reach level 10", the challenge's own (a hidden one's
+## riddle) or "Poster set: Generator" (the set's short name: the tile it is on is narrow).
 func how_to_get(kind: StringName, id: StringName) -> String:
 	var from := source(kind, id)
 	if from.has("level"):
 		return "Reach level %d" % int(from["level"])
 	if from.has("challenge"):
 		return (from["challenge"] as ChallengeDef).hint()
+	if from.has("set"):
+		return "Poster set: %s" % (from["set"] as PosterSet).short
 	return ""
 
 
@@ -218,6 +227,14 @@ func _add_grants(challenges: ChallengeCatalog) -> void:
 	for grant in challenges.grants():
 		if grant["kind"] in KINDS:
 			_give(grant["kind"], grant["id"], {"challenge": grant["def"]})
+
+
+func _add_sets(sets: PosterSets) -> void:
+	for poster_set in sets.all():
+		for grant in poster_set.grants:
+			var parts := String(grant).split(":")
+			if parts.size() == 2 and StringName(parts[0]) in KINDS:
+				_give(StringName(parts[0]), StringName(parts[1]), {"set": poster_set})
 
 
 func _give(kind: StringName, id: StringName, from: Dictionary) -> void:

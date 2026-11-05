@@ -18,6 +18,11 @@ const ROW_STEP := 2.0
 const TOTAL_EXTRA := 11.0
 ## The most items the card names under "unlocked"; the rest is a count.
 const UNLOCKED_NAMED := 2
+## The poster sets the card shows whole (their poster, title and prize); the rest is a count. A
+## night that finishes two is rare, and the card must stay short enough for a phone.
+const SETS_NAMED := 1
+## A finished set's poster on the card, in the poster's own proportions.
+const POSTER_WIDTH := 30.0
 const ICON := 32.0
 const VALUE_WIDTH := 120.0
 
@@ -31,6 +36,9 @@ var level_text := ""
 var progress_text := ""
 var next_text := ""
 var unlocked_text := ""
+## The poster sets the night finished, as the card says them: `[title, prize]` each.
+var sets_text: Array[Array] = []
+var more_sets_text := ""
 var bar_from := 0.0
 var bar_to := 0.0
 ## The height of a line now.
@@ -39,6 +47,9 @@ var row_height := ROW
 var _tokens := UITokens.active()
 var _model := {}
 var _signature := ""
+## Leave out "what is next" (a card with a finished poster set on a short screen: the rows are at
+## their floor and the set is the news of the night).
+var _drop_next := false
 
 
 func _init() -> void:
@@ -58,9 +69,13 @@ func show_report(model: Dictionary, room: float = INF) -> void:
 	_signature = signature
 	_model = model
 	row_height = ROW
+	_drop_next = false
 	_rebuild()
 	while room < INF and row_height > MIN_ROW and height() > room:
 		row_height = maxf(row_height - ROW_STEP, MIN_ROW)
+		_rebuild()
+	if room < INF and height() > room and not _model.get("sets", []).is_empty():
+		_drop_next = true
 		_rebuild()
 	visible = true
 
@@ -92,6 +107,8 @@ func _rebuild() -> void:
 	progress_text = ""
 	next_text = ""
 	unlocked_text = ""
+	sets_text.clear()
+	more_sets_text = ""
 	var kept: bool = _model["kept"]
 	heading_text = "YOUR NIGHT" if kept else "YOUR NIGHT, UNSAVED"
 	body.add_child(_heading())
@@ -111,6 +128,7 @@ func _rebuild() -> void:
 	else:
 		note_text = "NO ACCOUNT: THIS NIGHT WAS NOT SAVED"
 		body.add_child(_note(note_text, _tokens.danger))
+	_add_sets()
 	update_minimum_size()
 
 
@@ -175,6 +193,53 @@ func _note(text: String, ink: Color) -> Control:
 	return label
 
 
+## A line of small type that takes the room it is given (an ellipsis, never a wider card).
+func _small(text: String, ink: Color) -> Control:
+	var label := HudStyle.clip(HudStyle.label(text, HudStyle.SMALL, ink, false, 1.0))
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return label
+
+
+## The poster sets the night finished: the poster, the title and what it won, in two lines (a
+## phone's card has no room for a third).
+func _add_sets() -> void:
+	var finished: Array = _model.get("sets", [])
+	var plates := PlateCatalog.shipped()
+	for index in mini(finished.size(), SETS_NAMED):
+		var done: Dictionary = finished[index]
+		var prize := (
+			"WON: %s + %s"
+			% [
+				plates.title(PlateCatalog.CARD, done["card"]).to_upper(),
+				plates.title(PlateCatalog.EMBLEM, done["emblem"]).to_upper(),
+			]
+		)
+		sets_text.append([str(done["title"]).to_upper(), prize])
+		body.add_child(_poster_row(done, prize))
+	if finished.size() > SETS_NAMED:
+		more_sets_text = "+%d MORE POSTER SETS" % (finished.size() - SETS_NAMED)
+		body.add_child(_note(more_sets_text, _tokens.accent))
+
+
+func _poster_row(done: Dictionary, prize: String) -> Control:
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override(&"separation", HudStyle.SM)
+	var found := PosterSets.shipped().get_set(done["id"])
+	var art := PosterArt.make(found, POSTER_WIDTH, [0, 1, 2, 3, 4, 5], false)
+	art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(art)
+	var words := VBoxContainer.new()
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	words.add_theme_constant_override(&"separation", 0)
+	words.add_child(_small(str(done["title"]).to_upper(), _tokens.accent))
+	words.add_child(_small(prize, _tokens.ink_muted))
+	row.add_child(words)
+	return row
+
+
 ## The level row, the bar, what is next and what the night gave.
 func _add_level() -> void:
 	var from: int = _model["level_from"]
@@ -214,7 +279,7 @@ func _add_level() -> void:
 	bar.to = bar_to
 	body.add_child(bar)
 	var next: Dictionary = _model["next"]
-	if not next.is_empty():
+	if not next.is_empty() and not _drop_next:
 		next_text = "NEXT: %s AT %d" % [str(next["label"]).to_upper(), int(next["level"])]
 		body.add_child(_note(next_text, _tokens.ink_muted))
 	var gave: Array[String] = []

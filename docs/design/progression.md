@@ -382,9 +382,9 @@ hour: not a loophole. Level 10 arrives after about half an hour ([the curve](#th
   [calling cards](../research/calling-cards.md). **Built (#1071):** plate frames: the four of the ladder (Chrome 29,
   Brass 37, Neon 50, Gold 55) and three from challenges the night counts today (round 20, 25 revives, 100 nights), a
   Frames tab on the equip screen and the frame on every plate that shows one. **Built (#1074):** the stats and the 19
-  feats of the odd, easy and together lists below ([the odd and together stats](#the-odd-and-together-stats)). **Built (#1172):**
-  the five hidden challenges ([the hidden challenges](#the-hidden-challenges)). Not built: the frames for beating a map
-  (#1072) and poster sets (#1073).
+  feats of the odd, easy and together lists below ([the odd and together stats](#the-odd-and-together-stats)).
+  **Built (#1073):** poster sets (below). **Built (#1172):** the five hidden challenges
+  ([the hidden challenges](#the-hidden-challenges)). Not built: the frames for beating a map (#1072).
 - Launch set: **11 tier cards and 11 tier emblems** from the ladder, and **31 challenge cards and 31 emblems**: 42 of
   each. A challenge gives a card, an emblem, a frame or a mix, as the tables say (never two gates in series). The rarity
   of a frame or card is not assumed (#1053).
@@ -516,7 +516,12 @@ Built in #1172. A challenge with `"hidden": true` and a `"riddle"` in `feats.jso
 emblem as a flat silhouette with a `?`, the name `???` and the riddle where the way to earn one goes; pressing it says the
 riddle. A test scans every text of the equip screen, the main menu, the news and the prompt and popup cards for the words
 and the titles of the five (`test_hidden_challenges_ui`). Once done, the pieces show their art and name like any other.
-Hidden challenges are feats only, give a card and an emblem each, and a poster set may not take one.
+Hidden challenges are feats only and give a card and an emblem each. **A poster set may not take one**: the Challenges
+tab prints a set's six rows whole, so `PosterSets.problems` reports a set that lists a hidden feat
+(`test_hidden_challenges`, with the failing case), and the leak scan reads every chip of the Challenges tab, the Poster
+sets chip and the sets' own data included (`test_hidden_challenges_ui`). *Standing room only* counts four people, so its
+stat is in `ChallengeStats.CROWD` with the other stats a person cannot make alone: a set may not take it for that reason
+too.
 
 | Challenge (title of its card) | Stat | Counts |
 | --- | --- | --- |
@@ -758,9 +763,24 @@ real time and every client can hear its celebration.
 B-movie ("Attack of the Fifty-Foot Generator"): each one done uncovers a panel of the poster, and finishing all six
 wins the set's calling card and emblem. A set shows on the Challenges tab as its poster with its panels and six rows,
 and in the night report when finished. Every challenge in a set is one the night counts (rule 15: the mock's "restart
-the generator" and "kill with shock" need their stats first), so the first release has two sets from the 21 counted
-challenges and sets arrive as their stats do. Posters are composed from shared parts like the cards, and sets are
-solo-safe (no Together challenge in one). Build: #1073.
+the generator" and "kill with shock" need their stats first), so the first release has two sets from the feats
+counted then and a set is a line of data for any six that are counted since. Posters are composed from shared parts
+like the cards, and sets are solo-safe (no Together challenge in one). Build: #1073.
+
+**Built (#1073).** Two sets of six, made of 12 of the feats the night counts (21 when they were chosen, 43 since the
+stats of #1074 arrived; the other feats wait for sets of their own, none of which may list a stat that needs a crowd,
+`ChallengeStats.CROWD`): *Attack of the Fifty-Foot Generator* (a fuel can, ten boards, a door, five buys in a night,
+150 fuel cans, 1,000 boards; a card and an emblem in teal and gold) and *Revenge of the Headliners* (a
+headshot, a grenade kill, 100 headliners, 1,000 melee kills, 1,000 grenade kills, 1,500 headshots; cherry). The panels
+run from the easy challenge to the long one. The mock's own "restart the generator" and "kill with shock" need stats
+the night does not count, so they are not offered (rule 15). A set is **read, never stored**: a panel is uncovered
+when its feat is done, the set is finished when all six are, and the prize is owned from the finished challenges
+(`PlateCatalog`: a piece with `{set}` as its source), so the prize comes once and a retune needs no migration. A set
+is the gate of its own card and emblem (new pieces; each feat in it still gives what it gave). The Challenges tab has a
+**Poster sets** chip with each set whole (its poster, the six rows, the prize) and a teaser of each in All after Today;
+a finished set is a card of the popup lane (live, and in the menu when it was finished away from a night, once) and a
+row of the night report (its poster, title and prize). How
+it works and what was measured: [poster sets](../research/calling-cards.md#poster-sets-1073).
 
 ## The night report and credits
 

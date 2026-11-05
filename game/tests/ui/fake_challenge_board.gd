@@ -10,6 +10,8 @@ var swaps: Array[int] = []
 ## Rows with the longest words and numbers a goal can have, to check nothing runs off the paper.
 var extreme := false
 var minutes_left := 372
+## The feats the poster sets show as done (`poster_sets`): ids of `feats.json`.
+var feats_done: Array[StringName] = []
 
 
 func refresh() -> void:
@@ -90,6 +92,16 @@ func milestones() -> Array[Dictionary]:
 			)
 		)
 	return list
+
+
+## The poster sets as the real board reads them, from a fresh profile with `feats_done` finished.
+func poster_sets() -> Array[Dictionary]:
+	var real := ChallengeBoard.new()
+	real.catalog = ChallengeCatalog.load_default()
+	real.profile = ChallengeProfile.fresh(5)
+	for id in feats_done:
+		real.profile.feats[id] = real.catalog.get_def(id).target
+	return real.poster_sets()
 
 
 func swap_order(slot: int) -> bool:

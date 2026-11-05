@@ -18,6 +18,10 @@ extends RefCounted
 ##                       move worth saying (a quarter mark, a ladder's step), never every kill.
 ##   challenge_done      player_id, id, family, text, target, rung, rungs, reward (the definition's
 ##                       dictionary: `xp`), once for a challenge finished.
+##   poster_set_done     player_id, id, title, card, emblem (`PosterSets.event_of`): after the
+##                       `challenge_done` of the last of a poster set's six, so once for a set.
+##                       The prize is owned from the finished challenges (`PlateCatalog`), not
+##                       from here.
 ## A finished challenge pays its XP to the seat's `XpAward` (the source `challenge`) and is listed
 ## in the next report (`fill_report`: the ids it finished, and the board as the tracker holds it).
 
@@ -60,6 +64,8 @@ var enabled := true
 var catalog: ChallengeCatalog
 ## The day the dailies are dealt for: the server's (UTC), the clock the XP award uses.
 var clock: ChallengeClock
+## The poster sets a finish may complete. Null: the shipped ones.
+var sets: PosterSets
 ## The night's rules, for what the odd stats need of them (the shop's doors, the map): set by the
 ## night's server before a board arrives.
 var rules: GameRules
@@ -276,6 +282,14 @@ func _finish(board: Board, advance: Dictionary) -> void:
 			}
 		)
 	)
+	var poster_sets := sets if sets != null else PosterSets.shipped()
+	var poster_set := poster_sets.completed_by(id, board.profile.feats_done(catalog))
+	# Two feats of a set can finish on the same event: the set is complete at the first of them
+	# (both are on the board), and is said once.
+	if poster_set != null and not board.sets_told.has(poster_set.id):
+		board.sets_told[poster_set.id] = true
+		_out.append(poster_sets.event_of(poster_set, player_id))
+		PerfProbe.count(&"challenge.told")
 	_xp.add_xp(player_id, int(reward.get("xp", 0)), XpAward.CHALLENGE)
 
 
@@ -290,6 +304,8 @@ class Board:
 	var done: Array[String] = []
 	## Every id finished and said this night: never said or paid twice.
 	var finished: Dictionary[StringName, bool] = {}
+	## The poster sets said this night, once each.
+	var sets_told: Dictionary[StringName, bool] = {}
 
 	func _init(p_user: String, p_profile: ChallengeProfile) -> void:
 		user = p_user

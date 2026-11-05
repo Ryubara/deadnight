@@ -273,3 +273,29 @@ func test_the_second_door_is_the_second_of_the_lots_doors_and_needs_the_first() 
 	assert_str(ChallengeAreas.second_door("small_indoor")).is_equal("")
 	assert_str(ChallengeAreas.second_door("nowhere")).is_equal("")
 	assert_int(ChallengeAreas.rect("small_indoor", ChallengeAreas.STAND).size()).is_equal(0)
+
+
+func test_no_poster_set_names_a_hidden_challenge() -> void:
+	for poster_set in PosterSets.shipped().all():
+		for id in poster_set.challenges:
+			(
+				assert_bool(_catalog.get_def(id).hidden)
+				. override_failure_message("%s lists the hidden challenge %s" % [poster_set.id, id])
+				. is_false()
+			)
+	assert_array(PosterSets.shipped().problems(_catalog, _weapon_ids(), _type_ids())).is_empty()
+
+
+func test_a_set_that_names_a_hidden_challenge_is_reported() -> void:
+	var text := (
+		'{"sets": [{"id": "s", "title": "S", "lines": ["S"], "palette": "teal", "motif": "bolt", '
+		+ '"challenges": ["f_snack_break", "f_hammer", "f_open", "f_regular", "f_gas_man", '
+		+ '"f_ironwork"], "grants": ["card:fifty_foot_feature"]}]}'
+	)
+	var found := PosterSets.from_text(text).problems(_catalog, _weapon_ids(), _type_ids())
+	assert_array(found).contains(["s: 'f_snack_break' is hidden"])
+
+
+func test_a_stat_that_needs_four_people_is_a_crowd_stat_so_no_set_asks_for_it() -> void:
+	assert_bool(ChallengeStats.CROWD.has(ChallengeStats.NIGHTS_FULL_LOT)).is_true()
+	assert_bool(ChallengeStats.CROWD.has(ChallengeStats.BREAKS_STAND)).is_false()

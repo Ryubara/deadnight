@@ -64,6 +64,8 @@ func _texts(root: Node, into: Array[String] = []) -> Array[String]:
 		into.append((root as RichTextLabel).get_parsed_text())
 	if root is Control and (root as Control).tooltip_text != "":
 		into.append((root as Control).tooltip_text)
+	if root is Control and (root as Control).accessibility_name != "":
+		into.append((root as Control).accessibility_name)
 	for child in root.get_children():
 		_texts(child, into)
 	return into
@@ -217,6 +219,39 @@ func test_the_main_menu_holds_no_word_of_a_hidden_challenge_whatever_the_progres
 		rows.append(String(row["text"]))
 	assert_array(rows).is_not_empty()
 	assert_array(_leaks(rows, _secrets())).is_empty()
+
+
+func test_every_chip_of_the_challenges_tab_holds_no_word_of_a_hidden_challenge() -> void:
+	var path := ChallengeFixture.save_path("hidden_chips")
+	var clock := ChallengeFixture.clock_on(DAY)
+	var board := ChallengeBoard.open(path, clock)
+	board.profile.feats[&"f_long_way_round"] = 7
+	board.profile.lifetime[ChallengeStats.ROUND_LONG_WAY] = 7
+	board.save()
+	MainMenu.board_factory = func() -> Object: return ChallengeBoard.open(path, clock)
+	UIRouter.reset("res://ui/screens/main_menu.tscn", UITransition.Kind.CUT)
+	await UIRouter.idle
+	await await_idle_frame()
+	var menu := UIRouter.top() as MainMenu
+	var panel := menu.shell.panel(MenuTab.Id.CHALLENGES) as ChallengesPanel
+	assert_object(panel).is_not_null()
+	for family: ChallengesPanel.Family in ChallengesPanel.Family.values():
+		panel.show_family(family)
+		await await_idle_frame()
+		assert_array(_leaks(_texts(panel), _secrets())).is_empty()
+	# The Poster sets chip shows each set whole: its title, its lines and every panel's words.
+	panel.show_family(ChallengesPanel.Family.SETS)
+	await await_idle_frame()
+	assert_array(panel.sets()).is_not_empty()
+	var data: Array[String] = []
+	for entry: Dictionary in menu.shell.context.board.poster_sets():
+		data.append(String(entry.get("title", "")))
+		for line: Variant in entry.get("lines", []):
+			data.append(String(line))
+		for each: Dictionary in entry.get("panels", []):
+			data.append(String(each.get("text", "")))
+	assert_array(data).is_not_empty()
+	assert_array(_leaks(data, _secrets())).is_empty()
 
 
 # --- The news and the popups ---

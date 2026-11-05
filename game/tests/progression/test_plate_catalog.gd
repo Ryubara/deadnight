@@ -27,11 +27,11 @@ func test_the_shipped_catalogue_has_no_problems() -> void:
 
 
 func test_the_launch_set_is_there() -> void:
-	# 11 tier cards, 12 grind cards and 11 odd ones; 11 tier emblems, the starting emblem, 9 easy
-	# ones, 12 grind ones and 8 easy and together ones that need a stat of #1074; 4 frames from
-	# levels and 3 from challenges; a card and an emblem for each of the 5 hidden challenges (#1172).
-	assert_int(_plates.ids(PlateCatalog.CARD).size()).is_equal(39)
-	assert_int(_plates.ids(PlateCatalog.EMBLEM).size()).is_equal(46)
+	# Cards: 11 tier, 12 grind, 11 odd, 2 of poster sets and 5 hidden (#1172). Emblems: 11 tier, the
+	# starting one, 9 easy, 12 grind, 8 easy and together ones that need a stat of #1074, 2 of poster
+	# sets and 5 hidden. Frames: 4 from levels and 3 from challenges.
+	assert_int(_plates.ids(PlateCatalog.CARD).size()).is_equal(41)
+	assert_int(_plates.ids(PlateCatalog.EMBLEM).size()).is_equal(48)
 	assert_int(_plates.ids(PlateCatalog.FRAME).size()).is_equal(7)
 	var tiers := 0
 	for kind in PlateCatalog.KINDS:

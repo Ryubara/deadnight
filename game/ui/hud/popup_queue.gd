@@ -1,9 +1,9 @@
 class_name PopupQueue
 extends RefCounted
 ## What the popup lane shows and when: the cards of the progression (a level, a tier, an unlock, a
-## finished challenge), their order, their motion and their limits, as plain data and a clock the
-## caller moves with `advance(delta)`, so a test steps it by hand and a capture repeats frame for
-## frame (docs/design/progression.md#popups-motion-and-sound).
+## finished challenge, a finished poster set), their order, their motion and their limits, as plain
+## data and a clock the caller moves with `advance(delta)`, so a test steps it by hand and a capture
+## repeats frame for frame (docs/design/progression.md#popups-motion-and-sound).
 ##
 ## - A card drops in over `popup_in` with a small overshoot, holds, and leaves over `popup_out`:
 ##   a level card 2.6 s, an unlock 2.0 s, a tier 3.6 s, a finished challenge 3.0 s.
@@ -19,7 +19,7 @@ extends RefCounted
 ## - While blocked (the HUD is hidden: the arrival drop is on) nothing starts and nothing ages, so
 ##   a card that came then is still there when the screen is back.
 
-enum Kind { LEVEL, UNLOCK, TIER, CHALLENGE, MORE }
+enum Kind { LEVEL, UNLOCK, TIER, CHALLENGE, MORE, SET }
 enum Phase { IN, HOLD, OUT }
 
 const MAX_VISIBLE := 3
@@ -76,7 +76,7 @@ class Card:
 ## How much a kind matters when the queue is over its limit: the lowest are merged first.
 static func priority(kind: Kind) -> int:
 	match kind:
-		Kind.TIER:
+		Kind.TIER, Kind.SET:
 			return 4
 		Kind.LEVEL, Kind.CHALLENGE:
 			return 3
@@ -309,7 +309,7 @@ func _hold_of(kind: Kind) -> float:
 	match kind:
 		Kind.LEVEL:
 			return _t.popup_hold_level
-		Kind.TIER:
+		Kind.TIER, Kind.SET:
 			return _t.popup_hold_tier
 		Kind.CHALLENGE:
 			return _t.popup_hold_challenge
