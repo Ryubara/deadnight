@@ -78,9 +78,10 @@ class Hands:
         self.page = page
         self.down: dict[int, tuple[float, float]] = {}
 
-    def _send(self, kind: str) -> None:
-        points = [(i, x, y) for i, (x, y) in self.down.items()]
-        menu.smoke_touch(self.client, kind, points)
+    def _send(self, kind: str, only: int | None = None) -> None:
+        # touchStart and touchMove list the fingers that are down; touchEnd lists the ones that lift.
+        fingers = [only] if only is not None else list(self.down)
+        menu.smoke_touch(self.client, kind, [(i, *self.down[i]) for i in fingers])
 
     def press(self, finger: int, at: tuple[float, float]) -> None:
         self.down[finger] = at
@@ -91,9 +92,8 @@ class Hands:
         self._send("touchMove")
 
     def lift(self, finger: int) -> None:
-        # touchEnd lists the fingers that STAY down.
+        self._send("touchEnd", only=finger)
         self.down.pop(finger)
-        self._send("touchEnd")
 
     def tap(self, at, held=TAP_S, after=GAP_S, finger=1, slide=0.0) -> None:
         self.press(finger, at)
@@ -293,6 +293,15 @@ def run(browser_type, url: str, out: Path, result: dict, size: dict, left: bool,
         result["held_with_a_finger_on_fire"] = str(record)
         hands.double_tap(free, finger=1)
 
+    def holding_fire_alone() -> None:
+        hands.press(2, hits["fire"])
+        time.sleep(0.2 + 2 * (TAP_S + GAP_S))
+        hands.lift(2)
+
+    # The control: Fire held for as long, with no taps. The weapon's own kick turns the view a little.
+    kick = expect("Fire held alone, as long (the control for the weapon's kick)", 0, holding_fire_alone)
+    result["fire_kick_turn_rad"] = kick["turn_rad"]
+    time.sleep(0.5)
     record = expect("a double tap while a finger holds Fire", 1, holding_fire_then_tapping)
     if "fire" not in record["held"]:
         problems.append(f"[check] Fire was not held through the double tap: {record['held']!r}")
@@ -316,12 +325,17 @@ def run(browser_type, url: str, out: Path, result: dict, size: dict, left: bool,
     opened = menu.wait_for(page, "the menu", menu.menu_open)
     before_pause = float(opened.get("shoulder_side", 0.0))
     page.wait_for_timeout(500)
-    centre = (size["width"] * 0.5, size["height"] * 0.5)
-    hands.double_tap(centre)
-    page.wait_for_timeout(600)
+    buttons = spots(opened, "menu_buttons", size)
     page.screenshot(path=out / "5_pause_card.png")
-    if float(menu.probe(page).get("shoulder_side", 0.0)) != before_pause:
-        problems.append("[check] two taps on the pause menu changed shoulder")
+    # Two taps on the dim ground beside the card and two between its first two buttons: no button is pressed.
+    first, second = sorted(buttons.values(), key=lambda at: at[1])[:2]
+    between = ((first[0] + second[0]) / 2, (first[1] + second[1]) / 2)
+    hands.double_tap((size["width"] * 0.06, size["height"] * 0.5))
+    hands.double_tap(between)
+    page.wait_for_timeout(600)
+    result["pause_menu_after_taps"] = str(menu.probe(page).get("menu_buttons", ""))
+    if not menu.menu_open(menu.probe(page)) or float(menu.probe(page).get("shoulder_side", 0.0)) != before_pause:
+        problems.append("[check] two taps on the pause menu changed shoulder or pressed a button")
 
     # The Touch tab says it too.
     menu.tap(client, menu.spot(menu.probe(page), "Settings", size))
@@ -331,6 +345,13 @@ def run(browser_type, url: str, out: Path, result: dict, size: dict, left: bool,
         menu.tap(client, menu.spot(menu.probe(page), "Touch", size))
         page.wait_for_timeout(900)
         page.screenshot(path=out / "6_touch_tab.png")
+        # The note row is the last: scroll the rows with a finger on the words, to the end.
+        for _ in range(4):
+            hands.drag(1, (size["width"] * 0.12, size["height"] * 0.7), (0.0, -size["height"] * 0.45), steps=8)
+            hands.lift(1)
+            time.sleep(0.3)
+        page.wait_for_timeout(600)
+        page.screenshot(path=out / "7_touch_tab_end.png")
     except RuntimeError as error:
         problems.append(f"[check] no Touch tab button to tap: {error}")
     menu.tap(client, menu.spot(menu.probe(page), "Back", size))

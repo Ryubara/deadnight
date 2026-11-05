@@ -43,6 +43,15 @@ func _look_for(units: float) -> float:
 # --- The gesture ---
 
 
+func test_the_numbers_are_the_ones_the_issue_names() -> void:
+	# Written out, so a changed constant fails here and not silently in every boundary test below.
+	assert_float(TouchDoubleTap.TAP_SECONDS).is_equal(0.25)
+	assert_float(TouchDoubleTap.GAP_SECONDS).is_equal(0.35)
+	assert_float(TouchSlop.CSS_PIXELS).is_equal(10.0)
+	assert_str(String(TouchDoubleTap.ACTION)).is_equal("swap_shoulder")
+	assert_float(_fixture.controls.tuning.min_hold).is_greater_equal(0.09)
+
+
 func test_two_quick_taps_press_swap_shoulder_for_at_least_a_press() -> void:
 	await _tap()
 	assert_int(_swaps).is_equal(0)
