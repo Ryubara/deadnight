@@ -6,8 +6,9 @@ extends SceneTree
 ## `tools/level_icons/draw_icons.py` writes the SVGs; this writes `level_icons_64.png`,
 ## `level_icons_128.png` and `level_icons.json`. The manifest holds a hash of each SVG and of each
 ## atlas, so `tools/check_level_icons.py` (CI) fails when an SVG changed and the atlases did not,
-## with no Godot and no raster to compare across machines. Docs: docs/research/progression.md,
-## "The icon pipeline".
+## with no Godot and no raster to compare across machines. It also writes each icon's body rows
+## (`LevelIcons.body_rows`), which the tags use to centre an icon on its digits (#1161). Docs:
+## docs/research/progression.md, "The icon pipeline".
 
 const SIZES: Array[int] = [LevelIcons.CELL_SMALL, LevelIcons.CELL_LARGE]
 
@@ -48,8 +49,15 @@ func _export() -> bool:
 			"sha256": FileAccess.get_sha256(atlas_path),
 		}
 	var levels: Array[Dictionary] = []
+	var small := Image.load_from_file(
+		ProjectSettings.globalize_path(LevelIcons.atlas_path(LevelIcons.CELL_SMALL))
+	)
 	for source in sources:
 		var level: int = source["level"]
+		var origin := (
+			Vector2i(LevelIcons.column(level), LevelIcons.row(level)) * LevelIcons.CELL_SMALL
+		)
+		var body := LevelIcons.body_rows(small, origin)
 		(
 			levels
 			. append(
@@ -61,6 +69,8 @@ func _export() -> bool:
 					"svg": source["svg"],
 					"sha256": source["sha256"],
 					"cell": [LevelIcons.column(level), LevelIcons.row(level)],
+					# The body's rows in the 64 px cell, for `LevelIcons.body_centre`.
+					"body": [body.x, body.y],
 				}
 			)
 		)

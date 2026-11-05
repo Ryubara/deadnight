@@ -446,9 +446,21 @@ func _assert_box_in_order(box: HudPlayerBox, label: String) -> void:
 		. override_failure_message(label + ": level to name")
 		. is_equal_approx(LevelTag.NAME_GAP, 0.01)
 	)
-	# The icon sits whole in the box, centred high to low; the name ends before the number.
+	# The icon sits whole in the box, its body centred on the level's digits (not on the box: the
+	# digits sit on the name's baseline; the pixels are read in test_level_ink.gd); the name ends
+	# before the number.
 	assert_bool(body.encloses(icon)).override_failure_message(label + ": icon outside").is_true()
-	assert_float(icon.get_center().y).is_equal_approx(box.size.y * 0.5, 0.01)
+	var shown: Label = box.get("_level")
+	var font := shown.get_theme_font(&"font")
+	var size_px := shown.get_theme_font_size(&"font_size")
+	var digits := LevelTag.digits_centre(
+		font, size_px, level.position.y + LevelTag.line_baseline(font, size_px)
+	)
+	(
+		assert_float(icon.position.y + LevelIcons.body_centre(box.shown_level.y) * icon.size.y)
+		. override_failure_message(label + ": icon's body off the digits")
+		. is_equal_approx(digits, 1.0)
+	)
 	assert_float(who.end.x).is_less_equal(box.number_right())
 	assert_float(who.size.x).is_greater(0.0)
 
