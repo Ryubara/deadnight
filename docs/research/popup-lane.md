@@ -27,6 +27,17 @@ How the progression's cards (#1064) are built and what proves them. The design i
 - **It waits while the HUD is hidden** (the helicopter drop, #1057): the queue is blocked, nothing starts and nothing
   ages, and the cards are shown when the HUD comes back.
 
+## The first-run touch hints (#1132)
+
+`TouchHints` draws over the lane, so on a first run a level up read "DRAG TO LOOK" through its words. Two ways out were
+weighed. Holding a card until the hint is gone ties the lane to the touch layer, delays progress by as long as a player
+goes without a look drag (the hint is there until used, and a player who aims with auto-fire may never drag), and
+leaves the cue waiting too. Moving the hint costs one rectangle: the lane's column is known from the safe area
+(centre, `PopupCard.WIDTH` wide), so the look hint sits on the look area's side of it, and the stick's hint steps off
+it where a small canvas puts it under the cards. The look hint also steps down, 8 units at a time, past a touch button
+that climbs to its place on a short screen (2340 x 864). The look hint still may meet the top right feed and notices of
+a night (rows that fade after seconds); the test measures it against the parts that always stand, as before.
+
 ## One source with the wardrobe
 
 An unlock card shows the item's thumbnail and name as the wardrobe's grid does (#1131): `LadderItem.of(slot, item)`
@@ -49,5 +60,7 @@ in them so the frames they wait for do not also move it.
 `tests/ui/test_popup_queue.gd` (order, caps, merge, timings, drop, stamp, slide, blocked), `test_popup_lane.gd` (the
 server's real events through `XpAward`, the words and order of a card, the setting, mouse filter, the HUD's wait, the
 lane against every other part of the HUD and the crosshair at five canvases, with and without a boss bar, on the phone
-layout and mirrored), and the captures `tests/captures/popup_menu.gd` and `popup_night.gd` (a game server night
-whose seat's account earns XP the way a kill or a challenge reward does, the dead on screen).
+layout and mirrored, and the touch hints against the cards at those canvases and both hands), and the captures
+`tests/captures/popup_menu.gd` and `popup_night.gd` (a game server night whose seat's account earns XP the way a kill or
+a challenge reward does, the dead on screen) and `touch_hints_tour.gd --levelup` (a first run on a phone with a level
+up).

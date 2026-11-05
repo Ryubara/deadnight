@@ -60,12 +60,18 @@ tested against. The stick's resting ring is 60 units higher so it clears the pla
   ([HUD prompt](hud.md)). A key or a gamepad button brings the keycap back, and so does a real mouse click; mouse
   *motion* does not, because the layer sends its look as motion, and the engine's touch copies are marked as emulated.
 - **Hints once per control** (`TouchHints`, a child of the layer): "DRAG TO MOVE" over the stick's resting ring, "DRAG TO
-  LOOK" in the upper right of the look area and "TAP TO USE" ("HOLD TO REPAIR" at a fence) beside the Interact button
-  while it shows. Each goes the moment its control is used: a finger on the stick, the first look drag (also one that
-  started on Fire), a press of Interact. The Interact hint waits for the first prompt, and a prompt that goes unused
-  brings it back with the next one. What was used is a bit in the setting `controls/touch_hints_seen`, so a player sees
-  each hint once ever; restoring the defaults in Settings shows them again. A test checks the labels against the safe
-  area, the buttons and the HUD cards on every phone canvas.
+  LOOK" in the look area and "TAP TO USE" ("HOLD TO REPAIR" at a fence) beside the Interact button while it shows. Each
+  goes the moment its control is used: a finger on the stick, the first look drag (also one that started on Fire), a
+  press of Interact. The Interact hint waits for the first prompt, and a prompt that goes unused brings it back with the
+  next one. What was used is a bit in the setting `controls/touch_hints_seen`, so a player sees each hint once ever;
+  restoring the defaults in Settings shows them again. A test checks the labels against the safe area, the buttons and
+  the HUD cards on every phone canvas.
+- **The look hint stands beside the popup lane**, not over it ([popup lane](../research/popup-lane.md)): the cards
+  stand in the middle of the screen under the round banner, so the hint takes the look area's side of their column. It
+  steps down past any button that climbs up to it on a short screen, and on a small canvas the stick's hint steps aside
+  from the column too. A level up in a first minute is read with its hint, and neither waits for the other (a card held
+  until the hint was used would never come to a player who plays without a look drag). `test_popup_lane.gd` checks that
+  no hint meets a card at its canvases, both hands, with and without a boss bar.
 
 ## Settings
 
