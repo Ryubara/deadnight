@@ -339,6 +339,47 @@ def browser_states(frame: Frame, out: Path, label: str, results: list[dict], bac
     backend.release()
 
 
+def together_states(frame: Frame, out: Path, label: str, results: list[dict]) -> None:
+    """Play together as a phone's page shows it: at the top, and at the foot of its scroll (Down to Back)."""
+    to_tab(frame, "Play")
+    go(frame, "Play", 0, "together_screen")
+    snap(frame, out, label, results, "together top")
+    for _ in range(6):
+        press(frame, "ArrowDown")
+    snap(frame, out, label, results, "together foot")
+    back(frame)
+
+
+def open_create(frame: Frame) -> None:
+    """Play together, then a press of Create a night, which is under Server browser in a desktop's column and beside it
+    in a phone's two: the focus says which, so no section counts the arrows of one layout."""
+    go(frame, "Play", 0, "together_screen")
+    for key in ("ArrowRight", "ArrowDown"):
+        press(frame, key)
+        frame.page.wait_for_timeout(500)
+        if frame.state().get("focus") == "CreateNight":
+            break
+    wait_for(frame, "the Create button", lambda s: s.get("focus") == "CreateNight", 5)
+    press(frame, "Enter")
+
+
+def lobby_states(frame: Frame, out: Path, label: str, results: list[dict]) -> None:
+    """Create a night (the stub backend answers with a lobby of one): the lobby with its rules, then scrolled to the end."""
+    to_tab(frame, "Play")
+    open_create(frame)
+    wait_for(frame, "the name prompt or the lobby", lambda s: s.get("naming") or s.get("screen") == "lobby_screen", 40)
+    if frame.state().get("naming"):
+        frame.page.keyboard.type("Alex", delay=40)
+        press(frame, "Enter")
+    wait_for(frame, "the lobby", lambda s: s.get("screen") == "lobby_screen", 40)
+    snap(frame, out, label, results, "lobby")
+    # The focus starts on Start, at the foot of the card: Up walks the rules backwards (skill, bots, the break).
+    for step in range(1, 5):
+        press(frame, "ArrowUp")
+        snap(frame, out, label, results, f"lobby rules up {step}")
+    back(frame)
+
+
 def tour(frame: Frame, out: Path, label: str, results: list[dict], backend: StubBackend) -> None:
     for tab in TAB_NAMES:
         to_tab(frame, tab)
@@ -390,9 +431,7 @@ def lobby(frame: Frame, out: Path, label: str, results: list[dict], backend: Stu
 
     The page must show the switch on screen, read it as public, and after each tap say so and have told the backend (the
     stand-in keeps every visibility it was sent): private, then public again."""
-    go(frame, "Play", 0, "together_screen")
-    press(frame, "ArrowDown")  # Server browser -> Create a night
-    press(frame, "Enter")
+    open_create(frame)
     # A player with no saved name is asked for one first.
     wait_for(frame, "the name prompt or the lobby", lambda s: s.get("naming") or s.get("room_code"), 20)
     together_name(frame)
@@ -546,6 +585,10 @@ def main() -> int:
             if "browser" in sections:
                 to_tab(game, "Play")
                 browser_states(game, args.out, args.label, results, backend)
+            if "together" in sections:
+                together_states(game, args.out, args.label, results)
+            if "lobby" in sections:
+                lobby_states(game, args.out, args.label, results)
             if "tour" in sections:
                 tour(game, args.out, args.label, results, backend)
             if "lobby" in sections:
