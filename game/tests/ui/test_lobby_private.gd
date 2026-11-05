@@ -11,6 +11,9 @@ func before_test() -> void:
 
 func after_test() -> void:
 	LobbyScreen.opener = Callable()
+	# The Start tests fill the join statics and the stubbed opener never takes them; left there,
+	# the next solo night joins a server that is not there and hangs (#1220, #1234).
+	RouterFixture.forget_join()
 	Input.action_release(&"ui_accept")
 	UIInputMode.touch = false
 
@@ -66,6 +69,14 @@ func _pad(button: JoyButton) -> void:
 ## A finger on `control`: the touch event and the emulated mouse press it becomes.
 func _tap(control: Control) -> void:
 	UIInputMode.touch = true
+	# A finger presses what is on screen: a window shorter than the lobby scrolls the row away,
+	# and a press on the clipped part reaches nothing.
+	var scroll := control.get_parent()
+	while scroll != null and not scroll is ScrollContainer:
+		scroll = scroll.get_parent()
+	if scroll != null:
+		(scroll as ScrollContainer).ensure_control_visible(control)
+		await get_tree().process_frame
 	var at := control.get_global_rect().get_center()
 	for pressed in [true, false]:
 		var touch := InputEventScreenTouch.new()
@@ -309,3 +320,67 @@ func test_the_row_fits_a_desktop_a_phone_and_the_phones_real_page() -> void:
 		. override_failure_message("%d fit problems:\n%s" % [problems.size(), "\n".join(problems)])
 		. is_empty()
 	)
+
+
+## A browser test taps the switch by its spot and reads it back from the page's snapshot.
+func test_the_web_probe_says_where_the_switch_is_and_what_it_shows() -> void:
+	var host := await _screen(_hosted())
+	var snapshot := WebProbe.snapshot(host)
+	assert_str(snapshot["lobby_private"]).is_equal("off")
+	var spots := {}
+	for entry in str(snapshot["spots"]).split("|"):
+		var key := entry.rsplit(":", true, 1)
+		spots[key[0]] = key[1]
+	assert_bool(spots.has("private")).is_true()
+	var at := str(spots["private"]).split(",")
+	var size := host.get_viewport().get_visible_rect().size
+	assert_vector(Vector2(float(at[0]), float(at[1])) * size).is_equal_approx(
+		host.private_switch.toggle.get_global_rect().get_center(), Vector2(0.5, 0.5)
+	)
+	host.private_switch.toggle.button_pressed = true
+	assert_str(WebProbe.snapshot(host)["lobby_private"]).is_equal("on")
+	host.queue_free()
+	# A guest reads the switch but has no spot to tap.
+	var guest := await _screen(_guest_api())
+	snapshot = WebProbe.snapshot(guest)
+	assert_str(snapshot["lobby_private"]).is_equal("off")
+	assert_bool(str(snapshot["spots"]).contains("private:")).is_false()
+	guest.queue_free()
+
+
+## On a phone's real page the buttons under the row (Start, the copy buttons, the Server Browser)
+## fill the area, and the lobby came up scrolled to the bottom of it with the switch half out of the
+## top (seen on a web build in `tools/web_smoke/phone_layout.py --section lobby`). The host sees the
+## switch whole, and Start with it, once the row has come on screen.
+func test_the_host_sees_the_switch_and_start_together_on_a_phone_page() -> void:
+	var run := UiFitRun.new(get_tree())
+	run.begin()
+	await run.set_window(Vector2i(1688, 780), 1.0, 2.0)
+	await run.close()
+	var api := _hosted()
+	UIRouter.reset(UiFitRun.LOBBY, UITransition.Kind.CUT, {"api": api, "lobby": api.lobby})
+	await UIRouter.idle
+	var lobby := UIRouter.top() as LobbyScreen
+	lobby.watch.every = 3600.0
+	await run.frames()
+	# As the page left it: scrolled to the end, below the switch.
+	lobby._scroll.scroll_vertical = 100000
+	await run.frames()
+	var area := lobby._scroll.get_global_rect()
+	assert_bool(area.encloses(lobby.private_switch.toggle.get_global_rect())).is_false()
+	lobby.private_switch.reveal(lobby._scroll, lobby.start_button)
+	await run.frames()
+	var toggle := lobby.private_switch.toggle.get_global_rect()
+	var start := lobby.start_button.get_global_rect()
+	(
+		assert_bool(area.encloses(toggle))
+		. override_failure_message("switch %s outside the area %s" % [toggle, area])
+		. is_true()
+	)
+	(
+		assert_bool(area.encloses(start))
+		. override_failure_message("Start %s outside the area %s" % [start, area])
+		. is_true()
+	)
+	await run.close()
+	run.restore()

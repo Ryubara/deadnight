@@ -253,6 +253,7 @@ func _ready() -> void:
 	box.add_child(private_switch.build(get_tree(), FIELD_WIDTH))
 	private_switch.pressed.connect(_send_visibility)
 	private_switch.said.connect(_say)
+	private_switch.appeared.connect(func() -> void: private_switch.reveal(_scroll, start_button))
 	_rules_timer = Timer.new()
 	_rules_timer.one_shot = true
 	_rules_timer.wait_time = RULES_DELAY
@@ -271,6 +272,10 @@ func _ready() -> void:
 	var actions := _row(box, "Actions")
 	start_button = _button("Start the night", UIButton.Variant.PRIMARY, "Start")
 	start_button.pressed.connect(start)
+	# The scroll follows the focus to Start when the screen is up, after the row has come on screen.
+	start_button.focus_entered.connect(
+		func() -> void: private_switch.reveal(_scroll, start_button), CONNECT_ONE_SHOT
+	)
 	play_button = _button("Play", UIButton.Variant.PRIMARY, "Play")
 	play_button.pressed.connect(func() -> void: await _go_in(false))
 	join_button = _button("Join", UIButton.Variant.PRIMARY, "Join")

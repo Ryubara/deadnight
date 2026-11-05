@@ -31,3 +31,6 @@ static func forget_join() -> void:
 	NightScreen.join_ticket = ""
 	NightScreen.join_map = ""
 	NightScreen.join_as_bot = false
+	# And the lobby a night would hold for its Leave button, which a night takes the same way.
+	NightScreen.return_lobby = {}
+	NightScreen.return_api = null

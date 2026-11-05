@@ -10,6 +10,9 @@ extends RefCounted
 signal pressed
 ## A sentence for the lobby's note: what happened, or why the backend refused.
 signal said(text: String)
+## The host's row has just come on screen (the lobby's poll first said `visibility`): the screen
+## scrolls it into view (`reveal`).
+signal appeared
 
 ## The two hints (a line each, short enough for the row's column, which trims what does not fit).
 const HINT_ON := "Only the code gets in."
@@ -70,8 +73,32 @@ func show_lobby(held: Dictionary, shown: bool, is_host: bool) -> void:
 		toggle.focus_mode = Control.FOCUS_ALL if is_host else Control.FOCUS_NONE
 		toggle.mouse_filter = Control.MOUSE_FILTER_STOP if is_host else Control.MOUSE_FILTER_IGNORE
 	editable = is_host
+	var first := not _shown
 	_shown = true
 	_show_hint(is_private())
+	if first and is_host:
+		appeared.emit()
+
+
+## Scrolls `scroll` to the row when the host cannot see it and Start still fits under it. The lobby
+## opens scrolled to Start, and on a short page (a phone's) the buttons below the row push the row
+## out of the top of the area; Start is what the host presses, so it keeps its place when the two
+## cannot be seen together.
+func reveal(scroll: ScrollContainer, start: Control) -> void:
+	# After the box has taken its height.
+	await _tree.process_frame
+	await _tree.process_frame
+	if (
+		not is_instance_valid(scroll)
+		or not is_instance_valid(start)
+		or not row.is_visible_in_tree()
+	):
+		return
+	var content := scroll.get_child(0) as Control
+	var top := row.global_position.y - content.global_position.y
+	var span := start.global_position.y + start.size.y - row.global_position.y
+	if top < scroll.scroll_vertical and span <= scroll.size.y:
+		scroll.scroll_vertical = int(top)
 
 
 ## Whether a press is still on its way to the backend.
