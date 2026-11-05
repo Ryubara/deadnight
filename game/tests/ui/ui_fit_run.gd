@@ -17,6 +17,7 @@ const BROWSER := "res://ui/screens/server_browser_screen.tscn"
 const SETTINGS := "res://ui/screens/settings_screen.tscn"
 const CREDITS := "res://ui/screens/credits_screen.tscn"
 const CARDS := "res://ui/screens/cards_screen.tscn"
+const NIGHT := "res://ui/screens/night_screen.tscn"
 const SETTINGS_TABS := [0, 1, 2, 3, 4]
 
 ## The windows a player has: a laptop, a desktop, a big desktop, the shortest window that is not
@@ -52,7 +53,12 @@ var board: FakeChallengeBoard
 var phone := false
 ## The player's interface size (Settings, Accessibility): 0.8, 1 or 1.25.
 var ui_scale := 1.0
+## A night is open: the window keeps the interface size alone, as a night runs it (the menu's phone
+## factor is not on the window, `PhoneScale` puts it on the night's card).
+var night_open := false
 var _holder: CanvasLayer
+## `NightScreen.arrival_enabled` as a night found it, put back by `close`.
+var _arrival: Variant = null
 var _asking: TogetherScreen
 var _saved_size := Vector2i.ZERO
 var _saved_scale := 1.0
@@ -104,6 +110,11 @@ func set_window(size: Vector2i, interface_scale := 1.0, page_ratio := 1.0) -> vo
 ## keeps in the game (the menu stays below it).
 func _scale_window() -> void:
 	var window := tree.root
+	if night_open:
+		window.content_scale_factor = ui_scale
+		# The page's size was said after the window's own (`set_window`): the night's card asks again.
+		window.size_changed.emit()
+		return
 	window.content_scale_factor = MenuScale.factor(window.size, ui_scale)
 
 
@@ -374,8 +385,52 @@ func screen_subject(screen: Control, label: String) -> Dictionary:
 	}
 
 
+## A solo night, open and past its start, for the cards that open over it. Leave it with `close`.
+func open_night() -> NightScreen:
+	await close()
+	_arrival = NightScreen.arrival_enabled
+	NightScreen.arrival_enabled = false
+	RouterFixture.forget_join()
+	UIRouter.reset(NIGHT, UITransition.Kind.CUT)
+	await UIRouter.idle
+	var screen := UIRouter.top() as NightScreen
+	await screen.night.ready_to_play
+	night_open = true
+	_scale_window()
+	await frames()
+	return screen
+
+
+## The night's pause card (`settings_tab` under 0) or its Settings on that tab, open over the
+## night: the subject is the overlay alone, the HUD behind it is not what is measured.
+func open_night_card(screen: NightScreen, settings_tab := -1) -> Dictionary:
+	if not screen.night.is_paused():
+		screen._pause()
+	if settings_tab >= 0 and not screen.settings_open():
+		screen._open_settings()
+	await frames()
+	var label := "night pause"
+	if settings_tab >= 0:
+		screen._settings.select_tab(settings_tab, false)
+		label = "night settings %d" % settings_tab
+		await frames()
+	return screen_subject(screen._overlay, label)
+
+
+## Takes the card away, so the next one opens over a night that is playing.
+func close_night_card(screen: NightScreen) -> void:
+	if screen.settings_open():
+		screen._close_settings()
+	screen._resume_night()
+	await frames(2)
+
+
 ## Closes whatever a subject opened.
 func close() -> void:
+	night_open = false
+	if _arrival != null:
+		NightScreen.arrival_enabled = _arrival
+		_arrival = null
 	# The name prompt waits for an answer; an answer lets it finish, so nothing waits for ever.
 	if is_instance_valid(_asking):
 		_asking.name_decided.emit()

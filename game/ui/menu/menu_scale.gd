@@ -58,12 +58,13 @@ static func pixels_per_unit(window_size: Vector2i, scale_factor: float) -> float
 ## The least height and width of a control the player presses, in the units of `window` at its
 ## `content_scale_factor` now: `TAP_PIXELS` CSS pixels. Zero when no finger is meant to press it
 ## (`touch`: `TouchMode.wanted`), so a desktop's controls keep their own size. It does not ask
-## whether the window is small: a phone's page is 1688 x 780 in window pixels.
-static func tap_units(window: Window, touch: bool) -> float:
+## whether the window is small: a phone's page is 1688 x 780 in window pixels. `inner_scale` is the
+## scale of the part the control is in (`PhoneScale`): its unit is that much bigger.
+static func tap_units(window: Window, touch: bool, inner_scale := 1.0) -> float:
 	if not touch:
 		return 0.0
 	var ratio := pixel_ratio if pixel_ratio > 0.0 else MouseMotion.device_pixel_ratio()
-	var per_unit := pixels_per_unit(window.size, window.content_scale_factor)
+	var per_unit := pixels_per_unit(window.size, window.content_scale_factor) * inner_scale
 	# Never more than a fifth of the screen's height: a window too small for a finger (a headless
 	# test's 64 x 64) would otherwise ask for a button taller than the screen.
 	var canvas_height := float(window.size.y) / per_unit

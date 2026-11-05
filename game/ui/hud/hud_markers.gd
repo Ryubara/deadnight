@@ -33,12 +33,12 @@ const ARROW_GAP := 6.0
 ## state holds a new float place nearly every frame, and the part is drawn when the picture would
 ## change by a quarter of a unit (a quarter of a pixel at 1080p), not when a float does (#948).
 const PLACE_STEPS := 4.0
-## The most places a draw tries for all the markers it moves, and how many of the nearest places of
-## the first round a second round starts from.
-const MAX_TRIES := 1500
-const SECOND_ROUND := 4
+## The most columns a draw tries for all the markers it moves.
+const MAX_TRIES := 800
 ## How far an objective's words keep from a card of the HUD (the outline of the letters is 3.5).
 const CLEAR_GAP := 8.0
+## How far a marker that was moved keeps from the others that were, at `LABEL_SIZE`.
+const MARKER_GAP := 4.0
 
 ## Where each marker is drawn on the last frame: {id: {"at": Vector2, "pinned": bool}}.
 var placed: Dictionary = {}
@@ -259,8 +259,6 @@ func _draw_objective(font: Font, marker: Dictionary, spot: Dictionary) -> void:
 		return _objective_box(font, text, half, place, arrowed or pinned)
 	var at := _settle(spot["at"], box_of)
 	var moved := not at.is_equal_approx(spot["at"])
-	if moved:
-		_moved.append(box_of.call(at, true))
 	var diamond := PackedVector2Array(
 		[
 			at + Vector2(0, -half),
@@ -281,16 +279,17 @@ func _draw_objective(font: Font, marker: Dictionary, spot: Dictionary) -> void:
 	_shapes.rect(Rect2(at - Vector2.ONE * inner * 0.5, Vector2.ONE * inner), tokens.ink_on_accent)
 	var words := _clear_of_cards(_objective_words(font, text, half, at))
 	var direction := Vector2.ZERO
+	var drawn := Rect2(at, Vector2.ZERO).grow(half + SHADOW_REACH * _grown()).merge(words)
 	if pinned or moved:
 		direction = (at - size * 0.5).normalized()
 		if moved:
 			direction = (Vector2(spot["target"]) - at).normalized()
-		_arrow(at, half, direction, tokens.accent_bright, words)
+		drawn = drawn.merge(_arrow(at, half, direction, tokens.accent_bright, words))
+	if moved:
+		_moved.append(drawn.grow(MARKER_GAP * _grown()))
 	labels[marker["id"]] = words
 	_words.append([font, Vector2(words.position.x, words.end.y), text, tokens.ink])
-	shown[marker["id"]] = {
-		"at": at, "box": box_of.call(at, moved or pinned), "moved": moved, "arrow": direction
-	}
+	shown[marker["id"]] = {"at": at, "box": drawn, "moved": moved, "arrow": direction}
 
 
 ## The words of an objective: under its diamond, or over it when the screen ends there.
@@ -310,15 +309,31 @@ func _objective_box(font: Font, text: String, half: float, at: Vector2, arrowed:
 
 ## An arrow of the marker's colour beside its shape (`reach` from `at`), pointing along
 ## `direction`: toward the edge an off-screen marker is pinned to, or toward the place a marker that
-## was moved off a card really stands. It stands on the side of the shape that `direction` faces,
-## or on the shape's flank when that would be over the words (`avoid`: the words or the tag).
-func _arrow(at: Vector2, reach: float, direction: Vector2, colour: Color, avoid: Rect2) -> void:
-	var points := _arrow_points(at, reach, direction, direction)
-	var box := Rect2(points[0], Vector2.ZERO).expand(points[1]).expand(points[2])
-	if box.intersects(avoid):
-		var flank := Vector2(1.0 if direction.x >= 0.0 else -1.0, 0.0)
+## was moved off a card really stands. It stands on the side of the shape that `direction` faces, or
+## else on a flank of the shape or under or over it: the first side where it is not over the
+## marker's own words or tag (`avoid`), a card or a marker moved before it (else the first where it
+## is not over the words). Gives the rectangle it takes.
+func _arrow(at: Vector2, reach: float, direction: Vector2, colour: Color, avoid: Rect2) -> Rect2:
+	var flank := Vector2(1.0 if direction.x >= 0.0 else -1.0, 0.0)
+	var points := PackedVector2Array()
+	var box := Rect2()
+	for anchor: Vector2 in [direction, flank, -flank, Vector2.DOWN, Vector2.UP]:
+		var corners := _arrow_points(at, reach, anchor, direction)
+		var corners_box := Rect2(corners[0], Vector2.ZERO).expand(corners[1]).expand(corners[2])
+		if corners_box.intersects(avoid):
+			continue
+		if points.is_empty():
+			points = corners
+			box = corners_box
+		if not _touches(corners_box, true):
+			points = corners
+			box = corners_box
+			break
+	if points.is_empty():
 		points = _arrow_points(at, reach, flank, direction)
+		box = Rect2(points[0], Vector2.ZERO).expand(points[1]).expand(points[2])
 	_shapes.polygon(points, colour)
+	return box
 
 
 ## The three corners of an arrow that points along `direction` from the side of the shape that
@@ -337,8 +352,6 @@ func _draw_ally(font: Font, marker: Dictionary, spot: Dictionary) -> void:
 		return _ally_box(font, marker, place, arrowed)
 	var at := _settle(spot["at"], box_of)
 	var moved := not at.is_equal_approx(spot["at"])
-	if moved:
-		_moved.append(box_of.call(at, true))
 	var colour := tokens.accent_bright
 	if bool(marker.get("downed", false)):
 		colour = _downed_colour(marker)
@@ -356,14 +369,14 @@ func _draw_ally(font: Font, marker: Dictionary, spot: Dictionary) -> void:
 			),
 			tokens.accent
 		)
-		_tag(font, marker, _ally_baseline(marker, at), colour)
+		_tag(font, marker, _ally_baseline(font, marker, at), colour)
 	var direction := Vector2.ZERO
+	var drawn := _ally_box(font, marker, at, false)
 	if moved:
 		direction = (Vector2(spot["target"]) - at).normalized()
-		_arrow(at, _ally_reach(marker), direction, colour, tags[marker["id"]])
-	shown[marker["id"]] = {
-		"at": at, "box": box_of.call(at, moved), "moved": moved, "arrow": direction
-	}
+		drawn = drawn.merge(_arrow(at, _ally_reach(marker), direction, colour, tags[marker["id"]]))
+		_moved.append(drawn.grow(MARKER_GAP * _grown()))
+	shown[marker["id"]] = {"at": at, "box": drawn, "moved": moved, "arrow": direction}
 
 
 func _downed_colour(marker: Dictionary) -> Color:
@@ -375,11 +388,17 @@ func _ally_reach(marker: Dictionary) -> float:
 	return (DOWNED_RADIUS + 4.0 if bool(marker.get("downed", false)) else 14.0) * _grown()
 
 
-## Where the baseline of a teammate's tag is, over the shape that is on `at`.
-func _ally_baseline(marker: Dictionary, at: Vector2) -> Vector2:
-	if bool(marker.get("downed", false)):
-		return at + Vector2(0.0, -DOWNED_RADIUS - 10.0) * _grown()
-	return at + Vector2(0.0, -20.0) * _grown()
+## Where the baseline of a teammate's tag is: over the shape that is on `at`, or under it when the
+## tag would be cut by the top of the screen (#1230).
+func _ally_baseline(font: Font, marker: Dictionary, at: Vector2) -> Vector2:
+	var grown := _grown()
+	var downed := bool(marker.get("downed", false))
+	var over := at + Vector2(0.0, -DOWNED_RADIUS - 10.0 if downed else -20.0) * grown
+	var tag := _tag_geometry(font, marker, over)
+	if Rect2(tag["box"]).position.y >= TEXT_MARGIN:
+		return over
+	var below := at.y + (DOWNED_RADIUS + 6.0 if downed else 12.0) * grown
+	return Vector2(at.x, below + maxf(LevelTag.ICON * grown, label_size))
 
 
 ## Everything a teammate draws when it is on `at`: the pointer or the ring (and the arrow beside it
@@ -392,7 +411,7 @@ func _ally_box(font: Font, marker: Dictionary, at: Vector2, arrowed: bool) -> Re
 		shape = Rect2(at, Vector2.ZERO).grow(reach + (ARROW + ARROW_GAP) * grown)
 	elif bool(marker.get("downed", false)):
 		shape = Rect2(at, Vector2.ZERO).grow(reach)
-	return shape.merge(_tag_geometry(font, marker, _ally_baseline(marker, at))["box"])
+	return shape.merge(_tag_geometry(font, marker, _ally_baseline(font, marker, at))["box"])
 
 
 ## A teammate on the ground: a red marker with their name and the seconds they have left, and a ring
@@ -423,7 +442,7 @@ func _draw_downed(font: Font, marker: Dictionary, at: Vector2) -> void:
 	var arm := radius * 0.45
 	_shapes.line(at + Vector2(-arm, 0.0), at + Vector2(arm, 0.0), colour, 4.0 * grown)
 	_shapes.line(at + Vector2(0.0, -arm), at + Vector2(0.0, arm), colour, 4.0 * grown)
-	_tag(font, marker, _ally_baseline(marker, at), colour)
+	_tag(font, marker, _ally_baseline(font, marker, at), colour)
 
 
 ## What follows a teammate's name: the clock of a body on the ground.
@@ -503,61 +522,113 @@ func _grown() -> float:
 
 ## `at`, or when what a marker draws there (`box_of(at, arrowed)`: its rectangle, with the arrow
 ## beside its shape when `arrowed`) is under a card of the HUD, the nearest place where it is under
-## none: slid against the edge of a card, and once more from there when that meets another card
-## (#1218). A screen with no such place keeps the marker where it was.
+## none (#1218, #1230): clear of the markers already moved too when there is a place for that, else
+## of the cards only. A screen with no such place keeps the marker where it was.
 func _settle(at: Vector2, box_of: Callable) -> Vector2:
 	if not _touches(box_of.call(at, false)):
 		return at
-	var round_one := _by_distance(at, _steps(at, box_of))
-	var round_two: Array[Vector2] = []
-	# Clear of the markers already moved too when there is a place for that, else of the cards only.
 	for apart in [true, false]:
-		var best := _first_clear(round_one, box_of, apart)
-		if best.is_finite():
-			return best
-		if round_two.is_empty():
-			for step in round_one.slice(0, SECOND_ROUND):
-				round_two.append_array(_steps(step, box_of))
-			round_two = _by_distance(at, round_two)
-		best = _first_clear(round_two, box_of, apart)
+		var best := _nearest_clear(at, box_of, apart)
 		if best.is_finite():
 			return best
 	return at
 
 
-## `places` nearest to `at` first.
-func _by_distance(at: Vector2, places: Array[Vector2]) -> Array[Vector2]:
-	var sorted: Array[Vector2] = places.duplicate()
-	sorted.sort_custom(
-		func(one: Vector2, other: Vector2) -> bool:
-			return one.distance_squared_to(at) < other.distance_squared_to(at)
-	)
-	return sorted
-
-
-## The first of `places` where what a marker draws (with an arrow) is under no card (and clear of
-## the markers already moved when `apart`), or `Vector2.INF` when there is none or the draw has
-## tried as many places as it may (`MAX_TRIES`: a screen that has no room for a marker costs a few
-## milliseconds, not a hitch).
-func _first_clear(places: Array[Vector2], box_of: Callable, apart: bool) -> Vector2:
-	for place in places:
-		if _tries >= MAX_TRIES:
+## The nearest place to `at` where what a marker draws (with an arrow) is under no card (and
+## clear of the markers already moved when `apart`), or `Vector2.INF` when there is none or the draw
+## has tried as many columns as it may (`MAX_TRIES`: a screen that has no room for a marker costs a
+## few milliseconds, not a hitch).
+##
+## A marker's rectangle that is clear can be slid left, then up, until it rests on the edge of a
+## card or of the screen, so a place exists only if one exists with its left edge on the right of a
+## card, or on the left of one, or against a side of the screen: those columns are tried, the
+## nearest to `at` first, and in each the nearest place up or down that no card is in (`_clear_y`).
+## Once a place is found a column that is no nearer is not looked at.
+func _nearest_clear(at: Vector2, box_of: Callable, apart: bool) -> Vector2:
+	# The rectangle is measured in the middle of the screen, where nothing keeps it inside: it is
+	# the same wherever it stands with all of it on the screen.
+	var middle := size * 0.5
+	var model: Rect2 = box_of.call(middle, true)
+	var offset := model.position - middle
+	var start := at + offset
+	var obstacles: Array[Rect2] = _cards().duplicate()
+	if apart:
+		obstacles.append_array(_moved)
+	var best := Vector2.INF
+	var best_cost := INF
+	for x in _lines(start.x, model.size.x, TEXT_MARGIN, size.x, obstacles, true):
+		var across := (x - start.x) * (x - start.x)
+		if across >= best_cost or _tries >= MAX_TRIES:
 			break
 		_tries += 1
-		if not _touches(box_of.call(place, true), apart):
-			return place
-	return Vector2.INF
+		var y := _clear_y(x, start.y, model.size, obstacles)
+		var cost := across + (y - start.y) * (y - start.y)
+		if is_finite(y) and cost < best_cost:
+			# The place found is looked at as it is drawn.
+			var spot := Vector2(x, y) - offset
+			if not _touches(box_of.call(spot, true), apart):
+				best = spot
+				best_cost = cost
+	return best
 
 
-## The places beside each card to try for a marker on `at`: where its rectangle (with an arrow)
-## would stand against each side of each card.
-func _steps(at: Vector2, box_of: Callable) -> Array[Vector2]:
-	var box: Rect2 = box_of.call(at, true)
-	var found: Array[Vector2] = []
-	for slid in _slid(box):
-		var to := at + (slid.position - box.position)
-		if not found.has(to):
-			found.append(to)
+## The nearest `y` to `want` where a rectangle of `extent` whose left edge is on `x` meets none of
+## `obstacles` and is on the screen, or INF when there is none.
+func _clear_y(x: float, want: float, extent: Vector2, obstacles: Array[Rect2]) -> float:
+	var low := TEXT_MARGIN
+	var high := maxf(size.y - TEXT_MARGIN - extent.y, low)
+	# The `y` a rectangle meets an obstacle at lie between these two, as `(from, to)`.
+	var blocks: Array[Vector2] = []
+	var tries: Array[float] = [clampf(want, low, high), low, high]
+	for rect in obstacles:
+		if rect.position.x < x + extent.x and rect.end.x > x:
+			blocks.append(Vector2(rect.position.y - extent.y, rect.end.y))
+			tries.append(clampf(rect.end.y, low, high))
+			tries.append(clampf(rect.position.y - extent.y, low, high))
+	var found := INF
+	for y in tries:
+		if absf(y - want) >= absf(found - want):
+			continue
+		var free := true
+		for block in blocks:
+			if y > block.x and y < block.y:
+				free = false
+				break
+		if free:
+			found = y
+	return found
+
+
+## The places along one axis a rectangle of `length` (that stands at `start` now) is tried at: where
+## it rests against the screen (`margin` in from its edges), on either side of every obstacle and
+## where it is, those that keep it on the screen, the nearest to `start` first. `along_x` is whether
+## the axis is x.
+func _lines(
+	start: float,
+	length: float,
+	margin: float,
+	extent: float,
+	obstacles: Array[Rect2],
+	along_x: bool
+) -> Array[float]:
+	var high := maxf(extent - margin - length, margin)
+	var found: Array[float] = []
+	for line: float in [clampf(start, margin, high), margin, high]:
+		if not found.has(line):
+			found.append(line)
+	for rect in obstacles:
+		var edges: Array[float] = []
+		if along_x:
+			edges = [rect.end.x, rect.position.x - length]
+		else:
+			edges = [rect.end.y, rect.position.y - length]
+		for edge in edges:
+			var line := clampf(edge, margin, high)
+			if not found.has(line):
+				found.append(line)
+	found.sort_custom(
+		func(one: float, other: float) -> bool: return absf(one - start) < absf(other - start)
+	)
 	return found
 
 
