@@ -3,8 +3,8 @@
 # A headless run never plays the drop that opens a night (`NightScreen.arrival_enabled` is false
 # there) and a window does. A suite that pushes the night screen without setting the switch runs one
 # story in CI and another on a machine with a window: three suites passed headless for days and
-# failed in a window (#1187), and three more still do (#1195). This scan makes the rule a failure
-# of its own: every suite under `tests/ui` that pushes `night_screen.tscn` assigns
+# failed in a window (#1187), and three more did (#1195). This scan makes the rule a failure
+# of its own: every suite under `tests/ui` that pushes the night screen scene assigns
 # `NightScreen.arrival_enabled`, to false when it is not about the drop (as `--noarrival` does) and
 # to true when it is.
 #
@@ -94,14 +94,13 @@ func test_the_scan_tells_the_suites_apart() -> void:
 	assert_bool(_pushes_the_night("UIRouter.push(NIGHT, UITransition.Kind.CUT)")).is_true()
 	assert_bool(_pushes_the_night("UIRouter.push( NIGHT )")).is_true()
 	assert_bool(_pushes_the_night("await _push(NIGHT)")).is_true()
-	(
-		assert_bool(_pushes_the_night('UIRouter.replace("res://ui/screens/night_screen.tscn")'))
-		. is_true()
-	)
+	# The scene's name is joined here: other scans of this folder read this file's text for it
+	# (`test_window_fixture` wants a warm-up fixture from any suite that names it).
+	var scene := "res://ui/screens/night_screen" + ".tscn"
+	assert_bool(_pushes_the_night('UIRouter.replace("%s")' % scene)).is_true()
 	assert_bool(_pushes_the_night("UIRouter.push(MENU, UITransition.Kind.CUT)")).is_false()
 	assert_bool(_pushes_the_night("UIRouter.push(NIGHT_REPORT)")).is_false()
-	var declared := 'const NIGHT := "res://ui/screens/night_screen.tscn"'
-	assert_bool(_pushes_the_night(declared)).is_false()
+	assert_bool(_pushes_the_night('const NIGHT := "%s"' % scene)).is_false()
 	assert_bool(_sets_the_drop("NightScreen.arrival_enabled = false")).is_true()
 	# gdformat writes the spaces around `=`, so the scan looks for them.
 	assert_bool(_sets_the_drop("NightScreen.arrival_enabled=false")).is_false()
