@@ -31,6 +31,8 @@ var touch := false
 ## The grenades' place, there only while `touch` (a desktop's strip is what it was).
 var grenade_cell: HudGrenadeCell
 
+## Whether the cells were made from the state once.
+var _built := false
 var _row := HBoxContainer.new()
 var _cells: Array[HudSlotCell] = []
 ## The least width and height of a place, canvas units (`MenuScale.tap_units`), and the type of the
@@ -55,6 +57,15 @@ func topics() -> Array[StringName]:
 
 
 func refresh() -> void:
+	# A keyboard's strip has no grenades' place: a change of the health (which carries the count)
+	# is nothing to it, as it never was.
+	if _built and not touch and not state.is_dirty(HudState.SLOTS):
+		return
+	_rebuild()
+
+
+func _rebuild() -> void:
+	_built = true
 	var places := maxi(state.slot_count, state.slot_ids.size())
 	_fit_cells(places)
 	for i in places:
@@ -76,7 +87,7 @@ func fit_touch(on: bool, finger: float, number_px := HudStyle.SMALL) -> void:
 		grenade_cell.queue_free()
 		grenade_cell = null
 	if is_node_ready() and state != null:
-		refresh()
+		_rebuild()
 	else:
 		_fit_cells(maxi(WeaponSlots.count(), _cells.size()))
 
