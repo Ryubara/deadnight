@@ -60,10 +60,10 @@ carries the reward's XP, not the grants).
 `HudPlayerBox` puts the card behind the **whole points box** (the issue's reading: "calling cards ... next to their
 names"). The points stay on the seat's armband colour on a tab that runs in from the right edge (`HudPointsTab`), so
 they are exactly as readable as without a card; the level and the name sit on a strip of the same colour
-(`HudNameTab`) as long as they are, so every glyph is on the colour its ink was chosen for. The order icon, level, gap,
-name is untouched (a test compares the rectangles with and without a card). Turning it into "the card replaces the
-portrait" is `HudPlayerBox._card`'s rectangle: `_box()` is the card's today, the portrait square would be
-`Vector2.ONE * height`.
+(`HudNameTab`, drawn by the points tab: no node of its own, the canvas-item budget is full) as long as they are, so
+every glyph is on the colour its ink was chosen for. The order icon, level, gap, name is untouched (a test compares
+the rectangles with and without a card). Turning it into "the card replaces the portrait" is `HudPlayerBox._card`'s
+rectangle: `_box()` is the card's today, the portrait square would be `Vector2.ONE * height`.
 
 A first version laid a veil of the seat's colour over the card and pulled any darker part toward it until the words had
 4.5:1; the cards came out flat brown and the armband's colour was gone, so the tab and an outline in the seat's colour

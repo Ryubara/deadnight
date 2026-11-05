@@ -55,6 +55,10 @@ be made to have the design ratio on every pixel; what a ground can do is give th
    high as the line and a little, centred in the box, its right end leaning like the points tab's left end. The card
    shows above and below it and round it, through the box's corners and under the emblem; the points have their own tab
    as before. The outline is gone (it is what blurred), so the words have one ground whatever the card is.
+   It is not a node: the night's canvas-item budget (`tools/perf/budget.json`, 230; main peaks at 229) has no room for
+   one more item a box, so `HudNameTab` is a `RefCounted` (rect, colour, visible) that `HudPointsTab` draws in its own
+   `_draw`, right after the tab. Its opacity is one constant, `HudNameTab.ALPHA` (1.0); a translucent strip is that
+   number.
 2. **Heavier type where a unit is under 0.6 of a pixel** (`HudPlayerBox.THIN_BELOW`, `THIN_BOLD` 0.9 of the face's own
    embolden on top of the HUD's; name, level and points). It is for a phone at a pixel ratio of 1 (0.36 to the unit):
    at 1688 by 780 and 2532 by 1170 it is not on, and the strip and the DOWN colour alone read 4.5 on every word in

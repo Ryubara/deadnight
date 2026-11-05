@@ -290,7 +290,7 @@ func test_the_strip_behind_the_words_is_as_long_as_they_are_and_only_over_a_card
 			assert_bool(bare._name_tab.visible).is_false()
 			hud.state.set_player_plate(id, &"cartoon", &"headliner")
 			var box := _box(hud, id)
-			var strip := Rect2(box._name_tab.position, box._name_tab.size)
+			var strip := box._name_tab.rect
 			var level := box.badge_parts["level"] as Rect2
 			var name_rect := box.name_rect()
 			var text := minf(
@@ -398,3 +398,24 @@ func test_a_downed_players_card_and_emblem_are_dimmed() -> void:
 	hud.points.refresh()
 	assert_float(box._card.dim).is_equal(HudPlayerBox.CARD_DOWN)
 	assert_float(box._emblem.dim).is_equal(HudPlayerBox.CARD_DOWN)
+
+
+func test_the_strip_is_drawn_by_the_points_tab_and_adds_no_canvas_item_to_a_box() -> void:
+	# The night's canvas-item budget (tools/perf/budget.json) is full: the strip is data the points
+	# tab draws, not a node of its own, and its opacity is the one constant.
+	var hud := _hud(BIG_PARTY)
+	hud.state.set_player_plate(OTHER, &"cartoon", &"headliner")
+	var box := _box(hud, OTHER)
+	assert_object(box._tab.strip).is_same(box._name_tab)
+	var items := 0
+	for child in box.get_children():
+		if child is CanvasItem:
+			items += 1
+	var bare := _box(_hud(BIG_PARTY), OTHER)
+	var bare_items := 0
+	for child in bare.get_children():
+		if child is CanvasItem:
+			bare_items += 1
+	assert_int(items).is_equal(bare_items)
+	assert_float(box._name_tab.drawn_colour().a).is_equal(box._name_tab.colour.a * HudNameTab.ALPHA)
+	assert_array(box._name_tab.outline()).has_size(4)

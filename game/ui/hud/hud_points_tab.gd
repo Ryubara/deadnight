@@ -4,7 +4,8 @@ extends Control
 ## (`HudPlayerBox`): the card shows through behind the badge and the name, and the points, the
 ## biggest numerals on the screen, stay on the colour of the player's armband, exactly as they are
 ## in a box with no card. A parallelogram that runs to the box's right edge and takes its cut
-## corner.
+## corner. It also draws the strip behind the level and the name (`HudNameTab`): the same colour, so
+## the same canvas item, which the night's budget has no room to double.
 
 ## How far the tab's left edge leans: the top is this much further right than the bottom.
 const SLANT := 9.0
@@ -14,6 +15,14 @@ var colour := Color.WHITE:
 		if value != colour:
 			colour = value
 			queue_redraw()
+## The strip behind the level and the name, drawn after the tab (box coordinates).
+var strip: HudNameTab:
+	set(value):
+		if strip != null:
+			strip.changed.disconnect(queue_redraw)
+		strip = value
+		if strip != null:
+			strip.changed.connect(queue_redraw)
 var _outline := PackedVector2Array()
 
 
@@ -46,3 +55,7 @@ func _rebuild() -> void:
 func _draw() -> void:
 	if _outline.size() >= 3:
 		draw_colored_polygon(_outline, colour)
+	if strip != null and strip.visible and strip.rect.has_area():
+		draw_set_transform(-position)
+		draw_colored_polygon(strip.outline(), strip.drawn_colour())
+		draw_set_transform(Vector2.ZERO)

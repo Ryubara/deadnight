@@ -112,9 +112,10 @@ func _init() -> void:
 	_emblem.visible = false
 	_tab.visible = false
 	_name_tab.visible = false
+	_tab.strip = _name_tab
 	_card.motif_at = CARD_PICTURE_AT
 	_frame.visible = false
-	for node in [_card, _tab, _name_tab, _frame, portrait, _icon, _level, _name, _emblem, _number]:
+	for node in [_card, _tab, _frame, portrait, _icon, _level, _name, _emblem, _number]:
 		add_child(node)
 	for label in [_name, _level, _number]:
 		# Dark ink on the seat's colour needs no outline or shadow.
