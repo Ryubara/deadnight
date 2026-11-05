@@ -525,7 +525,7 @@ too.
 
 | Challenge (title of its card) | Stat | Counts |
 | --- | --- | --- |
-| *Intermission* (**Snack Break**) | `breaks:stand` | a break between two rounds spent whole at the stand: in the stand's rectangle (`data/areas.json`) at the break's start (`break_started`, `next_round` above 1: the wait before round one is no break between rounds) and in every frame of it until the next round starts; one step out ends it for that player, and a break the night ends in or with no frame in it counts nothing |
+| *Intermission* (**Snack Break**) | `breaks:stand` | a break between two rounds spent whole at the stand: in the stand's rectangle (`data/areas.json`) in the first frame of the break (`break_started`, `next_round` above 1: the wait before round one is no break between rounds) and in every frame of it until the next round starts; one step out ends it for that player, and a break the night ends in or with no frame in it counts nothing |
 | *The long way round* (**The Long Way Round**) | `round:long_way` (best, round 8 in one night) | the latest round started while the map's second door (`second_door` in `data/areas.json`: `door_booth`, the second of the lot's doors in the opening order) was still shut, for the whole lot; opening it (`door_opened`, or a frame that lists it) stops the count for everyone; the back rooms name no second door and count nothing |
 | *Dead on arrival* (**Dead on Arrival**) | `deaths:round_one` | a death in round 1: a bleed-out (`player_died`), or the night ending with everyone down (`game_over` `all_down`, `round_reached` 1) for each in the lot; once a night for a player |
 | *Standing room only* (**Standing Room Only**) | `nights:full_lot` | `game_over` with four or more **people** (a bot is no one) in the lot who are exactly the people it had when round 1 began: one who left, came in late or was replaced by a bot spoils it |
@@ -547,12 +547,15 @@ Break), "Eight reels in, one door shut." (The Long Way Round), "Some never see t
 full house. Nobody leaves." (Standing Room Only), "Every ticket, then one more." (Final Cut); they are the `riddle`
 lines of `feats.json`.
 
-What it costs: a frame reads the round, the doors list and one rectangle for each player (the stand) and writes one flag
-for each; the other events are rare (a break, a round, a door, a death, the night's end); a kill and a shot cost
-nothing more than before. Measured (`challenge_award_micro`, the tracker alone, four boards): a frame of four players
-4.2 us after the odd stats (#1074, calibration loop 2.6 ms) and 4.9 us now, the best of three runs on a busier machine
-(calibration loop 4.4 ms; the other two runs were noisier, 9 and 11 us, with the calibration loop unchanged); a kill
-with its four other events 66 us and a shot 2.7 us (66 and 2.6 after #1074), an ignored event 0.42 us (the same).
+What it costs: nothing per frame outside a break, and in a break a rectangle test for each player in each frame. The
+other events are rare (a break, a round, a door, a death, the night's end): `NightMoments` calls `HiddenMoments` from its
+own arms for them, with no lookup per event. Measured in the late-round budget case (`server.challenges`, a ratio of the
+calibration loop; six interleaved pairs on a busy machine, whose ratio moves 0.0085 to 0.0125 from run to run): the
+tracker with the hidden calls 0.0093, 0.0094 and 0.0106, and the same code with them switched off 0.0092, 0.0095 and
+0.0099; the limit is 0.012. Two earlier shapes read 0.002 higher (0.0111 to 0.0125 against 0.0085 to 0.0098) and failed
+CI at 0.0135: a stand test in every frame, and then a reference to the last frame (the kit lesson "a held frame moved
+its release into the timer"). The tracker alone (`challenge_award_micro`, four boards) measured a kill at 66 us and
+a shot at 2.7 us, as after #1074.
 
 The game server tells what a night's end finished (`NightServer._step_over` now hands out `challenges.take_events()`: it
 only did when a client sent something that happens to drain them, so a card finished by the last event of a night

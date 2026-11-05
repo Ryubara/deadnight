@@ -32,7 +32,7 @@ const LISTENS: Dictionary[StringName, bool] = {
 	&"round_started": true,
 	&"round_ended": true,
 	&"game_over": true,
-	# The hidden challenges' (`HiddenMoments`).
+	# The hidden challenges' (`HiddenMoments`, called from the arms below).
 	&"door_opened": true,
 	&"break_started": true,
 	&"player_died": true,
@@ -60,7 +60,8 @@ const TOGETHER := 2
 ## Whole crew: players in the round, at least.
 const CREW := 2
 
-## The hidden challenges' stats: it is handed the events of `HiddenMoments.LISTENS`.
+## The hidden challenges' stats: called from the arms for the rare events it needs, with no lookup
+## of its own per event and nothing per frame outside a break (the late-round budget).
 var _hidden := HiddenMoments.new()
 var _now := 0.0
 var _map := ""
@@ -92,6 +93,11 @@ var _mends: Dictionary[StringName, Dictionary] = {}
 var _last_mend: Dictionary[StringName, Dictionary] = {}
 
 
+func _init() -> void:
+	_hidden.bots = _bots
+	_hidden.doors_open = _doors_open
+
+
 ## What the night is played on: the shop's doors (`ShopItem.Kind.DOOR`) of `tuning` and the map's
 ## id ("" is the default map). The tally calls it before the night's events.
 func know(tuning: RulesTuning, map_id: String = "") -> void:
@@ -106,7 +112,6 @@ func know(tuning: RulesTuning, map_id: String = "") -> void:
 ## Says whether a bot plays the seat.
 func set_bot(player_id: int, bot: bool) -> void:
 	_bots[player_id] = bot
-	_hidden.set_bot(player_id, bot)
 
 
 ## A new night: what was counted is forgotten, who is a bot and what is known of the map is kept.
@@ -189,9 +194,13 @@ func observe(event: Dictionary, tally: NightTally) -> void:
 		&"round_ended":
 			_on_round_ended(event, tally)
 		&"game_over":
-			_on_game_over(tally)
-	if HiddenMoments.LISTENS.has(event["type"]):
-		_hidden.observe(event, tally)
+			_on_game_over(event, tally)
+		&"door_opened":
+			_hidden.door_opened(event["door_id"])
+		&"break_started":
+			_hidden.break_started(int(event["next_round"]))
+		&"player_died":
+			_hidden.died(int(event["player_id"]), tally)
 
 
 func _set_map(map_id: String) -> void:
@@ -203,6 +212,8 @@ func _set_map(map_id: String) -> void:
 
 
 func _on_frame(event: Dictionary) -> void:
+	if _hidden.in_break:
+		_hidden.on_break_frame(event)
 	if event.has("tick"):
 		_now = float(event["tick"]) * TICK_SECONDS
 	if event.has("round"):
@@ -333,6 +344,7 @@ func _on_round_started(round_number: int, tally: NightTally) -> void:
 			_booth_whole[id] = true
 		if _from_start.has(id) and not _spent.has(id):
 			tally.reach(id, ChallengeStats.ROUND_UNSPENT, round_number)
+	_hidden.round_started(round_number, tally)
 
 
 func _on_round_ended(event: Dictionary, tally: NightTally) -> void:
@@ -362,7 +374,7 @@ func _on_round_ended(event: Dictionary, tally: NightTally) -> void:
 			tally.credit(id, ChallengeStats.ROUNDS_WHOLE)
 
 
-func _on_game_over(tally: NightTally) -> void:
+func _on_game_over(event: Dictionary, tally: NightTally) -> void:
 	var people: Array[int] = []
 	for id in tally.present_ids():
 		tally.credit(id, ChallengeStats.map_nights(StringName(_map_id())))
@@ -371,6 +383,7 @@ func _on_game_over(tally: NightTally) -> void:
 	if people.size() >= TOGETHER:
 		for id in people:
 			tally.credit(id, ChallengeStats.NIGHTS_TOGETHER)
+	_hidden.game_over(event, tally)
 
 
 func _map_id() -> String:
