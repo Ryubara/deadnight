@@ -386,7 +386,7 @@ func _touch_down(index: int, point: Vector2) -> void:
 	elif not _has_role(&"look"):
 		# Free ground. A finger the stick's side holds (the stick finger is down already) looks and
 		# never counts as a tap.
-		var taps := not TouchLayout.stick_zone(_safe, left_handed).has_point(point)
+		var taps := not _stick_zone().has_point(point)
 		_touches[index] = _own(&"look", point, {&"tap": taps, &"held": Vector2.ZERO, &"at": _now()})
 		if taps:
 			double_tap.press(index, point, _now())

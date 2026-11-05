@@ -162,6 +162,26 @@ func test_taps_on_the_stick_side_never_count() -> void:
 	assert_int(_swaps).is_equal(0)
 
 
+func test_ping_is_a_button_so_two_taps_on_it_never_count_and_the_stick_zone_is_the_layers_own(
+) -> void:
+	var ping := _fixture.at(TouchLayout.PING)
+	await _tap(ping)
+	await _tap(ping)
+	assert_int(_swaps).is_equal(0)
+	# The stick zone starts below Ping's hit area (#1289): the layer's own zone decides which side of
+	# its top edge is the stick's, and free ground is the strip above it, beside Ping.
+	var zone := _fixture.controls._stick_zone()
+	var x := zone.position.x + 100.0
+	await _tap(Vector2(x, zone.position.y + 20.0))
+	await _tap(Vector2(x, zone.position.y + 20.0))
+	assert_int(_swaps).is_equal(0)
+	var above := Vector2(x, zone.position.y - 20.0)
+	assert_bool(zone.has_point(above)).is_false()
+	await _tap(above)
+	await _tap(above)
+	assert_int(_swaps).is_equal(1)
+
+
 func test_a_tap_on_the_stick_between_two_free_taps_ends_the_pair() -> void:
 	await _tap()
 	await _tap(Vector2(300.0, 800.0))
