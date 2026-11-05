@@ -19,12 +19,21 @@ func after_test() -> void:
 	HudPortrait.live = true
 
 
-func _party(players: int, portraits := false) -> HudFixture:
-	var fixture := HudFixture.make(_host, players, 1958, portraits)
+func _party(players: int, portraits := false, bots := 0) -> HudFixture:
+	var fixture := HudFixture.make(_host, players, 1958, portraits, bots)
 	fixture.into_round_one()
 	for i in players:
 		fixture.hud.state.apply_event(
 			{"type": &"points_changed", "player_id": i + 1, "total": 1000 * (i + 1), "delta": 0}
+		)
+	for i in bots:
+		fixture.hud.state.apply_event(
+			{
+				"type": &"points_changed",
+				"player_id": NightBots.id_at(i),
+				"total": 500 * (i + 1),
+				"delta": 0
+			}
 		)
 	return fixture
 
@@ -121,6 +130,59 @@ func test_a_party_of_eight_takes_compact_teammate_boxes_and_a_column_no_taller_t
 	fixture.hud.free()
 
 
+func test_eight_people_and_seven_bots_the_people_get_boxes_and_the_bots_a_strip_of_chips() -> void:
+	var fixture := _party(NightHost.MAX_PLAYERS, false, MatchSettings.MAX_BOTS)
+	await await_idle_frame()
+	await await_idle_frame()
+	var points := fixture.hud.points
+	assert_array(points.order()).has_size(NightHost.MAX_SEATS)
+	# You, then the other people by id, then the bots by id.
+	var expected: Array[int] = []
+	for id in range(1, NightHost.MAX_PLAYERS + 1):
+		expected.append(id)
+	for i in MatchSettings.MAX_BOTS:
+		expected.append(NightBots.id_at(i))
+	assert_array(points.order()).is_equal(expected)
+	var bots_seen := 0
+	for entry in points.shown:
+		if entry["bot"]:
+			bots_seen += 1
+			assert_bool(NightBots.is_bot_id(entry["id"])).is_true()
+			# Past eight bodies a bot is a chip, not a box.
+			assert_bool(entry.get("chip", false)).is_true()
+			assert_object(points.box_of(entry["id"])).is_null()
+			assert_object(points.chips().chip_of(entry["id"])).is_not_null()
+	assert_int(bots_seen).is_equal(MatchSettings.MAX_BOTS)
+	# The people's boxes are the compact ones and the whole column is what the strip adds to eight.
+	for id in range(2, NightHost.MAX_PLAYERS + 1):
+		assert_float(points.box_of(id).size.y).is_equal(HudPlayerBox.COMPACT_HEIGHT)
+	var eight := (
+		HudPlayerBox.LOCAL_HEIGHT + 7.0 * (HudPlayerBox.COMPACT_HEIGHT + float(HudStyle.GAP))
+	)
+	# The strip adds its two rows to the eight; the layout suite holds the whole column off the
+	# parts above it at the shortest canvas.
+	assert_float(points.size.y).is_less_equal(
+		eight + float(HudStyle.GAP) + HudBotChips.height_for(MatchSettings.MAX_BOTS) + 8.0
+	)
+	# A bot that goes down reads down on its chip.
+	fixture.act(RulesAction.set_downed(NightBots.id_at(2), true))
+	await await_idle_frame()
+	var downed: Array = points.chips().shown.filter(
+		func(chip: Dictionary) -> bool: return chip["downed"]
+	)
+	assert_array(downed).has_size(1)
+	assert_int(downed[0]["id"]).is_equal(NightBots.id_at(2))
+	# Eight bodies or fewer have no strip: a room of four people and four bots is eight boxes.
+	fixture.hud.get_parent().remove_child(fixture.hud)
+	fixture.hud.free()
+	var small := _party(4, false, 4)
+	await await_idle_frame()
+	assert_bool(small.hud.points.chips().visible).is_false()
+	assert_object(small.hud.points.box_of(NightBots.id_at(0))).is_not_null()
+	small.hud.get_parent().remove_child(small.hud)
+	small.hud.free()
+
+
 func test_the_number_is_readable_on_every_seats_colour() -> void:
 	for seat in NightHost.MAX_PLAYERS:
 		var fill := LookCatalog.armband_colour(seat)
@@ -187,10 +249,12 @@ func test_the_numbers_of_every_box_end_on_one_line_and_share_a_baseline_with_the
 func test_a_leaving_player_frees_their_box() -> void:
 	var fixture := _party(4)
 	var column := fixture.hud.points._column
-	assert_int(column.get_child_count()).is_equal(4)
+	var boxes := func() -> int:
+		return column.get_children().filter(func(c: Node) -> bool: return c is HudPlayerBox).size()
+	assert_int(boxes.call()).is_equal(4)
 	fixture.act(RulesAction.remove_player(3))
 	await await_idle_frame()
-	assert_int(column.get_child_count()).is_equal(3)
+	assert_int(boxes.call()).is_equal(3)
 	assert_object(fixture.hud.points.box_of(3)).is_null()
 
 

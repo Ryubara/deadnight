@@ -4,7 +4,9 @@ extends HudPart
 ## (`HudPlayerBox`). Your own comes first and is the larger; the others follow by player id, up to
 ## seven, each in the colour of their seat. A row is made when a player joins and freed when they
 ## leave; a points change or a down state only rewrites its box. The gains are listed beside the
-## crosshair (`HudGains`), where the eye already is.
+## crosshair (`HudGains`), where the eye already is. Past eight bodies (the people are eight at
+## most, the bots come on top, #1179) the bots are a strip of chips under the boxes
+## (`HudBotChips`): fifteen boxes would stand taller than the room the column has.
 
 const WIDTH := HudStyle.COLUMN
 ## With more players than this the teammates' boxes are the compact size, so a party of eight
@@ -25,6 +27,7 @@ var name_text: String:
 		return box.name_text if box != null else ""
 
 var _column := VBoxContainer.new()
+var _chips := HudBotChips.new()
 ## Player id -> the box on screen.
 var _boxes: Dictionary[int, HudPlayerBox] = {}
 
@@ -34,6 +37,7 @@ func _init() -> void:
 	_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_column.add_theme_constant_override(&"separation", HudStyle.GAP)
 	_column.custom_minimum_size.x = WIDTH
+	_column.add_child(_chips)
 	add_child(_column)
 	_column.minimum_size_changed.connect(update_minimum_size)
 
@@ -58,8 +62,24 @@ func order() -> Array[int]:
 	return ids
 
 
+## The bots drawn as chips instead of boxes: all of them once the night holds more than the eight
+## people can (`NightHost.MAX_PLAYERS`) bodies, none before.
+func chip_ids(ids: Array[int]) -> Array[int]:
+	var out: Array[int] = []
+	if ids.size() > NightHost.MAX_PLAYERS:
+		for player_id in ids:
+			if bool(state.team[player_id]["bot"]):
+				out.append(player_id)
+	return out
+
+
 func refresh() -> void:
-	var ids := order()
+	var all := order()
+	var chipped := chip_ids(all)
+	var ids: Array[int] = []
+	for player_id in all:
+		if not chipped.has(player_id):
+			ids.append(player_id)
 	for player_id in _boxes.keys():
 		if not ids.has(player_id):
 			var gone: Control = _boxes[player_id]
@@ -99,7 +119,31 @@ func refresh() -> void:
 				}
 			)
 		)
-	visible = not ids.is_empty()
+	for player_id in chipped:
+		var member: Dictionary = state.team[player_id]
+		(
+			shown
+			. append(
+				{
+					"id": player_id,
+					"name": str(member["name"]),
+					"bot": true,
+					"points": int(member["points"]),
+					"seat": int(member["seat"]),
+					"colour": LookCatalog.armband_colour(int(member["seat"])),
+					"downed": bool(member["downed"]),
+					"local": false,
+					"chip": true,
+				}
+			)
+		)
+	_chips.show_bots(chipped, state.team)
+	visible = not all.is_empty()
+
+
+## The strip of chips the bots are drawn as past eight bodies, for tests and tools.
+func chips() -> HudBotChips:
+	return _chips
 
 
 ## The box of a player, for tests and tools; null when they are not shown.

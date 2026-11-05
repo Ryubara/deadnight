@@ -20,26 +20,35 @@ static func fullest_report(kept: bool = true) -> Dictionary:
 
 
 ## Player n has the most of the nth title's stat, so every title is given while there are players.
-static func fullest_credits(players: int, xp: int = 1500) -> Dictionary:
+## The `bots` after the people have ids from `NightBots.FIRST_ID` and no XP (a bot has no account).
+static func fullest_credits(players: int, xp: int = 1500, bots := 0) -> Dictionary:
 	var list := CrewTitles.shipped()
 	var counts := {}
 	var told := {}
-	for i in players:
+	for i in players + bots:
+		var id := i + 1 if i < players else NightBots.id_at(i - players)
 		var mine := {}
 		if i < list.titles.size():
 			mine[list.titles[i]["stat"]] = 10 + i
-		counts[i + 1] = mine
-		told[i + 1] = xp
+		counts[id] = mine
+		if i < players:
+			told[id] = xp
 	return {"counts": counts, "xp": told}
 
 
-## The standing of `players` players, the first of them the local one.
-static func state(players: int) -> HudState:
+## The standing of `players` people, the first of them the local one, and `bots` bots after them
+## (ids from `NightBots.FIRST_ID`, flagged as bots as the rules' `player_added` does).
+static func state(players: int, bots := 0) -> HudState:
 	var made := HudState.new()
 	made.local_player_id = 1
 	for i in players:
 		made.set_player_name(i + 1, NAMES[i % NAMES.size()])
-		made.team[i + 1]["points"] = 1000 * (players - i)
+		made.team[i + 1]["points"] = 1000 * (players + bots - i)
+	for i in bots:
+		var id := NightBots.id_at(i)
+		made.set_player_name(id, NightBots.name_for(id))
+		made.team[id]["bot"] = true
+		made.team[id]["points"] = 1000 * (bots - i)
 	made.round_number = 7
 	made.night_clock = 300
 	return made

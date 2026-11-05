@@ -933,7 +933,7 @@ func _send_command(command: NightCommand) -> void:
 ## the player's client hears, so a ping the player places reaches them as it would reach a person.
 func _seat_bots(p_seed: int) -> void:
 	bots = NightBots.new(server, world, p_seed, Callable(self, &"_bots_answered"))
-	link.broadcast(bots.fill(server.rules.settings.bots, [PLAYER_ID]))
+	link.broadcast(bots.fill(server.rules.settings.bots))
 	link.delivered.connect(bots.hear)
 
 

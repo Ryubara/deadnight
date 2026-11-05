@@ -274,6 +274,28 @@ func preview_instance() -> Dictionary:
 	return {"ok": true, "preview": seen} if seen["ok"] else seen
 
 
+## The Server Browser's rows (#1179; the screen is #1180): the public nights a player can join,
+## waiting or in progress, with room first. `{"ok", "nights", "total", "maxPlayers"}`, a row being
+## `{id, code, map, hostName, players, maxPlayers, bots, kind, state, round, full}`: `players` is
+## people only (a bot holds no seat, it is in `bots`), `kind` is `lobby` (waiting) or `match` (in
+## progress, with its `round`; `state` says the same as `open` or `started`). Joins nobody:
+## `join_code(row["code"])` does. Meant to be polled every few seconds; the backend answers
+## `too_many_requests` (429) past 20 asks in 10 seconds.
+func list_nights() -> Dictionary:
+	return await _call("GET", "/lobbies")
+
+
+## The host makes the night private (not in the Server Browser, not handed to a stranger; its code
+## still joins) or public again. A new night is public. `{"ok", "lobby"}`.
+func set_visibility(lobby: Dictionary, public_night: bool) -> Dictionary:
+	var answer := await _call(
+		"PUT",
+		"/lobbies/%s/visibility" % lobby["id"],
+		{"visibility": "public" if public_night else "private"}
+	)
+	return {"ok": true, "lobby": answer} if answer["ok"] else answer
+
+
 ## The node the requests of this API are made under (they stop when it stops processing).
 func owner_node() -> Node:
 	return _parent

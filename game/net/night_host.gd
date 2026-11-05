@@ -1,6 +1,6 @@
 class_name NightHost
 extends Node
-## The game server: one night hosted over WebSocket for up to `MAX_PLAYERS` players. It is what
+## The game server: one night hosted over WebSocket for up to `MAX_PLAYERS` people. It is what
 ## `godot --headless --path game -- --server [--port N]` runs (`Main` starts it), and what a test
 ## can add to a scene to have a server in the same process.
 ##
@@ -8,7 +8,8 @@ extends Node
 ## `SEND_EVERY` steps tells each client the events since the last time and the frame, as a
 ## difference against the frame that client had (`FrameDelta`). The first player to arrive starts
 ## the night; when the last one leaves, the next night is built afresh (a night is not resumed).
-## Players get the lowest free id of 1 to `MAX_PLAYERS`, which is also their seat in the lot.
+## People get the lowest free id of 1 to `MAX_PLAYERS`, which is also their seat in the lot. Bots
+## hold no such seat: their ids start at `NightBots.FIRST_ID` (#1179).
 ##
 ## The server speaks plain `ws://`: on Railway the edge terminates TLS and clients use `wss://`.
 ## It reads its port from the command line (`--port N`) or `$PORT`, and logs one JSON object a line.
@@ -33,10 +34,12 @@ signal board_wanted(user: String)
 ## An embedded room's night began and everyone has gone: the `GameServer` ends and frees it.
 signal emptied
 
-## Seats in a room: people and bots together. The one place the limit is written: `NightBots.SEATS`
-## and `LookServer.SEATS` are held equal to it by a test, `MatchSettings.MAX_BOTS` is one less (a
-## person always holds a seat), and the backend's `MAX_PLAYERS` (spikes/backend) mirrors it.
+## People in a room, bots not counted. The one place the limit is written: `LookServer.SEATS` is
+## held equal to it by a test, and the backend's `MAX_PLAYERS` (spikes/backend) mirrors it. The
+## bots come on top of it (`MatchSettings.MAX_BOTS`), so a night holds at most `MAX_SEATS` bodies.
 const MAX_PLAYERS := 8
+## The most bodies one night holds: 8 people and the 7 bots the host may set.
+const MAX_SEATS := MAX_PLAYERS + MatchSettings.MAX_BOTS
 ## The longest name a seat shows, as the HUD keeps it (`HudStyle.NAME_LIMIT`), so the ` (2)` of a
 ## duplicate is never cut off.
 const NAME_MAX := 20
@@ -260,6 +263,13 @@ func player_count() -> int:
 	return _by_player.size()
 
 
+## The people who hold a seat of the room: connected ones and those whose socket dropped and whose
+## seat is held. Never a bot (a bot holds no seat), so this is the number the cap of
+## `MAX_PLAYERS` counts and the one the backend is told.
+func people_count() -> int:
+	return _by_player.size() + _away.size()
+
+
 ## The round the night is in (0 before the first begins, and while there is no night): what the
 ## backend tells a latecomer's lobby screen ("Night in progress, round 4").
 func round_number() -> int:
@@ -457,15 +467,9 @@ func _free_seat(player_id: int) -> void:
 		server.xp.release(player_id)
 		plates.release(player_id)
 		server.challenges.release(player_id)
-		# The seat has no account now (a bot has no level, and wears its cast look whole).
+		# The seat has no account now.
 		server.player_levels.erase(player_id)
-		var inherited := _bot_inherits(player_id)
-		if inherited.is_empty():
-			_collect(server.apply({"type": NightServer.LEAVE, "player_id": player_id}))
-		else:
-			_collect(inherited)
-		# Seats the people leave free fill with bots while the others are still here.
-		_fill_bots()
+		_collect(server.apply({"type": NightServer.LEAVE, "player_id": player_id}))
 	_log("left", {"player": player_id, "players": _by_player.size()})
 	player_left.emit(player_id)
 
@@ -577,21 +581,9 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 	peer.token = Crypto.new().generate_random_bytes(NetWire.TOKEN_SIZE)
 	_by_player[player_id] = peer
 	register_account(player_id, peer.user, peer.account)
-	if bots.holds(player_id):
-		# The seat is a bot's: the person takes it as it stands, and the round goes on. The name
-		# goes first, so the notice the others read says who, and a person without a name gets
-		# the usual `PLAYER n` in the bot's place.
-		_name_seat(player_id, peer.user_name)
-		if not _names.has(player_id):
-			_collect(
-				[{"type": &"player_named", "player_id": player_id, "name": "PLAYER %d" % player_id}]
-			)
-		_collect(bots.hand_over(player_id))
-		_collect(server.apply({"type": NightServer.RESYNC, "player_id": player_id}))
-	else:
-		# The name goes out before the join, so the others' notice reads "ANN JOINED", not "PLAYER 2".
-		_name_seat(player_id, peer.user_name)
-		_collect(server.apply({"type": NightServer.JOIN, "player_id": player_id, "local": false}))
+	# The name goes out before the join, so the others' notice reads "ANN JOINED", not "PLAYER 2".
+	_name_seat(player_id, peer.user_name)
+	_collect(server.apply({"type": NightServer.JOIN, "player_id": player_id, "local": false}))
 	if not _night_began():
 		_collect(server.apply({"type": NightServer.START_NIGHT}))
 	_fill_bots()
@@ -677,31 +669,12 @@ func close_reports() -> void:
 		_report(server.rules.round_number, true)
 
 
-## The events of a bot taking the seat of the person who just left, as it stands (body, points,
-## weapons): when the night has begun, other people are still here and the room wants one more bot.
-## Empty when not (the seat is then freed).
-func _bot_inherits(player_id: int) -> Array[Dictionary]:
-	var people := _people()
-	if not _night_began() or _night_over() or people.is_empty():
-		return []
-	if not bots.wants_more(server.rules.settings.bots, people.size()):
-		return []
-	return bots.adopt(player_id)
-
-
-## The seats people hold, away or not.
-func _people() -> Array:
-	var ids: Array = _by_player.keys()
-	ids.append_array(_away.keys())
-	return ids
-
-
-## Seats bots up to the setting, in the seats the people leave free. Only once the night has begun,
-## and never for a night with nobody in it.
+## Seats bots up to the setting, in the ids of their own. Only once the night has begun, and never
+## for a night with nobody in it.
 func _fill_bots() -> void:
-	if not _night_began() or _night_over() or _people().is_empty():
+	if not _night_began() or _night_over() or (_by_player.is_empty() and _away.is_empty()):
 		return
-	_collect(bots.fill(server.rules.settings.bots, _people()))
+	_collect(bots.fill(server.rules.settings.bots))
 
 
 ## Lets the bots hear the step and decide. `frame` is this step's frame (built on every step when
@@ -843,7 +816,7 @@ func _close_refused() -> void:
 			listener.disconnect_peer(peer.transport_id)
 
 
-## The lowest seat no person holds: a seat a bot holds counts as free, since a person takes it.
+## The lowest id of a person no one holds (a seat held for a dropped socket is held).
 func _free_player_id() -> int:
 	for id in range(1, MAX_PLAYERS + 1):
 		if not _by_player.has(id) and not _away.has(id):

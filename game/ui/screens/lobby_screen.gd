@@ -350,6 +350,8 @@ func is_host() -> bool:
 func seat_texts() -> Array[String]:
 	var out: Array[String] = []
 	for row in _seat_rows:
+		if not (row["box"] as Control).visible:
+			continue
 		var parts: Array[String] = []
 		for key: String in ["number", "name", "tag"]:
 			var text: String = (row[key] as Label).text
@@ -546,13 +548,13 @@ func lobby_rules() -> MatchSettings:
 	return out if out != null else MatchSettings.new()
 
 
-## How many bots the lobby shows: the setting, and never more than the seats people leave free.
+## How many bots the lobby shows: the setting. They hold no seat, so they are listed below the
+## seats and the people never leave less room for them (#1179).
 func bots_shown() -> int:
 	if mode != Mode.LIVE:
 		return 0
 	var wanted := rules.settings().bots if _rules_editable else lobby_rules().bots
-	var people: int = (lobby.get("members", []) as Array).size()
-	return maxi(mini(wanted, int(lobby.get("maxPlayers", NightHost.MAX_PLAYERS)) - people), 0)
+	return clampi(wanted, MatchSettings.MIN_BOTS, MatchSettings.MAX_BOTS)
 
 
 ## How well the bots of this room play, as the host's panel (or the lobby's rules) say.
@@ -637,19 +639,22 @@ func _show_seats() -> void:
 			names.append(str(who))
 			hosts.append(names.size() == 1)
 			away.append(false)
-	while _seat_rows.size() < max_players:
+	# The seats are the people's; the bots follow them in rows of their own (`NightBots`).
+	var bots := bots_shown()
+	while _seat_rows.size() < max_players + bots:
 		_seat_rows.append(_make_seat_row())
-	# The bots take the highest seats, as the server seats them (`NightBots`).
-	var bot_from := max_players - bots_shown()
 	for i in _seat_rows.size():
 		var row := _seat_rows[i]
-		(row["box"] as Control).visible = i < max_players
-		(row["number"] as Label).text = str(i + 1)
+		var is_bot := i >= max_players
+		(row["box"] as Control).visible = i < max_players + bots
+		(row["number"] as Label).text = "B%d" % (i - max_players + 1) if is_bot else str(i + 1)
 		var held: Vector2i = levels[i] if i < levels.size() else Vector2i.ZERO
 		_show_level(row, held)
 		_show_plate(row, plates[i] if i < plates.size() else {})
-		if i >= names.size() and i >= bot_from and i < max_players:
-			(row["name"] as Label).text = NightBots.name_for(i + 1, bots_skill())
+		if is_bot:
+			(row["name"] as Label).text = NightBots.name_for(
+				NightBots.id_at(i - max_players), bots_skill()
+			)
 			(row["name"] as Label).modulate.a = 1.0
 			(row["tag"] as Label).text = "BOT"
 		elif i < names.size():
