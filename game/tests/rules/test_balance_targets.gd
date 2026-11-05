@@ -52,7 +52,7 @@ func before() -> void:
 ## copy of the tuning and its own seeded nights, and the weapon cache is filled before the threads
 ## start, so the result is the same as running them one after another (a test below says so).
 func _batch(tuning: RulesTuning, nights: int = NIGHTS, specs: Array = CELLS) -> Dictionary:
-	SimWeapons.warm()
+	ShippedCells.warm(specs)
 	var tunings: Array[RulesTuning] = []
 	for _i in specs.size():
 		tunings.append(tuning.duplicate(true) as RulesTuning)
@@ -176,7 +176,7 @@ func test_the_same_climb_goes_less_far_when_the_re_cut_and_the_tonic_do_nothing(
 ## The mean round of one cell on the longer read, with the shipped tuning and with `inert`, the two
 ## arms side by side on worker threads.
 func _confirm(inert: RulesTuning, cell: Array) -> Array[float]:
-	SimWeapons.warm()
+	ShippedCells.warm([cell])
 	var tunings: Array[RulesTuning] = [RulesFixture.tuning(), inert.duplicate(true) as RulesTuning]
 	var means: Array[float] = [0.0, 0.0]
 	var run := func(arm: int) -> void:
