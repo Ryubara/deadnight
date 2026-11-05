@@ -137,7 +137,7 @@ def main() -> int:
             smoke.reach_menu(page)
             smoke.open_together(page)
             tap = pk.tap_box
-            tap(page, cdp, pk.scroll_into_view(page, cdp, "fields", "Code"))
+            tap(page, cdp, pk.on_screen_box(page, "fields", "Code"))
             page.wait_for_timeout(1200)
             page.screenshot(path=args.out / "1_keypad.png")
             for letter in code:

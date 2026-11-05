@@ -49,14 +49,9 @@ IPHONE_AGENT = (
 )
 TAP_EVENTS = {"touchstart", "touchend", "pointerup", "pointerdown", "click", "mouseup"}
 CODE = "abcd2345"
-# The share of the page's height the Together card's rows end at (the card keeps a margin below its last row).
-VISIBLE_SHARE = 0.9
 # A spot no screen draws anything on, to tap when a tap must hit nothing: left of the card on the Together and Join
 # screens, over the street scene of the menu. (40, 40) is the menu's Play tab since the phone layout (#1225).
 EMPTY_SPOT = (40.0, 195.0)
-# Where a drag can start and be on the scrolling area's own margin, not on a button or outside it: this share of the
-# page's width from the left (the card's edge is at 18% of an 844 px page, its rows start at 23%, the area at 21%).
-GRIP_SHARE = 0.217
 # Wraps every input focus, so the run knows which event it came from. In `visual` mode the page reports a keyboard
 # `window.__kbN` tall (`visualViewport` shrunk) while an input has the focus: Chromium's emulation draws none.
 SPY = """
@@ -150,33 +145,14 @@ def tap_box(page: Page, cdp, box: tuple[float, float, float, float]) -> None:
     tap(page, cdp, box[0] + box[2] / 2, box[1] + box[3] / 2)
 
 
-def swipe_up(page: Page, cdp, x: float, y: float, distance: float, steps: int = 10) -> None:
-    """A finger down at (x, y) that drags up by `distance` CSS pixels and lifts: what scrolls a card on a phone."""
-    cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]})
-    for step in range(1, steps + 1):
-        point = {"x": x, "y": y - distance * step / steps}
-        cdp.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [point]})
-        page.wait_for_timeout(16)
-    cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
-    page.wait_for_timeout(600)
-
-
-def scroll_into_view(page: Page, cdp, key: str, name: str) -> tuple[float, float, float, float]:
-    """The box of `name` once it is on the screen. On a phone held sideways (390 CSS pixels) the Together card is taller
-    than the page and its rows scroll (#980), so the code field can rest below the fold (since the server browser's
-    note and button came above it, #1232): a player drags the card up until the field shows, and so does this, from
-    the card's left margin (a button takes a drag that starts on it) and at most five times."""
-    width, height = page.evaluate("() => [window.innerWidth, window.innerHeight]")
-    for _ in range(5):
-        box = css_box(page, key, name)
-        if box[1] >= 0 and box[1] + box[3] <= height * VISIBLE_SHARE:
-            return box
-        swipe_up(page, cdp, width * GRIP_SHARE, height * 0.85, height * 0.5)
+def on_screen_box(page: Page, key: str, name: str) -> tuple[float, float, float, float]:
+    """The box of `name`, which must already be on the page: the Play together screen fits a phone held sideways with
+    no scrolling (#1243), so a probe never has to drag the card to reach a field or a button. A control below the fold
+    fails here, by name, instead of being tapped off the page."""
     box = css_box(page, key, name)
-    if not (box[1] >= 0 and box[1] + box[3] <= height * VISIBLE_SHARE):
-        raise TimeoutError(
-            f"{name!r} is still off the screen after five swipes: {box[1]:.0f}..{box[1] + box[3]:.0f} px"
-        )
+    height = page.evaluate("() => window.innerHeight")
+    if not inside(box, 0, height):
+        raise TimeoutError(f"{name!r} is not on the screen: {box[1]:.0f}..{box[1] + box[3]:.0f} px of {height}")
     return box
 
 
@@ -416,7 +392,7 @@ def join_flow(page: Page, cdp, args, check: Checks, resized: dict, full: dict) -
     """The server address on the developers' Join screen (`--query dev`)."""
     smoke.back_to_menu(page)
     smoke.open_together(page)
-    tap_box(page, cdp, scroll_into_view(page, cdp, "spots", "Server address (developers)"))
+    tap_box(page, cdp, on_screen_box(page, "spots", "Server address (developers)"))
     smoke.wait_for(page, "the Join screen", lambda s: s.get("screen") == "join_screen", 30)
     page.wait_for_timeout(1500)
     other_field(page, cdp, args, check, "Address", "Join: the address", "x", resized, full)
@@ -486,7 +462,7 @@ def main() -> int:
             smoke.reach_menu(view)
             smoke.open_together(view)
             view.screenshot(path=args.out / "1_together.png")
-            resting = scroll_into_view(view, cdp, "fields", "Code")
+            resting = on_screen_box(view, "fields", "Code")
             code_flow(view, cdp, args, check, resting)
             name_flow(view, cdp, args, check, resized, full)
             more_flow(view, cdp, args, check, resized, full)

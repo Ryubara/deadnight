@@ -73,11 +73,12 @@ runs them.
 The game publishes `fields` (the editable text fields, as fractions of the window, where they are drawn) and `lift`
 (how far the keyboard lifted the screens) next to `spots` for a probe to find a field by its name.
 
-A field's box is where it is drawn, which on a 390 px page may be below the fold: the Together card scrolls (#980) and,
-with the server browser's note and button above it (#1232), the code field rests at 101 % of the page height. A probe
-that taps the box taps off the page. The probes drag the card up with a finger first (`scroll_into_view`: a drag that
-starts on a button is the button's, so it starts in the scroll area's margin) and tap an empty spot
-(`EMPTY_SPOT`) to give the keyboard back: the corner (40, 40) is the menu's Play tab since the phone layout (#1225).
+A field's box is where it is drawn. Since #1243 the Play together screen fits a phone held sideways with no scrolling
+(the four choices sit two to a row in one grid, the code field beside Join), so the probes tap the box where it is and
+`on_screen_box` fails by name when a control is below the fold; an earlier version dragged the card up first
+(`scroll_into_view`), which is gone. A probe taps an empty spot (`EMPTY_SPOT`, left of the card on the Together, name
+and Join screens) to give the keyboard back: the corner (40, 40) is the menu's Play tab since the phone layout (#1225).
+It is not empty while the keypad is up (the keypad is as wide as the page), and no step taps it then.
 
 ## What nobody has shown
 
