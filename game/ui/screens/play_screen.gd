@@ -10,6 +10,8 @@ const NIGHT_SCREEN := "res://ui/screens/night_screen.tscn"
 const PANEL_WIDTH := 1000.0
 ## A canvas this high or lower is a phone held sideways (the phone factor makes it 540 units).
 const COMPACT_HEIGHT := 600.0
+## The least canvas width that holds the rows' whole titles (a phone's 960 units do not, #1227).
+const WHOLE_TITLES_WIDTH := 1100.0
 const MARGIN_SIDES: Array[StringName] = [
 	&"margin_left", &"margin_right", &"margin_top", &"margin_bottom"
 ]
@@ -97,7 +99,7 @@ func start() -> void:
 ## the buttons and the panel's edge already fill most of it, #671).
 func _fit_for_fingers() -> void:
 	var phone := size.y <= COMPACT_HEIGHT
-	panel.set_compact(phone)
+	panel.set_compact(phone, size.x >= WHOLE_TITLES_WIDTH)
 	_overline.visible = not phone
 	_title.visible = not phone
 	_column.add_theme_constant_override(

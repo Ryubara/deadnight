@@ -244,6 +244,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"settings_open": false,
 		"menu_buttons": "",
 		"menu_button_sizes": "",
+		"touch_hits": "",
+		"touch_held": "",
 		"tab": "",
 		"stage": "",
 		"browser": "",
@@ -404,6 +406,8 @@ static func snapshot(top: Control) -> Dictionary:
 	data["settings_open"] = night_screen.settings_open()
 	data["menu_buttons"] = _button_spots(night_screen)
 	data["menu_button_sizes"] = _button_sizes(night_screen)
+	data["touch_hits"] = _touch_hits(night_screen)
+	data["touch_held"] = ",".join(night_screen.touch_held())
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)
@@ -474,6 +478,27 @@ static func _button_sizes(screen: NightScreen) -> String:
 		if button.is_visible_in_tree():
 			var share := button.get_global_rect().size / size
 			found.append("%s:%.5f,%.5f" % [button.text, share.x, share.y])
+	return "|".join(found)
+
+
+## The touch layer's hit areas as `id:x,y,hit,was`: the centre as fractions of the window's width
+## and height, the two radii as fractions of its height, so a browser test reads CSS pixels and taps
+## inside a hit area (#1217).
+static func _touch_hits(screen: NightScreen) -> String:
+	if not screen.is_inside_tree() or not screen.touch_active():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var circles := screen.touch_circles()
+	var found: Array[String] = []
+	for id: StringName in circles:
+		var circle: Dictionary = circles[id]
+		var at: Vector2 = circle[&"centre"] / size
+		found.append(
+			(
+				"%s:%.5f,%.5f,%.5f,%.5f"
+				% [id, at.x, at.y, float(circle[&"hit"]) / size.y, float(circle[&"was"]) / size.y]
+			)
+		)
 	return "|".join(found)
 
 
