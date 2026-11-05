@@ -233,7 +233,9 @@ func _run_page(
 				fixture.hud.state.set_markers(_markers([rect], fixture.hud.markers.size, spot))
 				await await_idle_frame()
 				await await_idle_frame()
-				found.append_array(_faults(fixture, obstacles, where))
+				# The cards as they stand when the markers have settled: a card that is still sliding in
+				# (the banner) is read where it is now, not where it was when the grid was made.
+				found.append_array(_faults(fixture, _obstacles(fixture, held), where))
 		fixture.hud.get_parent().queue_free()
 	return found
 
