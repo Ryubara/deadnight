@@ -9,6 +9,10 @@ extends RefCounted
 
 const TIMEOUT_SECONDS := 10.0
 
+## For a test: `Callable(method, url, headers, body) -> Dictionary` answers a request instead of the
+## network (`{"status", "json"}`); an empty one lets the request go out as usual.
+static var responder := Callable()
+
 
 static func send(
 	parent: Node,
@@ -18,6 +22,10 @@ static func send(
 	body: Variant = null,
 	timeout: float = TIMEOUT_SECONDS
 ) -> Dictionary:
+	if responder.is_valid():
+		var canned: Dictionary = responder.call(method, url, headers, body)
+		if not canned.is_empty():
+			return canned
 	var http := HTTPRequest.new()
 	http.timeout = timeout
 	# The browser decodes gzip itself, but the answer still names `Content-Encoding: gzip` and Godot
