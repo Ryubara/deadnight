@@ -2,17 +2,22 @@
 
 A phone is a touch screen with a pixel ratio of 3 that the page reports as at most 2, so an 844 x 390 CSS pixel page is
 a canvas of 1688 x 780. This script loads the exported build in Chromium as a mobile device, walks the menu screens
-(the five tabs, Play together, the solo Play screen, Settings and its tabs, Credits) and, on each, saves a screenshot and
+(the five tabs, Play together, the Server Browser with a list, an empty list, a list that is still loading and a list
+that failed, the solo Play screen, Settings and its tabs, Credits) and, on each, saves a screenshot and
 the numbers the game publishes (`window.deadnight`, `WebProbe`): the page, the canvas, the content scale factor, the
 canvas in units, the CSS pixels in one unit, and the smallest text and tap target in CSS pixels (`UiAudit`, asked for
 by `window.deadnight_audit`). It fails on a screen with text under 14 CSS pixels or a target under 44.
+
+The platform backend is a stand-in the script answers for (`StubBackend`, the page's `?backend=`): a guest sign-in, and a
+list of nights that is a full list, an empty one, one held back (the loading state) or refused (the failed state), so
+the Server Browser shows each of its states without a network.
 
     uv run --project <kit>/python gds quiet -- \\
         uv run --with playwright==1.64.1 python tools/web_smoke/phone_layout.py <web folder> <out folder> \\
         [--label after] [--size 844x390] [--dpr 3] [--iframe] [--section tour,turn,night] [--no-fail]
 
 `--iframe` shows the game in an iframe of another origin that fills the page, as Discord's client shows an Activity.
-Sections: `tour` (the screens), `turn` (the page turned upright and back, and resized across the phone limit), `night`
+Sections: `tour` (the screens), `browser` (the Server Browser's four states alone), `turn` (the page turned upright and back, and resized across the phone limit), `night`
 (a solo night entered and left: does the menu's factor come back). What it cannot show: a real phone, a real iOS
 Safari, Discord's own webview.
 """
@@ -20,6 +25,7 @@ Safari, Discord's own webview.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import re
 import sys
@@ -28,6 +34,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Page, sync_playwright
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -44,6 +51,86 @@ SETTLE_MS = 1800
 # Console errors so far, so a result says on which screen the first one came.
 ERRORS: list[str] = []
 TAB_NAMES = ["Play", "Loadout", "Shop", "Challenges", "More"]
+# The backend the page is pointed at: nothing answers on this name, the script does.
+STUB_BACKEND = "http://backend.stub"
+CORS_HEADERS = {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "access-control-allow-headers": "content-type, authorization",
+}
+
+
+def night_row(code: str, map_id: str, kind: str, people: int, host: str, bots: int = 0, round_number=None) -> dict:
+    """One row of `GET /lobbies` as the backend lists it (`NightEntry.from_row`)."""
+    match = kind == "match"
+    return {
+        "id": f"id-{code}",
+        "code": code,
+        "map": map_id,
+        "hostName": host,
+        "players": people,
+        "maxPlayers": 8,
+        "bots": bots,
+        "kind": kind,
+        "state": "started" if match else "open",
+        "round": round_number if match else None,
+        "full": people >= 8,
+    }
+
+
+# Every kind of row, the longest host name a player can have and the latest round a night is in.
+NIGHTS = [
+    night_row("KITE42", "drive_in", "match", 3, "Ann the Projectionist", 2, 6),
+    night_row("LAMP77", "small_indoor", "lobby", 2, "Bo"),
+    night_row("ROSE19", "drive_in", "lobby", 1, "A" * 16),
+    night_row("MOTH05", "small_indoor", "match", 5, "Di", 0, 9999),
+    night_row("FULL88", "drive_in", "match", 8, "Ed", 1, 3),
+]
+
+
+class StubBackend:
+    """The platform backend, answered by the script: a guest sign-in and the list of nights in the mode set (`many`,
+    `empty`, `hold` for a list that does not come until `release`, `failed` for a refused connection). Anything else
+    is a 404."""
+
+    def __init__(self) -> None:
+        self.mode = "many"
+        self.held: list = []
+        self.lists = 0
+
+    def attach(self, context) -> None:
+        context.route(f"{STUB_BACKEND}/**", self.handle)
+
+    def handle(self, route) -> None:
+        request = route.request
+        path = request.url[len(STUB_BACKEND) :].split("?")[0]
+        if request.method == "OPTIONS":
+            route.fulfill(status=204, headers=CORS_HEADERS)
+        elif path == "/auth/guest":
+            self.answer(route, {"token": "stub-token", "user": {"id": "stub-1", "name": "Guest 4242"}})
+        elif path == "/lobbies" and request.method == "GET":
+            self.lists += 1
+            if self.mode == "failed":
+                route.abort("connectionrefused")
+            elif self.mode == "hold":
+                self.held.append(route)
+            else:
+                rows = NIGHTS if self.mode == "many" else []
+                self.answer(route, {"maxPlayers": 8, "total": len(rows), "nights": rows})
+        else:
+            self.answer(route, {"error": "not_found"}, 404)
+
+    def answer(self, route, body: dict, status: int = 200) -> None:
+        route.fulfill(
+            status=status, headers={**CORS_HEADERS, "content-type": "application/json"}, body=json.dumps(body)
+        )
+
+    def release(self) -> None:
+        """Answers the lists that were held with an empty one."""
+        held, self.held = self.held, []
+        for route in held:
+            with contextlib.suppress(PlaywrightError):  # the page closed the request already
+                self.answer(route, {"maxPlayers": 8, "total": 0, "nights": []})
 
 
 def parse_size(text: str) -> dict:
@@ -197,7 +284,22 @@ def back(frame: Frame) -> None:
     frame.page.wait_for_timeout(1200)
 
 
-def tour(frame: Frame, out: Path, label: str, results: list[dict]) -> None:
+def browser_states(frame: Frame, out: Path, label: str, results: list[dict], backend: StubBackend) -> None:
+    """The Server Browser (the Play tab's second start) with each state its list has: nights, none, loading, failed."""
+    for mode, what in (
+        ("many", "browser list"),
+        ("empty", "browser empty"),
+        ("hold", "browser loading"),
+        ("failed", "browser failed"),
+    ):
+        backend.mode = mode
+        go(frame, "Play", 1, "server_browser_screen")
+        snap(frame, out, label, results, what)
+        back(frame)
+    backend.release()
+
+
+def tour(frame: Frame, out: Path, label: str, results: list[dict], backend: StubBackend) -> None:
     for tab in TAB_NAMES:
         to_tab(frame, tab)
         snap(frame, out, label, results, f"menu {tab}")
@@ -210,6 +312,7 @@ def tour(frame: Frame, out: Path, label: str, results: list[dict]) -> None:
         frame.page.wait_for_timeout(1500)
     snap(frame, out, label, results, "together")
     back(frame)
+    browser_states(frame, out, label, results, backend)
     go(frame, "Play", 2, "play_screen")
     snap(frame, out, label, results, "play solo")
     back(frame)
@@ -306,13 +409,14 @@ def main() -> int:
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     server, port = smoke.serve(args.web)
-    url = f"http://127.0.0.1:{port}/index.html?probe{('&' + args.query) if args.query else ''}"
+    url = f"http://127.0.0.1:{port}/index.html?probe&backend={STUB_BACKEND}{('&' + args.query) if args.query else ''}"
     parent = None
     if args.iframe:
         parent, url = serve_parent(url)
     size = parse_size(args.size)
     results: list[dict] = []
     errors = ERRORS
+    backend = StubBackend()
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(channel="chrome", headless=True, args=[*smoke.mute_args()])
@@ -322,6 +426,7 @@ def main() -> int:
                 context = browser.new_context(
                     viewport=size, device_scale_factor=args.dpr, is_mobile=True, has_touch=True, user_agent=PHONE_AGENT
                 )
+            backend.attach(context)
             page = context.new_page()
             page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
             page.on("pageerror", lambda e: errors.append(str(e)))
@@ -354,8 +459,11 @@ def main() -> int:
                 page.touchscreen.tap(5, 5)
             page.wait_for_timeout(2500)
             sections = args.section.split(",")
+            if "browser" in sections:
+                to_tab(game, "Play")
+                browser_states(game, args.out, args.label, results, backend)
             if "tour" in sections:
-                tour(game, args.out, args.label, results)
+                tour(game, args.out, args.label, results, backend)
             if "turn" in sections:
                 turn(game, args.out, args.label, results, size)
             if "night" in sections:

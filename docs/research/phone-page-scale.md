@@ -58,7 +58,14 @@ nobody had seen at a layout no page reached, all the same fix (`TapFloor`, 62 un
   rules panel, Settings, Play together, Join and the name field;
 - the lobby's rules were not in the panel's phone form (the Play screen's is): `rules.set_compact` in the lobby;
 - the plate screen's short tabs: 10 CSS px type (14 units) and 24 px high: 20 units and a tap target;
-- the Play screen after Leave night (above).
+- the Play screen after Leave night (above);
+- the Server Browser (#1232 keyed its layout to the canvas in units, under 700 tall): on a phone page it ran at 0.36
+  CSS px to the unit until the factor came from `MenuScale` (a 22 unit caption is 7.9 CSS px; main has no ruler, so
+  that is arithmetic, and the before picture shows it). Now it takes the phone layout without help, at ratio 2 and 3.
+  Its rows draw their own words, so `UiAudit` asks a control that does (`drawn_text_sizes`, `NightRow`) for them: the
+  smallest is 15.9 CSS px (a 22 unit caption), and the map's name, cut down to 20 units at the least, is 14.4.
+  `phone_layout.py` answers for the backend itself (`StubBackend`) and shows the list, the empty list, the one still
+  loading and the one that failed (`--section browser`).
 
 Not fixed here, filed: the night's pause card and Settings from a night (#1205), tablets and small desktop windows (#1206).
 
@@ -76,6 +83,8 @@ tabs (the later one did: every tab at 44.8 px targets and 18.8 px text or more).
 | menu Challenges | 0.36 to 0.72 | 6.5 to 15.9 | 22.4 to 44.8 |
 | menu More | 0.36 to 0.72 | 7.9 to 15.9 | 19.1 to 44.8 |
 | together | 0.36 to 0.72 | 9.4 to 18.8 | 19.1 to 44.8 |
+| Server Browser, a list | 0.72 (after only) | 15.9 | 57.1 |
+| Server Browser, empty, loading, failed | 0.72 (after only) | 18.8 | 57.1 |
 | play solo | 0.36 to 0.72 | 9.4 to 23.1 | 18.8 to 44.8 |
 | settings tab 1 | 0.36 to 0.72 | 9.4 to 18.8 | 18.8 to 44.8 |
 | credits | 0.36 to 0.72 | 9.4 to 18.8 | 28.5 to 57.1 |

@@ -101,3 +101,19 @@ func test_a_row_draws_without_a_picture_and_for_every_state() -> void:
 	row.joining = false
 	await await_idle_frame()
 	row.queue_free()
+
+
+func test_the_audit_reads_the_words_a_row_draws_and_they_clear_the_phone_floor() -> void:
+	# The row draws its words itself, so the theme has no size for them: the audit asks the row.
+	# A phone page (844 x 390 CSS px, a unit is 0.72 CSS px) must still read every one at 14 or more,
+	# the name at its smallest included (a long name in the room a phone row leaves).
+	var row := _row("match", 5, false, true)
+	var sizes := row.drawn_text_sizes()
+	assert_int(sizes.size()).is_equal(5)
+	var audit := UiAudit.scan(row.get_parent(), 1.0)
+	var per_unit := audit.per_unit
+	assert_float(audit.text_min).is_equal_approx(float(sizes.min()) * per_unit, 0.01)
+	var phone := MenuScale.PHONE_FACTOR * 390.0 / 1080.0
+	for drawn: int in [NightRow.TITLE_SIZE_MIN, MenuLook.SIZE_CAPTION, MenuLook.SIZE_BODY]:
+		assert_float(float(drawn) * phone).is_greater_equal(UiAudit.MIN_TEXT_PX)
+	row.queue_free()

@@ -54,18 +54,26 @@ func summary() -> String:
 
 
 func _read(control: Control) -> void:
+	# A control that draws its own words (a ticket, a row) says what sizes it draws them at.
+	if control.has_method(&"drawn_text_sizes"):
+		for drawn: int in control.call(&"drawn_text_sizes"):
+			_note_text(control, float(drawn) * per_unit)
 	var text := _text_of(control)
 	if text != "":
 		var px := float(control.get_theme_font_size(&"font_size")) * per_unit
 		if px > 0.0:
-			text_min = minf(text_min, px)
-			if px < MIN_TEXT_PX - 0.05:
-				text_small.append("%s:%.1f" % [_name(control), px])
+			_note_text(control, px)
 	if _is_target(control):
 		var tall := control.size.y * per_unit
 		tap_min = minf(tap_min, tall)
 		if tall < MIN_TAP_PX - 0.05:
 			tap_small.append("%s:%.1f" % [_name(control), tall])
+
+
+func _note_text(control: Control, px: float) -> void:
+	text_min = minf(text_min, px)
+	if px < MIN_TEXT_PX - 0.05:
+		text_small.append("%s:%.1f" % [_name(control), px])
 
 
 func _is_target(control: Control) -> bool:
