@@ -184,6 +184,24 @@ is the only way to it.
   and when a tier-3 weapon of the catalogue is missing from the box's pool of either map. The bots buy at the spots
   the map has (`BotEconomy` reads the wall markers), so their lists follow the walls.
 
+## A dry gun reloads by itself (#1278)
+
+A gun in hand with an empty magazine and rounds in reserve reloads on the server's next tick, for every player on every
+device, whether or not a button is down (`NightServer._reload_if_dry`). Before, the only automatic reload was the shot
+refused at an empty gun (`empty`), so it needed a trigger pull: a phone aiming with auto-fire stops pulling at an empty
+magazine (`TouchAimAssist.wants_fire` wants a round) and never reloaded, and a trigger let go after the last round left
+the gun dry. Rules that hold:
+
+- **The rounds go in when the reload ends**, never at its start (`WeaponState.tick`); a pump takes them a round at a time
+  (`reload_round`). Putting the gun away (a swap, a slot key) drops the reload and keeps what had gone in: nothing for a
+  magazine, the finished rounds for the pump.
+- **Coming back to an empty gun reloads it again.** A pump with a round or two in is not empty and is not reloaded by
+  itself; the reload key finishes it.
+- **No reserve, a blade, a downed or drinking player: nothing starts, nothing is said** (no `reload_rejected`, no sound).
+- **A bot keeps its own choice**: `BotArsenal` swaps instead of reloading when the dead are close and another gun is
+  loaded, which an automatic reload would take away, so the server leaves a bot's seat to it.
+- Tests: `tests/night/test_auto_reload.gd` (real key, button and finger events, the server's weapon state).
+
 ## Quick melee
 
 One button, `V` (the mouse's back button and the pad's d-pad down too), one blow with whatever is in the hands: the
