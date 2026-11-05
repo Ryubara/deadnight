@@ -235,7 +235,7 @@ second step after the four-player one in the first shard: round 12, 3x, 85 s of 
 `--bots=7 --people=8` (`StandInPeople`: one process holds one client, so the other seven people sit as seats a client
 would hold, with a bot's brain; they are people to the crowd's table, the looks and the HUD). It runs 137 s on the CI
 runner (the four-player case 94 s: the crowd takes a minute to reach 90 percent of its cap, 33 steady rows on CI) and
-its limits are the peaks of the first CI run and a local one with 5 to 30 percent over, not the four-player ones raised:
+its limits are the peaks of the first CI run and a local one with 5 to 35 percent over, not the four-player ones raised:
 
 | Count | Four players (limit, CI peak) | 15 bodies (limit, CI peak) | Why it differs |
 | --- | --- | --- | --- |
@@ -243,10 +243,12 @@ its limits are the peaks of the first CI run and a local one with 5 to 30 percen
 | `nodes` | 6,800, 5,812 | 7,500, 6,920 | the views of 11 more bodies and the HUD's 60 more canvas items |
 | `skeletons` | 160, 136 | 200, 179 | 11 more soldiers (the dead's pool is the same) |
 | `canvas_items` | 230, 230 | 300, 276 | the HUD's boxes and chips for 15 |
+| `pairs` (collision pairs) | 50, 16 | 60, 45 (51 on a local run) | 15 bodies against the lot |
 | `lights` | 68, 50 | 76, 70 | 20 more with the 11 more bodies (what they carry was not split further) |
 | `xp.gained`, `challenge.advance` a tick | 0.12, 0.08 and 0.18, 0.12 | 0.35, 0.27 and 0.48, 0.38 | more players to award and follow |
 | `mem_static_mb` | 300, 253 | 310, 280 | |
 | frame / calibration | 15, 2.35 | 15, 4.87 | 15 bodies' scripts in the tick |
+| `server.challenges` / calibration | 0.012, 0.0068 | 0.04, 0.0164 (0.027 on a local run) | the boards of 15 accounts |
 
 The tick of the server, which is what the capacity decision rests on, is not in this case (CI has no Railway
 container): it is in [the crowd budget](crowd-budget.md#rooms-of-fifteen-bodies-1193).

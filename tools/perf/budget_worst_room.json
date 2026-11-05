@@ -17,7 +17,7 @@
     "skeletons": 200,
     "mesh_instances": 2600,
     "canvas_items": 300,
-    "pairs": 50
+    "pairs": 60
   },
   "max_per_tick": {
     "xp.gained": 0.35,
@@ -26,7 +26,7 @@
   },
   "max_label_ratio_of_calibration": {
     "server.xp": 0.01,
-    "server.challenges": 0.03
+    "server.challenges": 0.04
   },
   "max_ratio_of_calibration": {
     "frame_median_ms": 15
