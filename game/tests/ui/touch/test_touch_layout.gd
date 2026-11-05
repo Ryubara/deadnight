@@ -286,12 +286,12 @@ func test_the_bots_and_ping_buttons_are_on_screen_clear_of_the_rest_on_the_small
 					. override_failure_message("%s touches %s on %s" % [id, other, phone])
 					. is_greater(0.0)
 				)
-			# Off the view: on the top edge band (the ping, beside Pause) or at the side (the wheel).
+			# Off the view: at the side (the wheel), or outside the middle 40 percent of the width
+			# that stays clear (the ping, under Pause, #1289: it was on the top band before).
 			var centre: Vector2 = circle[&"centre"]
+			var clear := phone.x * (0.2 if id == TouchLayout.PING else 0.4)
 			(
-				assert_bool(
-					centre.y < phone.y * 0.25 or absf(centre.x - phone.x * 0.5) > phone.x * 0.4
-				)
+				assert_bool(absf(centre.x - phone.x * 0.5) > clear)
 				. override_failure_message("%s is over the view on %s" % [id, phone])
 				. is_true()
 			)

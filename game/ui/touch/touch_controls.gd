@@ -375,7 +375,7 @@ func _touch_down(index: int, point: Vector2) -> void:
 		_press_button(button)
 		if button == TouchLayout.INTERACT:
 			hints.mark_used(TouchHints.INTERACT)
-	elif _stick_index < 0 and TouchLayout.stick_zone(_safe, left_handed).has_point(point):
+	elif _stick_index < 0 and _stick_zone().has_point(point):
 		hints.mark_used(TouchHints.MOVE)
 		double_tap.interrupt()
 		_stick_index = index
@@ -714,6 +714,15 @@ func _release_everything() -> void:
 		Input.action_release(action)
 	_pressed_at.clear()
 	_release_at.clear()
+
+
+## Where a finger may start the stick: below the bottom of Ping's hit area (#1289).
+func _stick_zone() -> Rect2:
+	var ping: Dictionary = _circles.get(TouchLayout.PING, {})
+	var below := -INF
+	if not ping.is_empty():
+		below = (ping[&"centre"] as Vector2).y + float(ping[&"hit"])
+	return TouchLayout.stick_zone(_safe, left_handed, below)
 
 
 func _relayout() -> void:
