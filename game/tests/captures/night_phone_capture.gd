@@ -11,7 +11,8 @@ extends Node
 ## and a finger meets CSS pixels: the sizes it prints are in both.
 ##
 ## Arguments after `--`: `--shot=end` (the end board with the fullest report and credits),
-## `--shot=pause` (the pause card), `--shot=hud` (the HUD with an objective in the bottom left,
+## `--shot=pause` (the pause card), `--shot=settings` (its Settings, `--tab=N`),
+## `--shot=hud` (the HUD with an objective in the bottom left,
 ## `--at=0.2,0.93` is where it stands on the screen), `--shot=markers` (an objective and an ally,
 ## standing and down, on the middle of every card of the HUD's corners: Deadnight #1218),
 ## `--shot=middle` (a diamond on the round banner, a teammate on the prompt and another on a popup
@@ -36,6 +37,8 @@ func _run() -> void:
 	# By the script object, so the capture also runs on a game that has no `pixel_ratio` (a "before").
 	var scale_script: Object = load("res://ui/menu/menu_scale.gd")
 	scale_script.set(&"pixel_ratio", float(_args.get("ratio", 2.0)))
+	# The window is the canvas: the page is the canvas over the ratio (844 x 390 CSS px at 1688 x 780).
+	PageSize.css_override = Vector2(get_window().size) / float(_args.get("ratio", 2.0))
 	Settings.path = SETTINGS_PATH
 	Settings.reset_defaults()
 	Settings.set_value(SettingsService.UI_SCALE, float(_args.get("scale", 1.0)))
@@ -83,6 +86,8 @@ func _run() -> void:
 			await _end(screen)
 		"pause":
 			await _pause(screen)
+		"settings":
+			await _settings(screen)
 		"markers":
 			await _markers(screen)
 		"middle":
@@ -119,6 +124,15 @@ func _end(screen: NightScreen) -> void:
 
 func _pause(screen: NightScreen) -> void:
 	screen._pause()
+
+
+## The Settings opened from the pause card (`--tab=N` is the tab, 0 to 4).
+func _settings(screen: NightScreen) -> void:
+	screen._pause()
+	screen._open_settings()
+	await get_tree().process_frame
+	screen._settings.select_tab(int(_args.get("tab", 0)), false)
+	await get_tree().process_frame
 
 
 func _hud(screen: NightScreen) -> void:

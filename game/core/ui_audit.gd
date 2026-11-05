@@ -3,7 +3,8 @@ extends RefCounted
 ## What a person would measure on a screen with a ruler, in CSS pixels (#1197): the smallest text
 ## and the smallest thing a finger presses. The written minimums are 14 px of text and 44 px for a
 ## target (`MenuLook`). The numbers are read where the player sees them: the node's rectangle and
-## font size times the window's stretch and the page's CSS pixels per window pixel.
+## font size times the window's stretch, the scale of the control's own parents (the night's card
+## is drawn at the phone factor, `PhoneScale`) and the page's CSS pixels per window pixel.
 ##
 ## The web probe publishes the result when the page asks (`window.deadnight_audit`), and the
 ## phone test (`test_phone_floor.gd`) reads the same numbers for every menu screen.
@@ -54,17 +55,18 @@ func summary() -> String:
 
 
 func _read(control: Control) -> void:
+	var unit := per_unit * control.get_global_transform().get_scale().y
 	# A control that draws its own words (a ticket, a row) says what sizes it draws them at.
 	if control.has_method(&"drawn_text_sizes"):
 		for drawn: int in control.call(&"drawn_text_sizes"):
-			_note_text(control, float(drawn) * per_unit)
+			_note_text(control, float(drawn) * unit)
 	var text := _text_of(control)
 	if text != "":
-		var px := float(control.get_theme_font_size(&"font_size")) * per_unit
+		var px := float(control.get_theme_font_size(&"font_size")) * unit
 		if px > 0.0:
 			_note_text(control, px)
 	if _is_target(control):
-		var tall := control.size.y * per_unit
+		var tall := control.size.y * unit
 		tap_min = minf(tap_min, tall)
 		if tall < MIN_TAP_PX - 0.05:
 			tap_small.append("%s:%.1f" % [_name(control), tall])
