@@ -241,11 +241,7 @@ const TABS := [
 				"key": SettingsService.TOUCH_AIM_ASSIST,
 				"title": "Touch aim assist",
 				"hint": "Slows the view and pulls it a little toward a zombie. Touch only.",
-				"kind": "slider",
-				"min": 0.0,
-				"max": 1.0,
-				"step": 0.05,
-				"format": "%.2f",
+				"kind": "toggle",
 			},
 			{
 				"key": SettingsService.TOUCH_AUTO_FIRE,

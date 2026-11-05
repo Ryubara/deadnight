@@ -249,10 +249,12 @@ func test_the_settings_set_the_strength_and_the_auto_fire() -> void:
 	settings.path = SETTINGS_FILE
 	settings.reset_defaults()
 	var fresh := TouchAimAssist.new(get_tree(), _state)
-	assert_float(fresh.strength).is_equal_approx(0.5, 0.001)
-	settings.set_value(SettingsService.TOUCH_AIM_ASSIST, 0.8)
+	assert_float(fresh.strength).is_equal_approx(TouchAimAssist.ON_STRENGTH, 0.001)
+	settings.set_value(SettingsService.TOUCH_AIM_ASSIST, false)
 	settings.set_value(SettingsService.TOUCH_AUTO_FIRE, 0)
-	assert_float(fresh.strength).is_equal_approx(0.8, 0.001)
+	assert_float(fresh.strength).is_equal(0.0)
+	settings.set_value(SettingsService.TOUCH_AIM_ASSIST, true)
+	assert_float(fresh.strength).is_equal_approx(1.0, 0.001)
 	assert_int(fresh.auto_fire).is_equal(TouchAimAssist.AutoFire.OFF)
 	settings.set_value(SettingsService.TOUCH_AUTO_FIRE, 2)  # a file saved before #470
 	assert_int(fresh.auto_fire).is_equal(TouchAimAssist.AutoFire.WHILE_AIMING)
@@ -262,6 +264,7 @@ func test_the_settings_set_the_strength_and_the_auto_fire() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_FILE))
 
 
-func test_the_defaults_are_gentle_assist_and_auto_fire_on() -> void:
-	assert_float(float(SettingsService.DEFAULTS[SettingsService.TOUCH_AIM_ASSIST])).is_equal(0.5)
+func test_the_defaults_are_assist_on_at_full_strength_and_auto_fire_on() -> void:
+	assert_bool(SettingsService.DEFAULTS[SettingsService.TOUCH_AIM_ASSIST]).is_true()
+	assert_float(TouchAimAssist.ON_STRENGTH).is_equal(1.0)
 	assert_int(int(SettingsService.DEFAULTS[SettingsService.TOUCH_AUTO_FIRE])).is_equal(1)
