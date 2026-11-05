@@ -218,7 +218,7 @@ shard runs it (about 1.5 minutes) and writes what it measured into the job summa
   that holds on a slow runner and a busy machine; it is deliberately loose until three runs of the real runner's
   summary say where it should sit.
 
-Canvas items (limit 230) count every `CanvasItem` in the tree, so the HUD's nodes are counted as built, empty or not.
+Canvas items (limit 200) count every `CanvasItem` in the tree, so the HUD's nodes are counted as built, empty or not.
 What only a bigger night needs is built when a night reaches it and freed on the way down: the bots' chip strip
 (`HudBotChips`, two nodes) first sat in the points column at four bodies and took the peak from 215 to 217 here (229 to
 232 on CI, main 229); `HudPoints` now makes it past eight bodies only. The HUD at four bodies is the same 164 canvas
@@ -230,8 +230,8 @@ or end board is up): about 275 here, which the budget's case does not cover (#11
 
 `--canvasparts=1` on the budget's command (headless, `--xp=1`, as CI plays it) adds each part's item count to every row
 (`canvas_parts`), and `python tools/perf/canvas_parts.py <report.json> [--markdown]` prints the steady rows' least and
-most. Round 12, 3x, four players, the same 81 steady rows, local run (CI reads about 15 higher: it is a Linux runner;
-the CI peak is the number that counts):
+most. Round 12, 3x, four players, the same 81 steady rows, local run (the CI runner reads 13 to 15 higher, 230 for
+215 and 185 for 172: the CI peak is the number that counts):
 
 | Part | Before | Now |
 | --- | ---: | ---: |
@@ -265,7 +265,14 @@ card (8, hidden until a fuel night), and the labels the gains and events pools h
 a loaded machine, the same 81 rows). What moves is the transient part: the gains and event rows (a pool that grows to
 its cap as a second has more events: 8 to 10 and 3 to 6 items) and the popup cards, whose number and kind follow the
 night's events, so a runner whose float arithmetic or timing differs by a hair lands a different event in a steady
-second. That is the spread, and the limit is set above it rather than on the peak.
+second (a guess: main read 229, 230, 230 and 229 on four commits that changed no UI, which no local run reproduces,
+and this change read 185 on two commits). That is the spread, about 1 on the runner, and the limit is set above it
+rather than on the peak.
+
+**The limit.** 230 became **200**: the CI peak 185, the spread of 1 to 3, and about 12 kept for the planned night UI
+that each took the old limit over by 1 to 4 (the plated boxes #1199, the phone keyboard #1200, the corner cards #1218
+and the touch layer #1217). A pull request that adds items spends that room; one that needs more than is left frees
+some first (`--canvasparts=1`, then the hidden parts above) and does not raise the number.
 
 Teeth: the report of a run with the node limit set under the peak fails and names it (output in the pull request).
 `max_per_tick` (a counted piece of work a tick, from `PerfProbe.count`) is built in for the fixes of #930 and #931 to
