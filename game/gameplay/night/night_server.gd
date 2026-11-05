@@ -907,6 +907,7 @@ func _act(player_id: int, delta: float) -> void:
 	if _bodies[player_id].state.melee_ready:
 		_repairing[player_id] = &""
 		_quick_melee(player_id, command, delta)
+	_reload_if_dry(player_id)
 	if command.swap or command.slot != WeaponSlots.NONE or command.fire or command.reload:
 		_repairing[player_id] = &""
 	if command.use:
@@ -918,6 +919,22 @@ func _act(player_id: int, delta: float) -> void:
 	_face_breach(player_id, delta)
 	# Edges are used once.
 	command.clear_edges()
+
+
+## The gun in hand is empty and has rounds in reserve: it reloads by itself, whoever holds it, on
+## any device and whether or not a button is down (#1278). The server decides, so a touch player on
+## auto-fire (whose trigger lets go at an empty magazine), a trigger let go after the last round and
+## a swap back to a dry gun all reload; the rounds go in when the reload ends, as for a pressed
+## reload, and a swap in between drops it. A bot keeps its own choice (`BotArsenal` swaps instead of
+## reloading when the dead are close and another gun is loaded), a gun with no reserve or a blade
+## does nothing, and no rejection is sent for a reload that is not asked for.
+func _reload_if_dry(player_id: int) -> void:
+	var state := combat.weapon_of(player_id)
+	if state == null or state.ammo > 0 or state.reload_block() != &"":
+		return
+	if (rules.players[player_id] as PlayerState).bot:
+		return
+	_combat(CombatAction.reload_weapon(player_id))
 
 
 func _shoot(player_id: int, command: NightCommand, delta: float) -> void:
