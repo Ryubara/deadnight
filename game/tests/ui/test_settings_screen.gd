@@ -266,6 +266,16 @@ func _selector(tab: int, row: int) -> UIOptionSelector:
 	return _row(tab, row).control as UIOptionSelector
 
 
+func test_touch_aim_assist_is_a_toggle_that_is_on_and_has_no_slider() -> void:
+	var control := _row(4, 5).control
+	assert_object(control).is_instanceof(UIToggle)
+	assert_bool(_toggle(4, 5).button_pressed).is_true()
+	_toggle(4, 5).toggled.emit(false)
+	assert_bool(Settings.get_value(SettingsService.TOUCH_AIM_ASSIST)).is_false()
+	_toggle(4, 5).toggled.emit(true)
+	assert_bool(Settings.get_value(SettingsService.TOUCH_AIM_ASSIST)).is_true()
+
+
 func test_the_touch_tab_sets_the_touch_mode_and_size() -> void:
 	_selector(4, 0).select(TouchMode.Choice.OFF, true)
 	assert_int(Settings.get_value(SettingsService.TOUCH_CONTROLS)).is_equal(TouchMode.Choice.OFF)

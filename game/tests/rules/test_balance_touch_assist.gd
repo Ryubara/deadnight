@@ -62,7 +62,7 @@ func test_an_average_player_with_the_full_assist_stays_behind_a_strong_one_witho
 	assert_float(_rounds["average:1.0"]).is_less(_rounds["strong:0.0"])
 
 
-func test_the_default_strength_is_worth_less_than_half_the_full_assist() -> void:
+func test_a_half_strength_assist_is_worth_less_than_half_the_full_assist() -> void:
 	var gained: float = _rounds["weak:0.5"] - _rounds["weak:0.0"]
 	var full: float = _rounds["weak:1.0"] - _rounds["weak:0.0"]
 	assert_float(gained).is_less(full * 0.5)

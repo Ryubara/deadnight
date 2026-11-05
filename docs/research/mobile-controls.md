@@ -276,7 +276,8 @@ game does now:
 
 Still open from the questions below: 3 (gyro) and 4 (Discord orientation, issue #287). Answered by #286: 1 (auto-fire is
 off by default, and a setting turns it on while Aim is held or always) and 2 (aim assist is friction plus magnetism at a
-gentle 0.5 by default, a slider from 0 to 1); how it works and what it is worth are in
+gentle 0.5 by default, a slider from 0 to 1; since #1279 an On/Off toggle, On by default at strength 1.0); how it
+works and what it is worth are in
 [Touch aim assist and auto-fire](aim-assist.md).
 Answered by the build: 5 (left hand: a setting from the first release, off by default, a full mirror of the buttons, the
 stick and the HUD's corner columns), 6 (haptics default is on, a setting turns it off; the web vibrates only on
