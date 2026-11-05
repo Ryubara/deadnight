@@ -54,6 +54,13 @@ var row_ids: Array[int] = []
 var row_levels: Array[int] = []
 ## The way out: Leave online, Back alone.
 var leave_button: UIButton
+## The least height and width of the way out, canvas units: a tap target on a phone
+## (`MenuScale.tap_units`: 44 CSS px), none (0) with no touch screen. A negative value reads the
+## window's own; a test says its own.
+var tap_units := -1.0:
+	set(value):
+		tap_units = value
+		_fit_tap()
 ## The night report: the local player's XP lines and level bar, on a ticket under the round
 ## (`show_report`); hidden until a report is given.
 var report_card := HudNightReport.new()
@@ -161,6 +168,9 @@ func show_results(state: HudState, caption: String, leave_text: String) -> void:
 	_caption.text = caption
 	leave_button.text = leave_text
 	visible = true
+	_fit_tap()
+	if not get_window().size_changed.is_connected(_fit_tap):
+		get_window().size_changed.connect(_fit_tap)
 	refresh(state)
 	leave_button.grab_focus.call_deferred()
 
@@ -208,6 +218,21 @@ func report_room() -> float:
 		taken += part.get_combined_minimum_size().y + float(HudStyle.SM)
 	var margins := float(HudStyle.margin()) * 2.0 + _insets.y + _insets.w
 	return size.y - margins - taken
+
+
+## The way out is at least a tap target on a phone. The window's factor is read when the board is
+## shown and when the window changes: the night runs at the interface size alone (a unit is 0.36 px
+## at 844 x 390 CSS px), where the theme's 79 unit button is 28 px (#1192).
+func _fit_tap() -> void:
+	if leave_button == null:
+		return
+	var least := tap_units
+	if least < 0.0:
+		if not is_inside_tree():
+			return
+		least = MenuScale.tap_units(get_window(), TouchMode.wanted(get_tree()))
+	leave_button.custom_minimum_size = Vector2(least, least)
+	_fit_report()
 
 
 ## The title on one line: its type steps down from `HudStyle.BIG` until the text fits the column's
