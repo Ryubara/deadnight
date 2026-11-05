@@ -1,0 +1,70 @@
+[gd_resource type="Resource" script_class="SoundBank" format=3]
+
+[ext_resource type="Script" path="res://core/audio/sound_bank.gd" id="1_bank"]
+[ext_resource type="Script" path="res://core/audio/sound_def.gd" id="2_def"]
+
+[sub_resource type="Resource" id="Resource_drink_open"]
+resource_name = "drink_open"
+script = ExtResource("2_def")
+id = &"drink_open"
+path_format = "res://assets/audio/perks/drink_open_%d.ogg"
+variants = 2
+bus = &"Effects"
+loop = false
+volume_db = -4.0
+pitch_semitones = 0.6
+group = &"shop"
+priority = 60
+cooldown = 0.0
+max_distance = 30.0
+unit_size = 5.0
+near_cap_db = 0.0
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
+[sub_resource type="Resource" id="Resource_drink_gulp"]
+resource_name = "drink_gulp"
+script = ExtResource("2_def")
+id = &"drink_gulp"
+path_format = "res://assets/audio/perks/drink_gulp_%d.ogg"
+variants = 3
+bus = &"Effects"
+loop = false
+volume_db = -5.0
+pitch_semitones = 0.4
+group = &"shop"
+priority = 60
+cooldown = 0.0
+max_distance = 30.0
+unit_size = 5.0
+near_cap_db = 0.0
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
+[sub_resource type="Resource" id="Resource_drink_discard"]
+resource_name = "drink_discard"
+script = ExtResource("2_def")
+id = &"drink_discard"
+path_format = "res://assets/audio/perks/drink_discard_%d.ogg"
+variants = 2
+bus = &"Effects"
+loop = false
+volume_db = -4.0
+pitch_semitones = 0.7
+group = &"shop"
+priority = 60
+cooldown = 0.0
+max_distance = 30.0
+unit_size = 5.0
+near_cap_db = 0.0
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
+[resource]
+script = ExtResource("1_bank")
+deferred = true
+label = "The perk drink (#912): the cap off, the gulps, the empty bottle thrown away; played by the drink clip"
+sounds = Array[ExtResource("2_def")]([SubResource("Resource_drink_open"), SubResource("Resource_drink_gulp"), SubResource("Resource_drink_discard")])

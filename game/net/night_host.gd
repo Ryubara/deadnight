@@ -1,6 +1,6 @@
 class_name NightHost
 extends Node
-## The game server: one night hosted over WebSocket for up to `MAX_PLAYERS` players. It is what
+## The game server: one night hosted over WebSocket for up to `MAX_PLAYERS` people. It is what
 ## `godot --headless --path game -- --server [--port N]` runs (`Main` starts it), and what a test
 ## can add to a scene to have a server in the same process.
 ##
@@ -8,7 +8,8 @@ extends Node
 ## `SEND_EVERY` steps tells each client the events since the last time and the frame, as a
 ## difference against the frame that client had (`FrameDelta`). The first player to arrive starts
 ## the night; when the last one leaves, the next night is built afresh (a night is not resumed).
-## Players get the lowest free id of 1 to `MAX_PLAYERS`, which is also their seat in the lot.
+## People get the lowest free id of 1 to `MAX_PLAYERS`, which is also their seat in the lot. Bots
+## hold no such seat: their ids start at `NightBots.FIRST_ID` (#1179).
 ##
 ## The server speaks plain `ws://`: on Railway the edge terminates TLS and clients use `wss://`.
 ## It reads its port from the command line (`--port N`) or `$PORT`, and logs one JSON object a line.
@@ -22,15 +23,27 @@ signal player_left(player_id: int)
 ## A player's socket dropped and the seat is held for them; and they came back on a new one.
 signal player_away(player_id: int)
 signal player_resumed(player_id: int)
+## A person's seat is empty for good (they left, closed the tab, or their dropped socket was not
+## taken back in time) while the night was on. Not said once the night has closed: the people there
+## then are the ones the lobby opens again for (`returning`). `user` is the backend's id.
+signal user_left(user: String)
 ## The night is built and the room takes players.
 signal built
+## What the seats with an account earned, to be posted to the backend: at the end of a round
+## (`final` false, `round_number` the one that ended) and once at the night's end (`final` true).
+## Never once per kill. `seats` are `XpAward.take_report`'s entries. The `GameServer` queues them.
+signal report_ready(round_number: int, final: bool, seats: Array)
+## A seat's account sat down: the `GameServer` reads its board once and answers `board_arrived`.
+signal board_wanted(user: String)
 ## An embedded room's night began and everyone has gone: the `GameServer` ends and frees it.
 signal emptied
 
-## Seats in a room: people and bots together. The one place the limit is written: `NightBots.SEATS`
-## and `LookServer.SEATS` are held equal to it by a test, `MatchSettings.MAX_BOTS` is one less (a
-## person always holds a seat), and the backend's `MAX_PLAYERS` (spikes/backend) mirrors it.
+## People in a room, bots not counted. The one place the limit is written: `LookServer.SEATS` is
+## held equal to it by a test, and the backend's `MAX_PLAYERS` (spikes/backend) mirrors it. The
+## bots come on top of it (`MatchSettings.MAX_BOTS`), so a night holds at most `MAX_SEATS` bodies.
 const MAX_PLAYERS := 8
+## The most bodies one night holds: 8 people and the 7 bots the host may set.
+const MAX_SEATS := MAX_PLAYERS + MatchSettings.MAX_BOTS
 ## The longest name a seat shows, as the HUD keeps it (`HudStyle.NAME_LIMIT`), so the ` (2)` of a
 ## duplicate is never cut off.
 const NAME_MAX := 20
@@ -69,6 +82,15 @@ var alive_share := 0
 ## kill-switch). Set with `set_bot_limit`.
 var bot_limit := MatchSettings.MAX_BOTS
 var log_enabled := true
+## False: the room awards no XP (the measurement's arm without the tally).
+var xp_awards := true
+## False: the room follows no challenge board (the measurement's arm without the tracker).
+var challenge_awards := true
+## What the players are asked and its day; unset, the shipped catalogue and UTC. Tests set them.
+var challenge_catalog: ChallengeCatalog
+var challenge_clock: ChallengeClock
+## The poster sets a finished challenge may complete; unset, the shipped ones. Tests set it.
+var poster_sets: PosterSets
 ## The seconds the connection rules (a peer's rates, the hello, a seat held for a returning player)
 ## are timed by. Empty is the machine's clock; a soak that plays faster than real time gives the
 ## game's own (`Engine.get_physics_frames` over the tick rate), so a minute of play is a minute to
@@ -108,6 +130,9 @@ var steps := 0
 var phase := 0
 var work_ms := 0.0
 var worst_ms := 0.0
+## When on, the milliseconds of every step are kept in `tick_log` (a measurement's, off in play).
+var record_ticks := false
+var tick_log := PackedFloat32Array()
 ## The nights built so far.
 var nights := 0
 ## Peers hung up on for breaking `PeerLimits`.
@@ -118,6 +143,11 @@ var kicked_count := 0
 ## the lobby for them.
 var finished := false
 var returning: Array[String] = []
+## Reports made (`report_ready`), and whether the night's own has gone.
+var reports_made := 0
+var night_reported := false
+## The calling card and emblem each seat with an account wears, held to what the seat owns.
+var plates := PlateTable.new()
 
 var _peers: Dictionary[int, HostPeer] = {}
 var _by_player: Dictionary[int, HostPeer] = {}
@@ -125,7 +155,7 @@ var _by_player: Dictionary[int, HostPeer] = {}
 ## are left out and are `PLAYER n` on every screen. Kept with the seat while it is away.
 var _names: Dictionary = {}
 ## Players whose socket dropped, by id: their seat, kept until they come back or the time is up.
-var _away: Dictionary[int, Away] = {}
+var _away: Dictionary[int, HostAway] = {}
 var _events: Array[Dictionary] = []
 ## What the server said outside a step (a join, a name, a ping a bot made) that the bots have not
 ## heard yet: they hear it with the next step's events.
@@ -182,6 +212,7 @@ func _physics_process(_delta: float) -> void:
 	var events := server.step(Night.STEP, framed)
 	var frame: Dictionary = events.pop_back() if framed else {}
 	_events.append_array(events)
+	_report_what_is_due()
 	if not finished and server.closed():
 		_finish()
 	_run_bots(events, frame)
@@ -191,6 +222,8 @@ func _physics_process(_delta: float) -> void:
 	var spent := (Time.get_ticks_usec() - began) / 1000.0
 	work_ms += spent
 	worst_ms = maxf(worst_ms, spent)
+	if record_ticks:
+		tick_log.append(spent)
 	_stats_work += spent
 	_close_refused()
 	_close_silent()
@@ -226,7 +259,7 @@ func users() -> Array[String]:
 	for peer: HostPeer in _by_player.values():
 		if peer.user != "" and not out.has(peer.user):
 			out.append(peer.user)
-	for away: Away in _away.values():
+	for away: HostAway in _away.values():
 		if away.user != "" and not out.has(away.user):
 			out.append(away.user)
 	return out
@@ -234,6 +267,13 @@ func users() -> Array[String]:
 
 func player_count() -> int:
 	return _by_player.size()
+
+
+## The people who hold a seat of the room: connected ones and those whose socket dropped and whose
+## seat is held. Never a bot (a bot holds no seat), so this is the number the cap of
+## `MAX_PLAYERS` counts and the one the backend is told.
+func people_count() -> int:
+	return _by_player.size() + _away.size()
 
 
 ## The round the night is in (0 before the first begins, and while there is no night): what the
@@ -292,6 +332,13 @@ func _build_night() -> void:
 	bots.limit = bot_limit
 	_unheard.clear()
 	server.crowd.limit = alive_limit()
+	server.xp.enabled = xp_awards
+	server.challenges.enabled = challenge_awards
+	server.challenges.catalog = challenge_catalog
+	server.challenges.sets = poster_sets
+	if challenge_clock != null:
+		server.challenges.clock = challenge_clock
+	night_reported = false
 	_events.clear()
 	nights += 1
 	serving = true
@@ -340,12 +387,15 @@ func _hz() -> int:
 
 
 ## A `GameServer` hands this room a connection (`user` is who the backend's ticket says it is).
-func attach(transport_id: int, user: String = "", user_name: String = "") -> void:
+func attach(
+	transport_id: int, user: String = "", user_name: String = "", account: Dictionary = {}
+) -> void:
 	_on_connected(transport_id)
 	var peer: HostPeer = _peers.get(transport_id)
 	if peer != null:
 		peer.user = user
 		peer.user_name = user_name
+		peer.account = account
 
 
 ## What the connection sent, from a `GameServer` that routes it here.
@@ -367,7 +417,7 @@ func peer_of(transport_id: int) -> HostPeer:
 func owns_token(token: PackedByteArray) -> bool:
 	if token.size() != NetWire.TOKEN_SIZE:
 		return false
-	for away: Away in _away.values():
+	for away: HostAway in _away.values():
 		if away.token == token:
 			return true
 	for peer: HostPeer in _by_player.values():
@@ -404,30 +454,34 @@ func _on_disconnected(transport_id: int) -> void:
 		and not peer.kicked
 		and not on_purpose
 		and _night_began()
+		and not finished
 	):
 		# The body stays where it is, with no commands coming (it stands still after a moment);
 		# the player takes it back with the token, or the time runs out.
-		_away[peer.player_id] = Away.new(peer.token, _now() + resume_within, peer.user)
+		_away[peer.player_id] = HostAway.new(peer.token, _now() + resume_within, peer.user)
 		_log("away", {"player": peer.player_id, "players": _by_player.size()})
 		player_away.emit(peer.player_id)
 		return
-	_free_seat(peer.player_id)
+	_free_seat(peer.player_id, peer.user)
 
 
 ## Frees a seat for good: the body leaves the lot and the id can be given to someone new.
-func _free_seat(player_id: int) -> void:
+func _free_seat(player_id: int, user: String = "") -> void:
 	_away.erase(player_id)
 	_names.erase(player_id)
 	if server != null:
-		var inherited := _bot_inherits(player_id)
-		if inherited.is_empty():
-			_collect(server.apply({"type": NightServer.LEAVE, "player_id": player_id}))
-		else:
-			_collect(inherited)
-		# Seats the people leave free fill with bots while the others are still here.
-		_fill_bots()
+		if server.xp.has_seat(player_id):
+			_collect([{"type": &"account_left", "player_id": player_id}])
+		server.xp.release(player_id)
+		plates.release(player_id)
+		server.challenges.release(player_id)
+		# The seat has no account now.
+		server.player_levels.erase(player_id)
+		_collect(server.apply({"type": NightServer.LEAVE, "player_id": player_id}))
 	_log("left", {"player": player_id, "players": _by_player.size()})
 	player_left.emit(player_id)
+	if user != "" and not finished:
+		user_left.emit(user)
 
 
 func _expire_away() -> void:
@@ -435,7 +489,7 @@ func _expire_away() -> void:
 	for player_id in _away.keys():
 		if now >= _away[player_id].until:
 			_log("expired", {"player": player_id})
-			_free_seat(player_id)
+			_free_seat(player_id, _away[player_id].user)
 
 
 func _on_packet(transport_id: int, data: PackedByteArray) -> void:
@@ -481,6 +535,17 @@ func _on_player_packet(peer: HostPeer, data: PackedByteArray) -> void:
 				_fault(peer)
 				return
 			server.crowd.set_platform(peer.player_id, web == 1)
+		NetWire.Type.ARRIVAL:
+			var begin := NetWire.read_arrival(data)
+			if begin < 0:
+				_fault(peer)
+				return
+			_collect(
+				server.apply(
+					{"type": NightServer.ARRIVAL, "player_id": peer.player_id, "begin": begin == 1},
+					peer.player_id
+				)
+			)
 		NetWire.Type.MARK:
 			var mark := NetWire.read_mark(data)
 			if mark.is_empty():
@@ -525,66 +590,101 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 	peer.player_id = player_id
 	peer.token = Crypto.new().generate_random_bytes(NetWire.TOKEN_SIZE)
 	_by_player[player_id] = peer
-	if bots.holds(player_id):
-		# The seat is a bot's: the person takes it as it stands, and the round goes on. The name
-		# goes first, so the notice the others read says who, and a person without a name gets
-		# the usual `PLAYER n` in the bot's place.
-		_name_seat(player_id, peer.user_name)
-		if not _names.has(player_id):
-			_collect(
-				[{"type": &"player_named", "player_id": player_id, "name": "PLAYER %d" % player_id}]
-			)
-		_collect(bots.hand_over(player_id))
-		_collect(server.apply({"type": NightServer.RESYNC, "player_id": player_id}))
-	else:
-		# The name goes out before the join, so the others' notice reads "ANN JOINED", not "PLAYER 2".
-		_name_seat(player_id, peer.user_name)
-		_collect(server.apply({"type": NightServer.JOIN, "player_id": player_id, "local": false}))
+	register_account(player_id, peer.user, peer.account)
+	# The name goes out before the join, so the others' notice reads "ANN JOINED", not "PLAYER 2".
+	_name_seat(player_id, peer.user_name)
+	_collect(server.apply({"type": NightServer.JOIN, "player_id": player_id, "local": false}))
 	if not _night_began():
 		_collect(server.apply({"type": NightServer.START_NIGHT}))
 	_fill_bots()
 	listener.send(
-		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, _welcome_snapshot())
+		peer.transport_id,
+		NetWire.welcome(player_id, _hz(), peer.token, _welcome_snapshot(player_id))
 	)
 	_log("joined", {"player": player_id, "players": _by_player.size()})
 	player_joined.emit(player_id)
 
 
 ## What a WELCOME carries: the rules' snapshot and the names of the seats (`names`: player id ->
-## name, the bots' too), so a client that joins late, or comes back, shows everyone by name at once.
-func _welcome_snapshot() -> Dictionary:
+## name, the bots' too), so a client that joins late, or comes back, shows everyone by name at once;
+## the level of every seat with an account (`levels`: player id -> level, a bot has none); and the
+## joiner's own raw XP (`account_xp`, from the ticket the server verified and what the night added),
+## so its bar is right before the first `xp_gained`.
+func _welcome_snapshot(for_player: int = 0) -> Dictionary:
 	var snapshot := server.rules.to_dict()
 	var names := bots.names()
 	names.merge(_names, true)
 	snapshot["names"] = names
+	snapshot["levels"] = server.xp.levels()
+	snapshot["plates"] = plates.to_dict()
+	if server.xp.has_seat(for_player):
+		snapshot["account_xp"] = server.xp.total_of(for_player)
 	return snapshot
 
 
-## The events of a bot taking the seat of the person who just left, as it stands (body, points,
-## weapons): when the night has begun, other people are still here and the room wants one more bot.
-## Empty when not (the seat is then freed).
-func _bot_inherits(player_id: int) -> Array[Dictionary]:
-	var people := _people()
-	if not _night_began() or _night_over() or people.is_empty():
-		return []
-	if not bots.wants_more(server.rules.settings.bots, people.size()):
-		return []
-	return bots.adopt(player_id)
-
-
-## The seats people hold, away or not.
-func _people() -> Array:
-	var ids: Array = _by_player.keys()
-	ids.append_array(_away.keys())
-	return ids
-
-
-## Seats bots up to the setting, in the seats the people leave free. Only once the night has begun,
-## and never for a night with nobody in it.
-func _fill_bots() -> void:
-	if not _night_began() or _night_over() or _people().is_empty():
+## Gives a seat the account the backend's ticket said (`user` is the ticket's `sub`; `""`, a server
+## with no backend, is no account and earns nothing). The XP is the ticket's alone.
+func register_account(player_id: int, user: String, account: Dictionary = {}) -> void:
+	if user == "" or server == null:
 		return
-	_collect(bots.fill(server.rules.settings.bots, _people()))
+	var seated := server.xp.has_seat(player_id)
+	server.xp.register(player_id, user, int(account.get("xp", 0)), server.rules.round_number)
+	if not server.xp.has_seat(player_id):
+		return
+	# What the seat may wear is held to the level the ticket's XP gives (#1065).
+	var level: int = server.xp.levels()[player_id]
+	server.player_levels[player_id] = level
+	plates.seat(player_id, account, level)
+	if not seated:
+		# Everyone already here learns this seat's level and plate (the joiner reads the others' in
+		# its WELCOME).
+		_collect([plates.seated_event(player_id, level)])
+	# The seat's challenges are followed from its board, which is read once and never waited for.
+	if server.challenges.seat(player_id, user):
+		board_wanted.emit(user)
+
+
+## The backend's answer to `board_wanted` (`status` 0: none). No board: not followed, not written.
+func board_arrived(user: String, status: int, envelope: Variant) -> void:
+	if server != null:
+		server.challenges.arrived(user, status, envelope)
+
+
+## A round ended (or the night did): what the seats earned goes out as a report, once. The night's
+## report is the last and lists every seat.
+func _report_what_is_due() -> void:
+	if not server.xp.has_due():
+		return
+	for due in server.xp.take_due():
+		_report(due["round"], due["final"])
+
+
+func _report(round_number: int, final: bool) -> void:
+	if final:
+		if night_reported:
+			return
+		night_reported = true
+	var seats := server.xp.take_report(final)
+	server.challenges.fill_report(seats)
+	if seats.is_empty():
+		return
+	reports_made += 1
+	report_ready.emit(round_number, final, seats)
+
+
+## The room is closing: what was earned and not yet reported (everyone left in the middle of a
+## round) goes out as the night's report. `GameServer` calls it before it frees the room.
+func close_reports() -> void:
+	if server != null and not night_reported:
+		_report(server.rules.round_number, true)
+
+
+## Seats bots up to the setting, in the ids of their own. Only once the night has begun, and never
+## for a night with nobody in it.
+func _fill_bots() -> void:
+	if not _night_began() or _night_over() or (_by_player.is_empty() and _away.is_empty()):
+		return
+	_collect(bots.fill(server.rules.settings.bots))
 
 
 ## Lets the bots hear the step and decide. `frame` is this step's frame (built on every step when
@@ -643,7 +743,7 @@ func _claim_seat(token: PackedByteArray, user: String = "") -> int:
 	# The seat of a ticket's user is theirs whatever token they hold: a second tab or a reload with
 	# a new ticket takes the seat back instead of making a second player.
 	for player_id in _away:
-		var held: Away = _away[player_id]
+		var held: HostAway = _away[player_id]
 		if (by_token and held.token == token) or (user != "" and held.user == user):
 			return player_id
 	for player_id in _by_player:
@@ -664,8 +764,10 @@ func _resume(peer: HostPeer, player_id: int) -> void:
 	peer.token = Crypto.new().generate_random_bytes(NetWire.TOKEN_SIZE)
 	peer.zombie_base = {}
 	_by_player[player_id] = peer
+	register_account(player_id, peer.user, peer.account)
 	listener.send(
-		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, _welcome_snapshot())
+		peer.transport_id,
+		NetWire.welcome(player_id, _hz(), peer.token, _welcome_snapshot(player_id))
 	)
 	_collect(server.apply({"type": NightServer.RESYNC, "player_id": player_id}))
 	_log("resumed", {"player": player_id, "players": _by_player.size()})
@@ -724,7 +826,7 @@ func _close_refused() -> void:
 			listener.disconnect_peer(peer.transport_id)
 
 
-## The lowest seat no person holds: a seat a bot holds counts as free, since a person takes it.
+## The lowest id of a person no one holds (a seat held for a dropped socket is held).
 func _free_player_id() -> int:
 	for id in range(1, MAX_PLAYERS + 1):
 		if not _by_player.has(id) and not _away.has(id):
@@ -837,49 +939,3 @@ func _log(event: String, fields: Dictionary = {}) -> void:
 		line["room"] = room_id
 	line.merge(fields)
 	print(JSON.stringify(line))
-
-
-## A seat held for a player whose socket dropped.
-class Away:
-	extends RefCounted
-	var token: PackedByteArray
-	## When the seat is given up (the host's clock, seconds).
-	var until: float
-	## The backend's user id of the player (`""` without a ticket).
-	var user: String
-
-	func _init(p_token: PackedByteArray, p_until: float, p_user: String = "") -> void:
-		token = p_token
-		until = p_until
-		user = p_user
-
-
-## One connection to the server.
-class HostPeer:
-	extends RefCounted
-	var transport_id: int
-	## 0 until the client has said hello and been given a seat.
-	var player_id := 0
-	## The frame this client last had, the baseline of the next delta.
-	var last_frame: Dictionary = {}
-	## Ticks in a row the socket would not take (the client stopped reading).
-	var missed_ticks := 0
-	## The step at which a refused client is hung up on, or -1.
-	var close_at := -1
-	var refused := false
-	var kicked := false
-	## When the connection opened (seconds), for the time it has to say hello.
-	var connected_at := 0.0
-	var limits := PeerLimits.new()
-	## The zombies this client has (`ZombieDelta`), and the number of the next delta to it.
-	var zombie_base: Dictionary[int, PackedByteArray] = {}
-	var zombie_sequence := 0
-	## What the client was given at WELCOME to take its seat back with.
-	var token := PackedByteArray()
-	## Who the backend's ticket says this is (`""` when the server has no backend), and their name.
-	var user := ""
-	var user_name := ""
-
-	func _init(p_transport_id: int, now: float = 0.0) -> void:
-		transport_id = p_transport_id
-		connected_at = now

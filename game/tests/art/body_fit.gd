@@ -278,6 +278,11 @@ func _first(from: Vector3, to: Vector3, layer: int) -> Array:
 	return [(hit.position as Vector3).distance_to(from), hit.position]
 
 
+## The first surface a segment meets, from either side: [distance, position] or [] for none.
+func first_hit(from: Vector3, to: Vector3) -> Array:
+	return _first(from, to, _layer_both)
+
+
 ## Rays at `centre` from `azimuths` x `elevations` directions, each over a grid of `grid` x `grid`
 ## points across `radius`: the places where the eye sees through the body, as positions of the
 ## back face first met.

@@ -56,6 +56,28 @@
     "step_left": 10
    },
    "ground_speed": 6.6
+  },
+  "Climb_Sill": {
+   "loop": false,
+   "frames": 44,
+   "seconds": 1.833,
+   "events": {
+    "rise": 0,
+    "over": 8,
+    "down": 36,
+    "end": 44
+   }
+  },
+  "Crawl_Climb": {
+   "loop": false,
+   "frames": 44,
+   "seconds": 1.833,
+   "events": {
+    "rise": 0,
+    "over": 8,
+    "down": 36,
+    "end": 44
+   }
   }
  }
 }

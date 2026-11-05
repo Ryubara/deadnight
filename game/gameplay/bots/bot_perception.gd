@@ -73,7 +73,7 @@ func observe(
 	view_yaw: float
 ) -> void:
 	beliefs.now = now
-	if think:
+	if think and not beliefs.blows.is_empty():
 		beliefs.blows.assign(
 			beliefs.blows.filter(
 				func(blow: Dictionary) -> bool: return now - blow["at"] <= BLOW_MEMORY
@@ -82,10 +82,15 @@ func observe(
 	if beliefs.contacts.is_empty() and not think:
 		return
 	var here: Vector3 = me.get("pos", Vector3.ZERO)
+	# The zombies of the frame that the bot holds a contact on, by id: the bot reads no other (the
+	# crowd is a hundred, its contacts a handful).
 	var by_id := {}
 	if not beliefs.contacts.is_empty():
+		var contacts := beliefs.contacts
 		for zombie in zombies:
-			by_id[zombie["id"]] = zombie
+			var id: int = zombie["id"]
+			if contacts.has(id):
+				by_id[id] = zombie
 		_drop_gone(by_id)
 	if think:
 		_look(zombies, here, round_number, view_yaw)
@@ -148,14 +153,15 @@ func _sees(eye: Vector3, zombie: Dictionary) -> bool:
 	var look: StringName = zombie.get("look", ZombieModels.DEFAULT)
 	var mode: int = zombie.get("mode", ZombieBody.Mode.CHASE)
 	var yaw := float(zombie.get("yaw", 0.0))
+	var climbing: bool = zombie.get("climbing", false)
 	var base: Vector3 = zombie["position"]
 	rays_last += 1
-	if _level.clear(eye, base + ZombiePose.aim_offset(look, mode, yaw, Hitbox.BODY)):
+	if _level.clear(eye, base + ZombiePose.aim_offset(look, mode, yaw, Hitbox.BODY, climbing)):
 		return true
 	if rays_last >= _profile.rays_per_think:
 		return false
 	rays_last += 1
-	return _level.clear(eye, base + ZombiePose.aim_offset(look, mode, yaw, Hitbox.HEAD))
+	return _level.clear(eye, base + ZombiePose.aim_offset(look, mode, yaw, Hitbox.HEAD, climbing))
 
 
 func _sighted(zombie: Dictionary) -> void:
@@ -169,6 +175,7 @@ func _sighted(zombie: Dictionary) -> void:
 			"velocity": Vector3.ZERO,
 			"look": zombie.get("look", ZombieModels.DEFAULT),
 			"mode": zombie["mode"],
+			"climbing": zombie.get("climbing", false),
 			"status": zombie.get("status", 0),
 			"yaw": zombie.get("yaw", 0.0),
 			"episode": zombie.get("episode", 0),

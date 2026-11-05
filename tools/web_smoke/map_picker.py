@@ -146,6 +146,7 @@ def run_device(url: str, out: Path, label: str, device: str, problems: list[str]
         else:
             context = browser.new_context(viewport=DESKTOP)
         page = context.new_page()
+        smoke.give_level(page, 10)  # the second map is the back rooms, which a fresh player has not opened
         page.on(
             "pageerror",
             lambda e: None if any(t in str(e) for t in IGNORED) else problems.append(f"[{device}] {e}"),
@@ -158,7 +159,7 @@ def run_device(url: str, out: Path, label: str, device: str, problems: list[str]
                 else None
             ),
         )
-        page.goto(url + ("?touch=1" if phone else ""), wait_until="commit")
+        page.goto(url + ("&touch=1" if phone and "?" in url else "?touch=1" if phone else ""), wait_until="commit")
         smoke.reach_menu(page)
         try:
             if phone:
@@ -210,7 +211,7 @@ def main() -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     deployed = args.build.startswith(("http://", "https://"))
     server, port = (None, 0) if deployed else smoke.serve(Path(args.build))
-    url = args.build if deployed else f"http://127.0.0.1:{port}/index.html"
+    url = smoke.probing(args.build) if deployed else f"http://127.0.0.1:{port}/index.html"
     problems: list[str] = []
     results = [run_device(url, args.out, args.label, device, problems) for device in ("desktop", "touch")]
     if server:

@@ -3,7 +3,7 @@ extends Resource
 ## How the Soldier's hands hold one weapon model (Deadnight #460): where the model sits in the right
 ## hand, how every finger of that hand bends round it, and where the left hand takes it and how its
 ## fingers bend. Data, one file per model in `grips/`, written by the grip solver
-## (`game/tests/art/solve_grips.gd`) from the model's own hand sockets (`Grip`, `Trigger`,
+## (`game/tools/art/solve_grips.gd`) from the model's own hand sockets (`Grip`, `Trigger`,
 ## `Support`: docs/design/animation.md, "Grips"); `HandGripPose` puts it on the skeleton and the
 ## test `test_hand_grips.gd` measures it, so no number here is typed by hand.
 

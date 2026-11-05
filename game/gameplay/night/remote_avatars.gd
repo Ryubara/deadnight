@@ -102,6 +102,7 @@ func apply_frame(frame: Dictionary) -> void:
 					"pos": player["pos"],
 					"facing": player["facing"],
 					"downed": player["downed"],
+					"dropping": player.get("dropping", false),
 					"aim": player.get("aim", false),
 					"pitch": player.get("pitch", 0),
 					"stance": PlayerStance.clean(player.get("stance", 0)),
@@ -196,6 +197,9 @@ func _place(player_id: int, delta: float) -> void:
 	drawn.show_at(
 		pos, facing, last["downed"], last["aim"], pitch * NightServer.PITCH_STEP, stance, delta
 	)
+	# A player still in the helicopter of their arrival is on their own screen only (#1057): the
+	# others see nothing of them until they land.
+	drawn.body.visible = not last["dropping"]
 
 
 ## One player's drawn body: placed, turned, and given the speed, the aim and the look it is moving

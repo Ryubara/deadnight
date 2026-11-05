@@ -16,6 +16,10 @@ func test_every_preset_has_a_far_look_within_the_budget() -> void:
 		var far := SoldierLook.far_meshes(model)
 		for mesh_name: String in SoldierLook.part_meshes(model):
 			var near: MeshInstance3D = SoldierLook.part_meshes(model)[mesh_name]
+			if mesh_name.begins_with("mouth__"):  # no far mesh: one mesh at every distance
+				assert_bool(far.has(mesh_name)).is_false()
+				assert_float(near.visibility_range_end).is_equal(0.0)
+				continue
 			var fi: MeshInstance3D = far[mesh_name]
 			assert_bool(fi.visible).is_equal(near.visible)
 			if near.visible:

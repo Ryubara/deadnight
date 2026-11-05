@@ -214,11 +214,12 @@ Pull requests #920, #943 and #965 failed the gate on nights in the range of `mai
   18.0 s. The old limit (5.5 over a floor of 8 s, set from 28 runs) failed 8 of these 181 healthy runs, #965's 85.9 s
   among them.
 - **No divisor the runs recorded predicts the night.** Log correlation with the night: menu 0.58, idle menu frame 0.51
-  (and #920's idle frames were 99 to 131 ms on a still stage, which is not explained), the running night's frame time
-  0.71, the lot's first steps 0.62. A fit of the night on any of them, or on two, leaves a spread (leave-one-out) of
-  0.22 to 0.27 in the logarithm against 0.29 for no predictor; replaying the gate with each as the divisor, at a limit
-  that passes all 181 runs, fails the same share of a night made 1.5, 2 and 3 times longer (6 to 10 %, 35 to 56 %,
-  86 to 97 %) whichever it is. Within a run the slow steps vary too ("Setting the scene: moonlight" 3 to 26 s).
+  (and #920's idle frames were 99 to 131 ms on a still stage: [the idle menu after #920](#the-idle-menu-after-920-989)),
+  the running night's frame time 0.71, the lot's first steps 0.62. A fit of the night on any of them, or on two, leaves
+  a spread (leave-one-out) of 0.22 to 0.27 in the logarithm against 0.29 for no predictor; replaying the gate with each
+  as the divisor, at a limit that passes all 181 runs, fails the same share of a night made 1.5, 2 and 3 times longer (6
+  to 10 %, 35 to 56 %, 86 to 97 %) whichever it is. Within a run the slow steps vary too ("Setting the scene: moonlight"
+  3 to 26 s).
 - **So the divisor is chosen to be steady, not to explain**: the menu's time floored at **14 s**, the median menu.
   A menu that loads faster (or slower, to 14 s) no longer moves the gate; a slow runner still raises the divisor with its
   menu. The limit is **7.5**, 10 % over the worst of the 181 (6.8 at that floor); the backstop stays 150 s.
@@ -236,6 +237,58 @@ What is left with a GPU is 8 lit `StandardMaterial3D` settings combinations at 1
 a double-sided textured one, the emissive-and-textured one of the soldier and the dead): the next cut is a material that
 looks different, so it is an artist's decision, not made here. `tests/night/test_load_cost.gd` fails when the night
 draws more than 8, and lists them.
+
+### The idle menu after #920 (#989)
+
+The smoke's `menu_frames` (the mean of `requestAnimationFrame` over 3 s, 2.5 s after the menu's first click, the stage a
+still) was 99 to 145 ms on 10 of 58 runs after #920 (merged 12:26 UTC, 4 November) against 22 of 704 before it, though
+the median did not move (97.8 and 98.5 ms). It is the runner's CPU model, which sits on the 120 ms line, plus about 1 %
+that #920 added. What settles it:
+
+- **The same build is 60 to 120 ms on the CI runners, by CPU model.** A throwaway workflow (a push trigger on the issue's
+  branch, a matrix of 20 jobs, `lscpu` in each) downloaded the `web-build` of #920's parent, of #920 and of a later
+  `main`, and ran `tools/web_smoke/menu_idle.py` on all three in turns on each runner, taking the smoke's own steps (the
+  probe, a screenshot) and then its 3 s window. Median of that window, ms (runners; `ubuntu-24.04`, one label):
+
+  | CPU | runners | #920's parent | #920 | later `main` |
+  | --- | --- | --- | --- | --- |
+  | AMD EPYC 9V45 | 6 | 60.8 | 60.2 | 59.1 |
+  | Intel Xeon 6975P-C | 1 | 73.4 | 73.1 | 73.1 |
+  | AMD EPYC 9V74 | 6 | 80.0 | 80.5 | 79.7 |
+  | AMD EPYC 7763 | 3 | 97.8 | 101.2 | 99.0 |
+  | Intel Xeon Platinum 8573C | 1 | 98.4 | 100.0 | 98.5 |
+  | **Intel Xeon Platinum 8370C** | 3 | **119.3** | **121.1** | **117.0** |
+
+  Windows at or over 120 ms: 8370C 3, 8 and 1 of 12; every other CPU 0 of 68 for each build. A census of the 66 runners
+  these runs landed on: 9V74 23, 7763 18, 9V45 9, 6975P 7, 8573C 5, 8370C 4 (6 %; none in the first 18 runners, 1 of
+  24, then 3 of 20), and four image versions (which did not sort the frames). The slow runs of the CI history, 120 to 135
+  ms (3 % of the runs before #920), are the 8370C's band.
+- **#920 cost about 1 %, and the 120 ms line sits on the 8370C.** Per runner, #920 over its parent: mean ratio 1.010 (15
+  of 20 runners slower, sign test p 0.02; +0.9 ms on a 9V74, +3.1 on a 7763, +1.9 on an 8370C); a later `main` over #920:
+  0.982 (17 of 20 faster; the probe reads removed in #982 and #1029 are among the merges between). A 1 to 2 ms step moves
+  an 8370C's windows across 120: 3 of 12 before, 8 of 12 with #920, 1 of 12 on `main`. The share over the line is a
+  product of this and of how many 8370Cs a run got; the idle frame is not gated, so no threshold changed.
+- **The stage's work in a frame is the same, and the page comes up sooner.** Counts per idle frame in both builds: 277
+  draws, 1 clear, 1 blit, 6 framebuffer bindings (`menu_trace`; before and after on a 16-core machine 20.4 against 20.3
+  ms, on 2 cores 30.3 against 29.2). On the same runners the menu is up in 8.4 to 10 s with #920 against 13 to 17 s
+  before (the 5 s that moved the night-load gate, #966). Without the probe read and the screenshot the smoke does before
+  its window, #920's parent read 150 to 2 600 ms in 78 of 96 windows (the page was still busy); #920's build read as
+  everywhere else (the 4 windows over 120 are the 8370C's).
+- **The runs of the CI history cannot be sorted by CPU, and what they show is the same.** The 1 217 `web-smoke`
+  artifacts of 2 to 4 November (read with `tools/web_smoke/smoke_history.py`, 70 KB a run): the idle frame follows the
+  runner's speed on a step #920 does not touch (the Godot export step, rank correlation 0.71 before and 0.72 after);
+  the share over 120 ms was 9 of 67 runs from 15:00 UTC on 2 November, with no #920 (against 10 of 58 after it, Fisher p
+  0.62), and 0 of 15 after 15:46 UTC on 4 November; the first 34 minutes after the merge had 5 slow runs of 13. Those
+  hours may have had more 8370Cs than the census's 6 %; the artifacts of that day carry no CPU model to check.
+- **From now on the smoke writes the machine.** `result.json` has `machine` (`cpu_model`, `cpus`, `usable_cpus`,
+  `loadavg`); `smoke_history.py --out <file> --summary` prints the idle frame by hour and by CPU model, so the next
+  time a share of runs reads slow, the table says whether the runners changed. The smoke's `menu_trace` (9 s more of the
+  idle menu with the WebGL call counts) stays.
+
+Two traps met on the way: a probe that wraps the engine's WebGL calls and skips the smoke's probe read and screenshot
+reads #920's parent at 150 to 2 600 ms a window (above), so a probe copies the gate's steps before its window; and the
+same label gave 60 and 120 ms in one batch, so a runner's frame time is read beside its CPU model or in turns on one
+runner, never by two sets of runs.
 
 ### The load grew again, and where (#828)
 
@@ -401,6 +454,44 @@ replaced by a newer-arriving one that is an older commit; then the replaced (new
 run, and the live build is the newest *deployed* green commit until the next green merge, or **Actions, ci, Run
 workflow** on `main`. Re-running the `deploy` job of an earlier run skips when a newer commit is live; to go back to an
 earlier build, roll back in Railway (below).
+
+### Failures from outside: what is repeated, and what never is
+
+Two runs failed in one afternoon for reasons outside the repository and passed on a rerun by hand (#1269): the
+`actionlint` job got a 92 byte body in place of the archive (rhysd's download script pipes `curl -L` into `tar`, so
+the job said only `gzip: stdin: not in gzip format`), and `deploy` failed with Railway's `failed to fetch snapshot` /
+`Deploy failed: Failed to build an image` (a FAILED deployment; the web page sat behind the backend and the server for
+minutes and main opened a second alert on #1265). Whether the cause was a rate limit is a guess: the body was not
+read. The new download prints it next time.
+
+| Step | What happens now | Worst case, inside |
+| --- | --- | --- |
+| `actionlint` download | `tools/ci/fetch_actionlint.sh`: to a file, `--max-time 60`; an attempt counts when the status is 200, the file is gzip, `actionlint` is in it and it prints the version asked for; a failure prints the status line, size, `retry-after` / `x-ratelimit-*` headers and the first 200 characters of the body; four attempts, 10 s and 20 s and 30 s between | about 5 minutes, job `timeout-minutes: 10` (it had none) |
+| `npm install --global @railway/cli` (three deploy jobs) | `tools/ci/retry.sh -n 3 -p 10 -t 90` | about 5 minutes of 20 / 30 |
+| `gds workspace init --fetch ...` (`godot`, `bots-soak`, `web`) | `retry.sh -n 2`, 150 s each (300 s for the templates in `web`) | 5 minutes (10 in `web`, a job of 40) |
+| `playwright install` and `install-deps` | `retry.sh -n 2 -t 240` | 8 minutes, inside the step's 10 |
+| `railway up` in `deploy/web`, `deploy/server`, `deploy/backend` | `deploy/railway_up.sh`: up to three uploads, 20 s and 40 s between; **repeated only when nothing is alive** (below) | the script ends at `RAILWAY_DEPLOY_SECONDS`: 960 s in `deploy` and `deploy-backend` (jobs of 20 minutes), 1500 s in `deploy-server` (30); an attempt gets the least of its own limit and the seconds left less 180 s kept for the health check |
+
+A deploy is not a download, so a second `railway up` is allowed only after the service itself has been asked. Before an
+attempt the newest deployment's id is read; after a failed one it is read again:
+
+- no new deployment (the upload never got there), or a new one that is `FAILED`, `CRASHED` or `REMOVED` (it is over: the
+  snapshot case): upload again;
+- a new one that is `SUCCESS`, `BUILDING`, `DEPLOYING`, `QUEUED` and the like (the CLI's stream broke, the build did not):
+  never upload again; the script's own wait for the deployment follows it, and the job fails if it ends `FAILED`;
+- the CLI cannot list the deployments (nothing shows that none is alive): the failure stands.
+
+A Dockerfile that really does not build still fails the job, after three builds instead of one, with every attempt's log
+in the job. A script with neither `RAILWAY_TOKEN` nor a linked project is refused: `railway up` on a folder called `stage`
+had made a Railway project named `stage` in the account (an old one is still there) and it did so again in a probe of this
+change. The wait loops also keep asking when one `deployment list` call fails, and stop at the script's time.
+
+`bash deploy/test_railway_up.sh` runs the three real scripts against a fake `railway` first on the PATH (a FAILED
+deployment left by `failed to fetch snapshot`, an upload that never arrived, a stream that broke on a build still going,
+a hung upload, a CLI that stops listing, a budget too small for a third attempt) and fails when `up` starts while the
+service's newest deployment is not over; `bash tools/ci/test_retry.sh` and `bash tools/ci/test_fetch_actionlint.sh` (a
+local server that answers 429 with a 92 byte body, a web page, a cut archive, a reset, a wrong version) do the same for
+the other two. The `conventions` job runs all three.
 
 ### Setting it up (once, the maintainer)
 

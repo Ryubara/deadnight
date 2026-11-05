@@ -91,7 +91,7 @@ def main() -> int:
         port = args.port
     else:
         server, port = smoke.serve(Path(args.build))
-    url = args.build if deployed else f"http://127.0.0.1:{port}/index.html"
+    url = smoke.probing(args.build) if deployed else f"http://127.0.0.1:{port}/index.html"
     if args.backend:
         url += ("&" if "?" in url else "?") + f"backend={args.backend}"
     problems: list[str] = []
@@ -100,6 +100,7 @@ def main() -> int:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True, args=smoke.SOFTWARE_GL)
             page = browser.new_context(viewport=smoke.VIEWPORT).new_page()
+            smoke.give_level(page, 10)  # the host chooses the back rooms, which are level 10
             page.on(
                 "pageerror",
                 lambda e: None if any(t in str(e) for t in IGNORED) else problems.append(f"[pageerror] {e}"),
@@ -107,7 +108,7 @@ def main() -> int:
             page.goto(url, wait_until="commit")
             smoke.reach_menu(page)
             smoke.open_together(page)
-            smoke.press(page, "ArrowDown")  # Quick join -> Create a night
+            smoke.press(page, "ArrowDown")  # Server browser -> Create a night
             smoke.press(page, "Enter")
             smoke.give_name(page, "Ann")
             wait_for(

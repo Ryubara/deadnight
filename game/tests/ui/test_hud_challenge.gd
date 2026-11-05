@@ -88,6 +88,9 @@ func test_each_quarter_punches_one_more_hole() -> void:
 
 
 func test_a_finish_punches_the_last_hole_and_says_finished() -> void:
+	# With the popup cards on, a finish is a card of the lane (test_popup_lane.gd); the prompt says it
+	# itself when the player turned the cards off.
+	_hud.popups.mode = PopupLane.Mode.OFF
 	_hud.state.apply_event(
 		_advance_event(&"d_kills", {"after": 40, "checkpoint": 100, "completed": true})
 	)
@@ -168,6 +171,7 @@ func test_a_card_asks_for_its_sound_once_a_tick_for_a_mark_and_a_pair_for_a_fini
 	_run(0.3)
 	assert_array(cues).is_equal([false])
 	_run(6.0)
+	_hud.popups.mode = PopupLane.Mode.OFF
 	_hud.state.apply_event(
 		_advance_event(&"b", {"checkpoint": 100, "after": 40, "completed": true})
 	)

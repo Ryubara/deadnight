@@ -25,6 +25,16 @@ extends Node
 ##   `frames=0`   keep no row per frame (a long run's memory is what it measures)
 ##   `labels=0`   with `sample=1`, rows without the labelled times and counts (a long run)
 ##   `sample=1`   a `PerfSampler` row each second (monitors, counts, labelled times) in the report
+##   `canvasparts=1` with `sample=1`, each row also counts the canvas items of every part of the
+##                screen (`canvas_parts`; `tools/perf/canvas_parts.py` reads them into a table)
+##   `xp=1`       every player (the bots too: only here) holds an account, so the night awards XP
+##                as a game server would and the XP's counts and time are in the rows
+##                (`xp.gained`, `server.xp`; tools/perf/budget.json holds them)
+##   `challenges=0`  with `xp=1`, the accounts' challenge boards are not followed (the arm without
+##                the tracker; on by default: `challenge.advance`, `challenge.told`,
+##                `server.challenges`)
+##   `signin=1`   sign in as a guest first (`?backend=` names the backend), so the night is a
+##                signed-in solo night: its XP is kept in the profile and sent to the account
 ##   `map=ID`     the map of the night (`MapRegistry`: `drive_in`, `small_indoor`; default the lot)
 ##   `seconds=S`  stop after S seconds of night whatever round it is (default 600)
 ##   `out=PATH`   on a desktop: write the report there and quit
@@ -61,6 +71,7 @@ var _ablated := false
 var _sampler: PerfSampler
 var _jumped := false
 var _hud_probed := false
+var _accounts: Dictionary[int, bool] = {}
 ## False for a long run (`frames=0`): the per-frame rows would be the growth being measured.
 var _keep_frames := true
 
@@ -88,6 +99,9 @@ func _ready() -> void:
 	NightScreen.start_seed = Night.SEED
 	NightScreen.start_tuning = tuning(_args)
 	NightScreen.shoulder_camera = true
+	if _args.get_int("signin") == 1:
+		# A guest account first, so the night keeps its XP in the profile and sends it to the backend.
+		await TogetherApi.new(self, TogetherScreen.backend_url()).sign_in("Autopilot")
 	UIRouter.reset(NIGHT, UITransition.Kind.CUT)
 
 
@@ -102,6 +116,7 @@ func _process(delta: float) -> void:
 			_sampler = PerfSampler.new()
 			_sampler.night_state = _state_of_night
 			_sampler.keep_labels = _args.get_int("labels", 1) != 0
+			_sampler.keep_canvas_parts = _args.get_int("canvasparts") == 1
 			add_child(_sampler)
 	if not _jumped:
 		_jumped = true
@@ -109,6 +124,8 @@ func _process(delta: float) -> void:
 	if _args.get_int("hudprobe") == 1 and not _hud_probed and night.state.zombies.size() >= 60:
 		_hud_probed = true
 		_probe_hud(UIRouter.top())
+	if _args.get_int("xp") == 1:
+		_register_accounts(night)
 	_played += delta
 	if _keep_frames:
 		_rows.append([delta * 1000.0, night.state.round_number(), night.state.zombies.size()])
@@ -249,6 +266,19 @@ func _start_at_round(night: Night) -> void:
 	var points := _args.get_int("points", 20000)
 	for id: int in rules.players:
 		(rules.players[id] as PlayerState).points = points
+
+
+## Gives every player of the night an account the moment they sit down (`xp=1`).
+func _register_accounts(night: Night) -> void:
+	var rules := night.server.rules
+	for id: int in rules.players:
+		if not _accounts.has(id):
+			_accounts[id] = true
+			var user := "bench-%d" % id
+			night.server.xp.register(id, user, 300, rules.round_number)
+			# The board the backend would hold for the account (none yet: a fresh one).
+			if _args.get_int("challenges", 1) == 1 and night.server.challenges.seat(id, user):
+				night.server.challenges.arrived(user, 404, ChallengeAward.NO_BOARD)
 
 
 ## Draw calls of the frame with each part of the HUD hidden in turn (`hudprobe=1`), printed as

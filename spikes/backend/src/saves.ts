@@ -1,18 +1,31 @@
 // The rules for what a save may contain. The backend stores `data` without understanding it, so it guards only the
 // two things it can: the format version (a version it does not know is refused) and numbers JSON cannot carry.
+// (The one slot it reads, the profile, has its own rules in progression.ts.)
 
 /**
  * The save formats this backend accepts. `data` is opaque to the backend; the game owns its layout and migrates it.
- * To change the layout: add the new version here and deploy the backend first, then the game, which reads any known
- * version, migrates it and writes back the newest. Remove a version only when no client writes it any more.
+ * Version 1 is the layout of both game slots, `profile` and `challenges`. To change the layout: add the new version
+ * here and deploy the backend first, then the game, which reads any known version, migrates it and writes back the newest.
+ * Remove a version only when no client writes it any more.
  */
+/** The most one save's body may hold (a PUT body, and the board a game server's report carries). */
+export const MAX_SAVE_BYTES = 64 * 1024;
+
 export const SAVE_SCHEMA_VERSIONS: readonly number[] = [1];
 
 export const CURRENT_SAVE_SCHEMA_VERSION = 1;
 
 /** A save the backend refuses to store because of what it contains, not because of who sent it. */
 export class SaveRejected extends Error {
-  readonly reason: "unsupported_schema_version" | "unsafe_integer";
+  readonly reason:
+    | "unsupported_schema_version"
+    | "unsafe_integer"
+    // The profile slot (progression.ts): a profile that does not read, one that takes something away, a first-game
+    // day the backend cannot accept, XP that rose faster than a person can play.
+    | "invalid_profile"
+    | "profile_regressed"
+    | "implausible_day"
+    | "implausible_progress";
   readonly detail: Record<string, unknown>;
 
   constructor(reason: SaveRejected["reason"], detail: Record<string, unknown>) {

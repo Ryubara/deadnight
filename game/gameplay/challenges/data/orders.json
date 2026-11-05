@@ -1,16 +1,16 @@
 {
   "challenges": [
-    {"id": "o_round_8", "text": "Reach round {n} in one night", "stat": "round", "mode": "night", "target": 8, "tier": "short", "pillar": "night", "reward": {"xp": 75, "stubs": 15}},
-    {"id": "o_round_12", "text": "Reach round {n} in one night", "stat": "round", "mode": "night", "target": 12, "tier": "long", "pillar": "night", "reward": {"xp": 600, "stubs": 120}},
-    {"id": "o_every_way", "text": "Open every way through in one night", "stat": "doors_bought", "mode": "night", "target": 5, "tier": "medium", "pillar": "night", "reward": {"xp": 200, "stubs": 40}},
-    {"id": "o_rounds_40", "text": "Get through {n} rounds in all", "stat": "rounds", "target": 40, "tier": "long", "pillar": "night", "reward": {"xp": 600, "stubs": 120}},
-    {"id": "o_big_night", "text": "Take in {n} points in one night", "stat": "points_earned", "mode": "night", "target": 20000, "tier": "long", "pillar": "night", "reward": {"xp": 600, "stubs": 120}},
-    {"id": "o_cans_8", "text": "Deliver {n} fuel cans to the generator", "stat": "fuel_cans", "target": 8, "tier": "medium", "pillar": "light", "reward": {"xp": 200, "stubs": 40}},
-    {"id": "o_boards_60", "text": "Mend {n} boards", "stat": "boards_repaired", "target": 60, "tier": "medium", "pillar": "light", "reward": {"xp": 200, "stubs": 40}},
-    {"id": "o_shotgun_150", "text": "Put down {n} zombies with the shotgun", "stat": "kills:weapon:shotgun", "target": 150, "tier": "medium", "pillar": "craft", "reward": {"xp": 200, "stubs": 40}},
-    {"id": "o_head_200", "text": "Land {n} headshot kills", "stat": "kills:head", "target": 200, "tier": "long", "pillar": "craft", "reward": {"xp": 600, "stubs": 120}},
-    {"id": "o_blast_40", "text": "Blow up {n} zombies with grenades", "stat": "kills:blast", "target": 40, "tier": "medium", "pillar": "craft", "reward": {"xp": 200, "stubs": 40}},
-    {"id": "o_crowbar_60", "text": "Take down {n} zombies with the crowbar", "stat": "kills:weapon:crowbar", "target": 60, "tier": "medium", "pillar": "craft", "reward": {"xp": 200, "stubs": 40}},
-    {"id": "o_headliners_3", "text": "Bring down {n} headliners", "stat": "kills:boss", "target": 3, "tier": "long", "pillar": "night", "reward": {"xp": 600, "stubs": 120}}
+    {"id": "o_round_8", "text": "Reach round {n} in one night", "stat": "round", "mode": "night", "target": 8, "tier": "short", "pillar": "night", "reward": {"xp": 75}},
+    {"id": "o_round_12", "text": "Reach round {n} in one night", "stat": "round", "mode": "night", "target": 12, "tier": "long", "pillar": "night", "reward": {"xp": 600}},
+    {"id": "o_every_way", "text": "Open every way through in one night", "stat": "doors_bought", "mode": "night", "target": 5, "tier": "medium", "pillar": "night", "reward": {"xp": 200}},
+    {"id": "o_rounds_40", "text": "Get through {n} rounds in all", "stat": "rounds", "target": 40, "tier": "long", "pillar": "night", "reward": {"xp": 600}},
+    {"id": "o_big_night", "text": "Take in {n} points in one night", "stat": "points_earned", "mode": "night", "target": 20000, "tier": "long", "pillar": "night", "reward": {"xp": 600}},
+    {"id": "o_cans_8", "text": "Deliver {n} fuel cans to the generator", "stat": "fuel_cans", "target": 8, "tier": "medium", "pillar": "light", "reward": {"xp": 200}},
+    {"id": "o_boards_60", "text": "Mend {n} boards", "stat": "boards_repaired", "target": 60, "tier": "medium", "pillar": "light", "reward": {"xp": 200}},
+    {"id": "o_shotgun_150", "text": "Put down {n} zombies with the shotgun", "stat": "kills:weapon:shotgun", "target": 150, "tier": "medium", "pillar": "craft", "reward": {"xp": 200}},
+    {"id": "o_head_200", "text": "Land {n} headshot kills", "stat": "kills:head", "target": 200, "tier": "long", "pillar": "craft", "reward": {"xp": 600}},
+    {"id": "o_blast_40", "text": "Blow up {n} zombies with grenades", "stat": "kills:blast", "target": 40, "tier": "medium", "pillar": "craft", "reward": {"xp": 200}},
+    {"id": "o_crowbar_60", "text": "Take down {n} zombies with the crowbar", "stat": "kills:weapon:crowbar", "target": 60, "tier": "medium", "pillar": "craft", "reward": {"xp": 200}},
+    {"id": "o_headliners_3", "text": "Bring down {n} headliners", "stat": "kills:boss", "target": 3, "tier": "long", "pillar": "night", "reward": {"xp": 600}}
   ]
 }

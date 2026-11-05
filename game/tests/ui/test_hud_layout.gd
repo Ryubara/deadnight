@@ -42,7 +42,8 @@ func _busy_hud(canvas: Vector2, worst := false, mirrored := false) -> HudFixture
 	var host: Control = auto_free(Control.new())
 	host.size = canvas
 	add_child(host)
-	var fixture := HudFixture.make(host, NightHost.MAX_PLAYERS)
+	# The fullest room: eight people and the seven bots on top (#1179).
+	var fixture := HudFixture.make(host, NightHost.MAX_PLAYERS, 1958, false, MatchSettings.MAX_BOTS)
 	var hud := fixture.hud
 	hud.mirrored = mirrored
 	fixture.into_round_one()
@@ -248,6 +249,10 @@ func test_a_name_the_state_keeps_still_fits_its_points_box() -> void:
 		var hud := fixture.hud
 		for id in hud.points.order():
 			var box := hud.points.box_of(id)
+			if box == null:
+				# A bot past eight bodies is a chip (`HudBotChips`), with no number to cut.
+				assert_object(hud.points.chips().chip_of(id)).is_not_null()
+				continue
 			# The number always shows whole (it shrinks first); the name is what is cut.
 			assert_str(box.number_text).override_failure_message(face).is_not_empty()
 			assert_float(box.number_width()).override_failure_message(face).is_less_equal(
@@ -275,7 +280,7 @@ func test_every_hud_label_is_at_least_the_minimum_size() -> void:
 	var host: Control = auto_free(Control.new())
 	host.size = BASE
 	add_child(host)
-	var fixture := HudFixture.make(host, NightHost.MAX_PLAYERS)
+	var fixture := HudFixture.make(host, NightHost.MAX_PLAYERS, 1958, false, MatchSettings.MAX_BOTS)
 	var small: Array[String] = []
 	_collect_small_labels(fixture.hud, small)
 	assert_array(small).is_empty()

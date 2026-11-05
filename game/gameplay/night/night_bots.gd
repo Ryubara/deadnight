@@ -8,15 +8,14 @@ extends RefCounted
 ## through `NightServer.apply` like a socket, so nothing here changes how a bot plays. This class
 ## only seats and unseats them and runs the `BotHost` each tick.
 ##
-## The count: `MatchSettings.bots` (0 to 7) is the most; in a room it is also bounded by the seats
-## the people leave free (`target`). Bots take the highest free seat numbers, so the people's
-## lowest-numbered seats stay theirs, and a person who finds no free seat takes the lowest bot's
-## seat as it stands (`hand_over`): the same body, points and weapons, the round goes on.
-## `docs/design/rounds.md#bots`.
+## The count: `MatchSettings.bots` (0 to 7) is the most, cut only by the server's own limits
+## (`limit`). Bots hold no seat of the room: the 8 of `NightHost.MAX_PLAYERS` are people alone,
+## and a bot's id starts at `FIRST_ID`, so it never collides with a person's whatever the number
+## of people and however they come and go (#1179). `docs/design/rounds.md#bots`.
 
-## Seats in a night: the room's capacity (`NightHost.MAX_PLAYERS`, which a test holds equal; the
-## host's script is not named here so the two do not need each other to load).
-const SEATS := 8
+## The id of the first bot. A person's id is 1 to `NightHost.MAX_PLAYERS`; the bots are
+## `FIRST_ID` to `FIRST_ID + MatchSettings.MAX_BOTS - 1`, the lowest free one first.
+const FIRST_ID := 101
 
 var host := BotHost.new()
 var server: NightServer
@@ -45,30 +44,39 @@ func _init(p_server: NightServer, p_world: NightWorld, p_seed: int, p_deliver: C
 		_probe.callable(), p_world.is_lit, server.rules.tuning.rounds, p_world.map()
 	)
 	# The level gives the bots the shop too: they buy doors, boards and fuel as a person does.
-	LotBotData.fill(level, p_world, server.rules.tuning)
+	LotBotData.fill(level, p_world, server.rules.tuning, server.rules.settings)
 
 
-## How many bots a night with `people` people in it seats for the setting `wanted`: never more than
-## the setting, never more than the seats the people leave free, never more than the server's
-## `cap` (the room's limit; the setting's own maximum when there is none).
-static func target(wanted: int, people: int, cap: int = MatchSettings.MAX_BOTS) -> int:
+## How many bots a night seats for the setting `wanted`: never more than the setting (the setting's
+## own maximum at most) and never more than the server's `cap` (the room's limit; the setting's own
+## maximum when there is none). The people do not change it: a bot takes no one's place.
+static func target(wanted: int, cap: int = MatchSettings.MAX_BOTS) -> int:
 	var asked := clampi(wanted, MatchSettings.MIN_BOTS, MatchSettings.MAX_BOTS)
-	return mini(mini(asked, maxi(cap, 0)), maxi(SEATS - people, 0))
+	return mini(asked, maxi(cap, 0))
 
 
-## The name the bot at seat `player_id` wears in a room of `skill` (the lobby shows it before the
-## night begins): the skill's cast (`BotRoster`).
+## The id of the `index`th bot (0 to `MatchSettings.MAX_BOTS - 1`).
+static func id_at(index: int) -> int:
+	return FIRST_ID + index
+
+
+## Whether `player_id` is in the range bots have, whoever holds it now.
+static func is_bot_id(player_id: int) -> bool:
+	return player_id >= FIRST_ID
+
+
+## The name the bot with id `player_id` wears in a room of `skill` (the lobby shows it before the
+## night begins): the skill's cast (`BotRoster`), by the bot's number in the night (1 to 7).
 static func name_for(player_id: int, skill: int = MatchSettings.DEFAULT_SKILL) -> String:
-	return BotRoster.name_for(skill, player_id)
+	return BotRoster.name_for(skill, number_of(player_id))
 
 
-## Whether the night has room for one more bot than it has, for the setting `wanted` and `people`
-## people who hold seats.
-func wants_more(wanted: int, people: int) -> bool:
-	return count() < target(wanted, people, limit)
+## The bot's number in the night, 1 for the first bot: what the roster's cast is picked by.
+static func number_of(player_id: int) -> int:
+	return player_id - FIRST_ID + 1
 
 
-## The seats the bots hold, lowest first.
+## The ids the bots hold, lowest first.
 func seats() -> Array[int]:
 	var out: Array[int] = []
 	for bot in host.bots:
@@ -90,45 +98,16 @@ func names() -> Dictionary:
 	return _names.duplicate()
 
 
-## Seats bots until there are `target(wanted, people.size(), limit)`, in the highest seat numbers
-## `people` (the seats held by people, away or not) leave free; sends the highest seats' bots away
-## when there are more than that (a limit that was lowered). Returns the events it caused, each
-## seat's name first, so the first notice already reads its name.
-func fill(wanted: int, people: Array) -> Array[Dictionary]:
+## Seats bots until there are `target(wanted, limit)`, each in the lowest free bot id; sends the
+## highest ids' bots away when there are more than that (a limit that was lowered). Returns the
+## events it caused, each bot's name first, so the first notice already reads its name.
+func fill(wanted: int) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
-	var goal := target(wanted, people.size(), limit)
+	var goal := target(wanted, limit)
 	while count() > goal:
 		events.append_array(_send_away(seats().back()))
 	while count() < goal:
-		var id := _highest_free(people)
-		if id == 0:
-			break
-		events.append_array(_seat(id))
-	return events
-
-
-## The seat a person takes when a bot holds it: the bot leaves, the seat goes on as it stands, and
-## the rules say `bot_replaced`. Returns those events; empty when no bot holds the seat.
-func hand_over(player_id: int) -> Array[Dictionary]:
-	if not holds(player_id):
-		return []
-	host.release(player_id)
-	_names.erase(player_id)
-	return server.apply({"type": NightServer.SEAT_PERSON, "player_id": player_id})
-
-
-## The seat of a person who left goes to a bot as it stands (decision 7 of the research: the slot
-## is inherited both ways): the same body, points, weapons and health, a name and a look of the
-## room's cast, and the rules say `bot_seated`. Returns those events. Empty, and nothing changed,
-## when the seat is already a bot's or is no one's.
-func adopt(player_id: int) -> Array[Dictionary]:
-	var seat: PlayerState = server.rules.players.get(player_id)
-	if seat == null or seat.bot or holds(player_id):
-		return []
-	var events: Array[Dictionary] = server.apply(
-		{"type": RulesAction.SEAT_BOT, "player_id": player_id}
-	)
-	events.append_array(_enlist(player_id))
+		events.append_array(_seat(_lowest_free()))
 	return events
 
 
@@ -160,22 +139,18 @@ func _seat(player_id: int) -> Array[Dictionary]:
 			{"type": NightServer.JOIN, "player_id": player_id, "local": false, "bot": true}
 		)
 	)
-	events.append_array(_enlist(player_id, false))
+	events.append_array(_enlist(player_id))
 	return events
 
 
-## Gives the seat `player_id` (already a bot's in the rules) its client: the cast's name (told, when
-## `tell_name`), the skill's look, and a place in the host. The name goes before the join for a new
-## bot (so the first notice reads it), after the seat change for an adopted one.
-func _enlist(player_id: int, tell_name := true) -> Array[Dictionary]:
+## Gives the bot `player_id` (already in the rules, its name told before the join) its client: the
+## skill's look and a place in the host.
+func _enlist(player_id: int) -> Array[Dictionary]:
 	var skill := server.rules.settings.bot_skill
 	var events: Array[Dictionary] = []
-	var name_text := name_for(player_id, skill)
-	_names[player_id] = name_text
-	if tell_name:
-		events.append({"type": &"player_named", "player_id": player_id, "name": name_text})
+	_names[player_id] = name_for(player_id, skill)
 	# The bot wears its own look the way a person's reaches the server, so every client gets it.
-	var packet := LookWire.look(BotRoster.look_for(skill, player_id))
+	var packet := LookWire.look(BotRoster.look_for(skill, number_of(player_id)))
 	events.append_array(
 		server.apply({"type": NightServer.LOOK, "player_id": player_id, "packet": packet})
 	)
@@ -193,12 +168,12 @@ func _profile() -> BotProfile:
 	return BotProfile.for_skill(server.rules.settings.bot_skill)
 
 
-## The seat number highest among those neither people nor bots hold, or 0.
-func _highest_free(people: Array) -> int:
-	for id in range(SEATS, 0, -1):
-		if not people.has(id) and not holds(id):
-			return id
-	return 0
+## The lowest bot id no bot holds.
+func _lowest_free() -> int:
+	var id := FIRST_ID
+	while holds(id):
+		id += 1
+	return id
 
 
 ## What a bot sends: plain data, to the server as a connection's message from `player_id`. (A

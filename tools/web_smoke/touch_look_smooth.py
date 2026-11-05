@@ -184,7 +184,7 @@ def run(url: str, out: Path, speeds: list[float], configs: list[tuple[float, flo
         page.on("pageerror", lambda e: problems.append(f"page error: {e}"))
         page.add_init_script("(" + touch_look.NO_POINTER_LOCK_JS.strip() + ")();")
         page.add_init_script("(" + TOUCH_LOG_JS.strip() + ")();")
-        page.goto(f"{url}?touch=1", wait_until="commit")
+        page.goto(smoke.probing(f"{url}?touch=1"), wait_until="commit")
         touch_look.start_night(page)
         client = context.new_cdp_session(page)
         result["canvas"] = page.evaluate(

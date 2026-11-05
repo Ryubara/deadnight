@@ -16,19 +16,36 @@ var _mode := Input.MOUSE_MODE_VISIBLE
 var _quiet := ""
 var _saved_path := ""
 var _fixture: TouchFixture
+var _arrival := false
+
+
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
 
 
 func before_test() -> void:
+	# The helicopter drop a window plays at the start of a night (#1057) holds the look, the
+	# touch layer and the HUD until it ends; a headless run has none. This suite is about
+	# the night's menu, in a night the player has control of (`--noarrival`);
+	# `test_arrival_night` is about the drop.
+	_arrival = NightScreen.arrival_enabled
+	NightScreen.arrival_enabled = false
 	_mode = Input.MOUSE_MODE_VISIBLE
 	_quiet = OS.get_environment("GDS_QUIET")
 	OS.unset_environment("GDS_QUIET")
 	_saved_path = Settings.path
 	Settings.path = SETTINGS_PATH
 	Settings.reset_defaults()
+	# A server chosen by an earlier suite (a lobby's Start with the opener stubbed) would send
+	# this solo night to it and the first test would wait for a night that never starts (#1220).
+	RouterFixture.forget_join()
 	await RouterFixture.clear(get_tree())
 
 
 func after_test() -> void:
+	NightScreen.arrival_enabled = _arrival
 	if _quiet != "":
 		OS.set_environment("GDS_QUIET", _quiet)
 	if _fixture != null:
@@ -188,6 +205,20 @@ func test_escape_opens_and_closes_the_menu() -> void:
 	await _key(KEY_ESCAPE)
 	assert_bool(_menu_open(screen)).is_false()
 	assert_bool(screen.night.is_paused()).is_false()
+
+
+func test_a_server_left_by_an_earlier_suite_is_forgotten_before_a_solo_night() -> void:
+	NightScreen.join_url = "ws://127.0.0.1:1"
+	NightScreen.join_ticket = "ticket"
+	NightScreen.join_map = "back_rooms"
+	NightScreen.join_as_bot = true
+	RouterFixture.forget_join()
+	assert_str(NightScreen.join_url).is_empty()
+	assert_str(NightScreen.join_ticket).is_empty()
+	assert_str(NightScreen.join_map).is_empty()
+	assert_bool(NightScreen.join_as_bot).is_false()
+	var screen := await _enter_night()
+	assert_bool(screen.night.running).is_true()
 
 
 func test_start_on_a_pad_opens_and_closes_the_menu() -> void:

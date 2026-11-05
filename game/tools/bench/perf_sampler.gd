@@ -24,6 +24,9 @@ var night_state := Callable()
 ## False for a long run (`labels=0`): a row without the labelled times is a fifth of the size, and
 ## a half hour of rows is memory the run itself adds to what it is measuring.
 var keep_labels := true
+## True for `canvasparts=1`: each row also says how many canvas items every part of the night's
+## screen holds (`canvas_parts`, from `canvas_part_of`), the table the budget's peak is read from.
+var keep_canvas_parts := false
 ## The milliseconds a fixed piece of GDScript takes on this machine now (`calibrate`): a budget in
 ## ratios of it holds on a slow runner and a busy machine, which a budget in milliseconds cannot.
 var calibration_ms := 0.0
@@ -166,6 +169,8 @@ func _row() -> Dictionary:
 		"audio_culled": Audio.culled,
 	}
 	row.merge(scene)
+	if keep_canvas_parts:
+		row["canvas_parts"] = _canvas_parts(tree.root)
 	if keep_labels:
 		row["labels_ms"] = _label_means(frames)
 		row["labels_median_ms"] = _label_medians()
@@ -177,7 +182,7 @@ func _row() -> Dictionary:
 func _label_means(frames: int) -> Dictionary:
 	var means := {}
 	for label: StringName in _usec:
-		means[String(label)] = snappedf(float(_usec[label]) / 1000.0 / frames, 0.001)
+		means[String(label)] = snappedf(float(_usec[label]) / 1000.0 / frames, 0.0001)
 	return means
 
 
@@ -239,3 +244,38 @@ func _scene_counts(root: Node) -> Dictionary:
 			counts["canvas_items"] += 1
 		stack.append_array(node.get_children())
 	return counts
+
+
+## The part of the screen a canvas item belongs to: for the night's screen, its HUD part or its own
+## child (`Hud/Points`, `EndBoard`), found past the columns the HUD lays its parts in (those are
+## named by the engine, `@VBoxContainer@92`); for the rest of the tree, the first two names.
+static func canvas_part_of(path: String) -> String:
+	var names := path.trim_prefix("/root/").split("/")
+	var at := names.find("NightScreen")
+	if at < 0:
+		return "/".join(names.slice(0, 2))
+	var under := names.slice(at + 1)
+	if under.is_empty():
+		return "NightScreen"
+	var first: String = under[0]
+	if first == "Hud":
+		for name: String in under.slice(1):
+			if not name.begins_with("@"):
+				return "Hud/" + name
+		return "Hud (columns)"
+	if first.begins_with("@"):
+		return "NightScreen (%s)" % first.split("@")[1]
+	return first
+
+
+## Canvas items by part (`canvas_part_of`), one walk of the tree.
+func _canvas_parts(root: Node) -> Dictionary:
+	var parts := {}
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var node: Node = stack.pop_back()
+		if node is CanvasItem:
+			var part := canvas_part_of(String(node.get_path()))
+			parts[part] = int(parts.get(part, 0)) + 1
+		stack.append_array(node.get_children())
+	return parts

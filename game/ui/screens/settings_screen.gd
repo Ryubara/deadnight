@@ -155,6 +155,21 @@ const TABS := [
 				"labels": ["All", "Finished only", "Off"],
 				"values": [0, 1, 2],
 			},
+			{
+				"key": SettingsService.PROGRESS_POPUPS,
+				"title": "Level-up popups",
+				"hint":
+				"The cards that drop in when you level up, unlock something or finish a challenge.",
+				"kind": "option",
+				"labels": ["All", "Big ones only", "Off"],
+				"values": [0, 1, 2],
+			},
+			{
+				"key": SettingsService.SHOW_LEVELS,
+				"title": "Player levels",
+				"hint": "Each player's level and icon beside their name.",
+				"kind": "toggle",
+			},
 		],
 	},
 	{
@@ -359,6 +374,9 @@ func _build() -> void:
 	column.add_child(_build_footer())
 	initial_focus = _tab_buttons[0].get_path()
 	_rows_scroll.card = column
+	# The room is this screen's height, not the window's: inside the night's card it is drawn at the
+	# phone factor and its 540 units are not the window's 1080 (#1205).
+	_rows_scroll.limit = self
 	resized.connect(_fit)
 	_fit()
 
@@ -392,6 +410,8 @@ func _fit() -> void:
 	)
 	_column.custom_minimum_size.x = minf(float(PANEL_WIDTH), size.x - 2.0 * edge)
 	_rows_scroll.margin = float(vertical)
+	TapFloor.fit(self, phone)
+	_rows_scroll.fit()
 
 
 func _build_tabs() -> HBoxContainer:

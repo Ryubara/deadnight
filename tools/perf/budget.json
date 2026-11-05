@@ -1,5 +1,5 @@
 {
-  "case": "round 12, 3x, 4 players (the person and three bots), the desktop's crowd, played headless at a fixed step",
+  "case": "round 12, 3x, 4 players (the person and three bots, all holding accounts so the night awards XP and follows their challenge boards as a game server does: --xp=1), the desktop's crowd, played headless at a fixed step",
   "round_from": 12,
   "crowd_share": 0.9,
   "min_steady_rows": 15,
@@ -11,13 +11,22 @@
     "mem_static_mb": 300,
     "bodies": 6,
     "lights": 68,
-    "particles": 0,
+    "particles": 3,
     "decals": 0,
     "sounds_playing": 50,
     "skeletons": 160,
     "mesh_instances": 2600,
-    "canvas_items": 230,
+    "canvas_items": 200,
     "pairs": 50
+  },
+  "max_per_tick": {
+    "xp.gained": 0.12,
+    "challenge.advance": 0.18,
+    "challenge.told": 0.01
+  },
+  "max_label_share_of_frame": {
+    "server.xp": 0.00085,
+    "server.challenges": 0.0045
   },
   "max_ratio_of_calibration": {
     "frame_median_ms": 15

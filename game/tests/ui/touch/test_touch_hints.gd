@@ -124,6 +124,39 @@ func test_a_used_hint_leaves_nothing_drawn_once_it_has_faded() -> void:
 	assert_bool(_hints().is_painted()).is_false()
 
 
+# Every `draw_circle` and `draw_arc` redrawn builds a vertex array and buffers whose WebGL ids the
+# web page keeps for good (#834, #883): the pulse moves a drawn mark instead of drawing it again.
+func test_a_hint_that_has_faded_in_pulses_without_being_drawn_again() -> void:
+	await _start()
+	var hints := _hints()
+	for _i in 120:
+		if float(hints._age.get(TouchHints.MOVE, 0.0)) >= TouchHints.FADE_IN:
+			break
+		await await_idle_frame()
+	await _frames(3)
+	var draws := [0]
+	hints.draw.connect(func() -> void: draws[0] += 1)
+	var mark: Node2D = hints._marks[TouchHints.MOVE]
+	var seen := {}
+	var started := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - started < int(TouchHints.PULSE_PERIOD * 700.0):
+		await await_idle_frame()
+		seen[snappedf(mark.position.x, 1.0)] = true
+	assert_int(draws[0]).is_less(2)
+	assert_int(seen.size()).is_greater(4)
+	assert_bool(mark.visible).is_true()
+
+
+func test_a_used_hint_hides_its_mark_once_faded() -> void:
+	await _start()
+	await await_millis(500)
+	var mark: Node2D = _hints()._marks[TouchHints.LOOK]
+	assert_bool(mark.visible).is_true()
+	_hints().mark_used(TouchHints.LOOK)
+	await await_millis(600)
+	assert_bool(mark.visible).is_false()
+
+
 func test_no_hint_shows_while_a_menu_has_the_controls_down() -> void:
 	await _start()
 	_fixture.controls.live = false

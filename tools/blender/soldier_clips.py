@@ -309,6 +309,9 @@ def build(arm):
     revive(arm, acts)
     sprint_carries(arm, acts, aim, up)
     dual(arm, up, idle, idle_mid, pistol)
+    import drink_clip  # it uses this module's helpers, so it is imported here, not at the top
+
+    drink_clip.drink(arm, up, idle, idle_mid, aim)
     return CLIPS
 
 
@@ -847,6 +850,9 @@ SPRINT_CARRY = {
 # y back, z up): at the grips above, the forearm reaching across to the grip lay in the jacket's front (the left one
 # 73 mm, the right 47 mm, #939).
 SPRINT_SHIFT = (-0.09, -0.14, 0.0)
+# How far out the carry's right elbow is bent, times the IK's (#978): with the shorter forearm the right upper arm lay
+# nearer the chest, and the seat's armband on it sank 8 mm deeper in Sprint_Rifle.
+SPRINT_RIGHT_OUT = 2.0
 # The carries of single models, after the class ones (named Sprint_<model>).
 SPRINT_MODELS = tuple(k for k, c in SPRINT_CARRY.items() if "class" in c)
 # The game's data the carries are built against (the hold and grip files).
@@ -975,6 +981,53 @@ def game_grip(hold):
     return _transform(g["hold"]) @ Matrix.Scale(scale, 4), _transform(g["left_hand"])
 
 
+# How far the left hand of a sprint carry may be turned off its turn in the gun hold (Idle_Shoot), in its forearm's
+# frame (#978): near half a turn the tree's blend between the two takes either way round as the stride moves them, and
+# the hand spun 77-86 degrees in one tick of the sprint start. The forearm rolls about its own axis (the wrist stays)
+# by the least turn, in 5 degree steps, that brings the hand under it.
+CARRY_WRIST_MAX = 150.0
+
+
+def _hand_off_aim(arm, side, aim_rot):
+    return math.degrees(arm.pose.bones[f"Index1.{side}"].rotation_quaternion.rotation_difference(aim_rot).angle)
+
+
+def _roll_forearm(arm, side, degrees, hand):
+    """Roll LowerArm.<side> `degrees` about its own axis (elbow to wrist) and turn the hand back to `hand` (world)."""
+    if degrees:
+        _, elbow = _world(arm, f"LowerArm.{side}")
+        _, wrist = _world(arm, f"Index1.{side}")
+        r, _ = _world(arm, f"LowerArm.{side}")
+        turn = Matrix.Rotation(math.radians(degrees), 3, (wrist - elbow).normalized())
+        _set_world_rot(arm, f"LowerArm.{side}", turn @ r)
+    _set_world_rot(arm, f"Index1.{side}", hand)
+
+
+def _carry_roll(arm, solved, aim_rot, side="L"):
+    """The least forearm roll (degrees) that keeps the hand within CARRY_WRIST_MAX of its gun-hold turn in every
+    frame of `solved` ((frame, pose, the hand's world turn)), or the one that keeps it least off."""
+
+    def worst(degrees):
+        out = 0.0
+        for _f, pose, hand in solved:
+            _pose_arm(arm, pose)
+            _roll_forearm(arm, side, degrees, hand)
+            out = max(out, _hand_off_aim(arm, side, aim_rot))
+        return out
+
+    best = (worst(0), 0)
+    if best[0] <= CARRY_WRIST_MAX:
+        return 0
+    for step in range(5, 185, 5):
+        for degrees in (step, -step):
+            off = worst(degrees)
+            if off <= CARRY_WRIST_MAX:
+                return degrees
+            if off < best[0]:
+                best = (off, degrees)
+    return best[1]
+
+
 def _bone_matrix(arm, bone):
     """A pose bone's world matrix, rotation orthonormal and head in metres."""
     r, head = _world(arm, bone)
@@ -1020,7 +1073,7 @@ def sprint_carries(arm, acts, aim, up):
         _pose_arm(arm, aim)
         hand_aim = _world(arm, "Index1.R")[0]
         gun_aim = _weapon_frame(_bone_matrix(arm, "Index1.R") @ weapon)
-        keys, grips = [], []
+        keys, grips, solved = [], [], []
         miss, turned = {"R": 0.0, "L": 0.0}, {"R": 0.0, "L": 0.0}
         for f in range(n + 1):
             phase = _phase(f % n, n)
@@ -1045,7 +1098,7 @@ def sprint_carries(arm, acts, aim, up):
             out = (right_shoulder - left_shoulder).normalized() * 0.45
             goal = grip - hand @ weapon.translation
             miss["R"] = max(miss["R"], _reach(arm, ("UpperArm.R", "LowerArm.R", "Index1.R"), goal,
-                                              out + Vector((0, 0, -1))))  # fmt: skip
+                                              out * SPRINT_RIGHT_OUT + Vector((0, 0, -1))))  # fmt: skip
             _set_world_rot(arm, "Index1.R", hand)
             grips.append(turn_by.inverted() @ (grip - waist))
             # The left hand on the fore-end where the grip puts it on the weapon the game draws, turned to hold it
@@ -1054,13 +1107,20 @@ def sprint_carries(arm, acts, aim, up):
             miss["L"] = max(miss["L"], _reach(arm, ("UpperArm.L", "LowerArm.L", "Index1.L"), hold.translation,
                                               -out + Vector((0, 0, -1))))  # fmt: skip
             _set_world_rot(arm, "Index1.L", hold.to_3x3().normalized())
+            solved.append((f, _read_pose(arm, start), hold.to_3x3().normalized()))
+        # One roll of the left forearm for the whole loop, the least that keeps the wrist off half a turn in every
+        # frame (CARRY_WRIST_MAX); then the keys.
+        roll = _carry_roll(arm, solved, aim["Index1.L"]["rot"])
+        for f, pose, left in solved:
+            _pose_arm(arm, pose)
+            _roll_forearm(arm, "L", roll, left)
             # How far each wrist is turned off the kit's own two-handed hold (Idle_Shoot), in degrees.
             for s in "RL":
                 q = arm.pose.bones[f"Index1.{s}"].rotation_quaternion.rotation_difference(aim[f"Index1.{s}"]["rot"])
                 turned[s] = max(turned[s], math.degrees(q.angle))
-            keys.append((f, _read_pose(arm, start)))
+            keys.append((f, _read_pose(arm, pose)))
         write(arm, f"Sprint_{cls}", keys, up, "upper", True, c.get("class", cls))
-        report[cls] = {"hand miss (m)": {k: round(v, 3) for k, v in miss.items()},
+        report[cls] = {"hand miss (m)": {k: round(v, 3) for k, v in miss.items()}, "left forearm roll (deg)": roll,
                        "wrist turn off the aim hold (deg)": {k: round(v, 1) for k, v in turned.items()}}  # fmt: skip
 
     # Pistol: Run_Gun's right arm, its upper arm swinging with the stride too (the left arm's swing, half a stride on).

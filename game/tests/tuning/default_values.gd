@@ -113,6 +113,8 @@ const NIGHT_SOUND_TUNING := {
 	"line_gap": 0.5,
 	"interrupt_priority": 80,
 	"cut_margin": 25,
+	"urgent_priority": 65,
+	"cheer_window": 0.25,
 	"remember_takes": 3,
 	"streak_kills": 4,
 	"streak_window": 6.0,
@@ -172,6 +174,14 @@ const SOLDIER_MOMENTS := [
 	[&"close_call", 5, 70, 14.0, 1.0],
 	[&"teammate_down", 5, 68, 8.0, 1.0],
 	[&"revived", 5, 66, 5.0, 1.0],
+	[&"tier_up", 3, 64, 3.0, 1.0],
+	[&"level_up", 3, 63, 3.0, 1.0],
+	[&"challenge_done", 3, 63, 2.0, 1.0],
+	[&"unlock", 3, 62, 8.0, 1.0],
+	[&"poster_set", 3, 62, 8.0, 1.0],
+	[&"first_game", 3, 62, 30.0, 1.0],
+	[&"card", 3, 61, 8.0, 1.0],
+	[&"emblem", 3, 61, 8.0, 1.0],
 	[&"streak", 7, 60, 20.0, 1.0],
 	[&"dry", 5, 55, 8.0, 0.8],
 	[&"power_low", 4, 52, 30.0, 1.0],
@@ -223,6 +233,17 @@ const HUD_TUNING := {
 	"challenge_hold_busy": 1.6,
 	"challenge_gap": 0.3,
 	"challenge_stale": 20.0,
+	"popup_in": 0.25,
+	"popup_out": 0.2,
+	"popup_hold_level": 2.6,
+	"popup_hold_unlock": 2.0,
+	"popup_hold_tier": 3.6,
+	"popup_hold_challenge": 3.0,
+	"popup_hold_busy": 1.6,
+	"popup_start_gap": 0.15,
+	"popup_min_show": 1.0,
+	"popup_slide": 0.25,
+	"popup_drop": 30.0,
 }
 
 ## The constants of `TouchLook` and `TouchControls`.
@@ -290,9 +311,13 @@ const SHOT_FX_TUNING := {
 const SOUND_MIX := {
 	"group_limits":
 	{
+		&"arrival": 3,
 		&"ui": 4,
 		&"ui_hint": 1,
 		&"ui_moment": 1,
+		&"ui_fanfare": 1,
+		&"ui_scratch": 1,
+		&"ui_unlock": 3,
 		&"challenge": 1,
 		&"gun": 12,
 		&"reload": 4,
@@ -345,6 +370,9 @@ static func sounds() -> Dictionary:
 		# Sounds are made behind the loading bar unless their row says they wait for the night to run.
 		if not row.has("deferred"):
 			row["deferred"] = false
+		# A bank can keep its sounds out of the night's loading altogether (the helicopter drop's).
+		if not row.has("on_demand"):
+			row["on_demand"] = false
 	return table
 
 

@@ -20,6 +20,53 @@ const VOICES := {
 	MALE: {"folder": "voice/soldier/", "prefix": "vox_"},
 	FEMALE: {"folder": "voice/soldier_female/", "prefix": "voxf_"},
 }
+## The progression moments (#1063): the cheers for a level, a tier, an unlock, a challenge done, a
+## poster set, a card, an emblem or frame and the first game of the day. Each ranks above the
+## chatter (kills, reloads, idle) and below the urgent lines (hurt, downed, a boss, a teammate
+## down), so an urgent line cuts one and one never cuts an urgent line.
+const PROGRESS: Array[StringName] = [
+	&"level_up",
+	&"tier_up",
+	&"unlock",
+	&"challenge_done",
+	&"poster_set",
+	&"card",
+	&"emblem",
+	&"first_game",
+]
+## The progression events a game server tells every client (`XpAward`), and the moment each one
+## becomes. An `unlock_earned` is a card, an emblem (or a frame) or a plain unlock by its slot.
+## A `challenge_done` (the challenge tracker, #1076) is its own cheer, and so is a `poster_set_done`
+## (the tracker's, #1073).
+const CHEER_OF_EVENT: Dictionary[StringName, StringName] = {
+	&"level_up": &"level_up",
+	&"tier_up": &"tier_up",
+	&"challenge_done": &"challenge_done",
+	&"poster_set_done": &"poster_set",
+}
+const CHEER_OF_SLOT: Dictionary[StringName, StringName] = {
+	&"calling_cards": &"card",
+	&"tier_card": &"card",
+	&"emblem": &"emblem",
+	&"tier_emblem": &"emblem",
+	&"plate_frame": &"emblem",
+}
+## Which cheer a player gets when several of their events arrive together: the highest weight (a
+## tier over a challenge or what a level unlocks over the level), the first of equals. A level that
+## gives an item is cheered for the item; a challenge is something the player did, a level is what
+## doing it paid, so a challenge that pays a level is cheered as the challenge. The same goes for
+## the set a challenge finishes (it arrives with that challenge, and with the tier its XP may
+## cross): a set is the rarest thing a player does, so it is said over a tier and over the
+## challenge that finished it.
+const CHEER_WEIGHT: Dictionary[StringName, int] = {
+	&"poster_set": 4,
+	&"tier_up": 3,
+	&"challenge_done": 2,
+	&"unlock": 2,
+	&"card": 2,
+	&"emblem": 2,
+	&"level_up": 1,
+}
 const FOLDER := "voice/soldier/"
 const PREFIX := "vox_"
 ## The level of every take, how far a teammate's voice carries and what the local player's own is
@@ -90,6 +137,25 @@ static func is_take(id: StringName) -> bool:
 		if text.begins_with(VOICES[voice]["prefix"]):
 			return true
 	return false
+
+
+## Whether `event` is one of the progression moments.
+static func is_progress(event: StringName) -> bool:
+	return PROGRESS.has(event)
+
+
+## The cheer a server event of the night is, or `&""` when it is none (`CHEER_OF_EVENT`,
+## `CHEER_OF_SLOT`).
+static func cheer_of(event: Dictionary) -> StringName:
+	var type: StringName = event["type"]
+	if type == &"unlock_earned":
+		return CHEER_OF_SLOT.get(StringName(event.get("slot", &"")), &"unlock")
+	return CHEER_OF_EVENT.get(type, &"")
+
+
+## Whether cheer `a` is a better thing to say than `b` when one player gets both at once.
+static func cheers_over(a: StringName, b: StringName) -> bool:
+	return int(CHEER_WEIGHT.get(a, 0)) > int(CHEER_WEIGHT.get(b, 0))
 
 
 static func events() -> Array:

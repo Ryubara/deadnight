@@ -28,6 +28,12 @@ var _server: GameServer
 var _nights: Array[Night] = []
 
 
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
+
+
 func before_test() -> void:
 	await _start_stack()
 
@@ -100,6 +106,9 @@ func _until(condition: Callable, seconds: float = 30.0) -> bool:
 
 
 func _start_stack() -> void:
+	# A machine that cannot run the suite skips at once: no node, no 90 s wait for a backend (#1049).
+	if _why_not() != "":
+		return
 	var port := _free_port()
 	var env := {
 		"HOST": "127.0.0.1",
@@ -159,14 +168,29 @@ class Guest:
 	var night: Night
 
 
-func _guest(player_name: String) -> Guest:
+func _guest(player_name: String, level_10 := false) -> Guest:
 	var player := Guest.new()
 	player.name = player_name
 	player.api = TogetherApi.new(self, _backend)
 	player.api.isolated = true
 	var signed := await player.api.sign_in(player_name)
 	assert_bool(signed["ok"]).is_true()
+	if level_10:
+		await _reach_level_10(player.api)
 	return player
+
+
+## The backend pays the signed-in account the XP of level 10, as a game server's report does (the
+## back rooms open to a host from that level; the backend refuses the map to a lower one, #1098).
+func _reach_level_10(api: TogetherApi) -> void:
+	var sent := await HttpJson.send(
+		self,
+		"POST",
+		"%s/internal/matches/seed-level-10/report" % _backend,
+		{"Authorization": "Bearer " + GAME_SERVER_SECRET},
+		{"kind": "night", "round": 0, "seats": [{"userId": api.my_id(), "xp": 1000}]}
+	)
+	assert_int(sent["status"]).is_equal(200)
 
 
 func _go_in(player: Guest) -> Night:
@@ -229,7 +253,7 @@ func _names(held: Dictionary) -> Array:
 func test_the_night_ends_on_the_servers_clock_a_leaver_breaks_nothing_and_the_lobby_returns(
 	_do_skip := _why_not() != "", _skip_reason := "needs node 24 and npm ci in spikes/backend"
 ) -> void:
-	var ann := await _guest("Ann")
+	var ann := await _guest("Ann", true)
 	var bo := await _guest("Bo")
 	var cy := await _guest("Cy")
 	var match_id := await _night_of_three(ann, bo, cy)
@@ -317,7 +341,7 @@ func test_the_night_ends_on_the_servers_clock_a_leaver_breaks_nothing_and_the_lo
 func test_the_host_who_leaves_during_the_intermission_hands_the_reopened_lobby_on(
 	_do_skip := _why_not() != "", _skip_reason := "needs node 24 and npm ci in spikes/backend"
 ) -> void:
-	var ann := await _guest("Ann")
+	var ann := await _guest("Ann", true)
 	var bo := await _guest("Bo")
 	var cy := await _guest("Cy")
 	var match_id := await _night_of_three(ann, bo, cy)
@@ -325,9 +349,12 @@ func test_the_host_who_leaves_during_the_intermission_hands_the_reopened_lobby_o
 	room.server.end_seconds = SECONDS
 	_end(room)
 	assert_bool(await _until(func() -> bool: return ann.night.state.over)).is_true()
-	# The host presses Leave (the screen closes the link and leaves the lobby).
+	# The host presses Leave (the screen closes the link and leaves the lobby). The game server says
+	# the seat is empty as fast as the screen does, so whichever is heard second finds her gone
+	# (`not_member`): she is out either way.
 	ann.night.link.close()
-	assert_bool((await ann.api.leave(ann.lobby))["ok"]).is_true()
+	var said := await ann.api.leave(ann.lobby)
+	assert_bool(said["ok"] or said.get("error") == "not_member").is_true()
 	var closed := await _until(
 		func() -> bool: return bo.night.state.closed and cy.night.state.closed, 20.0
 	)
@@ -351,7 +378,7 @@ func test_the_host_who_leaves_during_the_intermission_hands_the_reopened_lobby_o
 func test_a_night_everyone_left_does_not_reopen_the_lobby(
 	_do_skip := _why_not() != "", _skip_reason := "needs node 24 and npm ci in spikes/backend"
 ) -> void:
-	var ann := await _guest("Ann")
+	var ann := await _guest("Ann", true)
 	var bo := await _guest("Bo")
 	var cy := await _guest("Cy")
 	var match_id := await _night_of_three(ann, bo, cy)
@@ -372,7 +399,7 @@ func test_a_night_everyone_left_does_not_reopen_the_lobby(
 func test_the_night_screen_of_a_player_ends_on_the_lobby_screen_of_the_reopened_lobby(
 	_do_skip := _why_not() != "", _skip_reason := "needs node 24 and npm ci in spikes/backend"
 ) -> void:
-	var ann := await _guest("Ann")
+	var ann := await _guest("Ann", true)
 	var bo := await _guest("Bo")
 	ann.lobby = (await ann.api.create_lobby())["lobby"]
 	assert_bool((await ann.api.set_settings(ann.lobby, _rules()))["ok"]).is_true()

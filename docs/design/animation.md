@@ -162,7 +162,7 @@ gets its grip by placing three empties and running the solver, never by tuning n
 | `Trigger` | guns: the middle of the trigger's front face, where the finger's pad presses | +Y the press (backward) |
 | `Support` | two-handed guns: the left hand's handle (fore-end, vertical foregrip) | +Z toward the left index finger (the muzzle, on a fore-end); +Y the way its fingers point (to the gun's right on a fore-end held from below, forward on a vertical grip) |
 
-**The solver** (`game/tests/art/solve_grips.gd`, with `GripSolver` and `HandContact`) works in the hand bone's space
+**The solver** (`game/tools/art/solve_grips.gd`, with `GripSolver` and `HandContact`) works in the hand bone's space
 (`Index1`), so its result holds in every pose:
 
 1. The hand's handle line: across the knuckles (pinky to index) at the middle finger; the straight fingers' direction
@@ -306,6 +306,49 @@ weapon clips, so the legs keep their locomotion under it through the same bone f
   clip reaches the named player's body; `game/tests/night/test_night_repair_hammer.gd` holds `interact` at a breach
   through the night and checks the hammer replaces the weapon and the weapon comes back on release, and
   `game/tests/ui/touch/test_touch_repair.gd` does the same from a finger on the touch Interact button.
+
+## Drink
+
+`Drink_Perk` (#912) is the Soldier drinking a perk: an `upper` clip like the repair, so the legs keep walking under
+it, built by `drink()` in `tools/blender/drink_clip.py` (called from `soldier_clips.build`) into its own file,
+`game/assets/characters/soldier/drink/soldier_drink.glb` with its `clips.json`; `PlayerAnimation` adds it to the
+library and plays it on a layer of its own over the repair (under a down), at the pace of the rules' drink.
+
+| Clip | Layer | Plays | Frames | Events |
+| --- | --- | --- | --- | --- |
+| Drink_Perk | upper | once, stretched to the drink's seconds | 60 (2.5 s) | weapon_hidden 6, bottle_visible 6, cap_off 17, drink 24, gulp 30, 37, discard 46, weapon_visible 53, done 60 |
+
+- **The motion:** the gun goes down (the aim pose to the lowered arms, as `Unequip`), the bottle comes up from the
+  right hip to the chest, the left hand takes the cap and twists it off (`cap_off`), the bottle goes to the mouth from
+  his right, its bottom 45 degrees round to the right and raised 100 to 126 degrees from upright over two gulps, the
+  head tipped back a few degrees only (tipped back 20 degrees or more the kit's big head read in the game as pouring
+  the bottle over the helmet), then the arm flings the empty bottle out to the right (`discard`) and the gun comes
+  back up. Further round (58 degrees) and higher (135) the fist sank 60 mm into the head, and at the hip the fingers
+  50 mm into the hip (`test_soldier_clip_fit.gd`, which samples `Drink_Perk` with the player's other clips): now 13 mm
+  at most on both looks, every quarter frame, and the build's `ARMS` line is clear.
+- **How it is made:** in world space, like the sprint carries. Each key sets the bottle's lip and axis, the lip on
+  the mouth while drinking (`MOUTH`, kit metres in `Idle` frame 0, carried by the Head bone so it follows the head);
+  the right hand is turned the least way from the gun hold so the bottle, through its solved grip, points along the
+  axis, and the arm is solved onto the lip by two-bone IK; the left hand reaches the cap the same way. The build prints
+  each key's miss (0 at every key) and the mouth in the Head bone's frame, which the test checks the lip against.
+- **The bottle** (`PerkBottle`, `game/assets/weapons/perk_bottle/`, built by `tools/blender/weapon_specs/perk_bottle.py`):
+  one model for every perk, coloured by the game (the glass in the drink colour of the perk's machine, the label band
+  in the machine's body colour, the cap chrome; the soda fountain's for the health tonic), 0.22 m drawn and 0.39 m in
+  the game (`holds/perk_bottle.tres`, 1.75 times the size rule, as the grenade is drawn large), its grip solved
+  (`grips/perk_bottle.tres`, every finger within 1 mm). On the hand mount in the weapon's place; its nodes `Label` and
+  `Cap`. The cap flicks off at `cap_off`; at `discard` a copy of the bottle is thrown to his right (1.6 m/s out, 2 up),
+  bounces once, lies on its side 4 s and goes; a down drops it from the hand.
+- **Sounds** (`perks` bank, deferred, #864; synthesised by `tools/audio/drink_recipes.py`): `drink_open` at `cap_off`
+  (the cap snapped off, a fizz), `drink_gulp` at `drink` (three swallows and a breath), `drink_discard` at `discard`
+  (a swish, the glass landing 0.45 s later, a bounce and a roll). Played at the bottle.
+- **Every player's drink:** the view starts it from the rules' `drink_started` for the player it names
+  (`NightView.show_drink`), so a teammate, a bot and another client see it; `drink_spilled` drops the bottle.
+- **The arms:** while the drink holds them the hands' IK is at weight 0 and the sprint carry stays out; the weapon is
+  hidden from `weapon_hidden` to `weapon_visible`, and nothing else shows it in between.
+- Checked: `tests/player/test_player_drink.gd` (the clip in the library, its pace, the gun away and back, the bottle in
+  each perk's colours, the cap, the lip within 5 cm of the mouth in the Head bone's frame as the game draws it, the
+  throw landing beside him, a down dropping it, the fingers on the bottle's grip). Captures:
+  `tests/captures/drink_tour.gd` (`--view player`, `teammate` or `side`).
 
 ## Downed and revive
 
@@ -592,6 +635,12 @@ Soldier's library when the tree is built.
   long guns' clips are built through the grip files: when a grip is solved again (`solve_grips.gd`), rebuild the
   Sprint file (not needed after `--fingers`, which keeps the `hold`) and check the hands with `test_hand_grips.gd`,
   which measures both hands on every weapon's skin in the sprint too.
+- **On the shorter forearm (#978).** The left wrist of every long gun's carry was 175-180 degrees off its turn in the
+  gun hold, and near half a turn the tree's blend between the two takes either way round: the puppet's left hand spun
+  77-86 degrees in one tick of the sprint start. Each carry rolls its left forearm about its own axis, one roll for the
+  loop (45-60 degrees; `left forearm roll` in the `SPRINT` line), the least that keeps the wrist within 150 degrees
+  (`CARRY_WRIST_MAX`); the hand's world turn and place do not change. The right elbow is bent out twice as far as the
+  IK's (`SPRINT_RIGHT_OUT`), or the seat's armband on the right upper arm sank 8 mm deeper into the chest.
 - **Checked:** `game/tests/player/test_sprint_carry.gd` (the clips are on Run's cycle; the carry plays only sprinting
   on the ground, holds in the air and never starts there; its phase matches Run to 0.002 s; it catches up after a
   landing without jumping; aim, a hip shot, a reload and a swing take it out within 0.15 s; the first shot's `muzzle`
@@ -665,6 +714,13 @@ godot --path game -s res://tests/art/capture_grenade.gd -- --out <scratch>/godot
 blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Repair_ --out game/assets/characters/soldier/repair/soldier_repair.glb
 blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Repair,RepairSplit --view back --out <scratch>/repair
 godot --headless --path game -s res://tests/art/check_repair.gd           # LIBRARY/CLIP/LOOP/BLOW/SPLIT lines, exit 0
+# The perk drink (#912), its own file (prints DRINK: each key's miss and the mouth in the Head bone's frame); the bottle
+# and its grip; the sheet (front, or --view back) with the bottle through its grip; the captures in the game:
+blender -b --factory-startup -P tools/blender/build_weapons.py -- --only perk_bottle
+godot --headless --path game -s res://tests/art/solve_grips.gd -- --only perk_bottle
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Drink_ --out game/assets/characters/soldier/drink/soldier_drink.glb
+blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Drink --zoom 2 --grip Drink=game/assets/weapons/perk_bottle/perk_bottle.glb=perk_bottle --out <scratch>/drink
+gds godot -- --path game -s res://tests/captures/drink_tour.gd -- --view player --out <scratch>
 # The aim-move clips, their own file (prints AIM_MOVES: ground speed and how far a foot was pulled into reach); their
 # sheet, the kit Run above them (front, side, or from above and behind to see the feet on a strafe):
 blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Walk_,Strafe_ --out game/assets/characters/soldier/aim_move/soldier_aim_move.glb

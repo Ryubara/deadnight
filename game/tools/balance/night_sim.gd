@@ -32,6 +32,8 @@ const FUEL_BUY_BELOW := 35.0
 const REPLACE_GAIN := WeaponWorth.REPLACE_GAIN
 ## Seconds per tick while the shopper waits at the crane in a break.
 const CRANE_STEP := 0.25
+## Seconds per tick while the shopper drinks a tonic down in a break.
+const DRINK_STEP := 0.25
 ## Prizes the simulator does not play (#788): the freeze is not modelled, and the ray gun's blast on
 ## a crowd and its dear rounds are, but its hurt to its shooter is not, so a shopper that won one
 ## would be worth more than it is. They are out of the crane's pool here, so the gate stays the
@@ -84,11 +86,16 @@ var _over: bool = false
 
 
 func _init(
-	p_tuning: RulesTuning, p_skill: SimSkill, players: int, seed_value: int, p_step: float
+	p_tuning: RulesTuning,
+	p_skill: SimSkill,
+	players: int,
+	seed_value: int,
+	p_step: float,
+	p_settings: MatchSettings = null
 ) -> void:
 	step = p_step
 	_leave_out_the_unmodelled(p_tuning)
-	rules = GameRules.new(p_tuning, seed_value)
+	rules = GameRules.new(p_tuning, seed_value, p_settings)
 	_rng.seed = seed_value ^ 0x51A7
 	skill = p_skill.jittered(_rng, NIGHT_SPREAD)
 	_set_lights()
@@ -769,8 +776,17 @@ func _buy(player: SimPlayer, item_id: StringName, rounds: int = -1) -> int:
 				return 1 if _play_crane(player, event["price"]) else 0
 			if item_id == &"upgrade_weapon":
 				player.arms[weapon].upgrade(rules.tuning.upgrade)
+			_drink_out(player)
 			return int(event["detail"].get("rounds", 1))
 	return 0
+
+
+## A tonic bought is drunk before anything else is bought (#912: the counter refuses a second
+## purchase from a player with a bottle in the hand), so the shopper in the break stands and
+## drinks it down, as at the machine, and the break's clock runs meanwhile (as for the crane).
+func _drink_out(player: SimPlayer) -> void:
+	while rules.phase == GameRules.Phase.BREAK and PerkPlay.is_drinking(rules.players[player.id]):
+		_handle(rules.apply(RulesAction.tick(DRINK_STEP)))
 
 
 ## Whether the shop sells this item as a weapon.
@@ -842,7 +858,10 @@ func _can_ever_buy(player: SimPlayer, item_id: StringName) -> bool:
 		return _crane_can_pay_off(player)
 	if _is_weapon_item(item_id):
 		return _worth_taking(player, item_id) and not rules.players[player.id].weapons.has(item_id)
-	return not rules.players[player.id].tonics.has(item_id)
+	var tonics := rules.players[player.id].tonics
+	return (
+		not tonics.has(item_id) and tonics.size() < rules.settings.tonic_limit(rules.tuning.economy)
+	)
 
 
 ## Spins the crane out in the break (the shopper stands at the glass, so the weapon is taken the

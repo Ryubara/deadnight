@@ -48,6 +48,11 @@ func _life(zombie_id: int, look: StringName, at: Vector3) -> void:
 
 
 func test_the_bodies_of_zombies_that_left_are_used_again_not_made_again() -> void:
+	# Sounds an earlier suite left queued on `Audio` are decoded during the frames below (#1093).
+	await AudioSettle.until_idle(get_tree())
+	# Sounds an earlier suite left playing end during the count, each freeing its playback in a
+	# frame of its own: a fall that hides a leak of as many objects (#1138).
+	assert_bool(await QuietCount.settle(get_tree())).is_true()
 	await _life(1, &"walker", Vector3(3, 0, 3))
 	var nodes_before := _added
 	var objects := int(Performance.get_monitor(Performance.OBJECT_COUNT))

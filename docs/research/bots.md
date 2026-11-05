@@ -1333,11 +1333,11 @@ count is the host's, and the server's own limits sit above it.
 
 | Part | How it is built |
 | --- | --- |
-| Slot filling | `NightBots` seats bots in the highest free seats up to `target(setting, people, limit)`; a person with no free seat takes the lowest bot's seat as it stands (`hand_over`, `bot_replaced`), and **a person who leaves hands the seat to a bot as it stands** (`adopt`, `bot_seated`: the same body, points, weapons and health), so decision 7 holds both ways |
+| Slot filling | `NightBots` seats `target(setting, limit)` bots, each in the lowest free id from 101 (`NightBots.FIRST_ID`), **beside** the people and never in a seat of the eight (#1179, the maintainer: bots are no longer in the 8 player cap). Until #1179 a bot held one of the eight seats, a person with no free seat took the lowest bot's seat as it stood (`hand_over`) and a leaving person's seat went to a bot (`adopt`), each with an event of its own, since removed (#1185), which was decision 7 both ways; with ids of their own neither exists, and a person who leaves takes only their own body away |
 | Difficulty | `MatchSettings.bot_skill` picks the `BotProfile` of every bot (`BotProfile.for_skill`); the rules never read it, a test holds the night's numbers equal across skills |
 | Names and looks | `BotRoster`: a cast of eight per skill, one per seat (Pip, Dale, Moe, ...; Ash, Fern, Moss, ...; Rex, Sarge, Hawk, ...; #690), each a name and a different catalogue preset look sent through the look server like a person's; the lobby shows the same names before the night begins |
 | Labels | `BOT` after the name in the HUD, the scoreboard, the lobby and the feed; `PlayerState.bot` rides every snapshot, so the roster API marks the seat; no bot flag exists in a command (the bots send the same plain actions through `apply`, and a person's seat is told apart only by the rules) |
-| Limits | `MAX_BOTS` caps one room (0 to 7 since #690, with eight seats), `BOT_BUDGET` shares a number of bots among the open rooms, `BOTS_OFF` is the kill-switch; a limit that drops sends the highest seats' bots away at once and the night goes on (`BotLimits`, `GameServer.set_bot_limits`, `NightHost.set_bot_limit`) |
+| Limits | `MAX_BOTS` caps one room (0 to 7 since #690; since #1179 on top of the eight people), `BOT_BUDGET` shares a number of bots among the open rooms, `BOTS_OFF` is the kill-switch; a limit that drops sends the highest seats' bots away at once and the night goes on (`BotLimits`, `GameServer.set_bot_limits`, `NightHost.set_bot_limit`) |
 | Marked in the stats | the room's stats line carries `bots`; the rules mark every bot seat, so nothing that reads `player_added.bot` can pay a bot account progression (there is none yet) |
 
 **Proof.**
@@ -1349,6 +1349,8 @@ count is the host's, and the server's own limits sit above it.
   engine error in the verbose log. `churn`: a setting of 3, people join at 0, 10, 30 and 50% of the run and leave at
   70, 80 and 90%; the bots were 3, 2, 1, 0 and then 1, 2, 3 after each change as the rule says, the night was never
   rebuilt, the round never went back, and the three people who took a bot's seat kept its body and its kills.
+  (That was before #1179; since then the bots hold no seat, so the churn keeps all three bots through every change
+  and checks each is the body it was: `bot_bodies_kept` in the soak's line.)
   The server's step (the server, two clients and two or three bots in one process) averaged 1.4 to 1.5 ms of the 16.7 ms
   tick and its worst step outside a client joining was 9.9 ms.
 - **The bots' own cost** (`test_bot_server_cost.gd`, a test): three bots with 40 zombies on the lot, 900 ticks, the
@@ -1424,6 +1426,7 @@ to four bots on an idle machine (a game minute takes 5 to 8 s).
 | Hold: within 3 m of the spot for 92% of the time under the stance | Not on a trip for a revive, a ping, a dodge or an errand; the 1% stuck share is not asked of a bot holding a spot, which walks a few seconds a night |
 | No rejected-buy loop | The same item refused to the same bot twice inside 29 s |
 | No round that will not end | A round over 8 game minutes. New in this phase: see below |
+| No round standing on its last dead (#950) | The seconds a round is down to its marked last three (`ZombieTuning.mark_last`) or fewer: no more than 150 (`GATE_TAIL_SECONDS`; a boss round with a dry stand-in takes 120 on its own). `tail_longest` and `round_longest` are in every `SOAKNIGHT` line, and `--tail=SECONDS --detail` prints where each dead is, its path and gate, who has a line to it and the boards, [read in zombies.md](zombies.md#a-round-that-waits-on-its-last-dead-950) |
 | Parity | The median round within 1.5 of the simulator cell's, and a Kolmogorov distance of the two curves under 0.2 |
 
 The gates that need people (`--person`) are only asked of the cells that have one.
@@ -1647,6 +1650,7 @@ to 65% after the changes to the hit zones and the play states).
 | `weighs_by_round` | true | `NightSim._worth_taking`: a weapon by the health of the round's dead, a free hand against the quick melee (`BotShop.rounds`, `BotEconomy.View.zombie_health`) |
 | `aims_off_weak_spot` | true | `SimSkill.weak_spot_rate`: the share of boss hits on the lens |
 | `throws_grenades` | true (not used) | the model's players never throw one; a switch for the next fit |
+| `kites_when_last` | false (the others true) | `NightSim._blow`: the last player up stands where it is, nothing kites a slow boss ([second round](#rookie-parity-second-round-the-last-bot-kited-767)) |
 
 Shared code touched: `bot_economy.gd` (`View.prepared`, `View.zombie_health`, `_floor_mags`, `_topoff`, `worth_taking`,
 `weakest_of`), `bot_errands.gd` (`_view`, `_zombie_health`, the crane take, `_hands_wrong`), `bot_client.gd` and
@@ -1677,6 +1681,50 @@ view and shorter memory (one bot: 10 of 16), a reaction of 1.0 s or a think rate
 of 16). Both together moved one bot to 5 of 16 and left two bots at 15 of 16 and four at 6 of 8, and put the Rookie's hit
 rate in the bands test at 0.46 (the model's 0.45), so they are the next thing to try with more nights than a sample of
 16. The gate on parity stays off (`--gate-parity`).
+
+#### Rookie parity, second round: the last bot kited (#767)
+
+Re-measured on `main` after #827 and #835 (24 nights a cell, round cap 16, the model's 300 nights): two bots median 8,
+Kolmogorov 0.58; four bots 6 and 0.21 (one bot 6 and 0.27, not touched by anything below). Two bots passed the first boss
+night in 14 of 16 nights at cap 6 against the model's 27%.
+
+**What it was.** A night of two bots at the first boss night, watched seat by seat (`--watch=1,2`): once one bot is
+down the other is the last one up, the revive is not safe, and `BotRevive` puts it in `SURVIVE`, which *kites* (a 5 m retreat
+margin, `KITE_MARGIN`). The headliner walks at 0.45 of a walker's speed, so a kiter is never reached: in the soak's
+counts the boss was in `CHASE` for 67 to 87 of its seconds and in `ATTACK` for 6 to 8 (4 to 5 swings), three blows
+landed a night against the six the model's loss needs. The model's player does not kite: the one left stands where it is
+(`NightSim._blow` hits it every swing). Every lever of the first round was a number of the model's player; this was a
+behaviour it does not have, found by reading the trace of one lost-or-won night, not by another sweep.
+
+**The lever.** `BotProfile.kites_when_last` (default true; the Rookie sets false): `BotRevive.kite_margin` is 0 for
+a profile that does not kite, so the last Rookie up stands and fights (the Regular and the Veteran keep kiting, as a
+person does). A bot with no teammate down never met the rule, so one bot is unchanged.
+
+| First boss night, two Rookies (cap 6, 16 nights) | Passed (the model 27%) |
+| --- | ---: |
+| kiting (before) | 14 of 16 |
+| `kites_when_last` false | **9 of 16** |
+| and `fire_jitter` 0.5 | 7 of 16 (and deaths in rounds 3 and 4: the model has 3%) |
+| and `revive_eagerness` 0 | 10 of 16 |
+| and `track_error` 24 | 10 of 16 |
+| and `weak_spot_rate` 0 | 9 of 16 |
+| and `throws_grenades` false | 12 of 16 (the grenades do not carry the boss night) |
+
+**Parity** (24 nights a cell, round cap 16, the model's 300 nights; `before` is `main`, `after` has the field; one bot
+is the same code in both):
+
+| Cell | Median before | after | Sim | Kolmogorov before | after |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| rookie x1 | 6 | 6 | 5 | 0.27 | 0.27 |
+| rookie x2 | 8 | 6 | 5 | 0.58 | 0.27 |
+| rookie x4 | 6 | 5 | 5 | 0.21 | 0.20 |
+
+The median is within a round for all three. The curves agree from round 8 on; what is left is the first boss night: two
+bots pass it in 50% of nights against the model's 23% (reached round 6), four in 38% against 34%. A Kolmogorov distance
+of two samples of the same distribution is 0.10 on average at 24 nights (0.17 at the 90th percentile) and 0.05 at 100,
+so the gate at 0.2 is read on the nightly run's 100 nights, not on 24. One two-bot night broke the roam-idle gate
+(`idle 26.4 s under Roam`, a bot with note `hold` and no goal in a break of round 4, seed 8); it is not the kite (the same
+night breaks with `kites_when_last` true, and the rule never runs with no teammate down) and is not understood.
 
 #### A Follow bot far from the person (#784)
 
@@ -1747,7 +1795,7 @@ They are decisions now, not options; the phases build to them.
 | 4 | Player scaling | **Bots count for zombie scaling.** | The boss health, the alive cap and the spawn rate scale with the number of seated players, bots included (a bot is a player to the rules: `add_player`). Phase 7 may weight a bot below one; the default is one. |
 | 5 | Can people give bots orders? | **Orders by pings only.** *Superseded 2026-11-02 (#641): pings stay, and a command wheel adds three standing orders.* | The five pings of Phase 0 (`PingBoard.KINDS`: here, door, ammo, enemy, downed) pull a bot whatever its order. The standing orders are **Follow**, **Roam** and **Hold** ([Orders](#orders-follow-roam-and-hold-641)); there is still no text. |
 | 6 | Voice | **No bot voice for now.** | Callouts are `bot_say` lines in the feed only; no audio assets are made for them until the maintainer asks. |
-| 7 | A human takes a bot's slot | **A joining human inherits the bot's slot.** | The human gets the bot's seat, body, points, weapons, ammunition, grenades and health as they stand, and the bot is removed in the same tick. No reason to leave and rejoin. A human who leaves leaves the slot to a bot again, as it stands (Phase 6, built: `NightBots.adopt`). |
+| 7 (superseded by #1179) | A human takes a bot's slot | **A joining human inherits the bot's slot.** | The human gets the bot's seat, body, points, weapons, ammunition, grenades and health as they stand, and the bot is removed in the same tick. No reason to leave and rejoin. A human who leaves leaves the slot to a bot again, as it stands (Phase 6, built: `NightBots.adopt`). **Superseded by #1179:** bots hold no seat of the room, so nobody inherits one. |
 
 ## Sources
 
@@ -2009,7 +2057,13 @@ Measured (`bots_soak.tscn --map=small_indoor`, Regular, seeds 1 to 5, headless; 
 | four bots, after | 11, 13, 10, 15, 14 | tonics in 4 of 5 nights, re-cuts in 2 | 2.4 s |
 
 A lone bot that buys the tonics lasts twice the rounds it did: the machines are what the economy's late points are for.
-`test_smallmap_bot_night.gd` holds the solo night over seeds 1, 3, 4 and 7 (it flaked on a seed picked to pass).
+`test_smallmap_bot_night.gd` holds the solo night as a rate (#1044): it plays seeds 1 to 10 and allows 3 failures
+(a night fails when it buys no first link or no weapon, tears under four windows, stays under round 4 or is downed first).
+It held four pinned seeds before, and those went red on changes that only moved hits (#821, #890, #910, #1038). Main
+(40365bce) fails 5 of 100 seeds (38, 40, 50, 64, 84: the bot is downed in round 3 or 4 at 87 to 135 s, three without a
+gun); ten-seed blocks of it fail 0 to 2. `tests/captures/smallmap_solo_sweep.tscn` plays any range of seeds
+(`-- --from=1 --to=25`, about 5 s a night, at most four processes at once) for the next measurement. With the bot's
+purchases other than the links removed, 10 of 10 nights fail.
 
 ## Walking round the dead (#914)
 
@@ -2018,6 +2072,57 @@ way round a zombie the bot believes in (`BotClient._dead_near`: within 2.4 m, ah
 on the side the way leans (by seat when it is dead ahead), and slows the pace as the gap closes; the stuck ladder still
 climbs if a body is held anyway. Bots alone barely meet the dead at rounds up to 9 (held 0.04 percent of the time, the same
 rounds as with the dead off): [The player and the dead](dead-contact.md#the-variants-and-the-numbers).
+
+## The soak's person shops (#998)
+
+The soak's person stand-in (`bots_soak.tscn --person`, the autopilot seated at seat 1) ran dry and stayed dry: its pistol
+read `[0, 0, 0]` for rounds on end while it kited the dead at a walk, and the three bots (Roam) were 30 to 60 m away.
+That made every soak and round-length number that has a person in it worse than a night with a real one (a person buys
+rounds).
+
+**Cause: a stand-in made bare.** `Night._make_autopilot` builds an `Autopilot` and then fills it from the lot and the
+rules (shop spots, ammo and weapon prices, doors, re-cut, tonic, breaches, breaker posts, fuel). `SeatedNight.seat(...,
+legacy)` built the same class and filled none of it, so `_plan_shopping` looped over no spots: it only bought at a locker
+it happened to stand beside, and it opened no doors. It had nothing to do with the House Pistol or revolver change, the
+points in fives, the wall tiers or the re-cut. `AutopilotSetup.configure` is now the one place that fills it, called by
+both.
+
+Three smaller faults showed once it could shop, each found by watching a seat that stayed dry with points in hand:
+
+- **An empty gun swapped to another empty gun** every 20 ticks, and a gun put away for a blade was never bought rounds
+  for (the ammunition purchase is for the weapon in hand, and a blade is never "low on rounds"). It now swaps an empty gun
+  for a gun with rounds, or for a blade only with a zombie within 12 m; with nothing near and the points for rounds it
+  takes the dry gun back in hand (`_refill_gun`).
+- **A flight bent only toward home**, so a chase never led to a locker. With a gun nearly out the flight bends toward
+  the planned shop (`SHOP_PULL` 0.8; the home bend stays 0.35).
+- **A locker on the floor above was "arrived at"** from under it (the arrival and the reach test were flat), so on the
+  second map the stand-in stood under the locker for 98 s with 3655 points. Arrival and reach now check height
+  (`ARRIVE_HEIGHT` 1.5 m), and the nearest spot counts 8 m a metre of height, as the bots' economy does. It also walks on
+  from a door prompt it cannot pay for, where it used to hold still.
+
+The soak report has a `people` list: per person seat, seconds up, seconds dry (a firearm in hand with nothing in the
+magazine and none in reserve), the longest dry run, the rounds it was dry in and the points it ends with.
+
+**Measured** (`bots_soak.tscn --person --bots=3 --profile=regular`, headless, `main` at 044d485b with only the soak's
+instruments against this branch; lot seeds 1 to 10 and 31, second map seeds 1 to 4):
+
+| | dry share of the person's time | longest dry run | rounds reached (median) | longest round (median, max) | boss-round tail (median, max) |
+| --- | --- | --- | --- | --- | --- |
+| lot, before (11 nights) | 64.5% | 345 s | 10 | 152 s, 284 s | 63 s, 112 s |
+| lot, after (11 nights) | 4.2% | 61 s | 11 | 104 s, 172 s | 47 s, 107 s |
+| second map, before (4 nights) | 62.9% | 80 s | 9.5 | 98 s, 120 s | 64 s, 91 s |
+| second map, after (4 nights) | 6.2% | 37 s | 11 | 90 s, 480 s | 52 s, 427 s |
+
+Lot seeds 4 and 31 (the issue's): dry 807 of 1012 s and 931 of 1147 s before, 3.6 s and 0 s after. The tail on the lot falls
+from 63 s to the 47 s the issue hoped for. The second map's 427 s tail is one night (seed 1, round 8): a dead at the
+window at (-4.3, 0.9) that the person mends as fast as it tears, the round of #950; with that branch merged in, the same
+seed ends round 10 with a 45 s tail. A person with a gun lives longer than a dry one, so the nights run to rounds 11 to
+16 instead of 10 and meet the late-round faults (that one) the dry person never reached.
+
+What moves: every soak with `--person` (`bots_soak.tscn`, `tools/bots/soak_report.py`), whose person now buys, opens doors
+(about 4 against 2) and lives to round 11 instead of 10, with the bots' kills up by a third; the report gains `people`.
+`test_bot_soak.gd` seats the stand-in as its fourth bot, now shopping. A night with the autopilot (`Night`, the captures)
+is set up as before.
 
 ## A flank bot that stood still (#953)
 
@@ -2065,3 +2170,54 @@ brain (the goal behind the post) and passes now.
 **Not changed, and seen:** the walking mesh runs straight through the breaker post of the screen lot (a 1.75 m stop at
 (-0.13, 0.5, -45.95) on the way north): a path that must pass it is called walled and the goal given up, which is the
 right answer for a bot. Whether the dead's paths meet the same post was not looked at.
+
+## A Rookie idle for 26 s on a piece of mesh joined to nothing (#1041)
+
+Found fitting the Rookie (#767, #1040): on a two-bot night, seed 8, a bot stood for 26 s in round 4's break and broke the
+`idle under Roam over 8 s` gate; nights are not repeatable by seed, and the same run on `main` plus #1040 read it in
+roughly half the runs (26.4 s in the first, 15 s in others: the gate reads the longest unbroken stand, and a shot
+or a look about breaks it). `kites_when_last` on and off gave the same, so it is not that.
+
+**What the log showed** (`--watch=2 --every=10`, plus a debug print of the roam's refusals and of the path queries):
+
+1. The bot's roam place was `(-12.5, 31.6)`, the stand of the west midway's barricade `mid_w`. Its walk ended at
+   `(-13.3, 31.1)`, within 1.5 m of the place, so it arrived and looked about. The other bot stood at the same stand
+   mending the boards; the bot moved 1.7 m west in 0.4 s while it looked about, which fits the step the higher seat
+   makes for the lower (`BotLegs._give_way`, 0.6 s at a run, a heading chosen by walls and not by the mesh). It was not
+   caught in the act; any step off the mesh (a blow, a grenade's push) does the same.
+2. That point is on a piece of the walking mesh about 2 by 2 m (x -15.8 to -13.8, z 30.6 to 32.6) that joins nothing:
+   `NavmeshSplit` takes out the polygons across a barricade's line, and the walking mesh left round the stand is this
+   piece (which polygons were cut was not looked at). A path from there has two points and ends in the piece, for every
+   goal (`raw` 2); asked with the dead's layers it reaches the lot, so it is the walking layer that is cut.
+3. Roam asked about four places at a think, found each unreachable and banned it for `BAN_SECONDS` (600 s, until the mesh
+   changes); within a few thinks every place it could ask about (the level's and the ring about the bot) was banned,
+   `plan` returned no place, the note stayed empty (`hold`), and nothing else in the brain moves a bot that has no
+   goal. It stood through the rest of the break and into round 5: still at `(-14.3, 31.6)` two minutes later.
+   The errands' goals (`boards n2`, `buy door_yard`) failed the same way and fell through to Roam.
+
+**Cause:** the bot was off the connected part of the walking mesh and nothing knew it. Roam took "every place is
+unreachable" to mean the places were, and banned them for ten minutes.
+
+**Fix** (`BotRoam`, `BotFightBrain._roam_about`): Roam keeps the spot it last chose from or arrived at (`_free`: a spot
+from which a place was reachable). When a think finds no place at all, the bot is within 6 m of that spot and a strict
+probe from the bot to the spot (`BotRoam.exact`: the path must end within 0.5 m of it, where `reach` allows 2.5 m) fails,
+the bot is cut off, not the places: the refusals of that think are taken back (`_refused`), `rejoin` is set and the brain
+walks the bot straight at the spot (`intent.reflex`, note `rejoin`) until the probe succeeds, at most 8 s. After the
+time is up the spot is forgotten and Roam goes back to banning as before (a wall in the way is not an endless loop).
+A bot whose places are all behind shut doors is not cut off: the spot it chose from is as unreachable as they are, and
+nothing changes.
+
+**Tests:** `test_bot_cut_off.gd` (in the real lot, door_concession open: the roaming Rookie is set down beside the piece,
+chooses a place, is put on the piece, and is 4 m or more off it within 15 s and never still for 8 s; fails on `main`:
+still at `(-13.9, 31.6)`) and three in `test_bot_roam.gd` (the walk back, the places kept, the time limit, doors are not
+a cut). The seed 8 night, six runs on #1040's branch with the fix: no gate broken (before: about half); seeds 1 to 8 at
+`--max-round=6`: none (before: seed 8).
+
+**Not changed, and seen:** a Follow or Hold bot set down on the same piece has the same trouble (their goals fail the
+same way and nothing walks them off); the fix is Roam's. The piece itself is in the mesh the map bakes: changing `mid_w`
+or its stand would remove this one, not the other ways a bot gets onto a piece.
+
+**Since then (#1051):** the piece and the 130 others a body could stand on are off the walking mesh
+(`docs/research/map-review.md`), so a bot under any order walks off them (`test_bot_off_the_walking_mesh.gd`), and
+`test_bot_cut_off.gd` now reads that the spot is no longer cut off. `BotRoam`'s walk back stays as the guard for a piece
+a later map or bake leaves, and no check on the two maps finds one: it is tested in `test_bot_roam.gd` alone.

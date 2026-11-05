@@ -14,3 +14,8 @@ extends Resource
 ## behind the bar was the largest part of the web build's loading, and it grew with every weapon
 ## (`docs/research/web-export.md`, "Loading a night").
 @export var deferred := false
+## The family is loaded by nothing but the thing that plays it, when it plays
+## (`Audio.preload_sound`):
+## the night's loading bar and the background decode leave it alone, so a player who never meets the
+## thing (the helicopter drop of the arrival, #1057) pays nothing for its files.
+@export var on_demand := false

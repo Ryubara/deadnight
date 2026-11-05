@@ -10,8 +10,13 @@ extends RefCounted
 ## option.
 
 ## Bump when the catalogue stops being append-only or a slot is added (2: the character's `body`
-## slot, #678).
-const VERSION := 2
+## slot, #678; 3: the `mouth` slot, #1061).
+const VERSION := 3
+## The oldest look `from_bytes` still reads. A look of an older version lacks the slots added since
+## (`SLOT_SINCE`), which take their first option.
+const OLDEST_VERSION := 2
+## The version that added a slot, for the slots added after `OLDEST_VERSION`.
+const SLOT_SINCE := {&"mouth": 3}
 ## Part option id by part slot.
 var parts: Dictionary = {}
 ## Palette index by colour slot.
@@ -22,8 +27,25 @@ var shift := 0
 
 
 ## Bytes on the wire: the version, then one byte per part slot and per colour slot.
-static func wire_size() -> int:
-	return 1 + LookCatalog.part_slots().size() + LookCatalog.colour_slots().size()
+static func wire_size(version := VERSION) -> int:
+	return 1 + wire_slots(version).size() + LookCatalog.colour_slots().size()
+
+
+## The part slots a look of `version` carries, in wire order.
+static func wire_slots(version: int) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for slot in LookCatalog.part_slots():
+		if int(SLOT_SINCE.get(slot, OLDEST_VERSION)) <= version:
+			out.append(slot)
+	return out
+
+
+## Whether `size` bytes can be a look of a version this build reads.
+static func fits_wire(size: int) -> bool:
+	for version in range(OLDEST_VERSION, VERSION + 1):
+		if size == wire_size(version):
+			return true
+	return false
 
 
 func _init() -> void:
@@ -119,19 +141,35 @@ func shift_colour(slot: StringName, steps: int) -> void:
 	colours[slot] = posmod(int(colours[slot]) + steps, LookCatalog.palette(slot).size())
 
 
-## A copy with every option this player has not unlocked put back to the slot's first option.
+## A copy with every option this player has not unlocked put back to the first one they may wear
+## in that slot (the first of the slot is the free "None" for headwear, eyewear and neckwear, and
+## the first of a ladder slot's starting pieces for the rest), and every colour to the first they
+## may use. The default colours of a costume the player owns are the exception (`default_costume`).
 func without_locked(unlocks: LookUnlocks) -> CharacterLook:
 	var out := duplicate_look()
 	for slot in LookCatalog.part_slots():
 		var index := LookCatalog.option_index(slot, parts[slot])
 		var option: Dictionary = LookCatalog.options(slot)[index]
 		if not unlocks.is_unlocked(slot, option["id"], option["gate"]):
-			out.parts[slot] = LookCatalog.options(slot)[0]["id"]
+			out.parts[slot] = LookCatalog.first_open(slot, unlocks)
+	var costume_colours := default_costume(unlocks) >= 0
 	for slot in LookCatalog.colour_slots():
 		var entry: Dictionary = LookCatalog.palette(slot)[colours[slot]]
-		if not unlocks.is_unlocked(slot, entry["id"], entry["gate"]):
-			out.colours[slot] = 0
+		if unlocks.is_unlocked(slot, entry["id"], entry["gate"]):
+			continue
+		# The cloth colours of a costume the player owns are theirs, all three together: that is
+		# its "Default" (#1066). One of them changed leaves the others to the palette they own.
+		if not (costume_colours and Costumes.COLOUR_CHANNELS.has(slot)):
+			out.colours[slot] = LookCatalog.first_open_colour(slot, unlocks)
 	return out
+
+
+## The costume this player owns whose three cloth colours this look wears whole, or -1.
+func default_costume(unlocks: LookUnlocks) -> int:
+	for index in Costumes.count():
+		if unlocks.owns_costume(index) and Costumes.has_default_colours(self, index):
+			return index
+	return -1
 
 
 # --- saving ------------------------------------------------------------------------------------
@@ -208,14 +246,17 @@ func to_bytes() -> PackedByteArray:
 	return out
 
 
-## Reads a look from the wire. Returns null when the bytes are not a look of this version (the
-## caller falls back to the default); an index that is out of range becomes the first option.
+## Reads a look from the wire. Returns null when the bytes are not a look of a version this build
+## reads (the caller falls back to the default); an index that is out of range becomes the first
+## option, and so does a slot the look's version did not have yet.
 static func from_bytes(data: PackedByteArray) -> CharacterLook:
-	if data.size() != wire_size() or data[0] != VERSION:
+	if data.is_empty() or data[0] < OLDEST_VERSION or data[0] > VERSION:
+		return null
+	if data.size() != wire_size(data[0]):
 		return null
 	var look := CharacterLook.new()
 	var at := 1
-	for slot in LookCatalog.part_slots():
+	for slot in wire_slots(data[0]):
 		var list := LookCatalog.options(slot)
 		if data[at] < list.size():
 			look.parts[slot] = list[data[at]]["id"]

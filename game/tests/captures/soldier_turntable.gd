@@ -1,17 +1,19 @@
 extends Node3D
 ## Capture for #895: the dressed Soldier turned all the way round, one row per look, in one sheet.
 ## Each look is a preset (`10`) or a preset with parts and colours changed
-## (`10:torso=jacket,neck=scarf/primary=5`). The pose is the menu's (`--pose=menu`: the idle with
-## the showcase weapon in the hands, `MenuHero`, the night's hold) or a clip at a time
-## (`--pose=Run_Gun@0.3`), and `--zoom` frames the whole body, the head and neck, or the hands.
+## (`10:torso=jacket,neck=scarf/primary=5,accent=1`), and `;` parts two looks. The pose is the
+## menu's (`--pose=menu`: the idle with the showcase weapon in the hands, `MenuHero`, the night's
+## hold) or a clip at a time (`--pose=Run_Gun@0.3`), and `--zoom` frames the whole body, the head
+## and neck, the hands, the chest, the hips or the feet.
 ## The camera looks a little down, as the menu's does. Not part of the game.
 ##
 ##     gds godot -- --path game res://tests/captures/soldier_turntable.tscn --resolution 1600x900
-##         -- --out=<folder>/sheet.png --looks=10,0,3:torso=tank [--pose=menu] [--weapon=rifle]
-##         [--turns=8] [--zoom=body|head|hands] [--cell=240] [--probe]
+##         -- --out=<folder>/sheet.png "--looks=10;0;3:torso=tank" [--pose=menu] [--weapon=rifle]
+##         [--turns=8] [--zoom=body|head|hands|chest|hips|feet] [--cell=240] [--probe] [--far]
 ##
 ## `--weapon=none` stands the soldier in the pose with empty hands. `--probe` marks in red every
 ## place where the eye sees through the body (`BodyFit.see_through` all over it) and prints them.
+## `--far` stands the camera past `SoldierLook.FAR_FROM`, at the same framing: the far meshes.
 
 const STEP := 1.0 / 30.0
 ## Frames of the pose before the first shot, and between two turns (the hand pose settles).
@@ -22,6 +24,9 @@ const ZOOMS := {
 	"body": [0.78, 0.95],
 	"head": [1.3, 0.42],
 	"hands": [1.05, 0.42],
+	"chest": [0.92, 0.3],
+	"hips": [0.6, 0.36],
+	"feet": [0.2, 0.3],
 }
 const ELEVATION := 0.12
 
@@ -33,6 +38,7 @@ var _turns := 8
 var _zoom := "body"
 var _cell := 240
 var _probe := false
+var _far := false
 var _camera: Camera3D
 
 
@@ -42,7 +48,7 @@ func _ready() -> void:
 		if arg.begins_with("--out="):
 			_out = arg.substr(6)
 		elif arg.begins_with("--looks="):
-			_looks.assign(arg.substr(8).split(","))
+			_looks.assign(arg.substr(8).split(";"))
 		elif arg.begins_with("--pose="):
 			_pose = value
 		elif arg.begins_with("--weapon="):
@@ -55,6 +61,8 @@ func _ready() -> void:
 			_cell = int(value)
 		elif arg == "--probe":
 			_probe = true
+		elif arg == "--far":
+			_far = true
 	_stage()
 	var sheet := Image.create(_cell * _turns, _cell * _looks.size(), false, Image.FORMAT_RGBA8)
 	for row in _looks.size():
@@ -178,7 +186,8 @@ func _stage() -> void:
 	_camera.keep_aspect = Camera3D.KEEP_HEIGHT
 	var target := Vector3(0, float(zoom[0]), 0)
 	# The soldier faces +Z; the camera stands in front of it, a little above.
-	_camera.position = target + Vector3(0, sin(ELEVATION), cos(ELEVATION)) * 6.0
+	var distance := SoldierLook.FAR_FROM + 6.0 if _far else 6.0
+	_camera.position = target + Vector3(0, sin(ELEVATION), cos(ELEVATION)) * distance
 	add_child(_camera)
 	_camera.look_at(target)
 	_camera.make_current()

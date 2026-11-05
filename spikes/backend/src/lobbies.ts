@@ -2,11 +2,12 @@
 // release (one backend replica); running more replicas needs them in Postgres or Redis (see the research page).
 //
 // They do not live forever: an open lobby expires after it has been idle, a started one when its match ends (the
-// game server says so) or at a maximum age. A user is in at most one open lobby. Every time comes from an injected
-// clock, so tests move time by hand.
+// game server says so) or at a maximum age. A user is in at most one lobby, open or started, and creating or joining
+// another one takes them out of it (nobody is ever refused for being somewhere else); a lobby with no member left is
+// gone at once. Every time comes from an injected clock, so tests move time by hand.
 import { randomBytes, randomUUID } from "node:crypto";
 import type { GameServerInfo } from "./servers.ts";
-import { type MatchSettings, checkSettings } from "./settings.ts";
+import { DEFAULT_MAP, type MatchSettings, checkSettings, mapOpenAt } from "./settings.ts";
 
 export interface Member {
   userId: string;
@@ -16,22 +17,30 @@ export interface Member {
 export interface Match {
   id: string;
   server: GameServerInfo;
+  /**
+   * The level of the lobby's host when the match started: signed into EVERY ticket of the match (a guest's too), so the
+   * game server decides the map from one number whatever order the players arrive in or whoever the host becomes.
+   */
+  hostLevel: number;
 }
+
+export type Visibility = "private" | "public";
 
 export interface Lobby {
   id: string;
   /** Short code to join by hand. */
   code: string;
-  /** The Discord Activity instance this lobby belongs to, when it was created from one. */
-  instanceId: string | null;
   hostId: string;
   maxPlayers: number;
-  /** A public night is one Quick join may put a stranger in; a private one is for whoever has its code. */
-  visibility: "private" | "public";
+  /**
+   * A public night is listed (`listed`, the Server Browser) for any player to join; a private one is for whoever has its
+   * code. A new night is public: its host makes it private (`setVisibility`).
+   */
+  visibility: Visibility;
   members: Member[];
   /** When each member was last heard from (create, join, a poll): who is still on the lobby screen. */
   seen: Map<string, number>;
-  /** Players on the game server now, as it last said (null until it has, or before the match starts). */
+  /** People on the game server now, as it last said, bots left out (null until it has, or before the match starts). */
   players: number | null;
   /** The round the night is in, as the game server last said (null until it has, or before the match starts). */
   round: number | null;
@@ -43,6 +52,12 @@ export interface Lobby {
   /** Last create, join, leave, start or poll by a member; an open lobby expires when this is old. */
   lastActiveAt: number;
   startedAt: number | null;
+  /**
+   * When a finished night opened this lobby again, until a member first reads it. The night screen asks for it every
+   * half second for a few seconds, so a reopened lobby nobody has read within `memberAwayMs` has no one coming back to
+   * it (they went to the menu or closed the tab): it goes then, not after the long idle time.
+   */
+  reopenedAt: number | null;
 }
 
 export type LobbyError =
@@ -53,8 +68,8 @@ export type LobbyError =
   | "no_server"
   | "not_member"
   | "not_started"
-  | "already_in_lobby"
-  | "bad_settings";
+  | "bad_settings"
+  | "bad_visibility";
 
 export class LobbyFailure extends Error {
   readonly reason: LobbyError;
@@ -81,7 +96,7 @@ export interface LobbyLimits {
 
 /** Most people who may ever hold a seat of one started night (who left is not tracked, only who is there now). */
 export const MAX_SEATS_EVER = 32;
-/** Seats in a room, people and bots together: the game server's `NightHost.MAX_PLAYERS`, which a lobby may not exceed. */
+/** People in a room, bots not counted: the game server's `NightHost.MAX_PLAYERS`, which a lobby may not exceed. */
 export const MAX_PLAYERS = 8;
 
 // A tab in the background stops polling (the game's frames stop), so a host who goes to a chat to paste the invite is
@@ -112,9 +127,8 @@ export class LobbyService {
   private readonly lobbies = new Map<string, Lobby>();
   // Indexes, so a lookup does not scan every lobby.
   private readonly byCode = new Map<string, string>();
-  private readonly byInstance = new Map<string, string>();
-  /** The one open lobby each user is in. */
-  private readonly openLobbyOf = new Map<string, string>();
+  /** The one lobby each user is in, open or started: creating or joining another takes them out of it. */
+  private readonly lobbyOf = new Map<string, string>();
   private readonly byMatch = new Map<string, string>();
 
   private readonly hooks: LobbyHooks;
@@ -133,6 +147,7 @@ export class LobbyService {
 
   private expired(lobby: Lobby): boolean {
     const now = this.now();
+    if (lobby.reopenedAt !== null) return now - lobby.reopenedAt > this.limits.memberAwayMs;
     return lobby.state === "open"
       ? now - lobby.lastActiveAt > this.limits.openIdleMs
       : now - (lobby.startedAt ?? lobby.createdAt) > this.limits.startedMaxAgeMs;
@@ -143,8 +158,7 @@ export class LobbyService {
     if (this.lobbies.get(lobby.id) !== lobby) return;
     this.lobbies.delete(lobby.id);
     this.byCode.delete(lobby.code);
-    if (lobby.instanceId && this.byInstance.get(lobby.instanceId) === lobby.id) this.byInstance.delete(lobby.instanceId);
-    for (const m of lobby.members) if (this.openLobbyOf.get(m.userId) === lobby.id) this.openLobbyOf.delete(m.userId);
+    for (const m of lobby.members) if (this.lobbyOf.get(m.userId) === lobby.id) this.lobbyOf.delete(m.userId);
     if (lobby.match) {
       this.byMatch.delete(lobby.match.id);
       this.hooks.release(lobby.match.id);
@@ -165,15 +179,14 @@ export class LobbyService {
     return dropped;
   }
 
-  create(host: Member, maxPlayers: number, instanceId: string | null, visibility: "private" | "public" = "private"): Lobby {
-    if (this.openLobbyOf.has(host.userId)) throw new LobbyFailure("already_in_lobby");
+  create(host: Member, maxPlayers: number, visibility: Visibility = "public"): Lobby {
+    this.depart(host.userId);
     let code = makeCode();
     while (this.byCode.has(code)) code = makeCode();
     const now = this.now();
     const lobby: Lobby = {
       id: randomUUID(),
       code,
-      instanceId,
       hostId: host.userId,
       maxPlayers,
       visibility,
@@ -187,11 +200,11 @@ export class LobbyService {
       createdAt: now,
       lastActiveAt: now,
       startedAt: null,
+      reopenedAt: null,
     };
     this.lobbies.set(lobby.id, lobby);
     this.byCode.set(code, lobby.id);
-    if (instanceId) this.byInstance.set(instanceId, lobby.id);
-    this.openLobbyOf.set(host.userId, lobby.id);
+    this.lobbyOf.set(host.userId, lobby.id);
     return lobby;
   }
 
@@ -223,8 +236,22 @@ export class LobbyService {
   private removeMember(lobby: Lobby, userId: string): void {
     lobby.members = lobby.members.filter((m) => m.userId !== userId);
     lobby.seen.delete(userId);
-    if (this.openLobbyOf.get(userId) === lobby.id) this.openLobbyOf.delete(userId);
+    if (this.lobbyOf.get(userId) === lobby.id) this.lobbyOf.delete(userId);
     if (lobby.hostId === userId && lobby.members.length > 0) lobby.hostId = lobby.members[0]!.userId;
+  }
+
+  /**
+   * Takes the user out of the lobby they are in, whatever its state: the host role passes on, and a lobby left with
+   * nobody is gone at once with its code and its match (the people in it are the members; bots are not counted).
+   */
+  private depart(userId: string): void {
+    const id = this.lobbyOf.get(userId);
+    const lobby = id ? this.lobbies.get(id) : undefined;
+    this.lobbyOf.delete(userId);
+    if (!lobby || !this.isMember(lobby, userId)) return;
+    this.removeMember(lobby, userId);
+    lobby.lastActiveAt = this.now();
+    if (lobby.members.length === 0) this.remove(lobby);
   }
 
   /** Whether another player cannot take a seat now: the game server's count once started, the seats before. */
@@ -238,12 +265,23 @@ export class LobbyService {
     return this.now() - (lobby.seen.get(userId) ?? 0) > this.limits.memberQuietMs;
   }
 
+  /**
+   * Whether a stranger may be shown the lobby in the list: a waiting lobby with nobody heard from for
+   * `memberQuietMs` is left out (every member shows as away: a closed tab that said nothing, or a host in another tab
+   * pasting the invite). It is hidden, not ended: its code still joins it, and the first poll of a member puts it back.
+   * A started night is not polled by anyone (its people are on the game server), so it is judged by its match instead.
+   */
+  isHeard(lobby: Lobby): boolean {
+    return lobby.state === "started" || lobby.members.some((m) => !this.isQuiet(lobby, m.userId));
+  }
+
   /** A member reads the lobby (a poll): that counts as activity. */
   view(id: string, userId: string): Lobby {
     const lobby = this.get(id);
     if (!this.isMember(lobby, userId)) throw new LobbyFailure("not_member");
     lobby.lastActiveAt = this.now();
     lobby.seen.set(userId, lobby.lastActiveAt);
+    lobby.reopenedAt = null;
     return lobby;
   }
 
@@ -257,11 +295,6 @@ export class LobbyService {
     }
   }
 
-  findByInstance(instanceId: string): Lobby | null {
-    // A started night counts too: the friends who open the Activity later land in the same night.
-    return this.find(this.byInstance, instanceId);
-  }
-
   findByCode(code: string): Lobby | null {
     return this.find(this.byCode, code.toUpperCase());
   }
@@ -269,20 +302,15 @@ export class LobbyService {
   join(id: string, member: Member): Lobby {
     const lobby = this.get(id);
     if (lobby.members.some((m) => m.userId === member.userId)) return lobby;
-    if (lobby.state === "started") {
-      // A night in progress takes newcomers while it has room: the game server's own count when it has said one.
-      if (this.isFull(lobby)) throw new LobbyFailure("full");
-      lobby.members.push(member);
-      lobby.lastActiveAt = this.now();
-      lobby.seen.set(member.userId, lobby.lastActiveAt);
-      return lobby;
-    }
-    if (this.openLobbyOf.has(member.userId)) throw new LobbyFailure("already_in_lobby");
+    // A night in progress takes newcomers while it has room (the game server's own count when it has said one); an
+    // open lobby while it has a seat. A player who is refused stays where they were; one who is taken in has left
+    // the lobby they were in.
     if (this.isFull(lobby)) throw new LobbyFailure("full");
+    this.depart(member.userId);
     lobby.members.push(member);
     lobby.lastActiveAt = this.now();
     lobby.seen.set(member.userId, lobby.lastActiveAt);
-    this.openLobbyOf.set(member.userId, lobby.id);
+    this.lobbyOf.set(member.userId, lobby.id);
     return lobby;
   }
 
@@ -296,34 +324,90 @@ export class LobbyService {
   }
 
   /**
-   * The host sets the rules of the night while the lobby waits: every member reads them on their next poll. Only the
-   * host, only before the start (they are fixed from then on), and only a value the game takes.
+   * A member's page is being unloaded (a closed tab, a reload; `POST /lobbies/:id/page-closed`, sent by the page itself on
+   * `pagehide`): in a waiting lobby that is a Leave, so the host role passes on and a lobby left with nobody is gone at
+   * once. Anything else is ignored and says so: a lobby that is gone already, a person who is not in it any more, and a
+   * night in progress (its people are on the game server, whose socket close frees the seat). Returns whether the
+   * member was taken out. The page sends it only for a page that is going for good, never for one that is hidden or
+   * kept for a return (`docs/design/lobby.md`), so it is final like a Leave.
    */
-  setSettings(id: string, userId: string, settings: unknown): Lobby {
+  pageClosed(id: string, userId: string): boolean {
+    let lobby: Lobby;
+    try {
+      lobby = this.get(id);
+    } catch {
+      return false;
+    }
+    if (lobby.state !== "open" || !this.isMember(lobby, userId)) return false;
+    this.leave(id, userId);
+    return true;
+  }
+
+  /**
+   * The host sets the rules of the night while the lobby waits: every member reads them on their next poll. Only the
+   * host, only before the start (they are fixed from then on), and only a value the game takes: a map must be one the
+   * host's level (`hostLevel`, read by the caller from the stored profile) opens.
+   */
+  setSettings(id: string, userId: string, hostLevel: number, settings: unknown): Lobby {
     const lobby = this.get(id);
     if (lobby.hostId !== userId) throw new LobbyFailure("not_host");
     if (lobby.state === "started") throw new LobbyFailure("already_started");
-    const checked = checkSettings(settings);
+    const checked = checkSettings(settings, hostLevel);
     if ("problem" in checked) throw new LobbyFailure("bad_settings", checked.problem);
     lobby.settings = checked.settings;
     lobby.lastActiveAt = this.now();
     return lobby;
   }
 
+  /** The host makes the night private (only its code gets anyone in) or public again (listed). Any time, even in progress. */
+  setVisibility(id: string, userId: string, visibility: unknown): Lobby {
+    const lobby = this.get(id);
+    if (lobby.hostId !== userId) throw new LobbyFailure("not_host");
+    if (visibility !== "public" && visibility !== "private") throw new LobbyFailure("bad_visibility");
+    lobby.visibility = visibility;
+    lobby.lastActiveAt = this.now();
+    return lobby;
+  }
+
+  /**
+   * The nights a player may be shown to join: public ones, waiting or in progress, that have not run out. An expired night
+   * is dropped here and now, and a member who stopped polling has left (as `get` does), so the people count is today's.
+   * A cost of one pass over the lobbies and nothing kept between calls: a night that ended or emptied is gone from the very
+   * next call.
+   */
+  listed(): Lobby[] {
+    const out: Lobby[] = [];
+    for (const lobby of [...this.lobbies.values()]) {
+      if (this.expired(lobby)) {
+        this.remove(lobby);
+        continue;
+      }
+      this.dropAbsent(lobby);
+      if (lobby.visibility === "public" && lobby.members.length > 0 && this.isHeard(lobby)) out.push(lobby);
+    }
+    return out;
+  }
+
   /**
    * The host starts the match: a game server is allocated and the lobby is closed to newcomers. The rules are the
    * ones sent with the start, else the ones the host set while waiting (`setSettings`), else the game's own.
+   * `hostLevel` is the starting host's level, read now: it is kept on the match and signed into every ticket. Rules sent
+   * with the start name a map that level opens (else `bad_settings`); rules kept from the waiting, set by a host who
+   * has left and whose level opened a map the new host's does not, start the match on the default map instead (the
+   * game server does the same with a ticket, `MatchSettings.fit_host`).
    */
-  start(id: string, userId: string, settings: unknown = undefined): Lobby {
+  start(id: string, userId: string, hostLevel: number, settings: unknown = undefined): Lobby {
     const lobby = this.get(id);
     if (lobby.hostId !== userId) throw new LobbyFailure("not_host");
     if (lobby.state === "started") throw new LobbyFailure("already_started");
     const given = settings !== undefined && settings !== null;
     let chosen = lobby.settings;
     if (given) {
-      const checked = checkSettings(settings);
+      const checked = checkSettings(settings, hostLevel);
       if ("problem" in checked) throw new LobbyFailure("bad_settings", checked.problem);
       chosen = checked.settings;
+    } else if (chosen?.map !== undefined && !mapOpenAt(chosen.map, hostLevel)) {
+      chosen = { ...chosen, map: DEFAULT_MAP };
     }
     const matchId = randomUUID();
     const server = this.hooks.allocate(matchId);
@@ -333,31 +417,9 @@ export class LobbyService {
     lobby.settings = chosen;
     lobby.startedAt = now;
     lobby.lastActiveAt = now;
-    lobby.match = { id: matchId, server };
+    lobby.match = { id: matchId, server, hostLevel };
     this.byMatch.set(matchId, lobby.id);
-    // A started lobby is no longer an open one: its members may open or join another.
-    for (const m of lobby.members) if (this.openLobbyOf.get(m.userId) === lobby.id) this.openLobbyOf.delete(m.userId);
     return lobby;
-  }
-
-  /** Quick join: a public night with room (open or started), else a new public one, started at once. */
-  quick(member: Member, maxPlayers = MAX_PLAYERS): Lobby {
-    for (const lobby of this.lobbies.values()) {
-      if (lobby.visibility !== "public" || this.expired(lobby)) continue;
-      if (lobby.members.some((m) => m.userId === member.userId)) return lobby;
-      try {
-        return this.join(lobby.id, member);
-      } catch (error) {
-        if (!(error instanceof LobbyFailure)) throw error;
-      }
-    }
-    const lobby = this.create(member, maxPlayers, null, "public");
-    try {
-      return this.start(lobby.id, member.userId);
-    } catch (error) {
-      this.remove(lobby);
-      throw error;
-    }
   }
 
   /** The game server's count of the players in a match, from its heartbeat. Unknown matches are ignored. */
@@ -379,8 +441,10 @@ export class LobbyService {
    *
    * A night that ran its end-of-night intermission out is `finished` instead (`present`: the users the game server had
    * at that moment): the lobby opens again for the people who were there, with its code, its host (the next seat when
-   * the host is not among them), its Activity instance and the settings the host chose (map, bots, rules), ready for
-   * the host to start the next night. A member who is already in another open lobby is not put back in this one.
+   * the host is not among them), and the settings the host chose (map, bots, rules), ready for
+   * the host to start the next night. `present` is who was still connected when the room closed: a member who is not
+   * (they left, or went to another lobby, which took them out of this one) is not put back, and a lobby none of them
+   * can come back to is gone. A player put back is still free to create or join another lobby at once.
    */
   matchEnded(matchId: string, finished?: { present: string[] }): void {
     const lobbyId = this.byMatch.get(matchId);
@@ -389,7 +453,7 @@ export class LobbyService {
       this.hooks.release(matchId);
       return;
     }
-    const back = finished ? lobby.members.filter((m) => finished.present.includes(m.userId) && !this.openLobbyOf.has(m.userId)) : [];
+    const back = finished ? lobby.members.filter((m) => finished.present.includes(m.userId)) : [];
     if (back.length === 0) {
       this.remove(lobby);
       return;
@@ -402,11 +466,27 @@ export class LobbyService {
     lobby.players = null;
     lobby.round = null;
     lobby.startedAt = null;
+    for (const m of lobby.members) if (!back.includes(m) && this.lobbyOf.get(m.userId) === lobby.id) this.lobbyOf.delete(m.userId);
     lobby.members = back;
     lobby.seen = new Map(back.map((m) => [m.userId, now]));
     lobby.lastActiveAt = now;
+    lobby.reopenedAt = now;
     if (!back.some((m) => m.userId === lobby.hostId)) lobby.hostId = back[0]!.userId;
-    for (const m of back) this.openLobbyOf.set(m.userId, lobby.id);
+  }
+
+  /**
+   * The game server says a person's seat in the match is empty (they pressed Leave, closed the tab, or their dropped
+   * connection was not taken back in time): they are out of the lobby at once, the host role passes on, and a night
+   * with no person left is over. Unknown matches and users are ignored; it is safe to say twice.
+   */
+  memberLeft(matchId: string, userId: string): boolean {
+    const lobbyId = this.byMatch.get(matchId);
+    const lobby = lobbyId ? this.lobbies.get(lobbyId) : undefined;
+    if (!lobby || !this.isMember(lobby, userId)) return false;
+    this.removeMember(lobby, userId);
+    lobby.lastActiveAt = this.now();
+    if (lobby.members.length === 0) this.remove(lobby);
+    return true;
   }
 
   isMember(lobby: Lobby, userId: string): boolean {

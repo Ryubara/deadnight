@@ -8,8 +8,24 @@ extends GdUnitTestSuite
 const PLAY := "res://ui/screens/play_screen.tscn"
 const SECONDS := 2.0
 
+var _arrival := false
+
+
+func before_test() -> void:
+	# The back rooms are level 10: this player has it.
+	PlayerLevel.use(10)
+	# A window plays the helicopter drop that opens a night (#1057), with the HUD away until it
+	# ends; a headless run has none (`--noarrival`). This suite is about the end, in a night the
+	# player has; `test_the_night_ending_under_the_drop_leaves_the_board_alone` plays the drop.
+	_arrival = NightScreen.arrival_enabled
+	NightScreen.arrival_enabled = false
+
 
 func after_test() -> void:
+	NightScreen.arrival_enabled = _arrival
+	# A night that opened here with the drop shown leaves it seen for the next suite (#1254).
+	NightArrival.reset()
+	PlayerLevel.reset()
 	await RouterFixture.clear(get_tree())
 	NightScreen.match_settings = null
 	await get_tree().process_frame
@@ -97,6 +113,29 @@ func test_the_way_out_pressed_at_once_goes_back_to_the_play_screen() -> void:
 	assert_bool(left).is_true()
 	assert_object(UIRouter.top()).is_same(play)
 	assert_str(play.panel.settings().map).is_equal("small_indoor")
+
+
+## The rules do not end a night under a person's drop (the shield keeps the dropping player up, so
+## "everyone is down" cannot hold), but the night closes the show when its end arrives
+## (`Night._on_over`), and that is the show ending in the middle of the end: the board stays up,
+## the HUD, the reticle and the touch layer do not come back over it.
+func test_the_night_ending_under_the_drop_leaves_the_board_alone() -> void:
+	NightScreen.arrival_enabled = true
+	var made := await _night_from_play()
+	var screen: NightScreen = made[1]
+	assert_bool(screen.night.is_arriving()).is_true()
+	assert_bool(screen.hud_shown()).is_false()
+	_end(screen)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var board: HudEndBoard = screen.get_node("EndBoard")
+	assert_bool(screen.night.is_arriving()).is_false()
+	assert_bool(board.visible).is_true()
+	assert_bool(screen.hud_shown()).is_false()
+	assert_bool(screen.reticle_shown()).is_false()
+	assert_bool(screen.night.hud.scoreboard_enabled).is_false()
+	var touch := screen.find_children("*", "TouchControls", true, false)[0] as TouchControls
+	assert_bool(touch.live).is_false()
 
 
 func _until(condition: Callable, seconds: float) -> bool:

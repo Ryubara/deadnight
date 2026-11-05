@@ -60,6 +60,7 @@ static func add_player_clips(anim_player: AnimationPlayer) -> void:
 		[PlayerAnimation.SPRINT_GLB, PlayerAnimation.SPRINT_SPEC, SprintCarry.CLIPS],
 		[QuickStrike.GLB, QuickStrike.SPEC, QuickStrike.CLIPS],
 		[DualClips.GLB, DualClips.SPEC, DualClips.CLIPS],
+		[DrinkLayer.GLB, DrinkLayer.SPEC, [DrinkLayer.CLIP]],
 	]
 	for f: Array in files:
 		SoldierClipFile.add(library, spec, f[0], f[1], f[2])
@@ -110,6 +111,9 @@ func pose(clip: String, seconds: float) -> void:
 	_skeleton.reset_bone_poses()
 	_player.play(StringName(clip))
 	_player.seek(seconds, true)
+	# Held there: a playing clip goes on with every frame the probes await, and the bones read
+	# after the wait (`BodyFit.bone_point`) would be a later pose than the surface read before it.
+	_player.pause()
 
 
 ## The checks on the pose the skeleton holds now (or `poses`): {check name: [{mesh, group, depth,

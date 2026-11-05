@@ -72,7 +72,8 @@ func markers() -> Array[Dictionary]:
 		return out
 	var here := _state.position()
 	for id: int in _state.frame["players"]:
-		if id != _state.player_id:
+		# A player still in the helicopter of their arrival is nowhere in the lot yet (#1057).
+		if id != _state.player_id and not _state.frame["players"][id].get("dropping", false):
 			out.append(_ally(camera, id, here))
 	var marks: Dictionary = _state.frame.get("pings", {})
 	for id: int in marks:
@@ -124,6 +125,11 @@ func _ally(camera: Camera3D, id: int, here: Vector3) -> Dictionary:
 	marker["dead"] = player.get("dead", false)
 	marker["bleed"] = ceili(float(player.get("bleed", 0.0)))
 	marker["revive"] = snappedf(float(player.get("revive", 0.0)), 0.01)
+	# The level and icon beside the name (0 for none: a bot, no backend, or the viewer turned them
+	# off).
+	var shown := _hud_state.level_of(_hud_state.team.get(id, {}))
+	marker["level"] = shown.x
+	marker["icon"] = shown.y
 	return marker
 
 

@@ -22,7 +22,7 @@ const PLAN := {
 	&"m4a1": [20.0, 1, 30, 90, 150, 0.0, 35.0, 45, 135, 225, 0.0, 0.0, &""],
 	&"m249": [16.0, 1, 100, 150, 250, 0.0, 28.0, 150, 225, 375, 0.0, 0.0, &""],
 	&"fifty_cal": [220.0, 1, 5, 20, 40, 0.0, 385.0, 8, 30, 60, 0.0, 0.0, &""],
-	&"pump_870": [22.0, 6, 6, 42, 66, 0.0, 38.5, 9, 63, 99, 0.0, 0.0, &""],
+	&"pump_870": [22.0, 6, 6, 42, 66, 0.0, 38.5, 9, 63, 99, 0.0, 0.0, &"fire"],
 	&"dual_pistols": [20.0, 1, 24, 72, 120, 0.0, 35.0, 36, 108, 180, 0.0, 0.0, &"shock"],
 	&"ray_gun": [300.0, 1, 10, 40, 60, 160.0, 525.0, 15, 60, 90, 280.0, 0.0, &""],
 	&"freeze_gun": [30.0, 1, 6, 24, 36, 0.0, 52.5, 9, 36, 54, 0.0, 0.0, &""],
@@ -175,3 +175,28 @@ func test_a_weapon_that_is_re_cut_is_worth_more_by_its_new_numbers() -> void:
 			. override_failure_message(String(id))
 			. is_greater(WeaponWorth.of(plain, health))
 		)
+
+
+func test_the_fire_of_the_pump_re_cut_is_worth_what_it_finishes_and_nothing_else_is_worth_more(
+) -> void:
+	# The bots and the simulator rate the re-cut pump with its burn: the fire finishes what a shell
+	# leaves standing, so against a round-15 zombie (282) one pull and its 90 of burn kill where the
+	# shell alone (231) leaves 51 standing.
+	var health := RulesFixture.round_health(15)
+	var pump := WeaponCatalog.get_def(&"pump_870").upgraded(_spec)
+	var bare := pump.duplicate() as WeaponDef
+	bare.element = null
+	assert_float(WeaponWorth.burn_total(pump)).is_equal(90.0)
+	assert_float(WeaponWorth.of(pump, health)).is_greater(WeaponWorth.of(bare, health) * 1.5)
+	# Without a health (the sustained damage at point blank) the burn counts only for the seconds
+	# before the next pull restarts it: 30 a second for the 0.65 s between pulls.
+	var extra := WeaponWorth.of(pump) - WeaponWorth.of(bare)
+	var cycle := float(pump.magazine_size) * pump.fire_interval + pump.reload_time
+	assert_float(extra).is_equal_approx(
+		30.0 * pump.fire_interval * pump.magazine_size / cycle, 0.01
+	)
+	# No other weapon is rated for a burn it does not have.
+	for id in [&"pistol", &"dual_pistols", &"flare_gun", &"freeze_gun"]:
+		var other := WeaponCatalog.get_def(id).upgraded(_spec)
+		assert_float(WeaponWorth.burn_total(other)).override_failure_message(String(id)).is_zero()
+		assert_float(WeaponWorth.burn_between_pulls(other)).is_zero()

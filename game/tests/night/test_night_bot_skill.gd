@@ -36,9 +36,9 @@ func test_the_bots_wear_the_names_of_their_skill_and_the_rules_know_them() -> vo
 	for id in night.bots.seats():
 		named.append(night.bots.names()[id])
 		assert_str(night.bots.names()[id]).is_equal(
-			BotRoster.name_for(MatchSettings.SKILL_VETERAN, id)
+			BotRoster.name_for(MatchSettings.SKILL_VETERAN, NightBots.number_of(id))
 		)
-	assert_array(named).contains_exactly_in_any_order(["Colt", "Brick", "Walt"])
+	assert_array(named).contains_exactly_in_any_order(["Rex", "Sarge", "Hawk"])
 	await _free(night)
 
 
@@ -47,13 +47,14 @@ func test_each_bot_is_dressed_in_its_own_look_on_the_server() -> void:
 	var keys := {}
 	for id in night.bots.seats():
 		var held: CharacterLook = night.server.looks.looks[id]
-		assert_str(held.key()).is_equal(BotRoster.look_for(MatchSettings.SKILL_ROOKIE, id).key())
+		assert_str(held.key()).is_equal(
+			BotRoster.look_for(MatchSettings.SKILL_ROOKIE, NightBots.number_of(id)).key()
+		)
 		keys[held.key()] = true
 	assert_int(keys.size()).is_equal(3)
-	# The person keeps the look of their own seat.
-	assert_str((night.server.looks.looks[1] as CharacterLook).key()).is_equal(
-		CharacterLook.from_preset(0).key()
-	)
+	# The person keeps the look of their own seat, in what their level owns (the ladder, #1065).
+	var own := CharacterLook.from_preset(0).without_locked(LookUnlocks.saved())
+	assert_str((night.server.looks.looks[1] as CharacterLook).key()).is_equal(own.key())
 	await _free(night)
 
 
@@ -61,18 +62,18 @@ func test_a_lowered_limit_sends_the_bots_away_and_a_raised_one_brings_them_back(
 	var night := await _night(3, MatchSettings.SKILL_REGULAR)
 	assert_int(night.bots.count()).is_equal(3)
 	night.bots.limit = 1
-	night.link.broadcast(night.bots.fill(3, [Night.PLAYER_ID]))
+	night.link.broadcast(night.bots.fill(3))
 	assert_int(night.bots.count()).is_equal(1)
-	# The highest seats left first; the rules and the server lost their seats and bodies too.
-	assert_array(night.bots.seats()).is_equal([6])
-	assert_array(night.server.rules.players.keys()).contains_exactly_in_any_order([1, 6])
-	assert_object(night.server.body_of(8)).is_null()
-	assert_bool(night.bots.host.bot_ids.has(8)).is_false()
+	# The highest ids left first; the rules and the server lost their seats and bodies too.
+	assert_array(night.bots.seats()).is_equal([101])
+	assert_array(night.server.rules.players.keys()).contains_exactly_in_any_order([1, 101])
+	assert_object(night.server.body_of(103)).is_null()
+	assert_bool(night.bots.host.bot_ids.has(103)).is_false()
 	night.bots.limit = 0
-	night.link.broadcast(night.bots.fill(3, [Night.PLAYER_ID]))
+	night.link.broadcast(night.bots.fill(3))
 	assert_int(night.bots.count()).is_equal(0)
 	night.bots.limit = MatchSettings.MAX_BOTS
-	night.link.broadcast(night.bots.fill(3, [Night.PLAYER_ID]))
+	night.link.broadcast(night.bots.fill(3))
 	assert_int(night.bots.count()).is_equal(3)
-	assert_array(night.bots.seats()).is_equal([6, 7, 8])
+	assert_array(night.bots.seats()).is_equal([101, 102, 103])
 	await _free(night)

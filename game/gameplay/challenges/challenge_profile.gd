@@ -12,6 +12,9 @@ extends RefCounted
 ## - Three orders are open at a time, no timer. A finished order is replaced when the night is
 ##   settled; a player may swap one for another at any time, free, losing only its own progress.
 ## - Milestones are ladders over lifetime totals; the rung reached is derived, never stored.
+## - Feats are lasting goals, each done once (`feats`: id -> progress); finishing one gives a
+##   calling card or an emblem (`ChallengeDef.grants`). A feat over several stats is as far as the
+##   lowest of them.
 ## - `apply` advances everything the stat touches and answers what moved, for the prompt.
 
 const SCHEMA_VERSION := 1
@@ -34,16 +37,42 @@ var order_draws := 0
 var recent_orders: Array[StringName] = []
 ## Lifetime totals by stat (a best stat holds the most reached).
 var lifetime: Dictionary = {}
+## Progress of each feat the player has begun: id -> count (a feat over several stats keeps the
+## lowest of them).
+var feats: Dictionary = {}
 ## How many dailies and orders were ever finished: `{daily, order}`.
 var finished := {"daily": 0, "order": 0}
-## Counts saves, for the backend's optimistic concurrency later.
+## Counts saves on this machine.
 var revision := 0
+## The account this board is the cache of ("" for a board no account has claimed, a player who never
+## signed in), and the revision its `challenges` slot was at when this board was read or written
+## (-1 when not known). They are not `data`: the file's envelope keeps them (`ChallengeSave`), so an
+## account's board never goes to another account and a write names the revision it follows.
+var account := ""
+var account_revision := -1
 
 
 ## A fresh profile; `p_order_seed` picks which orders it is dealt (a small number).
 static func fresh(p_order_seed: int = 1) -> ChallengeProfile:
 	var profile := ChallengeProfile.new()
 	profile.order_seed = p_order_seed & SEED_MASK
+	return profile
+
+
+## The order seed of an account: the same account is dealt the same orders wherever its board is
+## first made (the game server's or a client's), two accounts are dealt different ones. FNV-1a of
+## the id, which Godot's own `hash()` is not promised to match from one version to the next.
+static func seed_of(account_id: String) -> int:
+	var value := 2166136261
+	for byte in account_id.to_utf8_buffer():
+		value = ((value ^ byte) * 16777619) & 0xffffffff
+	return maxi(value & SEED_MASK, 1)
+
+
+## A fresh board for `account_id`: dealt orders no other account is dealt (`seed_of`).
+static func fresh_for(account_id: String) -> ChallengeProfile:
+	var profile := fresh(seed_of(account_id))
+	profile.account = account_id
 	return profile
 
 
@@ -69,6 +98,11 @@ static func checkpoint_crossed(before: int, after: int, target: int) -> int:
 func refresh(catalog: ChallengeCatalog, day: int) -> void:
 	_prune(catalog)
 	fill_orders(catalog)
+	# Weapons used before a feat over them existed count for it (no prompt: nothing just happened).
+	for def in catalog.distinct_feats():
+		var have := mini(distinct_under(def.distinct), def.target)
+		if have > int(feats.get(def.id, 0)):
+			feats[def.id] = have
 	if day <= dealt_day:
 		return
 	dailies = []
@@ -163,10 +197,60 @@ func apply(
 	var after := maxi(before, value) if ChallengeStats.is_best(stat) else before + delta
 	lifetime[stat] = after
 	if after != before:
-		for def in catalog.of_family(ChallengeDef.Family.MILESTONE):
-			if def.stat == stat:
-				_climb(def, before, after, moved)
+		for def: ChallengeDef in catalog.ladders_over(stat):
+			_climb(def, before, after, moved)
+	for def: ChallengeDef in catalog.feats_over(stat):
+		_advance_feat(def, value, delta, moved)
+	# A stat with a first total is a new one under its prefix (a weapon with its first kill).
+	if before == 0 and after > 0:
+		for def in catalog.distinct_feats():
+			if String(stat).begins_with(def.distinct):
+				_advance_feat(def, value, delta, moved)
 	return moved
+
+
+## The feats this board shows as done, in file order: what a poster set's panels are read from.
+func feats_done(catalog: ChallengeCatalog) -> Array[StringName]:
+	var found: Array[StringName] = []
+	for def in catalog.of_family(ChallengeDef.Family.FEAT):
+		if int(feats.get(def.id, 0)) >= def.target:
+			found.append(def.id)
+	return found
+
+
+## How many stats starting with `prefix` this board has a total for.
+func distinct_under(prefix: String) -> int:
+	var found := 0
+	for stat: StringName in lifetime:
+		if lifetime[stat] > 0 and String(stat).begins_with(prefix):
+			found += 1
+	return found
+
+
+## A feat moved by the stat that just changed (the lifetime totals already hold it).
+func _advance_feat(def: ChallengeDef, value: int, delta: int, moved: Array[Dictionary]) -> void:
+	var before := int(feats.get(def.id, 0))
+	if before >= def.target:
+		return
+	var after := before
+	if def.distinct != "":
+		after = distinct_under(def.distinct)
+	elif not def.stats.is_empty():
+		after = def.target
+		for each in def.stats:
+			after = mini(after, int(lifetime.get(each, 0)))
+	elif def.mode == ChallengeDef.Mode.TOTAL:
+		after = before + delta
+	else:
+		after = maxi(before, value)
+	if after <= before:
+		return
+	feats[def.id] = after
+	# A feat says nothing on the way (the ladders and orders beside it do): only that it is done.
+	if after >= def.target:
+		var entry := _advance_entry(def, before, after)
+		entry["checkpoint"] = 100
+		moved.append(entry)
 
 
 func _advance(
@@ -191,23 +275,23 @@ func _advance(
 	if done:
 		var kind := "daily" if def.family == ChallengeDef.Family.DAILY else "order"
 		finished[kind] = int(finished[kind]) + 1
-	(
-		moved
-		. append(
-			{
-				"id": def.id,
-				"family": def.family,
-				"text": def.words(),
-				"before": before,
-				"after": mini(after, def.target),
-				"target": def.target,
-				"checkpoint": checkpoint_crossed(before, after, def.target),
-				"completed": done,
-				"rung": 0,
-				"rungs": 0,
-			}
-		)
-	)
+	moved.append(_advance_entry(def, before, after))
+
+
+## What `apply` answers for a daily, an order or a feat that moved from `before` to `after`.
+func _advance_entry(def: ChallengeDef, before: int, after: int) -> Dictionary:
+	return {
+		"id": def.id,
+		"family": def.family,
+		"text": def.words(),
+		"before": before,
+		"after": mini(after, def.target),
+		"target": def.target,
+		"checkpoint": checkpoint_crossed(before, after, def.target),
+		"completed": after >= def.target,
+		"rung": 0,
+		"rungs": 0,
+	}
 
 
 func _climb(def: ChallengeDef, before: int, after: int, moved: Array[Dictionary]) -> void:
@@ -255,6 +339,7 @@ func to_dict() -> Dictionary:
 		"order_draws": order_draws,
 		"recent_orders": recent_orders.map(func(id: StringName) -> String: return String(id)),
 		"lifetime": _strings(lifetime),
+		"feats": _strings(feats),
 		"finished": finished.duplicate(),
 		"revision": revision,
 	}
@@ -292,6 +377,10 @@ static func from_dict(data: Dictionary) -> ChallengeProfile:
 	if totals is Dictionary:
 		for stat: Variant in totals:
 			profile.lifetime[StringName(str(stat))] = maxi(0, int(totals[stat]))
+	var begun: Variant = data.get("feats")
+	if begun is Dictionary:
+		for id: Variant in begun:
+			profile.feats[StringName(str(id))] = maxi(0, int(begun[id]))
 	var done: Variant = data.get("finished")
 	if done is Dictionary:
 		profile.finished["daily"] = maxi(0, int(done.get("daily", 0)))

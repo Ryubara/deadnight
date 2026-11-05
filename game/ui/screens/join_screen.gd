@@ -76,6 +76,8 @@ func _ready() -> void:
 	back_button.pressed.connect(UIRouter.pop)
 	box.add_child(back_button)
 	initial_focus = get_path_to(address)
+	resized.connect(func() -> void: TapFloor.fit(self, TapFloor.phone_canvas(size)))
+	TapFloor.fit(self, TapFloor.phone_canvas(size))
 
 
 ## Opens the night on the server named in the field.

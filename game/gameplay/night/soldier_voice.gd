@@ -10,6 +10,8 @@ extends Node
 
 ## A voice comes from a player's head.
 const HEAD_LIFT := Vector3(0.0, 1.6, 0.0)
+## The least wait before a cheer the channel held back is tried again, seconds.
+const CHEER_RETRY := 0.05
 
 ## `Callable(id: StringName, at: Variant, extra_db: float)`, returning a node (or true) when the
 ## line started and null (or false) when the service dropped it; the audio service unless a test
@@ -28,6 +30,12 @@ var _kills: Dictionary[int, Array] = {}
 var _speaking: Variant = null
 var _break_ends := 0.0
 var _lull := 0.0
+## The cheer each player is waiting to be given (`_on_progress`), by player id, while the window is
+## open; then the cheers to say one after another, `{who, cheer}`.
+var _cheers: Dictionary[int, StringName] = {}
+var _cheer_queue: Array[Dictionary] = []
+var _cheer_window_open := false
+var _cheer_running := false
 
 
 func setup(state: ClientState, seed_value := 1958) -> void:
@@ -92,8 +100,73 @@ func say_in(delay: float, event: StringName, speaker: int, after_line := false) 
 	schedule.add(wait, func() -> void: say(event, speaker))
 
 
+## A progression cheer (`SoldierVoiceCatalog.PROGRESS`) said by `speaker`: it waits for the line
+## that speaks now instead of being dropped (a level up is rare, a kill's bark is not), and the
+## director still refuses it to a speaker who said it just now, so a burst of rewards is not a
+## chorus. A player who is down says nothing but their fall.
+func celebrate(event: StringName, speaker: int) -> void:
+	if not SoldierVoiceCatalog.is_progress(event):
+		push_error("%s is not a progression moment" % event)
+		return
+	say_in(0.0, event, speaker, true)
+
+
+## A server's progression event (`XpAward`, `ChallengeAward`) for any player in the lot: every
+## client hears it. The events of one player that come together (a level, its tier, what it
+## unlocks, the challenge that paid it) are held for `cheer_window` and the best of them is said
+## once, as that player. Players who level up in the same window are cheered one after the other,
+## the better cheer first.
+func _on_progress(event: Dictionary) -> void:
+	var cheer := SoldierVoiceCatalog.cheer_of(event)
+	if cheer == &"":
+		return
+	var who := int(event["player_id"])
+	if not _cheers.has(who) or SoldierVoiceCatalog.cheers_over(cheer, _cheers[who]):
+		_cheers[who] = cheer
+	if not _cheer_window_open:
+		_cheer_window_open = true
+		schedule.add(_t.cheer_window, _close_cheer_window)
+
+
+func _close_cheer_window() -> void:
+	_cheer_window_open = false
+	var waiting: Array[Dictionary] = []
+	for who: int in _cheers:
+		waiting.append({"who": who, "cheer": _cheers[who]})
+	_cheers.clear()
+	waiting.sort_custom(
+		func(a: Dictionary, b: Dictionary) -> bool:
+			if a["cheer"] != b["cheer"]:
+				return SoldierVoiceCatalog.cheers_over(a["cheer"], b["cheer"])
+			return a["who"] < b["who"]
+	)
+	_cheer_queue.append_array(waiting)
+	if not _cheer_running:
+		_next_cheer()
+
+
+## Says the cheer at the front of the queue and, once its line is over, the next. A cheer the
+## director refuses (the player said it a moment ago, is down, or the channel is held by something
+## it cannot cut) is retried when the channel frees, and dropped when the channel is free and it
+## still is not said.
+func _next_cheer() -> void:
+	if _cheer_queue.is_empty():
+		_cheer_running = false
+		return
+	_cheer_running = true
+	var next := _cheer_queue[0]
+	var said := say(next["cheer"], next["who"])
+	if said or director.wait() <= 0.0:
+		_cheer_queue.pop_front()
+		schedule.add(director.wait(), _next_cheer)
+	else:
+		schedule.add(maxf(director.wait(), CHEER_RETRY), _next_cheer)
+
+
 func _on_event(event: Dictionary) -> void:
 	match event["type"]:
+		&"level_up", &"tier_up", &"unlock_earned", &"challenge_done", &"poster_set_done":
+			_on_progress(event)
 		&"break_started":
 			_break_ends = director.now() + event["seconds"]
 		&"round_started":
@@ -130,6 +203,10 @@ func _on_event(event: Dictionary) -> void:
 			say(&"power_low", _state.player_id)
 		&"game_over":
 			schedule.clear()
+			_cheers.clear()
+			_cheer_queue.clear()
+			_cheer_window_open = false
+			_cheer_running = false
 			director.clear()
 
 

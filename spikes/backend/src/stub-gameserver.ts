@@ -65,7 +65,9 @@ export async function startStubGameServer(options: StubGameServerOptions) {
     socket.once("close", () => {
       if (seats.get(seat) === socket) seats.delete(seat);
     });
-    socket.send(JSON.stringify({ type: "welcome", serverId: options.id, matchId: claims.matchId, userId: claims.sub, name: claims.name }));
+    // The level, icon and XP are the backend's word in the ticket, passed on as they are (the real server shows them over heads).
+    const { level, icon, xp } = claims as { level?: number; icon?: string; xp?: number };
+    socket.send(JSON.stringify({ type: "welcome", serverId: options.id, matchId: claims.matchId, userId: claims.sub, name: claims.name, level, icon, xp }));
     return null;
   };
 
@@ -114,6 +116,19 @@ export async function startStubGameServer(options: StubGameServerOptions) {
           headers: backendHeaders,
         });
       }
+    },
+    /**
+     * A round (or the night) is over: post each seat's XP to the backend, as the real server does at a round's end
+     * (never per kill). Resolves with the backend's answer, a result per seat.
+     */
+    async report(matchId: string, kind: "round" | "night", round: number, seats: { userId: string; xp: number }[]): Promise<unknown> {
+      const response = await fetch(`${options.backendUrl}/internal/matches/${encodeURIComponent(matchId)}/report`, {
+        method: "POST",
+        headers: backendHeaders,
+        body: JSON.stringify({ kind, round, seats }),
+      });
+      if (!response.ok) throw new Error(`report -> ${response.status}`);
+      return response.json();
     },
     async close(): Promise<void> {
       clearInterval(timer);

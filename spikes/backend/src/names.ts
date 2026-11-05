@@ -50,11 +50,16 @@ export function fallbackName(prefix = "Guest"): string {
   return `${prefix} ${1000 + Math.floor(Math.random() * 9000)}`;
 }
 
-/** The first of `candidates` that is left after tidying and passes the filter, else `Guest 1234` (or `prefix`). */
-export function chooseName(candidates: Array<string | undefined | null>, prefix = "Guest"): string {
+/** The first of `candidates` that is left after tidying and passes the filter, else null. */
+export function firstUsable(candidates: Array<string | undefined | null>): string | null {
   for (const candidate of candidates) {
     const name = tidy(candidate);
     if (name.length > 0 && isClean(name)) return name;
   }
-  return fallbackName(prefix);
+  return null;
+}
+
+/** The first of `candidates` that is left after tidying and passes the filter, else `Guest 1234` (or `prefix`). */
+export function chooseName(candidates: Array<string | undefined | null>, prefix = "Guest"): string {
+  return firstUsable(candidates) ?? fallbackName(prefix);
 }

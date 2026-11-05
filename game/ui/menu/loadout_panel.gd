@@ -1,6 +1,6 @@
 class_name LoadoutPanel
 extends MenuPanel
-## The Loadout tab: the wardrobe's pickers (the customize screen, embedded) beside a showcase
+## The Loadout tab: the wardrobe's grid (the customize screen, embedded) beside a showcase
 ## weapon row, with the soldier on the stage showing every change at once. The showcase weapon is
 ## cosmetic: it is what the menu's soldier holds, and a night starts with the starter program
 ## whatever is chosen.
@@ -11,11 +11,15 @@ extends MenuPanel
 ## leaves: another tab, a screen the menu opens, or closing the menu (`MenuShell`).
 
 const CUSTOMIZE := "res://ui/screens/customize_screen.tscn"
+## The width the Plate button keeps on the mastery line, desktop and phone.
+const PLATE_BUTTON_WIDTH := 300.0
+const PLATE_BUTTON_WIDTH_COMPACT := 110.0
 
 var wardrobe: CustomizeScreen
 
 var _weapon_selector: UIOptionSelector
 var _weapon_row: UIRow
+var _plate_button: UIButton
 var _mastery_label: Label
 var _weapons: Array[StringName] = []
 ## The showcase weapon chosen on the tab, saved or not yet.
@@ -35,13 +39,19 @@ func _ready() -> void:
 	if not context.compact:
 		column.add_child(weapon_box)
 	wardrobe = (load(CUSTOMIZE) as PackedScene).instantiate() as CustomizeScreen
-	wardrobe.params = {"embedded": true}
+	wardrobe.params = {
+		"embedded": true,
+		"compact": context.compact,
+		"unlocks": LookUnlocks.at_level(context.profile.level()),
+	}
 	wardrobe.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	wardrobe.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_child(wardrobe)
-	# A phone has 372 units for the tab: the weapon row scrolls with the pickers.
+	# A phone has 372 units for the tab: the weapon row scrolls with the pickers, at the end of the
+	# Body tab's page, so the card opens on items (#1271: at the top of the page it was all the
+	# card showed).
 	if context.compact:
-		wardrobe.prepend_row(weapon_box)
+		wardrobe.append_row(weapon_box)
 	# The weapon row lines up with the wardrobe's rows, and is as narrow as they are.
 	_weapon_row.set_widths(wardrobe.row_widths.x, wardrobe.row_widths.y)
 	wardrobe.look_changed.connect(_on_look_changed)
@@ -56,8 +66,22 @@ func width(compact: bool) -> float:
 	return 860.0 if compact else 900.0
 
 
+## The weapon row on a desktop. On a phone it is at the end of the Body tab's page, below the fold:
+## focusing it scrolled the card to its foot (#1271), so the focus starts on the wardrobe's tab.
 func first_focus() -> Control:
+	if context.compact and wardrobe != null:
+		return wardrobe.tab_button(wardrobe.current_tab())
 	return _weapon_selector
+
+
+## The button that opens the plate's calling cards and emblems.
+func plate_button() -> UIButton:
+	return _plate_button
+
+
+## What the plate button says: the card and emblem the player wears.
+func plate_text() -> String:
+	return _plate_button.text
 
 
 ## The weapons the row offers: those whose class has a model.
@@ -82,9 +106,16 @@ func refresh() -> void:
 	_show_mastery(_weapon)
 
 
+## The level changed (the account's profile was read, a night ended): the wardrobe's locks follow.
+func set_unlocks(unlocks: LookUnlocks) -> void:
+	if wardrobe != null:
+		wardrobe.set_unlocks(unlocks)
+
+
 ## The tab is shown again: what was committed on leaving is what is saved, so start from it.
 func on_show() -> void:
 	_weapon = MenuHero.saved_weapon()
+	_show_plate()
 	super.on_show()
 
 
@@ -134,7 +165,40 @@ func _build_weapon_row() -> Control:
 	_mastery_label = MenuLook.label("", MenuLook.SIZE_CAPTION, MenuLook.MUTED, &"wide")
 	_mastery_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	line.add_child(_mastery_label)
+	# The plate's button shares the mastery line, so the tab is no taller than it was.
+	_plate_button = UIButton.new()
+	_plate_button.name = "PlateButton"
+	_plate_button.variant = UIButton.Variant.GHOST
+	_plate_button.pressed.connect(func() -> void: context.request(&"cards"))
+	line.add_child(_plate_button)
+	_show_plate()
 	return box
+
+
+## The button's words: the card, the emblem and the frame worn, or what to do when there are none.
+func _show_plate() -> void:
+	if _plate_button == null:
+		return
+	var read: Variant = ProfileSave.read(MenuProfile.profile_path)["profile"]
+	var catalog := PlateCatalog.shipped()
+	var worn := {"card": &"", "emblem": &"", "frame": &""}
+	if read != null:
+		var profile := read as Profile
+		worn = catalog.worn(profile.equipped, profile.level(), profile.done)
+	var words: Array[String] = []
+	for kind in PlateCatalog.KINDS:
+		if worn[kind] != &"":
+			words.append(catalog.title(kind, worn[kind]))
+	_plate_button.text = (
+		"Plate: " + " + ".join(words) if not words.is_empty() else "Plate: cards, emblems, frames"
+	)
+	# A phone's tab has 372 units: the button says only what it opens.
+	if context.compact:
+		_plate_button.text = "Plate"
+	_plate_button.clip_text = true
+	_plate_button.custom_minimum_size.x = (
+		PLATE_BUTTON_WIDTH_COMPACT if context.compact else PLATE_BUTTON_WIDTH
+	)
 
 
 ## On a phone every picker is at least a tap target high and no text is under the type floor.
@@ -144,12 +208,19 @@ func _fit_for_fingers() -> void:
 		var size := label.get_theme_font_size(&"font_size")
 		label.add_theme_font_size_override(&"font_size", maxi(size, MenuLook.SIZE_CAPTION))
 	for node in wardrobe.find_children("*", "", true, false):
-		if node is UIOptionSelector or node is UIButton or node is ChoiceStrip:
+		if node is UIOptionSelector or node is UIButton:
 			var control := node as Control
 			control.custom_minimum_size.y = maxf(control.custom_minimum_size.y, MenuLook.TAP_TARGET)
 	_weapon_selector.custom_minimum_size.y = maxf(
 		_weapon_selector.custom_minimum_size.y, MenuLook.TAP_TARGET
 	)
+	_plate_button.custom_minimum_size.y = maxf(
+		_plate_button.custom_minimum_size.y, MenuLook.TAP_TARGET
+	)
+	# At the theme's button size the Plate button is 79 units tall: with its ring and its growth
+	# that is more than the strip of 99 units the phone leaves the tab, and the ring was cut at the
+	# strip's edges (#1187). The body size keeps it a tap target and inside the strip.
+	_plate_button.add_theme_font_size_override(&"font_size", MenuLook.SIZE_BODY)
 
 
 func _on_weapon_selected(index: int) -> void:

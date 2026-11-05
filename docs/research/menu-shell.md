@@ -11,7 +11,7 @@ and `game/ui/screens/main_menu.gd`.
 | `MenuShell` | The stage, a scrim on the panel's side, `MenuTabBar`, `MenuPlate`, `MenuHints` and one `MenuPanel` per tab. Q and E, Ctrl+Tab and the bumpers change tab (`MenuNav.tab_step`, one pure function); a drag on the stage turns the soldier in Loadout |
 | `MainMenu` | The router's screen that hosts the shell. It reads the profile and the challenge board, and turns each ask a panel makes (`MenuContext.action`) into a router push through one table, `MainMenu.ROUTES` |
 | `MenuProfile` | The account facts from the cached profile (`profile/cache` in the settings file, JSON, read-only): name, XP, stubs, mastery. Billing levels are derived (`150 + 30 x level`), an empty or damaged cache is a new player |
-| Panels | `PlayPanel` (the sign, Play together, Quick join, Solo, today's challenges), `LoadoutPanel` (the customize screen embedded, a showcase weapon row), `ShopPanel`, `ChallengesPanel` (a sheet of paper: dailies, orders, milestones, a family chip), `MorePanel` |
+| Panels | `PlayPanel` (the sign, Play together, Server browser, Solo, today's challenges), `LoadoutPanel` (the customize screen embedded, a showcase weapon row), `ShopPanel`, `ChallengesPanel` (a sheet of paper: dailies, orders, milestones, a family chip), `MorePanel` |
 | Look | `MenuLook` (colours, type sizes, `Paper`, `Punches`, `Ring`, the ticket polygon), `MenuItemButton` (a ticket), `ChallengeRow` (a stub, or a ruled line on the sheet) |
 | `MenuScale` | The phone rules: below 500 px on the short side the UI factor doubles, so the design is 540 units high. The factor is the menu's: a night pushed over it runs on the player's own scale (1080 units high, what its HUD and touch layer are made for, #606) and the shell puts the factor back when it shows again |
 
@@ -19,9 +19,9 @@ and `game/ui/screens/main_menu.gd`.
 
 - **The Shop** has three real entries (the look catalogue's gated colours, priced as `LookCatalog` says) and five
   placeholder rows marked "Coming"; a press buys nothing. Prices are the catalogue's first guesses.
-- **Play together** opens the Play together screen from one table (`MainMenu.ROUTES`). **Quick join** is not in it: the
-  menu opens `QuickJoinOverlay`, a card over the menu that finds the first open public night and goes in (#526; see
-  [the lobby](../design/lobby.md#quick-join-from-the-menu)).
+- **Play together** opens the Play together screen from one table (`MainMenu.ROUTES`). The **Server browser** is in it
+  too (`browser`, a slide): the list of public nights, one press from a night (#1180; see
+  [the lobby](../design/lobby.md#the-server-browser-1180)).
 - **The profile** has no writer: nothing in the client sets XP, stubs or mastery; the backend (or a test) fills the cache.
 - **Mastery** shows the level and the way to the next one; trims do not exist yet.
 - **Account** says that signing in comes with the platform.
@@ -39,8 +39,8 @@ and `game/ui/screens/main_menu.gd`.
 - **The headless test window is 64 pixels**, which the phone rule reads as a phone. The shell treats a headless run as
   a desktop; a test that wants the phone layout sets `phone_mode`.
 - **The wardrobe's own labels are 16 units**, 11.6 px on a phone: under the written 14 px. On a phone the Loadout tab
-  raises every label to the caption size and every picker to a tap target (62 units, 44 px); a test walks every label
-  and every pressable control of every tab at 844 x 390.
+  raises every label to the caption size and every picker to a tap target (64 units, 44 CSS px or more); a test
+  walks every label and every pressable control of every tab at 844 x 390.
 - **Focus order is written, not guessed.** Down from the last start, with the rows in another container, went nowhere;
   the Play tab chains its starts and rows explicitly and ends the chain on the last row.
 - **Hover moves the focus** (the same rule as the buttons of the addon), so the keyboard and the mouse never disagree.
@@ -66,7 +66,7 @@ and `game/ui/screens/main_menu.gd`.
   `test_ui_fit.gd` (below), by `tests/captures/solo_settings_tour.tscn` (real fonts; it prints each control outside the
   window) and by
   `tools/web_smoke/solo_settings.py` (a finger and a keyboard through the real build). On a phone the screen drops the
-  overline, the hints and the margins and makes every row and button a tap target (62 units).
+  overline, the hints and the margins and makes every row and button a tap target (64 units).
 
 - **A hovered button is paint, and a scroll area cuts paint** (#628). `UIButton` grows 3.5 percent on hover; the lobby's
   rows are full-width buttons in a `ScrollContainer`, which clips at its own rectangle, so "Copy the link" lost its
@@ -108,7 +108,7 @@ hover (#628, before and after).
   was a full-rect column in a `Control`, or a card in a `CenterContainer`: a container grows to its content and nothing
   clips it. The Loadout tab's wardrobe ended 47 units under the hints on the 1080 canvas (757 high and 1020 wide on a
   phone's 372 by 818 panel), the Settings screen was 741 to 1103 units high and 1280 wide, Play together 897, Join 599,
-  and the Quick join card 975 on a failure. The canvas is 1080 units high on every desktop window shape and 540 on a
+  and the old one-night card 975 on a failure. The canvas is 1080 units high on every desktop window shape and 540 on a
   phone, 960 (a 667 x 375 phone) to 1170 wide, so the sizes to check are few: 1280 x 720, 1920 x 1080 and 2560 x 1440
   (one canvas), 1000 x 500, and the phones 844 x 390, 932 x 430 and 667 x 375; a phone held upright is covered by the
   turn prompt.
@@ -118,10 +118,11 @@ panel, the header (tab bar and plate) or the footer (the key hints), or is wider
 `ui_fit.gd` is the check, `ui_fit_run.gd` opens the screens (under the router's themed stage: without the theme a
 title is 23 units high, not 83), `tests/captures/ui_fit_tour.tscn` prints the same sentences with a picture of each.
 It failed 167 and 64 times on `main`. The longest words are in it: sixteen wide letters for the name and the
-biggest numbers (the plate), the longest backend sentence (Quick join), and the dailies at their longest.
+biggest numbers (the plate), the longest backend sentence (the Server Browser's failure line), and the dailies at their
+longest.
 
 **The parts:** `UIFitScroll` (`gds_ui`) asks for its content's height and no more than the screen leaves; Settings,
-Play, Play together, Join and Quick join put their rows in one, with the title and buttons outside it. A tab's
+Play, Play together and Join put their rows in one, with the title and buttons outside it. A tab's
 column goes in `MenuPanel.hold`, a scroll area as tall as the panel and reaching past it by the theme's room, so the
 buttons keep the panel's width. The wardrobe's list no longer asks for 640 units: it takes what the tab leaves, its
 rows are as narrow as their strips (`UIRow.set_widths`) and stack (title above the control) when the tab is

@@ -1,6 +1,11 @@
 class_name NetWire
 extends RefCounted
-## The bytes of a night's connection (protocol version 14 puts the zombie's status effect in its
+## The bytes of a night's connection (protocol version 16 gives the bots ids of their own, 101 and
+## up, and leaves them out of the 8 places of the people: no layout changed, but a client of 15
+## keeps eight rows and eight seats and would draw a night of up to 15 bodies wrongly; version 15
+## has the ARRIVAL message, a client's word that
+## its helicopter drop began and ended (`ArrivalPlay`); version 14 puts the zombie's status effect
+## in its
 ## mode byte (`ZombieCodec`: frozen, chilled); version 13 has the ORDER message, a person's order to
 ## the bots, and the `bot_orders` of the frame; version 12 carries each player's stance, sprint,
 ## crouch and in the air, in the frame; version 11 has the quick melee flag in a command's flags
@@ -36,6 +41,13 @@ extends RefCounted
 ##                where the person stands, the spot a Hold keeps), u8 the bot it is for (0 for the
 ##                team's bots); `ORDER_SIZE` = 9 bytes. The server answers with a `bot_order_set`
 ##                event for everyone
+## ARRIVAL  C->S  u8 type=14, u8 1 when the client's helicopter drop begins and 0 when it ends
+## (landed or
+##                skipped), 2 bytes. Until it ends (or `ArrivalTuning.cap_seconds` run out) the
+## server
+##                shields the player and keeps them out of the night (`ArrivalPlay`); a client that
+## never
+##                sends it is never shielded
 ## REFUSED  S->C  u8 type=10, u8 reason (`Refusal`), u8 the server's protocol version; the server
 ##                closes the connection after it
 ## PLATFORM C->S  u8 type=12, u8 1 for a browser and 0 for any other client (2 bytes), sent once
@@ -60,17 +72,18 @@ enum Type {
 	REFUSED = 10,
 	MARK = 11,
 	PLATFORM = 12,
-	ORDER = 13
+	ORDER = 13,
+	ARRIVAL = 14
 }
 enum Refusal { VERSION = 1, FULL = 2, DENIED = 3 }
 
 ## The protocol version of this build. Raise it whenever a layout above changes (a field added,
 ## resized or reordered, a type renumbered). New keys in the events and the frame do not need it:
 ## clients ignore keys they do not know. The policy is in docs/research/multiplayer.md.
-const VERSION := 14
+const VERSION := 16
 ## The oldest client version a server of this build still takes. Equal to `VERSION` while the web
 ## client and the server ship from one commit; lower it only for a layout both versions can read.
-const MIN_VERSION := 14
+const MIN_VERSION := 16
 ## Port of a game server unless told otherwise. (Not 9080: the Godot editor's MCP bridge listens
 ## there on the maintainer's machine and Windows lets a second listener bind it silently.)
 const DEFAULT_PORT := 8910
@@ -79,6 +92,7 @@ const MARK_SIZE := 10
 const ORDER_SIZE := 9
 const PING_SIZE := 7
 const PLATFORM_SIZE := 2
+const ARRIVAL_SIZE := 2
 ## What a ping says when the client has not measured a round trip yet, and the most it can say.
 const NO_RTT := 0xFFFF
 ## The resume token a WELCOME gives: random, one for each connection, good for taking back the seat.
@@ -161,6 +175,18 @@ static func platform(web: bool) -> PackedByteArray:
 ## 1 for a browser, 0 for another client, -1 when the packet is not a platform message.
 static func read_platform(data: PackedByteArray) -> int:
 	if data.size() != PLATFORM_SIZE or data[0] != Type.PLATFORM or data[1] > 1:
+		return -1
+	return data[1]
+
+
+## The message that says the client's helicopter drop began (`begin`) or ended.
+static func arrival(begin: bool) -> PackedByteArray:
+	return PackedByteArray([Type.ARRIVAL, 1 if begin else 0])
+
+
+## 1 for a drop that begins, 0 for one that ends, -1 when the packet is not an arrival message.
+static func read_arrival(data: PackedByteArray) -> int:
+	if data.size() != ARRIVAL_SIZE or data[0] != Type.ARRIVAL or data[1] > 1:
 		return -1
 	return data[1]
 

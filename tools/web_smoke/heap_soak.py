@@ -7,7 +7,11 @@ and the engine's own count of its nodes. A heap that rises after a forced collec
 
     uv run --project <kit>/python gds quiet -- \\
         uv run --with playwright==1.64.1 python tools/web_smoke/heap_soak.py build/web <out folder> \\
-        [--minutes 6] [--label NAME] [--query "probe_off=webprobe"] [--no-recorder] [--sampling]
+        [--minutes 6] [--label NAME] [--query "probe_off=webprobe"] [--no-recorder] [--sampling] [--plain]
+
+`--plain` opens the page the way a player does, without `?probe`: no probe reads the page, so the night is waited for a
+fixed `--settle` seconds instead of asked of `window.deadnight`, and the rows carry no zombie count (#935). Without it
+the page carries `?probe`, the browser test's arm.
 
 `--no-recorder` leaves out the frame-time recorder of `phone_frames.py` (a page that is only played); `--sampling`
 runs V8's sampling heap profiler for the whole run and writes the stacks that allocated what is still alive at the
@@ -54,7 +58,8 @@ RECORDER_JS = """
 # to it, so each creation costs eight bytes in each of the tables until the page closes: the heap growth of #834).
 GL_COUNT_JS = """
 () => {
-  window.__gl = {};
+  window.__gl = {frames: 0};
+  (function tick() { window.__gl.frames += 1; requestAnimationFrame(tick); })();
   const names = ['createBuffer', 'createTexture', 'createProgram', 'createShader', 'createFramebuffer',
     'createRenderbuffer', 'createVertexArray', 'fenceSync', 'createQuery', 'createSampler', 'createTransformFeedback'];
   for (const proto of [WebGL2RenderingContext.prototype, WebGLRenderingContext.prototype]) {
@@ -70,6 +75,15 @@ GL_COUNT_JS = """
 }
 """
 DRAIN_JS = "() => { const d = window.__d || []; window.__d = []; return d.length; }"
+
+
+def per_frame(series: list[dict]) -> dict[str, float]:
+    """WebGL objects created a frame between the first and the last row (needs `--count-gl`)."""
+    if len(series) < 2 or "gl_created" not in series[0]:
+        return {}
+    first, last = series[0]["gl_created"], series[-1]["gl_created"]
+    frames = max(last.get("frames", 0) - first.get("frames", 0), 1)
+    return {k: round((last[k] - first.get(k, 0)) / frames, 2) for k in last if k != "frames"}
 
 
 def metrics(session) -> dict[str, float]:
@@ -107,8 +121,10 @@ def stacks(profile: dict) -> list[tuple[int, str]]:
 def run(args: argparse.Namespace) -> dict:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    server, port = smoke.serve(Path(args.build))
+    server, port = smoke.serve(Path(args.build), probing=not args.plain)
     query = f"autopilot&rounds=99&hold=0&seconds={int(args.minutes * 60 + 240)}&{args.query}"
+    if not args.plain:
+        query += "&probe"
     url = f"http://127.0.0.1:{port}/index.html?{query}"
     flags = [*CHROME_FLAGS, *(smoke.UNPACED if args.unpaced else []), *smoke.mute_args()]
     width, height = (int(v) for v in args.size.split("x"))
@@ -130,6 +146,7 @@ def run(args: argparse.Namespace) -> dict:
             )
             page = context.new_page()
             page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
+            page.on("console", lambda m: print(m.text, flush=True) if m.text.startswith("[canvas]") else None)
             page.on("pageerror", lambda e: errors.append(str(e)))
             session = context.new_cdp_session(page)
             session.send("Performance.enable")
@@ -141,13 +158,13 @@ def run(args: argparse.Namespace) -> dict:
                 session.send("HeapProfiler.startSampling", {"samplingInterval": SAMPLING_INTERVAL})
             page.goto(url, wait_until="commit")
             began = time.monotonic()
-            while time.monotonic() - began < NIGHT_WAIT_S:
-                running = bool(smoke.probe(page).get("running"))
-                if running:
-                    break
-                time.sleep(1.0)
+            if args.plain:
+                time.sleep(args.settle)
             else:
-                raise TimeoutError("the night never ran")
+                while not smoke.probe(page).get("running"):
+                    if time.monotonic() - began > NIGHT_WAIT_S:
+                        raise TimeoutError("the night never ran")
+                    time.sleep(1.0)
             run_began = time.monotonic()
             if not args.no_recorder:
                 page.evaluate(DRAIN_JS)
@@ -192,6 +209,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-recorder", action="store_true", help="no frame-time recorder in the page")
     parser.add_argument("--sampling", action="store_true", help="V8 sampling heap profile of what is alive at the end")
     parser.add_argument("--count-gl", action="store_true", help="count the WebGL objects the page creates")
+    parser.add_argument("--plain", action="store_true", help="no ?probe: the page a player opens")
+    parser.add_argument("--settle", type=float, default=90.0, help="with --plain: seconds to wait for the night")
     parser.add_argument("--label", default="run")
     parser.add_argument(
         "--query",
@@ -206,6 +225,10 @@ def main() -> int:
     report = run(args)
     (Path(args.out) / f"{args.label}.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
     first, last = report["series"][0], report["series"][-1]
+    if args.count_gl:
+        report["gl_per_frame"] = per_frame(report["series"])
+        (Path(args.out) / f"{args.label}.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
+        print("created a frame:", json.dumps(report["gl_per_frame"]))
     print(
         f"{args.label}: heap after a forced collection {first['heap_mb']} MB at {first['t']} s -> {last['heap_mb']} MB at {last['t']} s"
     )

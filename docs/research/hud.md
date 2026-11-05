@@ -233,3 +233,32 @@ What building `HudChallenge` (the paper ticket that says a challenge moved) taug
   is a call of its own and ends the rect batch around it, and a label with an outline and a shadow is four. Draw a
   card's shapes with `HudShapes` (one triangle array) and make labels with `HudStyle.label` (`HudLabel`: two calls).
   See [The HUD's draw cost](hud-draw-cost.md).
+
+## The end board's left column at 1536 x 864 (#1145)
+
+The fullest night report (every line and the cap, levels crossed, items unlocked) made the left column 945 units
+tall on a 792-unit room: the title wrapped to two lines (179), the card was 511, the countdown's numerals 115, so
+Leave sat at y 950 (the calculation on #1069 was right; the card's own test passed because the card itself stayed
+inside the screen). The same board is also the phone at UI scale 1.25 (1872 x 864, a 24-unit bottom inset), which
+the canvas list lacked. Now: the title steps down to one line (`HudEndBoard._fit_title`, 54 high at 1536), the
+card measures itself and steps its rows from 34 to 28 with the type (`HudNightReport.show_report`: a row cannot
+be shorter than its font, so `MIN_ROW` is the height of `HudStyle.MIN_TEXT`), and the countdown steps from 84 to
+no less than 48 when the card is at its floor. At 1536 x 864 Leave ends at y 828 (the margin) with eight players,
+the fullest report and the credits. `tests/ui/test_end_board_fit.gd` (with `EndBoardFixtures`) checks every part
+of the column, and `tests/captures/end_board_fullest_capture.tscn` draws it (`--scale=1.25` is the 1536 x 864
+canvas in a 1920 x 1080 window).
+
+**Eight people and seven bots (#1179).** The cap of eight is people; the bots come on top, so the HUD, the scoreboard and
+the end board hold up to 15 bodies (`NightHost.MAX_SEATS`). What that did, found by the layout tests and read in captures
+(`players8_hud.tscn --people=8 --bots=7`, `end_board_fullest_capture.tscn --players=8 --bots=7`, desktop and 844 x 390 at
+the night's own UI scale, which `NightScreen` sets on a phone too, not the menu's phone factor):
+
+- The points column: fifteen boxes are 598 units high and overlapped the round and objective cards at 864 high (by 31 to
+  123 units). Past eight bodies the bots are chips (`HudBotChips`: the name in the seat's colour, outlined on the HUD's
+  dark,
+  four to a row, dim and red while down), 397 units for the whole column; under that every bot has a box.
+- The scoreboard takes 15 rows of 46 on every canvas of its test (`test_hud_scoreboard.gd`).
+- The end board: the credits are the people's only past eight bodies, they are left off when the screen cannot give every
+  row its floor (they need 948 units, so not at 864), the extra rows' gaps come off the room, and a row's type steps down
+  when the row is shorter than the font (the label was growing the ticket past the screen).
+- The armband colours repeat for the bots (8 colours, 15 bodies).

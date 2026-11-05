@@ -7,9 +7,19 @@ const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
 const WARDROBE := "res://ui/screens/customize_screen.tscn"
 const TEST_PATH := "user://night_look_test.cfg"
+## The profile the look is repaired by: the top of the ladder, so the looks here are worn whole (the
+## lock is `test_look_unlocks`'s).
+const PROFILE_PATH := "user://night_look_test_profile.json"
 const OTHER_ID := 2
 
 var _saved_path: String
+var _profile_path_before: String
+
+
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
 
 
 func before_test() -> void:
@@ -17,9 +27,16 @@ func before_test() -> void:
 	_saved_path = Settings.path
 	Settings.path = TEST_PATH
 	Settings.reset_defaults()
+	var profile := Profile.new()
+	profile.xp = LevelCurve.xp_for(LevelCurve.MAX_LEVEL)
+	ProfileSave.write(profile, [], 1, PROFILE_PATH)
+	_profile_path_before = LookUnlocks.profile_path
+	LookUnlocks.profile_path = PROFILE_PATH
 
 
 func after_test() -> void:
+	LookUnlocks.profile_path = _profile_path_before
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_PATH))
 	await RouterFixture.clear(get_tree())
 	Settings.reset_defaults()
 	Settings.save()
@@ -108,6 +125,17 @@ func test_the_saved_look_is_worn_by_the_player_in_the_night() -> void:
 	_save(look)
 	var screen := await _enter_night()
 	_assert_wears(screen.night.player(), look)
+	await _leave(screen)
+
+
+func test_the_mouth_chosen_in_the_wardrobe_is_the_mouth_in_the_night() -> void:
+	var look := _own_look()
+	look.parts[&"mouth"] = &"smirk"
+	_save(look)
+	var screen := await _enter_night()
+	var shown := _shown(screen.night.player().get_node("Model"))
+	assert_array(shown).contains(["mouth__smirk"])
+	assert_array(shown).not_contains(["mouth__smile"])
 	await _leave(screen)
 
 

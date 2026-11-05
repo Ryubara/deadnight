@@ -111,7 +111,7 @@ def main() -> int:
         local = http.server.ThreadingHTTPServer(("127.0.0.1", LOCAL_PORT), handler)
         threading.Thread(target=local.serve_forever, daemon=True).start()
         base = f"http://127.0.0.1:{LOCAL_PORT}/index.html"
-    query = f"backend={args.backend}&bot"  # the autopilot plays, so nobody idles and dies while the others load
+    query = f"backend={args.backend}&bot&probe"  # the autopilot plays, so nobody idles and dies while the others load
     pages: dict[str, Page] = {}
     with sync_playwright() as p:
         if args.gpu:
@@ -122,7 +122,7 @@ def main() -> int:
             # A creates a night: the lobby, with A as the host and nobody else.
             a = pages["a"] = open_page(browser, f"{base}?{query}", console, problems, "A")
             to_together(a)
-            smoke.press(a, "ArrowDown")  # Quick join -> Create a night
+            smoke.press(a, "ArrowDown")  # Server browser -> Create a night
             smoke.press(a, "Enter")
             smoke.give_name(a, "Ann")  # a player with no saved name is asked first
             alone = wait_for(

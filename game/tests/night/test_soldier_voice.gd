@@ -439,3 +439,230 @@ func test_a_player_whose_look_has_not_arrived_has_his_voice() -> void:
 	assert_str(String(_voice.look_voice(MATE))).is_equal("male")
 	assert_bool(_say_until(&"reload", MATE)).is_true()
 	assert_str(String(_heard[0]["id"])).starts_with("vox_reload_")
+
+
+func test_a_cheer_for_every_progression_moment_plays_for_both_voices() -> void:
+	for voice: StringName in [&"male", &"female"]:
+		_voices(voice, voice)
+		for event in SoldierVoiceCatalog.PROGRESS:
+			_voice.step(100.0)
+			_heard.clear()
+			_voice.celebrate(event, OWN)
+			_voice.step(0.1)
+			assert_int(_heard.size()).override_failure_message("%s %s" % [voice, event]).is_equal(1)
+			var prefix: String = SoldierVoiceCatalog.VOICES[voice]["prefix"]
+			assert_str(String(_heard[0]["id"])).starts_with("%s%s_" % [prefix, event])
+			assert_object(SoundCatalog.get_def(_heard[0]["id"])).is_not_null()
+
+
+func test_a_teammates_cheer_is_heard_where_they_stand_and_ours_is_flat() -> void:
+	_voice.celebrate(&"level_up", MATE)
+	_voice.step(0.1)
+	assert_int(_heard.size()).is_equal(1)
+	assert_vector(_heard[0]["at"]).is_equal_approx(
+		AT_MATE + SoldierVoice.HEAD_LIFT, Vector3.ONE * 0.01
+	)
+	assert_float(_heard[0]["db"]).is_equal(0.0)
+	_voice.step(100.0)
+	_heard.clear()
+	_voice.celebrate(&"level_up", OWN)
+	_voice.step(0.1)
+	assert_object(_heard[0]["at"]).is_null()
+	assert_float(_heard[0]["db"]).is_equal(SoundCatalog.mix().own_voice_db)
+
+
+func test_a_cheer_waits_for_the_line_that_speaks_instead_of_being_dropped() -> void:
+	assert_bool(_say_until(&"reload", OWN)).is_true()
+	_voice.step(0.2)
+	_voice.celebrate(&"tier_up", MATE)
+	_voice.step(0.2)
+	assert_array(_moments()).is_equal(["reload"])
+	_voice.step(12.0)
+	assert_array(_moments()).is_equal(["reload", "tier_up"])
+
+
+func test_a_downed_player_does_not_cheer_and_a_hurt_cuts_a_cheer() -> void:
+	_frame(GameRules.Phase.ACTIVE, true)
+	_voice.celebrate(&"level_up", MATE)
+	_voice.step(0.1)
+	assert_array(_moments()).is_empty()
+	_frame(GameRules.Phase.ACTIVE)
+	_voice.celebrate(&"level_up", OWN)
+	_voice.step(0.1)
+	assert_array(_moments()).is_equal(["level_up"])
+	assert_bool(_say_until(&"hurt", OWN)).is_true()
+	assert_array(_moments()).is_equal(["level_up", "hurt"])
+
+
+func _level_up(who: int, level := 2) -> Dictionary:
+	return {"type": &"level_up", "player_id": who, "level": level, "total": 100}
+
+
+func _tier_up(who: int) -> Dictionary:
+	return {"type": &"tier_up", "player_id": who, "tier": 1, "tier_name": "Cartoon", "level": 6}
+
+
+func _unlock(who: int, slot: StringName, item := &"thing") -> Dictionary:
+	return {"type": &"unlock_earned", "player_id": who, "level": 3, "slot": slot, "item": item}
+
+
+func test_the_server_telling_a_teammates_level_up_is_heard_where_they_stand() -> void:
+	_tell(_level_up(MATE))
+	_voice.step(0.05)
+	assert_array(_moments()).is_empty()
+	_voice.step(_voice._t.cheer_window)
+	assert_array(_moments()).is_equal(["level_up"])
+	assert_vector(_heard[0]["at"]).is_equal_approx(
+		AT_MATE + SoldierVoice.HEAD_LIFT, Vector3.ONE * 0.01
+	)
+	assert_int(_voice.director.history[0]["speaker"]).is_equal(MATE)
+
+
+func test_a_tier_a_level_and_an_item_that_come_together_are_one_cheer() -> void:
+	_tell(_level_up(OWN, 6))
+	_tell(_tier_up(OWN))
+	_tell(_unlock(OWN, &"headwear"))
+	_settle()
+	assert_array(_moments()).is_equal(["tier_up"])
+	assert_int(_heard.size()).is_equal(1)
+
+
+func test_a_level_that_gives_an_item_is_cheered_for_the_item_by_its_slot() -> void:
+	var expected := {
+		&"colour": "unlock",
+		&"top": "unlock",
+		&"map": "unlock",
+		&"tier_card": "card",
+		&"calling_cards": "card",
+		&"tier_emblem": "emblem",
+		&"emblem": "emblem",
+		&"plate_frame": "emblem",
+	}
+	for slot: StringName in expected:
+		_voice.step(100.0)
+		_voice.director.history.clear()
+		_tell(_level_up(MATE))
+		_tell(_unlock(MATE, slot))
+		_settle()
+		assert_array(_moments()).override_failure_message(String(slot)).is_equal([expected[slot]])
+
+
+func _challenge_done(who: int, id := &"d_kills") -> Dictionary:
+	return {
+		"type": &"challenge_done",
+		"player_id": who,
+		"id": id,
+		"family": 0,
+		"text": "Put down 4",
+		"target": 4,
+		"rung": 0,
+		"rungs": 1,
+		"reward": {"xp": 5},
+	}
+
+
+func test_a_challenge_done_is_cheered_as_the_player_who_finished_it() -> void:
+	_tell(_challenge_done(MATE))
+	_voice.step(0.05)
+	assert_array(_moments()).is_empty()
+	_settle()
+	assert_array(_moments()).is_equal(["challenge_done"])
+	assert_int(_voice.director.history[0]["speaker"]).is_equal(MATE)
+	assert_vector(_heard[0]["at"]).is_equal_approx(
+		AT_MATE + SoldierVoice.HEAD_LIFT, Vector3.ONE * 0.01
+	)
+
+
+func test_a_challenge_that_pays_a_level_is_cheered_as_the_challenge_in_either_order() -> void:
+	_tell(_challenge_done(OWN))
+	_tell(_level_up(OWN))
+	_settle()
+	assert_array(_moments()).is_equal(["challenge_done"])
+	_voice.director.history.clear()
+	_tell(_level_up(OWN, 3))
+	_tell(_challenge_done(OWN))
+	_settle()
+	assert_array(_moments()).is_equal(["challenge_done"])
+	assert_int(_heard.size()).is_equal(2)
+
+
+func test_a_tier_is_cheered_over_the_challenge_that_paid_it() -> void:
+	_tell(_challenge_done(OWN))
+	_tell(_level_up(OWN, 6))
+	_tell(_tier_up(OWN))
+	_settle()
+	assert_array(_moments()).is_equal(["tier_up"])
+	assert_int(_heard.size()).is_equal(1)
+
+
+func test_two_players_who_finish_a_challenge_together_are_cheered_one_after_the_other() -> void:
+	_tell(_challenge_done(OWN))
+	_tell(_challenge_done(MATE))
+	for _i in 200:
+		_voice.step(0.1)
+	assert_array(_moments()).is_equal(["challenge_done", "challenge_done"])
+
+
+func test_a_level_alone_is_cheered_as_a_level() -> void:
+	_tell(_level_up(MATE))
+	_tell(_level_up(MATE, 3))
+	_settle()
+	assert_array(_moments()).is_equal(["level_up"])
+
+
+func test_two_players_who_level_up_together_are_cheered_one_after_the_other() -> void:
+	_tell(_level_up(OWN))
+	_tell(_level_up(MATE))
+	for _i in 200:
+		_voice.step(0.1)
+	assert_array(_moments()).is_equal(["level_up", "level_up"])
+	var speakers := _voice.director.history.map(
+		func(line: Dictionary) -> int: return line["speaker"]
+	)
+	assert_array(speakers).contains_exactly_in_any_order([OWN, MATE])
+
+
+func test_events_that_are_no_cheer_say_nothing_and_the_night_ending_drops_a_waiting_one() -> void:
+	_tell(
+		{
+			"type": &"xp_gained",
+			"player_id": MATE,
+			"hundredths": 100,
+			"xp": 1,
+			"total": 1,
+			"sources": {},
+		}
+	)
+	_settle()
+	assert_array(_moments()).is_empty()
+	_tell(_level_up(MATE))
+	_tell({"type": &"game_over", "round_reached": 3})
+	_settle()
+	assert_array(_moments()).is_empty()
+	# And the next cheer is not held back by the dropped one.
+	_tell(_level_up(MATE))
+	_settle()
+	assert_array(_moments()).is_equal(["level_up"])
+
+
+func test_a_level_up_told_while_a_reload_speaks_is_cheered_when_it_ends() -> void:
+	assert_bool(_say_until(&"reload", OWN)).is_true()
+	_tell(_level_up(MATE))
+	for _i in 12:
+		_voice.step(0.1)
+	assert_array(_moments()).is_equal(["reload"])
+	_settle()
+	assert_array(_moments()).is_equal(["reload", "level_up"])
+
+
+func test_a_cheer_for_a_downed_player_is_dropped_and_leaves_nothing_scheduled() -> void:
+	_frame(GameRules.Phase.ACTIVE, true)
+	_tell(_level_up(MATE))
+	_settle()
+	assert_array(_moments()).is_empty()
+	assert_int(_voice.schedule.pending()).is_equal(0)
+	# They get up and the next level is cheered.
+	_frame(GameRules.Phase.ACTIVE)
+	_tell(_level_up(MATE, 3))
+	_settle()
+	assert_array(_moments()).is_equal(["level_up"])

@@ -39,7 +39,8 @@ const NO_FLOOR_IN_REACH: Array[String] = ["breach upper_b1"]
 
 ## The map review's ray audit (#833): pairs of a shop spot's hand point and a place within reach
 ## behind a wall, the nearest two for each spot that has any. The grid above is coarse (half a
-## metre); these are the exact places the audit found, the worst at 1.2 m.
+## metre); these are the exact places the audit found, the worst at 1.2 m. On the second map the
+## pistol, the soda, the bat and the upper locker moved (#994): their pairs moved with them.
 const AUDIT_LOT: Array[Vector3] = [
 	Vector3(-8.2, 0.0, -5.6),
 	Vector3(-8.4, 0.0, -3.3),
@@ -89,22 +90,14 @@ const AUDIT_LOT: Array[Vector3] = [
 	Vector3(10.15, 0.0, -2.5),
 ]
 const AUDIT_SMALL: Array[Vector3] = [
-	Vector3(1.35, 0.0, 11.0),
-	Vector3(-0.85, 0.0, 10.8),
-	Vector3(1.35, 0.0, 11.0),
-	Vector3(-0.85, 0.0, 10.3),
-	Vector3(1.35, 0.0, 6.0),
-	Vector3(-0.85, 0.0, 5.8),
-	Vector3(1.35, 0.0, 6.0),
-	Vector3(-0.85, 0.0, 5.3),
+	Vector3(1.35, 0.0, 13.2),
+	Vector3(-0.85, 0.0, 13.0),
+	Vector3(1.35, 0.0, 13.2),
+	Vector3(-0.85, 0.0, 12.5),
 	Vector3(14.65, 0.0, -6.0),
 	Vector3(16.95, 0.0, -6.2),
 	Vector3(14.65, 0.0, -6.0),
 	Vector3(16.95, 0.0, -6.7),
-	Vector3(14.7, 3.4, 2.3),
-	Vector3(14.5, 3.4, 5.1),
-	Vector3(14.7, 3.4, 2.3),
-	Vector3(14.0, 3.4, 5.1),
 	Vector3(1.3, 3.4, 2.3),
 	Vector3(1.1, 3.4, 5.1),
 	Vector3(1.3, 3.4, 2.3),
@@ -133,14 +126,14 @@ const AUDIT_SMALL: Array[Vector3] = [
 	Vector3(7.3, 2.87, 0.7),
 	Vector3(6.0, 3.4, -1.6),
 	Vector3(7.8, 3.2, 0.7),
-	Vector3(12.0, 3.4, 3.15),
-	Vector3(11.8, 3.4, 5.45),
-	Vector3(12.0, 3.4, 3.15),
-	Vector3(11.3, 3.4, 5.45),
-	Vector3(1.7, 0.0, 8.5),
-	Vector3(0.5, 0.0, 6.8),
-	Vector3(1.7, 0.0, 8.5),
-	Vector3(-1.0, 0.0, 8.3),
+	Vector3(14.2, 3.4, 3.15),
+	Vector3(14.0, 3.4, 5.45),
+	Vector3(14.2, 3.4, 3.15),
+	Vector3(13.5, 3.4, 5.45),
+	Vector3(1.7, 0.0, 9.6),
+	Vector3(0.5, 0.0, 7.9),
+	Vector3(1.7, 0.0, 9.6),
+	Vector3(-1.0, 0.0, 9.4),
 	Vector3(2.94, 0.0, -6.32),
 	Vector3(1.74, 0.0, -6.51),
 	Vector3(2.94, 0.0, -6.32),
@@ -685,7 +678,9 @@ func _walk_audit(scene_path: String, audit: Array[Vector3]) -> void:
 			if _press(point) and _fingerprint() != before:
 				problems.append("%s: a press changed the night at %s" % [thing["name"], point])
 	_report(problems)
-	assert_int(checked).is_greater(audit.size() / 4)
+	# Two in five of the pairs (a fifth of the entries) have a spot with a wall in the way: the
+	# walk ran. The second map's list lost the crowbar's and the bat's pairs with their spots (#910).
+	assert_int(checked).is_greater(audit.size() / 5)
 
 
 func test_the_lot_gives_nothing_at_the_places_the_ray_audit_found_behind_a_wall() -> void:

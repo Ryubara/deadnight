@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_tuning")
 group_limits = Dictionary[StringName, int]({
+&"arrival": 3,
 &"bed": 4,
 &"board": 4,
 &"breaker": 2,
@@ -28,8 +29,11 @@ group_limits = Dictionary[StringName, int]({
 &"swap": 2,
 &"till": 2,
 &"ui": 4,
+&"ui_fanfare": 1,
 &"ui_hint": 1,
 &"ui_moment": 1,
+&"ui_scratch": 1,
+&"ui_unlock": 3,
 &"wind": 3,
 &"yard": 2,
 &"zombie_boss": 2,

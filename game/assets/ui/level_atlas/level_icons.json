@@ -1,0 +1,896 @@
+{
+  "cells_across": 5,
+  "cells_down": 11,
+  "atlases": {
+    "64": {
+      "file": "level_icons_64.png",
+      "sha256": "b1be80512fedb3f170f632d942bca7d2b7fe65007ddc2f2683cbf9b160e82174"
+    },
+    "128": {
+      "file": "level_icons_128.png",
+      "sha256": "4b1c3d0a45d3e303cc1dd6ae901510483a9032462a5d63e12775379d8e0ed1ba"
+    }
+  },
+  "levels": [
+    {
+      "level": 1,
+      "name": "Admission stub",
+      "tier": 1,
+      "tier_name": "Doors Open",
+      "svg": "level_01.svg",
+      "sha256": "d2e3263212a3fa9e15da85f77610a22f2ea8e605c11761973067a9852837c846",
+      "cell": [
+        0,
+        0
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 2,
+      "name": "Ticket roll",
+      "tier": 1,
+      "tier_name": "Doors Open",
+      "svg": "level_02.svg",
+      "sha256": "0bf8f4680936ac68ab8c88bf2c9144762c65145d49741747ec86b3ec9dd4e4ad",
+      "cell": [
+        1,
+        0
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 3,
+      "name": "Tin token",
+      "tier": 1,
+      "tier_name": "Doors Open",
+      "svg": "level_03.svg",
+      "sha256": "91a03f337bb433bf5f239364b07e1918a4f3a6f3c2d38c447495faf66c8c876d",
+      "cell": [
+        2,
+        0
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 4,
+      "name": "Turnstile arm",
+      "tier": 1,
+      "tier_name": "Doors Open",
+      "svg": "level_04.svg",
+      "sha256": "97f3ec22353bcef60bab35e5962a75f5dea1d16c55cb653c200193e7b170b942",
+      "cell": [
+        3,
+        0
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 5,
+      "name": "Popcorn box",
+      "tier": 1,
+      "tier_name": "Doors Open",
+      "svg": "level_05.svg",
+      "sha256": "11e216d4a17399d45d92227283aeff4b8b84530bf4a52b53c1e5e682a2615216",
+      "cell": [
+        4,
+        0
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 6,
+      "name": "Whitewall tyre",
+      "tier": 2,
+      "tier_name": "Cartoon",
+      "svg": "level_06.svg",
+      "sha256": "b36311d8aed5d4d4d689f6ea39d0932ea794a5ce04976a685f24e5705d5d59a0",
+      "cell": [
+        0,
+        1
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 7,
+      "name": "Hubcap",
+      "tier": 2,
+      "tier_name": "Cartoon",
+      "svg": "level_07.svg",
+      "sha256": "5a29494d67f958084b58fb59d72b22685f42cabc03e56ea0307dc6b07cdf0890",
+      "cell": [
+        1,
+        1
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 8,
+      "name": "Fuzzy dice",
+      "tier": 2,
+      "tier_name": "Cartoon",
+      "svg": "level_08.svg",
+      "sha256": "2ff2cc995184066537caa5675b6cabc44fd5e9f693e470f901362d8324e89593",
+      "cell": [
+        2,
+        1
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 9,
+      "name": "Speaker on its post",
+      "tier": 2,
+      "tier_name": "Cartoon",
+      "svg": "level_09.svg",
+      "sha256": "e2a67b64c5a9e5da14515bb21fd1dd15485ec9e44ef84d0fed2172bb5154b022",
+      "cell": [
+        3,
+        1
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 10,
+      "name": "Back-room key",
+      "tier": 2,
+      "tier_name": "Cartoon",
+      "svg": "level_10.svg",
+      "sha256": "b4be94428e73ca649276ebfeef318147314614ad6388560feae02c78fe953e2f",
+      "cell": [
+        4,
+        1
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 11,
+      "name": "Paper cup and straw",
+      "tier": 3,
+      "tier_name": "Newsreel",
+      "svg": "level_11.svg",
+      "sha256": "b4742ca257c4492fbedd6c9a421e140db7033d9ebc6fa71bfc98e8c53f143e7c",
+      "cell": [
+        0,
+        2
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 12,
+      "name": "Hot dog",
+      "tier": 3,
+      "tier_name": "Newsreel",
+      "svg": "level_12.svg",
+      "sha256": "83a8455f3d4863ae53821f3315aa9c4a2dabd5c394123d71e8d0a3328936ab3b",
+      "cell": [
+        1,
+        2
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 13,
+      "name": "Milkshake",
+      "tier": 3,
+      "tier_name": "Newsreel",
+      "svg": "level_13.svg",
+      "sha256": "259f0a69b27507a0f74fc6183a570ebfc7082f08bc9c841641b90e44358757ba",
+      "cell": [
+        2,
+        2
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 14,
+      "name": "Candy box",
+      "tier": 3,
+      "tier_name": "Newsreel",
+      "svg": "level_14.svg",
+      "sha256": "be7c8309a247d3f548d20110ecb3a573910e45f311b8e6140929473f8fe1009e",
+      "cell": [
+        3,
+        2
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 15,
+      "name": "Film reel",
+      "tier": 3,
+      "tier_name": "Newsreel",
+      "svg": "level_15.svg",
+      "sha256": "ec5cd980c1403eaedbbb42da60b8a8f1219e4d08418339004caeb4681fb04706",
+      "cell": [
+        4,
+        2
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 16,
+      "name": "Pennant",
+      "tier": 4,
+      "tier_name": "Intermission",
+      "svg": "level_16.svg",
+      "sha256": "187969a304c2de00feedb86736c35fa829ab05e7419955b9e73434a051a74677",
+      "cell": [
+        0,
+        3
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 17,
+      "name": "Flash bulb",
+      "tier": 4,
+      "tier_name": "Intermission",
+      "svg": "level_17.svg",
+      "sha256": "502f35ec501b4dec23ef269cb0d0c4b0a7fa33035a2d60d68a6fed950ace11a1",
+      "cell": [
+        1,
+        3
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 18,
+      "name": "Megaphone",
+      "tier": 4,
+      "tier_name": "Intermission",
+      "svg": "level_18.svg",
+      "sha256": "39388b8b463217bcfc30aa8be9c0b1f40ca030687e82b1a4ad7a45ec7bfe43a8",
+      "cell": [
+        2,
+        3
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 19,
+      "name": "Director's chair",
+      "tier": 4,
+      "tier_name": "Intermission",
+      "svg": "level_19.svg",
+      "sha256": "43edf1d8ec1bda15bb9efa00dbfda139ddfdf2ba3b4675274312526075fe8633",
+      "cell": [
+        3,
+        3
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 20,
+      "name": "Usher's torch",
+      "tier": 4,
+      "tier_name": "Intermission",
+      "svg": "level_20.svg",
+      "sha256": "da0707e31ed0cbf8be1c7ea8c871bf22da81e733a6f111937e0243cb884a0f88",
+      "cell": [
+        4,
+        3
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 21,
+      "name": "Marquee letter",
+      "tier": 5,
+      "tier_name": "Trailers",
+      "svg": "level_21.svg",
+      "sha256": "dbc746e730b25c104746e5ebe0fdccfc0f5b9b1683cdbbd2af8da2664178e132",
+      "cell": [
+        0,
+        4
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 22,
+      "name": "Lobby card",
+      "tier": 5,
+      "tier_name": "Trailers",
+      "svg": "level_22.svg",
+      "sha256": "94194a63fb0c179383b175a1953178af41391fe38164b64339332892c2139fb2",
+      "cell": [
+        1,
+        4
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 23,
+      "name": "Poster tube",
+      "tier": 5,
+      "tier_name": "Trailers",
+      "svg": "level_23.svg",
+      "sha256": "d7ad595c8afe5aa75e8ab5fc4176760a0969bd31b5829de20f76f31b184bd3f1",
+      "cell": [
+        2,
+        4
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 24,
+      "name": "Ticket punch",
+      "tier": 5,
+      "tier_name": "Trailers",
+      "svg": "level_24.svg",
+      "sha256": "2bdfc49599a4e5b6ecb2638b54c1ff61b60b71e715605929a9b99f771f5cf65b",
+      "cell": [
+        3,
+        4
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 25,
+      "name": "Clapper",
+      "tier": 5,
+      "tier_name": "Trailers",
+      "svg": "level_25.svg",
+      "sha256": "c4467f251c00b5f1746e4f896179207fa29d20b07c801a3327997e731d972539",
+      "cell": [
+        4,
+        4
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 26,
+      "name": "Radio mast",
+      "tier": 6,
+      "tier_name": "Second Feature",
+      "svg": "level_26.svg",
+      "sha256": "597cb56833615ab356ad723b0dc8405544317f7861e32174337a7cdc8ea24ab9",
+      "cell": [
+        0,
+        5
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 27,
+      "name": "Dish aerial",
+      "tier": 6,
+      "tier_name": "Second Feature",
+      "svg": "level_27.svg",
+      "sha256": "f93c796e41cea7b5934d770111d5b69c59230b9f7daaed430e5995660df24118",
+      "cell": [
+        1,
+        5
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 28,
+      "name": "Walkie-talkie",
+      "tier": 6,
+      "tier_name": "Second Feature",
+      "svg": "level_28.svg",
+      "sha256": "f445666202097e6b5312a8876950d186d6842b0f64154a7f2fed30ca6ae16af9",
+      "cell": [
+        2,
+        5
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 29,
+      "name": "Flare",
+      "tier": 6,
+      "tier_name": "Second Feature",
+      "svg": "level_29.svg",
+      "sha256": "b545553ff13dc8a660b4d67fa2bc80c31814becffb5d8e25ef6ce82d592bdbd4",
+      "cell": [
+        3,
+        5
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 30,
+      "name": "Marquee arrow",
+      "tier": 6,
+      "tier_name": "Second Feature",
+      "svg": "level_30.svg",
+      "sha256": "b7a563d0d9e80bc6854760e08172e6ab9e0e90ac091f9b3c91548e7e7274d8b5",
+      "cell": [
+        4,
+        5
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 31,
+      "name": "Rocket",
+      "tier": 7,
+      "tier_name": "Main Feature",
+      "svg": "level_31.svg",
+      "sha256": "e17c991c96b0f52e41632b03769661e65ae00005c312474fc65e8093a5c30df2",
+      "cell": [
+        0,
+        6
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 32,
+      "name": "Ray gun",
+      "tier": 7,
+      "tier_name": "Main Feature",
+      "svg": "level_32.svg",
+      "sha256": "7c360a497211a14949af68f9e04c0df70d5ea2e6459d1c57fe373bc414453fef",
+      "cell": [
+        1,
+        6
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 33,
+      "name": "Robot head",
+      "tier": 7,
+      "tier_name": "Main Feature",
+      "svg": "level_33.svg",
+      "sha256": "04a979c44e736e7fe98bb3ad9b69d8f56aba8d00203d22d1b4355ce6457301aa",
+      "cell": [
+        2,
+        6
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 34,
+      "name": "Space helmet",
+      "tier": 7,
+      "tier_name": "Main Feature",
+      "svg": "level_34.svg",
+      "sha256": "b83cbc1698f36fe8da9026ebb9bf278a848d76485af1cd87e7ecd650dae8442b",
+      "cell": [
+        3,
+        6
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 35,
+      "name": "Flying saucer",
+      "tier": 7,
+      "tier_name": "Main Feature",
+      "svg": "level_35.svg",
+      "sha256": "ab76dde157542fd6307415751af0094b44e51e1807256110af0bf13a4fd2737c",
+      "cell": [
+        4,
+        6
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 36,
+      "name": "Skull",
+      "tier": 8,
+      "tier_name": "Late Show",
+      "svg": "level_36.svg",
+      "sha256": "1727b78fe6c2ad4be4b3c961eadc926a9c52f504a4643aebfc580dd96fda0183",
+      "cell": [
+        0,
+        7
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 37,
+      "name": "Bat",
+      "tier": 8,
+      "tier_name": "Late Show",
+      "svg": "level_37.svg",
+      "sha256": "2c16ef2861a33a4870e0925336ae26ddfadb0f36b39b9b6899d8f4de2362d14f",
+      "cell": [
+        1,
+        7
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 38,
+      "name": "Spider web",
+      "tier": 8,
+      "tier_name": "Late Show",
+      "svg": "level_38.svg",
+      "sha256": "f9c572ce16c694bd8ef6cf12e404e137e52d3f581bd4d8e1ce1675557b43a2a3",
+      "cell": [
+        2,
+        7
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 39,
+      "name": "Tombstone",
+      "tier": 8,
+      "tier_name": "Late Show",
+      "svg": "level_39.svg",
+      "sha256": "dae950fdc4b8e7b3bc87745b170016e06d5f855ac2dbd88079064bc166422b1d",
+      "cell": [
+        3,
+        7
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 40,
+      "name": "Rubber monster",
+      "tier": 8,
+      "tier_name": "Late Show",
+      "svg": "level_40.svg",
+      "sha256": "fa5618a2d8c3913ea4dd63ccc38e0ec8bcfe9dfdb29bed25dbe97dd399ac8845",
+      "cell": [
+        4,
+        7
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 41,
+      "name": "Crescent moon",
+      "tier": 9,
+      "tier_name": "Midnight Show",
+      "svg": "level_41.svg",
+      "sha256": "0212bfb1a786ca2dd29e5ca340faa296fc681f3379e26d0e9b45237c353ef557",
+      "cell": [
+        0,
+        8
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 42,
+      "name": "Hurricane lamp",
+      "tier": 9,
+      "tier_name": "Midnight Show",
+      "svg": "level_42.svg",
+      "sha256": "ca13960c95cb74cac9cc4bcfe8936fc53e2749cfa5f883ac70c9c537b248077e",
+      "cell": [
+        1,
+        8
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 43,
+      "name": "Fog light",
+      "tier": 9,
+      "tier_name": "Midnight Show",
+      "svg": "level_43.svg",
+      "sha256": "bdf0a77701e369693fe415aff88ba8c3a2b0c41f0857ef38026c33d399b193a5",
+      "cell": [
+        2,
+        8
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 44,
+      "name": "Lightning bolt",
+      "tier": 9,
+      "tier_name": "Midnight Show",
+      "svg": "level_44.svg",
+      "sha256": "8f18a5f4f10b639e456d4c98fafb7a5e706583d6a2dd936abdaa3ed5566350c7",
+      "cell": [
+        3,
+        8
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 45,
+      "name": "Projector",
+      "tier": 9,
+      "tier_name": "Midnight Show",
+      "svg": "level_45.svg",
+      "sha256": "62e35a29585e5ba520ab6e72f79a974cc40c5fe1c76ca6411d232317abd2f1b4",
+      "cell": [
+        4,
+        8
+      ],
+      "body": [
+        1,
+        56.9
+      ]
+    },
+    {
+      "level": 46,
+      "name": "Spotlight",
+      "tier": 10,
+      "tier_name": "Headliner",
+      "svg": "level_46.svg",
+      "sha256": "e3dffb75794c73fdc97f2fddbf936cdbee1aade5a65881e200fa6f41b29a8ec8",
+      "cell": [
+        0,
+        9
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 47,
+      "name": "Star",
+      "tier": 10,
+      "tier_name": "Headliner",
+      "svg": "level_47.svg",
+      "sha256": "832c7d6fab5cb9ee10dec7f1068961dcf5da06cc5bda6f809964868a817b1a49",
+      "cell": [
+        1,
+        9
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 48,
+      "name": "Trophy",
+      "tier": 10,
+      "tier_name": "Headliner",
+      "svg": "level_48.svg",
+      "sha256": "5f3c8c2a366650918a3a034aa2d764d3aca3263e5036fc951647159ecb971907",
+      "cell": [
+        2,
+        9
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 49,
+      "name": "Curtain",
+      "tier": 10,
+      "tier_name": "Headliner",
+      "svg": "level_49.svg",
+      "sha256": "a463e035f60a98e83fe304e73ccdb63127014d023e2aa95320a31c2e02dab2ef",
+      "cell": [
+        3,
+        9
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 50,
+      "name": "Searchlight",
+      "tier": 10,
+      "tier_name": "Headliner",
+      "svg": "level_50.svg",
+      "sha256": "069d0adac0f73a49fca0a2d67a319db6d2261ce81e09682637817242cd9170e7",
+      "cell": [
+        4,
+        9
+      ],
+      "body": [
+        6,
+        53
+      ]
+    },
+    {
+      "level": 51,
+      "name": "Gold bulb",
+      "tier": 11,
+      "tier_name": "Last Reel",
+      "svg": "level_51.svg",
+      "sha256": "24487440564b44821629ca8fc7aacc12ce8500fef229294023be0ac3e0a1f6bc",
+      "cell": [
+        0,
+        10
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 52,
+      "name": "Film strip",
+      "tier": 11,
+      "tier_name": "Last Reel",
+      "svg": "level_52.svg",
+      "sha256": "8cd2821c4a0dee32b36390a3cbcf37c73988473620332517719ba92b605a58d9",
+      "cell": [
+        1,
+        10
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 53,
+      "name": "Laurel",
+      "tier": 11,
+      "tier_name": "Last Reel",
+      "svg": "level_53.svg",
+      "sha256": "49a11ea8a21af60ea0533ff890eb2c57e68d97c8b8a8d7c5f70f2b90ca579899",
+      "cell": [
+        2,
+        10
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 54,
+      "name": "Golden ticket",
+      "tier": 11,
+      "tier_name": "Last Reel",
+      "svg": "level_54.svg",
+      "sha256": "5d9906fc9db6123c3c945491802d8f87e8efe02d20de813db9136a51bdebada4",
+      "cell": [
+        3,
+        10
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    },
+    {
+      "level": 55,
+      "name": "The last reel",
+      "tier": 11,
+      "tier_name": "Last Reel",
+      "svg": "level_55.svg",
+      "sha256": "72dbdcdeefa7ae176f5a0141493bd40230d63ac64b8df2e6dde15859b286916a",
+      "cell": [
+        4,
+        10
+      ],
+      "body": [
+        0,
+        56.9
+      ]
+    }
+  ]
+}

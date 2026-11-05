@@ -1,8 +1,8 @@
 """Two friends, and two strangers, play together from the web build, in headless Chromium.
 
 Page A opens the game, goes to Play together and creates a night: the screen shows a code and an invite link.
-Page B opens that link (`?room=CODE`) and lands in A's night. Pages C and D never talk to A or B: each presses Quick
-join, and they land together in a night of their own. The script reads the game's probe (`window.deadnight`) on every
+Page B opens that link (`?room=CODE`) and lands in A's night. Pages C and D never talk to A or B: C makes a night
+of its own, and D finds it in the Server Browser (the second item of the Play tab) among A's and lands in it. The script reads the game's probe (`window.deadnight`) on every
 page and fails unless A and B see two players, C and D see two players and A never sees more than two.
 
     uv run --project <kit>/python gds quiet -- \\
@@ -96,7 +96,7 @@ def main() -> int:
         local = http.server.ThreadingHTTPServer(("127.0.0.1", LOCAL_PORT), handler)
         threading.Thread(target=local.serve_forever, daemon=True).start()
         base = f"http://127.0.0.1:{LOCAL_PORT}/index.html"
-    query = f"backend={args.backend}"
+    query = f"backend={args.backend}&probe"
     with sync_playwright() as p:
         if args.gpu:
             browser = p.chromium.launch(channel="chrome", headless=True)
@@ -106,7 +106,7 @@ def main() -> int:
             # A creates a night and sees its code and link.
             a = open_page(browser, f"{base}?{query}", console, problems, "A")
             to_together(a)
-            smoke.press(a, "ArrowDown")  # Quick join -> Create a night
+            smoke.press(a, "ArrowDown")  # Server browser -> Create a night
             smoke.press(a, "Enter")
             smoke.give_name(a, "Ann")  # a player with no saved name is asked first
             invite = wait_for(a, "the invite", lambda s: s.get("room_code", "") != "", 60)
@@ -132,17 +132,29 @@ def main() -> int:
                 wait_for(page, f"{name} sees two players", lambda s: s.get("players", 0) >= 2, 60)
                 page.wait_for_timeout(2500)
                 page.screenshot(path=args.out / f"{name}_night.png")
-            # C and D press Quick join and meet in a night of their own.
+            # C makes a night of its own and starts it; D finds it in the Server Browser (A and B's night is in the
+            # list too, with two people: the row to press is the one C hosts) and joins it.
             c = open_page(browser, f"{base}?{query}", console, problems, "C")
             to_together(c)
-            smoke.press(c, "Enter")  # Quick join is the first item
+            smoke.press(c, "ArrowDown")  # Server browser -> Create a night
+            smoke.press(c, "Enter")
             smoke.give_name(c, "Cy")
+            wait_for(c, "C's lobby", lambda s: s.get("room_code", "") != "", 60)
+            smoke.press(c, "Enter")  # Start the night
             wait_for(c, "C in the night", in_night, NIGHT_TIMEOUT_S)
             wait_for(c, "C sees a player", lambda s: s.get("players", 0) >= 1, 60)
             d = open_page(browser, f"{base}?{query}", console, problems, "D")
-            to_together(d)
+            smoke.reach_menu(d)
+            smoke.menu_item(d, "Play", 1)  # the Server browser
             smoke.press(d, "Enter")
-            smoke.give_name(d, "Ann")  # the same name as A's, in another night
+            wait_for(d, "D's list", lambda s: s.get("screen") == "server_browser_screen", 60)
+            theirs = wait_for(d, "C's night in the list", lambda s: " Cy" in s.get("browser", ""), 60)
+            codes = [row.split(" ")[0] for row in theirs["browser"].split("|")]
+            at = [row.endswith(" Cy") for row in theirs["browser"].split("|")].index(True)
+            wait_for(d, "the first row to have the focus", lambda s: s.get("focus") == f"Night_{codes[0]}", 20)
+            for _ in range(at):
+                smoke.press(d, "ArrowDown")
+            smoke.press(d, "Enter")  # a press on a night in progress goes straight in
             wait_for(d, "D in the night", in_night, NIGHT_TIMEOUT_S)
             for name, page in (("c", c), ("d", d)):
                 wait_for(page, f"{name} sees two players", lambda s: s.get("players", 0) >= 2, 60)

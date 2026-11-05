@@ -30,17 +30,17 @@ seen small (party games, mobile shooters, the Quaternius-style kits this game st
 | A teammate at 10 m | about 50 px | about 10 x 4 px |
 | The far level of detail starts (18 m) | about 28 px | about 6 x 2 px |
 
-The mouth is kept whole in the far level of detail (it is one of the small pieces that a collapse would cut to
+The mouths are whole in the far level of detail (they are small pieces that a collapse would cut to
 slivers).
 
 ## The design
 
-![Three mouths on four faces](character-faces-designs.png)
+![Eight mouths on four faces](character-faces-designs.png)
 
-*Left to right: `smile` (chosen), `line`, `grin`; each the face up close and the same face drawn at 64 px and scaled
-up (a teammate at about 15 m on a phone). Rows: the Greaser (him, peach), the Letterman worn by her (cocoa skin), the
-Pit crew (her, porcelain, freckles), the Ranger (him, beard). Rendered by `tools/blender/render_soldier_heads.py`
-with back faces culled.*
+*Rows, top to bottom: `smile` (the default), `line`, `grin`, `open`, `smirk`, `oh`, `frown`, `teeth`. Columns, four pairs:
+the Greaser (him, peach), the Letterman worn by her (cocoa skin), the Pit crew (her, porcelain, freckles), the Ranger
+(him, beard); each the face up close and the same face drawn at 64 px and scaled up (a teammate at about 15 m on a
+phone). Rendered by `tools/blender/render_soldier_heads.py` with back faces culled.*
 
 - **Head:** one closed, smooth shape: the outside of the kit hood (the convex hull of its hood, face panel and rim,
   relaxed twice and kept on the hull under the jaw so the tall collars still close on it), so every hat, hair piece
@@ -51,21 +51,49 @@ with back faces culled.*
   blended between).
 - **Eyes and brows:** the kit's, moved forward until each eye stands 6 mm out of the new face; hers keep the lashes and
   arched brows of #678.
-- **Mouth (chosen, `smile`):** an open half-moon, 0.135 m wide for him and 0.115 m for her, 0.056 m deep, flat on top,
-  its middle at z 1.672, in a new fixed swatch `mouth` (#2a1414, as dark as the eyes so it reads on every skin tone),
-  standing 4 mm out of the face. It stays a clear dark mark at 64 px.
 - **Beard and stubble:** the jaw below z 1.74 and the sideburns (|x| > 0.27) up to the hairline, in `hair` or
   `skin_shade`, cut straight into the head; nothing is modelled, so no line shows on a clean-shaven face.
 
-### The two set aside
+## The mouths
 
-- **`line`**, a closed mouth: a bar 0.026 m tall whose corners turn up 12 mm. Calm and readable at the menu, but at
-  64 px it is one or two pixels tall and often gone.
-- **`grin`**, a wider, shallower half-moon (0.04 m deep). Reads at a distance, but looks the same as the smile up close
-  and a little flat.
+A mouth is a part of its own (#1061): the `mouth` slot, `mouth__<id>` and hers `mouth__<id>__female`, one mesh for every
+head of a character (the heads share one shape, and a test holds each mouth on each). They are free to everyone: nothing
+gates them, and the maintainer's words are the rule ("Customizing your character's features shouldn't be locked behind
+progression"). Each is built from a shape seen from the front, in the fixed swatch `mouth` (#2a1414, as dark as the eyes
+so it reads on every skin tone), its middle at z 1.672, standing 4 mm out of the face and 12 mm into it. His full width
+is 0.135 m and hers 0.115 m.
 
-Either is one argument away: `build_soldier_parts.py --mouth line` (or `grin`) builds the same parts with the other
-mouth, and `MOUTH_STYLE` makes it the shipped one.
+| Id | Row reads | Shape, in kit metres | At 64 px |
+| --- | --- | --- | --- |
+| `smile` | Smile | an open half-moon 0.056 deep, flat on top. The shipped mouth of #895 and the default, so every look saved before this one keeps its face | a clear dark mark |
+| `line` | Calm | a bar 0.038 tall whose corners turn up 12 mm | a short dash. The first `line` was 0.026 tall and vanished |
+| `grin` | Grin | a crescent 1.22 times the full width (0.165 m), points up, 0.05 deep in the middle | a dark curve, the widest mouth |
+| `open` | Open | a half-moon 0.075 deep with a tongue in `lips` low in it, its top 25 mm over the smile's | a big dark block with a warm spot |
+| `smirk` | Smirk | a lopsided bar: 0.024 tall and level at one corner, 0.038 tall and 40 mm higher at the other | a slanted dash |
+| `oh` | Surprised | an oval 0.068 wide, 0.084 tall, 12 mm over the others' middle | a dot, the smallest mark, still dark and tall |
+| `frown` | Frown | a bar 0.038 tall, flat across the middle, the corners falling 26 mm | a flat dash with its ends down |
+| `teeth` | Teeth | a dark rounded bar 0.058 tall with four teeth in `white` | a pale bar in a dark rim |
+
+- **Height:** each dark shape is at least 30 mm tall at its tallest (a thin line is gone at 64 px, as the first `line`
+  showed), and none is wider than about 0.17 m, so no line runs towards the ears (the mask of #895).
+- **On the beard:** `beard` paints the jaw in `hair`, so on dark hair the dark mouths lose their edge, as the smile
+  always has there. `open` and `teeth` hold at a teammate's distance, the others show close up and go at 10 m. That
+  comes with the beard: no mouth gets a lip line to fight it.
+- **Above the jaw:** the head turns under the jaw at a crease at z 1.637, and a mouth's front cannot follow it (a chord
+  over a crease sinks however often it is cut). No mouth goes below z 1.64 (`MOUTH_LOW`, asserted in the build), so the
+  tall ones stand higher.
+- **Far away:** a mouth has no `__far` mesh. It was already one of the small pieces kept whole in the far level of
+  detail, and sixteen copies would be sixteen more hidden nodes on every body; one mesh shows at every distance
+  (`WHOLE_FAR` in the build, `SoldierLook.far_triangles` counts it). 68 to 144 triangles on the character's budget; the
+heaviest look of every preset, on both bodies, with every mouth is 5 646 near and 1 792 far.
+- **A decal follows the face.** A front flat between its outline's points sank behind the head's bulge on a wide or tall
+  mouth and skin showed through it: `hug_face` cuts it wherever it comes within 1.5 mm of sinking and lifts the new
+  corners onto the surface. The front is smooth-shaded: flat, the lamps picked out each triangle of a dark shape.
+
+To try another mouth: add it to `SLOTS["mouth"]` (at the end, a part is an index on the wire) and to `mouth_layers`,
+then `build_soldier_parts.py --preview <folder> --preview-mouths greaser,letterman,pit_crew,ranger` writes every mouth
+on those four for `render_soldier_heads.py --across 4`. `game/tests/captures/mouth_tour.tscn` shows each in the Loadout
+tab and in a night.
 
 ## Why the first face read as a mask
 

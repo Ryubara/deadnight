@@ -22,9 +22,22 @@ const SLIDE := 0.6
 const FLASH_RATE := 1.6
 
 var mode: Mode = Mode.ALL
+## The popup lane shows a finished challenge as a card (`Hud` sets it): this prompt then says only
+## the steps, so the finish is not told twice.
+var finish_in_lane := false
 var queue := ChallengePromptQueue.new()
-var card := HudChallengeCard.new()
+## The prompt's card, made the first time a challenge moves (the part is hidden the rest of the
+## night, and the late-round budget counts every canvas item of the tree, shown or not).
+var card: HudChallengeCard:
+	get:
+		if _card == null:
+			_card = HudChallengeCard.new()
+			add_child(_card)
+			_card.modulate.a = 0.0
+			update_minimum_size()
+		return _card
 
+var _card: HudChallengeCard
 var _clock := 0.0
 var _stamp := -1.0
 var _shown_id: StringName = &""
@@ -32,13 +45,11 @@ var _shown_id: StringName = &""
 
 func _init() -> void:
 	super()
-	add_child(card)
 	visible = false
-	card.modulate.a = 0.0
 
 
 func _get_minimum_size() -> Vector2:
-	return card.get_combined_minimum_size()
+	return _card.get_combined_minimum_size() if _card != null else Vector2.ZERO
 
 
 func on_event(event: Dictionary) -> void:
@@ -47,6 +58,8 @@ func on_event(event: Dictionary) -> void:
 		or mode == Mode.OFF
 		or not ChallengePromptQueue.is_worth_showing(event)
 	):
+		return
+	if finish_in_lane and bool(event.get("completed", false)):
 		return
 	if mode == Mode.FINISHED_ONLY and not ChallengePromptQueue.is_milestone_or_completion(event):
 		return

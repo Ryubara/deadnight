@@ -26,10 +26,20 @@ const CLIMB_RAMP := 0.4
 ## A body is this wide (half, m): it is on the sill's height from the moment its edge reaches the
 ## sill, so that no zombie stands in the wall (`test_dead_cross_every_barricade.gd`).
 const BODY_CLEARANCE := 0.4
+## A gate acts on a body on its own storey only (#1030): from `BAND_BELOW` metres under the sill's
+## foot (`centre.y`) to `BAND_ABOVE` over the sill's top. A floor over a window is 3.4 m up on the
+## second map, and a ground window's sill, its boards and its jambs are not a dead's upstairs.
+const BAND_BELOW := 1.0
+const BAND_ABOVE := 1.0
 ## Half a zombie's width (m): in the wall it keeps this far from a jamb.
 const BODY_HALF_WIDTH := 0.3
 ## And this much more, so a body is clear of a jamb and not touching it.
 const JAMB_MARGIN := 0.02
+## The dead tears the boards from in front of the opening (#997): its middle stays this far (m)
+## inside the clear width, so a person inside has the opening, not a jamb, between them and it.
+## Beside the opening (in front of a jamb, within `SPAN_SLACK` of the gap's end) nobody inside can
+## shoot it.
+const TEAR_MARGIN := 0.1
 
 var id: StringName = &""
 ## The middle of the gap, on the fence line.
@@ -84,10 +94,17 @@ func along_of(point: Vector3) -> float:
 	return offset.dot(inward.cross(Vector3.UP))
 
 
+## Whether `point` is on this gate's storey: within the height band of the sill (`BAND_BELOW`,
+## `BAND_ABOVE`), whatever its position along or across the wall.
+func on_storey(point: Vector3) -> bool:
+	var height := point.y - centre.y
+	return height >= -BAND_BELOW and height <= sill + BAND_ABOVE
+
+
 ## Whether `point` is in front of the gap: within its width and the body's slack, on either side of
-## the line.
+## the line, and on this gate's storey.
 func spans(point: Vector3) -> bool:
-	return absf(along_of(point)) <= half_width + SPAN_SLACK
+	return absf(along_of(point)) <= half_width + SPAN_SLACK and on_storey(point)
 
 
 ## Whether `point` is outside the line and close enough to it, in front of the gap, to be at this
@@ -105,7 +122,7 @@ func climbs(point: Vector3) -> bool:
 	# The depth first: nearly every zombie of the night is far from every wall.
 	if absf(depth_of(point)) >= thickness * 0.5 + BODY_CLEARANCE + CLIMB_RAMP:
 		return false
-	return absf(along_of(point)) <= opening_half
+	return absf(along_of(point)) <= opening_half and on_storey(point)
 
 
 ## How far above the ground the sill carries a zombie at `point`: the whole sill over the wall's
@@ -123,7 +140,7 @@ func lift_at(point: Vector3) -> float:
 func keep_in_opening(point: Vector3) -> Vector3:
 	if sill <= 0.0 or not is_finite(clear_half):
 		return point
-	if absf(depth_of(point)) >= thickness * 0.5 + BODY_HALF_WIDTH:
+	if absf(depth_of(point)) >= thickness * 0.5 + BODY_HALF_WIDTH or not on_storey(point):
 		return point
 	var room := maxf(clear_half - BODY_HALF_WIDTH - JAMB_MARGIN, 0.0)
 	var along := along_of(point)
@@ -132,3 +149,19 @@ func keep_in_opening(point: Vector3) -> Vector3:
 		return point
 	var sideways := inward.cross(Vector3.UP)
 	return point - sideways * (along - clampf(along, -room, room))
+
+
+## Half the width in front of the opening where a dead may stand to tear the boards: the clear
+## width less `TEAR_MARGIN`. `INF` for a gate with no jambs (a test's straight-line field).
+func tear_room() -> float:
+	if not is_finite(clear_half):
+		return INF
+	return maxf(clear_half - TEAR_MARGIN, 0.0)
+
+
+## Metres `point` is beside the opening's front along the wall, signed toward where it must go to
+## be in front of it: 0 when it is in front.
+func aside_of(point: Vector3) -> float:
+	var room := tear_room()
+	var along := along_of(point)
+	return along - clampf(along, -room, room) if is_finite(room) else 0.0

@@ -8,6 +8,7 @@ extends Node
 ##       --map=lot --out=<abs folder> [--only=<prefix>] [--dark]
 ##
 ## `--map` is `lot` or `small`. `--dark` switches every circuit off first (the generator dead).
+## `--spot=name:x:y:z:yaw:pitch` (repeated) walks those spots in place of the map's own list.
 ## `--only` runs the spots whose name starts with the prefix. Spots are `[name, feet, yaw degrees,
 ## pitch degrees]`; yaw 0 looks at -Z (north on the lot, the screen), 180 at +Z, 90 at -X (west),
 ## -90 at +X.
@@ -106,6 +107,21 @@ const SMALL_SPOTS := [
 	["u07_window_north", Vector3(9.0, 3.4, -5.0), 0.0, -4.0],
 	["u08_perks_upper", Vector3(13.8, 3.4, -4.0), 0.0, -4.0],
 	["u09_stair_b_down", Vector3(3.4, 3.4, -6.8), 90.0, -4.0],
+	# The places the use zones' spacing moved things (#994), from a player standing in each zone.
+	["z01_hall_west_wall", Vector3(5.5, 0, 11.4), 90.0, -4.0],
+	["z02_hall_soda", Vector3(1.7, 0, 9.6), 90.0, -4.0],
+	["z03_hall_pistol", Vector3(1.35, 0, 13.2), 90.0, -4.0],
+	["z04_side_west_end", Vector3(2.5, 0, -3.0), 90.0, -4.0],
+	["z05_side_breach", Vector3(-4.6, 0, -2.0), 90.0, -4.0],
+	["z06_side_rescue", Vector3(-1.45, 0, -0.4), 180.0, -4.0],
+	["z07_side_smg", Vector3(3.3, 0, -6.45), 0.0, -4.0],
+	["z08_side_window", Vector3(14.6, 0, -5.6), 0.0, -4.0],
+	["z09_upper_a_east", Vector3(8.5, 3.4, 1.5), -90.0, -4.0],
+	["z10_upper_locker", Vector3(14.2, 3.4, 3.15), 180.0, -4.0],
+	["z11_upper_bat", Vector3(9.7, 3.4, -1.6), 180.0, -4.0],
+	["z12_upper_axe", Vector3(14.7, 3.4, -7.35), -90.0, -4.0],
+	["z13_upper_shotgun", Vector3(11.0, 3.4, -6.5), 0.0, -4.0],
+	["z14_side_south_west", Vector3(-3.0, 0, -2.6), 160.0, -4.0],
 ]
 
 var _night: Night
@@ -116,6 +132,7 @@ var _dark := false
 var _plan := false
 var _chain := ""
 var _doors := "all"
+var _spots: Array = []
 
 
 func _ready() -> void:
@@ -134,6 +151,10 @@ func _ready() -> void:
 			_chain = argument.trim_prefix("--chain=")
 		elif argument.begins_with("--doors="):
 			_doors = argument.trim_prefix("--doors=")
+		elif argument.begins_with("--spot="):
+			var parts := argument.trim_prefix("--spot=").split(":")
+			var feet := Vector3(float(parts[1]), float(parts[2]), float(parts[3]))
+			_spots.append([parts[0], feet, float(parts[4]), float(parts[5])])
 	DirAccess.make_dir_recursive_absolute(_out)
 	var tuning: RulesTuning = load(GameRules.DEFAULT_TUNING_PATH).duplicate(true)
 	# No dead: the first wave waits past the end of the walk.
@@ -160,7 +181,8 @@ func _ready() -> void:
 		await _plans()
 		get_tree().quit()
 		return
-	for spot: Array in LOT_SPOTS if _map == "lot" else SMALL_SPOTS:
+	var spots: Array = LOT_SPOTS if _map == "lot" else SMALL_SPOTS
+	for spot: Array in _spots if not _spots.is_empty() else spots:
 		if _only != "" and not String(spot[0]).begins_with(_only):
 			continue
 		await _visit(spot)

@@ -61,24 +61,39 @@ func test_a_random_look_for_her_is_hers_with_a_cut_she_wears() -> void:
 
 func test_the_default_look_is_the_first_preset() -> void:
 	assert_bool(CharacterLook.default_look().equals(CharacterLook.from_preset(0))).is_true()
-	assert_bool(LookStore.load_look().equals(CharacterLook.from_preset(0))).is_true()
+	# Worn by a player who owns all of it; a new one wears what they own of it.
+	var everything := LookUnlocks.at_level(LevelCurve.MAX_LEVEL)
+	assert_bool(LookStore.load_look(everything).equals(CharacterLook.from_preset(0))).is_true()
+	var starter := LookUnlocks.new()
+	var first := LookStore.load_look(starter)
+	assert_bool(first.equals(first.without_locked(starter))).is_true()
+	assert_bool(first.equals(CharacterLook.from_preset(0))).is_false()
 
 
-func test_every_slot_starts_with_a_free_entry_and_fits_a_byte() -> void:
+func test_every_slot_has_a_free_entry_and_fits_a_byte() -> void:
+	var starter := LookUnlocks.new()
 	for slot in LookCatalog.colour_slots():
 		assert_dict(LookCatalog.palette(slot)[0]["gate"]).is_empty()
+		assert_int(LookCatalog.first_open_colour(slot, starter)).is_equal(0)
 		assert_int(LookCatalog.palette(slot).size()).is_less(256)
 	for slot in LookCatalog.part_slots():
 		assert_int(LookCatalog.options(slot).size()).is_greater(0)
-		assert_dict(LookCatalog.options(slot)[0]["gate"]).is_empty()
+		# The first of a slot is not always free (the boots are the shoes' first, from level 12): what a
+		# new player falls back to is.
+		var open := LookCatalog.first_open(slot, starter)
+		var entry: Dictionary = LookCatalog.options(slot)[LookCatalog.option_index(slot, open)]
+		assert_dict(entry["gate"]).is_empty()
 		assert_int(LookCatalog.options(slot).size()).is_less(256)
 
 
-func test_every_preset_uses_only_free_options() -> void:
-	var unlocks := LookUnlocks.new()
+func test_a_preset_is_whole_for_a_player_who_owns_it_and_repaired_for_one_who_does_not() -> void:
+	var everything := LookUnlocks.at_level(LevelCurve.MAX_LEVEL)
+	var starter := LookUnlocks.new()
 	for i in LookCatalog.presets().size():
 		var look := CharacterLook.from_preset(i)
-		assert_bool(look.equals(look.without_locked(unlocks))).is_true()
+		assert_bool(look.equals(look.without_locked(everything))).is_true()
+		var plain := look.without_locked(starter)
+		assert_bool(plain.equals(plain.without_locked(starter))).is_true()
 
 
 func test_every_preset_round_trips_through_dict_json_and_bytes() -> void:
@@ -91,8 +106,52 @@ func test_every_preset_round_trips_through_dict_json_and_bytes() -> void:
 		assert_bool(CharacterLook.from_bytes(bytes).equals(look)).is_true()
 
 
+## `look` as a build from before the mouth (#1061) sent it: version 2, no mouth's byte.
+func _version_2_bytes(look: CharacterLook) -> PackedByteArray:
+	var bytes := look.to_bytes()
+	bytes[0] = 2
+	bytes.remove_at(CharacterLook.wire_slots(3).find(&"mouth") + 1)
+	return bytes
+
+
+func test_a_look_from_before_the_mouth_wears_the_first_and_keeps_the_rest() -> void:
+	var look := CharacterLook.from_preset(6)
+	look.colours[&"accent"] = 3
+	var bytes := _version_2_bytes(look)
+	assert_int(bytes.size()).is_equal(16)
+	assert_int(bytes.size()).is_equal(CharacterLook.wire_size(2))
+	assert_bool(CharacterLook.from_bytes(bytes).equals(look)).is_true()
+	# Its slots are read at their old places: a mouth chosen here is not sent, the rest is.
+	look.parts[&"mouth"] = &"teeth"
+	var read := CharacterLook.from_bytes(_version_2_bytes(look))
+	assert_str(String(read.parts[&"mouth"])).is_equal("smile")
+	assert_str(String(read.parts[&"body"])).is_equal(String(look.parts[&"body"]))
+	assert_int(read.colours[&"accent"]).is_equal(3)
+
+
+func test_a_mouth_travels_in_the_look() -> void:
+	for option: Dictionary in LookCatalog.options(&"mouth"):
+		var look := CharacterLook.from_preset(1)
+		look.parts[&"mouth"] = option["id"]
+		var read := CharacterLook.from_bytes(look.to_bytes())
+		assert_str(String(read.parts[&"mouth"])).is_equal(String(option["id"]))
+		assert_str(String(CharacterLook.from_dict(look.to_dict()).parts[&"mouth"])).is_equal(
+			String(option["id"])
+		)
+
+
+func test_a_look_saved_before_the_mouth_keeps_everything_and_wears_the_first() -> void:
+	var look := CharacterLook.from_preset(5)
+	var data := look.to_dict()
+	(data["parts"] as Dictionary).erase("mouth")
+	data["version"] = 2
+	assert_bool(CharacterLook.from_dict(data).equals(look)).is_true()
+	data["parts"]["mouth"] = "fangs"
+	assert_str(String(CharacterLook.from_dict(data).parts[&"mouth"])).is_equal("smile")
+
+
 func test_the_wire_form_is_small() -> void:
-	assert_int(CharacterLook.wire_size()).is_less_equal(16)
+	assert_int(CharacterLook.wire_size()).is_less_equal(17)
 
 
 func test_a_saved_look_with_unknown_or_wrong_entries_falls_back_slot_by_slot() -> void:
@@ -121,6 +180,12 @@ func test_bytes_of_the_wrong_version_or_length_are_refused() -> void:
 	var other_version := good.duplicate()
 	other_version[0] = CharacterLook.VERSION + 1
 	assert_object(CharacterLook.from_bytes(other_version)).is_null()
+	other_version[0] = CharacterLook.OLDEST_VERSION - 1
+	assert_object(CharacterLook.from_bytes(other_version)).is_null()
+	# The old version's byte with the new length, and the new one's with the old length.
+	other_version[0] = CharacterLook.OLDEST_VERSION
+	assert_object(CharacterLook.from_bytes(other_version)).is_null()
+	assert_object(CharacterLook.from_bytes(good.slice(0, good.size() - 1))).is_null()
 	assert_object(CharacterLook.from_bytes(good.slice(0, 5))).is_null()
 	assert_object(CharacterLook.from_bytes(PackedByteArray())).is_null()
 	var longer := good.duplicate()
@@ -143,8 +208,7 @@ func test_locked_options_are_put_back() -> void:
 	var plain := look.without_locked(LookUnlocks.new())
 	assert_int(plain.colours[&"primary"]).is_equal(0)
 	assert_int(plain.colours[&"accent"]).is_equal(0)
-	var rich := LookUnlocks.new()
-	rich.billing_level = 10
+	var rich := LookUnlocks.at_level(42)
 	rich.grant(&"accent", &"teal")
 	var kept := look.without_locked(rich)
 	assert_int(kept.colours[&"primary"]).is_equal(11)
@@ -173,12 +237,13 @@ func test_save_and_restore_through_the_settings_file() -> void:
 	LookStore.save_look(look)
 	# A fresh read from disk, as after a restart.
 	Settings.load_from_disk()
-	assert_bool(LookStore.load_look().equals(look)).is_true()
+	var everything := LookUnlocks.at_level(LevelCurve.MAX_LEVEL)
+	assert_bool(LookStore.load_look(everything).equals(look)).is_true()
 	# A hand-edited file that wears a locked item does not keep it.
 	var edited := look.duplicate_look()
 	edited.colours[&"primary"] = 11
 	Settings.set_value(SettingsService.CHARACTER_LOOK, edited.to_json())
-	assert_int(LookStore.load_look().colours[&"primary"]).is_equal(0)
+	assert_int(LookStore.load_look(LookUnlocks.new()).colours[&"primary"]).is_equal(0)
 	Settings.reset_defaults()
 	Settings.save()
 	Settings.path = old_path

@@ -23,8 +23,13 @@ const SNAPSHOT_KEYS := {
 	"bleed_left": TYPE_FLOAT,
 	"self_revives": TYPE_INT,
 	"self_revive_left": TYPE_FLOAT,
+	"drinking": TYPE_STRING,
+	"drink_left": TYPE_FLOAT,
 	"points_earned": TYPE_INT,
 	"points_spent": TYPE_INT,
+	"drop_left": TYPE_FLOAT,
+	"grace_left": TYPE_FLOAT,
+	"dropped": TYPE_BOOL,
 }
 
 var id: int = 0
@@ -62,11 +67,25 @@ var bleed_left: float = 0.0
 ## the one under way (0 when none is).
 var self_revives: int = 0
 var self_revive_left: float = 0.0
+## The tonic being drunk (bought, not yet had: `PerkPlay`), `&""` for none, and the seconds left
+## of the drink.
+var drinking: StringName = &""
+var drink_left: float = 0.0
 var points_earned: int = 0
 var points_spent: int = 0
-## Whether a bot plays this seat. A person who joins takes a bot's seat as it stands (points,
-## weapons, health) and the flag goes (`RulesAction.seat_person`).
+## Whether a bot plays this seat (`player_added` says so; a bot holds a seat of its own).
 var bot: bool = false
+## Seconds left of the player's arrival from the helicopter (`ArrivalTuning`, `GameRules`
+## `arrival`):
+## their client shows the drop and nothing in the night may touch them while it does: no blow hurts
+## them, the dead do not turn to them, and they neither move nor act, nor do the others see them.
+## 0 when they are not dropping in. The client ends it (`landed`); this is the backstop.
+var drop_left: float = 0.0
+## Seconds of a landing that still hurts nothing, after the drop (`ArrivalTuning.grace_seconds`):
+## the player has the controls and the dead have them in sight, but a blow still does nothing.
+var grace_left: float = 0.0
+## Whether this seat has had its drop. One a seat for the night, so asking again protects nothing.
+var dropped: bool = false
 
 
 ## What a repair pays now, under the cap on repair pay from one round's end to the next; counts it.
@@ -76,6 +95,17 @@ func repair_pay(economy: EconomyTuning) -> int:
 	)
 	repair_points_this_round += pay
 	return pay
+
+
+## Whether a blow does nothing to this player: they are dropping in or have just landed.
+func is_shielded() -> bool:
+	return drop_left > 0.0 or grace_left > 0.0
+
+
+## Whether the player is still in the helicopter, out of the night until their client says they
+## landed.
+func is_dropping() -> bool:
+	return drop_left > 0.0
 
 
 func _init(p_id: int, p_points: int) -> void:
@@ -104,9 +134,14 @@ func to_dict() -> Dictionary:
 		"bleed_left": bleed_left,
 		"self_revives": self_revives,
 		"self_revive_left": self_revive_left,
+		"drinking": String(drinking),
+		"drink_left": drink_left,
 		"points_earned": points_earned,
 		"points_spent": points_spent,
 		"bot": bot,
+		"drop_left": drop_left,
+		"grace_left": grace_left,
+		"dropped": dropped,
 	}
 
 
@@ -129,7 +164,12 @@ static func from_dict(data: Dictionary) -> PlayerState:
 	player.bleed_left = data["bleed_left"]
 	player.self_revives = data["self_revives"]
 	player.self_revive_left = data["self_revive_left"]
+	player.drinking = StringName(data["drinking"])
+	player.drink_left = data["drink_left"]
 	player.points_earned = data["points_earned"]
 	player.points_spent = data["points_spent"]
 	player.bot = bool(data.get("bot", false))
+	player.drop_left = data["drop_left"]
+	player.grace_left = data["grace_left"]
+	player.dropped = data["dropped"]
 	return player

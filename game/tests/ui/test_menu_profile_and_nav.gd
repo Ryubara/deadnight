@@ -1,28 +1,28 @@
 extends GdUnitTestSuite
-## The menu's account numbers (Billing arithmetic from the progression design) and the way each
-## device asks for the next or previous tab.
+## The menu's account numbers (the level curve of the progression design, `LevelCurve`) and the way
+## each device asks for the next or previous tab.
 
 
-func test_billing_levels_follow_the_design_curve() -> void:
-	assert_int(MenuProfile.xp_to_next(1)).is_equal(180)
-	assert_int(MenuProfile.xp_to_next(49)).is_equal(1620)
+func test_levels_follow_the_level_curve() -> void:
+	assert_int(MenuProfile.xp_to_next(1)).is_equal(85)
+	assert_int(MenuProfile.xp_to_next(54)).is_equal(590)
 	assert_int(MenuProfile.level_of(0)).is_equal(1)
-	assert_int(MenuProfile.level_of(179)).is_equal(1)
-	assert_int(MenuProfile.level_of(180)).is_equal(2)
-	# 44,100 in all for levels 1 to 50.
-	assert_int(MenuProfile.xp_at(MenuProfile.MAX_LEVEL)).is_equal(44100)
-	assert_int(MenuProfile.level_of(44100)).is_equal(MenuProfile.MAX_LEVEL)
+	assert_int(MenuProfile.level_of(84)).is_equal(1)
+	assert_int(MenuProfile.level_of(85)).is_equal(2)
+	# 18,010 in all for levels 1 to 55.
+	assert_int(MenuProfile.xp_at(MenuProfile.MAX_LEVEL)).is_equal(18010)
+	assert_int(MenuProfile.level_of(18010)).is_equal(MenuProfile.MAX_LEVEL)
 	assert_int(MenuProfile.level_of(10000000)).is_equal(MenuProfile.MAX_LEVEL)
 
 
 func test_progress_inside_a_level() -> void:
 	var profile := MenuProfile.from_json(
-		MenuProfile.to_json("Ann", MenuProfile.xp_at(14) + 212, 485)
+		MenuProfile.to_json("Ann", MenuProfile.xp_at(14) + 120, 485)
 	)
 	assert_int(profile.level()).is_equal(14)
-	assert_int(profile.xp_in_level()).is_equal(212)
-	assert_int(profile.xp_for_level()).is_equal(570)
-	assert_float(profile.level_fraction()).is_equal_approx(212.0 / 570.0, 0.0001)
+	assert_int(profile.xp_in_level()).is_equal(120)
+	assert_int(profile.xp_for_level()).is_equal(185)
+	assert_float(profile.level_fraction()).is_equal_approx(120.0 / 185.0, 0.0001)
 	assert_int(profile.stubs).is_equal(485)
 	assert_str(profile.display_name).is_equal("Ann")
 
@@ -38,6 +38,11 @@ func test_an_empty_or_damaged_cache_is_a_new_player() -> void:
 func test_a_name_the_player_gives_is_kept_in_the_profile_with_the_rest_of_the_cache() -> void:
 	var before: String = Settings.get_value(SettingsService.PROFILE_CACHE)
 	Settings.set_value(SettingsService.PROFILE_CACHE, MenuProfile.to_json("", 9000, 12))
+	var path := ChallengeFixture.save_path("menu_profile")
+	var kept := Profile.new()
+	kept.xp = 9000
+	ProfileSave.write(kept, [], 1, path)
+	MenuProfile.profile_path = path
 	assert_bool(MenuProfile.is_named()).is_false()
 	assert_str(MenuProfile.save_name("  Ruby   Lee ")).is_equal("Ruby Lee")
 	assert_bool(MenuProfile.is_named()).is_true()
@@ -50,6 +55,20 @@ func test_a_name_the_player_gives_is_kept_in_the_profile_with_the_rest_of_the_ca
 	assert_bool(MenuProfile.is_named()).is_false()
 	assert_int(MenuProfile.save_name("W".repeat(60)).length()).is_equal(MenuProfile.MAX_NAME)
 	Settings.set_value(SettingsService.PROFILE_CACHE, before)
+	MenuProfile.profile_path = ProfileSave.DEFAULT_PATH
+
+
+func test_the_xp_is_the_profile_files_and_none_is_a_new_player() -> void:
+	var path := ChallengeFixture.save_path("menu_xp")
+	MenuProfile.profile_path = path
+	assert_int(MenuProfile.load_saved().xp).is_equal(0)
+	var kept := Profile.new()
+	kept.xp = LevelCurve.xp_for(10) + 50
+	ProfileSave.write(kept, [], 1, path)
+	var profile := MenuProfile.load_saved()
+	assert_int(profile.level()).is_equal(10)
+	assert_int(profile.xp_in_level()).is_equal(50)
+	MenuProfile.profile_path = ProfileSave.DEFAULT_PATH
 
 
 func test_a_damaged_cache_takes_a_name_without_error() -> void:

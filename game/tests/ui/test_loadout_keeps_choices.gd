@@ -76,15 +76,17 @@ func _go_to(shell: MenuShell, id: MenuTab.Id) -> void:
 	assert_int(shell.tab).is_equal(id)
 
 
-## What a player does on the tab: a part by click and a colour by the strip.
+## What a player does on the tab: a face by a click on its cell and a skin colour by choosing it.
 func _pick_outfit(shell: MenuShell) -> void:
 	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
 	var slot := LookCatalog.choosable_part_slots()[0]
 	var colour := LookCatalog.colour_slots()[0]
-	await _click(panel.wardrobe.selector(slot))
+	var face := panel.wardrobe.cell(CustomizeScreen.PART_PREFIX + slot, 1)
+	panel.wardrobe.reveal(face)
+	await get_tree().process_frame
+	await _click(face)
 	var next_colour := (
-		(int(panel.wardrobe.look.colours[colour]) + 3)
-		% panel.wardrobe.strip(CustomizeScreen.COLOUR_PREFIX + colour).entries.size()
+		(int(panel.wardrobe.look.colours[colour]) + 3) % LookCatalog.palette(colour).size()
 	)
 	panel.wardrobe.choose(CustomizeScreen.COLOUR_PREFIX + colour, next_colour)
 
@@ -114,7 +116,7 @@ func test_the_character_survives_the_weapon_another_tab_and_a_restart() -> void:
 	var shell := await _open()
 	await _go_to(shell, MenuTab.Id.LOADOUT)
 	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
-	await _click(panel.wardrobe.body_selector())
+	await _click(panel.wardrobe.cell(CustomizeScreen.PART_PREFIX + "body", 1))
 	assert_str(String(panel.wardrobe.look.body())).is_equal("female")
 	var picked := panel.wardrobe.look.duplicate_look()
 	await _pick_weapon(shell)
@@ -126,7 +128,7 @@ func test_the_character_survives_the_weapon_another_tab_and_a_restart() -> void:
 	await _go_to(shell, MenuTab.Id.SHOP)
 	await _go_to(shell, MenuTab.Id.LOADOUT)
 	assert_str(String(panel.wardrobe.look.body())).is_equal("female")
-	assert_str(panel.wardrobe.body_selector().text()).is_equal("Female")
+	assert_bool(panel.wardrobe.cell(CustomizeScreen.PART_PREFIX + "body", 1).worn).is_true()
 	# As after a restart: the file read back from its path.
 	Settings.load_from_disk()
 	assert_str(String(LookStore.load_look().body())).is_equal("female")
@@ -213,3 +215,48 @@ func test_closing_the_menu_on_the_loadout_tab_saves_what_was_picked() -> void:
 	Settings.load_from_disk()
 	assert_bool(LookStore.load_look().equals(picked)).is_true()
 	assert_str(String(MenuHero.saved_weapon())).is_equal(String(weapon))
+
+
+func test_a_costume_put_on_by_a_click_is_kept_across_tabs_and_written_when_the_player_leaves(
+) -> void:
+	# A new player (level 1) owns the carhop costume: it is made of starting pieces.
+	var shell := await _open()
+	await _go_to(shell, MenuTab.Id.LOADOUT)
+	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
+	panel.wardrobe.show_tab(&"costumes")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var carhop := panel.wardrobe.costume_cell(8)
+	assert_bool(carhop.locked).is_false()
+	panel.wardrobe.reveal(carhop)
+	await get_tree().process_frame
+	await _click(carhop)
+	var picked := CharacterLook.from_preset(8)
+	assert_bool(panel.wardrobe.look.equals(picked)).is_true()
+	assert_bool(carhop.worn).is_true()
+	# The menu's soldier wears her at once; nothing is on disk until the player leaves the tab.
+	assert_bool(shell.view.stage.hero.look.equals(picked)).is_true()
+	assert_bool(LookStore.load_look().equals(picked)).is_false()
+	await _go_to(shell, MenuTab.Id.SHOP)
+	await _go_to(shell, MenuTab.Id.LOADOUT)
+	assert_bool(panel.wardrobe.costume_cell(8).worn).is_true()
+	Settings.load_from_disk()
+	assert_bool(LookStore.load_look().equals(picked)).is_true()
+
+
+func test_the_plate_row_says_what_is_worn_and_asks_the_menu_for_the_cards_screen() -> void:
+	var path := "user://loadout_plate_profile.json"
+	var profile := Profile.new()
+	profile.xp = LevelCurve.xp_for(10)
+	profile.done = [&"f_dead_eye"]
+	profile.equipped = {"card": "dead_eye", "emblem": "cartoon"}
+	ProfileSave.write(profile, [], 1, path)
+	MenuProfile.profile_path = path
+	var shell := await _open()
+	await _go_to(shell, MenuTab.Id.LOADOUT)
+	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
+	assert_str(panel.plate_text()).is_equal("Plate: Dead Eye + Cartoon")
+	await _click(panel.plate_button())
+	assert_array(_actions).contains([&"cards"])
+	MenuProfile.profile_path = ProfileSave.DEFAULT_PATH
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))

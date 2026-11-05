@@ -86,7 +86,9 @@ func rules_text() -> String:
 
 ## Opens the night under the panel's settings.
 func start() -> void:
-	NightScreen.match_settings = panel.settings()
+	# The level opens the map: a choice the level does not open (a map handed in, a level that fell)
+	# is the default map, whatever the panel holds.
+	NightScreen.match_settings = panel.settings().fit_host(panel.map_picker.level)
 	UIRouter.push(NIGHT_SCREEN, UITransition.Kind.IRIS)
 
 
@@ -101,13 +103,11 @@ func _fit_for_fingers() -> void:
 	_column.add_theme_constant_override(
 		&"separation", _tokens.space_sm if phone else _tokens.space_md
 	)
-	var margin_size := _tokens.space_md if phone else _tokens.space_xl
+	# A thin edge on every side of a phone's canvas, 540 units high and, narrowest, 960 wide: the
+	# widest row's title shows whole only with it (#1250).
+	var margin_size := _tokens.space_sm if phone else _tokens.space_xl
 	for side in MARGIN_SIDES:
 		_margin.add_theme_constant_override(side, margin_size)
-	if phone:
-		# The canvas is only 540 units high: the panel keeps a thin edge above and below.
-		_margin.add_theme_constant_override(&"margin_top", _tokens.space_sm)
-		_margin.add_theme_constant_override(&"margin_bottom", _tokens.space_sm)
 	_rules_scroll.margin = float(_tokens.space_sm if phone else _tokens.space_xl)
 	# The column is as wide as the canvas leaves: a phone's narrowest canvas is 960 units wide.
 	var around := 2.0 * float(margin_size) + _card.get_theme_stylebox(&"panel").get_minimum_size().x

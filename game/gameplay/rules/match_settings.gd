@@ -20,8 +20,8 @@ const AUTO := 0
 ## The explicit break: at least a second.
 const MIN_BREAK := 1.0
 const MAX_BREAK := 120.0
-## Bots the night seats beside the people: none to `MAX_BOTS`. In a room they take only the seats
-## people leave free (`NightBots.target`).
+## Bots the night seats beside the people: none to `MAX_BOTS`. They hold no seat of the eight
+## people's (#1179): a room seats the setting however many people are in it (`NightBots.target`).
 const MIN_BOTS := 0
 const MAX_BOTS := 7
 ## How well the bots play: an index into `BotProfile`'s three skills (`BotProfile.for_skill`).
@@ -31,6 +31,14 @@ const SKILL_ROOKIE := 0
 const SKILL_REGULAR := 1
 const SKILL_VETERAN := 2
 const DEFAULT_SKILL := SKILL_REGULAR
+## How many perks (tonics) a player may carry: the shop's own limit (`EconomyTuning.max_tonics`), or
+## every perk the shop sells. A perk is still bought once.
+const PERKS_DEFAULT := 0
+const PERKS_UNLIMITED := 1
+## The shipped names of the two limits, in order (the selector of the Play screen and the lobby).
+const PERK_LIMIT_LABELS: Array[String] = ["Default", "Unlimited"]
+## The limit an unlimited night stands for when a number is wanted (a bot compares a count with it).
+const UNLIMITED_PERKS := 99
 ## The keys of `to_dict`, each with the type it must have (a whole number also fits a float).
 const KEYS := {
 	"count_multiplier": TYPE_FLOAT,
@@ -39,12 +47,13 @@ const KEYS := {
 	"map": TYPE_STRING,
 	"bots": TYPE_INT,
 	"bot_skill": TYPE_INT,
+	"perk_limit": TYPE_INT,
 }
 ## Keys a snapshot, a ticket, a lobby or an action may leave out (a build from before the key): they
 ## mean their default, so an older backend's ticket or server's WELCOME still carries the other
 ## settings, and a server and a client of two builds still read each other (`to_dict` always
 ## writes them).
-const OPTIONAL_KEYS: Array[String] = ["map", "bots", "bot_skill"]
+const OPTIONAL_KEYS: Array[String] = ["map", "bots", "bot_skill", "perk_limit"]
 
 ## The night's intensity. Round N brings the tuned count times this (rounded, at least one) and the
 ## dead come this many times as fast (the spawn interval divides by it, down to
@@ -61,11 +70,14 @@ const OPTIONAL_KEYS: Array[String] = ["map", "bots", "bot_skill"]
 @export_range(0.0, 120.0, 1.0) var break_seconds: float = 0.0
 ## The id of the map the night is played on (`MapRegistry`); only a map that can be played is taken.
 @export var map: String = MapRegistry.DEFAULT
-## Bots at the start of the night, 0 to `MAX_BOTS`. Solo seats this many beside the person; a room
-## seats as many as the people leave seats free, and a person who joins takes a bot's seat.
+## Bots at the start of the night, 0 to `MAX_BOTS`. Solo and a room seat this many beside the
+## people, in ids of their own (`NightBots.FIRST_ID`); a person who joins takes no bot's place.
 @export_range(0, 7, 1) var bots: int = MIN_BOTS
 ## How well every bot of the night plays: `SKILL_ROOKIE`, `SKILL_REGULAR` or `SKILL_VETERAN`.
 @export_range(0, 2, 1) var bot_skill: int = DEFAULT_SKILL
+## How many perks a player may carry: `PERKS_DEFAULT` is the shop's limit, `PERKS_UNLIMITED` lifts
+## it at every perk machine (`tonic_limit`).
+@export_range(0, 1, 1) var perk_limit: int = PERKS_DEFAULT
 
 
 ## The defaults: today's game.
@@ -77,6 +89,7 @@ func is_default() -> bool:
 		and map == MapRegistry.DEFAULT
 		and bots == MIN_BOTS
 		and bot_skill == DEFAULT_SKILL
+		and perk_limit == PERKS_DEFAULT
 	)
 
 
@@ -101,6 +114,12 @@ func alive_cap(rounds: RoundTuning, round_number: int, players: int, ceiling := 
 		return mini(max_alive, top)
 	var wanted := roundi(float(rounds.alive_cap(round_number, players)) * count_multiplier)
 	return clampi(wanted, 1, top)
+
+
+## The most perks a player may carry: the shop's limit, or no limit on an unlimited night. Every
+## perk machine, the rules' buy and the bots ask this one function.
+func tonic_limit(economy: EconomyTuning) -> int:
+	return UNLIMITED_PERKS if perk_limit == PERKS_UNLIMITED else economy.max_tonics
 
 
 ## Seconds of break after a round.
@@ -129,6 +148,7 @@ func to_dict() -> Dictionary:
 		"map": map,
 		"bots": bots,
 		"bot_skill": bot_skill,
+		"perk_limit": perk_limit,
 	}
 
 
@@ -152,6 +172,8 @@ static func problem(data: Dictionary) -> StringName:
 		return &"bots"
 	if data.has("bot_skill") and not _in_range(data["bot_skill"], SKILL_ROOKIE, SKILL_VETERAN):
 		return &"bot_skill"
+	if data.has("perk_limit") and not _in_range(data["perk_limit"], PERKS_DEFAULT, PERKS_UNLIMITED):
+		return &"perk_limit"
 	return &""
 
 
@@ -180,6 +202,7 @@ static func from_dict(data: Dictionary) -> MatchSettings:
 	out.map = str(data.get("map", MapRegistry.DEFAULT))
 	out.bots = int(data.get("bots", MIN_BOTS))
 	out.bot_skill = int(data.get("bot_skill", DEFAULT_SKILL))
+	out.perk_limit = int(data.get("perk_limit", PERKS_DEFAULT))
 	return out
 
 
@@ -215,6 +238,18 @@ func clamped() -> MatchSettings:
 	out.map = map if MapRegistry.is_playable(map) else MapRegistry.DEFAULT
 	out.bots = clampi(bots, MIN_BOTS, MAX_BOTS)
 	out.bot_skill = clampi(bot_skill, SKILL_ROOKIE, SKILL_VETERAN)
+	out.perk_limit = clampi(perk_limit, PERKS_DEFAULT, PERKS_UNLIMITED)
+	return out
+
+
+## A copy with the map the host's level opens: a map the level does not open falls back to the
+## default (`MapRegistry.fit_host`). The server applies it to the rules of a ticket, from the level
+## the backend signed in, so a client's settings message cannot unlock a map.
+func fit_host(host_level: int) -> MatchSettings:
+	var out := MatchSettings.from_dict(to_dict())
+	if out == null:
+		out = MatchSettings.new()
+	out.map = MapRegistry.fit_host(map, host_level)
 	return out
 
 

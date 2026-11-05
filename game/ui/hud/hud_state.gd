@@ -119,8 +119,20 @@ var circuits: Dictionary[StringName, bool] = {}
 ## (`set_player_stats`), never counted here. "dead" (bled out), "bleed" (seconds a downed player has
 ## left), "revive" (the hold's progress, 0 to 1), "reviver" (who holds it, 0 for nobody) and
 ## "self_revive" (seconds left of the revive perk's own, 0 for none) are the server's too
-## (`set_player_revive`).
+## (`set_player_revive`). "level" and "icon" (the account's level and the ladder icon beside it, 0
+## for none: a bot, a night with no backend) are the server's too (`set_player_level`, from the
+## `account_seated`, `level_up` and `account_left` events); a part reads them through `level_of`,
+## which also honours the viewer's setting.
 var team: Dictionary[int, Dictionary] = {}
+## Whether the viewer wants levels shown beside names (the setting `SettingsService.SHOW_LEVELS`,
+## on by default): off hides every level on this screen, the data stays.
+var show_levels := true:
+	set(value):
+		if show_levels != value:
+			show_levels = value
+			_mark(TEAM)
+			_mark(MARKERS)
+			_flush()
 ## Whole seconds the night has run, as the server counts them (a break and a round both count).
 var night_clock := 0
 ## The interaction in reach: {} for none, else {"kind", "label", "cost"} (see `set_prompt`).
@@ -355,6 +367,57 @@ func set_night_clock(seconds: int) -> void:
 	_flush()
 
 
+## The level and icon a team member shows, `Vector2i(level, icon)`; `Vector2i.ZERO` for none: a bot
+## has no level, nor has a seat with no account, nor does a viewer who turned levels off.
+func level_of(member: Dictionary) -> Vector2i:
+	var level := int(member.get("level", 0))
+	if not show_levels or level < 1 or bool(member.get("bot", false)):
+		return Vector2i.ZERO
+	return Vector2i(level, int(member.get("icon", level)))
+
+
+## The calling card, emblem and frame a team member wears, `{card, emblem, frame}` (piece ids,
+## `&""` for none): a bot has none, nor has a seat with no account (the server tells each seat's,
+## `PlateTable`).
+func plate_of(member: Dictionary) -> Dictionary:
+	if bool(member.get("bot", false)):
+		return {"card": &"", "emblem": &"", "frame": &""}
+	return {
+		"card": StringName(member.get("card", &"")),
+		"emblem": StringName(member.get("emblem", &"")),
+		"frame": StringName(member.get("frame", &"")),
+	}
+
+
+## Sets the calling card, emblem and frame a player wears (`&""` for none).
+func set_player_plate(
+	player_id: int, card: StringName, emblem: StringName, frame: StringName = &""
+) -> void:
+	var member := _member(player_id)
+	if (
+		StringName(member["card"]) != card
+		or StringName(member["emblem"]) != emblem
+		or StringName(member["frame"]) != frame
+	):
+		member["card"] = card
+		member["emblem"] = emblem
+		member["frame"] = frame
+		_mark(TEAM)
+	_flush()
+
+
+## Sets the level and icon a player's tag shows (0 for none).
+func set_player_level(player_id: int, level: int, icon: int) -> void:
+	var member := _member(player_id)
+	var tag := LevelCurve.seat_tag(Vector2i(level, icon))
+	if int(member["level"]) != tag.x or int(member["icon"]) != tag.y:
+		member["level"] = tag.x
+		member["icon"] = tag.y
+		_mark(TEAM)
+		_mark(MARKERS)
+	_flush()
+
+
 func local_name() -> String:
 	return str(team.get(local_player_id, {}).get("name", ""))
 
@@ -443,7 +506,9 @@ func load_snapshot(data: Dictionary) -> void:
 		var saved: Dictionary = players[player_id]
 		var member := _member(int(player_id))
 		if kept.has(int(player_id)):
-			for field in ["name", "seat", "look", "ping"]:
+			for field in [
+				"name", "seat", "look", "ping", "level", "icon", "card", "emblem", "frame"
+			]:
 				member[field] = kept[int(player_id)][field]
 		member["downed"] = bool(saved.get("downed", false))
 		member["dead"] = bool(saved.get("dead", false))
@@ -465,6 +530,25 @@ func load_snapshot(data: Dictionary) -> void:
 				team[int(player_id)]["name"] = str(named[player_id]).strip_edges().left(
 					HudStyle.NAME_LIMIT
 				)
+	# The levels of the seats (a WELCOME's `levels`: player id -> the level of each seat with an
+	# account, the server's XP tally); a seat the snapshot does not list has none (a bot, a night
+	# with no backend: the tags stay bare).
+	var levels: Variant = data.get("levels")
+	if typeof(levels) == TYPE_DICTIONARY:
+		for player_id in team:
+			var held: Variant = levels.get(player_id, levels.get(str(player_id)))
+			var pair := LevelCurve.seat_tag(held)
+			team[player_id]["level"] = pair.x
+			team[player_id]["icon"] = pair.y
+	# The calling cards, emblems and frames of the seats (`plates`: player id -> {card, emblem,
+	# frame}).
+	var plates: Variant = data.get("plates")
+	if typeof(plates) == TYPE_DICTIONARY:
+		for player_id in team:
+			var worn: Variant = plates.get(player_id, plates.get(str(player_id), {}))
+			team[player_id]["card"] = StringName(str((worn as Dictionary).get("card", "")))
+			team[player_id]["emblem"] = StringName(str((worn as Dictionary).get("emblem", "")))
+			team[player_id]["frame"] = StringName(str((worn as Dictionary).get("frame", "")))
 	var local: Dictionary = team.get(local_player_id, {})
 	points = int(local.get("points", 0))
 	grenades = int(local.get("grenades", 0))
@@ -533,10 +617,6 @@ func _handler(type: StringName) -> Callable:
 			handler = _on_zombie_removed
 		&"player_added":
 			handler = _on_player_added
-		&"bot_replaced":
-			handler = _on_bot_replaced
-		&"bot_seated":
-			handler = _on_bot_seated
 		&"grenade_count_changed":
 			handler = _on_grenade_count_changed
 		&"player_removed":
@@ -572,6 +652,15 @@ func _handler(type: StringName) -> Callable:
 		&"player_named":
 			handler = func(e: Dictionary) -> void:
 				set_player_name(int(e["player_id"]), str(e["name"]))
+		# The server's XP tally tells every client a seat's level when an account sits (`account_seated`),
+		# when it crosses one (`level_up`) and when the account leaves (`account_left`): the icon is the
+		# level's own.
+		&"account_seated", &"level_up":
+			handler = _on_account_event
+		&"account_left":
+			handler = func(e: Dictionary) -> void:
+				set_player_level(int(e["player_id"]), 0, 0)
+				set_player_plate(int(e["player_id"]), &"", &"")
 		&"player_hurt":
 			handler = _on_player_hurt
 		&"weapon_replaced":
@@ -824,26 +913,26 @@ func _member(player_id: int) -> Dictionary:
 			"reviver": 0,
 			"self_revive": 0.0,
 			"bot": false,
+			"level": 0,
+			"icon": 0,
+			"card": &"",
+			"emblem": &"",
+			"frame": &"",
 		}
 		_mark(TEAM)
 	return team[player_id]
 
 
-## A person took the seat of a bot.
-func _on_bot_replaced(event: Dictionary) -> void:
-	var member := _member(int(event["player_id"]))
-	if member["bot"]:
-		member["bot"] = false
-		_mark(TEAM)
-
-
-## A bot took the seat of a person who left: the person is gone from the roster (their name is kept
-## for the notice) and the seat is a bot's; the bot's own name arrives as a `player_named`.
-func _on_bot_seated(event: Dictionary) -> void:
-	var member := _member(int(event["player_id"]))
-	left_name = str(member.get("name", "PLAYER %d" % int(event["player_id"])))
-	member["bot"] = true
-	_mark(TEAM)
+## A seat's level, and for a seat that just sat down its calling card, emblem and frame.
+func _on_account_event(event: Dictionary) -> void:
+	set_player_level(int(event["player_id"]), int(event["level"]), int(event["level"]))
+	if event["type"] == &"account_seated":
+		set_player_plate(
+			int(event["player_id"]),
+			StringName(str(event.get("card", ""))),
+			StringName(str(event.get("emblem", ""))),
+			StringName(str(event.get("frame", "")))
+		)
 
 
 ## The name a roster shows for a team member (an entry of `team`): the name, then BOT for a bot, so
@@ -858,7 +947,7 @@ func _free_seat() -> int:
 	var taken: Array = []
 	for member: Dictionary in team.values():
 		taken.append(member["seat"])
-	for seat in NightHost.MAX_PLAYERS:
+	for seat in NightHost.MAX_SEATS:
 		if not taken.has(seat):
 			return seat
 	return 0

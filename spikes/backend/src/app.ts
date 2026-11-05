@@ -5,19 +5,30 @@ import type { Config } from "./config.ts";
 import { type DiscordClient, DiscordUnavailable } from "./discord.ts";
 import { RateLimit } from "./limits.ts";
 import { type Lobby, LobbyFailure, type LobbyLimits, LobbyService, MAX_PLAYERS } from "./lobbies.ts";
-import { chooseName } from "./names.ts";
+import { LIST_PER_WINDOW, LIST_WINDOW_MS, listNights } from "./lobby_list.ts";
+import { chooseName, firstUsable } from "./names.ts";
 import { DEFAULT_MAP, SETTINGS_KEYS } from "./settings.ts";
 import { GameServerRegistry } from "./servers.ts";
-import { checkSave, SaveRejected } from "./saves.ts";
-import { RevisionConflict, type Store } from "./store.ts";
+import { checkSave, MAX_SAVE_BYTES, SaveRejected } from "./saves.ts";
+import { RevisionConflict, type Store, type User } from "./store.ts";
 import { signToken, verifyToken } from "./tokens.ts";
+import { NIGHT_CAP, PROFILE_SLOT, ProgressService } from "./progression.ts";
+
+/** What a game server's report may weigh: a seat may carry its board (held to `MAX_SAVE_BYTES` each), so more than a save. */
+export const REPORT_BODY_LIMIT = 1024 * 1024;
 
 export const SESSION_TTL_SECONDS = 60 * 60;
 export const TICKET_TTL_SECONDS = 60;
-export const MAX_SAVE_BYTES = 64 * 1024;
 /** Guest sign-ins one address may make in an hour, and all addresses together. */
 export const GUESTS_PER_ADDRESS_PER_HOUR = 30;
 export const GUESTS_IN_ALL_PER_HOUR = 2000;
+/**
+ * How long a Guest account lasts without a sign-in: the guest credential is good for this long, and an account not signed
+ * in to for this long is deleted with its saves. Every sign-in restarts it. A Discord account never expires.
+ */
+export const GUEST_TTL_SECONDS = 7 * 24 * 60 * 60;
+/** How often idle Guest accounts are deleted (a returning guest past the 7 days is deleted at its sign-in anyway). */
+export const GUEST_SWEEP_MS = 60 * 60_000;
 /** A guest's `discord_id` column: its own namespace, never a number like a Discord snowflake. */
 export const GUEST_ID_PREFIX = "guest:";
 
@@ -25,6 +36,12 @@ export const GUEST_ID_PREFIX = "guest:";
 export function guestName(given: string | undefined): string {
   return chooseName([given]);
 }
+
+/** Deletes the Guest accounts last signed in to 7 days ago or more, with their saves; how many. Discord accounts stay. */
+export function sweepIdleGuests(store: Store, nowMs: number): Promise<number> {
+  return store.deleteIdleUsers(GUEST_ID_PREFIX, nowMs - GUEST_TTL_SECONDS * 1000);
+}
+
 /** How often expired lobbies are dropped. */
 export const LOBBY_SWEEP_MS = 30_000;
 
@@ -42,6 +59,8 @@ export interface Deps {
 declare module "fastify" {
   interface FastifyRequest {
     userId: string;
+    /** When the session was issued (seconds since the epoch): where the XP clamp counts from for a first write. */
+    sessionIat: number;
   }
 }
 
@@ -53,9 +72,18 @@ const LOBBY_STATUS: Record<string, number> = {
   no_server: 503,
   not_started: 409,
   not_member: 403,
-  already_in_lobby: 409,
   bad_settings: 400,
+  bad_visibility: 400,
 };
+
+function parseObject(text: string): Record<string, unknown> | null {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return parsed !== null && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
 
 function sameSecret(given: string, expected: string): boolean {
   const a = Buffer.from(given);
@@ -89,6 +117,7 @@ export function buildApp(deps: Deps): FastifyInstance {
       disableRequestLogging: (request) => request.url === "/health" || request.url.startsWith("/internal/"),
     }),
   });
+  const progress = new ProgressService(store, deps.now);
   const lobbies = new LobbyService({
     allocate: (matchId) => registry.allocate(matchId),
     release: (matchId) => void registry.release(matchId),
@@ -100,6 +129,15 @@ export function buildApp(deps: Deps): FastifyInstance {
   const sweeper = setInterval(() => lobbies.sweep(), LOBBY_SWEEP_MS);
   sweeper.unref();
   app.addHook("onClose", async () => clearInterval(sweeper));
+  const now = deps.now ?? Date.now;
+  const guestSweeper = setInterval(() => {
+    sweepIdleGuests(store, now()).then(
+      (count) => count > 0 && app.log.info({ count }, "deleted idle guest accounts"),
+      (error: unknown) => app.log.error({ err: error }, "guest sweep failed"),
+    );
+  }, GUEST_SWEEP_MS);
+  guestSweeper.unref();
+  app.addHook("onClose", async () => clearInterval(guestSweeper));
 
   // The web build is another origin than this API: the pages named in CORS_ORIGINS may call it from a browser (the
   // answer to a preflight, and the allow header on every answer). Nobody else gets the header, so a page on another
@@ -128,6 +166,7 @@ export function buildApp(deps: Deps): FastifyInstance {
     const claims = token ? verifyToken(config.sessionSecret, "session", token) : null;
     if (!claims) return reply.code(401).send({ error: "unauthorized" });
     request.userId = claims.sub;
+    request.sessionIat = claims.iat;
   };
 
   const requireGameServer = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
@@ -153,7 +192,12 @@ export function buildApp(deps: Deps): FastifyInstance {
   // ---- operations
   // `settingsKeys` are the match settings this build takes: the deploy checks them against the game's, so a backend
   // that is behind the client is found before a host's choices are lost to it (Deadnight #944).
-  app.get("/health", async () => ({ status: "ok", settingsKeys: SETTINGS_KEYS }));
+  //
+  // `boot` names this run of the backend (new on every start): lobbies live in its memory, so a client that held one
+  // across a deploy and now reads another `boot` knows every lobby it had is gone (the deployed probe says "backend
+  // restarted" instead of failing a check nobody could pass, Deadnight #1240).
+  const boot = randomUUID();
+  app.get("/health", async () => ({ status: "ok", settingsKeys: SETTINGS_KEYS, boot }));
   app.get("/ready", async (_request, reply) => {
     try {
       await store.ping();
@@ -194,23 +238,65 @@ export function buildApp(deps: Deps): FastifyInstance {
     },
   );
 
-  // Guests: a visitor with no Discord (the web build) gets a user of their own. The id is random and lives in its own
-  // `guest:` namespace, so a guest can never be, or be mistaken for, a Discord user. Anyone can call this, so it is
-  // limited per address and in all.
+  // Guests: a visitor with no Discord (the web build and the desktop) gets a user of their own. The id is random and
+  // lives in its own `guest:` namespace, so a guest can never be, or be mistaken for, a Discord user.
+  //
+  // The account lasts: the answer carries `guestToken`, a signed credential good for 7 days that the client keeps in its
+  // own storage and sends back, and a sign-in with it is the same account, with its saves. A credential that is forged,
+  // expired, of an account already deleted or not a guest's is no credential: the visitor gets a new guest, never
+  // somebody else's. Each sign-in restarts the 7 days (a new credential, a new `lastSeen`); an account not signed in to
+  // for 7 days is deleted with its saves (the hourly sweep, or its own sign-in, whichever comes first).
+  //
+  // Anyone can call this, so it is limited per address (every call) and in all (every new account).
   const guestsPerAddress = new RateLimit(GUESTS_PER_ADDRESS_PER_HOUR, 60 * 60_000, deps.now);
   const guestsInAll = new RateLimit(GUESTS_IN_ALL_PER_HOUR, 60 * 60_000, deps.now);
-  app.post<{ Body: { name?: string } }>(
+
+  /**
+   * The guest this credential names, if it is one of ours, in date, and its account is still there and in date. Its
+   * expiry is read here and not by `verifyToken` so that a good signature on a credential that ran out still deletes
+   * its account when that is 7 days idle: the account is gone the moment anyone looks, not when the sweep comes.
+   */
+  const guestOf = async (credential: string | undefined, nowMs: number): Promise<User | null> => {
+    if (!credential) return null;
+    const claims = verifyToken(config.sessionSecret, "guest", credential, 0);
+    if (!claims) return null;
+    const user = await store.getUser(claims.sub);
+    if (!user || !user.discordId.startsWith(GUEST_ID_PREFIX)) return null;
+    if (nowMs - user.lastSeen >= GUEST_TTL_SECONDS * 1000) {
+      await store.deleteUser(user.id);
+      return null;
+    }
+    return claims.exp > Math.floor(nowMs / 1000) ? user : null;
+  };
+
+  app.post<{ Body: { name?: string; guestToken?: string } }>(
     "/auth/guest",
-    { schema: { body: { type: "object", properties: { name: { type: "string", maxLength: 64 } } } } },
+    {
+      schema: {
+        body: { type: "object", properties: { name: { type: "string", maxLength: 64 }, guestToken: { type: "string", maxLength: 1024 } } },
+      },
+    },
     async (request, reply) => {
       if (!config.guestSignIn) return reply.code(404).send({ error: "not_found" });
-      if (!guestsPerAddress.allow(request.ip) || !guestsInAll.allow("all")) {
-        return reply.code(429).send({ error: "too_many_guests" });
-      }
-      const name = guestName(request.body?.name);
-      const user = await store.upsertUser(`${GUEST_ID_PREFIX}${randomUUID()}`, name);
+      if (!guestsPerAddress.allow(request.ip)) return reply.code(429).send({ error: "too_many_guests" });
+      const nowMs = now();
+      const returning = await guestOf(request.body?.guestToken, nowMs);
+      if (!returning && !guestsInAll.allow("all")) return reply.code(429).send({ error: "too_many_guests" });
+      // The chosen name updates on every sign-in; a returning guest who gave none keeps the one it has.
+      const chosen = firstUsable([request.body?.name]);
+      const user = returning
+        ? await store.upsertUser(returning.discordId, chosen ?? returning.name, nowMs)
+        : await store.upsertUser(`${GUEST_ID_PREFIX}${randomUUID()}`, chosen ?? guestName(undefined), nowMs);
       const token = signToken(config.sessionSecret, "session", user.id, SESSION_TTL_SECONDS, { name: user.name });
-      return reply.code(201).send({ token, expiresIn: SESSION_TTL_SECONDS, user: { id: user.id, name: user.name, guest: true } });
+      const guestToken = signToken(config.sessionSecret, "guest", user.id, GUEST_TTL_SECONDS, {}, Math.floor(nowMs / 1000));
+      return reply.code(returning ? 200 : 201).send({
+        token,
+        expiresIn: SESSION_TTL_SECONDS,
+        guestToken,
+        guestExpiresIn: GUEST_TTL_SECONDS,
+        returning: returning !== null,
+        user: { id: user.id, name: user.name, guest: true },
+      });
     },
   );
 
@@ -218,7 +304,6 @@ export function buildApp(deps: Deps): FastifyInstance {
   const lobbyView = (lobby: Lobby) => ({
     id: lobby.id,
     code: lobby.code,
-    instanceId: lobby.instanceId,
     hostId: lobby.hostId,
     maxPlayers: lobby.maxPlayers,
     visibility: lobby.visibility,
@@ -229,6 +314,8 @@ export function buildApp(deps: Deps): FastifyInstance {
       userId: m.userId,
       name: m.name,
       seat: i + 1,
+      // The level and icon beside the name in the lobby list (the same the ticket will carry); absent until the backend has read the profile.
+      ...(progress.knownLevel(m.userId) ?? {}),
       host: m.userId === lobby.hostId,
       away: lobbies.isQuiet(lobby, m.userId),
     })),
@@ -256,26 +343,31 @@ export function buildApp(deps: Deps): FastifyInstance {
   const member = async (userId: string) => {
     const user = await store.getUser(userId);
     if (!user) throw new LobbyFailure("not_found");
+    await progress.claimsFor(user.id); // reads the profile once, so the member list can show the level
     return { userId: user.id, name: user.name };
   };
 
-  app.post<{ Body: { maxPlayers?: number; instanceId?: string } }>(
+  // A new night is public (listed in the Server Browser) unless its host says `visibility: "private"` here or later
+  // (`PUT /lobbies/:id/visibility`). `maxPlayers` counts people: bots hold no seat.
+  app.post<{ Body: { maxPlayers?: number; visibility?: "public" | "private" } }>(
     "/lobbies",
     {
       onRequest: requireUser,
       schema: {
         body: {
           type: "object",
-          properties: { maxPlayers: { type: "integer", minimum: 1, maximum: MAX_PLAYERS }, instanceId: { type: "string", maxLength: 128 } },
+          properties: {
+            maxPlayers: { type: "integer", minimum: 1, maximum: MAX_PLAYERS },
+            visibility: { type: "string", enum: ["public", "private"] },
+          },
         },
       },
     },
     async (request, reply) => {
-      const { maxPlayers = MAX_PLAYERS, instanceId = null } = request.body ?? {};
-      // One open lobby per Activity instance: friends in the same voice-channel Activity land in the same lobby.
-      const existing = instanceId ? lobbies.findByInstance(instanceId) : null;
-      const lobby = existing ? lobbies.join(existing.id, await member(request.userId)) : lobbies.create(await member(request.userId), maxPlayers, instanceId);
-      return reply.code(existing ? 200 : 201).send(lobbyView(lobby));
+      // Always a new lobby, on the website and in a Discord Activity alike: players reach each other by code, link or
+      // the Server Browser, never by the Activity instance they share (#1178).
+      const { maxPlayers = MAX_PLAYERS, visibility = "public" } = request.body ?? {};
+      return reply.code(201).send(lobbyView(lobbies.create(await member(request.userId), maxPlayers, visibility)));
     },
   );
 
@@ -289,35 +381,37 @@ export function buildApp(deps: Deps): FastifyInstance {
     },
   );
 
-  // Looking at a night by its code, or by the Discord Activity instance it belongs to (a body, not the URL, so a code
-  // stays out of the request log): is it waiting for its host, or in round N, and is there room? It joins nobody.
-  app.post<{ Body: { code?: string; instanceId?: string } }>(
+  // Looking at a night by its code (a body, not the URL, so a code stays out of the request log): is it waiting for its
+  // host, or in round N, and is there room? It joins nobody.
+  app.post<{ Body: { code: string } }>(
     "/lobbies/preview",
     {
       onRequest: requireUser,
       schema: {
         body: {
           type: "object",
-          properties: { code: { type: "string", maxLength: 16 }, instanceId: { type: "string", maxLength: 128 } },
-          anyOf: [{ required: ["code"] }, { required: ["instanceId"] }],
+          required: ["code"],
+          properties: { code: { type: "string", maxLength: 16 } },
         },
       },
     },
     async (request) => {
-      const { code, instanceId } = request.body;
-      const found = code !== undefined ? lobbies.findByCode(code) : lobbies.findByInstance(instanceId!);
+      const found = lobbies.findByCode(request.body.code);
       if (!found) throw new LobbyFailure("not_found");
       return lobbyPreview(found);
     },
   );
 
-  app.get<{ Params: { id: string } }>("/lobbies/:id", { onRequest: requireUser }, async (request) => {
-    return lobbyView(lobbies.view(request.params.id, request.userId));
+  // The Server Browser: the public nights to join, waiting or in progress, with their people (bots not counted) out of the
+  // cap. Anyone signed in may look; it joins nobody (join by the row's `code`). Polled, so it is limited per account.
+  const listLimit = new RateLimit(LIST_PER_WINDOW, LIST_WINDOW_MS, deps.now);
+  app.get("/lobbies", { onRequest: requireUser }, async (request, reply) => {
+    if (!listLimit.allow(request.userId)) return reply.code(429).header("Retry-After", String(LIST_WINDOW_MS / 1000)).send({ error: "too_many_requests" });
+    return { maxPlayers: MAX_PLAYERS, ...listNights(lobbies) };
   });
 
-  // Quick join: into a public night with room, or a new public one that starts at once.
-  app.post("/lobbies/quick", { onRequest: requireUser }, async (request, reply) => {
-    return reply.code(200).send(lobbyView(lobbies.quick(await member(request.userId))));
+  app.get<{ Params: { id: string } }>("/lobbies/:id", { onRequest: requireUser }, async (request) => {
+    return lobbyView(lobbies.view(request.params.id, request.userId));
   });
 
   app.post<{ Params: { id: string } }>("/lobbies/:id/leave", { onRequest: requireUser }, async (request, reply) => {
@@ -325,12 +419,33 @@ export function buildApp(deps: Deps): FastifyInstance {
     return reply.code(204).send();
   });
 
+  // The page says it is going (`pagehide` of a page that will not come back): a Leave, sent by the browser itself while the
+  // tab closes. A beacon cannot set an `Authorization` header (and a `keepalive` fetch with one costs a CORS preflight, a
+  // second round trip), so this one route also takes the session token in its body (`{"token": "..."}`, sent by
+  // `navigator.sendBeacon` as `text/plain`: a simple request, one round trip, measured in Chromium, Firefox and WebKit).
+  // The header still works for a caller that can send it. A bad token is a 401; for a good one the answer is
+  // `{left}` and says whether anyone was taken out (nothing reads it: the page is gone).
+  app.post<{ Params: { id: string }; Body: unknown }>("/lobbies/:id/page-closed", async (request, reply) => {
+    const body = typeof request.body === "string" ? parseObject(request.body) : (request.body as Record<string, unknown> | null);
+    const given = bearer(request) ?? (typeof body?.token === "string" ? body.token : null);
+    const claims = given ? verifyToken(config.sessionSecret, "session", given) : null;
+    if (!claims) return reply.code(401).send({ error: "unauthorized" });
+    return { left: lobbies.pageClosed(request.params.id, claims.sub) };
+  });
+
+  // The host makes the night private (not listed, not handed to a stranger; its code still joins) or public again.
+  app.put<{ Params: { id: string }; Body: { visibility?: unknown } | undefined }>(
+    "/lobbies/:id/visibility",
+    { onRequest: requireUser },
+    async (request) => lobbyView(lobbies.setVisibility(request.params.id, request.userId, request.body?.visibility)),
+  );
+
   // The host sets the night's rules while the lobby waits; the other members read them on their next poll. The body is
   // the settings themselves: `{count_multiplier, max_alive, break_seconds}`.
   app.put<{ Params: { id: string }; Body: unknown }>(
     "/lobbies/:id/settings",
     { onRequest: requireUser },
-    async (request) => lobbyView(lobbies.setSettings(request.params.id, request.userId, request.body)),
+    async (request) => lobbyView(lobbies.setSettings(request.params.id, request.userId, await progress.levelFor(request.userId), request.body)),
   );
 
   // The host may send the night's rules (`settings`, the game's `MatchSettings`: count_multiplier, max_alive,
@@ -338,7 +453,7 @@ export function buildApp(deps: Deps): FastifyInstance {
   app.post<{ Params: { id: string }; Body: { settings?: unknown } | undefined }>(
     "/lobbies/:id/start",
     { onRequest: requireUser },
-    async (request) => lobbyView(lobbies.start(request.params.id, request.userId, request.body?.settings)),
+    async (request) => lobbyView(lobbies.start(request.params.id, request.userId, await progress.levelFor(request.userId), request.body?.settings)),
   );
 
   // The handoff: a member of a started lobby gets the game server's address and a one-minute ticket for their seat.
@@ -354,7 +469,11 @@ export function buildApp(deps: Deps): FastifyInstance {
       serverId: server.id,
       jti: randomUUID(),
       name: seat.name,
-      // Every ticket of a match carries the same rules; the game server applies them when the first one opens the room.
+      // What the seat's level is seen by in the night: from the stored profile, never the client's word.
+      ...(await progress.claimsFor(seat.userId)),
+      // Every ticket of a match carries the same host level, the lobby host's when the match started (a guest's ticket
+      // too: the host's level decides the map, not the holder's), and the same rules; the game server applies them when the first one opens the room.
+      hostLevel: lobby.match.hostLevel,
       ...(lobby.settings ? { settings: lobby.settings } : {}),
     });
     return { matchId: lobby.match.id, address: { url: server.url, activityPath: server.activityPath }, ticket };
@@ -394,6 +513,9 @@ export function buildApp(deps: Deps): FastifyInstance {
     async (request) => {
       const { revision, schemaVersion, data } = request.body;
       checkSave(schemaVersion, data);
+      // The profile is the one slot the backend reads: it must read, take nothing away and not rise faster than a
+      // person can play (docs/research/platform-backend.md#progression).
+      if (request.params.slot === PROFILE_SLOT) return progress.soloWrite(request.userId, request.body, request.sessionIat);
       return store.putSave(request.userId, request.params.slot, { schemaVersion, data }, revision);
     },
   );
@@ -424,7 +546,8 @@ export function buildApp(deps: Deps): FastifyInstance {
             capacity: { type: "integer", minimum: 0 },
             // The matches the server is running now; one it stops listing (after a grace) counts as ended.
             matchIds: { type: "array", maxItems: 1024, items: { type: "string", minLength: 1, maxLength: 64 } },
-            // How many players each match has now (match id to count), for the lobby's room left.
+            // How many PEOPLE each match has now (match id to count, bots not counted: they hold no seat), for the
+            // lobby's room left and the Server Browser's row.
             players: { type: "object", maxProperties: 1024, additionalProperties: { type: "integer", minimum: 0, maximum: 64 } },
             // The round each match is in now (match id to round number), for a late joiner's "night in progress, round N".
             rounds: { type: "object", maxProperties: 1024, additionalProperties: { type: "integer", minimum: 0, maximum: 10000 } },
@@ -436,6 +559,109 @@ export function buildApp(deps: Deps): FastifyInstance {
       registry.heartbeat({ ...request.body, matchIds: request.body.matchIds ?? [] });
       for (const [matchId, players] of Object.entries(request.body.players ?? {})) lobbies.setPlayers(matchId, players);
       for (const [matchId, round] of Object.entries(request.body.rounds ?? {})) lobbies.setRound(matchId, round);
+      return reply.code(204).send();
+    },
+  );
+
+  // A seat's challenge board, read by the game server when the seat sits down (its tracker follows it from there). Only
+  // this one slot: the profile's XP already rides the ticket, and a game server has no business with the rest.
+  app.get<{ Params: { userId: string } }>(
+    "/internal/users/:userId/saves/challenges",
+    {
+      onRequest: requireGameServer,
+      schema: { params: { type: "object", properties: { userId: { type: "string", minLength: 1, maxLength: 64 } } } },
+    },
+    async (request, reply) => {
+      const board = await progress.boardOf(request.params.userId);
+      return board ?? reply.code(404).send({ error: "not_found" });
+    },
+  );
+
+  // A game server's report of one round (or of the night's end): each seat's XP, which the backend adds to the seat's
+  // profile once. The key is (match, kind, round, user), so a retry pays nothing; the answer says per seat what was
+  // paid, so a server that lost the answer can post the same report again. Never called per kill.
+  app.post<{
+    Params: { matchId: string };
+    Body: {
+      kind: "round" | "night";
+      round: number;
+      seats: {
+        userId: string;
+        xp: number;
+        openingNight?: boolean;
+        bonusDay?: number;
+        done?: string[];
+        board?: { schemaVersion: number; data: Record<string, unknown> };
+        lines?: Record<string, number>;
+      }[];
+    };
+  }>(
+    "/internal/matches/:matchId/report",
+    {
+      onRequest: requireGameServer,
+      bodyLimit: REPORT_BODY_LIMIT,
+      schema: {
+        params: { type: "object", properties: { matchId: { type: "string", minLength: 1, maxLength: 64 } } },
+        body: {
+          type: "object",
+          required: ["kind", "round", "seats"],
+          properties: {
+            kind: { type: "string", enum: ["round", "night"] },
+            round: { type: "integer", minimum: 0, maximum: 10000 },
+            seats: {
+              type: "array",
+              maxItems: 64,
+              items: {
+                type: "object",
+                required: ["userId", "xp"],
+                properties: {
+                  userId: { type: "string", minLength: 1, maxLength: 64 },
+                  xp: { type: "integer", minimum: 0, maximum: NIGHT_CAP },
+                  openingNight: { type: "boolean" },
+                  bonusDay: { type: "integer", minimum: 0, maximum: 1_000_000 },
+                  done: { type: "array", maxItems: 100, items: { type: "string", minLength: 1, maxLength: 64 } },
+                  board: {
+                    type: "object",
+                    required: ["schemaVersion", "data"],
+                    properties: { schemaVersion: { type: "integer", minimum: 1 }, data: { type: "object" } },
+                  },
+                  lines: {
+                    type: "object",
+                    maxProperties: 32,
+                    propertyNames: { pattern: "^[a-z0-9_:-]{1,32}$" },
+                    additionalProperties: { type: "integer", minimum: 0, maximum: 1_000_000_000 },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request) => {
+      const { kind, round, seats } = request.body;
+      const results = await progress.applyReport(request.params.matchId, kind, round, seats);
+      request.log.info(
+        { matchId: request.params.matchId, kind, round, paid: results.filter((r) => r.status === "paid").length, seats: seats.length },
+        "round report",
+      );
+      return { matchId: request.params.matchId, kind, round, seats: results };
+    },
+  );
+
+  // The game server says a person's seat in a match is empty (Leave, a closed tab, a dropped connection not taken back):
+  // they are out of its lobby at once, so nothing of the night holds them, and a night with nobody left is over.
+  app.post<{ Params: { matchId: string }; Body: { userId: string } }>(
+    "/internal/matches/:matchId/left",
+    {
+      onRequest: requireGameServer,
+      schema: {
+        params: { type: "object", properties: { matchId: { type: "string", minLength: 1, maxLength: 64 } } },
+        body: { type: "object", required: ["userId"], properties: { userId: { type: "string", minLength: 1, maxLength: 64 } } },
+      },
+    },
+    async (request, reply) => {
+      lobbies.memberLeft(request.params.matchId, request.body.userId);
       return reply.code(204).send();
     },
   );

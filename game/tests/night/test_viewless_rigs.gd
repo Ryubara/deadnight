@@ -168,6 +168,6 @@ func test_the_bodies_the_camera_sweeps_through_follow_the_players() -> void:
 	await _frames(3)
 	assert_int(rig._bodies().size()).is_equal(BOTS)
 	assert_bool(rig._bodies().has(gone)).is_false()
-	night.bots.fill(BOTS, [Night.PLAYER_ID])
+	night.bots.fill(BOTS)
 	NightFixture.run(night, 2)
 	assert_int(rig._bodies().size()).is_equal(BOTS + 1)

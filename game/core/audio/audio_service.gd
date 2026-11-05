@@ -48,9 +48,10 @@ const POOL_3D := 32
 const POOL_2D := 12
 ## Players for beds (looping ambience and score), which are outside the voice budget. A night
 ## holds up to seven (crickets, highway, score, wind, the world's bed and the small map's two) and
-## each takes two seconds to fade out after the night; the menu's two (`MenuAmbience`) start the
-## moment the menu is back, so they need a place while the night's beds are still going.
-const POOL_BEDS := 10
+## each takes two seconds to fade out after the night; the menu's five (`MenuAmbience`: the music's
+## pad and bells, the wind, the projector and the crickets) start the moment the menu is back, so
+## they need a place while the night's beds are still going.
+const POOL_BEDS := 12
 ## A bed fades between this and its own level, at these rates (dB per second), so it comes in over
 ## about three seconds and goes out over about two.
 const BED_SILENT_DB := -60.0
@@ -223,7 +224,7 @@ func _process(delta: float) -> void:
 func start_background_preload() -> void:
 	if not _background_ids.is_empty() or _background_at > 0:
 		return
-	_background_ids = SoundCatalog.ids()
+	_background_ids = SoundCatalog.ids_for_night()
 	_background_wait = BACKGROUND_WAIT_S
 
 

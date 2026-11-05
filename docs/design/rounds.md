@@ -205,6 +205,7 @@ started. The defaults are today's game exactly, and every shipped test runs on t
 | `map` | the id of a playable map of `MapRegistry` | `drive_in` | the map the night is built on; optional when read (a ticket or lobby from before the choice means the lot); [maps](maps.md) |
 | `bots` | 0 to 7 | 0 | bots that fill the night's seats ([below](#bots)); the key may be left out of a ticket or a snapshot from before it and then means 0 |
 | `bot_skill` | 0 rookie, 1 regular, 2 veteran | 1 | how well every bot of the night plays ([below](#bots)); the key may be left out and then means regular |
+| `perk_limit` | 0 default, 1 unlimited | 0 | how many perks a player may carry: the shop's `economy.max_tonics` (4), or every perk the shop sells (6); a perk is still bought once ([perks](perks.md)); the key may be left out and then means default |
 
 - **Where the multiplier applies.** To the tuned count of a normal round, which is also what a special round starts
   from (a stampede is 110% of the scaled count, an escort party its share of it). A new type's first round still
@@ -239,24 +240,25 @@ started. The defaults are today's game exactly, and every shipped test runs on t
   reads it, `set_settings()` shows a value without a signal, `set_editable(false)` is the guest's read-only view of
   what the WELCOME carried (`MatchSettings.from_snapshot(welcome["snapshot"])`; `Night.match_settings` after
   `start_remote`), and `changed` fires when a control moves. A dedicated server takes one option for each setting
-  (`NetArgs.match_settings`): `--count`, `--max-alive`, `--break`, `--map`, `--bots` and `--bot-skill`; a value the game
-  does not take stops the server, and a ticket that names a setting the server does not know is refused by name.
-- **Bots.** <a id="bots"></a>`bots` (`MatchSettings.MAX_BOTS` = 7, one less than the seats: a person always holds
-  one) is how many `BotClient`s the night seats beside the people. `NightBots` (`game/gameplay/night/night_bots.gd`) is
-  the one place that decides, for Solo (`Night`) and a room (`NightHost`) alike. Solo seats the setting beside the
-  person, in the highest seats (3 asked: seats 6 to 8). A room is eight seats (`NightHost.MAX_PLAYERS`): the bots are
-  `NightBots.target(setting, people)`, never more than the setting and never more than the seats the people leave free
-  (7 asked, 2 people: 6 bots, in seats 3 to 8). Bots take the highest free seat numbers, people the lowest, so the
-  people's numbers do not move. A person who joins when no seat is free takes the **lowest bot's seat as it stands**
-  (`NightBots.hand_over`: the same body, points, weapons and health; the rules' `seat_person` action answers
-  `bot_replaced`; the round, the night and the other bots go on, and the person is welcomed as any other with the
-  seat's looks re-sent), the bot leaves the `BotHost`, and a person who leaves hands the seat to a bot while others
-  remain: the bot inherits it as it stands, the same body, points, weapons and health (`NightBots.adopt`; the rules'
-  `seat_bot` action answers `bot_seated`, the feed says the person left, and the bot takes a name and a look of the
-  room's cast), so a slot is inherited both ways and nothing is lost to a leave and a rejoin. A seat is a bot's when
-  `player_added` says `bot: true` (`PlayerState.bot`, in the snapshot too): the HUD writes `BOT` after the name
-  everywhere (`HudState.name_of`), a bot seated at the start is no "joined" notice, and the lobby shows the bots the
-  host's setting will seat in the open seats (`LobbyScreen.bots_shown`). Bots count as players for the rules
+  (`NetArgs.match_settings`): `--count`, `--max-alive`, `--break`, `--map`, `--bots`, `--bot-skill` and
+  `--perk-limit`; a value the game does not take stops the server, and a ticket that names a setting the server does
+  not know is refused by name.
+- **Bots.** <a id="bots"></a>`bots` (`MatchSettings.MAX_BOTS` = 7) is how many `BotClient`s the night seats beside the
+  people. **A bot holds no seat** (#1179, the maintainer: "bots are no longer included in the 8 player cap"): the 8 of
+  `NightHost.MAX_PLAYERS` are people alone, and a bot's id starts at `NightBots.FIRST_ID` = 101 (101 to 107), so it never
+  collides with a person's (1 to 8) however they come and go; a night holds at most `NightHost.MAX_SEATS` = 15 bodies.
+  `NightBots` (`game/gameplay/night/night_bots.gd`) is the one place that decides, for Solo (`Night`) and a room
+  (`NightHost`) alike: `NightBots.target(setting, cap)` is the setting, cut only by the server's own limit
+  (`BotLimits`), whatever the people. Each bot takes the lowest free bot id when the first person's arrival has begun the
+  night, and a person who joins or leaves changes nothing about them: a joining person takes the lowest free person id
+  (a seat of their own), and a person who leaves takes only their own body away. (Until #1179 the bots took the highest
+  free seats of the eight, a person with no seat took the lowest bot's seat as it stood and a leaving person's seat
+  became a bot's; those two hand-overs, `NightBots.hand_over` and `adopt`, are gone, and with them the rules' two seat
+  actions and their two events, removed in #1185; the wire never carried the actions.)
+  A seat is a bot's when `player_added` says `bot: true` (`PlayerState.bot`, in the snapshot too): the HUD writes `BOT`
+  after the name everywhere (`HudState.name_of`), a bot seated at the start is no "joined" notice, and the lobby lists
+  the bots the host's setting will seat in rows after the seats (`LobbyScreen.bots_shown`, `B1`, `B2`, ...). Bots
+  count as players for the rules
   (`add_player`). With bots in the night the server builds the frame on every step (the bots decide on every step;
   clients still get it every `SEND_EVERY`). Over a socket: `test_room_bots.gd`; solo: `test_night_bots.gd`.
     - **Skill.** `bot_skill` picks the profile of every bot of the night (`BotProfile.for_skill`: Rookie, Regular,
@@ -689,7 +691,9 @@ rounds.health_growth=1.06` (see the research page).
 
 ## Eight players (#690)
 
-A room and a solo night hold up to eight seats, people and bots together (the maintainer's decision, 2026-11-03). The
+A room and a solo night held up to eight seats, people and bots together (the maintainer's decision, 2026-11-03); since
+issue 1179 the eight are people and the bots come on top, with **no balance work done for it yet** (the maintainer: "don't
+worry about balancing for now"; a night of 8 people and 7 bots counts as 15 players to the rules). The
 scaling is the same four numbers, linear in the players after the first, and was **not retuned**: each player adds 0.6
 of the solo count, 0.5 of the solo spawn rate and 6 to the alive cap, and a boss night one headliner for every 3 beyond
 the first (three at eight) with +100% boss health each. What they come to at 1, 2, 4 and 8 players:
@@ -860,6 +864,19 @@ Measured again after merging the flat re-cut: `main` 5.62 (5), 10.88 (11), 13.43
 (17); here 5.37 (5), 11.05 (11), 13.47 / 15.02 / 16.58 (14 / 16 / 17), 15.15 (16). The cells of 60 nights move by a
 few tenths of a round with any change that shifts a purchase by a moment, so the pay is judged on the median and the
 shape, as the gate does.
+
+## The drink and the balance gate (#912)
+
+A tonic is drunk for 2.5 s before it is had, and the counter refuses any purchase from a player holding a bottle. The
+simulator used to buy a tonic and the next item in the same instant, so the second purchase answered `DRINKING` and did
+not happen; it now drinks the tonic down in the break before it buys again (`NightSim._drink_out`; the crane ticks the
+rules the same way). The climb test (`test_the_same_climb_goes_less_far_when_the_re_cut_and_the_tonic_do_nothing`)
+went red at 60 nights, `average:4` 14.27 without the re-cut and the tonic and 14.77 with (the gap was 0.82 on `main`).
+At 300 nights, seed 4000, the drink moves the gap by little: `main` against the branch, shipped / without / gap:
+four players 15.34 / 14.62 / 0.72 against 15.28 / 14.62 / 0.66; eight players 17.03 / 15.81 / 1.22 against 16.80 /
+15.74 / 1.06. The upgrade carries the climb as before; a gap of two means of 60 nights is only good to a few tenths, so
+a cell of that test whose gap misses 0.5 at 60 nights is read again at 300 (`CLIMB_CONFIRM_NIGHTS`), and the
+verdict is the longer read's. Its threshold (`CLIMB_CARRIED`, 0.5) did not move.
 
 ## Open questions
 

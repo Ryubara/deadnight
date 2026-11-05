@@ -17,21 +17,10 @@ const HEADROOM := 1.7
 const ROOM := 0.4
 const SPOKES := 8
 const FLOOR_SLACK := 0.3
-
-## The second map's pairs that still overlap after its rework (#917, landed as #964, which left 7
-## of the 26 pairs listed here and added one). Nothing else may overlap, and each pair comes off
-## this list as the map fixes it (#994). The worst is the Swift Rescue alcove 3.2 m from the window
-## `side_1`: the window cannot move 1.3 m along its wall, so one of them has to go.
-const SMALL_PENDING: Array[String] = [
-	"ammo (12.0, 3.4, 3.2) | breach upper_a2",
-	"ammo (5.0, 0.0, -1.6) | door door_stairs_start",
-	"breach side_1 | breach side_breach",
-	"door door_stairs_side | breach side_breach",
-	"tonic_swift_rescue (-1.5, 0.0, -0.4) | breach side_1",
-	"weapon_baseball_bat (14.7, 3.4, 2.3) | ammo (12.0, 3.4, 3.2)",
-	"weapon_crowbar (1.4, 0.0, 6.0) | tonic_hearty (1.7, 0.0, 8.5)",
-	"weapon_pistol (1.4, 0.0, 11.0) | tonic_hearty (1.7, 0.0, 8.5)",
-]
+## Metres behind the middle a spoke starts: a ray that starts on a wall's face does not hit it (the
+## walls are CSG, one-sided triangles), so a point of the grid on the face of a wall counted as
+## room for a body, and a locker's zone reached through the wall from it (#994).
+const FACE := 0.05
 
 var _night: SeatedNight
 var _space: PhysicsDirectSpaceState3D
@@ -71,7 +60,8 @@ func _ground(x: float, z: float, y: float) -> Vector3:
 	var middle := ground + Vector3(0.0, 0.6, 0.0)
 	for i in SPOKES:
 		var turn := TAU * float(i) / float(SPOKES)
-		if _wall(middle, middle + Vector3(sin(turn), 0.0, cos(turn)) * ROOM):
+		var spoke := Vector3(sin(turn), 0.0, cos(turn))
+		if _wall(middle - spoke * FACE, middle + spoke * ROOM):
 			return Vector3.INF
 	return ground
 
@@ -108,14 +98,12 @@ func _overlaps(zones: UseZones) -> Dictionary:
 	return found
 
 
-func _check(scene_path: String, pending: Array[String] = []) -> void:
+func _check(scene_path: String) -> void:
 	var zones := await _start(scene_path)
 	assert_int(zones.things().size()).is_greater(10)
 	var found := _overlaps(zones)
 	var lines: Array[String] = []
 	for pair: String in found:
-		if pending.has(pair):
-			continue
 		var entry: Dictionary = found[pair]
 		lines.append(
 			(
@@ -127,9 +115,6 @@ func _check(scene_path: String, pending: Array[String] = []) -> void:
 	if not lines.is_empty():
 		print("Overlapping use zones on %s:\n  %s" % [scene_path, "\n  ".join(lines)])
 	assert_array(lines).is_empty()
-	# A pair the map no longer has comes off the list, so the list only shrinks.
-	var gone := pending.filter(func(pair: String) -> bool: return not found.has(pair))
-	assert_array(gone).override_failure_message("Fixed, take off the list: %s" % [gone]).is_empty()
 
 
 func test_lot_use_zones_do_not_overlap() -> void:
@@ -137,4 +122,4 @@ func test_lot_use_zones_do_not_overlap() -> void:
 
 
 func test_small_map_use_zones_do_not_overlap() -> void:
-	await _check(SMALL, SMALL_PENDING)
+	await _check(SMALL)

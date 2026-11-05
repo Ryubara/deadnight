@@ -121,7 +121,10 @@ func test_the_fullest_night_fits_every_canvas_and_a_phone_with_its_notch() -> vo
 			var rect := Rect2(Vector2.ZERO, canvas)
 			var found: Array[Control] = []
 			for control in board.find_children("*", "HudTicket", true, false):
-				found.append(control as Control)
+				# The night report's ticket is the left column's own (`test_night_report_card.gd`), and the
+				# credits' is under this one (`test_hud_credits.gd`).
+				if control != board.report_card and control != board.credits_card:
+					found.append(control as Control)
 			assert_int(found.size()).is_equal(1)
 			var inside := rect.grow_individual(-insets.x, -insets.y, -insets.z, -insets.w)
 			var seen := found[0].get_global_rect()

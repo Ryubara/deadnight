@@ -39,9 +39,6 @@ const DEAD_RING := 18
 const COMMAND := &"command"
 const JOIN := &"join"
 const LEAVE := &"leave"
-## A person takes the seat of a bot: `seat_person` {player_id}. The seat, its body, points and
-## weapons stay as they are; the rules say `bot_replaced`.
-const SEAT_PERSON := &"seat_person"
 const START_NIGHT := &"start_night"
 ## A player marks something for the others: `ping` {kind, pos, subject}, see `PingBoard`.
 const PING := &"ping"
@@ -50,6 +47,11 @@ const ORDER := BotOrders.ACTION  # `order` {order, at, bot_id}: a person orders 
 const SAY := &"say"
 ## A player came back on a new connection: `resync` {player_id} tells it the looks again.
 const RESYNC := &"resync"
+## A person's client began (`begin` true) or ended its helicopter drop (`ArrivalPlay`): while it
+## lasts the
+## player is out of the night: shielded, not chased, not moving or acting, and not drawn by the
+## others.
+const ARRIVAL := &"arrival"
 ## A client's look, as `LookWire.look` bytes: `look` {player_id, packet}.
 const LOOK := &"look"
 ## The seconds of the intermission after the night ends, counted by the server (the maintainer
@@ -83,6 +85,7 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"element_burst",
 	&"element_arc",
 	&"fire_patch_started",
+	&"element_burn",
 	&"fire_rejected",
 ]
 ## What the grenade server answers that is worth sending on (its answer also repeats the rules'
@@ -140,6 +143,14 @@ var drawn_bodies := true
 var pings: Dictionary[int, int] = {}
 ## The crowd this match stands, from the weakest client in it (`CrowdCeiling.set_platform`).
 var crowd := CrowdCeiling.new()
+## The XP of the seats that hold an account, counted as the rules decide each kill and told to every
+## client as events (`XpAward`). Whoever knows a seat's account registers it; a night with none pays
+## nothing.
+var xp: XpAward
+## The challenge boards of those seats, followed as the rules decide and told to every client as
+## events (`ChallengeAward`). Whoever knows a seat's board hands it over; a seat without one is not
+## followed.
+var challenges: ChallengeAward
 
 ## The dead stop the bodies (#914). `dead_tuning` is the one table, `_dead_ring` where the dead
 ## stood at the last ticks (in the centimetres a frame carries), `_dead_fields` the field each body
@@ -148,6 +159,11 @@ var crowd := CrowdCeiling.new()
 ## at the same place; off, by where they stand now.
 var dead_tuning := DeadContactTuning.shipped()
 var dead_as_seen := true
+## The account level of each player the host knows (the local player's, from their profile; the
+## ticket's XP for a seat with an account, `NightHost.register_account`). Their look is held to what
+## that level may wear: a locked piece in a client's look is put back (`LookServer`, #1065). A
+## player not named here has no known level (no backend), and is trusted with the whole wardrobe.
+var player_levels: Dictionary[int, int] = {}
 var _dead_ring: Array[DeadSnapshot] = []
 var _dead_fields: Dictionary[int, DeadField] = {}
 var _shove: DeadShove
@@ -213,11 +229,14 @@ func _init(
 	p_settings: MatchSettings = null
 ) -> void:
 	world = p_world
-	looks = LookServer.new(_send_look)
+	looks = LookServer.new(_send_look, _unlocks_of)
 	tuning = p_tuning if p_tuning != null else NightTuning.shipped()
 	ping_board.seconds = tuning.ping_seconds
 	ping_board.gap = tuning.ping_gap
 	rules = GameRules.new(p_rules_tuning, p_seed, p_settings)
+	xp = XpAward.new(NightTally.fuel_items_of(rules.tuning))
+	challenges = ChallengeAward.new(xp, NightTally.fuel_items_of(rules.tuning))
+	challenges.rules = rules
 	_probe = WorldProbe.new(world.get_world_3d().direct_space_state)
 	combat = CombatServer.new(WeaponCatalog.all(), rules, _probe.callable(), p_seed)
 	_cast = WorldCast.new(world.get_world_3d().direct_space_state)
@@ -265,9 +284,6 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			_join(action["player_id"], action.get("local", false), action.get("bot", false))
 		LEAVE:
 			_leave(action["player_id"])
-		SEAT_PERSON, RulesAction.SEAT_BOT:
-			rules.apply({"type": action["type"], "player_id": action["player_id"]})
-			_platform_of_seat(action["player_id"], action["type"] == SEAT_PERSON)
 		START_NIGHT:
 			rules.apply(RulesAction.start())
 		LOOK:
@@ -281,11 +297,14 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 		RESYNC:
 			if _bodies.has(action["player_id"]):
 				looks.sync(action["player_id"])
+		ARRIVAL:
+			_arrive(from_id if from_id > 0 else action.get("player_id", 1), action["begin"])
 		COMMAND:
 			submit(
 				from_id if from_id > 0 else action.get("player_id", 1),
 				NightCommand.from_dict(action)
 			)
+	_outbox.append_array(challenges.take_events())
 	return _outbox
 
 
@@ -385,8 +404,14 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	bot_orders.step(delta)
 	say_board.step(delta)
 	_throw_grenades(delta)
+	# What the seats finished and earned this tick, told once each (the challenges first: their XP is
+	# in the tick's `xp_gained`), before the frame that closes the list.
+	_outbox.append_array(challenges.take_events())
+	_outbox.append_array(xp.end_tick())
 	if with_frame:
-		_outbox.append(_frame())
+		var frame := _frame()
+		_outbox.append(frame)
+		challenges.observe(frame)
 	PerfProbe.end(&"server.frame", began)
 	return _outbox
 
@@ -402,6 +427,10 @@ func _step_over(delta: float, with_frame: bool) -> Array[Dictionary]:
 		_holds_ended = true
 		_revive.end_all(&"down")
 	_over_left = maxf(_over_left - delta, 0.0)
+	# What the night's end finished (a hidden challenge counted by it: *Dead on arrival*,
+	# *Standing room only*) is told in the first step after it, not when a client next asks for
+	# something.
+	_outbox.append_array(challenges.take_events())
 	if _over_left <= 0.0 and not _closed:
 		_closed = true
 		_outbox.append({"type": NIGHT_CLOSED})
@@ -429,7 +458,7 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 	_bodies[player_id].dead = _dead_fields[player_id]
 	if not bot:
 		crowd.join(player_id, OS.has_feature("web") if local else true)
-	looks.join(player_id)
+	looks.join(player_id, bot)
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
 	_repairing[player_id] = &""
@@ -441,18 +470,6 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 	# What the rules say the player starts with, the firearm last so it is the one in hand.
 	for shop_id in rules.players[player_id].weapons:
 		_combat(CombatAction.give_weapon(player_id, WeaponCatalog.catalog_id(shop_id)))
-
-
-## A seat changed hands: a bot has no screen, so it counts for nothing in the crowd's ceiling (the
-## ceiling follows the people's platforms, `CrowdCeiling`); a person who takes a bot's seat counts
-## as a browser until its client says what it is, like any remote person that joins.
-func _platform_of_seat(player_id: int, person: bool) -> void:
-	if not _bodies.has(player_id):
-		return
-	if person:
-		crowd.join(player_id, true)
-	else:
-		crowd.leave(player_id)
 
 
 func _leave(player_id: int) -> void:
@@ -491,9 +508,31 @@ func _announce(event: Dictionary) -> void:
 	_outbox.append(event)
 
 
+## Whether this player is drinking a perk (`PerkPlay`): the hands are full until the drink is down.
+func is_drinking(player_id: int) -> bool:
+	return PerkPlay.is_drinking(rules.players.get(player_id))
+
+
 func _is_downed(player_id: int) -> bool:
 	var state: PlayerState = rules.players.get(player_id)
 	return state == null or state.downed
+
+
+## Whether this player is still in the helicopter of their arrival (`ArrivalPlay`).
+func is_dropping(player_id: int) -> bool:
+	var state: PlayerState = rules.players.get(player_id)
+	return state != null and state.is_dropping()
+
+
+## Whether the player can do nothing now: on the ground, or hanging from a rope on their own screen.
+func _is_still(player_id: int) -> bool:
+	return _is_downed(player_id) or is_dropping(player_id)
+
+
+## The client of `player_id` began or ended its drop. A body that is not here has none.
+func _arrive(player_id: int, begin: bool) -> void:
+	if _bodies.has(player_id):
+		rules.apply(RulesAction.arrival(player_id, begin))
 
 
 func _move_players(delta: float) -> void:
@@ -508,7 +547,7 @@ func _move_players(delta: float) -> void:
 			_acked[player_id] = command.seq
 			motion.yaw = command.motion.yaw
 			motion.pitch = command.motion.pitch
-			if not _is_downed(player_id):
+			if not _is_still(player_id):
 				motion = command.motion
 				# The trigger is the command's own, whoever made the motion.
 				motion.fire = command.fire
@@ -588,13 +627,15 @@ func _neutral_after(old: NightCommand) -> NightCommand:
 func _chase_targets() -> Dictionary:
 	var targets := {}
 	for player_id in _bodies:
-		if not _is_downed(player_id):
+		if not _is_still(player_id):
 			targets[player_id] = _bodies[player_id].global_position
 	return targets
 
 
 func _on_player_struck(player_id: int, zombie_id: int, damage: float) -> void:
 	if not _bodies.has(player_id) or _is_downed(player_id):
+		return
+	if (rules.players[player_id] as PlayerState).is_shielded():
 		return
 	var zombie: ZombieBody = sim.zombies.get(zombie_id)
 	var from := _position_of_zombie(zombie_id)
@@ -634,6 +675,8 @@ func _position_of_zombie(zombie_id: int) -> Vector3:
 
 func _on_rules_event(event: Dictionary) -> void:
 	_outbox.append(event)
+	xp.observe(event)
+	challenges.observe(event)
 	match event["type"]:
 		&"game_over":
 			# The clock starts with the event, so the frame of this very step carries it.
@@ -673,7 +716,7 @@ func _throw_of(player_id: int, delta: float) -> void:
 	var look := Vector3.ZERO
 	if command != null:
 		look = command.dir
-		if not _is_downed(player_id):
+		if not _is_still(player_id) and not is_drinking(player_id):
 			motion = command.motion
 	var body := _bodies[player_id]
 	var launch := GrenadeThrower.launch(
@@ -780,6 +823,8 @@ func _combat(action: Dictionary) -> void:
 		if event["type"] == &"status_applied" or event["type"] == &"status_ended":
 			sim.set_status(event["target_id"], event["wire"], event["halts"], event["speed_scale"])
 		_outbox.append(event)
+		# The weapon in a player's hand is what a kill is credited to (`kills:weapon:<id>`).
+		challenges.observe(event)
 		if event["type"] == &"reload_started":
 			_shock(event["shooter_id"])
 
@@ -833,12 +878,21 @@ func _target_list() -> Array:
 func _act(player_id: int, delta: float) -> void:
 	_hand_wait[player_id] = maxf(_hand_wait[player_id] - delta, 0.0)
 	# What the card shows, each tick, so a press knows how long its offer has been up (#908).
-	var target := {} if _is_downed(player_id) else use_target(player_id)
+	var target := {} if _is_still(player_id) else use_target(player_id)
 	_guard.see(player_id, target, combat.now)
 	var command := _pending.get(player_id) as NightCommand
-	if command == null or _is_downed(player_id):
+	if command == null or _is_still(player_id):
 		_repairing[player_id] = &""
 		_revive.stop(player_id, &"down")
+		if command != null and is_dropping(player_id):
+			command.clear_edges()
+		return
+	if is_drinking(player_id):
+		# The hands hold a perk's bottle (#912): no shot, reload, swap, blow, use, repair or revive
+		# until it is down. The legs are free.
+		_repairing[player_id] = &""
+		_revive.stop(player_id, &"released")
+		command.clear_edges()
 		return
 	if command.reload:
 		_combat(CombatAction.reload_weapon(player_id))
@@ -1087,8 +1141,12 @@ func _use(player_id: int, target: Dictionary) -> void:
 	if _guard.refuses(player_id, target, combat.now, is_repairing(player_id)) != &"":
 		return
 	match target.get("kind"):
-		&"door", &"weapon", &"ammo", &"grenades", &"crane", &"recut", &"tonic":
+		&"door", &"weapon", &"ammo", &"grenades", &"crane", &"recut":
 			buy(player_id, target["id"])
+		&"tonic":
+			# Not with a grenade cooking in the hand: the drink would let go of it.
+			if not grenades.is_cooking(player_id):
+				buy(player_id, target["id"])
 		&"crane_take":
 			var held := MachineOffers.weapon_for(self, player_id)
 			rules.apply(RulesAction.crane_take(player_id, held))
@@ -1182,6 +1240,7 @@ func _frame() -> Dictionary:
 			"facing": body.state.facing,
 			"health": rules.health_of(player_id),
 			"downed": _is_downed(player_id),
+			"dropping": is_dropping(player_id),
 			"weapon": weapon.def.id if weapon != null else &"",
 			"aim": body.state.holds_aim(body.tuning.hip_fire_hold),
 			"pitch": pitch_step(body.state.view_pitch),
@@ -1192,7 +1251,7 @@ func _frame() -> Dictionary:
 			"arms": _arms_of(player_id),
 			"points": rules.points_of(player_id),
 			# A player on the ground can use nothing, so the card says nothing.
-			"prompt": {} if _is_downed(player_id) else use_target(player_id),
+			"prompt": {} if _is_still(player_id) else use_target(player_id),
 			"ack": _acked.get(player_id, 0),
 			"reviving": _revive.target_of(player_id),
 			"revive": _revive.progress(player_id),
@@ -1272,3 +1331,8 @@ func _arms_of(player_id: int) -> Dictionary:
 
 static func _flat(a: Vector3, b: Vector3) -> float:
 	return Vector2(a.x - b.x, a.z - b.z).length()
+
+
+## What `player_id` may wear: what their level opens, or everything while the level is unknown.
+func _unlocks_of(player_id: int) -> LookUnlocks:
+	return LookUnlocks.at_level(player_levels.get(player_id, LevelCurve.MAX_LEVEL))

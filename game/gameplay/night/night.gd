@@ -29,6 +29,10 @@ signal ticked
 signal connection_lost
 signal connection_resumed
 signal connection_ended
+## This client's arrival by helicopter began (the screen is the show's, the HUD gives way), and
+## ended (the player has the night). `arrival` turns it on (#1057).
+signal arrival_started
+signal arrival_ended
 
 ## MANUAL makes no commands: the caller sends them through `link` (the tests do).
 enum Mode { HUMAN, AUTOPILOT, MANUAL }
@@ -43,9 +47,6 @@ const STEP := 1.0 / 60.0
 const PLAYER_ID := 1
 ## The fixed seed of tests, benches and tours: a night that must play the same each time.
 const SEED := 1958
-## How far past the low-tank line (a fraction of a full tank) the bot waits before it lights an
-## area again.
-const SWITCH_RESUME_MARGIN := 0.15
 ## The server's events that move the Soldier's grenade clips.
 const GRENADE_CLIP_EVENTS: Array[StringName] = [
 	&"cook_started", &"throw_started", &"grenade_dropped", &"grenade_exploded"
@@ -105,12 +106,31 @@ var map_id := ""
 var touch_active := Callable()
 ## The touch player's aim help, once the night has begun (a human's night only).
 var assist: TouchAimAssist
+## Whether this client plays the arrival by helicopter when it comes into the night: a person's game
+## turns it on (`NightScreen`); a test, a capture and a bot leave it off. Only a human night plays
+## it,
+## and only under `ArrivalTuning` (`enabled`, `repeat`).
+var arrival := false
+## The show, while it plays.
+var arrival_show: ArrivalCutscene
 ## The HUD to feed, set before `start`: it hears the night from its first event.
 var hud: Hud
 ## The player's challenges, set before `start` by the screen a person plays on (bots, captures and
 ## tests leave it empty, so they never touch the save). The night counts into it as it plays.
 var challenge_board: ChallengeBoard
 var challenges: ChallengeSession
+## Writes the board to the account at round ends, in a night that runs here (online, the server).
+var challenge_uplink: ChallengeUplink
+## The player's profile file, set before `start` by the screen a person plays on (like the board).
+## The night adds its XP to it as it plays, for a player with an account (a Guest one counts);
+## online the server awards.
+var profile_store: ProfileStore
+var progress: ProgressSession
+## What the night report shows (`ReportTracker`), made with the client state.
+var report: ReportTracker
+## Sends the profile's queued writes to the account; null keeps them on this machine until a night
+## has one. (A Callable does not keep its object alive: the night holds the uplink.)
+var profile_uplink: ProfileUplink
 ## Puts the names and the next door on the HUD from the player's camera (made with the view, when
 ## there is a HUD).
 var markers: NightMarkers
@@ -189,11 +209,17 @@ func start(
 	var table := p_rules_tuning if p_rules_tuning != null else load(GameRules.DEFAULT_TUNING_PATH)
 	server = NightServer.new(world, p_seed, night_tuning, world.rules_for(table), match_settings)
 	rules_tuning = server.rules.tuning
+	# The one at this machine wears what their profile's level opens (a look a test or a flag gave
+	# is let through whole: no level is known for it).
+	if own_look == null:
+		server.player_levels[PLAYER_ID] = LookUnlocks.saved().level
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
 	bot_orders.sender = link.send
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
 	_track_challenges()
+	report = ReportTracker.follow(state, NightTally.fuel_items_of(rules_tuning))
+	_track_progress()
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks, world.layout.words())
 	_equip_sync = WeaponEquipSync.new(state, server.body_of)
@@ -240,7 +266,8 @@ func start_remote(
 	link = online
 	bot_orders.sender = link.send
 	state = ClientState.new()
-	_track_challenges()
+	_track_challenges(true)
+	report = ReportTracker.follow(state, NightTally.fuel_items_of(rules_tuning))
 	var failure := {"reason": ""}
 	var welcome := {}
 	online.welcomed.connect(func(snapshot: Dictionary) -> void: welcome["snapshot"] = snapshot)
@@ -269,6 +296,7 @@ func start_remote(
 	rules_tuning = world.rules_for(load(GameRules.DEFAULT_TUNING_PATH))
 	state.player_id = online.player_id
 	state.load_names(welcome["snapshot"])
+	state.load_levels(welcome["snapshot"])
 	var camera: Camera3D
 	var has_body := mode == Mode.HUMAN or (mode == Mode.AUTOPILOT and shoulder_camera)
 	if has_body:
@@ -360,13 +388,35 @@ func _last_frame(events: Array) -> Dictionary:
 	return {}
 
 
-## Counts the night into the player's challenges, when there is a board to count into.
-func _track_challenges() -> void:
+## Counts the night into the player's challenges, when there is a board to count into. `online`:
+## a game server follows the account's board and tells the prompt (`ChallengeSession`); a night
+## that runs here writes the board itself.
+func _track_challenges(online: bool = false) -> void:
 	if challenge_board != null:
-		challenges = ChallengeSession.new(challenge_board, rules_tuning)
-		challenges.attach(state)
+		challenges = ChallengeSession.new(challenge_board, rules_tuning, match_settings.map)
+		challenges.uplink = null if online else challenge_uplink
+		challenges.attach(state, online)
 		if hud != null:
 			_challenge_link = ChallengeHudLink.new(challenges, hud)
+
+
+## Counts the night into the player's XP, when there is a profile to keep it in. Only a night that
+## runs here: an online night's XP is the game server's.
+func _track_progress() -> void:
+	if profile_store == null:
+		return
+	var clock := challenge_board.clock if challenge_board != null else ChallengeClock.system()
+	progress = ProgressSession.new(profile_store, clock, NightTally.fuel_items_of(rules_tuning))
+	if profile_uplink != null:
+		progress.uploader = profile_uplink.send
+	progress.attach(state, challenges)
+	# The rules tell the player the same `xp_gained` and `level_up` events a game server would; the
+	# profile is written here (`ProgressSession`).
+	if profile_store.has_account():
+		var xp := profile_store.profile.xp
+		server.xp.register(PLAYER_ID, "local", xp, 0)
+		progress.award = server.xp
+		state.load_levels({"levels": server.xp.levels(), "account_xp": xp})
 
 
 ## The view and the sounds, once there is a camera to look through.
@@ -377,6 +427,7 @@ func _build_view(camera: Camera3D) -> void:
 		state, camera, LookTimings.telegraphs(rules_tuning), LookTimings.board_seconds(rules_tuning)
 	)
 	view.barricade_points = _barricade_points()
+	view.horde.gates.assign(world.gates().values())
 	view.bodies = _body_of
 	view.repair_interval = _repair_seconds
 	view.show_lamps(world.greybox, rules_tuning.fuel)
@@ -395,6 +446,8 @@ func _build_view(camera: Camera3D) -> void:
 ## The night ended: this client reads the server's intermission but plays no more (`NightEnding`).
 func _on_over(_round_reached: int) -> void:
 	running = false
+	if is_arriving():
+		arrival_show.skip_now()
 	NightEnding.begin(self)
 
 
@@ -455,7 +508,15 @@ func _go() -> void:
 	if mode == Mode.HUMAN:
 		_make_assist()
 	running = true
+	if NightArrival.due(self):
+		NightArrival.begin(self)
 	ready_to_play.emit()
+
+
+## Whether this client's arrival show is playing: the player's controls are the show's (the server
+## keeps them out of the night, `ArrivalPlay`), so no command asks for anything.
+func is_arriving() -> bool:
+	return arrival_show != null and not arrival_show.is_over()
 
 
 ## The touch player's aim help, over the picture of the night this client has.
@@ -470,6 +531,11 @@ func _make_assist() -> void:
 ## The look this client wears: the one a test or `--look` set, else the saved one.
 func _wanted_look() -> CharacterLook:
 	return own_look if own_look != null else LookStore.load_look()
+
+
+## The look this client wears, for the arrival show's Soldier.
+func worn_look() -> CharacterLook:
+	return _wanted_look()
 
 
 func _make_spectator() -> Camera3D:
@@ -561,6 +627,8 @@ func _exit_tree() -> void:
 	running = false
 	if challenges != null:
 		challenges.flush()
+	if progress != null:
+		progress.flush()
 	if server != null:
 		server.close()
 	if remote and link != null:
@@ -685,6 +753,7 @@ func _resync_body() -> void:
 
 ## The seat is ours again: the rules as the server has them now, in place of the events missed.
 func _on_resumed(snapshot: Dictionary) -> void:
+	state.load_levels(snapshot)
 	if hud != null:
 		hud.state.load_snapshot(snapshot)
 	connection_resumed.emit()
@@ -742,42 +811,11 @@ func give_bot_order(order: StringName, bot_id := 0) -> Dictionary:
 
 func _human_command() -> NightCommand:
 	var command := _human.command(player(), state.player_id)
+	if is_arriving():
+		NightArrival.quiet(command)
 	if _human.ping_pressed(player()):
-		link.send(_ping_request(command))
+		link.send(PingAim.request(command, world, state, get_world_3d().direct_space_state))
 	return command
-
-
-## What the ping key marks: what the crosshair is on, else where its ray lands (`PingAim`).
-func _ping_request(aim: NightCommand) -> Dictionary:
-	var landed := Vector3.INF
-	var cast := PhysicsRayQueryParameters3D.create(
-		aim.origin,
-		aim.origin + aim.dir * PingAim.REACH,
-		CameraProbe.PLAYER_MASK | PhysicsLayers.BODY
-	)
-	var hit := get_world_3d().direct_space_state.intersect_ray(cast)
-	if not hit.is_empty():
-		landed = hit["position"]
-	var shut := {}
-	var index := 0
-	for door_id in world.door_ids():
-		if not state.frame.get("doors", []).has(door_id):
-			shut[index] = world.door_points(door_id)
-		index += 1
-	var ammo: Array[Vector3] = []
-	for spot in world.shop_spots():
-		if spot["kind"] == &"ammo":
-			ammo.append(spot["position"])
-	return PingAim.pick(
-		aim.origin,
-		aim.dir,
-		state.zombies,
-		state.frame.get("players", {}),
-		state.player_id,
-		shut,
-		ammo,
-		landed
-	)
 
 
 ## What the server answered: the look server's packets go to the look table, the rest to the
@@ -895,7 +933,7 @@ func _send_command(command: NightCommand) -> void:
 ## the player's client hears, so a ping the player places reaches them as it would reach a person.
 func _seat_bots(p_seed: int) -> void:
 	bots = NightBots.new(server, world, p_seed, Callable(self, &"_bots_answered"))
-	link.broadcast(bots.fill(server.rules.settings.bots, [PLAYER_ID]))
+	link.broadcast(bots.fill(server.rules.settings.bots))
 	link.delivered.connect(bots.hear)
 
 
@@ -911,57 +949,7 @@ func _make_autopilot() -> void:
 	var level := BotLevel.new(_sight.callable(), world.is_lit, rules_tuning.rounds, world.map())
 	bot = BotClient.new(state, BotProfile.autopilot(), SEED, link.send, level)
 	bot.legacy = autopilot
-	var tuning: RulesTuning = rules_tuning
-	for item in tuning.economy.items:
-		if item.kind == ShopItem.Kind.DOOR:
-			autopilot.prices[item.id] = item.price
-			autopilot.order.append(item.id)
-	autopilot.spots = world.shop_spots()
-	for item in tuning.economy.items:
-		match item.kind:
-			ShopItem.Kind.WEAPON, ShopItem.Kind.CRANE:
-				autopilot.prices_of_goods[item.id] = item.price
-				autopilot.wanted.append(item.id)
-				if item.kind == ShopItem.Kind.CRANE:
-					autopilot.crane_pool.assign(item.pool)
-			ShopItem.Kind.AMMO:
-				autopilot.ammo_prices[item.weapon] = item.price
-			ShopItem.Kind.UPGRADE:
-				autopilot.recut_price = item.price
-			ShopItem.Kind.TONIC:
-				if item.health_bonus > 0.0:
-					autopilot.tonic_price = item.price
-					autopilot.tonic_id = item.id
-	autopilot.wanted.sort_custom(
-		func(a: StringName, b: StringName) -> bool:
-			return autopilot.prices_of_goods[a] < autopilot.prices_of_goods[b]
-	)
-	autopilot.whole_boards = tuning.barricades.boards
-	autopilot.switches.capacity = tuning.fuel.capacity
-	autopilot.switches.save_below = tuning.fuel.low_fraction
-	autopilot.switches.resume_above = tuning.fuel.low_fraction + SWITCH_RESUME_MARGIN
-	for circuit_id in world.switches.circuit_ids():
-		autopilot.switches.goals[circuit_id] = world.switches.standing_point(circuit_id)
-		autopilot.switches.doors[circuit_id] = world.switches.door_of(circuit_id)
-	autopilot.revive.reach = (
-		(night_tuning if night_tuning != null else NightTuning.shipped()).revive_reach
-	)
-	autopilot.revive.seconds = tuning.health.revive_seconds
-	autopilot.fuel.capacity = tuning.fuel.capacity
-	autopilot.fuel.refuel_at = tuning.fuel.low_fraction
-	autopilot.fuel.fill_to = tuning.fuel.low_fraction + SWITCH_RESUME_MARGIN
-	for item in tuning.economy.items:
-		if item.kind == ShopItem.Kind.FUEL:
-			autopilot.fuel.item = item
-	for id in world.fuel.ids():
-		autopilot.fuel.goals[id] = world.fuel.standing_point(id)
-		autopilot.fuel.doors[id] = world.fuel.door_of(id)
-	for id in world.barricade_ids():
-		autopilot.repair_goals[id] = world.repair_spot(id)
-	for door_id in autopilot.order:
-		var points := world.door_points(door_id)
-		if not points.is_empty():
-			autopilot.door_goals[door_id] = points[0]
+	AutopilotSetup.configure(autopilot, world, rules_tuning, night_tuning)
 
 
 ## The shoulder camera looks where the bot looks: the bot's yaw arrives in steps, and the rig

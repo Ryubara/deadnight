@@ -40,11 +40,18 @@ func test_each_gate_of_the_plan_is_named_when_it_breaks() -> void:
 		"stuck for": _night(_bot({"longest_stuck": 10.5})),
 		"with a zombie in view": _night(_bot({"idle_threat_longest": 5.5})),
 		"lost its brain": _night(_bot({"brain_disabled": true})),
+		"down to its last dead": _night(_bot(), {"tail_longest": 151.0, "tail_round": 7}),
 	}
 	for needle: String in cases:
 		var broken := SoakWatch.verdict(cases[needle], BotOrders.ROAM, false)
 		assert_int(broken.size()).override_failure_message(needle).is_equal(1)
 		assert_str(broken[0]).contains(needle)
+
+
+func test_a_round_that_stood_on_its_last_dead_for_two_minutes_is_not_a_stall() -> void:
+	# A boss round with a dry stand-in for a person takes that long on its own (#950).
+	var night := _night(_bot(), {"tail_longest": 126.0, "tail_round": 5})
+	assert_array(SoakWatch.verdict(night, BotOrders.ROAM, true)).is_empty()
 
 
 func test_a_gate_of_one_order_applies_to_that_order_only() -> void:
