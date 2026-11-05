@@ -12,8 +12,9 @@ extends Control
 ## by hand. Fire shoots wherever the player aims, in both.
 ##
 ## Every finger is tracked by its touch index and has one job until it lifts: the stick, the look,
-## or one button. A finger that starts on Fire, Aim or Grenade also looks while it drags, so one
-## thumb can aim and shoot, or turn while the grenade is held. Look goes out as mouse motion in
+## or one button. A finger that starts on any button of the right thumb also looks while it drags
+## (#1277, `TouchLayout.looks_when_dragged`): one thumb can aim and shoot, turn while the grenade
+## is held, or press Reload or Jump and carry on turning. Look goes out as mouse motion in
 ## mouse pixels (`TouchLook`), so the sensitivity setting,
 ## the ADS slow-down and invert Y apply as they do for a mouse.
 ##
@@ -24,8 +25,12 @@ extends Control
 ## The weapons are the HUD's own places (`HudSlots`, #1280): the layer does not draw them, it asks
 ## the HUD where they are (`zones`) and presses the action of the one a finger lands on, like a
 ## button of its own. A finger that starts on a weapon's place only picks it: it never fires or
-## looks.
-## The interact button shows only while the HUD has a prompt: what it does is its label.
+## looks; one that starts on the grenades' place also looks, as every button of the right thumb.
+## The interact button shows only while the HUD has a prompt: what it does is its word. Every other
+## button shows an icon and no words (`TouchIcons`).
+##
+## Crouch is a toggle: a tap crouches and stays crouched, a second tap (or a Jump, which cannot be
+## made crouching) stands, so the right thumb is free for Fire and the look.
 ##
 ## While it is up the HUD shows no key hints (`UIInputMode.touch`), and `TouchHints` labels the
 ## controls the first time each is met, until it is used.
@@ -46,17 +51,7 @@ const MOVE_RIGHT := &"move_right"
 const MOVE_FORWARD := &"move_forward"
 const MOVE_BACK := &"move_back"
 const SPRINT := &"sprint"
-## Captions on the buttons, and what the interact button says for each kind of prompt.
-const LABELS := {
-	TouchLayout.FIRE: "FIRE",
-	TouchLayout.AIM: "AIM",
-	TouchLayout.JUMP: "JUMP",
-	TouchLayout.RELOAD: "RELOAD",
-	TouchLayout.SHOULDER: "SIDE",
-	TouchLayout.MELEE: "MELEE",
-	TouchLayout.BOT_WHEEL: "BOTS",
-	TouchLayout.PING: "PING",
-}
+## What the interact button says for each kind of prompt.
 const VERBS := {
 	&"buy_door": "OPEN",
 	&"buy_weapon": "BUY",
@@ -72,11 +67,6 @@ const DEFAULT_VERB := "USE"
 ## The grenades' place on the HUD's strip presses this action (held while the pin is out).
 const GRENADE := &"throw_grenade"
 const AUTO_FIRE_SETTING := &"controls/touch_auto_fire"
-## A finger that starts on one of these also looks while it drags, so one thumb can aim and shoot,
-## and a grenade can be aimed while the pin is out: the right thumb is on the button for the whole
-## cook and the left has the stick (#599).
-const LOOKING_BUTTONS: Array[StringName] = [TouchLayout.FIRE, TouchLayout.AIM, GRENADE]
-
 ## The feel numbers (dead zone, sprint, hold, look): `touch_tuning_default.tres`.
 var tuning: TouchTuning = TouchLook.tuning
 ## The HUD state, for the interact button.
@@ -112,6 +102,7 @@ var zones := Callable()
 ## Auto-fire on: Aim is held. Off: Aim is a toggle (`_aim_latched`).
 var _aim_is_hold := true
 var _aim_latched := false
+var _crouch_latched := false
 var _enabled := false
 var _active := false
 var _circles := {}
@@ -204,6 +195,8 @@ func button_boxes() -> Array[Rect2]:
 		return found
 	var origin := get_global_rect().position
 	for id: StringName in _circles:
+		if id == TouchLayout.INTERACT and _interact_verb == "":
+			continue  # not drawn, so nothing to keep clear of
 		var circle: Dictionary = _circles[id]
 		var reach := Vector2.ONE * float(circle[&"radius"])
 		found.append(Rect2(origin + Vector2(circle[&"centre"]) - reach, reach * 2.0))
@@ -250,6 +243,11 @@ func is_aim_latched() -> bool:
 	return _aim_latched
 
 
+## True while Crouch is toggled on (tapped once, not yet tapped again or jumped from).
+func is_crouch_latched() -> bool:
+	return _crouch_latched
+
+
 func is_pressed(id: StringName) -> bool:
 	return _pressed_at.has(id) and not _release_at.has(id)
 
@@ -290,6 +288,7 @@ func _process(delta: float) -> void:
 		_interact_verb = verb
 		if verb == "":
 			_drop_button(TouchLayout.INTERACT)
+		layout_changed.emit()  # the button came or went: the world markers make room (#1218)
 	if _active:
 		_redraw_if_changed()
 
@@ -317,6 +316,7 @@ func _look_key() -> int:
 		[
 			held,
 			_aim_latched,
+			_crouch_latched,
 			_stick_index,
 			stick,
 			_sprinting,
@@ -421,7 +421,8 @@ func _touch_drag(index: int, point: Vector2, velocity: Vector2) -> void:
 		&"look":
 			_look(relative, _trusted_velocity(touch, velocity))
 		&"button":
-			if LOOKING_BUTTONS.has(touch[&"button"]):
+			# The grenades' place on the HUD looks too: the thumb is on it for the whole cook (#599).
+			if touch[&"button"] == GRENADE or TouchLayout.looks_when_dragged(touch[&"button"]):
 				_look(relative, _trusted_velocity(touch, velocity))
 
 
@@ -524,6 +525,16 @@ func _press_button(id: StringName) -> void:
 		else:
 			Input.action_release(id)
 		return
+	if id == TouchLayout.CROUCH:
+		_crouch_latched = not _crouch_latched
+		if _crouch_latched:
+			Input.action_press(id)
+		else:
+			Input.action_release(id)
+		return
+	if id == TouchLayout.JUMP:
+		# A crouching body cannot jump: the press stands it up and the jump goes on, in one tick.
+		_unlatch_crouch()
 	_release_at.erase(id)
 	_pressed_at[id] = _clock
 	Input.action_press(id)
@@ -544,6 +555,12 @@ func _unlatch_aim() -> void:
 	if _aim_latched:
 		_aim_latched = false
 		Input.action_release(TouchLayout.AIM)
+
+
+func _unlatch_crouch() -> void:
+	if _crouch_latched:
+		_crouch_latched = false
+		Input.action_release(TouchLayout.CROUCH)
 
 
 func _send_action(action: StringName, pressed: bool) -> void:
@@ -635,6 +652,7 @@ func _release_everything() -> void:
 	_stick_index = -1
 	_set_stick(Vector2.ZERO)
 	_unlatch_aim()
+	_unlatch_crouch()
 	for action: StringName in _pressed_at.keys():
 		Input.action_release(action)
 	_pressed_at.clear()
@@ -691,11 +709,13 @@ func _draw() -> void:
 	var tokens := UITokens.active()
 	var font := tokens.display_font(tokens.embolden_display * 0.3)
 	_draw_stick(tokens)
+	# Every icon is one canvas command, flushed after the discs: no two buttons overlap.
+	var icons := HudShapes.new()
 	for id: StringName in _circles:
 		if id == TouchLayout.INTERACT and _interact_verb == "":
 			continue
-		var label: String = _interact_verb if id == TouchLayout.INTERACT else LABELS.get(id, "")
-		_draw_button(tokens, font, id, _circles[id], label)
+		_draw_button(tokens, font, icons, id, _circles[id])
+	icons.flush(self)
 
 
 ## Colour at the resting opacity, or full while its control is held.
@@ -704,7 +724,7 @@ func _alpha(colour: Color, held: bool) -> Color:
 
 
 func _is_held(id: StringName) -> bool:
-	if id == TouchLayout.AIM and _aim_latched:
+	if (id == TouchLayout.AIM and _aim_latched) or (id == TouchLayout.CROUCH and _crouch_latched):
 		return true
 	for touch: Dictionary in _touches.values():
 		if touch.get(&"button", &"") == id:
@@ -713,7 +733,7 @@ func _is_held(id: StringName) -> bool:
 
 
 func _draw_button(
-	tokens: UITokens, font: Font, id: StringName, circle: Dictionary, label: String
+	tokens: UITokens, font: Font, icons: HudShapes, id: StringName, circle: Dictionary
 ) -> void:
 	var centre: Vector2 = circle[&"centre"]
 	var radius: float = circle[&"radius"]
@@ -728,25 +748,13 @@ func _draw_button(
 	draw_circle(centre + Vector2(3.0, 4.0), radius, _alpha(tokens.shadow, held))
 	draw_circle(centre, radius, _alpha(fill, held))
 	draw_arc(centre, radius, 0.0, TAU, 48, _alpha(tokens.outline.lightened(0.5), held), 3.0, true)
-	if id == TouchLayout.PAUSE:
-		var bar := Vector2(7.0, radius * 0.9)
-		draw_rect(Rect2(centre + Vector2(-13.0, -bar.y * 0.5), bar), _alpha(ink, held))
-		draw_rect(Rect2(centre + Vector2(6.0, -bar.y * 0.5), bar), _alpha(ink, held))
-		return
-	if id == TouchLayout.SCOREBOARD:
-		# Three rows of a table: a dot and a line each.
-		for row in 3:
-			var y := (float(row) - 1.0) * radius * 0.4
-			draw_circle(centre + Vector2(-radius * 0.45, y), 3.5, _alpha(ink, held))
-			draw_rect(
-				Rect2(centre + Vector2(-radius * 0.2, y - 2.5), Vector2(radius * 0.7, 5.0)),
-				_alpha(ink, held)
-			)
-		return
-	var px := int(radius * (0.34 if label.length() <= 4 else 0.27))
-	var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
-	var at := centre + Vector2(-width * 0.5, px * 0.35)
-	draw_string(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, px, _alpha(ink, held))
+	TouchIcons.add(icons, id, centre, radius, _alpha(ink, held), _alpha(fill, held))
+	if id == TouchLayout.INTERACT:
+		# The one control that keeps a word: what the thing in front of the player lets it do.
+		var px := int(radius * (0.34 if _interact_verb.length() <= 4 else 0.27))
+		var width := font.get_string_size(_interact_verb, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+		var at := centre + Vector2(-width * 0.5, radius * 0.5)
+		draw_string(font, at, _interact_verb, HORIZONTAL_ALIGNMENT_LEFT, -1, px, _alpha(ink, held))
 
 
 func _draw_stick(tokens: UITokens) -> void:

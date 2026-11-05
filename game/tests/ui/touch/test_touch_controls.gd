@@ -316,7 +316,6 @@ func test_the_setting_forces_the_controls_on_or_off() -> void:
 
 
 func test_the_shoulder_button_presses_swap_shoulder_and_a_quick_tap_still_lasts() -> void:
-	assert_str(TouchControls.LABELS[TouchLayout.SHOULDER]).is_equal("SIDE")
 	await _fixture.touch(0, _fixture.at(TouchLayout.SHOULDER))
 	assert_bool(Input.is_action_pressed(&"swap_shoulder")).is_true()
 	await _fixture.lift(0)
@@ -324,6 +323,201 @@ func test_the_shoulder_button_presses_swap_shoulder_and_a_quick_tap_still_lasts(
 	assert_bool(Input.is_action_pressed(&"swap_shoulder")).is_true()
 	await await_millis(200)
 	assert_bool(Input.is_action_pressed(&"swap_shoulder")).is_false()
+
+
+# --- The right thumb's buttons (#1277): every one looks while it drags ---
+
+
+## The buttons whose finger looks while it drags, less Interact (it needs a prompt).
+func _looking_ids() -> Array[StringName]:
+	var found: Array[StringName] = []
+	for row in TouchLayout.BUTTONS:
+		var id: StringName = row[0]
+		if id != TouchLayout.INTERACT and TouchLayout.looks_when_dragged(id):
+			found.append(id)
+	return found
+
+
+func test_a_finger_on_any_right_button_also_looks_while_it_drags() -> void:
+	var looks: Array[Vector2] = []
+	_fixture.controls.looked.connect(func(relative: Vector2) -> void: looks.append(relative))
+	for id in _looking_ids():
+		looks.clear()
+		var point := _fixture.at(id)
+		await _fixture.touch(0, point)
+		await _fixture.drag(0, point + Vector2(-40.0, 0.0), Vector2(-40.0, 0.0))
+		await _fixture.drag(0, point + Vector2(-40.0, 30.0), Vector2(0.0, 30.0))
+		(
+			assert_int(looks.size())
+			. override_failure_message("a drag from %s did not look" % id)
+			. is_equal(2)
+		)
+		assert_float(looks[0].x).is_less(0.0)
+		assert_float(looks[1].y).is_greater(0.0)
+		await _fixture.lift(0)
+		await await_millis(250)
+
+
+func test_a_drag_from_the_bot_wheel_picks_an_order_and_does_not_look() -> void:
+	var looks: Array[Vector2] = []
+	_fixture.controls.looked.connect(func(relative: Vector2) -> void: looks.append(relative))
+	var point := _fixture.at(TouchLayout.BOT_WHEEL)
+	await _fixture.touch(0, point)
+	await _fixture.drag(0, point + Vector2(-40.0, 0.0), Vector2(-40.0, 0.0))
+	assert_int(looks.size()).is_equal(0)
+	assert_bool(_fixture.controls.has_wheel_finger()).is_true()
+	await _fixture.lift(0)
+
+
+func test_interact_looks_while_it_drags_too() -> void:
+	var state := HudState.new()
+	_fixture.free_all()
+	_fixture = TouchFixture.make(self, TouchFixture.PHONE, state)
+	state.set_prompt(&"repair", "Boarded window", 0)
+	await get_tree().process_frame
+	var looks: Array[Vector2] = []
+	_fixture.controls.looked.connect(func(relative: Vector2) -> void: looks.append(relative))
+	var point := _fixture.at(TouchLayout.INTERACT)
+	await _fixture.touch(0, point)
+	await _fixture.drag(0, point + Vector2(0.0, -40.0), Vector2(0.0, -40.0))
+	assert_int(looks.size()).is_equal(1)
+	assert_bool(Input.is_action_pressed(&"interact")).is_true()
+	await _fixture.lift(0)
+
+
+func test_reload_and_jump_fire_on_the_press_and_hand_the_rest_of_the_drag_to_the_look() -> void:
+	var looks: Array[Vector2] = []
+	_fixture.controls.looked.connect(func(relative: Vector2) -> void: looks.append(relative))
+	for id: StringName in [TouchLayout.RELOAD, TouchLayout.JUMP]:
+		looks.clear()
+		var point := _fixture.at(id)
+		await _fixture.touch(0, point)
+		# The press has fired before the finger has moved.
+		assert_bool(Input.is_action_pressed(id)).override_failure_message(str(id)).is_true()
+		assert_int(looks.size()).is_equal(0)
+		await _fixture.drag(0, point + Vector2(-90.0, -20.0), Vector2(-90.0, -20.0))
+		assert_int(looks.size()).is_equal(1)
+		# The finger lifts after a long drag and the action lets go after its least hold.
+		await _fixture.lift(0)
+		await await_millis(250)
+		assert_bool(Input.is_action_pressed(id)).is_false()
+
+
+func test_a_look_that_begins_beside_reload_is_not_eaten_by_it_when_it_drags_across() -> void:
+	var circle := _fixture.controls.button_circle(TouchLayout.RELOAD)
+	var centre: Vector2 = circle[&"centre"]
+	# Just outside the hit area, on the side away from Fire: free ground, so a look.
+	var away := (centre - _fixture.at(TouchLayout.FIRE)).normalized()
+	var start := centre + away * (float(circle[&"hit"]) + 10.0)
+	var looks: Array[Vector2] = []
+	_fixture.controls.looked.connect(func(relative: Vector2) -> void: looks.append(relative))
+	await _fixture.touch(0, start)
+	assert_bool(Input.is_action_pressed(&"reload")).is_false()
+	# ... across Reload and out the other side: the look goes on, and nothing is pressed.
+	var at := start
+	for _step in 6:
+		var next := at - away * 60.0
+		await _fixture.drag(0, next, next - at)
+		at = next
+	assert_int(looks.size()).is_equal(6)
+	assert_bool(Input.is_action_pressed(&"reload")).is_false()
+	await _fixture.lift(0)
+
+
+func test_a_finger_in_the_margin_round_reload_presses_it_and_looks() -> void:
+	var circle := _fixture.controls.button_circle(TouchLayout.RELOAD)
+	var centre: Vector2 = circle[&"centre"]
+	var away := (centre - _fixture.at(TouchLayout.FIRE)).normalized()
+	# Past the drawn rim, inside the area a thumb may land (the fingertip floor).
+	var start := centre + away * (float(circle[&"radius"]) + 4.0)
+	assert_float(start.distance_to(centre)).is_less(float(circle[&"hit"]))
+	var looks: Array[Vector2] = []
+	_fixture.controls.looked.connect(func(relative: Vector2) -> void: looks.append(relative))
+	await _fixture.touch(0, start)
+	assert_bool(Input.is_action_pressed(&"reload")).is_true()
+	await _fixture.drag(0, start + Vector2(0.0, -50.0), Vector2(0.0, -50.0))
+	assert_int(looks.size()).is_equal(1)
+	await _fixture.lift(0)
+
+
+func test_a_look_and_a_button_finger_turn_the_view_together() -> void:
+	var looks: Array[Vector2] = []
+	_fixture.controls.looked.connect(func(relative: Vector2) -> void: looks.append(relative))
+	await _fixture.touch(0, Vector2(1500.0, 250.0))
+	var point := _fixture.at(TouchLayout.JUMP)
+	await _fixture.touch(1, point)
+	await _fixture.drag(1, point + Vector2(-30.0, 0.0), Vector2(-30.0, 0.0))
+	await _fixture.drag(0, Vector2(1560.0, 250.0), Vector2(60.0, 0.0))
+	assert_int(looks.size()).is_equal(2)
+	await _fixture.lift(1)
+	await _fixture.lift(0)
+
+
+# --- Crouch is a toggle ---
+
+
+func test_a_tap_on_crouch_crouches_and_stays_crouched_until_the_next_tap() -> void:
+	var point := _fixture.at(TouchLayout.CROUCH)
+	await _fixture.tap(point)
+	await await_millis(250)
+	assert_bool(Input.is_action_pressed(&"crouch")).is_true()
+	assert_bool(_fixture.controls.is_crouch_latched()).is_true()
+	await _fixture.tap(point)
+	await await_millis(250)
+	assert_bool(Input.is_action_pressed(&"crouch")).is_false()
+	assert_bool(_fixture.controls.is_crouch_latched()).is_false()
+
+
+func test_jump_stands_a_crouched_thumb_up_and_still_jumps() -> void:
+	await _fixture.tap(_fixture.at(TouchLayout.CROUCH))
+	await await_millis(250)
+	assert_bool(Input.is_action_pressed(&"crouch")).is_true()
+	await _fixture.touch(0, _fixture.at(TouchLayout.JUMP))
+	assert_bool(Input.is_action_pressed(&"crouch")).is_false()
+	assert_bool(Input.is_action_pressed(&"jump")).is_true()
+	assert_bool(_fixture.controls.is_crouch_latched()).is_false()
+	await _fixture.lift(0)
+
+
+func test_hiding_the_layer_lets_go_of_a_crouch() -> void:
+	await _fixture.tap(_fixture.at(TouchLayout.CROUCH))
+	await await_millis(250)
+	_fixture.controls.live = false
+	assert_bool(Input.is_action_pressed(&"crouch")).is_false()
+	assert_bool(_fixture.controls.is_crouch_latched()).is_false()
+	_fixture.controls.live = true
+
+
+# --- Icons, no words ---
+
+
+func test_every_control_shows_an_icon_and_no_caption_table_is_left() -> void:
+	for row in TouchLayout.BUTTONS:
+		assert_bool(TouchIcons.has_icon(row[0])).override_failure_message(str(row[0])).is_true()
+	for id in [TouchLayout.PAUSE, TouchLayout.PING, TouchLayout.SCOREBOARD]:
+		assert_bool(TouchIcons.has_icon(id)).override_failure_message(str(id)).is_true()
+	# The words are gone: the only one left is the interact button's verb.
+	assert_bool(_fixture.controls.get_script().get_script_constant_map().has("LABELS")).is_false()
+	for id: StringName in _fixture.controls.circles():
+		var shapes := HudShapes.new()
+		var circle: Dictionary = _fixture.controls.button_circle(id)
+		TouchIcons.add(shapes, id, circle[&"centre"], circle[&"radius"], Color.WHITE, Color.BLACK)
+		assert_bool(shapes.is_empty()).override_failure_message(str(id)).is_false()
+
+
+func test_each_icon_fits_inside_its_button() -> void:
+	for id: StringName in _fixture.controls.circles():
+		var shapes := HudShapes.new()
+		TouchIcons.add(shapes, id, Vector2.ZERO, 100.0, Color.WHITE, Color.BLACK)
+		var reach := 0.0
+		for point in shapes._points:
+			reach = maxf(reach, point.length())
+		# Inside the rim, with the stroke's own width to spare.
+		(
+			assert_float(reach)
+			. override_failure_message("%s reaches %.1f of 100" % [id, reach])
+			. is_less(100.0 * 0.95)
+		)
 
 
 func test_a_left_handed_layout_puts_the_stick_on_the_right_and_fire_on_the_left() -> void:

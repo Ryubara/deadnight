@@ -210,6 +210,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"stalls": 0,
 		"stall_longest_ms": 0.0,
 		"yaw": 0.0,
+		"crouching": false,
 		"interpolated": false,
 		"room_code": "",
 		"room_status": "",
@@ -397,6 +398,7 @@ static func snapshot(top: Control) -> Dictionary:
 	var player: Player = night_screen.night.player() if night_screen.night.server != null else null
 	if player != null:
 		data["yaw"] = player.camera_rig.yaw  # so a browser test can see the mouse turn the view
+		data["crouching"] = player.state.crouching  # the touch layer's Crouch toggle (#1277)
 		# So a browser test can see the view is the person's own soldier, not a bot's (#702).
 		data["view_is_players"] = (
 			player.get_viewport().get_camera_3d() == player.camera_rig.camera()
