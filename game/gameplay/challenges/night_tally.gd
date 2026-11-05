@@ -17,6 +17,8 @@ var _present: Dictionary[int, bool] = {}
 var _held: Dictionary[int, StringName] = {}
 var _fuel_items: Array[StringName]
 var _changes: Array[Dictionary] = []
+## The odd and together stats (a round with no shot, three boards in ten seconds).
+var _moments := NightMoments.new()
 ## The only stats counted, when not empty (the XP award counts what pays and nothing else, so a
 ## kill costs it a handful of dictionary reads, not the dozen stats the challenges keep).
 var _only: Dictionary[StringName, bool] = {}
@@ -45,6 +47,18 @@ func count(player_id: int, stat: StringName) -> int:
 	return int(mine.get(stat, 0))
 
 
+## Says what the night is played on, for the stats that need it: the shop's doors in `tuning` and
+## the map's id (`MapRegistry`; "" is the default map or what the night's settings say).
+func know(tuning: RulesTuning, map_id: String = "") -> void:
+	_moments.know(tuning, map_id)
+
+
+## Says whether a bot plays this seat, for a seat the tally was not told of (it follows a seat that
+## sat down after the night began and heard no `player_added`).
+func set_bot(player_id: int, bot: bool = true) -> void:
+	_moments.set_bot(player_id, bot)
+
+
 ## Everyone seen this night.
 func players() -> Array[int]:
 	var ids: Array[int] = []
@@ -54,6 +68,26 @@ func players() -> Array[int]:
 
 func is_present(player_id: int) -> bool:
 	return _present.get(player_id, false)
+
+
+## Whoever is in the lot now.
+func present_ids() -> Array[int]:
+	return _present_ids()
+
+
+## The weapon the player last held (`&""` for one never seen with one).
+func held_by(player_id: int) -> StringName:
+	return _held.get(player_id, &"")
+
+
+## Counts `amount` more of `stat` for the player: how `NightMoments` adds what it works out.
+func credit(player_id: int, stat: StringName, amount: int = 1) -> void:
+	_add(player_id, stat, amount)
+
+
+## Raises a best stat of the player to `value` when that is more than it was.
+func reach(player_id: int, stat: StringName, value: int) -> void:
+	_best(player_id, stat, value)
 
 
 ## Counts only `stats` from now on (an empty list counts them all again). Kill details (a zombie's
@@ -76,12 +110,14 @@ func set_present(player_id: int, here: bool = true) -> void:
 ## Forgets what this player has counted this night (a person takes the seat a bot played in).
 func forget(player_id: int) -> void:
 	_counts.erase(player_id)
+	_moments.forget(player_id)
 
 
 ## A new night: counts and who is present are forgotten; who holds what is kept (a frame says it).
 func reset() -> void:
 	_counts.clear()
 	_present.clear()
+	_moments.reset()
 
 
 func observe(event: Dictionary) -> Array[Dictionary]:
@@ -116,6 +152,8 @@ func observe(event: Dictionary) -> Array[Dictionary]:
 				_add(id, ChallengeStats.ROUNDS)
 		&"game_over":
 			_on_game_over(int(event["round_reached"]))
+	if NightMoments.LISTENS.has(event["type"]) and _only.is_empty():
+		_moments.observe(event, self)
 	return _changes
 
 

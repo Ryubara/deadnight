@@ -98,6 +98,11 @@ static func checkpoint_crossed(before: int, after: int, target: int) -> int:
 func refresh(catalog: ChallengeCatalog, day: int) -> void:
 	_prune(catalog)
 	fill_orders(catalog)
+	# Weapons used before a feat over them existed count for it (no prompt: nothing just happened).
+	for def in catalog.distinct_feats():
+		var have := mini(distinct_under(def.distinct), def.target)
+		if have > int(feats.get(def.id, 0)):
+			feats[def.id] = have
 	if day <= dealt_day:
 		return
 	dailies = []
@@ -194,9 +199,13 @@ func apply(
 	if after != before:
 		for def: ChallengeDef in catalog.ladders_over(stat):
 			_climb(def, before, after, moved)
-	for def in catalog.of_family(ChallengeDef.Family.FEAT):
-		if def.counts(stat):
-			_advance_feat(def, value, delta, moved)
+	for def: ChallengeDef in catalog.feats_over(stat):
+		_advance_feat(def, value, delta, moved)
+	# A stat with a first total is a new one under its prefix (a weapon with its first kill).
+	if before == 0 and after > 0:
+		for def in catalog.distinct_feats():
+			if String(stat).begins_with(def.distinct):
+				_advance_feat(def, value, delta, moved)
 	return moved
 
 
@@ -209,13 +218,24 @@ func feats_done(catalog: ChallengeCatalog) -> Array[StringName]:
 	return found
 
 
+## How many stats starting with `prefix` this board has a total for.
+func distinct_under(prefix: String) -> int:
+	var found := 0
+	for stat: StringName in lifetime:
+		if lifetime[stat] > 0 and String(stat).begins_with(prefix):
+			found += 1
+	return found
+
+
 ## A feat moved by the stat that just changed (the lifetime totals already hold it).
 func _advance_feat(def: ChallengeDef, value: int, delta: int, moved: Array[Dictionary]) -> void:
 	var before := int(feats.get(def.id, 0))
 	if before >= def.target:
 		return
 	var after := before
-	if not def.stats.is_empty():
+	if def.distinct != "":
+		after = distinct_under(def.distinct)
+	elif not def.stats.is_empty():
 		after = def.target
 		for each in def.stats:
 			after = mini(after, int(lifetime.get(each, 0)))

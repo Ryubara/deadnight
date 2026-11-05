@@ -27,6 +27,39 @@ const ROUNDS := &"rounds"
 const ROUND := &"round"
 ## Nights played to their end.
 const NIGHTS := &"nights"
+## Nights played to their end with another person in the lot (a bot is not one).
+const NIGHTS_TOGETHER := &"nights:together"
+## Points the player paid at the stand (a purchase's price), not points lost to a down.
+const POINTS_SPENT := &"points_spent"
+## Rounds that ended with the player on their feet and no gun fired by them in it (melee and
+## grenades are no shots).
+const ROUNDS_UNFIRED := &"rounds:unfired"
+## Rounds that ended with the player on their feet and not one kill of theirs in it.
+const ROUNDS_NO_KILLS := &"rounds:no_kills"
+## Rounds that ended with every player in the round on their feet (two or more of them).
+const ROUNDS_WHOLE := &"rounds:whole_crew"
+## Rounds that ended with the player's gun dry: the magazine empty and nothing in reserve.
+const ROUNDS_DRY := &"rounds:dry"
+## Rounds the player spent whole inside the booth.
+const ROUNDS_BOOTH := &"rounds:booth"
+## The latest round started with nothing spent at the stand all night. A best stat.
+const ROUND_UNSPENT := &"round:unspent"
+## The latest round cleared with every circuit off from its start to its end. A best stat.
+const ROUND_DARK := &"round:dark"
+## The most zombies one blast killed. A best stat.
+const BLAST_BEST := &"blast:best"
+## Three boards put up on one window by the player in a short time.
+const BOARD_RUSHES := &"board_rushes"
+## Boards put up on a window a teammate was also mending, at once.
+const BOARDS_SHARED := &"boards:shared"
+## Doors bought in the night's first half minute.
+const DOORS_EARLY := &"doors:early"
+## Nights in which the last way through opened before round five, for the lot present.
+const DOORS_ALL_EARLY := &"doors:all_early"
+## Runs of five crawlers put down with the crowbar in half a minute.
+const CRAWLER_RUNS := &"crawler_runs"
+## Times the player went down in the first seconds of a round.
+const DOWNS_EARLY := &"downs:early"
 
 const FIXED: Array[StringName] = [
 	KILLS,
@@ -44,10 +77,28 @@ const FIXED: Array[StringName] = [
 	ROUNDS,
 	ROUND,
 	NIGHTS,
+	NIGHTS_TOGETHER,
+	POINTS_SPENT,
+	ROUNDS_UNFIRED,
+	ROUNDS_NO_KILLS,
+	ROUNDS_WHOLE,
+	ROUNDS_DRY,
+	ROUNDS_BOOTH,
+	ROUND_UNSPENT,
+	ROUND_DARK,
+	BLAST_BEST,
+	BOARD_RUSHES,
+	BOARDS_SHARED,
+	DOORS_EARLY,
+	DOORS_ALL_EARLY,
+	CRAWLER_RUNS,
+	DOWNS_EARLY,
 ]
-const BEST: Array[StringName] = [ROUND]
+const BEST: Array[StringName] = [ROUND, ROUND_UNSPENT, ROUND_DARK, BLAST_BEST]
 const WEAPON_PREFIX := "kills:weapon:"
 const TYPE_PREFIX := "kills:type:"
+## Nights played to their end on a map: `nights:map:<id>`.
+const MAP_PREFIX := "nights:map:"
 
 
 ## Kills made with this catalogue weapon (`shotgun`, `crowbar`).
@@ -58,6 +109,11 @@ static func weapon_kills(weapon_id: StringName) -> StringName:
 ## Kills of this zombie type (`walker`, `brute`).
 static func type_kills(type_id: StringName) -> StringName:
 	return StringName(TYPE_PREFIX + String(type_id))
+
+
+## Nights played to their end on this map (`drive_in`, `small_indoor`).
+static func map_nights(map_id: StringName) -> StringName:
+	return StringName(MAP_PREFIX + String(map_id))
 
 
 ## True for a high-water mark: its value is the most reached, never a running total.
@@ -76,4 +132,6 @@ static func is_known(
 		return weapon_ids.has(StringName(text.trim_prefix(WEAPON_PREFIX)))
 	if text.begins_with(TYPE_PREFIX):
 		return type_ids.has(StringName(text.trim_prefix(TYPE_PREFIX)))
+	if text.begins_with(MAP_PREFIX):
+		return MapRegistry.find(text.trim_prefix(MAP_PREFIX)) != null
 	return false

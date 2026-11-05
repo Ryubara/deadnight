@@ -21,6 +21,11 @@ var _args := NetArgs.new()
 func _ready() -> void:
 	HudPortrait.live = true
 	var out := _args.get_string("out")
+	# A phone's window gets the game's own content scale (`MenuScale`), so the screen lays out as it
+	# does there: a short canvas, not the 1920 by 1080 design size shrunk.
+	var window := get_window()
+	window.content_scale_factor = MenuScale.factor(window.size, 1.0)
+	await get_tree().process_frame
 	match _args.get_string("page", "cards"):
 		"cards":
 			await _cards()

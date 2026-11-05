@@ -239,6 +239,7 @@ func _init(
 	rules = GameRules.new(p_rules_tuning, p_seed, p_settings)
 	xp = XpAward.new(NightTally.fuel_items_of(rules.tuning))
 	challenges = ChallengeAward.new(xp, NightTally.fuel_items_of(rules.tuning))
+	challenges.rules = rules
 	_probe = WorldProbe.new(world.get_world_3d().direct_space_state)
 	combat = CombatServer.new(WeaponCatalog.all(), rules, _probe.callable(), p_seed)
 	_cast = WorldCast.new(world.get_world_3d().direct_space_state)

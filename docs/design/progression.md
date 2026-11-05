@@ -381,8 +381,10 @@ hour: not a loophole. Level 10 arrives after about half an hour ([the curve](#th
   plate in the bottom-left boxes, the scoreboard, the night report and the lobby; how it works and what it costs:
   [calling cards](../research/calling-cards.md). **Built (#1071):** plate frames: the four of the ladder (Chrome 29,
   Brass 37, Neon 50, Gold 55) and three from challenges the night counts today (round 20, 25 revives, 100 nights), a
-  Frames tab on the equip screen and the frame on every plate that shows one. Not built: the frames for beating a map
-  (#1072), the odd challenges' stats and the hidden ones (#1074). Poster sets are built (#1073, below).
+  Frames tab on the equip screen and the frame on every plate that shows one. **Built (#1074):** the stats and the 19
+  feats of the odd, easy and together lists below ([the odd and together stats](#the-odd-and-together-stats)).
+  **Built (#1073):** poster sets (below). Not built: the frames for beating a map (#1072), the hidden challenges
+  (#1172).
 - Launch set: **11 tier cards and 11 tier emblems** from the ladder, and **31 challenge cards and 31 emblems**: 42 of
   each. A challenge gives a card, an emblem, a frame or a mix, as the tables say (never two gates in series). The rarity
   of a frame or card is not assumed (#1053).
@@ -456,11 +458,56 @@ A stat is a name; a challenge names one.
 | `rounds` | `round_ended`, for every player in the lot (down or not: playing always counts) |
 | `round` (best) | `round_started`, `game_over` |
 | `nights` | `game_over`, for every player still in the lot |
+| `downs` | `player_downed` |
+| `revives` | `player_revived` with a teammate's `reviver_id` (a round's end gets everyone up with a `reviver_id` of 0: nobody's) |
 
-**Not counted yet, and no challenge asks for them** (a challenge the night cannot finish is a broken promise): rescues
-(no teammate revive exists in the rules; a downed player gets up when the round ends, and `player_revived` names nobody
-who helped), weapon mastery steps (mastery is not built), lighting goals that need the circuits' state (they are the
-generator's, not a player's), and every "Together" order. Each is one stat and a data record the day its event exists.
+The odd and together stats follow below. **Not counted yet, and no challenge asks for them** (a challenge the night
+cannot finish is a broken promise): weapon mastery steps (mastery is not built), the hidden challenges (*Intermission*,
+*The long way round*, *Dead on arrival*, *Standing room only*), every challenge that needs a **win** (extraction, issue
+number 1056), and every "Together" order. Each is one stat and a data record the day its event exists.
+
+### The odd and together stats
+
+Built in #1074 as `NightMoments` (`game/gameplay/challenges/night_moments.gd`): the tally hands it the few events it
+listens to and it credits the tally, so the server, a client and a test count a night the same way. It reads no game
+object: a frame carries the tick (60 a second, `NightMoments.TICK_SECONDS`), the circuits, the doors open and every
+player's position and ammunition. An event takes the time of the last frame, a sixtieth of a second behind. A round's
+stats go to the players who were in the lot when it began, are still there and are on their feet when it ends
+(`round_ended.standing`); a seat taken over, or a player who comes in the middle of a round, counts from the next one.
+
+| Stat | Counts | Challenge |
+| --- | --- | --- |
+| `nights:map:<id>` | `game_over`, for every player in the lot, on the map the settings name (`settings_changed`; the server tells it at the start) | Out the back (`small_indoor`) |
+| `nights:together` | `game_over` with two or more **people** in the lot; a bot (`player_added.bot`) is no one | Two's company |
+| `kills:weapon:*` | **distinct**: a feat counts how many of them the account has a total for (`distinct` in the data), so any nights count | Try the lot (5) |
+| `rounds:unfired` | a round that ended with the player on their feet and no **gun** fired by them (`shot_fired` of a melee weapon is no shot; grenades are none) | Hands in pockets |
+| `round:unspent` (best) | the latest round started by a player who was there at round 1 and had spent nothing at the stand (`purchase_made.price`); a down's loss is no spending | Stingy (6) |
+| `points_spent` | the price of every `purchase_made` | (for the dailies and orders to come) |
+| `blast:best` (best) | the most dead one blast left (`blast_resolved`, new: one event after a grenade's zombie events) | Three for one (3) |
+| `board_rushes` | three boards on one window by one player in 10 s | Carpenter's rush |
+| `boards:shared` | a board put up while a teammate put one up on the same window in the last 6 s | Pit crew |
+| `doors:all_early` | the last way through opened while fewer than 5 rounds had started; for everyone in the lot | Door to door |
+| `doors:early` | a door bought in the first 30 s of the night | Early bird |
+| `round:dark` (best) | the latest round cleared with every circuit off from its start to its end (a circuit lit in it ends it) | Lights out (round 3 or later) |
+| `rounds:dry` | a round that ended with the gun in hand (not melee) at no rounds in the magazine and none in reserve | Last bullet |
+| `crawler_runs` | five crawlers put down with the crowbar in 30 s (a quick melee with a gun in hand does not count) | Whack-a-mole |
+| `rounds:booth` | a round spent whole inside the lot's booth (`data/areas.json`, a rectangle a map names; the back rooms have none) | Booth holder |
+| `downs:early` | a down in the first 5 s of a round | Fell asleep in the car |
+| `rounds:whole_crew` | a round that ended with two or more players in it, all on their feet | Whole crew |
+| `rounds:no_kills` | a round that ended with the player on their feet and no kill of theirs in it | Nobody home |
+| `revives` (night) | five in one night | Hold the line (Hand up is one) |
+
+What it costs, measured (`challenge_award_micro`: the server's tracker alone, four boards, three runs before and after).
+A kill with the four other events it comes with took 102 us before and 66 us after: it adds one lookup, one dictionary
+write and two compares to the tally, and the profile finds the feats a stat can move through an index by stat instead
+of asking all of them, which saved more than the kill pays. A burst of 120 kills in one tick: 8.5 ms median before, 5.4
+ms after. A shot costs 1.5 us before and 2.6 us after, and a frame of four players 2.9 us before and 4.2 us after (a
+frame is one a tick, 60 a second: about 80 us a second more). Every other event the stats listen to is rare (a round, a
+board, a purchase, a blast, a circuit, a down) and an event it ignores costs the same 0.42 us as before.
+
+Rules that make a stat honest: the booth is read at every frame, so one tick outside ends it; a lone player is no
+crew; the dark and the dry gun need the frame to have said the circuits and the ammunition (a night that never said
+them counts neither); a round's players are those present at its start, so a late joiner does not inherit a clear.
 
 ### The read API
 
@@ -584,8 +631,9 @@ menu, "The program": paper tickets, with progress as punch-card dots; the night'
 
 Every challenge names a stat the night counts, or says what must be added. Marks: **yes** counted today by
 `NightTally`; **line** one tally line, the event already exists; **event** something must be emitted first. A
-challenge with a **line** or **event** is not offered until its stat exists (rule 15), so the first release has
-the **yes** ones (21 of them) and the rest arrive with the stat (#1074). Challenges that need a **win** arrive with
+challenge with a **line** or **event** is not offered until its stat exists (rule 15), so the first release had
+the **yes** ones (21 of them) and the rest arrived with the stat. #1074 built the stats of every **line** and **event**
+challenge below except the hidden ones, and added them as feats (40 in all); challenges that need a **win** arrive with
 extraction (#1056).
 
 **Easy** (one night; each gives an emblem)
@@ -601,9 +649,9 @@ extraction (#1056).
 | Round five | Reach round 5 | yes |
 | Regular customer | Spend at the stand five times in one night | yes (`buys`) |
 | Pocket money | Earn 2,000 points in one night | yes |
-| Try the lot | Kill with five different weapons (any nights) | line (distinct `kills:weapon:*`) |
-| Out the back | Play a night in the back rooms | line (the map id) |
-| Two's company | Play a night with another person | line (seat count) |
+| Try the lot | Kill with five different weapons (any nights) | yes (distinct `kills:weapon:*`) |
+| Out the back | Play a night in the back rooms | yes (`nights:map:small_indoor`) |
+| Two's company | Play a night with another person | yes (`nights:together`) |
 
 **Grind** (lifetime counters, the top rung of the existing ladders; each gives a card and its emblem)
 
@@ -626,27 +674,27 @@ extraction (#1056).
 
 | Title | The act | Counted |
 | --- | --- | --- |
-| Hands in pockets | Clear a round without firing a shot | line (`shot_fired` per round) |
-| Stingy | Reach round 6 without spending a point | line (points spent, per night) |
-| Three for one | Three dead with one grenade | line (kills grouped by blast) |
-| Carpenter's rush | Mend three boards on one window within ten seconds | line (`board_repaired` times) |
-| Door to door | Open every way through before round 5 | line (doors by round) |
-| Early bird | Open a door in the first thirty seconds of a night | line (door time) |
-| Lights out | Clear round 3 with every circuit off | event (the generator's state) |
-| Last bullet | End a round with an empty magazine and nothing in reserve | event (ammo state) |
-| Whack-a-mole | Five crawlers with the crowbar within thirty seconds | line |
-| Booth holder | Stay in the booth for a whole round | event (area presence) |
-| Fell asleep in the car | Be downed in the first five seconds of a round | line |
+| Hands in pockets | Clear a round without firing a shot | yes (`rounds:unfired`) |
+| Stingy | Reach round 6 without spending a point | yes (`round:unspent`) |
+| Three for one | Three dead with one grenade | yes (`blast:best`) |
+| Carpenter's rush | Mend three boards on one window within ten seconds | yes (`board_rushes`) |
+| Door to door | Open every way through before round 5 | yes (`doors:all_early`) |
+| Early bird | Open a door in the first thirty seconds of a night | yes (`doors:early`) |
+| Lights out | Clear round 3 (or later) with every circuit off | yes (`round:dark`) |
+| Last bullet | End a round with an empty magazine and nothing in reserve | yes (`rounds:dry`) |
+| Whack-a-mole | Five crawlers with the crowbar within thirty seconds | yes (`crawler_runs`) |
+| Booth holder | Stay in the booth for a whole round | yes (`rounds:booth`) |
+| Fell asleep in the car | Be downed in the first five seconds of a round | yes (`downs:early`) |
 
 **Together** (solo-safe: never required for a level; the old rule that a solo player is dealt none stands)
 
 | Title | The act | Counted |
 | --- | --- | --- |
-| Hand up | Revive a teammate | line (`player_revived` with a reviver) |
-| Whole crew | Finish a round with everyone upright | line |
-| Pit crew | Mend a board a teammate is also mending | event |
-| Hold the line | Five revives in one night | line |
-| Nobody home | Let a round end with you having killed nothing in it | line (kills per round) |
+| Hand up | Revive a teammate | yes (`revives`) |
+| Whole crew | Finish a round with everyone upright | yes (`rounds:whole_crew`) |
+| Pit crew | Mend a board a teammate is also mending | yes (`boards:shared`) |
+| Hold the line | Five revives in one night | yes (`revives`) |
+| Nobody home | Let a round end with you having killed nothing in it | yes (`rounds:no_kills`) |
 
 **Hidden** (shown as `???` with a riddle until done): *Intermission* (stand at the stand for a whole break: event),
 *The long way round* (reach round 8 without using the second door: event), *Dead on arrival* (die in round 1: line),
