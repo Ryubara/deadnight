@@ -29,9 +29,10 @@ Postgres) makes the nights and the game servers (`deadnight-server`) run them, o
    (a preview left open follows the night by itself).
 
 Inside a Discord Activity the game opens on the main menu like anywhere else, signed in in the background
-(`?instance_id=` from Discord); **Play together** goes straight to the voice channel's lobby: the first to press it hosts,
-the others read the lobby and press **Join**. `tools/web_smoke/activity.py` checks it: the menu first, then the lobby of
-the channel with its code.
+(`?instance_id=` from Discord); **Play together** is the website's screen, with the code field and **Create a night**,
+and makes no lobby until a player presses Create; the others join by its code or link. `tools/web_smoke/activity.py`
+checks it: the menu first, then Play together with no lobby asked for, then Create makes exactly one
+(`--website` runs the same steps as the website, for the capture beside it).
 
 The server address is a developer setting: on the desktop the Play together screen has a **Server address** button
 (the old Join screen, `ws://localhost:8910` is this machine's own server), and on the web `?dev` shows it.

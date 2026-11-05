@@ -63,12 +63,16 @@ describe("platform backend, end to end", () => {
     }
   });
 
-  test("an Activity instance maps to one open lobby", async () => {
+  test("an Activity instance names no lobby: two players of one instance each make their own, a third joins one by code", async () => {
     const carol = await signIn(base, "stub:2001:carol");
     const dave = await signIn(base, "stub:2002:dave");
+    const erin = await signIn(base, "stub:2004:erin");
+    // A client from before #1178 still sends the instance id; it is ignored.
     const first = await api.createLobby(base, carol, { instanceId: "i-123" });
     const second = await api.createLobby(base, dave, { instanceId: "i-123" });
-    assert.equal(second.id, first.id);
+    assert.notEqual(second.id, first.id);
+    assert.notEqual(second.code, first.code);
+    assert.equal((await api.joinByCode(base, erin, first.code)).id, first.id);
   });
 
   test("rejects bad codes, missing sessions, full lobbies and non-hosts", async () => {
