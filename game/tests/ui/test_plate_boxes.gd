@@ -253,8 +253,9 @@ func test_a_long_name_gives_way_to_the_emblem_not_the_other_way() -> void:
 
 
 func test_the_words_keep_their_contrast_on_every_card_for_every_seat_colour() -> void:
-	# Over a card the words are outlined in the seat's colour, so each glyph sits on the colour the
-	# ink was chosen for, whatever the art behind it is.
+	# Over a card the level and the name sit on a strip of the seat's colour and the points on the
+	# tab, so each glyph is on the colour its ink was chosen for, whatever the art behind it is
+	# (test_plate_words reads the pixels).
 	var plates := PlateCatalog.shipped()
 	var hud := _hud(BIG_PARTY)
 	var worst := 99.0
@@ -265,18 +266,90 @@ func test_the_words_keep_their_contrast_on_every_card_for_every_seat_colour() ->
 				hud.state.team[OTHER]["downed"] = downed
 				hud.state.set_player_plate(OTHER, id, &"")
 				var box := _box(hud, OTHER)
-				for label: HudLabel in [box._name, box._level]:
-					assert_int(label.halo_size).is_equal(HudPlayerBox.HALO)
-					assert_bool(label.halo_colour == box.fill()).is_true()
-				# The points sit on the seat's own colour, on the tab, with no outline.
+				for label: HudLabel in [box._name, box._level, box._number]:
+					assert_int(label.halo_size).is_equal(0)
 				assert_bool(box._tab.visible).is_true()
 				assert_bool(box._tab.colour == box.fill()).is_true()
-				assert_int(box._number.halo_size).is_equal(0)
-				worst = minf(
-					worst,
-					HudPlayerBox.contrast(box.fill(), box._number.get_theme_color(&"font_color"))
-				)
+				assert_bool(box._name_tab.visible).is_true()
+				assert_bool(box._name_tab.colour == box.fill()).is_true()
+				for pair: Array in [
+					[box._name, box._name_tab.colour],
+					[box._level, box._name_tab.colour],
+					[box._number, box._tab.colour],
+				]:
+					var ink: Color = (pair[0] as Label).get_theme_color(&"font_color")
+					worst = minf(worst, HudPlayerBox.contrast(pair[1], ink))
 	assert_float(worst).is_greater_equal(HudPlayerBox.MIN_CONTRAST)
+
+
+func test_the_strip_behind_the_words_is_as_long_as_they_are_and_only_over_a_card() -> void:
+	for players in [3, BIG_PARTY]:
+		var hud := _hud(players)
+		for id in [LOCAL, OTHER]:
+			var bare := _box(hud, id)
+			assert_bool(bare._name_tab.visible).is_false()
+			hud.state.set_player_plate(id, &"cartoon", &"headliner")
+			var box := _box(hud, id)
+			var strip := Rect2(box._name_tab.position, box._name_tab.size)
+			var level := box.badge_parts["level"] as Rect2
+			var name_rect := box.name_rect()
+			var text := minf(
+				HudStyle.text_width(
+					box._name.get_theme_font(&"font"),
+					box._name.text,
+					box._name.get_theme_font_size(&"font_size")
+				),
+				name_rect.size.x
+			)
+			# From before the level to after the name's text, inside the box and its points tab.
+			assert_float(strip.position.x).is_less(level.position.x)
+			assert_float(strip.end.x).is_greater(name_rect.position.x + text)
+			assert_float(strip.end.x).is_less_equal(box._tab.position.x + box._tab.size.x)
+			assert_float(strip.end.x - HudNameTab.SLANT).is_less(
+				box._tab.position.x + HudPointsTab.SLANT
+			)
+			# Only as high as the line needs, centred in the box, so the card shows above and below.
+			assert_float(strip.size.y).is_less(box._box().size.y)
+			assert_float(strip.get_center().y).is_equal_approx(box._box().get_center().y, 0.01)
+			assert_float(strip.size.y).is_greater_equal(float(HudStyle.SMALL))
+			# The emblem and the portrait are not under it.
+			assert_float(strip.position.x).is_greater_equal(box._box().position.x)
+		hud.state.set_player_plate(LOCAL, &"", &"")
+		assert_bool(_box(hud, LOCAL)._name_tab.visible).is_false()
+
+
+func test_a_screen_where_a_unit_is_a_fraction_of_a_pixel_gets_the_heavier_type() -> void:
+	for players in [3, BIG_PARTY]:
+		var hud := _hud(players)
+		for id in [LOCAL, OTHER]:
+			hud.state.set_player_plate(id, &"cartoon", &"headliner")
+			var box := _box(hud, id)
+			# The headless window is a few pixels wide: its unit is a fraction of one.
+			box.set_thin(false)
+			var plain_name := box._name.get_theme_font(&"font") as FontVariation
+			var plain_width := box.name_rect().size.x
+			box.set_thin(true)
+			var thin_name := box._name.get_theme_font(&"font") as FontVariation
+			assert_float(thin_name.variation_embolden).is_greater(plain_name.variation_embolden)
+			(
+				assert_float(
+					(box._number.get_theme_font(&"font") as FontVariation).variation_embolden
+				)
+				. is_greater(HudPlayerBox.THIN_BOLD)
+			)
+			# Nothing else moves: the badge, the name's start and the points' right edge.
+			assert_float(box.name_rect().position.x).is_greater(0.0)
+			assert_float(box.number_right()).is_less_equal(box._box().end.x)
+			assert_float(box.name_rect().end.x).is_less_equal(box._tab.position.x + 0.01)
+			assert_float(box.name_rect().size.x).is_greater(0.0)
+			box.set_thin(false)
+			(
+				assert_float(
+					(box._name.get_theme_font(&"font") as FontVariation).variation_embolden
+				)
+				. is_equal(plain_name.variation_embolden)
+			)
+			assert_float(box.name_rect().size.x).is_equal(plain_width)
 
 
 func test_a_box_with_no_card_has_no_outline_and_no_tab() -> void:
@@ -286,7 +359,7 @@ func test_a_box_with_no_card_has_no_outline_and_no_tab() -> void:
 		assert_int(label.halo_size).is_equal(0)
 	assert_bool(box._tab.visible).is_false()
 	hud.state.set_player_plate(LOCAL, &"cartoon", &"")
-	assert_int(_box(hud, LOCAL)._name.halo_size).is_equal(HudPlayerBox.HALO)
+	assert_int(_box(hud, LOCAL)._name.halo_size).is_equal(0)
 	hud.state.set_player_plate(LOCAL, &"", &"")
 	assert_int(_box(hud, LOCAL)._name.halo_size).is_equal(0)
 	assert_bool(_box(hud, LOCAL)._tab.visible).is_false()

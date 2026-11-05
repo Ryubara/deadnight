@@ -58,16 +58,20 @@ carries the reward's XP, not the grants).
 ## The box (the maintainer's question)
 
 `HudPlayerBox` puts the card behind the **whole points box** (the issue's reading: "calling cards ... next to their
-names"). The points stay on the seat's armband colour on a tab that runs in from the right edge (`HudPointsTab`), so they
-are exactly as readable as without a card; the name and the level are drawn over the card with an outline in the seat's
-colour (`HudPlayerBox.HALO`), so every glyph sits on the colour its ink was chosen for. The order icon, level, gap, name
-is untouched (a test compares the rectangles with and without a card). Turning it into "the card replaces the portrait"
-is `HudPlayerBox._card`'s rectangle: `_box()` is the card's today, the portrait square would be `Vector2.ONE * height`.
+names"). The points stay on the seat's armband colour on a tab that runs in from the right edge (`HudPointsTab`), so
+they are exactly as readable as without a card; the level and the name sit on a strip of the same colour
+(`HudNameTab`) as long as they are, so every glyph is on the colour its ink was chosen for. The order icon, level, gap,
+name is untouched (a test compares the rectangles with and without a card). Turning it into "the card replaces the
+portrait" is `HudPlayerBox._card`'s rectangle: `_box()` is the card's today, the portrait square would be
+`Vector2.ONE * height`.
 
 A first version laid a veil of the seat's colour over the card and pulled any darker part toward it until the words had
-4.5:1; the cards came out flat brown and the armband's colour was gone, so the tab and the outline replaced it.
-Contrast with the seat's colour is held at 4.5 or more for every card, seat colour and downed state
-(`test_plate_boxes`, the same ink the box always chose).
+4.5:1; the cards came out flat brown and the armband's colour was gone, so the tab and an outline in the seat's colour
+replaced it (#1070). The outline was a ring about a pixel wide in a night on a phone and the words blurred into the
+card, so #1189 replaced it with the strip and a heavier type where a unit is under 0.6 of a pixel. The pixels, the
+numbers and what was not reachable are [Words over a card](plate-words-contrast.md). The design check (ink against the
+seat's colour, `test_plate_boxes`) holds for every card, seat colour and downed state; the pixel check is
+`test_plate_words`.
 
 **Cost.** Per frame nothing: the card and emblem are retained draw commands, and `show_player` (every kill) compares
 two ids and writes nothing when they are equal. Per join: a card builds about 60 shapes once (the clip against the
