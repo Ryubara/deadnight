@@ -43,7 +43,9 @@ const TOUCH_CONTROLS := &"controls/touch_controls"
 const TOUCH_SCALE := &"controls/touch_scale"
 const TOUCH_OPACITY := &"controls/touch_opacity"
 const HAPTICS := &"controls/haptics"
-## Touch only: how strongly the view is helped toward a zombie (0 is off, 1 the most). `AimAssist`.
+## Touch only: whether the view is helped toward a zombie (`AimAssist`, `TouchAimAssist`); a toggle,
+## on by default. On is the strength the slider gave at its far right (1.0), off is none. A file
+## saved when this was a slider (0 to 1) loads as off for 0 and on for anything else.
 const TOUCH_AIM_ASSIST := &"controls/touch_aim_assist"
 ## Touch only: 1 (the default) fires by itself while the player aims with the crosshair on a zombie
 ## and holds Aim while the thumb is on it; 0 leaves the trigger alone and makes Aim a toggle
@@ -100,7 +102,7 @@ const DEFAULTS := {
 	TOUCH_SCALE: 1.0,
 	TOUCH_OPACITY: 0.7,
 	HAPTICS: true,
-	TOUCH_AIM_ASSIST: 0.5,
+	TOUCH_AIM_ASSIST: true,
 	TOUCH_AUTO_FIRE: 1,
 	LEFT_HANDED: false,
 	TOUCH_HINTS_SEEN: 0,
@@ -128,11 +130,13 @@ const RANGES := {
 	TOUCH_CONTROLS: Vector2(0, 2),
 	TOUCH_SCALE: Vector2(0.8, 1.4),
 	TOUCH_OPACITY: Vector2(0.3, 1.0),
-	TOUCH_AIM_ASSIST: Vector2(0.0, 1.0),
 	TOUCH_AUTO_FIRE: Vector2(0, 1),
 	TOUCH_HINTS_SEEN: Vector2(0, 255),
 	MENU_SCENE: Vector2(0, 2),
 }
+
+## Flags that were numbers in an earlier file (`_sanitize_flag`).
+const WAS_A_NUMBER: Array[StringName] = [TOUCH_AIM_ASSIST]
 
 ## The audio bus each volume drives (the layout is `res://default_bus_layout.tres`).
 const BUSES := {
@@ -301,11 +305,21 @@ func _sanitize(key: StringName, value: Variant) -> Variant:
 	var fallback: Variant = DEFAULTS[key]
 	match typeof(fallback):
 		TYPE_BOOL:
-			return value if typeof(value) == TYPE_BOOL else fallback
+			return _sanitize_flag(key, value, fallback)
 		TYPE_INT, TYPE_FLOAT:
 			return _sanitize_number(key, value, fallback)
 		TYPE_STRING:
 			return _sanitize_text(value, fallback)
+	return fallback
+
+
+## A flag is a bool. The ones listed in `WAS_A_NUMBER` were a number once, and a file saved then
+## keeps its meaning: 0 is off, any other finite number is on.
+func _sanitize_flag(key: StringName, value: Variant, fallback: bool) -> bool:
+	if typeof(value) == TYPE_BOOL:
+		return value
+	if WAS_A_NUMBER.has(key) and _is_finite_number(value):
+		return float(value) != 0.0
 	return fallback
 
 
