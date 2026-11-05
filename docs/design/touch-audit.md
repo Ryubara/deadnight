@@ -127,7 +127,8 @@ the page its room while it is up. The same page and the same helpers, run on the
 Strike and Interact only when named): the most markers, counted up from one, before two meet or one is under a card or
 a button, for both hands. A count stops at its first failure, so a bigger one can still pass past it; the sizes that
 matter are pinned by `test_hud_marker_cards.gd`. The "Today" column above reads 8 at 1.0 with three diamonds where the
-suite's own constant on main (`CROWDED_HOLDS`) was 6, so compare the columns of this table with each other.
+suite's own constant on main (`CROWDED_HOLDS`) was 6, so compare the columns of this table with each other. It was
+taken with Ping beside Pause; Ping's move (#1289, next section) changes nothing on this page.
 
 | Interface size | Diamonds | Neither up | Strike up | Interact up | Strike and Interact up |
 | --- | --- | --- | --- | --- | --- |

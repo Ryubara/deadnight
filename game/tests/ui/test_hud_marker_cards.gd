@@ -100,6 +100,9 @@ func _busy_hud(canvas: Vector2, insets: Vector4, mirrored: bool, touch: bool) ->
 func _show_centre_cards(fixture: HudFixture) -> void:
 	var hud := fixture.hud
 	hud.popups.process_mode = Node.PROCESS_MODE_DISABLED
+	# The banner too: its slide in and out runs on real time, and a grid walked over a second or two of
+	# frames read it in three places (the failures of a loaded machine).
+	hud.banner.process_mode = Node.PROCESS_MODE_DISABLED
 	hud.state.set_prompt(&"buy_door", "Projection booth", 750)
 	hud.state.apply_event({"type": &"level_up", "player_id": 1, "level": 15, "total": 0})
 	await await_idle_frame()
