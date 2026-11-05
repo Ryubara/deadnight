@@ -1,8 +1,9 @@
 extends Node
 ## The plate's screens (#1070), one PNG into `--out=<file>`: `--page=cards` the equip screen,
 ## `--page=loadout` the Loadout tab's Plate row, `--page=scoreboard` the Tab board, `--page=report`
-## the night's end board, `--page=lobby` the lobby's seats. `--empty` shows the same without cards
-## or emblems (the before). Run through the no-focus launcher, not headless:
+## the night's end board, `--page=lobby` the lobby's seats, `--page=unlock` the unlock cards of a
+## card and an emblem. `--empty` shows the same without cards or emblems (the before). Run it
+## through the no-focus launcher, not headless:
 ## `gds godot -- --path game res://tests/captures/plate_screens.tscn --resolution 1920x1080
 ## -- --out=<abs>/cards.png --page=cards`. Not part of the game.
 
@@ -29,6 +30,8 @@ func _ready() -> void:
 			await _report()
 		"lobby":
 			await _lobby()
+		"unlock":
+			await _unlock()
 	for _i in 12:
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
@@ -154,3 +157,24 @@ func _lobby() -> void:
 	add_child(screen)
 	screen.watch.every = 3600.0
 	await screen.screen_enter()
+
+
+func _unlock() -> void:
+	var ground := ColorRect.new()
+	ground.color = Color("0b0b14")
+	ground.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(ground)
+	var column := VBoxContainer.new()
+	column.position = Vector2(60.0, 60.0)
+	column.add_theme_constant_override(&"separation", 24)
+	add_child(column)
+	for entry: Array in [
+		[&"calling_cards", &"calling_cards", 2],
+		[&"tier_card", &"doors_open", 5],
+		[&"tier_emblem", &"doors_open", 5],
+		[&"tier_card", &"newsreel", 15],
+		[&"emblem", &"admit_one", 2],
+	]:
+		var card := PopupCard.new()
+		card.setup(PopupQueue.Kind.UNLOCK, {"slot": entry[0], "item": entry[1], "level": entry[2]})
+		column.add_child(card)

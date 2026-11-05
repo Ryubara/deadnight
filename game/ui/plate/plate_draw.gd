@@ -5,14 +5,15 @@ extends RefCounted
 ## `EmblemArt` are built from (`PlateCompose`), as one command (`HudShapes`).
 
 
-## The card `id` in `rect`: the card keeps its proportions, fitting the rectangle's height at its
-## left, and what does not fit its width is cut by the rectangle (the shapes are clipped).
+## The card `id` in `rect`: the card keeps its proportions, fitting the rectangle's width and
+## centred in its height (what is taller than the rectangle is cut by it).
 static func card(item: CanvasItem, rect: Rect2, id: StringName) -> void:
 	var piece := PlateCatalog.shipped().piece(PlateCatalog.CARD, id)
 	if piece.is_empty():
 		return
-	var factor := rect.size.y / PlateCompose.CARD_SIZE.y
-	_draw(item, PlateCompose.card(piece), piece, rect.position, factor, rect)
+	var factor := rect.size.x / PlateCompose.CARD_SIZE.x
+	var at := rect.position + Vector2(0.0, (rect.size.y - PlateCompose.CARD_SIZE.y * factor) * 0.5)
+	_draw(item, PlateCompose.card(piece), piece, at, factor, rect)
 
 
 ## The emblem `id` in the square of side `rect`'s shorter side, centred in `rect`.

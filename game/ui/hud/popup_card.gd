@@ -27,7 +27,7 @@ const WIDTH := LEVEL_SIZE.x
 
 const ICON := 64.0
 const CHIP := 48.0
-## A calling card's chip is wider: the card keeps its proportions at the chip's height.
+## A calling card's chip is wider: the card keeps its proportions across the chip.
 const CARD_CHIP_WIDTH := 112.0
 const CHIP_INSET := 3.0
 const HOLE_RADIUS := 5.0
