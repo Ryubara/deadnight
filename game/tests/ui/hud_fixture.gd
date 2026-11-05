@@ -22,11 +22,18 @@ static func make(
 ) -> HudFixture:
 	HudPortrait.live = portraits
 	WeaponSilhouettes.live = portraits
+	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
+	host.add_child(hud)
+	return over(hud, players, seed_value, bots)
+
+
+## The same night over a HUD that already stands (a touch fixture's, wired to its controls), with
+## the portraits and silhouettes as they are.
+static func over(hud: Hud, players := 1, seed_value := 1958, bots := 0) -> HudFixture:
 	var fixture := HudFixture.new()
 	var tuning := (load(TUNING) as RulesTuning).duplicate(true)
 	fixture.rules = GameRules.new(tuning, seed_value)
-	fixture.hud = (load(Hud.SCENE) as PackedScene).instantiate()
-	host.add_child(fixture.hud)
+	fixture.hud = hud
 	var state := fixture.hud.state
 	state.special_schedule = HudSpecials.schedule_of(tuning.specials)
 	state.configure(
