@@ -182,6 +182,9 @@ jobs:
 
       - name: Run the tests (GdUnit4), this shard's scripts
         id: tests
+        # `tools/ci/warm_GdUnitCmdTool.gd` is GdUnit4's command line tool after every game script has been loaded as itself
+        # (`ScriptWarmup`): without it the scripts that only a suite names stay in use at exit, `leaked at exit` below,
+        # for some mixes of suites and not others (#1231, docs/research/test-exit-leaks.md).
         # No `-d`: with the debugger attached, the first script error stops the engine at a prompt and the job hangs.
         # `--ignoreHeadlessMode` is needed because GdUnit4 otherwise refuses to run headless; the report folder is
         # uploaded below even when a test fails.
@@ -192,7 +195,7 @@ jobs:
           python3 repos/deadnight/tools/ci_test_shards.py --root repos/deadnight/game --self-test
           read -r -a folders < <(python3 repos/deadnight/tools/ci_test_shards.py --root repos/deadnight/game --shard "${{ matrix.shard }}")
           echo "shard ${{ matrix.shard }}: ${folders[*]}"
-          "$godot" --headless --path repos/deadnight/game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd "${folders[@]}" -c --ignoreHeadlessMode --verbose 2>&1 | tee tests.log
+          "$godot" --headless --path repos/deadnight/game -s res://tools/ci/warm_GdUnitCmdTool.gd "${folders[@]}" -c --ignoreHeadlessMode --verbose 2>&1 | tee tests.log
           # Godot prints a leak after the run has finished, so only the log shows it (see the night step).
           ! grep -E "leaked at exit|still in use" tests.log
       - name: Hold the shard to its share of the job's limit
