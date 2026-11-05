@@ -7,6 +7,7 @@ extends RefCounted
 ##   board.dailies()          -> today's three, each a Dictionary (below)
 ##   board.orders()           -> the open Concession Orders
 ##   board.milestones()       -> every lifetime ladder
+##   board.poster_sets()      every poster set with its panels (below)
 ##   board.seconds_to_refresh(), board.refresh_text()   the time until the next dailies
 ##   board.swap_order(slot)   changes an order (free, unlimited) and saves
 ##   board.refresh()          call when the menu is shown again: a new day deals new dailies
@@ -169,6 +170,57 @@ func milestones() -> Array[Dictionary]:
 					"fraction": fraction,
 					"done": done,
 					"reward": def.reward,
+				}
+			)
+		)
+	return list
+
+
+## Every poster set, as the Challenges tab shows it: `{id, title, lines, palette, motif, count (the
+## panels uncovered), total, done, uncovered (their indices), card, emblem (the prize's piece ids),
+## panels}`, a panel being `{n, id, text, progress, target, fraction, done}`. A panel is uncovered
+## when its challenge is done on this board; nothing is stored for a set.
+func poster_sets() -> Array[Dictionary]:
+	var done := profile.feats_done(catalog)
+	var list: Array[Dictionary] = []
+	for poster_set in PosterSets.shipped().all():
+		var panels: Array[Dictionary] = []
+		for index in poster_set.challenges.size():
+			var def := catalog.get_def(poster_set.challenges[index])
+			if def == null:
+				continue
+			var progress := mini(int(profile.feats.get(def.id, 0)), def.target)
+			(
+				panels
+				. append(
+					{
+						"n": index + 1,
+						"id": def.id,
+						"text": def.words(),
+						"progress": progress,
+						"target": def.target,
+						"fraction": float(progress) / float(def.target),
+						"done": done.has(def.id),
+					}
+				)
+			)
+		var uncovered := poster_set.uncovered(done)
+		(
+			list
+			. append(
+				{
+					"id": poster_set.id,
+					"title": poster_set.title,
+					"lines": poster_set.lines,
+					"palette": poster_set.palette,
+					"motif": poster_set.motif,
+					"count": uncovered.size(),
+					"total": PosterSet.PANELS,
+					"done": poster_set.is_done(done),
+					"uncovered": uncovered,
+					"card": poster_set.piece(&"card"),
+					"emblem": poster_set.piece(&"emblem"),
+					"panels": panels,
 				}
 			)
 		)
