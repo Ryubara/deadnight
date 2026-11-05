@@ -74,6 +74,13 @@ two ids and writes nothing when they are equal. Per join: a card builds about 60
 box's shape is `Geometry2D.intersect_polygons`). On the wire: two keys on one `account_seated` a join, and at most
 256 short strings in a ticket. The HUD is one pass of the box's own `_draw` plus two small children.
 
+## The unlock card
+
+The popup card of an unlock (`PopupCard`, #1131) asks `LadderItem.of(slot, item)` for its picture and name, like the
+wardrobe: a tier card is `Kind.CARD` ("Cartoon calling card", the card drawn by `PlateDraw` on a wider chip), a tier
+emblem or the level 2 starting emblem `Kind.EMBLEM`, and the `calling_cards` row shows the first card. A piece the
+plate does not have keeps the letter chip and the spelled id. `test_popup_thumbnails` runs over every available row.
+
 ## What is not here
 
 - A live popup for a card or emblem earned (see above) and the client marking an online finish at once on its file.

@@ -27,6 +27,8 @@ const WIDTH := LEVEL_SIZE.x
 
 const ICON := 64.0
 const CHIP := 48.0
+## A calling card's chip is wider: the card keeps its proportions at the chip's height.
+const CARD_CHIP_WIDTH := 112.0
 const CHIP_INSET := 3.0
 const HOLE_RADIUS := 5.0
 const HOLE_GAP := 22.0
@@ -207,10 +209,11 @@ func _set_unlock() -> void:
 	if _item["kind"] == LadderItem.Kind.MAP:
 		_picture = (_item["info"] as MapInfo).preview()
 	_chip.visible = true
+	_chip.size = Vector2(CARD_CHIP_WIDTH if _item["kind"] == LadderItem.Kind.CARD else CHIP, CHIP)
 	_chip.position = Vector2(float(HudStyle.PAD_LEFT) + 2.0, (size.y - CHIP) * 0.5)
 	HudStyle.set_text(_chip_letter, "" if has_thumbnail() else PopupLadder.chip_letter(slot))
 	_chip.queue_redraw()
-	var at := _chip.position.x + CHIP + PADDING * 0.75
+	var at := _chip.position.x + _chip.size.x + PADDING * 0.75
 	var room := size.x - at - float(HudStyle.PAD)
 	_place(_caption, Rect2(at, 4.0, room, 24.0))
 	_caption.add_theme_font_size_override(&"font_size", HudStyle.SMALL)
@@ -316,7 +319,7 @@ func _add_stamp(shapes: HudShapes) -> void:
 
 ## The thumbnail on its plate, the wardrobe cell's own drawing at the size of a card's chip.
 func _draw_chip() -> void:
-	var rect := Rect2(Vector2.ZERO, Vector2(CHIP, CHIP))
+	var rect := Rect2(Vector2.ZERO, _chip.size)
 	var inner := rect.grow(-CHIP_INSET)
 	_chip.draw_rect(rect, _tokens.ink_on_accent)
 	if not has_thumbnail():
@@ -328,6 +331,10 @@ func _draw_chip() -> void:
 			ItemIcons.draw(_chip, inner, _item["slot"], _item["id"], false)
 		LadderItem.Kind.COLOUR:
 			ItemIcons.draw_chip(_chip, inner, _item["colour"], false)
+		LadderItem.Kind.CARD:
+			PlateDraw.card(_chip, inner, _item["plate"])
+		LadderItem.Kind.EMBLEM:
+			PlateDraw.emblem(_chip, inner, _item["plate"])
 		LadderItem.Kind.MAP:
 			var wide := Vector2(inner.size.x, inner.size.x * 9.0 / 16.0)
 			var at := inner.position + (inner.size - wide) * 0.5

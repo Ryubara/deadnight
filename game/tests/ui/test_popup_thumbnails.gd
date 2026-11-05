@@ -117,9 +117,43 @@ func test_the_item_is_read_from_the_registries_the_wardrobe_reads() -> void:
 
 
 func test_a_row_the_wardrobe_does_not_hold_keeps_the_letter_chip_and_the_spelled_name() -> void:
-	var card := _card(&"emblem", &"admit_one")
+	var card := _card(&"plate_frame", &"chrome")
 	assert_bool(card.has_thumbnail()).is_false()
-	assert_array(card.lines()).is_equal(["NEW EMBLEM", "Admit one"])
+	assert_array(card.lines()).is_equal(["NEW PLATE FRAME", "Chrome"])
+
+
+func test_a_card_and_an_emblem_show_their_own_art_and_the_plates_name() -> void:
+	var plates := PlateCatalog.shipped()
+	for entry: Array in [
+		[&"tier_card", &"cartoon", LadderItem.Kind.CARD, "Cartoon calling card"],
+		[&"tier_emblem", &"cartoon", LadderItem.Kind.EMBLEM, "Cartoon emblem"],
+		[&"emblem", &"admit_one", LadderItem.Kind.EMBLEM, "Admit One emblem"],
+		[&"calling_cards", &"calling_cards", LadderItem.Kind.CARD, "Calling cards"],
+	]:
+		var item := LadderItem.of(entry[0], entry[1])
+		assert_int(item["kind"]).is_equal(entry[2])
+		assert_str(item["name"]).is_equal(entry[3])
+		(
+			assert_bool(
+				plates.has(
+					PlateCatalog.CARD if entry[2] == LadderItem.Kind.CARD else PlateCatalog.EMBLEM,
+					item["plate"]
+				)
+			)
+			. is_true()
+		)
+		var card := _card(entry[0], entry[1])
+		assert_bool(card.has_thumbnail()).is_true()
+		assert_str(card.lines()[1]).is_equal(item["name"])
+	# A card's chip is wider than a square's, so the card keeps its proportions.
+	var wide := _card(&"tier_card", &"cartoon")
+	var square := _card(&"tier_emblem", &"cartoon")
+	assert_float(wide._chip.size.x).is_equal(PopupCard.CARD_CHIP_WIDTH)
+	assert_float(square._chip.size.x).is_equal(PopupCard.CHIP)
+	# Drawn: the thumbnail makes shapes (the art of a piece the plate has), and a piece it has not got
+	# is the spelled id with the letter chip.
+	var unknown := _card(&"tier_card", &"no_such_card")
+	assert_bool(unknown.has_thumbnail()).is_false()
 
 
 func test_a_name_too_long_for_the_card_is_cut_with_an_ellipsis_inside_the_card() -> void:
