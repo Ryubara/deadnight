@@ -51,3 +51,18 @@ tests. The same hole is open for any action.
 - **The look stick moves the rig on frames, not ticks**; the matrix awaits a few `process_frame`s before reading yaw.
 - **Two touch layers answer one touch.** The night screen has its own; a second one in the tree would toggle pause
   twice. `TouchFixture.attach` drives the screen's own.
+- **A held action outlives its suite (#1220).** A CI shard runs its suites one after another in one process, and
+  `Input.action_press` stays down until something releases it. `test_level_tags_online` held the scoreboard key
+  (`_hold_boards`) and never let it go; the next HUD suite to run in the shard saw a scoreboard (`Hud._process` reads
+  the key every frame), and `test_hud_refresh` counted 43 nodes made by the board rebuilding on the break's tick
+  (the heading row, four player rows of nine nodes and the cards). It passed alone and in pairs with the suite
+  before it, and failed only when a shard split put the two in one process with nothing between that releases the key.
+  Release in `after_test` (never only at the end of a test: a failed assert skips the end), and
+  `tests/core/test_input_left_clean.gd` fails a suite that presses an action in a function that does not release and
+  has no hook that does. To see which node a count is made of, print `node_added`'s path and class.
+- **A server chosen and never taken hangs the next solo night (#1220).** `NightScreen.join_url` (with `join_ticket`,
+  `join_map`, `join_as_bot`) is a static a lobby's Start fills and a night takes once when it opens. A suite that
+  stubs `LobbyScreen.opener` and calls Start fills it and no night takes it, so the next suite's solo night (the
+  first test of `test_night_menu`) joins a server that is not there: "Socket error: 111", no `ready_to_play`, and
+  the test runs into GdUnit's five minute limit while the rest of its suite passes. A suite that fills it clears it in
+  `after_test`; a suite that opens a solo night calls `RouterFixture.forget_join()` first.

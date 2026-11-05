@@ -246,9 +246,9 @@ func test_the_play_panel_shows_todays_dailies_and_asks_for_the_three_routes() ->
 		assert_str(rows[index].count_text()).is_equal(
 			MenuNav.fraction_text(dailies[index]["progress"], dailies[index]["target"])
 		)
-	for id in [&"together", &"quick_join", &"solo"]:
+	for id in [&"together", &"browser", &"solo"]:
 		panel.button(id).pressed.emit()
-	assert_array(_actions).is_equal([&"together", &"quick_join", &"solo"])
+	assert_array(_actions).is_equal([&"together", &"browser", &"solo"])
 
 
 ## A profile at the top of the ladder, for the tests that put a preset on the soldier whole.

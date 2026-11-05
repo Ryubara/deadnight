@@ -4,7 +4,7 @@ extends RefCounted
 ## stage they turn, and the one signal they use to ask the main menu to go somewhere. A panel
 ## never pushes a screen itself; the main menu decides what each action opens.
 
-## A panel asks for a route or an effect: `solo`, `together`, `quick_join`, `settings`,
+## A panel asks for a route or an effect: `solo`, `together`, `browser`, `settings`,
 ## `credits` or `quit`.
 signal action(id: StringName)
 ## Emitted just before `action`: the panel on show writes what it holds before the route leaves.

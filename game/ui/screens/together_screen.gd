@@ -1,15 +1,18 @@
 class_name TogetherScreen
 extends UIScreen
-## Play with other people: Quick join (a public night with room, straight in), Create a night (a
-## lobby of your own: `LobbyScreen`, with the code, the seats and the host's Start) and Join with a
-## code (the lobby of a friend, read first: waiting, or a night in progress). A player never sees a
+## Play with other people: the Server browser (the public nights, one press from a night:
+## `ServerBrowserScreen`), Create a night (a lobby of your own: `LobbyScreen`, with the code, the
+## seats
+## and the host's Start) and Join with a code (the lobby of a friend, read first: waiting, or a
+## night
+## in progress). A player never sees a
 ## server address; the platform backend (`TogetherApi`) makes the lobby, places the night on a game
 ## server when the host starts it and hands over a ticket.
 ##
 ## A page opened with `?room=CODE` reads that night at once (a static here is set before the screen
 ## opens). The Discord Activity gets this same screen and the same choices as the website: it makes
-## no lobby until the player presses Create, and players reach each other by a code, a link or Quick
-## join (#1178). The Activity signs in with Discord on the menu in the background
+## no lobby until the player presses Create, and players reach each other by a code, a link or the
+## Server browser (#1178). The Activity signs in with Discord on the menu in the background
 ## (`StartupSignIn`); nothing about the voice channel's instance routes a player here. The address
 ## of a game server (`JoinScreen`) is a developer setting, shown on the desktop and with `?dev` on
 ## the web.
@@ -18,7 +21,6 @@ extends UIScreen
 signal name_decided
 
 const SCREEN := "res://ui/screens/together_screen.tscn"
-const NIGHT_SCREEN := "res://ui/screens/night_screen.tscn"
 const JOIN_SCREEN := "res://ui/screens/join_screen.tscn"
 const FIELD_WIDTH := 620.0
 const CODE_LENGTH := 8
@@ -35,7 +37,7 @@ static var name_skipped := false
 static var dev_enabled := not OS.has_feature("web")
 
 var api: TogetherApi
-var quick_button: UIButton
+var browser_button: UIButton
 var create_button: UIButton
 var code_field: LineEdit
 var join_button: UIButton
@@ -48,7 +50,6 @@ var name_skip_button: UIButton
 
 var _menu: VBoxContainer
 var _naming: VBoxContainer
-var _lobby := {}
 var _busy := false
 ## In a Discord Activity: whether the window can read a gamepad (`GamepadProbe`), every second.
 var _controller_note: UILabel
@@ -104,7 +105,10 @@ func _ready() -> void:
 		dev.pressed.connect(func() -> void: UIRouter.push(JOIN_SCREEN, UITransition.Kind.SLIDE))
 		box.add_child(dev)
 	_show_menu()
-	initial_focus = get_path_to(quick_button)
+	initial_focus = get_path_to(browser_button)
+	# On a phone's canvas the fields and buttons are a fingertip high (#1197).
+	resized.connect(func() -> void: TapFloor.fit(self, TapFloor.phone_canvas(size)))
+	TapFloor.fit(self, TapFloor.phone_canvas(size))
 
 
 func _process(delta: float) -> void:
@@ -141,16 +145,19 @@ func _build_menu() -> VBoxContainer:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override(&"separation", _tokens.space_md)
 	var note := _label(
-		"Quick join puts you in a night with room. Or make a night and send the code or link to friends.",
+		(
+			"The server browser lists the nights you can join."
+			+ " Or make a night and send the code or link to friends."
+		),
 		UILabel.Style.BODY
 	)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size.x = FIELD_WIDTH
 	column.add_child(note)
-	quick_button = _button("Quick join", UIButton.Variant.PRIMARY)
-	quick_button.name = "QuickJoin"
-	quick_button.pressed.connect(_quick)
-	column.add_child(quick_button)
+	browser_button = _button("Server browser", UIButton.Variant.PRIMARY)
+	browser_button.name = "ServerBrowser"
+	browser_button.pressed.connect(_browse)
+	column.add_child(browser_button)
 	create_button = _button("Create a night", UIButton.Variant.SECONDARY)
 	create_button.name = "CreateNight"
 	create_button.pressed.connect(func() -> void: await _create("Making your night..."))
@@ -216,11 +223,13 @@ func _build_naming() -> VBoxContainer:
 # --- What the buttons do ---
 
 
-func _quick() -> void:
-	if not await _begin("Finding a night..."):
+## The list of public nights, over this screen. Its own sign-in and requests: this screen is covered
+## while
+## the list is up.
+func _browse() -> void:
+	if _busy:
 		return
-	var found := await api.quick()
-	await _finish(found)
+	ServerBrowserScreen.open(api)
 
 
 ## A lobby of your own, waiting for friends and for the host's Start.
@@ -300,30 +309,6 @@ func _decide_name(give: bool) -> void:
 	name_decided.emit()
 
 
-## An answer that is a lobby (Quick join) goes into its night; one that is not says why.
-func _finish(answer: Dictionary) -> void:
-	if not answer["ok"]:
-		_fail(answer)
-		return
-	_lobby = answer["lobby"]
-	await _enter_night()
-
-
-func _enter_night() -> void:
-	_busy = true
-	_set_enabled(false)
-	_say("Going in...")
-	var pass_to := await api.ticket(_lobby)
-	if not pass_to["ok"]:
-		_fail(pass_to)
-		return
-	NightScreen.join_url = server_url_of(pass_to, in_discord())
-	NightScreen.join_ticket = pass_to["ticket"]
-	NightScreen.remember_lobby(api, _lobby, get_tree().root)
-	_busy = false
-	UIRouter.push(NIGHT_SCREEN, UITransition.Kind.IRIS)
-
-
 func _fail(answer: Dictionary) -> void:
 	_busy = false
 	_set_enabled(true)
@@ -361,7 +346,7 @@ func _show_menu() -> void:
 
 
 func _set_enabled(enabled: bool) -> void:
-	for button: UIButton in [quick_button, create_button, join_button]:
+	for button: UIButton in [browser_button, create_button, join_button]:
 		if button != null:
 			button.disabled = not enabled
 	code_field.editable = enabled

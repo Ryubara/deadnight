@@ -40,19 +40,24 @@ func after_test() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
 
 
-## The window sizes and interface sizes to sweep, as [size, scale] pairs: every size at the usual
-## interface size, and each interface size at the sizes where it can be chosen.
+## The window sizes and interface sizes to sweep, as [size, scale, page ratio] triples: every size
+## at the usual interface size, each interface size at the sizes where it can be chosen, and the
+## canvases a phone's web page has (`UiFitRun.PAGES`: 1688 x 780 and 2532 x 1170 for an 844 x 390
+## page), which must lay out as the 844 x 390 window does.
 func _cases() -> Array:
 	var cases: Array = []
 	for size in UiFitRun.SIZES:
-		cases.append([size, 1.0])
+		cases.append([size, 1.0, 1.0])
 	for scale in DESKTOP_SCALES:
 		if scale != 1.0:
-			cases.append([Vector2i(1280, 720), scale])
+			cases.append([Vector2i(1280, 720), scale, 1.0])
 	for scale in PHONE_SCALES:
 		if scale != 1.0:
-			cases.append([Vector2i(844, 390), scale])
-			cases.append([Vector2i(667, 375), scale])
+			cases.append([Vector2i(844, 390), scale, 1.0])
+			cases.append([Vector2i(667, 375), scale, 1.0])
+	for page: Array in UiFitRun.PAGES:
+		cases.append([page[0], 1.0, page[1]])
+	cases.append([Vector2i(1688, 780), 0.8, 2.0])
 	return cases
 
 
@@ -67,7 +72,7 @@ func _assert_fits(problems: Array[String]) -> void:
 func test_every_menu_tab_fits_its_panel_between_the_header_and_the_footer() -> void:
 	var problems: Array[String] = []
 	for entry: Array in _cases():
-		await _run.set_window(entry[0], entry[1])
+		await _run.set_window(entry[0], entry[1], entry[2])
 		for tab: MenuTab.Id in MenuTab.ORDER:
 			# The usual rows, and the rows with the longest words and numbers a goal can have.
 			for extreme in [false, true]:
@@ -81,7 +86,7 @@ func test_every_menu_tab_fits_its_panel_between_the_header_and_the_footer() -> v
 func test_every_wardrobe_tab_fits_the_loadout_panel() -> void:
 	var problems: Array[String] = []
 	for entry: Array in _cases():
-		await _run.set_window(entry[0], entry[1])
+		await _run.set_window(entry[0], entry[1], entry[2])
 		var subject := await _run.open_tab(MenuTab.Id.LOADOUT)
 		var panel := (subject["shell"] as MenuShell).panel(MenuTab.Id.LOADOUT) as LoadoutPanel
 		for key in panel.wardrobe.tab_keys():
@@ -96,7 +101,7 @@ func test_every_wardrobe_tab_fits_the_loadout_panel() -> void:
 func test_every_screen_fits_the_canvas() -> void:
 	var problems: Array[String] = []
 	for entry: Array in _cases():
-		await _run.set_window(entry[0], entry[1])
+		await _run.set_window(entry[0], entry[1], entry[2])
 		for screen_name in UiFitRun.screen_names():
 			problems.append_array(_run.problems(await _run.open(screen_name)))
 	_assert_fits(problems)

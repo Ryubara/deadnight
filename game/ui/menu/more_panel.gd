@@ -50,6 +50,7 @@ func _ready() -> void:
 	UiSounds.wire_field(name_field)
 	name_field.custom_minimum_size.x = width(context.compact)
 	TouchField.fit(name_field)
+	TapFloor.fit(name_field, context.compact)
 	name_field.text = _saved_name()
 	name_field.text_submitted.connect(func(_text: String) -> void: save_name())
 	name_field.focus_exited.connect(save_name)

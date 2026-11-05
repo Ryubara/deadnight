@@ -25,21 +25,22 @@ const CAPTION := "COMING UP"
 
 var title_text: String:
 	get:
-		return _title.text
+		return _title.text if _title != null else ""
 var caption_text: String:
 	get:
-		return _caption.text
+		return _caption.text if _caption != null else ""
 var detail_text: String:
 	get:
-		return _detail.text
+		return _detail.text if _detail != null else ""
 ## How bright the name is now (0 to 1), for tests.
 var letter_light := 1.0
 
-var _caption := HudStyle.clip(
-	HudStyle.label("", HudStyle.SMALL, tokens.accent, false, HudStyle.TRACK_CAPTION)
-)
-var _title := HudStyle.label("", TITLE_SIZE, tokens.hot, true)
-var _detail := HudStyle.clip(HudStyle.label("", HudStyle.TEXT, tokens.ink))
+## The board's three lines are made the first time a special round is coming (`_build`): the part
+## is hidden the whole of a night with none, and the late-round budget counts every canvas item of
+## the tree.
+var _caption: Label
+var _title: Label
+var _detail: Label
 var _clock := 0.0
 ## The bulb step the board was last drawn at, so it is redrawn when the chase steps on.
 var _drawn_phase := -1
@@ -48,6 +49,17 @@ var _drawn_phase := -1
 func _init() -> void:
 	super()
 	accent = tokens.hot
+	visible = false
+
+
+func _build() -> void:
+	if _title != null:
+		return
+	_caption = HudStyle.clip(
+		HudStyle.label("", HudStyle.SMALL, tokens.accent, false, HudStyle.TRACK_CAPTION)
+	)
+	_title = HudStyle.label("", TITLE_SIZE, tokens.hot, true)
+	_detail = HudStyle.clip(HudStyle.label("", HudStyle.TEXT, tokens.ink))
 	body.custom_minimum_size.x = TEXT_WIDTH
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -55,7 +67,6 @@ func _init() -> void:
 	body.add_child(_caption)
 	body.add_child(_title)
 	body.add_child(_detail)
-	visible = false
 
 
 func _process(delta: float) -> void:
@@ -71,6 +82,7 @@ func refresh() -> void:
 	visible = state.phase == HudState.PHASE_BREAK and not coming.is_empty()
 	if not visible:
 		return
+	_build()
 	var title := String(coming["title"]).to_upper()
 	HudStyle.set_fitted(_title, title, TITLE_SIZE, TEXT_WIDTH, HudStyle.MEDIUM)
 	HudStyle.set_text(
