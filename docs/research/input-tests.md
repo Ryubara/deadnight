@@ -65,7 +65,28 @@ tests. The same hole is open for any action.
   stubs `LobbyScreen.opener` and calls Start fills it and no night takes it, so the next suite's solo night (the
   first test of `test_night_menu`) joins a server that is not there: "Socket error: 111", no `ready_to_play`, and
   the test runs into GdUnit's five minute limit while the rest of its suite passes. A suite that fills it clears it in
-  `after_test`; a suite that opens a solo night calls `RouterFixture.forget_join()` first.
+  `after_test`; a suite that opens a solo night calls `RouterFixture.forget_join()` first. `forget_join` also drops
+  `return_lobby` and `return_api`, which a night takes the same way.
+- **What the orders that hung were (#1220, #1212, #1234).** #1212's `godot (6)` ran `test_lobby_private`,
+  `test_map_picker`, `test_menu_grips`, `test_menu_news`, `test_night_menu`: the first test of `test_night_menu` timed
+  out at 5 minutes after one line, "Socket error: 111", the leaked join above (`test_lobby_private` was the leaker; the
+  same order with its cleanup removed and `test_night_menu`'s too hangs on the first test within 150 s, with the cleanup
+  alone it passes in 1 s). The pair `test_menu_grips`, `test_night_menu` passes by itself (13 of 13 in every run,
+  headless and in a window): `test_menu_grips` leaves nothing. A windowed session has one more cause of the same
+  symptom, the minimized window (`WindowFixture`, #1211), which `test_night_menu` handles in `before()`.
+- **Finding what a suite leaves for the next.** A throwaway probe suite (never committed) between each two suites of a
+  real shard order (`tools/ci_test_shards.py --shard N`) prints what changed since the last probe: every public
+  `static var` of the game's classes (`Script.get` reads a static; `get_script_property_list` does not list them), the engine's
+  globals, the root's children and the held actions. All nine shards of the tree of #1212 (75 suites each, 116 in the
+  last) ran green in their order with a probe after each suite (headless, 6 600 cases in all, only the renderer-reading
+  cases skipped). What it found, besides `join_url` (never left set at any suite boundary once `test_lobby_private`
+  cleans up): `join_map` and `return_lobby`/`return_api` left by `test_server_browser_screen_online`,
+  `test_lobby_preview`, `test_lobby_screen`, `test_lobby_settings_reach_the_night` and `test_lobby_private` (all call
+  `RouterFixture.forget_join()` in `after_test` now; a solo night takes them at its start in any case, so they did not
+  hang one); `ui_tab_prev`, `ui_tab_next` (`test_settings_layout`), `ui_accept` (`test_stagger_in`) and `ui_cancel`
+  (`test_menu_shell`) left held, `NightArrival.shown` set by `test_arrival_night` and `test_night_screen_end`, and
+  `TouchMode.device_is_touch` by `test_lobby_framed_fit`. The held actions and `NightArrival.shown` are fixed in #1254
+  (below), the touch flag in #1253, the join statics in #1212.
 
 ## Finding what a suite leaves for the next
 
@@ -98,4 +119,4 @@ before they fail (#1254).
   the suite's own `after_test` (`NightArrival.reset()`); find the others with the probe. The probe over all nine
   shards (#1254) found `NightArrival.shown` left by `test_arrival_night`, `test_night_screen_end` and
   `test_night_crosshair` (all reset now), no action held after any suite once the three UI suites above release, and
-  `TouchMode.device_is_touch` left by `test_lobby_framed_fit` (#1251).
+  `TouchMode.device_is_touch` left by `test_lobby_framed_fit` (fixed in #1253, #1251).
