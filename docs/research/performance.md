@@ -226,6 +226,47 @@ items as on main (a probe over the fixture), and the budget's run peaks at 215 l
 bodies (8 people, 7 bots) holds 60 more HUD canvas items (224 against 164, boxes and chips only, before the scoreboard
 or end board is up): about 275 here, which the budget's case does not cover (#1193 measures it).
 
+### Canvas items by part
+
+`--canvasparts=1` on the budget's command (headless, `--xp=1`, as CI plays it) adds each part's item count to every row
+(`canvas_parts`), and `python tools/perf/canvas_parts.py <report.json> [--markdown]` prints the steady rows' least and
+most. Round 12, 3x, four players, the same 81 steady rows, local run (CI reads about 15 higher: it is a Linux runner;
+the CI peak is the number that counts):
+
+| Part | Before | Now |
+| --- | ---: | ---: |
+| Hud/Points (four player boxes) | 46 | 46 |
+| EndBoard | 21 | 1 |
+| NightScreen touch layer | 12 | 12 |
+| Hud/Ammo, Hud/Slots | 10, 10 | 10, 10 |
+| Hud/Gains (a pool of rows) | 8 to 10 | 8 to 10 |
+| Hud columns (nine containers) | 9 | 9 |
+| Hud/Challenge | 9 | 1 |
+| Hud/Fuel, Hud/Health, Hud/Prompt | 9, 9, 9 | 9, 9, 9 |
+| Hud/Round | 8 | 8 |
+| Hud/Scoreboard | 7 | 1 |
+| Hud/Events (a pool of rows) | 3 to 6 | 3 to 6 |
+| Hud/Marquee | 6 | 1 |
+| Hud/Banner, Hud/Objective, Hud/BossBar | 5, 5, 5 | 5, 5, 1 |
+| Hud/Notices, ControllerHint, MenuPopups | 3, 2, 2 | 3, 2, 2 |
+| 14 parts of one item each | 14 | 14 |
+| **Peak of the steady rows** | **215** | **172** |
+
+What was freed is what the night builds and hides the whole of the budget's night: the end board, the challenge
+prompt, the scoreboard, the marquee and the boss bar (43 items). Each makes its words the first time it is needed (the
+end board's parts are properties whose getter builds; `HudTicket.body` makes its padding and box on first use), so a
+test (`test_hud_idle_canvas_items.gd`) holds both ends. A popup card makes the next-unlock line, the thumbnail chip and
+the poster and prizes only for the kind of card that shows them (4 to 5 items a card, not 16): a card is up for a few
+seconds and each one in a steady second counts. Not touched, with the room each would give: the player boxes'
+card, tab, frame, emblem, level icon and level (up to 4 of the 11 items of a box without a plate, #1199), the fuel
+card (8, hidden until a fuel night), and the labels the gains and events pools hold.
+
+**What the peak moves with.** On one commit the local run is the same every time (four runs, two of them at once on
+a loaded machine, the same 81 rows). What moves is the transient part: the gains and event rows (a pool that grows to
+its cap as a second has more events: 8 to 10 and 3 to 6 items) and the popup cards, whose number and kind follow the
+night's events, so a runner whose float arithmetic or timing differs by a hair lands a different event in a steady
+second. That is the spread, and the limit is set above it rather than on the peak.
+
 Teeth: the report of a run with the node limit set under the peak fails and names it (output in the pull request).
 `max_per_tick` (a counted piece of work a tick, from `PerfProbe.count`) is built in for the fixes of #930 and #931 to
 use.
