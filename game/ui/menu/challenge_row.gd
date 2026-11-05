@@ -59,6 +59,9 @@ func _init() -> void:
 	UiSounds.wire(self)
 	flat = true
 	focus_mode = Control.FOCUS_ALL
+	# A drag that starts here reaches the scroll area behind it (`UIScroll`): a button that stops the
+	# touch leaves a phone's card nothing to scroll from but its margins.
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	focus_entered.connect(queue_redraw)
 	focus_exited.connect(queue_redraw)
 	mouse_entered.connect(_on_hover)

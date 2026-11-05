@@ -38,6 +38,7 @@ func _ready() -> void:
 	card.add_child(_label("THE END CREDITS", UILabel.Style.OVERLINE))
 	card.add_child(_label("Credits", UILabel.Style.TITLE))
 	scroll = ScrollContainer.new()
+	UIScroll.use_slip(scroll)
 	scroll.name = "Scroll"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL

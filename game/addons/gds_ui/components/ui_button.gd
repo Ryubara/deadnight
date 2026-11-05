@@ -39,6 +39,9 @@ func _init() -> void:
 	_fill.anti_aliasing = true
 	_apply_tokens()
 	focus_mode = Control.FOCUS_ALL
+	# A drag that starts here reaches the scroll area behind it (`UIScroll`): a button that stops the
+	# touch leaves a phone's card nothing to scroll from but its margins.
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	theme_type_variation = UIThemeBuilder.BUTTON_STYLES[variant]
 	_back.show_behind_parent = true

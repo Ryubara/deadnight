@@ -202,6 +202,7 @@ func _ready() -> void:
 	# The panel never grows past the window: a screen taller than it (the copy field and the long
 	# link all up) scrolls rather than push Start and Leave off the bottom.
 	_scroll = ScrollContainer.new()
+	UIScroll.use_slip(_scroll)
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.follow_focus = true
 	panel.add_child(_scroll)
