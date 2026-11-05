@@ -530,6 +530,43 @@ the HUD is the phone's weapon control; the Swap and Grenade buttons are gone fro
 - **Not done here:** a first-run hint for the places (the hints label the stick, the look and Interact only); a cancel
   for a cooking grenade (the throw's other action `toss_grenade` has no touch control either).
 
+## Ping under Pause, a thumb apart (#1289)
+
+On the top edge Pause and Ping were 27 CSS px apart at the usual interface size (96 units, 0.36 CSS px a unit), a
+thumb's width: a tap meant for one could pause the night. Ping stays one small button (the phone audit keeps it: the
+one verb no element on screen already shows) and gets the room two controls need.
+
+- **Where.** Straight under Pause, in the same column. How far is a length on the glass, so it is computed from the
+  fingertip (`TouchLayout.ping_drop`, the units of 44 CSS px, `MenuScale.tap_units`): the most of 56 CSS px (9 mm at
+  6 CSS px a millimetre, and a little over), both hit areas with 6 CSS px between them, and 150 units where no fingertip
+  is known (a desktop, a test). A fixed number of units cannot do it: a unit is 0.29 CSS px at 0.8 and 0.45 at 1.25, so
+  a length that is 9 mm at one interface size is 7 or 11 mm at the others.
+- **The Scoreboard button** stood under Pause. #1287 takes it away (the players' column holds the board); until it
+  lands it stands right of Pause, the same length from it, so it is reachable and clear of Ping (the three hit areas
+  share no margin). Its place goes with #1287.
+- **The stick's zone** starts below the bottom of Ping's hit area (`TouchLayout.stick_zone(safe, mirrored, below)`,
+  `TouchControls._stick_zone`) where that is lower than the fifth of the height it always began at (0.8 on an 844 page:
+  81 units, 23 CSS px, lower): a thumb that starts the stick never lands on the button above it.
+- **The move hint** (`TouchHints`) is put through the same search for a free place as the look hint, and the search
+  reads the layer's own circles (with the fingertip rule) instead of laying the buttons out again: on a short canvas
+  (864 units) Ping's circle reached the hint's pill.
+- **Measured in the exported page** (`tools/web_smoke/touch_ping_place.py`, real touches through the DevTools
+  protocol, a solo night, `?touch=1`, ratio 2): the centres are 56.1 to 56.3 CSS px apart at 0.8 and 1.0 and 65.1 to
+  67.7 at 1.25 (the 66 unit hit area floor of every small button is wider than the fingertip there), the hit areas have
+  7.8 to 12.1 CSS px between them, and a finger walked down the line from just under Pause to below Ping, every 4 CSS px,
+  holds Ping inside its hit area and nothing in the gap and never pauses; a finger on the edge of Pause that faces Ping
+  pauses the night and holds no Ping. Nine runs (844 x 390 and 667 x 375, both hands, interface sizes 0.8, 1.0 and
+  1.25), no problem. `test_touch_ping_place` holds the layout (distance, air, top edge, clear of the HUD's parts and the
+  popup lane, the stick zone) at every page, interface size, touch size and hand, and the real touches at the edges.
+- **Marker capacity** (`test_hud_marker_cards.gd`'s procedure, one marker on each card, the most of 1 to 10 that none
+  meet each other, a card or a button), the 667 x 375 page, with Ping at its old place and its new one: the same at every
+  row, the right side of the screen being what bounds it. 0.8: 10+ for 3 and 1 diamonds, Interact up or not. 1.0: 3
+  diamonds 6 (6 with Interact up), 1 diamond 10+. 1.25: 3 diamonds 3 (3), 1 diamond 5 (4). On the 844 x 390 page one
+  row moved: at 1.25 with 3 diamonds the page held 10+ and holds 8 (with Interact up, 10+ as before); the test's own
+  count there is eight (`EIGHT`), so it still passes. The numbers in the audit page's table
+  (docs/design/touch-audit.md, #1291) are the 667 rows of this list; its "today" row for 1.0 with 3 diamonds, 8, was
+  taken before the weapon strip (#1284), which made it 6.
+
 ## Sources
 
 - [Apple HIG, Layout](https://developer.apple.com/design/human-interface-guidelines/layout)
