@@ -5,6 +5,7 @@ import type { Config } from "./config.ts";
 import { type DiscordClient, DiscordUnavailable } from "./discord.ts";
 import { RateLimit } from "./limits.ts";
 import { type Lobby, LobbyFailure, type LobbyLimits, LobbyService, MAX_PLAYERS } from "./lobbies.ts";
+import { LIST_PER_WINDOW, LIST_WINDOW_MS, listNights } from "./lobby_list.ts";
 import { chooseName, firstUsable } from "./names.ts";
 import { DEFAULT_MAP, SETTINGS_KEYS } from "./settings.ts";
 import { GameServerRegistry } from "./servers.ts";
@@ -72,6 +73,7 @@ const LOBBY_STATUS: Record<string, number> = {
   not_started: 409,
   not_member: 403,
   bad_settings: 400,
+  bad_visibility: 400,
 };
 
 function sameSecret(given: string, expected: string): boolean {
@@ -331,22 +333,27 @@ export function buildApp(deps: Deps): FastifyInstance {
     return { userId: user.id, name: user.name };
   };
 
-  app.post<{ Body: { maxPlayers?: number } }>(
+  // A new night is public (listed in the Server Browser) unless its host says `visibility: "private"` here or later
+  // (`PUT /lobbies/:id/visibility`). `maxPlayers` counts people: bots hold no seat.
+  app.post<{ Body: { maxPlayers?: number; visibility?: "public" | "private" } }>(
     "/lobbies",
     {
       onRequest: requireUser,
       schema: {
         body: {
           type: "object",
-          properties: { maxPlayers: { type: "integer", minimum: 1, maximum: MAX_PLAYERS } },
+          properties: {
+            maxPlayers: { type: "integer", minimum: 1, maximum: MAX_PLAYERS },
+            visibility: { type: "string", enum: ["public", "private"] },
+          },
         },
       },
     },
     async (request, reply) => {
       // Always a new lobby, on the website and in a Discord Activity alike: players reach each other by code, link or
       // Quick join, never by the Activity instance they share (#1178).
-      const { maxPlayers = MAX_PLAYERS } = request.body ?? {};
-      return reply.code(201).send(lobbyView(lobbies.create(await member(request.userId), maxPlayers)));
+      const { maxPlayers = MAX_PLAYERS, visibility = "public" } = request.body ?? {};
+      return reply.code(201).send(lobbyView(lobbies.create(await member(request.userId), maxPlayers, visibility)));
     },
   );
 
@@ -381,6 +388,14 @@ export function buildApp(deps: Deps): FastifyInstance {
     },
   );
 
+  // The Server Browser: the public nights to join, waiting or in progress, with their people (bots not counted) out of the
+  // cap. Anyone signed in may look; it joins nobody (join by the row's `code`). Polled, so it is limited per account.
+  const listLimit = new RateLimit(LIST_PER_WINDOW, LIST_WINDOW_MS, deps.now);
+  app.get("/lobbies", { onRequest: requireUser }, async (request, reply) => {
+    if (!listLimit.allow(request.userId)) return reply.code(429).header("Retry-After", String(LIST_WINDOW_MS / 1000)).send({ error: "too_many_requests" });
+    return { maxPlayers: MAX_PLAYERS, ...listNights(lobbies) };
+  });
+
   app.get<{ Params: { id: string } }>("/lobbies/:id", { onRequest: requireUser }, async (request) => {
     return lobbyView(lobbies.view(request.params.id, request.userId));
   });
@@ -394,6 +409,13 @@ export function buildApp(deps: Deps): FastifyInstance {
     lobbies.leave(request.params.id, request.userId);
     return reply.code(204).send();
   });
+
+  // The host makes the night private (not listed, not handed to a stranger; its code still joins) or public again.
+  app.put<{ Params: { id: string }; Body: { visibility?: unknown } | undefined }>(
+    "/lobbies/:id/visibility",
+    { onRequest: requireUser },
+    async (request) => lobbyView(lobbies.setVisibility(request.params.id, request.userId, request.body?.visibility)),
+  );
 
   // The host sets the night's rules while the lobby waits; the other members read them on their next poll. The body is
   // the settings themselves: `{count_multiplier, max_alive, break_seconds}`.
@@ -501,7 +523,8 @@ export function buildApp(deps: Deps): FastifyInstance {
             capacity: { type: "integer", minimum: 0 },
             // The matches the server is running now; one it stops listing (after a grace) counts as ended.
             matchIds: { type: "array", maxItems: 1024, items: { type: "string", minLength: 1, maxLength: 64 } },
-            // How many players each match has now (match id to count), for the lobby's room left.
+            // How many PEOPLE each match has now (match id to count, bots not counted: they hold no seat), for the
+            // lobby's room left and the Server Browser's row.
             players: { type: "object", maxProperties: 1024, additionalProperties: { type: "integer", minimum: 0, maximum: 64 } },
             // The round each match is in now (match id to round number), for a late joiner's "night in progress, round N".
             rounds: { type: "object", maxProperties: 1024, additionalProperties: { type: "integer", minimum: 0, maximum: 10000 } },

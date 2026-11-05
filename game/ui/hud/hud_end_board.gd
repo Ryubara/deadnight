@@ -80,8 +80,13 @@ var _title := HudStyle.label(TITLE, HudStyle.BIG, _tokens.danger, true, 2.0)
 var _round_label := HudStyle.label("", HudStyle.MEDIUM, _tokens.hot, true)
 var _caption := HudStyle.label("", HudStyle.SMALL, _tokens.ink_muted, false, 2.0)
 var _number := HudStyle.label("", HudStyle.NUMERAL, _tokens.accent, true)
-var _count := VBoxContainer.new()
-var _way_out := BoxContainer.new()
+## The left column, and (made when a screen is too short for the report, #1192) the row that holds
+## the countdown beside Leave. A row built for every board would be two canvas items more in every
+## night the late-round budget plays.
+var _left: VBoxContainer
+var _beside_row: HBoxContainer
+var _beside_count: VBoxContainer
+var _beside := false
 var _ticket := HudTicket.new()
 var _grid := VBoxContainer.new()
 var _insets := Vector4.ZERO
@@ -152,23 +157,15 @@ func _build_left() -> Control:
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_child(spacer)
-	# The countdown and the way out: one over the other, or side by side on a screen too short for
-	# the report (`_fit_report`).
-	_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_count.add_theme_constant_override(&"separation", HudStyle.SM)
-	_count.add_child(_caption)
-	_count.add_child(_number)
-	_way_out.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_way_out.vertical = true
-	_way_out.add_theme_constant_override(&"separation", HudStyle.SM)
-	_way_out.add_child(_count)
+	left.add_child(_caption)
+	left.add_child(_number)
 	leave_button = UIButton.new()
 	leave_button.variant = UIButton.Variant.PRIMARY
 	leave_button.text = "Leave"
 	leave_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	leave_button.pressed.connect(func() -> void: leave_pressed.emit())
-	_way_out.add_child(leave_button)
-	left.add_child(_way_out)
+	left.add_child(leave_button)
+	_left = left
 	return left
 
 
@@ -223,9 +220,11 @@ func show_credits(input: Dictionary) -> void:
 ## The height the report's ticket has: what the screen leaves besides the rest of the left column
 ## (read as it is laid out: the title's type fits one line, the countdown's type steps down).
 func report_room() -> float:
-	# A gap of the column lies between every two of its five parts (the spacer is one).
+	# A gap of the column lies between every two of its parts (the spacer is one): seven, or five
+	# with the countdown beside Leave.
 	var taken := float(HudStyle.SM)
-	for part: Control in [_title, _round_label, _way_out]:
+	var way_out: Array[Control] = [_beside_row] if _beside else [_caption, _number, leave_button]
+	for part: Control in [_title, _round_label] + way_out:
 		taken += part.get_combined_minimum_size().y + float(HudStyle.SM)
 	var margins := float(HudStyle.margin()) * 2.0 + _insets.y + _insets.w
 	return size.y - margins - taken
@@ -265,11 +264,7 @@ func _fit_report() -> void:
 		report_card.show_report(_report)
 		return
 	for beside: bool in [false, true]:
-		_way_out.vertical = not beside
-		_way_out.add_theme_constant_override(&"separation", HudStyle.LG if beside else HudStyle.SM)
-		leave_button.size_flags_vertical = (
-			Control.SIZE_SHRINK_END if beside else Control.SIZE_FILL
-		)
+		_set_beside(beside)
 		_set_number_size(HudStyle.NUMERAL)
 		report_card.show_report(_report, report_room())
 		var over := report_card.height() - report_room()
@@ -283,6 +278,35 @@ func _fit_report() -> void:
 			report_card.show_report(_report, report_room())
 		if report_card.height() <= report_room():
 			return
+
+
+## The countdown over Leave (the column's own order), or beside it in a row made the first time.
+func _set_beside(beside: bool) -> void:
+	if beside == _beside or _left == null:
+		return
+	_beside = beside
+	var focused := leave_button.has_focus()
+	if beside:
+		if _beside_row == null:
+			_beside_row = HBoxContainer.new()
+			_beside_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_beside_row.add_theme_constant_override(&"separation", HudStyle.LG)
+			_beside_count = VBoxContainer.new()
+			_beside_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_beside_count.add_theme_constant_override(&"separation", HudStyle.SM)
+			_beside_row.add_child(_beside_count)
+		_left.add_child(_beside_row)
+		_caption.reparent(_beside_count, false)
+		_number.reparent(_beside_count, false)
+		leave_button.reparent(_beside_row, false)
+		leave_button.size_flags_vertical = Control.SIZE_SHRINK_END
+	else:
+		_left.remove_child(_beside_row)
+		for part: Control in [_caption, _number, leave_button]:
+			part.reparent(_left, false)
+		leave_button.size_flags_vertical = Control.SIZE_FILL
+	if focused:
+		leave_button.grab_focus()
 
 
 func _set_number_size(size_px: int) -> void:
@@ -328,10 +352,11 @@ func order() -> Array[int]:
 func row_height() -> float:
 	if size.y <= 0.0 or _members.is_empty():
 		return ROW_HEIGHT
-	if _crew.is_empty():
-		return clampf(_each(), MIN_ROW_HEIGHT, ROW_HEIGHT)
+	if not _credits_shown():
+		return clampf(_room() / float(_members.size()), MIN_ROW_HEIGHT, ROW_HEIGHT)
 	# The credits' row is cut first; what it cannot give up (its floor) comes off the players'.
-	return clampf(_each() - credits_row_height(), MIN_ROW_HEIGHT, ROW_HEIGHT)
+	var credits := credits_row_height() * float(_crew_members(order()).size())
+	return clampf((_room() - credits) / float(_members.size()), MIN_ROW_HEIGHT, ROW_HEIGHT)
 
 
 ## The height one row of the credits has, from the same room (`row_height`): its share of what each
@@ -339,20 +364,60 @@ func row_height() -> float:
 func credits_row_height() -> float:
 	if size.y <= 0.0 or _members.is_empty():
 		return HudCredits.ROW
-	return clampf(_each() * (1.0 - _player_share()), HudCredits.MIN_ROW, HudCredits.ROW)
+	var ratio := HudCredits.ROW / ROW_HEIGHT
+	var unit := _room() / (float(_members.size()) + float(_crew_members(order()).size()) * ratio)
+	return clampf(unit * ratio, HudCredits.MIN_ROW, HudCredits.ROW)
 
 
-## What the screen leaves for each player: both tickets' rows when the credits are up.
-func _each() -> float:
-	var room := size.y - float(HudStyle.margin()) * 2.0 - CHROME_HEIGHT
-	if not _crew.is_empty():
+## What the screen leaves for the rows of the tickets: the credits' chrome comes off when up.
+func _room() -> float:
+	var room := size.y - float(HudStyle.margin()) * 2.0 - CHROME_HEIGHT - _extra_gaps()
+	if _credits_shown():
 		room -= HudCredits.CHROME + float(HudStyle.MD)
-	return room / float(_members.size())
+	return room
 
 
-## The part of a player's room the players' ticket takes; the credits' row has the rest.
-func _player_share() -> float:
-	return ROW_HEIGHT / (ROW_HEIGHT + HudCredits.ROW)
+## The gaps between the players' rows that `CHROME_HEIGHT` does not hold: it was measured with eight
+## rows, and the bots (#1179) add rows past them.
+func _extra_gaps() -> float:
+	return float(maxi(_members.size() - NightHost.MAX_PLAYERS, 0) * HudStyle.XS)
+
+
+## Whether the credits are on the board: given, and with room for every row at its floor. Past
+## eight bodies (the bots on top of the eight people, #1179) a short screen has not, and the
+## players' ticket keeps the room.
+func _credits_shown() -> bool:
+	if _crew.is_empty():
+		return false
+	if size.y <= 0.0 or _members.is_empty():
+		return true
+	var room := size.y - float(HudStyle.margin()) * 2.0 - CHROME_HEIGHT - _extra_gaps()
+	room -= HudCredits.CHROME + float(HudStyle.MD)
+	var floors := float(_members.size()) * MIN_ROW_HEIGHT
+	floors += float(_crew_members(order()).size()) * HudCredits.MIN_ROW
+	return room >= floors
+
+
+## The players the credits are for: everyone, and past eight bodies the people alone (a bot is no
+## crew, and fifteen credits would not fit anywhere).
+func _crew_members(ids: Array[int]) -> Array[int]:
+	var out: Array[int] = []
+	var people_only := _members.size() > NightHost.MAX_PLAYERS
+	for id in ids.slice(0, NightHost.MAX_SEATS):
+		if not (people_only and bool(_members[id].get("bot", false))):
+			out.append(id)
+	return out
+
+
+## What the night counted, for the players the credits are for (a bot's counts must not take a
+## title from a person).
+func _crew_input(ids: Array[int]) -> Dictionary:
+	var keep := _crew_members(ids)
+	var counts := {}
+	for id: int in _crew.get("counts", {}) as Dictionary:
+		if keep.has(id):
+			counts[id] = _crew["counts"][id]
+	return {"counts": counts, "xp": _crew.get("xp", {})}
 
 
 func _set_margins() -> void:
@@ -387,21 +452,25 @@ func _rebuild() -> void:
 	rows_text.clear()
 	row_ids.clear()
 	row_levels.clear()
-	for id in ids.slice(0, NightHost.MAX_PLAYERS):
+	for id in ids.slice(0, NightHost.MAX_SEATS):
 		var cells := _cells(id)
 		row_ids.append(id)
 		row_levels.append(int(_members[id].get("level", 0)))
 		rows_text.append(cells)
 		_grid.add_child(_player_row(id, cells, height))
 	_ticket.update_minimum_size()
-	if not _crew.is_empty():
-		credits_card.show_credits(_shown_members(ids), _crew, _local_id, credits_row_height())
+	if _credits_shown():
+		credits_card.show_credits(
+			_shown_members(ids), _crew_input(ids), _local_id, credits_row_height()
+		)
+	else:
+		credits_card.hide_card()
 
 
-## The members the board draws (`ids`), for the credits.
+## The members the credits are for (`_crew_members`).
 func _shown_members(ids: Array[int]) -> Dictionary:
 	var shown := {}
-	for id in ids.slice(0, NightHost.MAX_PLAYERS):
+	for id in _crew_members(ids):
 		shown[id] = _members[id]
 	return shown
 
@@ -468,12 +537,18 @@ func _player_row(id: int, cells: Array[String], height: float) -> Control:
 		if i == cells.size() - 1:
 			room -= clear
 		var label := HudStyle.clip(HudStyle.label("", HudStyle.MEDIUM, _tokens.ink, i > 0))
+		# A line of type is never taller than its row (a label's height is its font's): a short
+		# screen with a full night (fifteen bodies, #1179) gets smaller type before a taller ticket.
+		var text_size := HudStyle.MEDIUM
+		var font := label.get_theme_font(&"font")
+		while text_size > HudStyle.MIN_TEXT and font.get_height(text_size) > height:
+			text_size -= 2
 		label.custom_minimum_size = Vector2(room, height)
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		label.horizontal_alignment = (
 			HORIZONTAL_ALIGNMENT_LEFT if i == 0 else HORIZONTAL_ALIGNMENT_RIGHT
 		)
-		HudStyle.set_fitted(label, cells[i], HudStyle.MEDIUM, room - float(HudStyle.SM))
+		HudStyle.set_fitted(label, cells[i], text_size, room - float(HudStyle.SM))
 		if i == 0:
 			row.add_child(HudLevelCell.wrap(label, shown, _tokens.ink, height, emblem))
 		else:

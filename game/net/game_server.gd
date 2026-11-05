@@ -172,11 +172,11 @@ func room_of_match(match_id: String) -> NightHost:
 	return _rooms.get(match_id)
 
 
-## Players in each room, as a `{match id: count}` for the heartbeat.
+## People in each room (bots not counted), as a `{match id: count}` for the heartbeat.
 func players_by_match() -> Dictionary:
 	var out := {}
 	for match_id: String in _rooms:
-		out[match_id] = _rooms[match_id].player_count()
+		out[match_id] = _rooms[match_id].people_count()
 	return out
 
 

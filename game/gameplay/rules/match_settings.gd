@@ -20,8 +20,8 @@ const AUTO := 0
 ## The explicit break: at least a second.
 const MIN_BREAK := 1.0
 const MAX_BREAK := 120.0
-## Bots the night seats beside the people: none to `MAX_BOTS`. In a room they take only the seats
-## people leave free (`NightBots.target`).
+## Bots the night seats beside the people: none to `MAX_BOTS`. They hold no seat of the eight
+## people's (#1179): a room seats the setting however many people are in it (`NightBots.target`).
 const MIN_BOTS := 0
 const MAX_BOTS := 7
 ## How well the bots play: an index into `BotProfile`'s three skills (`BotProfile.for_skill`).
@@ -70,8 +70,8 @@ const OPTIONAL_KEYS: Array[String] = ["map", "bots", "bot_skill", "perk_limit"]
 @export_range(0.0, 120.0, 1.0) var break_seconds: float = 0.0
 ## The id of the map the night is played on (`MapRegistry`); only a map that can be played is taken.
 @export var map: String = MapRegistry.DEFAULT
-## Bots at the start of the night, 0 to `MAX_BOTS`. Solo seats this many beside the person; a room
-## seats as many as the people leave seats free, and a person who joins takes a bot's seat.
+## Bots at the start of the night, 0 to `MAX_BOTS`. Solo and a room seat this many beside the
+## people, in ids of their own (`NightBots.FIRST_ID`); a person who joins takes no bot's place.
 @export_range(0, 7, 1) var bots: int = MIN_BOTS
 ## How well every bot of the night plays: `SKILL_ROOKIE`, `SKILL_REGULAR` or `SKILL_VETERAN`.
 @export_range(0, 2, 1) var bot_skill: int = DEFAULT_SKILL
