@@ -45,7 +45,7 @@ the inner detail disappears and the ink rim stays. No texture is loaded, so noth
 lesson of `LevelIcons`) and the same code is sharp at any size. The free choices (a face, a hair style, a mouth) are
 their names on a plate: eight mouths are told apart by name.
 
-**Phone.** The cells are 104 by 114 units (colours 84 by 100), 62 units being the least a finger gets, the ten tabs fit
+**Phone.** The cells are 104 by 114 units (colours 84 by 100), 64 units being the least a finger gets, the ten tabs fit
 one row (7 units of padding, 22-unit type), and the grid scrolls under the detail line. The weapon row of the Loadout
 tab sits on the Body tab there, so the other tabs have the whole panel.
 

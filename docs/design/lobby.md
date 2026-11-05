@@ -80,7 +80,7 @@ longer starts the night. It opens the **lobby** with the player as host:
   scrolled back to the row if Start still fits under it, `LobbyPrivateSwitch.reveal`). Off is a public night, in the
   Server Browser; on, only the code gets in. The host's press goes to the backend at once (`PUT
   /lobbies/:id/visibility`, one request at a time, the last press wins, Start waits for it) and works from the keyboard,
-  a gamepad and a finger (a 62 unit row, a tap target); it stays the host's after the start. A guest sees the same
+  a gamepad and a finger (a 64 unit row, a tap target); it stays the host's after the start. A guest sees the same
   switch, read only, and is told when the host moves it (*Ann made the night private.*) on their next poll. A backend
   that says nothing of `visibility` shows no switch.
 - **Start the night** (primary, focused) and **Leave** (ghost). A line under the seats says what is going on:

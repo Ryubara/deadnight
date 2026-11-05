@@ -120,7 +120,7 @@ func test_the_host_has_the_switch_and_it_can_be_reached_by_every_device() -> voi
 	assert_bool(screen.private_switch.editable).is_true()
 	assert_bool(screen.private_switch.toggle.focus_mode == Control.FOCUS_ALL).is_true()
 	assert_bool(screen.private_switch.toggle.mouse_filter == Control.MOUSE_FILTER_STOP).is_true()
-	# A finger's height: a tap target of the menu (62 units), not the control's 52.
+	# A finger's height: a tap target of the menu (64 units), not the control's 52.
 	assert_float(screen.private_switch.toggle.size.y).is_greater_equal(MenuLook.TAP_TARGET - 0.5)
 	assert_float(screen.private_switch.row.size.y).is_greater_equal(MenuLook.TAP_TARGET - 0.5)
 	screen.free()

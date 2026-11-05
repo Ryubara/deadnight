@@ -17,9 +17,9 @@ const DESIGN := Vector2(1920.0, 1080.0)
 ## The least size of anything pressed on a touch screen, in CSS pixels, which is what a finger
 ## meets (the written minimum). On a phone's page one CSS pixel is the page's pixel ratio (2, capped
 ## by `PhoneRender`) pixels of the window: 844 x 390 CSS px is a 1688 x 780 window. The menu's
-## `MenuLook.TAP_TARGET` is the same size: 62 units at the menu's phone factor (0.36 CSS px a unit
-## at the interface size, so 0.72 at the factor) is 44.8 CSS px. A night runs at the interface size
-## alone: 44 CSS px are 122 units there.
+## `MenuLook.TAP_TARGET` is the same size: 64 units at the menu's phone factor (0.36 CSS px a unit
+## at the interface size, so 0.72 at the factor; 0.694 on the narrowest page, 667 x 375) is 46.2 CSS
+## px (44.4 there). A night runs at the interface size alone: 44 CSS px are 122 units there.
 const TAP_PIXELS := 44.0
 ## The least size of the words a finger-held screen shows, in CSS pixels (the written floor).
 const TEXT_PIXELS := 14.0
