@@ -305,7 +305,7 @@ and which take speaks; the table of moments, takes and ranks is `SoldierVoiceCat
 | `power_on` (5), `power_low` (4) | `fuel_restored`; `fuel_low` or `fuel_empty` |
 | `grenade` (5), `boss_arrive` (5), `boss_dead` (4) | `grenade_thrown`; the boss's spawn; the boss's death |
 | `idle` (5) | quiet: five seconds with nothing said in a break that has eight more seconds to run, or ten seconds of a round with no dead within 30 m |
-| `level_up`, `tier_up`, `unlock`, `challenge_done`, `poster_set`, `card`, `emblem`, `first_game` (3 each) | the **progression cheers** (#1063): a level, a tier, an unlock, a challenge (the line after the record scratch), a poster set, a card, an emblem or a frame, the first game of the day; `SoldierVoice.celebrate(moment, speaker)`, heard by every client |
+| `level_up`, `tier_up`, `unlock`, `challenge_done`, `poster_set`, `card`, `emblem`, `first_game` (3 each) | the **progression cheers** (#1063): a level, a tier, an unlock, a challenge (the line after the record scratch), a poster set (the server's `poster_set_done`, #1073: weight 4, over a tier and over the challenge that finished it), a card, an emblem or a frame, the first game of the day; `SoldierVoice.celebrate(moment, speaker)`, heard by every client |
 
 - **One voice at a time.** A line owns the channel until it ends and a half second more; a request that meets a busy
   channel is dropped, never queued: a bark is about the moment it was said in. The teammates share the channel with the

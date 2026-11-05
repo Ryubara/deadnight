@@ -200,6 +200,15 @@ func apply(
 	return moved
 
 
+## The feats this board shows as done, in file order: what a poster set's panels are read from.
+func feats_done(catalog: ChallengeCatalog) -> Array[StringName]:
+	var found: Array[StringName] = []
+	for def in catalog.of_family(ChallengeDef.Family.FEAT):
+		if int(feats.get(def.id, 0)) >= def.target:
+			found.append(def.id)
+	return found
+
+
 ## A feat moved by the stat that just changed (the lifetime totals already hold it).
 func _advance_feat(def: ChallengeDef, value: int, delta: int, moved: Array[Dictionary]) -> void:
 	var before := int(feats.get(def.id, 0))

@@ -86,5 +86,60 @@ plate does not have keeps the letter chip and the spelled id. `test_popup_thumbn
 - A live popup for a card or emblem earned (see above) and the client marking an online finish at once on its file.
 - A local night (solo) never tells the HUD its player's level (no event seats the local account), so the player's own box
   shows no level and no card there; that needs `night.gd`, which is at the line limit.
-- The hidden challenges and the odd ones that need events the night does not count (#1074), poster sets (#1073) and
-  frames (#1071, #1072) are their own issues.
+- The hidden challenges and the odd ones that need events the night does not count (#1074) and frames (#1071, #1072) are
+  their own issues. Poster sets are [below](#poster-sets-1073).
+
+## Poster sets (#1073)
+
+[The design](../design/progression.md#poster-sets): six feats themed as a fake film, each one done uncovers a panel of
+its poster, all six win a calling card and an emblem. The data is one file, `gameplay/challenges/data/poster_sets.json`
+(id, title, the lines the poster prints, a palette and a motif, the six feat ids and `grants` in the same
+`card:<id>` / `emblem:<id>` as a challenge's); `PosterSets` reads it and `PosterSet` is one set.
+
+- **Nothing is stored.** A panel is uncovered when the board's `feats[id]` reached the target
+  (`ChallengeProfile.feats_done`, so the Challenges tab reads the board and nothing else), a set is finished when its six
+  are, and `PlateCatalog` gives the set's two pieces to anyone whose `Profile.done` holds all six
+  (`owns` for a piece whose source is `{set}`). So the prize is granted once however often a board is read, the save
+  round-trips with the board, the server's ticket check (`PlateTable`, which reads `done`) needs no change, and the
+  protocol stays 15. `test_poster_sets` pins it.
+- **What a set may list.** `PosterSets.problems` fails a set that names a challenge that is not a feat, one in two
+  sets, a stat the night does not count (`ChallengeStats.is_known`) or one that needs a crowd (`revives`), a palette or
+  a motif nobody has, or not six. The count was taken from the data before it was written down: 21 feats, so two sets
+  of six use 12 and nine are left over; the design's "two sets of the 21" is that. Adding a set is a record in the
+  file, two pieces in `plate_pieces.json` and a test count.
+- **The art.** `PosterCompose` builds a 300 by 450 poster from the cards' own parts (`PlateShapes`, `PlateMotifs`,
+  `PlatePalettes`): a ground, a sunburst of dark rays, stars, a hill, a disc of light, the set's large motif (a new `bolt`
+  and the existing `crosshair`) and a band for the title, in the palette's four roles; `PosterArt` draws it as one
+  command (`HudShapes`) and puts the title (display face) and a cover with its number over each panel not uncovered.
+  The two sets are two palettes and two motifs. `tests/captures/poster_sets.tscn` draws the sheet.
+- **The tab.** `ChallengesPanel` has a `Poster sets` chip (`Family.SETS`). `PosterSetView` is the whole set (the poster
+  at 250 units, the title, how far it is as punches, the six numbered rows, "Finish the set" with the card and the
+  emblem; on a phone the poster is 150 units beside the title and the rows go under it) and the teaser (a 56 unit
+  poster, the title, the punches) that All shows after Today and that opens the chip when pressed. A view is a button
+  so a pad walks it. Its height is computed from the fonts (`_height`): a container that holds a set is asked for its
+  size before the set is in the tree, where a `MarginContainer` reports zero, and a `Button` never asks its children.
+- **Telling a finish, once.** The set's finish is an event, `poster_set_done` (`PosterSets.event_of`):
+    - *Online*, the game server's `ChallengeAward` adds it after the `challenge_done` of the sixth feat (the id is in
+      `board.finished`, so it is said once), every client hears it, the popup lane shows it for its own player, and
+      `SoldierVoice` cheers it as `poster_set` for everyone. `ChallengeSession` notes it in the ledger
+      (`ProgressSeen.set_key`, `set:<id>`) as it hears it.
+    - *Solo* (the rules run here, no server follows the board), `ChallengeSession` finds the set the finished feat
+      completes in its own board and emits `set_finished`; `ChallengeHudLink` gives it to the HUD and the ledger is
+      noted. A solo night has no challenge cheer from the server either, so it has no set cheer (the same gap as
+      `challenge_done`).
+    - *In the menu*, `ProgressNews.finished_keys` lists a finished set among the finished challenges (`set:<id>`), so
+      the read at sign-in tells a set the cache lacked (a night the server played, another machine) and not one the
+      night showed live (the ledger) or one a solo night finished (the cache has it): `test_poster_sets` runs the three.
+- **The cheer.** `poster_set` has weight 4 in `SoldierVoiceCatalog.CHEER_WEIGHT`, over `tier_up` (3) and over
+  `challenge_done`, whose weight stays the maintainer's 2: the set arrives with the challenge that finished it and
+  with the tier its XP may cross, and is the rarest thing a player does, so the one cheer a window says is the set's.
+  The three takes already existed (#1063).
+- **The card.** `PopupQueue.Kind.SET`: the poster (56 units), `POSTER SET DONE`, the title and the prize's card and
+  emblem, with the tier card's chasing bulbs; it holds as long as a tier card, is as important as one when the queue
+  overflows and sounds the card cue.
+- **Cost.** Per frame nothing: the poster and the prize are retained commands. A finish of a feat asks
+  `PosterSets.completed_by` (a search of two sets); the 12 feats of the sets are checked only when they finish.
+
+What is not here: a poster for the nine feats outside the sets, the poster's panels animating as they uncover (the
+covers change on the next read of the board), a solo cheer, and feats in the menu's news (a finished feat on its own is
+not told by the menu; the set it completes is).

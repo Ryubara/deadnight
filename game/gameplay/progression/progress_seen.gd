@@ -56,6 +56,11 @@ static func challenge_key(family: int, id: StringName, day: int) -> String:
 	return "%s:%s" % ["order" if family == ChallengeDef.Family.ORDER else "milestone", id]
 
 
+## The key a finished poster set is told by: its id, once ever.
+static func set_key(id: StringName) -> String:
+	return "set:%s" % id
+
+
 ## A live card for `level` was shown (or sent for) to the signed-in player: remembered. Does
 ## nothing without a file or an account.
 static func note_level(level_reached: int, account_id: String = TogetherApi.account_id()) -> void:
@@ -77,6 +82,18 @@ static func note_challenge(
 	if not seen.bind(account_id):
 		return
 	var key := challenge_key(family, id, day)
+	if seen.told.has(key):
+		return
+	seen.told[key] = true
+	seen.save()
+
+
+## A live card for a finished poster set was shown to the signed-in player: remembered.
+static func note_set(id: StringName, account_id: String = TogetherApi.account_id()) -> void:
+	var seen := open()
+	if not seen.bind(account_id):
+		return
+	var key := set_key(id)
 	if seen.told.has(key):
 		return
 	seen.told[key] = true

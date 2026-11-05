@@ -379,8 +379,8 @@ hour: not a loophole. Level 10 arrives after about half an hour ([the curve](#th
   40 are a week of art, not 40 paintings; emblems are drawn once each.
 - **Built (#1070):** cards and emblems, the 21 feats that give them, the equip screen (Loadout tab, the Plate button), the
   plate in the bottom-left boxes, the scoreboard, the night report and the lobby; how it works and what it costs:
-  [calling cards](../research/calling-cards.md). Not built: frames (#1071, #1072), poster sets (#1073), the odd
-  challenges' stats and the hidden ones (#1074).
+  [calling cards](../research/calling-cards.md). Not built: frames (#1071, #1072), the odd challenges' stats and the
+  hidden ones (#1074). Poster sets are built (#1073, below).
 - Launch set: **11 tier cards and 11 tier emblems** from the ladder, and **31 challenge cards and 31 emblems**: 42 of
   each. A challenge gives a card, an emblem, a frame or a mix, as the tables say (never two gates in series). The rarity
   of a frame or card is not assumed (#1053).
@@ -667,6 +667,19 @@ and in the night report when finished. Every challenge in a set is one the night
 the generator" and "kill with shock" need their stats first), so the first release has two sets from the 21 counted
 challenges and sets arrive as their stats do. Posters are composed from shared parts like the cards, and sets are
 solo-safe (no Together challenge in one). Build: #1073.
+
+**Built (#1073).** Two sets of six, made of 12 of the 21 feats the night counts (the other nine wait for sets of
+their own, as the stats of #1074 arrive): *Attack of the Fifty-Foot Generator* (a fuel can, ten boards, a door, five
+buys in a night, 150 fuel cans, 1,000 boards; a card and an emblem in teal and gold) and *Revenge of the Headliners* (a
+headshot, a grenade kill, 100 headliners, 1,000 melee kills, 1,000 grenade kills, 1,500 headshots; cherry). The panels
+run from the easy challenge to the long one. The mock's own "restart the generator" and "kill with shock" need stats
+the night does not count, so they are not offered (rule 15). A set is **read, never stored**: a panel is uncovered
+when its feat is done, the set is finished when all six are, and the prize is owned from the finished challenges
+(`PlateCatalog`: a piece with `{set}` as its source), so the prize comes once and a retune needs no migration. A set
+is the gate of its own card and emblem (new pieces; each feat in it still gives what it gave). The Challenges tab has a
+**Poster sets** chip with each set whole (its poster, the six rows, the prize) and a teaser of each in All after Today;
+a finished set is a card of the popup lane (live, and in the menu when it was finished away from a night, once). How
+it works and what was measured: [poster sets](../research/calling-cards.md#poster-sets-1073).
 
 ## The night report and credits
 

@@ -18,6 +18,10 @@ extends RefCounted
 ##                       move worth saying (a quarter mark, a ladder's step), never every kill.
 ##   challenge_done      player_id, id, family, text, target, rung, rungs, reward (the definition's
 ##                       dictionary: `xp`), once for a challenge finished.
+##   poster_set_done     player_id, id, title, card, emblem (`PosterSets.event_of`): after the
+##                       `challenge_done` of the last of a poster set's six, so once for a set.
+##                       The prize is owned from the finished challenges (`PlateCatalog`), not
+##                       from here.
 ## A finished challenge pays its XP to the seat's `XpAward` (the source `challenge`) and is listed
 ## in the next report (`fill_report`: the ids it finished, and the board as the tracker holds it).
 
@@ -51,6 +55,8 @@ var enabled := true
 var catalog: ChallengeCatalog
 ## The day the dailies are dealt for: the server's (UTC), the clock the XP award uses.
 var clock: ChallengeClock
+## The poster sets a finish may complete. Null: the shipped ones.
+var sets: PosterSets
 
 var _xp: XpAward
 var _fuel_items: Array[StringName]
@@ -258,6 +264,11 @@ func _finish(board: Board, advance: Dictionary) -> void:
 			}
 		)
 	)
+	var poster_sets := sets if sets != null else PosterSets.shipped()
+	var poster_set := poster_sets.completed_by(id, board.profile.feats_done(catalog))
+	if poster_set != null:
+		_out.append(poster_sets.event_of(poster_set, player_id))
+		PerfProbe.count(&"challenge.told")
 	_xp.add_xp(player_id, int(reward.get("xp", 0)), XpAward.CHALLENGE)
 
 
