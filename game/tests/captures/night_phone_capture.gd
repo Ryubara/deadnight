@@ -57,6 +57,14 @@ func _run() -> void:
 	await screen.night.ready_to_play
 	if screen.night.is_arriving():
 		await screen.night.arrival_ended
+	# The show's black bars (7.5% of the height at the top and the bottom, `ArrivalCutscene.BAR_SHARE`)
+	# and its fade stay for 0.45 s after `arrival_ended`, stepped by the physics clock: a shot taken
+	# in that time shows bands a night does not have (#1261). Wait until the show has gone.
+	var show_node: Node = screen.night.arrival_show
+	var guard := 0
+	while is_instance_valid(show_node) and guard < 600:
+		await get_tree().physics_frame
+		guard += 1
 	var window := get_window()
 	var per_unit := MenuScale.pixels_per_unit(window.size, window.content_scale_factor)
 	var ratio := float(_args.get("ratio", 2.0))
