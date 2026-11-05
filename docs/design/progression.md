@@ -338,8 +338,9 @@ to win the night; the edge is audited with a seeded bot night so it stays inside
   own colours, free) beside the player's own colours from the palette they have unlocked ("costumes in their default
   colors will have a Default option, and the users will have the ability to choose their own colors"). A costume is
   dark with `???` and hover instructions until the player owns every piece, lit after. Four costumes use starting
-  pieces only, so a new player has a quick start. Equipping a costume sets the look; the player may then change any
-  part they own.
+  pieces only, so a new player has a quick start. *(Built in #1066, [Customization](customization.md#costumes): the
+  data has two such costumes, Soda jerk and Carhop, not four; the maintainer is asked.)* Equipping a costume sets
+  the look; the player may then change any part they own.
 - **Built (#1065):** `LookUnlocks` asks a gate `{"level": n}`, and the part and palette gates are read from
   `unlocks.json` (the same table, extended with a `part` key on each wearable's row; `LookCatalog.part_gates()`,
   `palette_gates()`). The saved look and the wire format are unchanged (an index per part); a look wearing something
@@ -757,6 +758,9 @@ menus (`MenuPopups`); how it works, and what the tests measure, is
 - **A finished challenge** is a card of the lane (so the prompt on the left edge says only the steps) unless the player
   turned the cards off: then the prompt says the finish as before.
 - **Setting:** `Level-up popups` in Settings, Accessibility: All, Big ones only (level, tier, challenge), Off.
+- **In the menu (#1130):** the lane also shows what the account earned while this machine was away (a level, a
+  finished challenge, read at sign-in) and never what the night already showed
+  ([the research page](../research/popup-lane.md#what-tells-the-menus-lane-1130)).
 
 ## Voice lines
 

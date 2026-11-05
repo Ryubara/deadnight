@@ -19,6 +19,11 @@ func _init(session: ChallengeSession, hud: Hud, settings: SettingsService = null
 
 
 func _on_advanced(advance: Dictionary) -> void:
+	if advance.get("completed", false):
+		# The lane or the prompt shows it now: the menu must not show it again (`ProgressSeen`).
+		ProgressSeen.note_challenge(
+			int(advance.get("family", 0)), StringName(advance.get("id", &""))
+		)
 	var event := advance.duplicate()
 	event["type"] = HudChallenge.EVENT
 	_hud.state.apply_event(event)

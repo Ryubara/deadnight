@@ -52,10 +52,36 @@ static func has(slot: StringName, id: StringName) -> bool:
 static func draw(
 	canvas: CanvasItem, rect: Rect2, slot: StringName, id: StringName, locked: bool
 ) -> void:
-	var shapes := _shapes_of(slot, id)
+	_paint(canvas, rect, _shapes_of(slot, id), locked)
+
+
+## A costume: a figure in its colours (`skin`, `hair`, `main`, `second`, `trim`), or its silhouette.
+static func draw_costume(
+	canvas: CanvasItem, rect: Rect2, colours: Dictionary, locked: bool
+) -> void:
+	_paint(canvas, rect, _costume_shapes(colours), locked)
+
+
+## A costume's own colours as three bands: the "Default" option. `alpha` fades it when there is no
+## costume to restore.
+static func draw_swatches(canvas: CanvasItem, rect: Rect2, colours: Array, alpha := 1.0) -> void:
+	var shapes: Array = []
+	for i in colours.size():
+		var top := 14.0 + 72.0 * float(i) / colours.size()
+		var bottom := 14.0 + 72.0 * float(i + 1) / colours.size()
+		var colour: Color = colours[i]
+		colour.a = alpha
+		shapes.append(_shape([14, top, 86, top, 86, bottom, 14, bottom], colour))
+	_paint(canvas, rect, shapes, false, alpha)
+
+
+static func _paint(
+	canvas: CanvasItem, rect: Rect2, shapes: Array, locked: bool, alpha := 1.0
+) -> void:
 	var side := minf(rect.size.x, rect.size.y)
 	var unit := side / PLATE
 	var origin := rect.position + (rect.size - Vector2.ONE * side) * 0.5
+	var ink := Color(INK, alpha)
 	if locked:
 		# One flat shape: every outline first, a stroke twice as wide, then every fill over it.
 		for shape: Dictionary in shapes:
@@ -68,7 +94,7 @@ static func draw(
 	for shape: Dictionary in shapes:
 		if shape.has("fill"):
 			canvas.draw_colored_polygon(_placed(shape["points"], origin, unit), shape["fill"])
-			_outline(canvas, shape["points"], origin, unit, INK, OUTLINE)
+			_outline(canvas, shape["points"], origin, unit, ink, OUTLINE)
 		else:
 			canvas.draw_polyline(
 				_placed(shape["points"], origin, unit),
@@ -162,6 +188,24 @@ static func _build(slot: StringName, id: StringName) -> Array:
 		&"neck":
 			return _neck(id)
 	return []
+
+
+static func _costume_shapes(colours: Dictionary) -> Array:
+	var main: Color = colours.get("main", CREAM)
+	var second: Color = colours.get("second", CHARCOAL)
+	var trim: Color = colours.get("trim", GOLD)
+	var skin: Color = colours.get("skin", TAN)
+	var hair: Color = colours.get("hair", BROWN)
+	return [
+		_shape([32, 62, 68, 62, 72, 94, 54, 94, 50, 74, 46, 94, 28, 94], second),
+		_shape(
+			[34, 32, 66, 32, 88, 46, 80, 60, 70, 54, 70, 68, 30, 68, 30, 54, 20, 60, 12, 46], main
+		),
+		_shape([30, 62, 70, 62, 70, 68, 30, 68], trim),
+		_shape([40, 32, 50, 44, 60, 32], trim),
+		_shape(_oval(50, 18, 11, 12), skin),
+		_shape(_oval(50, 15, 12, 11, PI, TAU), hair),
+	]
 
 
 static func _headwear(id: StringName) -> Array:

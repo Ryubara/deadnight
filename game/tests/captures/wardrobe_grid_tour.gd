@@ -5,7 +5,8 @@ extends Control
 ## Run it through the no-focus launcher, with a window the size of the layout:
 ## `gds godot -- --path game res://tests/captures/wardrobe_grid_tour.tscn --windowed
 ## --resolution 1920x1080 -- --out=<folder> --label=<name> --level=12 [--phone] [--tabs=a,b,c]
-## [--hover]`. `--hover` moves a real mouse over the first locked cell of each tab.
+## [--hover] [--wear=<costume index>]`. `--hover` moves a real mouse over the first locked cell of
+## each tab; `--wear` puts a costume on first (#1066: the Costumes tab and the Default colours).
 
 const STEP := 1.0 / 30.0
 const SETTLE := 0.9
@@ -17,6 +18,7 @@ var _level := 1
 var _phone := false
 var _tabs: PackedStringArray = []
 var _hover := false
+var _wear := -1
 var _shell: MenuShell
 
 
@@ -34,6 +36,8 @@ func _ready() -> void:
 			_phone = true
 		elif arg == "--hover":
 			_hover = true
+		elif arg.begins_with("--wear="):
+			_wear = int(arg.get_slice("=", 1))
 	DirAccess.make_dir_recursive_absolute(_out)
 	Settings.path = FILE
 	Settings.reset_defaults()
@@ -54,6 +58,8 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_shell.tab_bar.button(MenuTab.Id.LOADOUT).pressed.emit()
 	var panel := _shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
+	if _wear >= 0:
+		panel.wardrobe.wear_costume(_wear)
 	if _tabs.is_empty() or not panel.wardrobe.has_method("show_tab"):
 		await _snap("loadout")
 	else:

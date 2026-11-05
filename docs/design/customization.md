@@ -4,21 +4,24 @@ How a player dresses their character and how the others see it. The look itself 
 presets) is defined in [Characters](characters.md); this page is the screen, the saved form,
 the wire form and the rules that keep teammates readable. Cosmetics only: nothing here changes a night
 ([progression](progression.md#wardrobe-costumes-and-the-locks): the grid, `???` locks, costumes and mouths).
+Costumes are [below](#costumes).
 
 ## The screen
 
 **Loadout** on the main menu opens the wardrobe: the soldier on the menu's stage, and beside it a strip of tabs
-(Body, Hair, Hats, Tops, Legs, Shoes, Eyes, Neck, Colours) with the choices of the tab in a grid under it (#1065).
+(Costumes, Body, Hair, Hats, Tops, Legs, Shoes, Eyes, Neck, Colours) with the choices of the tab in a grid under it
+(#1065, #1066).
 
 ![The Tops tab at level 12, a locked item under the pointer](../research/wardrobe-grid-tops.png)
 
 | Part | What it does |
 | --- | --- |
 | Tab strip | A press shows the tab; the pad and the keys walk the strip (a tab is shown when it is pressed, not when the focus passes it) |
-| Body tab | The character (Male, Female), the preset row (kept until costumes, #1066), the face, the mouth and the skin colour |
+| Costumes tab | The twelve presets as costumes: lit when the player owns every piece, a `???` silhouette until then ([Costumes](#costumes)) |
+| Body tab | The character (Male, Female), the face, the mouth and the skin colour (the old Preset row is the Costumes tab now) |
 | Hair tab | Hair style and hair colour |
 | Hats, Tops, Legs, Shoes, Eyes, Neck | One grid each (Neck also holds the armband). The wearables of the ladder, **the starting pieces first and then up the ladder by level**; the slots that may be empty start with a slashed "None" |
-| Colours tab | Main, second and trim colour: one cloth palette of 16, three grids |
+| Colours tab | The costume's **Default** option, then main, second and trim colour: one cloth palette of 16, three grids |
 | Detail line | What the pointer or the focus is on: the name and what a press does, or `???` and how to get it |
 | Randomize | A look made only of what the player has unlocked |
 | Save / Back | On its own screen, Save writes the look; Back (or Esc, gamepad B) leaves and drops unsaved changes, and the footer says which. In the main menu's Loadout tab there is no Save: the look and the showcase weapon are kept while the tab is open and written once when the player leaves it |
@@ -42,12 +45,40 @@ the inner detail disappears and the ink rim stays. No texture is loaded, so noth
 lesson of `LevelIcons`) and the same code is sharp at any size. The free choices (a face, a hair style, a mouth) are
 their names on a plate: eight mouths are told apart by name.
 
-**Phone.** The cells are 104 by 114 units (colours 84 by 100), 62 units being the least a finger gets, the tabs fit one
-row, and the grid scrolls under the detail line. The weapon row of the Loadout tab sits on the Body tab there, so the
-other tabs have the whole panel.
+**Phone.** The cells are 104 by 114 units (colours 84 by 100), 62 units being the least a finger gets, the ten tabs fit
+one row (7 units of padding, 22-unit type), and the grid scrolls under the detail line. The weapon row of the Loadout
+tab sits on the Body tab there, so the other tabs have the whole panel.
 
 Input: a cell is one focus stop. Left, right, up and down walk the grid (the engine's nearest-control walk); up from the
 first row goes to the tab on show; down from a tab goes to the page's first cell; accept wears.
+
+## Costumes
+
+The twelve presets of `parts.json` are the costumes (`Costumes`, #1066). A costume is a whole look: its pieces, its face
+and hair, its colours. Nothing new is saved: wearing one sets an ordinary look, so the save and the wire are unchanged.
+
+- **Lit or `???`.** A costume is the player's when they own **every piece** of it (`LookUnlocks.owns_costume`); until then
+  its cell is the silhouette of its figure, its name `???`, and the pointer or the focus reads `??? - Reach level 20
+  (you are level 12)`, the level of the last piece they lack. A press on it is refused like any locked cell: no fitting
+  room. The grid runs the starting costumes first, then up the ladder.
+- **Equipping.** A press on a lit costume sets the whole look (the soldier shows it at once, the worn one has a check).
+  The player may then change any part they own. The costume on the character is found by its pieces (body, headwear, top,
+  legs, shoes, eyewear, neckwear, armwear: `Costumes.of_look`), so the face, the hair, the mouth and the colours can be
+  changed and it is still that costume.
+- **Default colours.** A costume's colours are data on the preset. The Colours tab starts with a **Default** option
+  that gives the costume on the character its own main, second and trim colour back (skin and hair colour stay the
+  player's). It is dim, and says "wear a costume to give it its own colours back", while no costume is on. The player's
+  own colours come from the palette they have unlocked, as always.
+- **Default needs none of the colour unlocks.** A costume may default to a colour the ladder opens later (the Usher's gold
+  trim is level 42; the costume is level 20). `CharacterLook.without_locked` keeps the three cloth colours of a costume
+  the player owns **while the look wears all three** (`CharacterLook.default_costume`), on load, on Save and on the server.
+  Change one of the three and the others fall back to the palette the player owns, at once on the screen. A locked
+  colour that is worn as a Default shows lit, not as a padlock, so the grid never says `???` over a colour on the
+  soldier. The grid of the palette itself is not widened: gold is still level 42 in every channel for anyone choosing it.
+- **Which costumes a new player has.** Only two presets are made of starting pieces (Soda jerk and Carhop). The plan said
+  four ([progression](progression.md#wardrobe-costumes-and-the-locks)); no four can be made of the ladder as it is, and
+  that is an open question for the maintainer (#1066): re-dress two presets in starting pieces, open two pieces at level
+  1, or keep two.
 
 ## Saved and sent
 
@@ -97,7 +128,7 @@ animation tree and the weapon mount work as before; until a look arrives a body 
   `{"order": name}` (a challenge's reward, none yet). The table is the ladder's `unlocks.json`
   (`game/gameplay/progression/`, the one table the level popups and the maps read too), read by `LookCatalog`
   (`part_gates()`, `palette_gates()`): a part or colour it does not name is free. A preset may wear gated pieces
-  (costumes, #1066, will be made of them); one put on a player is repaired by what they own.
+  (they are the [costumes](#costumes)); one put on a player is repaired by what they own.
 - **A look is repaired to what its wearer owns.** `CharacterLook.without_locked` puts a piece the player does not own back
   to **the first piece of the slot that they may wear** (a vest, sneakers, trousers, no hat) and a colour to the first
   they may use (black), on load (`LookStore.load_look`, the level read from the profile file), on Save, and on the server
@@ -112,6 +143,7 @@ animation tree and the weapon mount work as before; until a look arrives a body 
 | `character_look.gd`, `look_resolver.gd`, `look_unlocks.gd`, `look_store.gd` | the look as data, duplicate handling, gates, saving |
 | `character_assembler.gd` | builds a model from a look and a seat |
 | `game/net/look_wire.gd`, `look_server.gd`, `look_registry.gd` | the messages, the server side, the client table |
+| `game/gameplay/character/costumes.gd` | the presets as costumes: the pieces, the level, the costume a look wears, the Default colours |
 | `game/ui/screens/customize_screen.gd`, `look_preview.gd` | the wardrobe: the tabs, the pages, the detail line |
 | `game/ui/wardrobe/wardrobe_cell.gd`, `wardrobe_tab.gd`, `item_icons.gd` | a cell of the grid, a tab of the strip, the drawings |
 | `game/gameplay/progression/unlocks.json` | the ladder: what each level gives (the wardrobe's rows are the wearables and `colour`) |

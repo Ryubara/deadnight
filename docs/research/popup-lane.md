@@ -55,12 +55,39 @@ high, a column of width 0). The lane reads the rectangle of a part above it only
 tests wait a frame (`await_idle_frame`) before they measure or step a lane; the lane's own `_process` is switched off
 in them so the frames they wait for do not also move it.
 
+## What tells the menu's lane (#1130)
+
+`MenuPopups.announce(events)` is called by the places that learn of progress while no night is up. Each one turns
+what it learned into the events the night tells (`XpAward.crossing` makes the level, tier and unlock events for
+both), so the cards are the night's cards.
+
+| Source | Wired | How |
+| --- | --- | --- |
+| A profile read at sign-in at a higher level than the cache | yes | `ProfileUplink.adopt_and_tell`: the levels between the cache's (or the ledger's, if higher) and the account's |
+| A finished challenge on the account's board that the cache lacks (#1124) | yes | `ChallengeUplink.sync_after_sign_in`: today's dailies, open and settled orders, ladders at their last step |
+| The XP of a signed-in solo night (#1122, #1123) | nothing to wire | credited live and shown live in the night; the cache holds it, so the next read finds nothing new (a test pins it) |
+| A brand-new player's first Solo account (#1122) | no | waits on the maintainer's decision |
+
+**Never twice.** `ProgressSeen` (`user://progress_seen.json`, the account's highest level told and the finished
+challenges a night's HUD showed) is written by the night's own HUD as it shows a card (`NightHudBinding` for a
+level, `ChallengeHudLink` for a finish) and read when the account's data is read. A read tells only what is above the
+cache and the ledger, and then empties the challenge part: the cache is the account's from then on. A cache that is
+not this account's (a new machine, another account) is no baseline, so a first read tells nothing. What the menu
+learns while a night is up waits (`MenuPopups` keeps it) and shows when the night's screen is gone.
+
+**Proof from a real source.** `tests/net/test_menu_news_online.gd` runs the real backend: a returning Guest signs in
+(`StartupSignIn`), the game server's report credits the account a level and the board gets a finished order, and the
+cards show once. A client's own profile write is held to about 2 XP a second by the backend, so a test that needs a
+high level credits it as a game server does (`/internal/matches/<id>/report`). `tests/captures/popup_news.gd` records
+the same over the menu.
+
 ## Proof
 
 `tests/ui/test_popup_queue.gd` (order, caps, merge, timings, drop, stamp, slide, blocked), `test_popup_lane.gd` (the
 server's real events through `XpAward`, the words and order of a card, the setting, mouse filter, the HUD's wait, the
 lane against every other part of the HUD and the crosshair at five canvases, with and without a boss bar, on the phone
-layout and mirrored, and the touch hints against the cards at those canvases and both hands), and the captures
-`tests/captures/popup_menu.gd` and `popup_night.gd` (a game server night whose seat's account earns XP the way a kill or
-a challenge reward does, the dead on screen) and `touch_hints_tour.gd --levelup` (a first run on a phone with a level
-up).
+layout and mirrored, and the touch hints against the cards at those canvases and both hands),
+`tests/ui/test_menu_news.gd` and `tests/progression/test_progress_news.gd` (the menu's sources and the ledger), and the
+captures `tests/captures/popup_menu.gd`, `popup_news.gd` and `popup_night.gd` (a game server night whose seat's account
+earns XP the way a kill or a challenge reward does, the dead on screen) and `touch_hints_tour.gd --levelup` (a first run
+on a phone with a level up).

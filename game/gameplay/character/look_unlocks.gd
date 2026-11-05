@@ -44,6 +44,28 @@ func is_unlocked(slot: StringName, id: StringName, gate: Dictionary) -> bool:
 	return gate.has("level") and level >= int(gate["level"])
 
 
+## Whether every piece of costume `index` (`Costumes`) is this player's.
+func owns_costume(index: int) -> bool:
+	for piece in Costumes.gated_pieces(index):
+		if not is_unlocked(piece["slot"], piece["id"], piece["gate"]):
+			return false
+	return true
+
+
+## How to own costume `index`, for this player: "Reach level 20 (you are level 12)", or empty when
+## they own it. The last piece decides the level.
+func costume_instructions(index: int) -> String:
+	if owns_costume(index):
+		return ""
+	var last: Dictionary = {}
+	for piece in Costumes.gated_pieces(index):
+		if is_unlocked(piece["slot"], piece["id"], piece["gate"]):
+			continue
+		if last.is_empty() or level_of(piece["gate"]) > level_of(last):
+			last = piece["gate"]
+	return instructions(last)
+
+
 func grant(slot: StringName, id: StringName) -> void:
 	owned[key(slot, id)] = true
 
