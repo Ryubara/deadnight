@@ -122,6 +122,17 @@ func title_cut() -> bool:
 	return wanted > _title_label.size.x + 0.5
 
 
+## Whether the hint is cut short ("How faint the buttons are when your thumb i...") as the row is
+## laid out now. A row with no hint, or one that is not shown, is not cut.
+func hint_cut() -> bool:
+	if not _hint_label.visible or hint == "":
+		return false
+	var font := _hint_label.get_theme_font(&"font")
+	var font_size := _hint_label.get_theme_font_size(&"font_size")
+	var wanted := font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size).x
+	return wanted > _hint_label.size.x + 0.5
+
+
 ## A row for a column narrower than the tokens' form: the title's and the control's least widths,
 ## and no value column (a row with no number beside it), so a card that cannot be wider than its
 ## area still holds the row (#980).

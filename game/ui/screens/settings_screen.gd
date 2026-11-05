@@ -13,6 +13,12 @@ signal closed
 
 const PANEL_WIDTH := 1200
 const MAX_PAGE_ROWS := 4
+## A phone's row gives its control this much, of the tokens' 440: the words of a row (a title and
+## its hint on one line) get the rest, and a hint that was cut to "How faint the buttons are when
+## your thumb i..." fits (#1290).
+const PHONE_CONTROL_WIDTH := 260
+## What a row's value keeps from the scrollbar when the bar shows, in units.
+const BAR_GAP := 16
 ## The phone's tab type is this share of the usual size.
 const TAB_SHRINK := 0.85
 ## A canvas this high or lower is a phone held sideways (540 units): the heading goes and the
@@ -22,7 +28,10 @@ const PERCENT := "%d%%"
 
 ## Each tab: a title and its rows. A row is {key, title, hint, kind} plus, by kind:
 ## slider: min, max, step, format; option: labels, values; toggle: nothing more. `desktop_only`
-## rows are left out in a browser, where the setting would do nothing.
+## rows are left out in a browser, where the setting would do nothing. `touch_only` rows are shown
+## on a touch device only, and a tab with `no_touch` is left out there (its words are the mouse's).
+## `phone_hint` is the hint on a phone's canvas, where the column of words is a third of a
+## desktop's.
 const TABS := [
 	{
 		"title": "Video",
@@ -45,6 +54,7 @@ const TABS := [
 				"key": SettingsService.RESOLUTION_SCALE,
 				"title": "Resolution scale",
 				"hint": "Draws the 3D world smaller; the interface stays sharp.",
+				"phone_hint": "Smaller 3D world; the menu stays sharp.",
 				"kind": "slider",
 				"min": 50,
 				"max": 100,
@@ -55,6 +65,7 @@ const TABS := [
 				"key": SettingsService.VSYNC,
 				"title": "Vertical sync",
 				"hint": "Off gives the lowest latency, and may tear.",
+				"phone_hint": "Off: lowest latency, but it may tear.",
 				"kind": "toggle",
 			},
 		],
@@ -133,6 +144,7 @@ const TABS := [
 				"key": SettingsService.UI_SCALE,
 				"title": "Interface size",
 				"hint": "Scales every menu and the on-screen display.",
+				"phone_hint": "Scales every menu and the HUD.",
 				"kind": "option",
 				"labels": ["Small", "Normal", "Large"],
 				"values": [0.8, 1.0, 1.25],
@@ -141,6 +153,7 @@ const TABS := [
 				"key": SettingsService.CAMERA_SHAKE,
 				"title": "Camera shake",
 				"hint": "How much a shot shakes the view. 0 turns it off.",
+				"phone_hint": "Shake from shots; 0 turns it off.",
 				"kind": "slider",
 				"min": 0,
 				"max": 100,
@@ -151,6 +164,7 @@ const TABS := [
 				"key": SettingsService.CHALLENGE_PROMPTS,
 				"title": "Challenge prompts",
 				"hint": "The small card in the night when a challenge moves.",
+				"phone_hint": "A small card when a challenge moves.",
 				"kind": "option",
 				"labels": ["All", "Finished only", "Off"],
 				"values": [0, 1, 2],
@@ -160,6 +174,7 @@ const TABS := [
 				"title": "Level-up popups",
 				"hint":
 				"The cards that drop in when you level up, unlock something or finish a challenge.",
+				"phone_hint": "Cards for levels, unlocks, challenges.",
 				"kind": "option",
 				"labels": ["All", "Big ones only", "Off"],
 				"values": [0, 1, 2],
@@ -168,12 +183,14 @@ const TABS := [
 				"key": SettingsService.SHOW_LEVELS,
 				"title": "Player levels",
 				"hint": "Each player's level and icon beside their name.",
+				"phone_hint": "A level and icon beside each name.",
 				"kind": "toggle",
 			},
 		],
 	},
 	{
 		"title": "Controls",
+		"no_touch": true,
 		"rows":
 		[
 			{
@@ -205,6 +222,27 @@ const TABS := [
 				"labels": ["Auto", "On", "Off"],
 				"values": [0, 1, 2],
 			},
+			# The look settings of a phone: the same two settings as the Controls tab, which a touch
+			# device leaves out (its words are the mouse's). The touch layer sends its look as mouse
+			# motion, so both read `MOUSE_SENSITIVITY` and `INVERT_Y`.
+			{
+				"key": SettingsService.MOUSE_SENSITIVITY,
+				"title": "Look sensitivity",
+				"hint": "How far the view turns when you drag.",
+				"touch_only": true,
+				"kind": "slider",
+				"min": 0.1,
+				"max": 3.0,
+				"step": 0.05,
+				"format": "%.2fx",
+			},
+			{
+				"key": SettingsService.INVERT_Y,
+				"title": "Invert vertical look",
+				"hint": "Drag up to look down.",
+				"touch_only": true,
+				"kind": "toggle",
+			},
 			{
 				"key": SettingsService.TOUCH_SCALE,
 				"title": "Touch button size",
@@ -218,6 +256,7 @@ const TABS := [
 				"key": SettingsService.TOUCH_OPACITY,
 				"title": "Touch button opacity",
 				"hint": "How faint the buttons are when your thumb is off them.",
+				"phone_hint": "Faint when your thumb is off them.",
 				"kind": "slider",
 				"min": 0.3,
 				"max": 1.0,
@@ -229,18 +268,21 @@ const TABS := [
 				"title": "Left-handed layout",
 				"hint":
 				"Flips the touch layout: the stick on the right, Fire and its buttons on the left.",
+				"phone_hint": "Stick on the right, Fire on the left.",
 				"kind": "toggle",
 			},
 			{
 				"key": SettingsService.HAPTICS,
 				"title": "Vibration on touch",
 				"hint": "A short buzz when a button is pressed, where the device allows it.",
+				"phone_hint": "A short buzz on a press, if allowed.",
 				"kind": "toggle",
 			},
 			{
 				"key": SettingsService.TOUCH_AIM_ASSIST,
 				"title": "Touch aim assist",
 				"hint": "Slows the view and pulls it a little toward a zombie. Touch only.",
+				"phone_hint": "Slows and pulls the view to a zombie.",
 				"kind": "toggle",
 			},
 			{
@@ -248,6 +290,7 @@ const TABS := [
 				"title": "Touch auto-fire",
 				"hint":
 				"On: fires by itself while you aim at a zombie. Off: tap Aim to aim, tap again to leave.",
+				"phone_hint": "On: aiming fires. Off: tap Aim to toggle.",
 				"kind": "option",
 				"labels": ["Off", "On"],
 				"values": [0, 1],
@@ -258,10 +301,15 @@ const TABS := [
 
 ## True in a browser. Set before the screen enters the tree to test the web layout.
 var is_web := OS.has_feature("web")
+## True on a phone or tablet (and under the `--touch` flag): the look settings are on the Touch
+## tab, in words that name no mouse, and the Controls tab is left out. Set before the screen enters
+## the tree.
+var touch_device := TouchMode.detect() or TouchMode.debug_forced()
 ## Held inside another screen (the night's menu) rather than on the router's stack: Back emits
 ## `closed` and the owner removes it. Set before the screen enters the tree.
 var embedded := false
 
+var _tabs: Array[Dictionary] = []
 var _bindings: Array[Dictionary] = []
 var _tab_buttons: Array[UIButton] = []
 var _pages: Array[VBoxContainer] = []
@@ -272,6 +320,7 @@ var _column: VBoxContainer
 var _overline: UILabel
 var _title: UILabel
 var _rows_scroll: UIFitScroll
+var _holder: MarginContainer
 var _phone_type := false
 
 
@@ -353,6 +402,7 @@ func _has_focus_in_page(index: int) -> bool:
 
 
 func _build() -> void:
+	_tabs = _shown_tabs()
 	_margin = MarginContainer.new()
 	_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_margin)
@@ -396,6 +446,7 @@ func _fit() -> void:
 	# has 960: the phone's tabs are set a little smaller (still 16 px at the phone factor).
 	if phone != _phone_type:
 		_phone_type = phone
+		_fit_rows(phone)
 		for button in _tab_buttons:
 			button.remove_theme_font_size_override(&"font_size")
 			if phone:
@@ -410,12 +461,39 @@ func _fit() -> void:
 	_rows_scroll.fit()
 
 
+## The tabs this device shows: every one, but the mouse's Controls on a touch device.
+func _shown_tabs() -> Array[Dictionary]:
+	var shown: Array[Dictionary] = []
+	for tab: Dictionary in TABS:
+		if not (touch_device and tab.get("no_touch", false)):
+			shown.append(tab)
+	return shown
+
+
+## A phone's rows: the gaps a step smaller, a narrower control and the hint written for the room
+## (`phone_hint`). The desktop's are the tokens' and the hint as it was.
+func _fit_rows(phone: bool) -> void:
+	for binding in _bindings:
+		var row := binding["row"] as UIRow
+		var spec: Dictionary = binding["spec"]
+		row.set_tight(phone)
+		row.set_widths(0.0, float(PHONE_CONTROL_WIDTH) if phone else 0.0, true)
+		row.hint = spec.get("phone_hint", spec.get("hint", "")) if phone else spec.get("hint", "")
+
+
+## A value is `BAR_GAP` units from the scrollbar when the bar shows (it was 0: the number touched
+## the bar). The content already ends where the bar begins, so the gap is its own right margin.
+func _keep_off_the_bar() -> void:
+	var gap := BAR_GAP if _rows_scroll.get_v_scroll_bar().visible else 0
+	_holder.add_theme_constant_override(&"margin_right", gap)
+
+
 func _build_tabs() -> HBoxContainer:
 	var strip := HBoxContainer.new()
 	strip.add_theme_constant_override(&"separation", _tokens.space_sm)
-	for i in TABS.size():
+	for i in _tabs.size():
 		var button := UIButton.new()
-		button.text = TABS[i]["title"]
+		button.text = _tabs[i]["title"]
 		button.variant = UIButton.Variant.GHOST
 		UiSounds.tag(button, &"tab")
 		button.pressed.connect(select_tab.bind(i))
@@ -434,15 +512,21 @@ func _build_panel() -> UIPanel:
 	_rows_scroll.name = "Rows"
 	_rows_scroll.steady = float(MAX_PAGE_ROWS * row_height)
 	panel.add_child(_rows_scroll)
-	var holder := VBoxContainer.new()
+	# One page shows at a time, so the holder is a margin (a page fills it, as it filled the column):
+	# the room a value keeps from the scrollbar when the bar shows (`_keep_off_the_bar`).
+	var holder := MarginContainer.new()
 	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_rows_scroll.add_child(holder)
-	for tab in TABS:
+	_holder = holder
+	_rows_scroll.get_v_scroll_bar().visibility_changed.connect(_keep_off_the_bar)
+	for tab in _tabs:
 		var page := VBoxContainer.new()
 		page.add_theme_constant_override(&"separation", _tokens.space_md)
 		page.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		for spec: Dictionary in tab["rows"]:
 			if is_web and spec.get("desktop_only", false):
+				continue
+			if spec.get("touch_only", false) and not touch_device:
 				continue
 			page.add_child(_build_row(spec))
 		holder.add_child(page)
