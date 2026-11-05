@@ -181,3 +181,31 @@ applied and saved by the service as it is made, and the player, the touch layer 
 pad buttons, fingers and clicks; a game server over loopback for the online night); browser:
 `tools/web_smoke/ingame_menu.py` (desktop and a phone in landscape; the page reads the card's buttons from
 `window.deadnight.menu_buttons`).
+
+## On a phone (#1290)
+
+The same screen, measured on the real page (844 x 390 and 667 x 375 CSS px at the ratio of 2, touch mode):
+
+- **Tabs and words.** On a touch device (`TouchMode.detect()` or the `--touch` flag; `SettingsScreen.touch_device` is
+  injectable) the Controls tab is left out and the Touch tab starts with "Touch controls", "Look sensitivity" and
+  "Invert vertical look" (the hint says "Drag up to look down"). They are the same keys as the Controls tab's
+  `controls/mouse_sensitivity` and `controls/invert_y` (the touch layer sends its look as mouse motion, so the one
+  setting is read by both), with the same range, and the reset button restores them. A desktop keeps its five tabs, the
+  mouse words and a Touch tab without the two rows (specs: `touch_only` rows, a `no_touch` tab).
+- **Hints.** A row's words get what the control leaves: the tokens give the control 440 units, and on a 960 unit canvas
+  that left a hint 368 units (about 40 characters of the caption face), so "How faint the buttons are when your thumb
+  i..." was cut at both sizes. A phone's rows give the control 260 (`PHONE_CONTROL_WIDTH`, 180 CSS px at the narrowest
+  page, a slider and a switch are still 64 units high) and use the gaps one step smaller (`UIRow.set_tight`), and
+  twelve hints have a shorter `phone_hint` (35 to 41 characters). The desktop's copy is unchanged and comes back when
+  the window grows (`_fit_rows`). `UIRow.hint_cut()` is what `test_settings_phone` asks of every row of every tab on
+  every page of `UiFitRun.PAGES`; a hint that needs a second line is not allowed to wrap there (a wrapping label
+  reports a tall minimum while a container sizes it, see `UIRow`).
+- **A value and the bar.** `ScrollContainer` puts its bar right after the content (a value ended 0.0 units from it, the
+  number touched the bar). The page holder is a `MarginContainer` whose right margin is 16 units while the bar shows
+  and 0 while it does not (`_keep_off_the_bar`, on the bar's `visibility_changed`); no tab is narrower without a bar.
+- **A drag from a row still scrolls the card.** Measured with real touches (`Input.dispatchTouchEvent`) on the export:
+  a drag up from the Reduced motion toggle and a drag down from the Player levels toggle move the card by the same
+  amount before and after the change, and so does a drag from a toggle in the middle of the Touch tab. A drag that
+  begins on an option selector's arrow steps the selector and does not scroll, on main too (not changed here).
+  A drag from a toggle that sits at the bottom edge of the view moved the card 5 units only: a press gives the toggle
+  focus and the card follows it (`follow_focus`). Not measured on main at that spot, and not changed.

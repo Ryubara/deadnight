@@ -29,7 +29,7 @@ const IDS: Array[StringName] = [
 	TouchLayout.CROUCH,
 	TouchLayout.RELOAD,
 	TouchLayout.SHOULDER,
-	TouchLayout.MELEE,
+	TouchLayout.STRIKE,
 	TouchLayout.PING,
 	TouchLayout.PAUSE,
 	TouchLayout.SCOREBOARD,
@@ -61,7 +61,7 @@ static func add(
 			_reload(box)
 		TouchLayout.SHOULDER:
 			_shoulder(box)
-		TouchLayout.MELEE:
+		TouchLayout.STRIKE:
 			_melee(box)
 		TouchLayout.PING:
 			_ping(box)

@@ -418,6 +418,8 @@ func test_the_touch_layer_does_every_action_it_offers() -> void:
 	# The interact button shows only where there is something to use, the bots' tag only with a bot.
 	hud_state.set_prompt(&"repair", "Broken fence", 0)
 	hud_state.apply_event({"type": &"player_added", "player_id": 99, "bot": true})
+	# So does Strike, where a dead is within reach of the blow (#1285).
+	_fixture.strike_up = true
 	await get_tree().process_frame
 	await get_tree().process_frame
 	for row in ROWS:

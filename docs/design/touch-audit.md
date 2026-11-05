@@ -91,9 +91,10 @@ a keyboard.
 - The prompt card's key: gone on a phone (done here, `HudPrompt.touch_layout`). The card used to follow "a finger was
   the last input", which a capture from a script never sets; it follows the touch layer now.
 - The menu hint bar (`MenuHints`): none on touch (`UIInputMode.touch`), already.
-- The settings' Controls tab names the mouse ("Mouse sensitivity", "Push the mouse forward to look down") and is the
-  only place the phone's look sensitivity and invert-Y live: a phone shows mouse words for its own look. Convert
-  (#1290): the Touch tab holds "Look sensitivity" and "Invert vertical look" on a phone, with no mouse words.
+- The settings' Controls tab named the mouse ("Mouse sensitivity", "Push the mouse forward to look down") and was the
+  only place the phone's look sensitivity and invert-Y lived. Converted (#1290): on a touch device the Touch tab holds
+  "Look sensitivity" and "Invert vertical look" with no mouse words, and the Controls tab shows on a desktop only
+  ([Settings on a phone](../research/settings.md#on-a-phone-1290)).
 
 ## What the review found
 
@@ -101,7 +102,7 @@ a keyboard.
 | --- | --- |
 | Key hints reserve 64 units on a phone | Fixed here: 48 for the mark and 16 for the gap go to the prompt's words |
 | "BOTS: HOLD HERE" at the top right | Fixed here: the notices say the state (`BOTS: FOLLOWING YOU`, `ROAMING`, `HOLDING POSITION`). A ping's own `HOLD HERE` stays: it is what a ping says |
-| Touch tab: descriptions cut with "...", `1.00x` against the scrollbar | #1290 (copy that fits, a gap for the bar, a test that no hint is cut, the look settings on the Touch tab) |
+| Touch tab: descriptions cut with "...", `1.00x` against the scrollbar | Fixed in #1290: copy that fits, a gap for the bar, a test that no hint is cut on any tab (`test_settings_phone`), the look settings on the Touch tab |
 | Six markers before two meet at 667 x 375, 1.0 | Clearing the right side wins it all back: see below |
 | Pause and Ping 27 CSS px apart | Fixed in #1289: Ping stands under Pause, 56 CSS px or more from it, hit areas apart |
 
@@ -122,7 +123,31 @@ Fire, Reload, Aim, Jump, Crouch and Pause only.
 
 The six is the Interact button being up (without it the page holds eight). The right side cleared gives all of it back
 at 1.0 and more than doubles the page at 1.25, whose limit then is the cards. One Strike circle is added back only
-while a dead is in reach; the issue that builds it repeats this table with it up.
+while a dead is in reach (built in #1285, below).
+
+### Markers with Strike up (#1285)
+
+Strike is a circle of radius 52 at 575 left and 340 up of the corner, in the one column the markers have, so it costs
+the page its room while it is up. The same page and the same helpers, run on the branch that builds it (Melee gone,
+Strike and Interact only when named): the most markers, counted up from one, before two meet or one is under a card or
+a button, for both hands. A count stops at its first failure, so a bigger one can still pass past it; the sizes that
+matter are pinned by `test_hud_marker_cards.gd`. The "Today" column above reads 8 at 1.0 with three diamonds where the
+suite's own constant on main (`CROWDED_HOLDS`) was 6, so compare the columns of this table with each other. It was
+taken with Ping beside Pause; Ping's move (#1289, next section) changes nothing on this page.
+
+| Interface size | Diamonds | Neither up | Strike up | Interact up | Strike and Interact up |
+| --- | --- | --- | --- | --- | --- |
+| 0.8 | 3 | 10+ | 10+ | 10+ | 10+ |
+| 1.0 | 3 | 6 | 10+ | 6 | 8 |
+| 1.0 | 1 | 10+ | 10+ | 10+ | 10+ |
+| 1.25 | 3 | 3 | **2** | 3 | **2** |
+| 1.25 | 1 | 5 | **2** | 4 | **2** |
+
+Only the 667 x 375 page at 1.25 loses: two markers where Interact alone leaves four, the price of a button that stands
+in the markers' column in a fight. They stay off every card and every button all the same
+(`test_a_marker_is_never_under_strike_or_interact_while_they_are_up`).
+Nothing was lowered: the base pins (`CROWDED_HOLDS` 6, `SMALLEST_HOLDS` 4) hold with Strike hidden, and two new pins
+(`STRIKE_HOLDS_SMALLEST` 2, `STRIKE_AND_INTERACT_HOLDS_CROWDED` 8) cover it up.
 
 ### Markers with the bots' tag (#1286)
 

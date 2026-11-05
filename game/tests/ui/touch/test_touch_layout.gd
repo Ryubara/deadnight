@@ -19,6 +19,15 @@ const KEPT_PARTS: Array[StringName] = [
 const RING: Array[StringName] = [
 	TouchLayout.RELOAD, TouchLayout.AIM, TouchLayout.JUMP, TouchLayout.CROUCH
 ]
+## What Strike keeps the 30 units of air from: Interact, which can be up with it, the ring and Fire.
+const STRIKE_NEIGHBOURS: Array[StringName] = [
+	TouchLayout.INTERACT,
+	TouchLayout.FIRE,
+	TouchLayout.RELOAD,
+	TouchLayout.AIM,
+	TouchLayout.JUMP,
+	TouchLayout.CROUCH,
+]
 ## A thumb needs 2 to 3 mm of air between neighbours: 2 mm is 12 CSS px, 33 units on a phone's night
 ## (0.36 CSS px a unit).
 const LEAST_AIR := 30.0
@@ -239,19 +248,51 @@ func test_the_left_hand_layout_is_the_right_hand_one_flipped_in_the_safe_area() 
 		assert_float(zone.position.x).is_equal_approx(safe.position.x, 0.01)
 
 
-func test_the_melee_button_is_on_screen_clear_of_fire_on_a_phones_540_unit_canvas() -> void:
+func test_strike_stands_where_swap_did_beside_reload_with_air_round_it() -> void:
+	# The audit's place (#1285): 575 left and 340 up of the corner, the same row as Reload.
+	for mirrored in HANDS:
+		for canvas in CANVASES:
+			var circles := _circles(canvas, Vector4.ZERO, 1.0, mirrored)
+			var strike: Dictionary = circles[TouchLayout.STRIKE]
+			var corner := Vector2(0.0 if mirrored else canvas.x, canvas.y)
+			var offset := (strike[&"centre"] as Vector2 - corner).abs()
+			assert_vector(offset).is_equal_approx(Vector2(575.0, 340.0), Vector2.ONE * 0.01)
+			for id: StringName in circles:
+				if id == TouchLayout.STRIKE:
+					continue
+				(
+					assert_float(_air(strike, circles[id]))
+					. override_failure_message("Strike is too close to %s" % id)
+					. is_greater_equal(LEAST_AIR if id in STRIKE_NEIGHBOURS else 0.0)
+				)
+
+
+func test_strike_is_a_roll_of_the_thumb_from_fire_along_the_reload_row() -> void:
+	var circles := _circles(CANVASES[0])
+	var fire: Vector2 = circles[TouchLayout.FIRE][&"centre"]
+	var strike: Vector2 = circles[TouchLayout.STRIKE][&"centre"]
+	for unit in PAGE_UNITS:
+		var mm := fire.distance_to(strike) * float(unit) / CSS_PX_PER_MM
+		assert_float(mm).override_failure_message("%.1f mm from Fire" % mm).is_between(20.0, 24.0)
+	# Beside Reload, in its row, farther out from Fire.
+	var reload: Vector2 = circles[TouchLayout.RELOAD][&"centre"]
+	assert_float(absf(reload.y - strike.y)).is_less(float(circles[TouchLayout.RELOAD][&"radius"]))
+	assert_float(strike.x).is_less(reload.x)
+
+
+func test_the_strike_button_is_on_screen_clear_of_fire_on_a_phones_540_unit_canvas() -> void:
 	# The menu's phone factor halves the canvas to 540 units high and stays on in the night.
 	var phone := Vector2(1168.5, 540.0)
 	for mirrored in HANDS:
 		var safe := TouchLayout.safe_rect(phone, Vector4.ZERO)
 		var circles := TouchLayout.buttons(safe, 1.0, mirrored)
-		var melee: Dictionary = circles[TouchLayout.MELEE]
+		var melee: Dictionary = circles[TouchLayout.STRIKE]
 		var fire: Dictionary = circles[TouchLayout.FIRE]
 		var box := Rect2(melee[&"centre"], Vector2.ZERO).grow(melee[&"radius"])
 		(
 			assert_bool(safe.encloses(box))
 			. override_failure_message(
-				"melee leaves %s (mirrored %s): %s" % [safe, mirrored, melee]
+				"strike leaves %s (mirrored %s): %s" % [safe, mirrored, melee]
 			)
 			. is_true()
 		)
