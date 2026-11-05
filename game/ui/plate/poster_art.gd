@@ -2,13 +2,17 @@ class_name PosterArt
 extends Control
 ## A poster set's poster at whatever size it is given: `PosterCompose.shapes` scaled to the control
 ## (one command, `HudShapes`), the title printed on it when `titled`, and a cover over each panel
-## the player has not uncovered yet (dark, with its number, so the picture is guessed at). The
+## the player has not uncovered yet: a solid tile, so nothing of the picture or the title shows
+## through, with its number. A cover stays inside the poster's frame (the frame is one piece at
+## 0 and at 6 panels) and leaves a hairline of the picture between it and the next one. The
 ## shapes are built when the set or the size changes; uncovering a panel only redraws the covers.
 
-## The cover over a panel not yet uncovered, and the colour of its number's ink.
-const COVER := Color("0b0916")
-const COVER_ALPHA := 0.94
-const GRID_COLOUR := Color("0b0916")
+## How much darker than the poster's dark a cover is, and how much of the light its number has.
+const COVER_DARKEN := 0.45
+const COVER_GAP_DARKEN := 0.75
+const NUMBER_ALPHA := 0.8
+## The gap between two covers, in design units.
+const COVER_GAP := 1.5
 ## The number on a cover: its size as a share of the panel's height.
 const NUMBER_SIZE := 0.42
 
@@ -91,36 +95,57 @@ func _draw() -> void:
 	var font := get_theme_font(&"font", &"Label")
 	if titled:
 		_print_title(font, unit)
+	# The covers come after the print, so a covered panel hides the title under it.
 	for index in PosterSet.PANELS:
 		if not uncovered.has(index):
 			_cover(index, font, unit)
-	if uncovered.size() < PosterSet.PANELS:
-		_draw_grid(unit)
 
 
 func _print_title(text_font: Font, unit: float) -> void:
-	var width := (PosterCompose.SIZE.x - 36.0) * unit
 	for line: Dictionary in PosterCompose.print_lines(poster):
 		var font: Font = UITokens.active().font_display if line["display"] else text_font
 		var text: String = line["text"]
 		var wanted := maxi(int(float(line["size"]) * unit), 6)
+		var width := float(line["room"]) * unit
 		var px := HudStyle.fit_size(font, text, wanted, width, 6)
 		var ink := PlatePalettes.colour(poster.palette, line["role"])
 		var span := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
-		var at := Vector2((size.x - span) * 0.5, float(line["baseline"]) * unit)
+		var at := Vector2(float(line["centre"]) * unit - span * 0.5, float(line["baseline"]) * unit)
 		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, ink)
 
 
+## Where the cover of panel `index` lies: the panel, kept inside the frame and a gap from the
+## neighbours.
+func cover_rect(index: int) -> Rect2:
+	var unit := factor()
+	var panel := PosterCompose.panel_rect(index)
+	var frame := PosterCompose.FRAME
+	var gap := COVER_GAP * 0.5
+	var column := index % PosterSet.COLUMNS
+	var row := index / PosterSet.COLUMNS
+	var left := frame if column == 0 else panel.position.x + gap
+	var right := (
+		PosterCompose.SIZE.x - frame if column == PosterSet.COLUMNS - 1 else panel.end.x - gap
+	)
+	var top := frame if row == 0 else panel.position.y + gap
+	var bottom := PosterCompose.SIZE.y - frame if row == PosterSet.ROWS - 1 else panel.end.y - gap
+	return Rect2(Vector2(left, top) * unit, Vector2(right - left, bottom - top) * unit)
+
+
 func _cover(index: int, font: Font, unit: float) -> void:
-	var rect := PosterCompose.panel_rect(index)
-	rect = Rect2(rect.position * unit, rect.size * unit)
-	draw_rect(rect, Color(COVER, COVER_ALPHA))
+	var rect := cover_rect(index)
+	var dark := PlatePalettes.colour(poster.palette, PlateShapes.Role.DARK)
+	# The gap between two covers is the dark of the poster, not a sliver of its picture.
+	var frame := PosterCompose.FRAME * unit
+	var inside := Rect2(Vector2.ONE * frame, size - Vector2.ONE * 2.0 * frame)
+	draw_rect(rect.grow(COVER_GAP * unit).intersection(inside), dark.darkened(COVER_GAP_DARKEN))
+	draw_rect(rect, dark.darkened(COVER_DARKEN))
 	if not titled:
 		return
-	var px := maxi(int(rect.size.y * NUMBER_SIZE), 8)
+	var px := maxi(int(PosterCompose.PANEL.y * unit * NUMBER_SIZE), 8)
 	var text := str(index + 1)
 	var span := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, px)
-	var ink := Color(PlatePalettes.colour(poster.palette, PlateShapes.Role.LIGHT), 0.42)
+	var ink := Color(PlatePalettes.colour(poster.palette, PlateShapes.Role.LIGHT), NUMBER_ALPHA)
 	var at := (
 		rect.position
 		+ Vector2(
@@ -129,14 +154,3 @@ func _cover(index: int, font: Font, unit: float) -> void:
 		)
 	)
 	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, ink)
-
-
-## The lines between the panels, over the picture and the covers.
-func _draw_grid(unit: float) -> void:
-	var thickness := maxf(unit * 2.0, 1.0)
-	var w := size.x
-	var h := size.y
-	draw_rect(Rect2(w * 0.5 - thickness * 0.5, 0.0, thickness, h), GRID_COLOUR)
-	for row in range(1, PosterSet.ROWS):
-		var y := h * float(row) / float(PosterSet.ROWS)
-		draw_rect(Rect2(0.0, y - thickness * 0.5, w, thickness), GRID_COLOUR)

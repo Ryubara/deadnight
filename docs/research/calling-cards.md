@@ -124,9 +124,10 @@ its poster, all six win a calling card and an emblem. The data is one file, `gam
       `SoldierVoice` cheers it as `poster_set` for everyone. `ChallengeSession` notes it in the ledger
       (`ProgressSeen.set_key`, `set:<id>`) as it hears it.
     - *Solo* (the rules run here, no server follows the board), `ChallengeSession` finds the set the finished feat
-      completes in its own board and emits `set_finished`; `ChallengeHudLink` gives it to the HUD and the ledger is
-      noted. A solo night has no challenge cheer from the server either, so it has no set cheer (the same gap as
-      `challenge_done`).
+      completes in its own board and tells it as the same event to the client state (`event_received`), so the HUD,
+      the voice and the night report hear it as they hear a game server's; the ledger is noted. Two feats of a set
+      can finish on one event (both are on the board at the first): the session and the server's `ChallengeAward`
+      each say a set once (`sets_told`); `test_poster_set_report_online` found the server telling it twice.
     - *In the menu*, `ProgressNews.finished_keys` lists a finished set among the finished challenges (`set:<id>`), so
       the read at sign-in tells a set the cache lacked (a night the server played, another machine) and not one the
       night showed live (the ledger) or one a solo night finished (the cache has it): `test_poster_sets` runs the three.
@@ -137,9 +138,25 @@ its poster, all six win a calling card and an emblem. The data is one file, `gam
 - **The card.** `PopupQueue.Kind.SET`: the poster (56 units), `POSTER SET DONE`, the title and the prize's card and
   emblem, with the tier card's chasing bulbs; it holds as long as a tier card, is as important as one when the queue
   overflows and sounds the card cue.
+- **The night report.** `ReportTracker` keeps the sets the local player finished tonight (the event, once each) and
+  `NightReport.compose` puts them in the model (`sets`, kept or unkept night alike). `HudNightReport` shows the first
+  as a row under the level notes: its poster (30 units wide), the title, `WON: <card> + <emblem>`, and a line `+N MORE
+  POSTER SETS` for the rest. The card is two lines of small type, so on a short phone-with-notch canvas
+  (1872 by 864, safe height 840) the rows are at their floor and the `NEXT:` note is left out when a set is shown
+  (`_drop_next`); `EndBoardFixtures.fullest_report` holds both sets and `test_end_board_fit` and
+  `test_night_report_card` run it on every canvas. Online it is told by the server's event
+  (`test_poster_set_report_online`, over a real `GameServer`: every client hears it once and only the finishing
+  seat's report names it); solo by the session (`test_poster_sets`). The capture:
+  `night_report_capture.tscn --set=N`.
+- **The poster's pixels.** Covers are solid tiles (nothing of the picture or the title shows through), kept inside the
+  frame with a hairline gap of the poster's dark between them; the panel lines are the covers' own edges, so none is
+  drawn over the frame or a word, and the tagline is two pieces, one in each column (`THE DRIVE-IN`, `PRESENTS`).
+  `test_poster_art_pixels` reads the picture back (the frame is the frame colour all round at 0 to 6 panels, a covered
+  panel is one colour but for its number, covering panel 2 changes nothing in panel 1); it needs a renderer, so a
+  headless run skips it: run it through `gds godot`.
 - **Cost.** Per frame nothing: the poster and the prize are retained commands. A finish of a feat asks
   `PosterSets.completed_by` (a search of two sets); the 12 feats of the sets are checked only when they finish.
 
 What is not here: a poster for the nine feats outside the sets, the poster's panels animating as they uncover (the
-covers change on the next read of the board), a solo cheer, and feats in the menu's news (a finished feat on its own is
+covers change on the next read of the board), and feats in the menu's news (a finished feat on its own is
 not told by the menu; the set it completes is).

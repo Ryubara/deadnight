@@ -7,7 +7,8 @@ extends RefCounted
 const NAMES := ["Ruby", "Moe", "Dee", "Cal", "Ada", "Bo", "Cy", "Flo"]
 
 
-## Every line the report has, and the cap, for a night that crossed levels and unlocked things.
+## Every line the report has, and the cap, for a night that crossed levels, unlocked things and
+## finished both poster sets.
 static func fullest_report(kept: bool = true) -> Dictionary:
 	var sources := {}
 	for line in NightReport.LINES:
@@ -16,7 +17,11 @@ static func fullest_report(kept: bool = true) -> Dictionary:
 	var hundredths := 0
 	for source: StringName in sources:
 		hundredths += int(sources[source])
-	return NightReport.compose(sources, XpRules.to_xp(hundredths), 40 if kept else 0, kept)
+	var sets: Array[Dictionary] = []
+	var posters := PosterSets.shipped()
+	for each in posters.all():
+		sets.append(posters.event_of(each))
+	return NightReport.compose(sources, XpRules.to_xp(hundredths), 40 if kept else 0, kept, sets)
 
 
 ## Player n has the most of the nth title's stat, so every title is given while there are players.

@@ -678,7 +678,8 @@ when its feat is done, the set is finished when all six are, and the prize is ow
 (`PlateCatalog`: a piece with `{set}` as its source), so the prize comes once and a retune needs no migration. A set
 is the gate of its own card and emblem (new pieces; each feat in it still gives what it gave). The Challenges tab has a
 **Poster sets** chip with each set whole (its poster, the six rows, the prize) and a teaser of each in All after Today;
-a finished set is a card of the popup lane (live, and in the menu when it was finished away from a night, once). How
+a finished set is a card of the popup lane (live, and in the menu when it was finished away from a night, once) and a
+row of the night report (its poster, title and prize). How
 it works and what was measured: [poster sets](../research/calling-cards.md#poster-sets-1073).
 
 ## The night report and credits

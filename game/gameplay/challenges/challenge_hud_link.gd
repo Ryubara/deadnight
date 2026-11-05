@@ -13,7 +13,6 @@ func _init(session: ChallengeSession, hud: Hud, settings: SettingsService = null
 	_hud = hud
 	_settings = settings if settings != null else Settings
 	session.advanced.connect(_on_advanced)
-	session.set_finished.connect(_on_set_finished)
 	hud.challenge.cue.connect(_on_cue)
 	_apply_setting()
 	_settings.changed.connect(_on_setting)
@@ -27,10 +26,6 @@ func _on_advanced(advance: Dictionary) -> void:
 		)
 	var event := advance.duplicate()
 	event["type"] = HudChallenge.EVENT
-	_hud.state.apply_event(event)
-
-
-func _on_set_finished(event: Dictionary) -> void:
 	_hud.state.apply_event(event)
 
 

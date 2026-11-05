@@ -266,7 +266,10 @@ func _finish(board: Board, advance: Dictionary) -> void:
 	)
 	var poster_sets := sets if sets != null else PosterSets.shipped()
 	var poster_set := poster_sets.completed_by(id, board.profile.feats_done(catalog))
-	if poster_set != null:
+	# Two feats of a set can finish on the same event: the set is complete at the first of them
+	# (both are on the board), and is said once.
+	if poster_set != null and not board.sets_told.has(poster_set.id):
+		board.sets_told[poster_set.id] = true
 		_out.append(poster_sets.event_of(poster_set, player_id))
 		PerfProbe.count(&"challenge.told")
 	_xp.add_xp(player_id, int(reward.get("xp", 0)), XpAward.CHALLENGE)
@@ -283,6 +286,8 @@ class Board:
 	var done: Array[String] = []
 	## Every id finished and said this night: never said or paid twice.
 	var finished: Dictionary[StringName, bool] = {}
+	## The poster sets said this night, once each.
+	var sets_told: Dictionary[StringName, bool] = {}
 
 	func _init(p_user: String, p_profile: ChallengeProfile) -> void:
 		user = p_user

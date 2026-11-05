@@ -82,6 +82,8 @@ var challenge_awards := true
 ## What the players are asked and its day; unset, the shipped catalogue and UTC. Tests set them.
 var challenge_catalog: ChallengeCatalog
 var challenge_clock: ChallengeClock
+## The poster sets a finished challenge may complete; unset, the shipped ones. Tests set it.
+var poster_sets: PosterSets
 ## The seconds the connection rules (a peer's rates, the hello, a seat held for a returning player)
 ## are timed by. Empty is the machine's clock; a soak that plays faster than real time gives the
 ## game's own (`Engine.get_physics_frames` over the tick rate), so a minute of play is a minute to
@@ -319,6 +321,7 @@ func _build_night() -> void:
 	server.xp.enabled = xp_awards
 	server.challenges.enabled = challenge_awards
 	server.challenges.catalog = challenge_catalog
+	server.challenges.sets = poster_sets
 	if challenge_clock != null:
 		server.challenges.clock = challenge_clock
 	night_reported = false

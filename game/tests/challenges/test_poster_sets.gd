@@ -445,3 +445,80 @@ func test_a_finished_set_is_its_own_cheer_over_a_tier_and_the_challenge_that_fin
 	assert_bool(SoldierVoiceCatalog.cheers_over(&"challenge_done", &"poster_set")).is_false()
 	# The weight of a finished challenge stays what the maintainer decided.
 	assert_int(SoldierVoiceCatalog.CHEER_WEIGHT[&"challenge_done"]).is_equal(2)
+
+
+# --- The night report ---
+
+
+func test_a_solo_night_puts_the_finished_set_on_the_report_once_when_two_feats_finish_together(
+) -> void:
+	var small := _small_kills()
+	var board := ChallengeBoard.new()
+	board.catalog = small["catalog"]
+	board.profile = ChallengeProfile.fresh_for(ACCOUNT)
+	board.profile.dealt_day = DAY
+	board.clock = ChallengeFixture.clock_on(DAY)
+	var session := ChallengeSession.new(board)
+	session.sets = small["sets"]
+	var state := ClientState.new()
+	state.player_id = 1
+	session.attach(state)
+	var report := ReportTracker.follow(state, [&"fuel_can"])
+	var heard: Array[Dictionary] = []
+	state.event_received.connect(
+		func(event: Dictionary) -> void:
+			if event["type"] == PosterSets.DONE:
+				heard.append(event)
+	)
+	var made := ChallengeFixture.night(1)
+	state.apply_events(made["events"])
+	var rules: GameRules = made["rules"]
+	rules.apply(RulesAction.start())
+	rules.apply(RulesAction.skip_break())
+	var killed := 0
+	for _i in 4000:
+		state.apply_events(rules.apply(RulesAction.tick(RulesFixture.STEP)))
+		for zombie_id in rules.zombie_ids():
+			if killed < 3:
+				killed += 1
+				state.apply_events(RulesFixture.kill(rules, 1, zombie_id, RulesAction.ZONE_HEAD))
+		if killed >= 3:
+			break
+	# Kills 1, 2 and 3 finish two feats each (the last pair in one event): the set is said once.
+	assert_int(heard.size()).is_equal(1)
+	assert_int(heard[0]["player_id"]).is_equal(1)
+	var shown: Array = report.model()["sets"]
+	assert_int(shown.size()).is_equal(1)
+	assert_str(shown[0]["id"]).is_equal("small")
+	assert_str(shown[0]["card"]).is_equal("small_card")
+	# The card says it, an unkept night included (no account holds this one).
+	var card := HudNightReport.new()
+	add_child(card)
+	card.show_report(report.model())
+	assert_array(card.sets_text).has_size(1)
+	assert_bool(report.is_kept()).is_false()
+	card.free()
+	# A set of another player is not on this report.
+	state.event_received.emit(_sets.event_of(_sets.all()[0], 2))
+	assert_int((report.model()["sets"] as Array).size()).is_equal(1)
+
+
+## Like `_small`, but its feats finish by one, one, two, two, three and three kills.
+func _small_kills() -> Dictionary:
+	var small := _small()
+	var catalog := ChallengeCatalog.new()
+	var targets := [1, 1, 2, 2, 3, 3]
+	var records: Array = []
+	for n in targets.size():
+		var target: int = targets[n]
+		records.append(
+			{
+				"id": "p%d" % (n + 1),
+				"text": "Put down %d" % target,
+				"stat": "kills",
+				"target": target
+			}
+		)
+	catalog.add_all(records, ChallengeDef.Family.FEAT)
+	small["catalog"] = catalog
+	return small

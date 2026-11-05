@@ -24,6 +24,9 @@ const HILL_TOP := 318.0
 const BAND_TOP := 350.0
 ## The frame's thickness.
 const FRAME := 6.0
+## The tagline over the picture: its size and where it stands.
+const TAGLINE_SIZE := 15
+const TAGLINE_BASELINE := 36.0
 ## The stars: how many, over the sky above the picture and at its sides.
 const STARS := 22
 
@@ -95,19 +98,28 @@ static func panel_rect(index: int) -> Rect2:
 	return Rect2(Vector2(column, row) * PANEL, PANEL)
 
 
-## The lines of the title and where each is printed: `{text, size, baseline, role}` in the design
-## space. The tagline over the picture comes first (the text face), then the poster's lines from the
-## top of the band (the display face).
+## The lines of the title and where each is printed: `{text, size, baseline, centre, room, role,
+## display}` in the design space. The tagline over the picture comes first (the text face), in two
+## pieces, each inside one column of panels, so that no edge between panels crosses a word; then the
+## poster's lines from the top of the band (the display face).
 static func print_lines(poster_set: PosterSet) -> Array[Dictionary]:
-	var out: Array[Dictionary] = [
-		{
-			"text": "THE DRIVE-IN PRESENTS",
-			"size": 15,
-			"baseline": 36.0,
-			"role": PlateShapes.Role.LIGHT,
-			"display": false
-		}
-	]
+	var out: Array[Dictionary] = []
+	var pieces := ["THE DRIVE-IN", "PRESENTS"]
+	for column in pieces.size():
+		(
+			out
+			. append(
+				{
+					"text": pieces[column],
+					"size": TAGLINE_SIZE,
+					"baseline": TAGLINE_BASELINE,
+					"centre": PANEL.x * (float(column) + 0.5),
+					"room": PANEL.x - 2.0 * FRAME - 8.0,
+					"role": PlateShapes.Role.LIGHT,
+					"display": false,
+				}
+			)
+		)
 	var sizes := [18, 38, 26]
 	var baselines := [374.0, 412.0, 440.0]
 	var roles := [PlateShapes.Role.LIGHT, PlateShapes.Role.BASE, PlateShapes.Role.LIGHT]
@@ -119,6 +131,8 @@ static func print_lines(poster_set: PosterSet) -> Array[Dictionary]:
 					"text": poster_set.lines[i],
 					"size": sizes[i],
 					"baseline": baselines[i],
+					"centre": SIZE.x * 0.5,
+					"room": SIZE.x - 36.0,
 					"role": roles[i],
 					"display": true,
 				}

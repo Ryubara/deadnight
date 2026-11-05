@@ -15,8 +15,9 @@ extends RefCounted
 
 signal advanced(advance: Dictionary)
 ## A poster set was finished by what this machine counted (a night the rules run here, or a seat
-## with no account): its `poster_set_done` event, for the HUD. Online the game server tells every
-## client the same event, and this is silent.
+## with no account): its `poster_set_done` event. It is also told to the client state, so the
+## HUD, the voice and the night report hear it as they hear a game server's. Online the game
+## server tells every client the same event, and this is silent.
 signal set_finished(event: Dictionary)
 
 var board: ChallengeBoard
@@ -30,6 +31,7 @@ var uplink: ChallengeUplink
 
 var _state: ClientState
 var _following := -1
+var _sets_told: Dictionary[StringName, bool] = {}
 var _server_follows := false
 
 
@@ -67,10 +69,15 @@ func _on_advanced(advance: Dictionary) -> void:
 func _tell_set(id: StringName) -> void:
 	var poster_sets := sets if sets != null else PosterSets.shipped()
 	var poster_set := poster_sets.completed_by(id, board.profile.feats_done(board.catalog))
-	if poster_set == null:
+	# Two feats of a set can finish on one event: the set is told once.
+	if poster_set == null or _sets_told.has(poster_set.id):
 		return
+	_sets_told[poster_set.id] = true
 	ProgressSeen.note_set(poster_set.id)
-	set_finished.emit(poster_sets.event_of(poster_set, _state.player_id if _state != null else 0))
+	var event := poster_sets.event_of(poster_set, _state.player_id if _state != null else 0)
+	set_finished.emit(event)
+	if _state != null:
+		_state.event_received.emit(event)
 
 
 func _on_event(event: Dictionary) -> void:
