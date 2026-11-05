@@ -54,9 +54,10 @@ a keyboard.
   could not read it. A tag (shown only when the room has bots) says it and takes the touch: a tap gives the next of
   Follow, Roam, Hold. Three orders are a cycle, not a wheel; the wheel (hold and drag) stays for the keyboard and the
   pad, and the touch layer's wheel finger goes. Built in #1286, at the inner end of the weapon strip and not in the
-  column's cards: the stick's resting ring crosses the cards, and a tag a fingertip high and 14 CSS px wide in words
-  reaches 8 units into the ring between the points and the health at 1.0 (54 at 0.8) and is still in its rows above
-  the points, where the strip's row is under it and costs the column no height.
+  column's cards: on the stick's first ring a fingertip-high tag could not stand there clear of it (8 units into it
+  at 1.0, 54 at 0.8), and now that #1294 has moved the ring beside the column, a tag there makes the column a
+  fingertip taller and the challenge card lands over it on the phone pages (measured, `docs/research/bot-wheel.md`).
+  The strip's row costs the column no height.
 - **Scoreboard.** The players' column is the scoreboard's short form (points, names). A finger held on it shows the
   ticket, as Tab does, and lifting hides it: the same `scoreboard` action, so nothing else forks.
 - **Shoulder.** A fight verb that is rare (a corner, a wall): a double tap on free ground. Two taps in a row are never a
@@ -142,8 +143,9 @@ the cause, the strip a fingertip high (#1280) with the right thumb's ring (#1277
 
 The 844 x 390 page holds 10+ at every size, with or without the tag. That sweep was run again after #1289 (Ping under
 Pause) landed and still gives 10+ for the 844 row where the #1289 table below has an 8 (1.25, 3 diamonds); the cause of
-the difference was not found (it is that table's measure), and the tag changes neither. A tag in the column's cards
-would have taken a fingertip's height from the column, which is why it is in the strip's row.
+the difference was not found (it is that table's measure), and the tag changes neither. The same sweep with the tag
+in the column's cards (above the points) also gives these numbers, so the marker capacity is not why the tag is in
+the strip's row; the challenge card is.
 
 ### Markers with Ping under Pause (#1289)
 

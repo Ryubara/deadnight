@@ -16,8 +16,10 @@ extends HudPart
 ##
 ## The bots' order tag (`HudBotOrder`, #1286) stands at the strip's inner end under a finger, only
 ## while the room has a bot: it is the phone's bot control, a place like the others, and the first
-## the touch layer tries. It is here, not in the cards above, because the stick's resting ring
-## crosses the players' column and no tag can stand in it clear of the ring.
+## the touch layer tries. It is here, not in the column's cards above: a fingertip-high tag there
+## makes the column a fingertip taller, and the challenge card, which stands at a share of the
+## screen's height, lands over it on the phone pages (`docs/research/bot-wheel.md`). The row costs
+## no height.
 
 const WIDTH := HudAmmo.WIDTH
 const HEIGHT := 64.0

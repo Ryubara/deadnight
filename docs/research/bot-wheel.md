@@ -101,13 +101,20 @@ request.
 The wheel is a keyboard idea on glass (hold, drag, release; a button on the far right edge, always on). A phone has the
 tag instead: the standing order in a word and a colour, a tap for the next of Follow, Roam, Hold. What was learned:
 
-- **Why it stands beside the weapons and not in the cards above.** The issue asked for a tag in the players' column. The
-  stick's resting ring (`STICK_REST`, radius 105) crosses the column's cards, and a tag a fingertip high and wide cannot
-  stand between the points and the health cards, or above the points, clear of it: measured on the two phone pages the
-  tag between the cards reaches 8 units into the ring at 1.0 and 54 at 0.8 (its word at 14 CSS px is 168 to 207 units
-  wide, the ring starts 225 units from the edge), and above the points it is still inside the ring's rows. A card taller
-  by a fingertip would also have taken the column's room from the markers and the challenge card. The strip's bottom row
-  has none of these: it is under the ring, it costs no height, and it is where the left thumb already taps the weapons.
+- **Why it stands beside the weapons and not in the column's cards.** The issue asked for a tag in the players'
+  column. Two measures, in this order:
+    1. On the stick's first ring (`STICK_REST`, 330 units in and 390 up, radius 105, which crossed the column's cards) a
+       tag a fingertip high and 14 CSS px wide in words could not stand between the points and the health cards or above
+       the points clear of the ring: 8 units into it at 1.0 and 54 at 0.8 (the word is 168 to 207 units wide, the ring
+       started 225 units from the edge). #1294 then moved the ring beside the column, so a column tag no longer meets it.
+    2. A tag in the column makes the column a fingertip taller (128 units at 1.0), and the challenge card, which stands
+       at 0.36 of the screen's height, lands over it: measured on the HUD with the touch layout, the card is over the tag
+       at 667 x 375 at 1.25 with 2 and 4 players, and at 1920 x 1080 and 2337 x 1080 with 4 and 8 players, where
+       without the tag it is clear for up to 4 players there (it is over the points with 8 players, with or without
+       the tag, a fault that was already there). The marker capacity does not move either way (below).
+  The strip's row is under the ring and takes no column height, and it is where the left thumb already taps the weapons.
+  `HudBotOrder` is its own part: moving it into the column later means making it in `Hud` instead of `HudSlots` and
+  moving the challenge card's top.
 - **A refused order is invisible to the client until the frame says so.** The client's own link refuses only what cannot
   be sent (an unknown order, a position that is not finite); the server also refuses a second order inside
   `BotOrders.GAP` (0.5 s), answering with `bot_order_refused`, which nothing on the client reads. The driver therefore
