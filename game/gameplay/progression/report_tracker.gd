@@ -10,6 +10,9 @@ extends RefCounted
 ##   the night is counted here the way `XpRules` would have paid it (`NightTally`, the rules'
 ##   `worth`), and the card says nothing was saved.
 ##
+## A poster set the local player finished (`poster_set_done`, told by a game server or, in a night
+## that runs here, by `ChallengeSession` as the same event) is kept once and shown on the card.
+##
 ## It counts nothing for a seat the server keeps, so an online account pays this client no
 ## per-kill work beyond one dictionary read.
 
@@ -23,6 +26,8 @@ var _state: ClientState
 var _sources: Dictionary = {}
 var _night_xp := 0
 var _heard := false
+## The poster sets the local player finished tonight, once each, in the order they finished.
+var _sets: Array[Dictionary] = []
 var _tally: NightTally
 
 
@@ -48,13 +53,13 @@ func attach(state: ClientState, fuel_items: Array[StringName] = [&"fuel_can"]) -
 ## The card's data for the night as it stands (`NightReport.compose`).
 func model() -> Dictionary:
 	if _kept():
-		return NightReport.compose(_sources, _night_xp, _state.account_xp - _night_xp, true)
+		return NightReport.compose(_sources, _night_xp, _state.account_xp - _night_xp, true, _sets)
 	var stats := XpRules.stats_of(_tally, _state.player_id)
 	var sources := NightReport.sources_of_stats(stats)
 	var hundredths := 0
 	for source: StringName in sources:
 		hundredths += int(sources[source])
-	return NightReport.compose(sources, XpRules.to_xp(hundredths), 0, false)
+	return NightReport.compose(sources, XpRules.to_xp(hundredths), 0, false, _sets)
 
 
 ## What the film credits read (`CrewTracker.input`), with this client's own XP when an account
@@ -80,8 +85,33 @@ func _kept() -> bool:
 	return _heard or _state.levels.has(_state.player_id)
 
 
+## Keeps a poster set the local player finished, once (the same event may be heard twice: from the
+## server and from a night's own session).
+func _note_set(event: Dictionary) -> void:
+	if int(event.get("player_id", -1)) != _state.player_id:
+		return
+	for held in _sets:
+		if held["id"] == event["id"]:
+			return
+	(
+		_sets
+		. append(
+			{
+				"id": event["id"],
+				"title": event["title"],
+				"card": event["card"],
+				"emblem": event["emblem"],
+			}
+		)
+	)
+	changed.emit()
+
+
 func _on_event(event: Dictionary) -> void:
 	var type: StringName = event["type"]
+	if type == PosterSets.DONE:
+		_note_set(event)
+		return
 	if type == XpAward.GAINED:
 		if int(event["player_id"]) != _state.player_id:
 			return

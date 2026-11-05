@@ -13,6 +13,8 @@ extends Control
 ##   from the wardrobe's own source (`LadderItem`, `ItemIcons`): the icon of a wearable, the paint
 ##   chip of a colour, the picture of a map; a chip with its slot's letter for what has no art yet.
 ## - CHALLENGE: `CHALLENGE DONE` and the challenge's words.
+## - SET: a finished poster set: its poster at the left, `POSTER SET DONE`, the set's title and the
+##   calling card and emblem it won, with the tier card's chasing bulbs along its edges.
 ## - MORE: `3 NEW ITEMS`, what the cards that did not fit say together.
 ##
 ## The card draws itself once (paper, tear line, holes); the lane moves it, fades it and scales its
@@ -21,10 +23,15 @@ extends Control
 const LEVEL_SIZE := Vector2(420.0, 108.0)
 const UNLOCK_SIZE := Vector2(372.0, 64.0)
 const CHALLENGE_SIZE := Vector2(420.0, 92.0)
+const SET_SIZE := Vector2(420.0, 108.0)
 const MORE_SIZE := Vector2(372.0, 48.0)
 ## The width every card is centred in.
 const WIDTH := LEVEL_SIZE.x
 
+## A finished set's poster, its prize's card and emblem: the sizes in the card.
+const POSTER_WIDTH := 56.0
+const PRIZE_CARD_WIDTH := 92.0
+const PRIZE_EMBLEM := 30.0
 const ICON := 64.0
 const CHIP := 48.0
 ## A calling card's chip is wider: the card keeps its proportions across the chip.
@@ -57,6 +64,9 @@ var _badge := HBoxContainer.new()
 var _next_icon := LevelTag.icon_rect(1)
 var _next_level := _ink(HudStyle.label("", HudStyle.SMALL, _tokens.hot, true))
 var _next_name := _ink(HudStyle.label("", HudStyle.SMALL, _tokens.ink_on_accent))
+var _poster := PosterArt.new()
+var _prize_card := CardArt.new()
+var _prize_emblem := EmblemArt.new()
 var _chip := Control.new()
 var _chip_letter := _ink(HudStyle.label("", HudStyle.TEXT, _tokens.ink, true))
 var _item: Dictionary = {}
@@ -90,7 +100,11 @@ func _init() -> void:
 	_chip_letter.size = Vector2(CHIP, CHIP)
 	_chip_letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_chip.add_child(_chip_letter)
+	_poster.titled = false
 	for part: Control in [_caption, _number, _words, icon, _next, _chip]:
+		add_child(part)
+	for part: Control in [_poster, _prize_card, _prize_emblem]:
+		part.visible = false
 		add_child(part)
 	_words.autowrap_mode = TextServer.AUTOWRAP_OFF
 
@@ -104,17 +118,32 @@ static func size_of(of_kind: PopupQueue.Kind) -> Vector2:
 			return CHALLENGE_SIZE
 		PopupQueue.Kind.MORE:
 			return MORE_SIZE
+		PopupQueue.Kind.SET:
+			return SET_SIZE
 	return LEVEL_SIZE
 
 
+## What a set card keeps of a `poster_set_done` event: `{id, title, card, emblem}`.
+static func set_data(event: Dictionary) -> Dictionary:
+	return {
+		"id": event.get("id", &""),
+		"title": String(event.get("title", "")),
+		"card": event.get("card", &""),
+		"emblem": event.get("emblem", &""),
+	}
+
+
 ## Fills the card: `data` is `{level}` for a level card, `{level, tier_name}` for a tier,
-## `{slot, item, level}` for an unlock, `{text, family}` for a challenge and `{count}` for the rest.
+## `{slot, item, level}` for an unlock, `{text, family}` for a challenge, `{id, title, card,
+## emblem}` for a poster set and `{count}` for the rest.
 func setup(card_kind: PopupQueue.Kind, card_data: Dictionary) -> void:
 	kind = card_kind
 	data = card_data
 	size = size_of(kind)
 	custom_minimum_size = size
 	for part: Control in [_caption, _number, _words, icon, _next, _chip]:
+		part.visible = false
+	for part: Control in [_poster, _prize_card, _prize_emblem]:
 		part.visible = false
 	match kind:
 		PopupQueue.Kind.LEVEL, PopupQueue.Kind.TIER:
@@ -125,6 +154,8 @@ func setup(card_kind: PopupQueue.Kind, card_data: Dictionary) -> void:
 			_set_challenge()
 		PopupQueue.Kind.MORE:
 			_set_more()
+		PopupQueue.Kind.SET:
+			_set_poster_set()
 	queue_redraw()
 
 
@@ -132,7 +163,7 @@ func setup(card_kind: PopupQueue.Kind, card_data: Dictionary) -> void:
 func set_chase(step: int) -> void:
 	if step != _chase:
 		_chase = step
-		if kind == PopupQueue.Kind.TIER:
+		if kind == PopupQueue.Kind.TIER or kind == PopupQueue.Kind.SET:
 			queue_redraw()
 
 
@@ -240,6 +271,35 @@ func _set_challenge() -> void:
 	_punched = 4
 
 
+func _set_poster_set() -> void:
+	var poster_set := PosterSets.shipped().get_set(StringName(data.get("id", &"")))
+	var top := (size.y - POSTER_WIDTH * PosterCompose.SIZE.y / PosterCompose.SIZE.x) * 0.5
+	_poster.poster = poster_set
+	_poster.uncovered = [0, 1, 2, 3, 4, 5]
+	_poster.custom_minimum_size = Vector2(POSTER_WIDTH, POSTER_WIDTH * 1.5)
+	_poster.size = _poster.custom_minimum_size
+	_place(_poster, Rect2(Vector2(float(HudStyle.PAD_LEFT) + 6.0, top), _poster.size))
+	var at := _poster.position.x + POSTER_WIDTH + PADDING
+	var room := size.x - at - float(HudStyle.PAD)
+	_place(_caption, Rect2(at, 10.0, room, 28.0))
+	_caption.add_theme_font_size_override(&"font_size", HudStyle.TEXT)
+	HudStyle.set_text(_caption, "POSTER SET DONE")
+	_place(_words, Rect2(at, 38.0, room, 30.0))
+	HudStyle.set_fitted(_words, String(data.get("title", "")), HudStyle.TEXT, room)
+	_words.add_theme_color_override(&"font_color", _tokens.ink_on_accent)
+	_prize_card.card_id = StringName(data.get("card", &""))
+	_prize_card.custom_minimum_size = Vector2(PRIZE_CARD_WIDTH, PRIZE_CARD_WIDTH * 120.0 / 440.0)
+	_prize_card.size = _prize_card.custom_minimum_size
+	_place(_prize_card, Rect2(Vector2(at, 72.0), _prize_card.size))
+	_prize_emblem.emblem_id = StringName(data.get("emblem", &""))
+	_prize_emblem.custom_minimum_size = Vector2.ONE * PRIZE_EMBLEM
+	_prize_emblem.size = _prize_emblem.custom_minimum_size
+	_place(
+		_prize_emblem, Rect2(Vector2(at + PRIZE_CARD_WIDTH + 12.0, 72.0 - 3.0), _prize_emblem.size)
+	)
+	_punched = 0
+
+
 func _set_more() -> void:
 	var count := int(data.get("count", 1))
 	_place(_caption, Rect2(0.0, 0.0, size.x, size.y))
@@ -279,7 +339,7 @@ func _draw() -> void:
 		y += PERFORATION_GAP
 	if kind == PopupQueue.Kind.LEVEL:
 		_add_holes(shapes)
-	elif kind == PopupQueue.Kind.TIER:
+	elif kind == PopupQueue.Kind.TIER or kind == PopupQueue.Kind.SET:
 		_add_bulbs(shapes)
 	elif kind == PopupQueue.Kind.CHALLENGE:
 		_add_stamp(shapes)

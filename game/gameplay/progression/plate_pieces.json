@@ -33,7 +33,9 @@
     {"id": "house_regular", "title": "House Regular", "motif": "ticket", "palette": "teal", "side": "right"},
     {"id": "the_big_take", "title": "The Big Take", "motif": "coins", "palette": "gold", "side": "left"},
     {"id": "full_rack", "title": "Full Rack", "motif": "rack", "palette": "violet", "side": "right"},
-    {"id": "pest_control", "title": "Pest Control", "motif": "target", "palette": "ivory", "side": "left"}
+    {"id": "pest_control", "title": "Pest Control", "motif": "target", "palette": "ivory", "side": "left"},
+    {"id": "fifty_foot_feature", "title": "Fifty-Foot Feature", "motif": "bolt", "palette": "teal", "side": "right"},
+    {"id": "revenge_feature", "title": "Revenge Feature", "motif": "crosshair", "palette": "cherry", "side": "left"}
   ],
   "emblems": [
     {"id": "admit_one", "title": "Admit One", "motif": "ticket", "palette": "ivory", "shape": "ticket"},
@@ -76,7 +78,9 @@
     {"id": "house_regular", "title": "House Regular", "motif": "ticket", "palette": "teal", "shape": "hex"},
     {"id": "the_big_take", "title": "The Big Take", "motif": "coins", "palette": "gold", "shape": "hex"},
     {"id": "full_rack", "title": "Full Rack", "motif": "rack", "palette": "violet", "shape": "hex"},
-    {"id": "pest_control", "title": "Pest Control", "motif": "target", "palette": "ivory", "shape": "hex"}
+    {"id": "pest_control", "title": "Pest Control", "motif": "target", "palette": "ivory", "shape": "hex"},
+    {"id": "live_wire", "title": "Live Wire", "motif": "bolt", "palette": "gold", "shape": "disc"},
+    {"id": "top_billing", "title": "Top Billing", "motif": "star", "palette": "cherry", "shape": "ticket"}
   ],
   "frames": [
     {"id": "chrome", "title": "Chrome", "palette": "chrome", "style": "double"},

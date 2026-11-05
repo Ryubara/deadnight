@@ -166,13 +166,6 @@ func _input(event: InputEvent) -> void:
 ## Signs in, finds a night and takes its ticket: `{"ok": true, ...ticket}` or the failure.
 func _search() -> Dictionary:
 	api = api_factory.call(self) if api_factory.is_valid() else _own_api()
-	var room := ActivityRoom.current
-	if room != null:
-		# A Discord Activity signs in while the menu shows; its session is the one to use.
-		if room.state == ActivityRoom.State.IDLE or room.state == ActivityRoom.State.FAILED:
-			room.prepare()
-		if not await room.until_ready():
-			return {"ok": false, "text": room.failure}
 	var signed := await api.sign_in(_chosen_name())
 	if not signed["ok"] or _cancelled:
 		return signed

@@ -1,7 +1,8 @@
 class_name PopupLane
 extends HudPart
 ## The popup lane: the cards of the progression, live. It hears the server's events (`level_up`,
-## `tier_up`, `unlock_earned`, from `XpAward`) and a finished challenge (`challenge_advanced`),
+## `tier_up`, `unlock_earned`, from `XpAward`), a finished challenge (`challenge_advanced`) and a
+## finished poster set (`poster_set_done`, from `ChallengeAward`),
 ## turns each into a card (`PopupQueue`) and shows them one under the other, centred at the top of
 ## its parent: in the HUD, under whichever of the round banner, the marquee and the boss bar is up
 ## (it slides up when that one leaves, and down when one comes), in a menu at the top of the
@@ -83,6 +84,8 @@ func on_event(event: Dictionary) -> void:
 	if not _is_mine(event):
 		return
 	match type:
+		&"poster_set_done":
+			_push(PopupQueue.Kind.SET, PopupCard.set_data(event))
 		&"level_up":
 			_push(PopupQueue.Kind.LEVEL, {"level": int(event["level"])})
 		&"tier_up":
@@ -126,7 +129,7 @@ func advance(delta: float) -> void:
 		node.position = Vector2((size.x - node.size.x) * 0.5, card.y + float(look["dy"]))
 		node.modulate.a = float(look["alpha"])
 		node.icon.scale = Vector2.ONE * queue.stamp_of(card, reduced)
-		if card.kind == PopupQueue.Kind.TIER and not reduced:
+		if (card.kind == PopupQueue.Kind.TIER or card.kind == PopupQueue.Kind.SET) and not reduced:
 			node.set_chase(step)
 	for card: PopupQueue.Card in _cards.keys():
 		if not queue.shown.has(card):
@@ -220,6 +223,8 @@ func _cue_of(card: PopupQueue.Card) -> StringName:
 			return PopupLadder.cue_of(card.data["slot"])
 		PopupQueue.Kind.CHALLENGE:
 			return &"challenge_done"
+		PopupQueue.Kind.SET:
+			return &"card_earned"
 	return &""
 
 

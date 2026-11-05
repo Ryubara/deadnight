@@ -382,8 +382,9 @@ hour: not a loophole. Level 10 arrives after about half an hour ([the curve](#th
   [calling cards](../research/calling-cards.md). **Built (#1071):** plate frames: the four of the ladder (Chrome 29,
   Brass 37, Neon 50, Gold 55) and three from challenges the night counts today (round 20, 25 revives, 100 nights), a
   Frames tab on the equip screen and the frame on every plate that shows one. **Built (#1074):** the stats and the 19
-  feats of the odd, easy and together lists below ([the odd and together stats](#the-odd-and-together-stats)). Not
-  built: the frames for beating a map (#1072), poster sets (#1073), the hidden challenges (#1172).
+  feats of the odd, easy and together lists below ([the odd and together stats](#the-odd-and-together-stats)).
+  **Built (#1073):** poster sets (below). Not built: the frames for beating a map (#1072), the hidden challenges
+  (#1172).
 - Launch set: **11 tier cards and 11 tier emblems** from the ladder, and **31 challenge cards and 31 emblems**: 42 of
   each. A challenge gives a card, an emblem, a frame or a mix, as the tables say (never two gates in series). The rarity
   of a frame or card is not assumed (#1053).
@@ -713,9 +714,24 @@ real time and every client can hear its celebration.
 B-movie ("Attack of the Fifty-Foot Generator"): each one done uncovers a panel of the poster, and finishing all six
 wins the set's calling card and emblem. A set shows on the Challenges tab as its poster with its panels and six rows,
 and in the night report when finished. Every challenge in a set is one the night counts (rule 15: the mock's "restart
-the generator" and "kill with shock" need their stats first), so the first release has two sets from the 21 counted
-challenges and sets arrive as their stats do. Posters are composed from shared parts like the cards, and sets are
-solo-safe (no Together challenge in one). Build: #1073.
+the generator" and "kill with shock" need their stats first), so the first release has two sets from the feats
+counted then and a set is a line of data for any six that are counted since. Posters are composed from shared parts
+like the cards, and sets are solo-safe (no Together challenge in one). Build: #1073.
+
+**Built (#1073).** Two sets of six, made of 12 of the feats the night counts (21 when they were chosen, 43 since the
+stats of #1074 arrived; the other feats wait for sets of their own, none of which may list a stat that needs a crowd,
+`ChallengeStats.CROWD`): *Attack of the Fifty-Foot Generator* (a fuel can, ten boards, a door, five buys in a night,
+150 fuel cans, 1,000 boards; a card and an emblem in teal and gold) and *Revenge of the Headliners* (a
+headshot, a grenade kill, 100 headliners, 1,000 melee kills, 1,000 grenade kills, 1,500 headshots; cherry). The panels
+run from the easy challenge to the long one. The mock's own "restart the generator" and "kill with shock" need stats
+the night does not count, so they are not offered (rule 15). A set is **read, never stored**: a panel is uncovered
+when its feat is done, the set is finished when all six are, and the prize is owned from the finished challenges
+(`PlateCatalog`: a piece with `{set}` as its source), so the prize comes once and a retune needs no migration. A set
+is the gate of its own card and emblem (new pieces; each feat in it still gives what it gave). The Challenges tab has a
+**Poster sets** chip with each set whole (its poster, the six rows, the prize) and a teaser of each in All after Today;
+a finished set is a card of the popup lane (live, and in the menu when it was finished away from a night, once) and a
+row of the night report (its poster, title and prize). How
+it works and what was measured: [poster sets](../research/calling-cards.md#poster-sets-1073).
 
 ## The night report and credits
 
@@ -865,6 +881,9 @@ beside the box come with #1070). A name tag never shows a card or an emblem in t
 Built in #1077: [how it travels and what it costs](../research/multiplayer.md#the-level-and-icon-beside-a-name-1077).
 The setting is **Player levels** (Settings, Accessibility). A level gained in a night reaches the tags by the
 `level_up` event the tally already sends (#1114), so a tag changes the moment the level does.
+The icon's **body is centred on the digits' ink**, at every size, in every place (#1161): the icon is set from where
+the font draws the digits and where the art's body is, not from a box
+([how, and the measurements](../research/level-badge-alignment.md)).
 
 ## Prestige
 

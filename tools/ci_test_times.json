@@ -113,7 +113,7 @@
     "grenades/test_snapshot.gd": 0.2,
     "grenades/test_thrower.gd": 0.2,
     "grenades/test_zombie_contact.gd": 0.2,
-    "net/test_activity_room.gd": 6.3,
+    "net/test_activity_play_together.gd": 9.0,
     "net/test_arrival_online.gd": 13.8,
     "net/test_arrival_wire.gd": 0.0,
     "net/test_bot_limits.gd": 0.1,

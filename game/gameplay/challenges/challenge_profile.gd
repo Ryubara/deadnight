@@ -209,6 +209,15 @@ func apply(
 	return moved
 
 
+## The feats this board shows as done, in file order: what a poster set's panels are read from.
+func feats_done(catalog: ChallengeCatalog) -> Array[StringName]:
+	var found: Array[StringName] = []
+	for def in catalog.of_family(ChallengeDef.Family.FEAT):
+		if int(feats.get(def.id, 0)) >= def.target:
+			found.append(def.id)
+	return found
+
+
 ## How many stats starting with `prefix` this board has a total for.
 func distinct_under(prefix: String) -> int:
 	var found := 0

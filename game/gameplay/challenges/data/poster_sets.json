@@ -1,0 +1,24 @@
+{
+  "sets": [
+    {
+      "id": "fifty_foot_generator",
+      "title": "Attack of the Fifty-Foot Generator",
+      "short": "Generator",
+      "lines": ["ATTACK OF THE", "FIFTY-FOOT", "GENERATOR"],
+      "palette": "teal",
+      "motif": "bolt",
+      "challenges": ["f_fill", "f_hammer", "f_open", "f_regular", "f_gas_man", "f_ironwork"],
+      "grants": ["card:fifty_foot_feature", "emblem:live_wire"]
+    },
+    {
+      "id": "revenge_of_the_headliners",
+      "title": "Revenge of the Headliners",
+      "short": "Headliners",
+      "lines": ["REVENGE OF", "THE", "HEADLINERS"],
+      "palette": "cherry",
+      "motif": "crosshair",
+      "challenges": ["f_cheese", "f_fire", "f_headliner_hunter", "f_hands_only", "f_demolition", "f_dead_eye"],
+      "grants": ["card:revenge_feature", "emblem:top_billing"]
+    }
+  ]
+}

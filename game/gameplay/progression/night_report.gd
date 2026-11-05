@@ -71,12 +71,16 @@ static func lines(sources: Dictionary, xp: int) -> Array[Dictionary]:
 ## when the night began and `kept` whether an account holds this night (false: the night would
 ## have paid this much and nothing was saved, and there is no level bar). Keys: `kept`, `lines`,
 ## `xp`, and when kept `level_from`, `level_to`, `crossed` (the levels the night reached),
-## `unlocked` (what they gave: `{level, slot, item, label}`), `fraction_from` and `fraction_to` (the
+## `sets` (the poster sets the night finished, `[{id, title, card, emblem}]`, as
+## `PosterSets.event_of` tells them: for a kept or an unkept night alike), `unlocked` (what they
+## gave: `{level, slot, item, label}`), `fraction_from` and `fraction_to` (the
 ## bar of the level the night ended in: where the night started in it, 0 when it crossed a level,
 ## and where it ended), `in_level`, `to_leave` (0 at the top), `to_next` and `next` (the next level
 ## that gives something to wear or play, `{level, label}`, empty when there is none).
-static func compose(sources: Dictionary, xp: int, start_total: int, kept: bool) -> Dictionary:
-	var model := {"kept": kept, "lines": lines(sources, xp), "xp": xp}
+static func compose(
+	sources: Dictionary, xp: int, start_total: int, kept: bool, sets: Array[Dictionary] = []
+) -> Dictionary:
+	var model := {"kept": kept, "lines": lines(sources, xp), "xp": xp, "sets": sets}
 	if not kept:
 		return model
 	var begin := maxi(start_total, 0)
