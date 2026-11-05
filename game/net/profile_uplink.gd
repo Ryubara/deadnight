@@ -41,7 +41,7 @@ static func sync_after_sign_in(signed: TogetherApi) -> void:
 	var own := signed.detached(parent.get_tree().root if parent.is_inside_tree() else parent)
 	var answer := await own.read_save(SLOT)
 	if answer["ok"]:
-		ProfileStore.open(sync_path, TogetherApi.signed_in).adopt(answer, own.my_id())
+		adopt_and_tell(ProfileStore.open(sync_path, TogetherApi.signed_in), answer, own.my_id())
 
 
 ## Reads the account's profile into the store. True when it was read.
@@ -49,8 +49,20 @@ func read() -> bool:
 	var answer := await api.read_save(SLOT)
 	if not answer["ok"]:
 		return false
-	store.adopt(answer, api.my_id())
+	adopt_and_tell(store, answer, api.my_id())
 	return true
+
+
+## Puts the account's profile in the store (`ProfileStore.adopt`) and tells the menu of the levels
+## it holds beyond what this machine knew: the cache's level, and the highest a card was shown for
+## (`ProgressNews`). A cache that was not this account's is no baseline.
+static func adopt_and_tell(store: ProfileStore, answer: Dictionary, account_id: String) -> void:
+	var cached := store.profile.level() if account_id != "" and store.account == account_id else 0
+	store.adopt(answer, account_id)
+	if account_id != "":
+		MenuPopups.announce(
+			ProgressNews.levels_after_read(account_id, cached, store.profile.level())
+		)
 
 
 ## Sends a queued write (`ProfileStore.flush` calls this): true when the backend took it.
