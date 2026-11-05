@@ -2,8 +2,9 @@ class_name TapFloor
 extends RefCounted
 ## The least size of what a finger presses on a phone (#1197). The kit's controls (sliders,
 ## toggles, selectors, text fields) are `control_height` units high, 52: 37.6 CSS pixels at the
-## phone factor, under the 44 a fingertip needs. On a phone's canvas each is raised to
-## `MenuLook.TAP_TARGET` (62 units, 44.8 CSS pixels) and goes back on a larger one.
+## phone factor (36.1 on the narrowest page), under the 44 a fingertip needs. On a phone's canvas
+## each is raised to `MenuLook.TAP_TARGET` (64 units, 44.4 CSS pixels on the narrowest page) and
+## goes back on a larger one.
 
 ## A canvas this high or lower is a phone's (a phone held sideways is 540 units).
 const PHONE_CANVAS_HEIGHT := 600.0
