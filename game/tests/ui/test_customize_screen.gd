@@ -101,8 +101,8 @@ func test_it_starts_on_the_saved_look_and_shows_it() -> void:
 	assert_bool(_screen.look.equals(CharacterLook.default_look())).is_true()
 	assert_bool(_screen.is_dirty()).is_false()
 	assert_object(_screen.preview().model).is_not_null()
-	# The default look is the first preset, so the selector reads its name.
-	assert_str(_screen.preset_selector().text()).is_equal("Greaser")
+	# The default look is the first preset: the Greaser costume is the one worn.
+	assert_bool(_screen.costume_cell(0).worn).is_true()
 
 
 func test_the_first_focus_is_the_body_tab() -> void:
@@ -123,11 +123,7 @@ func test_the_character_choice_switches_to_her_and_everything_follows() -> void:
 	# The Greaser's pompadour is his: she gets her bob; the outfit stays.
 	assert_str(String(_screen.look.parts[&"hair"])).is_equal("bob")
 	assert_str(String(_screen.look.parts[&"torso"])).is_equal("jacket")
-	# Her presets, her face's names and her model on the turntable.
-	var presets := _screen.preset_selector().options
-	assert_array(Array(presets)).is_equal(
-		["Carhop", "Usherette", "Pit crew", "Pep squad", "Custom"]
-	)
+	# Her face's names and her model on the turntable.
 	assert_str(_screen.cell("part:head", 0).shown_name()).is_equal("Natural")
 	var shown := SoldierLook.visible_meshes(_screen.look.to_soldier_look())
 	assert_array(shown).contains(
@@ -144,14 +140,13 @@ func test_the_character_choice_switches_to_her_and_everything_follows() -> void:
 	await _click(him, him.size * 0.5)
 	assert_str(String(_screen.look.body())).is_equal("male")
 	assert_str(String(_screen.look.parts[&"hair"])).is_equal("crew")
-	assert_str(_screen.preset_selector().options[0]).is_equal("Greaser")
 	assert_str(_screen.cell("part:head", 0).shown_name()).is_equal("Clean-shaven")
 
 
 func test_her_preset_picks_her_and_randomize_keeps_her() -> void:
 	_screen.apply_preset(9)
 	assert_bool(_screen.cell("part:body", 1).worn).is_true()
-	assert_str(_screen.preset_selector().text()).is_equal("Usherette")
+	assert_bool(_screen.costume_cell(9).worn).is_true()
 	for i in 20:
 		_screen.randomize()
 		assert_str(String(_screen.look.body())).is_equal("female")
@@ -159,7 +154,10 @@ func test_her_preset_picks_her_and_randomize_keeps_her() -> void:
 
 func test_the_mouths_are_free_on_the_body_tab_under_the_face_and_saved() -> void:
 	await await_idle_frame()
-	var body_sections: Array = CustomizeScreen.TABS[0]["sections"]
+	var body_sections: Array = []
+	for tab: Dictionary in CustomizeScreen.TABS:
+		if tab["key"] == &"body":
+			body_sections = tab["sections"]
 	var parts: Array = (
 		body_sections
 		. filter(func(s: Dictionary) -> bool: return s.has("part"))
@@ -323,17 +321,6 @@ func test_unlocking_opens_the_items() -> void:
 	# Choosing a locked one does nothing.
 	poor.choose("colour:primary", 11)
 	assert_int(poor.look.colours[&"primary"]).is_not_equal(11)
-
-
-func test_a_preset_picked_with_the_keyboard_applies_and_shows_its_name() -> void:
-	var selector := _screen.preset_selector()
-	selector.grab_focus()
-	await _key(KEY_RIGHT)
-	assert_bool(_screen.look.equals(CharacterLook.from_preset(1))).is_true()
-	assert_str(selector.text()).is_equal("Usher")
-	# Editing a colour leaves the preset: the selector reads Custom.
-	_screen.choose("colour:hair", 3)
-	assert_str(selector.text()).is_equal(CustomizeScreen.CUSTOM_LABEL)
 
 
 func test_every_preset_can_be_applied_and_the_preview_follows() -> void:

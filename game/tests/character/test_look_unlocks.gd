@@ -286,9 +286,17 @@ func test_every_option_a_level_does_not_open_is_repaired_to_one_it_does() -> voi
 			for i in LookCatalog.palette(channel).size():
 				var look := CharacterLook.new()
 				look.colours[channel] = i
-				var at: int = look.without_locked(unlocks).colours[channel]
-				var entry: Dictionary = LookCatalog.palette(channel)[at]
-				assert_bool(unlocks.is_unlocked(channel, entry["id"], entry["gate"])).is_true()
+				var repaired := look.without_locked(unlocks)
+				var entry: Dictionary = LookCatalog.palette(channel)[repaired.colours[channel]]
+				# A colour is the player's by the palette, or as the Default of a costume they own
+				# (black, denim, black is the Greaser's at level 12): `default_costume`.
+				var as_default := repaired.default_costume(unlocks) >= 0
+				(
+					assert_bool(
+						as_default or unlocks.is_unlocked(channel, entry["id"], entry["gate"])
+					)
+					. is_true()
+				)
 
 
 func test_the_saved_look_is_repaired_at_load_by_the_level_in_the_profile() -> void:

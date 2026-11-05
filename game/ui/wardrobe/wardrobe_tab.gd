@@ -5,10 +5,10 @@ extends Button
 ## and the pointer outline it in amber. A tab is a button, so the keyboard and the pad walk the
 ## strip as they walk the menu's.
 
-const PADDING := 12.0
-const PADDING_COMPACT := 10.0
+const PADDING := 10.0
+const PADDING_COMPACT := 7.0
 const TYPE := 25
-const TYPE_COMPACT := 24
+const TYPE_COMPACT := 22
 const HEIGHT := 56.0
 
 ## The tab's id (`CustomizeScreen.TABS`).

@@ -144,7 +144,7 @@ func shift_colour(slot: StringName, steps: int) -> void:
 ## A copy with every option this player has not unlocked put back to the first one they may wear
 ## in that slot (the first of the slot is the free "None" for headwear, eyewear and neckwear, and
 ## the first of a ladder slot's starting pieces for the rest), and every colour to the first they
-## may use.
+## may use. The default colours of a costume the player owns are the exception (`default_costume`).
 func without_locked(unlocks: LookUnlocks) -> CharacterLook:
 	var out := duplicate_look()
 	for slot in LookCatalog.part_slots():
@@ -152,11 +152,24 @@ func without_locked(unlocks: LookUnlocks) -> CharacterLook:
 		var option: Dictionary = LookCatalog.options(slot)[index]
 		if not unlocks.is_unlocked(slot, option["id"], option["gate"]):
 			out.parts[slot] = LookCatalog.first_open(slot, unlocks)
+	var costume_colours := default_costume(unlocks) >= 0
 	for slot in LookCatalog.colour_slots():
 		var entry: Dictionary = LookCatalog.palette(slot)[colours[slot]]
-		if not unlocks.is_unlocked(slot, entry["id"], entry["gate"]):
+		if unlocks.is_unlocked(slot, entry["id"], entry["gate"]):
+			continue
+		# The cloth colours of a costume the player owns are theirs, all three together: that is
+		# its "Default" (#1066). One of them changed leaves the others to the palette they own.
+		if not (costume_colours and Costumes.COLOUR_CHANNELS.has(slot)):
 			out.colours[slot] = LookCatalog.first_open_colour(slot, unlocks)
 	return out
+
+
+## The costume this player owns whose three cloth colours this look wears whole, or -1.
+func default_costume(unlocks: LookUnlocks) -> int:
+	for index in Costumes.count():
+		if unlocks.owns_costume(index) and Costumes.has_default_colours(self, index):
+			return index
+	return -1
 
 
 # --- saving ------------------------------------------------------------------------------------
