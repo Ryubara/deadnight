@@ -137,7 +137,7 @@ def main() -> int:
             smoke.reach_menu(page)
             smoke.open_together(page)
             tap = pk.tap_box
-            tap(page, cdp, pk.css_box(page, "fields", "Code"))
+            tap(page, cdp, pk.scroll_into_view(page, cdp, "fields", "Code"))
             page.wait_for_timeout(1200)
             page.screenshot(path=args.out / "1_keypad.png")
             for letter in code:
@@ -152,7 +152,7 @@ def main() -> int:
             pk.tap(page, cdp, x, y)
             smoke.wait_for(page, "the name prompt", lambda _s: bool(rooms.read_probe(page).get("naming")), 30)
             page.wait_for_timeout(1200)
-            pk.tap(page, cdp, 40, 40)
+            pk.tap(page, cdp, *pk.EMPTY_SPOT)
             page.wait_for_timeout(800)
             pk.tap_box(page, cdp, pk.css_box(page, "fields", "PlayerName"))
             page.wait_for_timeout(1200)
