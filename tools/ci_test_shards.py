@@ -117,6 +117,15 @@ def self_test(root: Path) -> None:
         assert limit and int(limit.group(1)) * 60 == JOB_LIMIT_SECONDS, (
             "ci_shard_time.JOB_LIMIT_SECONDS is not the job's"
         )
+        # The run goes through the warm-up that keeps scripts from staying in use at exit (#1231): the plain tool leaks
+        # by the mix of suites in a shard, and the leak check below it fails the job with every test green.
+        assert "-s res://tools/ci/warm_GdUnitCmdTool.gd" in job, (
+            "the godot job must run GdUnit through tools/ci/warm_GdUnitCmdTool.gd"
+        )
+        assert "-s res://addons/gdUnit4/bin/GdUnitCmdTool.gd" not in job, "the godot job runs the plain GdUnit tool"
+        assert re.search(r'! grep -E "leaked at exit\|still in use" tests\.log', job), (
+            "the leak check on tests.log is gone"
+        )
         web = text.split("\n  web:\n", 1)[1].split("\n  deploy:\n", 1)[0]
         web_limit = re.search(r"\n    timeout-minutes: (\d+)", web)
         assert web_limit and int(web_limit.group(1)) * 60 == WEB_JOB_LIMIT_SECONDS, (
