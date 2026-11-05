@@ -11,6 +11,8 @@
 # changed. A job skipped by an `if` reports success to a required check, so every required name is still reported;
 # `build-ok` fails on a failed or cancelled job and on a `conventions` that failed (which also stops the long jobs).
 # The `backend` job runs the platform backend's own tests beside them (docs/research/ci-jobs.md).
+# `gdlint` runs the commit hook itself over every script of the merged head; `gdlint-late` lints the changed scripts
+# again on the base as it is when the run ends, because a merge that landed during the run is in no merged head (#1238).
 # Actions are pinned to a full commit SHA; the tag is in the comment beside it.
 name: ci
 
@@ -22,6 +24,10 @@ on:
 
 permissions:
   contents: read
+
+env:
+  # The tool that runs the hooks. What it runs (gdtoolkit's version, the files, the settings) is `.pre-commit-config.yaml`.
+  PRE_COMMIT: pre-commit@4.7.0
 
 concurrency:
   # A pull request's runs share one group and a superseded run is cancelled. Each push to main gets its own group (its
@@ -48,6 +54,7 @@ jobs:
       markdown: ${{ steps.scope.outputs.markdown }}
       workflows: ${{ steps.scope.outputs.workflows }}
       backend: ${{ steps.scope.outputs.backend }}
+      gdscript: ${{ steps.scope.outputs.gdscript }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
@@ -63,6 +70,8 @@ jobs:
       - name: The Discord bridge's share half refuses nothing it could have asked for first
         # A client that wants `authenticate` before any command (RPC 4006 otherwise, #627); no packages, node is on the runner.
         run: node --test deploy/web/test_discord_share.mjs
+      - name: The late gdlint judges a merge the run's own merged head does not hold
+        run: bash tools/test_gdlint_on_base.sh
       - name: The page's last word is sent by a page that is going, and by none that is only kept
         # `pagehide` with `persisted` true (a phone that switched app, the back-forward cache) sends nothing (#1188); no packages.
         run: node --test tools/web_smoke/test_page_closing.mjs
@@ -683,9 +692,52 @@ jobs:
           1.7.12
       - run: ./actionlint -color .github/workflows/*.yml
 
+  gdlint:
+    # The commit hook itself, so its version (the `rev` in `.pre-commit-config.yaml`), its files and its settings cannot
+    # differ from what a person's machine runs. A `pull_request` run checks out the merged head, so two pull requests
+    # that each stay under a limit and cross it together are judged as one file (#1238). It has a job of its own and is
+    # not a step of `conventions`: 1,800 scripts take a minute or more against that job's seconds, every job waits for
+    # `conventions`, and a lint error should not also stop the tests.
+    needs: conventions
+    if: needs.conventions.outputs.gdscript == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: gdlint on every script of the merged head
+        run: uvx "$PRE_COMMIT" run gdlint --all-files
+
+  gdlint-late:
+    # The last thing before `build-ok`. The merged head above is from the start of the run: #1225's run began eight
+    # minutes before #1214 landed, so it never saw the file the two of them crossed the limit in. This merges the base as
+    # it is now and lints the scripts the pull request changes, in seconds (tools/gdlint_on_base.sh). Nothing to do on a
+    # push: `gdlint` above already reads main as it landed.
+    needs: [conventions, godot, bots-soak, web, backend, gdlint]
+    if: ${{ !cancelled() && !failure() && github.event_name == 'pull_request' && needs.conventions.outputs.gdscript == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the merge base of the pull request and the base; `blob:none` keeps that to commits and trees
+          filter: blob:none
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: gdlint on the changed scripts, merged with the base as it is now
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "refs/heads/$BASE_REF"
+          bash tools/gdlint_on_base.sh "$(git rev-parse FETCH_HEAD)" "$PR_HEAD" uvx "$PRE_COMMIT" run gdlint --files
+
   build-ok:
     if: always()
-    needs: [conventions, godot, bots-soak, web, backend]
+    needs: [conventions, godot, bots-soak, web, backend, gdlint, gdlint-late]
     runs-on: ubuntu-24.04
     steps:
       - name: Every job passed

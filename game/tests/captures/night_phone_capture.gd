@@ -12,8 +12,11 @@ extends Node
 ##
 ## Arguments after `--`: `--shot=end` (the end board with the fullest report and credits),
 ## `--shot=pause` (the pause card), `--shot=hud` (the HUD with an objective in the bottom left,
-## `--at=0.2,0.93` is where it stands on the screen), `--scale=X` (the interface size, default 1)
-## and `--out=FILE`.
+## `--at=0.2,0.93` is where it stands on the screen), `--shot=markers` (an objective and an ally,
+## standing and down, on the middle of every card of the HUD's corners: Deadnight #1218),
+## `--on=objective@health,ally@ammo,downed@round` puts only those, `--on=free` three on free ground,
+## `--touch=0` is a desktop, `--ratio=X` the page's pixel ratio, `--scale=X` (the interface size,
+## default 1) and `--out=FILE`.
 
 const PLAY := "res://ui/screens/play_screen.tscn"
 const SETTINGS_PATH := "user://night_phone_capture.cfg"
@@ -27,13 +30,15 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	TouchMode.device_is_touch = true
+	TouchMode.device_is_touch = str(_args.get("touch", "1")) != "0"
 	# By the script object, so the capture also runs on a game that has no `pixel_ratio` (a "before").
 	var scale_script: Object = load("res://ui/menu/menu_scale.gd")
 	scale_script.set(&"pixel_ratio", float(_args.get("ratio", 2.0)))
 	Settings.path = SETTINGS_PATH
 	Settings.reset_defaults()
 	Settings.set_value(SettingsService.UI_SCALE, float(_args.get("scale", 1.0)))
+	# The first-run hints ("DRAG TO MOVE") are over the HUD once, and cover what is measured here.
+	Settings.set_value(SettingsService.TOUCH_HINTS_SEEN, 255)
 	PlayerLevel.use(10)
 	var chosen := MatchSettings.new()
 	chosen.map = "small_indoor"
@@ -68,6 +73,8 @@ func _run() -> void:
 			await _end(screen)
 		"pause":
 			await _pause(screen)
+		"markers":
+			await _markers(screen)
 		_:
 			await _hud(screen)
 	# The end sequence's own cards give way to the board over about two seconds of the clock.
@@ -116,6 +123,73 @@ func _hud(screen: NightScreen) -> void:
 		&"door", &"objective", float(at[0]), float(at[1]), 30.0, "Concession Stand", false
 	)
 	hud.state.set_markers([marker] as Array[Dictionary])
+
+
+## Every card of the corners with an objective, a teammate or a body on its middle, in turn, so each
+## kind stands under each card: the night's own markers give way to these.
+func _markers(screen: NightScreen) -> void:
+	var night := screen.night
+	night.link.broadcast(night.server.rules.apply(RulesAction.skip_break()))
+	NightFixture.run(night, 3)
+	night.set_paused(true)
+	night.markers.set_process(false)
+	var hud := screen._hud
+	hud.state.set_area("The Concession Stand", "Light the booth to open the back lot")
+	hud.state.set_ammo(30, 150, "Shotgun")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var names: Array[String] = ["Ruby", "Moe", "Cal", "Dee", "Vera"]
+	var list: Array[Dictionary] = []
+	var size := hud.markers.size
+	var origin := hud.markers.get_global_rect().position
+	if str(_args.get("on", "")) == "free":
+		# On free ground, under no card: what a desktop must draw as it always did.
+		(
+			hud
+			. state
+			. set_markers(
+				(
+					[
+						HudFixture.late_marker(
+							&"a", &"objective", 0.5, 0.3, 30.0, "Concession Stand", false
+						),
+						HudFixture.late_marker(&"b", &"ally", 0.62, 0.55, 12.0, "Moe", false),
+						HudFixture.late_marker(&"c", &"ally", 0.4, 0.6, 12.0, "Ruby", true),
+					]
+					as Array[Dictionary]
+				)
+			)
+		)
+		return
+	var n := 0
+	# `--on=objective@health,ally@ammo,downed@round`: only these, on the cards of that name.
+	var only := str(_args.get("on", "")).split(",", false)
+	for card in hud.corner_cards():
+		if not card.is_visible_in_tree() or card.size == Vector2.ZERO:
+			continue
+		var middle := (card.get_global_rect().get_center() - origin) / size
+		var kind := &"objective" if n % 3 == 0 else &"ally"
+		var down := n % 3 == 2
+		if not only.is_empty():
+			kind = &""
+			for entry in only:
+				var pair := entry.split("@")
+				if pair[1].to_lower() == str(card.name).to_lower():
+					kind = &"objective" if pair[0] == "objective" else &"ally"
+					down = pair[0] == "downed"
+			if kind == &"":
+				continue
+		var shown := "Concession Stand" if kind == &"objective" else names[n % names.size()]
+		var marker := HudFixture.late_marker(
+			StringName("m%d" % n), kind, middle.x, middle.y, 30.0, shown, down
+		)
+		if kind == &"ally":
+			marker["level"] = 3 + n * 7
+			marker["icon"] = marker["level"]
+		list.append(marker)
+		n += 1
+	hud.state.set_markers(list)
+	print("night: markers ", n)
 
 
 func _report(screen: NightScreen, per_unit: float, ratio: float) -> void:
