@@ -530,6 +530,36 @@ the HUD is the phone's weapon control; the Swap and Grenade buttons are gone fro
 - **Not done here:** a first-run hint for the places (the hints label the stick, the look and Interact only); a cancel
   for a cooking grenade (the throw's other action `toss_grenade` has no touch control either).
 
+## The scoreboard on the players' column (#1287)
+
+The audit ([touch audit](../design/touch-audit.md)) found the Scoreboard circle a button for Tab, while the players'
+column already shows the points and names: the scoreboard's short form. A finger held on the column now holds the
+`scoreboard` action and lifting lets go; the circle, its icon and its hit area (`TouchLayout.SCOREBOARD_*`) are gone.
+
+- **The place.** `Hud.scoreboard_zone` is the points part's box grown upward to a fingertip when it is lower (a solo
+  night's one box is 66 units, 23 CSS px; the zone is 44.0 to 44.3 after), always the column's whole width
+  (316 units, 88 to 142 CSS px). It is the last of `Hud.touch_zones`, so a weapon place wins where they meet (they are
+  a gap apart) and so does a tag added to the column later. `TouchControls._touch_down` tries the buttons, then the
+  zones, then the stick's zone: a finger that begins on the column is a `button` finger of `scoreboard`, which is not a
+  `looks_when_dragged` button, so it never looks, fires or starts the stick, however far it drags.
+- **The ticket and the buttons.** The ticket is 896 units wide and as tall as the party (152 for one, 495 for eight,
+  838 for eight and seven bots), centred. At 844 x 390 and the usual size nothing is under it; at the biggest
+  interface size (1.25) the right thumb's ring starts 477 units from the edge on a canvas that is only 1536 wide at
+  667 x 375, and the busiest night is as tall as the page. A container puts its child's scale back to one
+  (`fit_child_in_rect`), so `BoardFit` moves and scales the holder the ticket stands in. Measured (the matrix of
+  `test_touch_scoreboard`) on the two pages, three interface sizes, both hands and four parties: whole and in
+  the middle at 0.8 and,
+  at 1.0, on 844 x 390 and for every party but a full room on 667 x 375 (0.85 then); at 1.25 one player is whole
+  everywhere, and on 844 x 390 eight people are 0.95 and a full room 0.70, on 667 x 375 four are 0.70, eight 0.65 and a
+  full room 0.60 (the ticket keeps clear of the column too, so the thumb that holds it does not cover it). The text is
+  then 8 to 10 CSS px, as the ticket's already is at the usual size on that page; the test holds the least at 0.55.
+- **The hint.** "HOLD FOR SCORES" stands beside the column (above the perk badges when they stand there), goes with
+  the first hold, and takes the next bit of `controls/touch_hints_seen`, so nobody who has seen the others sees
+  anything else new except this one.
+- **Proof.** `test_touch_scoreboard` (every page, interface size, hand and party), `test_board_fit`, and the browser
+  check `tools/web_smoke/touch_scoreboard.py` with real touches on both pages. The marker capacity did not move
+  (audit page, "Markers after the Scoreboard circle goes").
+
 ## Sources
 
 - [Apple HIG, Layout](https://developer.apple.com/design/human-interface-guidelines/layout)

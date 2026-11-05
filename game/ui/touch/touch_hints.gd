@@ -105,6 +105,13 @@ func showing() -> Array[StringName]:
 	return found
 
 
+## The hints drawn now: those that show, but none while the scoreboard's ticket is up (#1287), which
+## a label would cover.
+func _shown() -> Array[StringName]:
+	var none: Array[StringName] = []
+	return none if Input.is_action_pressed(TouchControls.BOARD) else showing()
+
+
 ## True while the last frame drawn had a label in it, fading out included.
 func is_painted() -> bool:
 	return _painted
@@ -239,7 +246,7 @@ func _clear_of(rect: Rect2, circles: Dictionary) -> bool:
 
 func _process(delta: float) -> void:
 	_clock += delta
-	var now := showing()
+	var now := _shown()
 	for id in ORDER:
 		if id in now:
 			_age[id] = float(_age.get(id, 0.0)) + delta
@@ -292,7 +299,7 @@ func _draw() -> void:
 		return
 	_rects.clear()
 	var tokens := UITokens.active()
-	for id in showing():
+	for id in _shown():
 		_draw_hint(id, _alpha_of(id), tokens)
 	for id: StringName in _leaving:
 		_draw_hint(id, float(_leaving[id]) / FADE_OUT, tokens)

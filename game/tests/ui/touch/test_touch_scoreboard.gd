@@ -404,6 +404,23 @@ func test_the_hints_say_it_once_beside_the_column_and_a_hold_ends_it() -> void:
 	)
 
 
+func test_no_hint_is_drawn_over_the_ticket_while_it_is_up() -> void:
+	await _page(PAGES[1], 1.25, true, Vector2i(4, 0))
+	var hints := _fixture.controls.hints
+	await _settle()
+	assert_bool(hints.is_painted()).is_true()
+	await _fixture.touch(0, _column().get_center())
+	# The fade of a hint that was leaving, and the redraw, are done in half a second.
+	await await_millis(500)
+	assert_bool(_fixture.hud.scoreboard.visible).is_true()
+	assert_bool(hints.is_painted()).is_false()
+	# The others are still unseen, and come back with the lift.
+	assert_array(hints.showing()).contains([TouchHints.MOVE, TouchHints.LOOK])
+	await _fixture.lift(0)
+	await await_millis(500)
+	assert_bool(hints.is_painted()).is_true()
+
+
 func test_the_hint_waits_for_a_column_to_point_at() -> void:
 	_fixture = TouchFixture.make(self, TouchFixture.PHONE, null, false, false)
 	await _settle()

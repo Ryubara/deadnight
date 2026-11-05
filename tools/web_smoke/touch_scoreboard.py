@@ -162,7 +162,33 @@ def spot(state: dict, name: str, size: dict) -> tuple[float, float]:
     raise RuntimeError(f"no {name!r} on screen (the page has: {state.get('spots')!r})")
 
 
-def start_with_bots(page, client, size: dict, bots: int) -> None:
+def reach(page, client, name: str, size: dict) -> tuple[float, float]:
+    """Where `name` is once it is on the page: a control scrolled out of view is swiped into it (a short page's Play
+    screen scrolls); the swipe turns round when it took the control farther."""
+    way = -1.0
+    middle = 0.4 * size["height"]
+    at = spot(menu.probe(page), name, size)
+    for _ in range(10):
+        if 0.12 * size["height"] < at[1] < 0.66 * size["height"] and 0 < at[0] < size["width"]:
+            return at
+        start = (size["width"] * 0.5, size["height"] * 0.5)
+        finger(client, "touchStart", start)
+        drag(client, start, (0.0, way * size["height"] * 0.25))
+        finger(client, "touchEnd", None)
+        page.wait_for_timeout(600)
+        now = spot(menu.probe(page), name, size)
+        if abs(now[1] - middle) >= abs(at[1] - middle):
+            way = -way
+        at = now
+    raise RuntimeError(f"{name!r} never came on the page (last at {at})")
+
+
+def keys_used(page) -> bool:
+    """Whether the keyboard has the Start button (the bots were set with keys)."""
+    return smoke.focused_control(page) == "Start"
+
+
+def start_with_bots(page, client, size: dict, bots: int, shot: Path) -> None:
     """Solo from the menu, `bots` bots set on the Play screen by taps on the selector's arrow, then Start."""
     menu.wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
     page.wait_for_timeout(2500)
@@ -171,13 +197,27 @@ def start_with_bots(page, client, size: dict, bots: int) -> None:
     menu.tap(client, spot(state, "Solo", size))
     state = menu.wait_for(page, "the Play screen", lambda s: s.get("screen") == "play_screen", 60)
     page.wait_for_timeout(1500)
-    for _ in range(bots):
-        at = spot(menu.probe(page), "bots:end", size)
-        menu.tap(client, at)
-        page.wait_for_timeout(300)
+    if bots:
+        try:
+            for _ in range(bots):
+                menu.tap(client, reach(page, client, "bots:end", size))
+                page.wait_for_timeout(300)
+        except RuntimeError:
+            # The Bots row is under the footer of a short page's Play screen and does not scroll into reach: the
+            # keyboard sets it, as the Play screen's own tests do. The night's touch layer is the page's own.
+            smoke.focus_control(page, "bots", "ArrowUp")
+            smoke.step_value(page, "bots", "ArrowRight", bots)
+            page.wait_for_timeout(300)
+            smoke.focus_control(page, "Start", "ArrowDown")
     state = menu.probe(page)
+    page.screenshot(path=shot)
+    if bots and not str(state.get("play_rules", "")).endswith(f"|{bots} bots"):
+        raise RuntimeError(f"the Play screen shows {state.get('play_rules')!r}, not {bots} bots")
     start = next(k for k in (e.rpartition(":")[0] for e in str(state.get("spots", "")).split("|")) if "tart" in k)
-    menu.tap(client, spot(state, start, size))
+    if bots and keys_used(page):
+        smoke.press(page, "Enter")
+    else:
+        menu.tap(client, spot(state, start, size))
 
 
 def run(
@@ -196,7 +236,7 @@ def run(
     seed_settings(page, ui_size, left)
     page.goto(target, wait_until="commit")
     client = context.new_cdp_session(page)
-    start_with_bots(page, client, size, bots)
+    start_with_bots(page, client, size, bots, out / f"{label}-0_play.png")
     menu.wait_for(
         page, "a running night", lambda s: bool(s.get("night") and s.get("running")), smoke.NIGHT_LOAD_TIMEOUT_S
     )
