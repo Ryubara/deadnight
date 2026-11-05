@@ -27,17 +27,18 @@ const CROUCH := &"crouch"
 const INTERACT := &"interact"
 const PAUSE := &"pause"
 const SCOREBOARD := &"scoreboard"
-## The quick melee (#411, #588): a blow with whatever is in hand; the button presses its action. It
-## sits on the far right edge above the ammo card, close enough to the corner to be on screen on a
-## phone's 540 unit high canvas too (the menu's phone factor stays on while a night runs).
-const MELEE := &"quick_melee"
+## Strike (#411, #588, #1285): the quick melee, a blow with whatever is in hand; the button presses
+## its action. Like Interact it shows only while it applies, here a dead within reach of the blow
+## (`TouchControls.strike_ready`), so it costs the glass nothing the rest of the time. It stands
+## where Swap stood, beside Reload.
+const STRIKE := &"quick_melee"
 ## The ping (#642): marks what the crosshair is on for the team; the button presses `ping`. It sits
 ## on the top edge beside Pause, where the other thumb reaches it between fights; the right thumb's
-## corner is full (Reload takes the bottom of MELEE's column on a 1080 unit canvas).
+## corner is full.
 const PING := &"ping"
 ## The bot command wheel (#642): held, it opens the wheel, and the thumb's drag picks an order; the
-## button presses `bot_wheel`. It sits in MELEE's column on the far right edge, above the ammo card
-## and clear of Reload, so it is on screen on a phone's 540 unit high canvas too.
+## button presses `bot_wheel`. It sits on the far right edge, above the ammo card and clear of
+## Reload, so it is on screen on a phone's 540 unit high canvas too.
 const BOT_WHEEL := &"bot_wheel"
 
 ## The centre of Fire, from the bottom right corner (left, up): the thumb's resting place, and the
@@ -52,18 +53,19 @@ const RING_GAP := 42.0
 ## touch tests them in: the contextual button first, so it wins where it overlaps. The ring's
 ## buttons stand `FIRE_RADIUS + radius + RING_GAP` from Fire's centre, Crouch at 40 degrees below
 ## straight left, Reload at 8 above it (the same row), Aim at 56 and Jump at 104 (nearly straight
-## up); `test_touch_layout` checks the air. Melee and the Bots keep their old places until the homes
-## the audit names are built (#1275). The shoulder has no button: a double tap on free ground
-## (`TouchDoubleTap`, #1288). The weapons and the grenades are the HUD's own
+## up); `test_touch_layout` checks the air. Strike stands beside Reload, a thumb's roll out along
+## the row from Fire, with the 30 units of air Interact's place needs. The Bots keep their
+## old place until the home the audit names is built (#1275). The shoulder has no button: a double
+## tap on free ground (`TouchDoubleTap`, #1288). The weapons and the grenades are the HUD's own
 ## places, not buttons of this layer (#1280).
 const BUTTONS := [
 	[INTERACT, Vector2(540.0, 500.0), 80.0],
+	[STRIKE, Vector2(575.0, 340.0), 52.0],
 	[FIRE, FIRE_OFFSET, FIRE_RADIUS],
 	[RELOAD, Vector2(411.0, 379.0), 66.0],
 	[AIM, Vector2(325.0, 527.0), 72.0],
 	[JUMP, Vector2(154.0, 556.0), 70.0],
 	[CROUCH, Vector2(361.0, 219.0), 62.0],
-	[MELEE, Vector2(60.0, 310.0), 44.0],
 	[BOT_WHEEL, Vector2(60.0, 405.0), 40.0],
 ]
 ## The buttons whose finger does not look while it drags: the wheel's drag picks an order. Every

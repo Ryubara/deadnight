@@ -21,7 +21,6 @@ const SMALL: Array[StringName] = [
 	TouchLayout.PING,
 	TouchLayout.SCOREBOARD,
 	TouchLayout.BOT_WHEEL,
-	TouchLayout.MELEE
 ]
 ## Where a point's step is checked on the grid sweep, in canvas units.
 const GRID_STEP := 7.0
@@ -141,7 +140,7 @@ func test_a_hit_area_is_a_fingertip_at_every_interface_and_touch_size_and_hand()
 
 
 func test_the_interface_size_that_was_short_is_short_without_the_rule() -> void:
-	# The reproduction on main: with no fingertip rule the five small buttons are 38 to 39 CSS px.
+	# The reproduction on main: with no fingertip rule the four small buttons are 38 to 39 CSS px.
 	var circles := _circles(0.8, 1.0, false, false)
 	for id in SMALL:
 		var css: float = float(circles[id][&"hit"]) * 2.0 * _css(0.8)
@@ -203,7 +202,7 @@ func test_a_touch_that_pressed_a_button_presses_the_same_button_and_the_rest_is_
 					x += GRID_STEP
 				y += GRID_STEP
 	assert_array(faults.slice(0, 5)).is_empty()
-	# And the margin is real: at 0.8 a ring is gained round each of the five.
+	# And the margin is real: at 0.8 a ring is gained round each of the four.
 	assert_int(gained).is_greater(200)
 
 
@@ -223,19 +222,27 @@ func test_pause_ping_and_the_scoreboard_share_no_margin() -> void:
 	assert_object(await _press(_centre(TouchLayout.SCOREBOARD))).is_equal(TouchLayout.SCOREBOARD)
 
 
-## Where old areas overlapped, the first in the order wins, as before: Melee over the Bot wheel,
-## whatever the nearest centre. (Pause, Ping and the Scoreboard no longer overlap: #1289.)
+## Where old areas overlapped, the first in the order wins, as before: Interact over Strike, the two
+## contextual buttons, whatever the nearest centre. (Pause, Ping and the Scoreboard no longer
+## overlap: #1289.)
 func test_where_old_areas_overlap_the_first_in_order_still_wins() -> void:
 	_controls(0.8)
-	var melee := _centre(TouchLayout.MELEE)
-	var wheel := _centre(TouchLayout.BOT_WHEEL)
-	var toward_wheel := melee + (wheel - melee).normalized() * (_was(TouchLayout.MELEE) - 4.0)
-	assert_float(toward_wheel.distance_to(wheel)).is_less(toward_wheel.distance_to(melee))
-	assert_object(await _press(toward_wheel)).is_equal(TouchLayout.MELEE)
-	assert_object(await _press(wheel)).is_equal(TouchLayout.BOT_WHEEL)
+	# A point inside both old areas and nearer Strike's centre is Interact's while it is up, and
+	# Strike's when it is not.
+	var circles := _fixture.controls.circles()
+	var interact := _centre(TouchLayout.INTERACT)
+	var strike := _centre(TouchLayout.STRIKE)
+	var toward_strike := (
+		interact + (strike - interact).normalized() * (_was(TouchLayout.INTERACT) - 4.0)
+	)
+	assert_float(toward_strike.distance_to(strike)).is_less(toward_strike.distance_to(interact))
+	assert_float(toward_strike.distance_to(strike)).is_less(_was(TouchLayout.STRIKE))
+	assert_object(TouchLayout.button_at(toward_strike, circles)).is_equal(TouchLayout.INTERACT)
+	var without_interact := TouchLayout.button_at(toward_strike, circles, [TouchLayout.INTERACT])
+	assert_object(without_interact).is_equal(TouchLayout.STRIKE)
 
 
-## A finger on the new margin of each of the five presses it; with no rule the same touch was the
+## A finger on the new margin of each of the four presses it; with no rule the same touch was the
 ## look or the stick.
 func test_a_finger_in_the_margin_of_a_small_button_presses_it() -> void:
 	for mirrored in HANDS:

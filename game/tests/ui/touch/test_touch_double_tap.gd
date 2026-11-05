@@ -182,6 +182,27 @@ func test_ping_is_a_button_so_two_taps_on_it_never_count_and_the_stick_zone_is_t
 	assert_int(_swaps).is_equal(1)
 
 
+func test_strikes_place_is_free_ground_while_it_is_hidden_and_a_button_while_it_is_up() -> void:
+	var strike := _fixture.at(TouchLayout.STRIKE)
+	# Hidden (no dead in reach): nothing is there, two taps are a double tap.
+	await _tap(strike)
+	await _tap(strike)
+	assert_int(_swaps).is_equal(1)
+	await await_millis(250)
+	# Up: the place is Strike's, two taps are two blows and never Side.
+	_fixture.controls.strike_ready = func() -> bool: return true
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_bool(_fixture.controls.strike_up).is_true()
+	await _tap(strike)
+	assert_bool(Input.is_action_pressed(&"quick_melee")).is_true()
+	await _tap(strike)
+	assert_int(_swaps).is_equal(1)
+	assert_bool(Input.is_action_pressed(&"swap_shoulder")).is_false()
+	await await_millis(250)
+	_fixture.controls.strike_ready = Callable()
+
+
 func test_a_tap_on_the_stick_between_two_free_taps_ends_the_pair() -> void:
 	await _tap()
 	await _tap(Vector2(300.0, 800.0))

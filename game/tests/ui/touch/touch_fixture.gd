@@ -30,6 +30,8 @@ var now := 0.0
 ## The HUD under the controls, wired to them as the night screen does (`make` with `with_hud`).
 var hud: Hud
 var host: Control
+## Whether a dead is within reach of the quick melee (what `controls.strike_ready` says).
+var strike_up := false
 var _suite: GdUnitTestSuite
 var _hand_before: Variant = null
 var _auto_fire_before: Variant = null
@@ -53,6 +55,7 @@ static func make(
 	suite.add_child(fixture.host)
 	fixture.controls = TouchControls.new()
 	fixture.controls.state = state
+	fixture.controls.strike_ready = func() -> bool: return fixture.strike_up
 	if with_hud:
 		fixture._add_hud()
 	# The hints would write what a test used into the player's own settings file.
