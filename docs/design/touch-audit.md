@@ -19,7 +19,7 @@ already shows it takes the touch), **CONTEXT** (a button that shows only when it
 
 | Action (desktop key) | Home on a phone | Verdict | Built by |
 | --- | --- | --- | --- |
-| `move_*` (WASD), `sprint` (Shift) | the floating stick, sprint past its rim | KEEP | #1276 |
+| `move_*` (WASD), `sprint` (Shift) | the floating stick, a sprint latched past its edge | KEEP | #1276 (done) |
 | `look_*`, the mouse | a drag on free ground, or from any right button | KEEP | #1283 |
 | `fire` (left button) | Fire, the ring's centre | KEEP | #1283 |
 | `aim` (right button) | Aim, held with auto-fire on, a toggle off | KEEP | #1283, #1281 |
@@ -87,9 +87,10 @@ a keyboard.
 - The prompt card's key: gone on a phone (done here, `HudPrompt.touch_layout`). The card used to follow "a finger was
   the last input", which a capture from a script never sets; it follows the touch layer now.
 - The menu hint bar (`MenuHints`): none on touch (`UIInputMode.touch`), already.
-- The settings' Controls tab names the mouse ("Mouse sensitivity", "Push the mouse forward to look down") and is the
-  only place the phone's look sensitivity and invert-Y live: a phone shows mouse words for its own look. Convert
-  (#1290): the Touch tab holds "Look sensitivity" and "Invert vertical look" on a phone, with no mouse words.
+- The settings' Controls tab named the mouse ("Mouse sensitivity", "Push the mouse forward to look down") and was the
+  only place the phone's look sensitivity and invert-Y lived. Converted (#1290): on a touch device the Touch tab holds
+  "Look sensitivity" and "Invert vertical look" with no mouse words, and the Controls tab shows on a desktop only
+  ([Settings on a phone](../research/settings.md#on-a-phone-1290)).
 
 ## What the review found
 
@@ -97,7 +98,7 @@ a keyboard.
 | --- | --- |
 | Key hints reserve 64 units on a phone | Fixed here: 48 for the mark and 16 for the gap go to the prompt's words |
 | "BOTS: HOLD HERE" at the top right | Fixed here: the notices say the state (`BOTS: FOLLOWING YOU`, `ROAMING`, `HOLDING POSITION`). A ping's own `HOLD HERE` stays: it is what a ping says |
-| Touch tab: descriptions cut with "...", `1.00x` against the scrollbar | #1290 (copy that fits, a gap for the bar, a test that no hint is cut, the look settings on the Touch tab) |
+| Touch tab: descriptions cut with "...", `1.00x` against the scrollbar | Fixed in #1290: copy that fits, a gap for the bar, a test that no hint is cut on any tab (`test_settings_phone`), the look settings on the Touch tab |
 | Six markers before two meet at 667 x 375, 1.0 | Clearing the right side wins it all back: see below |
 | Pause and Ping 27 CSS px apart | Fixed in #1289: Ping stands under Pause, 56 CSS px or more from it, hit areas apart |
 

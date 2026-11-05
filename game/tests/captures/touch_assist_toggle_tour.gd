@@ -9,8 +9,6 @@ const PIXEL_RATIO := 2.0
 
 const SCREEN := "res://ui/screens/settings_screen.tscn"
 const FILE := "user://settings_touch_assist_capture.cfg"
-const TOUCH_TAB := 4
-const ASSIST_ROW := 5
 
 var _screen: SettingsScreen
 
@@ -24,7 +22,8 @@ func _ready() -> void:
 	UIRouter.reset(SCREEN)
 	await UIRouter.idle
 	_screen = UIRouter.top() as SettingsScreen
-	_screen.select_tab(TOUCH_TAB, false)
+	# A phone has no Controls tab (#1290): Touch is the last one.
+	_screen.select_tab(_screen._pages.size() - 1, false)
 	var out := ""
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--out="):
@@ -59,4 +58,7 @@ func _beat(label: String, seconds: float, out := "") -> void:
 
 
 func _toggle() -> UIToggle:
-	return (_screen._pages[TOUCH_TAB].get_child(ASSIST_ROW) as UIRow).control as UIToggle
+	for binding in _screen._bindings:
+		if binding["spec"]["key"] == SettingsService.TOUCH_AIM_ASSIST:
+			return (binding["row"] as UIRow).control as UIToggle
+	return null

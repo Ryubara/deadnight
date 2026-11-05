@@ -250,6 +250,9 @@ static func snapshot(top: Control) -> Dictionary:
 		"touch_hits": "",
 		"touch_zones": "",
 		"touch_held": "",
+		"touch_stick": "",
+		"ground_speed": 0.0,
+		"sprinting": false,
 		"grenade_cooking": false,
 		"grenade_count": 0,
 		"tab": "",
@@ -400,6 +403,9 @@ static func snapshot(top: Control) -> Dictionary:
 	var player: Player = night_screen.night.player() if night_screen.night.server != null else null
 	if player != null:
 		data["yaw"] = player.camera_rig.yaw  # so a browser test can see the mouse turn the view
+		# So a browser test can measure the walk and the sprint the stick asks for (#1276).
+		data["ground_speed"] = player.ground_speed()
+		data["sprinting"] = player.is_sprinting()
 		data["crouching"] = player.state.crouching  # the touch layer's Crouch toggle (#1277)
 		# The shoulder the camera is on (+1 or -1), and the finger's slop in canvas units, so a
 		# browser test sees a double tap swap it (#1288).
@@ -438,6 +444,7 @@ static func snapshot(top: Control) -> Dictionary:
 		data["grenade_cooking"] = night.server.grenades.is_cooking(night.state.player_id)
 		data["grenade_count"] = night.hud.state.grenades if night.hud != null else 0
 	data["touch_held"] = ",".join(night_screen.touch_held())
+	data["touch_stick"] = night_screen.touch_stick()
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)

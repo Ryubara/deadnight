@@ -86,10 +86,25 @@ const PING_HIT_GAP := 6.0 / MenuScale.TAP_PIXELS
 ## finger is on it). It sits right of Pause, a `ping_drop` away, until the players' column holds the
 ## board (#1287) and takes the button away: Ping owns the place under Pause.
 const SCOREBOARD_RADIUS := 34.0
-## The floating stick: its resting place (a faint ring, above the HUD's players column and the
-## weapon strip under it), its radius and where it may start.
-const STICK_REST := Vector2(330.0, 390.0)
-const STICK_RADIUS := 105.0
+## The floating stick has no ring on the screen until a finger is down (#1276); its resting place is
+## where the first-run "DRAG TO MOVE" hint stands and the ring a finger would make there. The ring
+## is kept clear of the HUD by its edges, not by a corner offset: its left edge is
+## `STICK_REST_CLEAR.x` from the side of the stick, right of the players' column and the perk
+## badges beside it, and its bottom edge `STICK_REST_CLEAR.y` up from the bottom, above the tallest
+## weapon strip (196 units with the margin), whatever the touch scale, so the ring grows away from
+## the corner and the cards never meet it. The players' column grows upward with the party (eight
+## and the bots) and the badges with the perks, so the ring is beside them, not above;
+## `test_touch_stick_rest` holds it clear of every card and every place. The ring's top at a scale
+## of 1 is 495 units up, where the first ring's always was, so the hint above it stands where it
+## did.
+const STICK_REST_CLEAR := Vector2(
+	HudStyle.MARGIN + HudStyle.COLUMN + HudStyle.GAP + HudStyle.SHADOW.x + HudPerks.WIDTH + 24.0,
+	271.0
+)
+## The ring's radius in canvas units at a touch scale of 1 on a phone's page: 40 CSS pixels
+## (`TouchTuning.stick_radius_px`) are 111.1 units at every interface size; the drawn ring is
+## `TouchControls.stick_radius`.
+const STICK_RADIUS := 112.0
 const STICK_ZONE_WIDTH := 0.45
 const STICK_ZONE_TOP := 0.2
 ## A finger's hit area reaches this far past the drawn button, and is never smaller than MIN_HIT.
@@ -168,9 +183,11 @@ static func _hit(radius: float, finger: float) -> float:
 	return maxf(maxf(radius + HIT_PAD, MIN_HIT), finger * 0.5)
 
 
+## The centre of the stick's resting ring (see `STICK_REST_CLEAR`).
 static func stick_rest(safe: Rect2, touch_scale: float, mirrored := false) -> Vector2:
 	var corner := Vector2(safe.end.x if mirrored else safe.position.x, safe.end.y)
-	return corner + Vector2(-1.0 if mirrored else 1.0, -1.0) * STICK_REST * touch_scale
+	var offset := STICK_REST_CLEAR + Vector2.ONE * STICK_RADIUS * touch_scale
+	return corner + Vector2(-1.0 if mirrored else 1.0, -1.0) * offset
 
 
 ## The button under `point`, or "" (`skip` lists hidden ones). Who wins a touch where hit areas

@@ -1,3 +1,4 @@
+# gdlint:disable=max-public-methods
 class_name TouchControls
 extends Control
 ## The touch controls of a night: a floating move stick on the left, a look area on the right,
@@ -17,6 +18,12 @@ extends Control
 ## is held, or press Reload or Jump and carry on turning. Look goes out as mouse motion in
 ## mouse pixels (`TouchLook`), so the sensitivity setting,
 ## the ADS slow-down and invert Y apply as they do for a mouse.
+##
+## The move stick is drawn only while a finger is on it: a ring where the finger landed. A drag to
+## the ring's edge walks at full speed; a drag past the edge by `TouchTuning.sprint_margin_px`
+## starts a sprint, with one buzz, that stays on until that finger lifts (`TouchStick`, #1276).
+## What cancels a sprint, and what a cancel does to the latch, is in
+## `docs/research/mobile-controls.md`.
 ##
 ## The layer shows when `TouchMode.wanted`, in landscape, and while the night is live (`live`).
 ## While it is up the engine's touch-to-mouse emulation is off, or every touch would also click
@@ -52,12 +59,17 @@ signal active_changed(active: bool)
 signal shoulder_swapped
 ## The buttons are somewhere else now, or are there or not (`button_boxes`).
 signal layout_changed
+## The stick finger crossed the edge: the sprint is on until it lifts (the phone buzzes once).
+signal sprint_started
 
 const MOVE_LEFT := &"move_left"
 const MOVE_RIGHT := &"move_right"
 const MOVE_FORWARD := &"move_forward"
 const MOVE_BACK := &"move_back"
 const SPRINT := &"sprint"
+## CSS pixels in a canvas unit on a phone's night (844 x 390 CSS px over 1080 units), when no one
+## says otherwise (`css_per_unit`): a test's canvas.
+const DEFAULT_CSS_PER_UNIT := 0.36
 ## What the interact button says for each kind of prompt.
 const VERBS := {
 	&"buy_door": "OPEN",
@@ -108,6 +120,10 @@ var look_smoother := LookSmoother.new()
 ## (`MenuScale.tap_units`), which depends on the window and the interface size and so is asked
 ## again at every layout. Without it the hit areas are the layout's own (#1217).
 var finger_units := Callable()
+## () -> float, CSS pixels in one canvas unit (`MenuScale.css_per_unit`), so the stick's ring and
+## the margin past it are the same movement of the thumb on every phone (#1276). Without it the
+## unit of a phone's night (`DEFAULT_CSS_PER_UNIT`).
+var css_per_unit := Callable()
 ## () -> Array[Dictionary], the HUD's places a finger presses: `{action, rect}` in the screen's
 ## canvas units (`HudSlots.touch_zones`). Without it the layer has none.
 var zones := Callable()
@@ -126,10 +142,7 @@ var _release_at := {}
 var _clock := 0.0
 var _inset_clock := INF
 var _stick_index := -1
-var _stick_origin := Vector2.ZERO
-var _stick_pos := Vector2.ZERO
 var _stick_vector := Vector2.ZERO
-var _sprinting := false
 var _interact_verb := ""
 var _last_insets := Vector4.ZERO
 var _was_mirrored := false
@@ -243,12 +256,36 @@ func is_stick_down() -> bool:
 	return _stick_index >= 0
 
 
+## The ring of the finger on the stick, none when there is no finger. The sprint latch is its own.
+func stick_pad() -> TouchStick:
+	if _stick_index < 0:
+		return null
+	return _touches.get(_stick_index, {}).get(&"pad") as TouchStick
+
+
+## The ring's radius in canvas units: `TouchTuning.stick_radius_px` CSS pixels at the touch scale.
+func stick_radius() -> float:
+	return tuning.stick_radius_px * touch_scale * _units_per_css_px()
+
+
+## How far past the ring's edge the sprint starts, in canvas units: `sprint_margin_px` CSS pixels.
+func sprint_margin() -> float:
+	return tuning.sprint_margin_px * _units_per_css_px()
+
+
+func _units_per_css_px() -> float:
+	var per_unit := float(css_per_unit.call()) if css_per_unit.is_valid() else DEFAULT_CSS_PER_UNIT
+	return 1.0 / maxf(per_unit, 0.01)
+
+
 func stick_vector() -> Vector2:
 	return _stick_vector
 
 
+## True while the finger on the stick has gone past the edge and not lifted (the latch).
 func is_sprinting() -> bool:
-	return _sprinting
+	var pad := stick_pad()
+	return pad != null and pad.latched
 
 
 ## True while the aim is toggled on (auto-fire off, Aim tapped once).
@@ -324,7 +361,8 @@ func _look_key() -> int:
 	for touch: Dictionary in _touches.values():
 		held.append(String(touch.get(&"button", &"")))
 	held.sort()
-	var stick: Variant = [_stick_origin, _stick_pos] if _stick_index >= 0 else null
+	var pad := stick_pad()
+	var stick: Variant = [pad.origin, pad.pos] if pad != null else null
 	return hash(
 		[
 			held,
@@ -332,7 +370,7 @@ func _look_key() -> int:
 			_crouch_latched,
 			_stick_index,
 			stick,
-			_sprinting,
+			is_sprinting(),
 			_interact_verb,
 			opacity,
 			touch_scale,
@@ -379,9 +417,7 @@ func _touch_down(index: int, point: Vector2) -> void:
 		hints.mark_used(TouchHints.MOVE)
 		double_tap.interrupt()
 		_stick_index = index
-		_stick_origin = point
-		_stick_pos = point
-		_touches[index] = _own(&"stick", point)
+		_touches[index] = _own(&"stick", point, {&"pad": TouchStick.new(point)})
 		_set_stick(Vector2.ZERO)
 	elif not _has_role(&"look"):
 		# Free ground. A finger the stick's side holds (the stick finger is down already) looks and
@@ -455,8 +491,7 @@ func _touch_drag(index: int, point: Vector2, velocity: Vector2) -> void:
 	touch[&"drags"] += 1
 	match touch[&"role"]:
 		&"stick":
-			_stick_pos = point
-			_follow_stick()
+			_follow_stick(touch[&"pad"], point)
 		&"look":
 			var speed := _trusted_velocity(touch, velocity)
 			if touch.get(&"tap", false):
@@ -528,20 +563,15 @@ func _turn_view(look: Vector2) -> void:
 	Input.flush_buffered_events()
 
 
-## The stick follows the finger: a finger past the rim drags the base along, so the thumb never
-## runs out of travel and the stick centre is always one thumb-length behind it.
-func _follow_stick() -> void:
-	var radius := TouchLayout.STICK_RADIUS * touch_scale
-	var offset := _stick_pos - _stick_origin
-	if offset.length() > radius:
-		_stick_origin += offset.normalized() * (offset.length() - radius)
-		offset = _stick_pos - _stick_origin
-	var raw := offset / radius
-	var length := raw.length()
-	var vector := Vector2.ZERO
-	if length > tuning.stick_deadzone:
-		vector = raw.normalized() * inverse_lerp(tuning.stick_deadzone, 1.0, minf(length, 1.0))
-	_set_stick(vector)
+## The finger moved: the pad reads it, and the first time it is past the edge the sprint starts
+## with one buzz. Up to the edge the stick is fixed where the finger landed, so the edge is the
+## same place for the whole drag; once the sprint is on, the ring follows the finger.
+func _follow_stick(pad: TouchStick, point: Vector2) -> void:
+	var started := pad.drag(point, stick_radius(), sprint_margin())
+	_set_stick(pad.vector(stick_radius(), tuning.stick_deadzone))
+	if started:
+		_buzz(tuning.sprint_haptic_ms)
+		sprint_started.emit()
 
 
 func _set_stick(vector: Vector2) -> void:
@@ -550,12 +580,8 @@ func _set_stick(vector: Vector2) -> void:
 	_axis(MOVE_LEFT, maxf(-vector.x, 0.0))
 	_axis(MOVE_BACK, maxf(vector.y, 0.0))
 	_axis(MOVE_FORWARD, maxf(-vector.y, 0.0))
-	var length := vector.length()
-	if length >= tuning.sprint_on:
-		_sprinting = true
-	elif length < tuning.sprint_off:
-		_sprinting = false
-	if _sprinting:
+	# The latch is the finger's: with no finger on the stick the sprint is let go.
+	if is_sprinting():
 		Input.action_press(SPRINT)
 	else:
 		Input.action_release(SPRINT)
@@ -640,12 +666,12 @@ func _has_role(role: StringName) -> bool:
 	return false
 
 
-func _buzz() -> void:
+func _buzz(duration_ms := -1) -> void:
 	var service := get_tree().root.get_node_or_null(TouchMode.SETTING_PATH)
 	if service != null and service.has_method(&"get_value"):
 		if service.call(&"get_value", &"controls/haptics") == false:
 			return
-	Input.vibrate_handheld(tuning.haptic_ms)
+	Input.vibrate_handheld(tuning.haptic_ms if duration_ms < 0 else duration_ms)
 
 
 func _verb_now() -> String:
@@ -774,7 +800,7 @@ func _draw() -> void:
 		return
 	var tokens := UITokens.active()
 	var font := tokens.display_font(tokens.embolden_display * 0.3)
-	_draw_stick(tokens)
+	_draw_stick(tokens, font)
 	# Every icon is one canvas command, flushed after the discs: no two buttons overlap.
 	var icons := HudShapes.new()
 	for id: StringName in _circles:
@@ -823,13 +849,30 @@ func _draw_button(
 		draw_string(font, at, _interact_verb, HORIZONTAL_ALIGNMENT_LEFT, -1, px, _alpha(ink, held))
 
 
-func _draw_stick(tokens: UITokens) -> void:
-	var radius := TouchLayout.STICK_RADIUS * touch_scale
-	var held := _stick_index >= 0
-	var origin := _stick_origin if held else TouchLayout.stick_rest(_safe, touch_scale, left_handed)
-	var ring := tokens.accent_bright if _sprinting else tokens.ink
-	draw_circle(origin, radius, _alpha(Color(tokens.shadow, 0.35), held))
-	draw_arc(origin, radius, 0.0, TAU, 64, _alpha(ring, held), 4.0 if held else 3.0, true)
-	if held:
-		var knob := origin + (_stick_pos - origin).limit_length(radius)
-		draw_circle(knob, radius * 0.45, _alpha(tokens.accent if _sprinting else tokens.ink, true))
+## The ring, only while a finger is on the stick. It is dark ink at the edge to walk to and has a
+## faint outer line where the sprint starts; with the sprint on it turns to the accent colour,
+## thick, with SPRINT above it: the cue where the phone cannot buzz.
+func _draw_stick(tokens: UITokens, font: Font) -> void:
+	var pad := stick_pad()
+	if pad == null:
+		return
+	var radius := stick_radius()
+	var sprint := pad.latched
+	var ring := tokens.accent_bright if sprint else tokens.ink
+	var fill := Color(tokens.accent, 0.3) if sprint else Color(tokens.shadow, 0.35)
+	draw_circle(pad.origin, radius, _alpha(fill, true))
+	draw_arc(pad.origin, radius, 0.0, TAU, 64, _alpha(ring, true), 6.0 if sprint else 4.0, true)
+	if not sprint:
+		var edge := Color(tokens.ink, 0.35)
+		draw_arc(pad.origin, radius + sprint_margin(), 0.0, TAU, 64, edge, 2.0, true)
+	draw_circle(
+		pad.knob(radius), radius * 0.45, _alpha(tokens.accent if sprint else tokens.ink, true)
+	)
+	if sprint:
+		var px := int(radius * 0.28)
+		var width := font.get_string_size("SPRINT", HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+		# Above the knob, which the finger holds at the ring's far edge.
+		var at := pad.knob(radius) + Vector2(-width * 0.5, -radius * 0.45 - px * 0.5)
+		var outline := Color(tokens.shadow, 0.9)
+		draw_string_outline(font, at, "SPRINT", HORIZONTAL_ALIGNMENT_LEFT, -1, px, 6, outline)
+		draw_string(font, at, "SPRINT", HORIZONTAL_ALIGNMENT_LEFT, -1, px, tokens.accent_bright)
