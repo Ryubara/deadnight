@@ -11,6 +11,8 @@ extends HudPart
 ## A card appeared and asks for its sound: a tick for a quarter mark, a pair (`finished`) for a
 ## finish or a milestone step.
 signal cue(finished: bool)
+## The card was filled with new words: its height may have changed, so the HUD places it again.
+signal card_filled
 
 enum Mode { ALL, FINISHED_ONLY, OFF }
 
@@ -52,6 +54,19 @@ func _get_minimum_size() -> Vector2:
 	return _card.get_combined_minimum_size() if _card != null else Vector2.ZERO
 
 
+## Whether the card was made: the part is hidden the rest of the night until a challenge moves, and
+## the card is not made for a layout.
+func has_card() -> bool:
+	return _card != null
+
+
+## Makes the card `width` wide and gives its size, `Vector2.ZERO` while no card was made.
+func fit_width(width: float) -> Vector2:
+	if _card == null:
+		return Vector2.ZERO
+	return _card.size_at(width)
+
+
 func on_event(event: Dictionary) -> void:
 	if (
 		event.get("type") != EVENT
@@ -81,6 +96,7 @@ func advance(delta: float) -> void:
 	elif float(current["_at"]) != _stamp:
 		_stamp = float(current["_at"])
 		card.show_advance(current)
+		card_filled.emit()
 		if current["id"] != _shown_id:
 			cue.emit(ChallengePromptQueue.is_milestone_or_completion(current))
 		_shown_id = current["id"]

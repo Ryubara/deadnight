@@ -147,6 +147,9 @@ var _columns: Array[Dictionary] = []
 ## The platform's safe area (left, top, right, bottom, canvas units) the cards keep inside.
 var _insets := Vector4.ZERO
 var _perks_queued := false
+## What the prompt's place was last worked out from: the usual top, the boxes to keep off, the
+## card's words and the HUD's size (`_fit_challenge`).
+var _challenge_key: Array = []
 
 
 func _ready() -> void:
@@ -227,6 +230,11 @@ func _process(delta: float) -> void:
 	state.tick(delta)
 	# Polled, not read from events: the key, the pad and the touch button all hold the action.
 	scoreboard.set_shown(scoreboard_enabled and Input.is_action_pressed(SCOREBOARD_ACTION))
+	# The columns, the buttons and the cards settle over a few frames (and a card of the lane or a
+	# perk comes and goes), so the prompt looks again each frame it shows; `_fit_challenge` only
+	# searches when something it reads has changed.
+	if challenge.visible:
+		_fit_challenge()
 
 
 func _input(event: InputEvent) -> void:
@@ -252,6 +260,7 @@ func _place_challenge(margin: float) -> void:
 	for above in [round_part, objective]:
 		above.item_rect_changed.connect(_fit_challenge)
 	resized.connect(_fit_challenge)
+	challenge.card_filled.connect(_fit_challenge)
 
 
 ## Puts the weapon slots where they belong: over the ammo card, or under the players' column in the
@@ -362,16 +371,100 @@ func _on_popups_mode() -> void:
 	challenge.finish_in_lane = popups.mode != PopupLane.Mode.OFF
 
 
-## Keeps the challenge prompt a gap under the left column's last card when that card reaches past
-## the prompt's usual place (the objective's two lines on the smallest canvas).
+## Places the challenge prompt (`ChallengeFit`): on the left edge a gap under the left column's last
+## card when that card reaches past the prompt's usual place (the objective's two lines on the
+## smallest canvas), or, where something stands in the way there (eight players and the strip a
+## fingertip high lift the players' column up to the prompt on a phone, #1299), in the nearest free
+## place beside the column, its words wrapping onto another line where the ground is narrow. What is
+## in the way is read from the boxes on screen (the cards and the buttons), so a taller column, the
+## bots' tag in it or another button decides, and no number says how tall the column may get.
 func _fit_challenge() -> void:
+	if not is_inside_tree() or not challenge.has_card():
+		return
+	var origin := get_global_rect().position
+	var gap := float(HudStyle.GAP)
 	var bottom := 0.0
 	for above in [round_part, objective]:
 		if above.is_visible_in_tree():
-			bottom = maxf(bottom, above.get_global_rect().end.y - get_global_rect().position.y)
+			bottom = maxf(bottom, above.get_global_rect().end.y - origin.y)
 	var usual := CHALLENGE_TOP * size.y
-	challenge.offset_top = maxf(0.0, bottom + float(HudStyle.GAP) - usual)
+	var top := maxf(usual, bottom + gap)
+	var margin := float(HudStyle.margin())
+	var avoid := _challenge_avoid(origin, gap)
+	var key: Array = [top, avoid[&"hard"], avoid[&"soft"], challenge.card.words.text, size]
+	if key == _challenge_key:
+		return
+	_challenge_key = key
+	var widths: Array[float] = [
+		HudChallengeCard.WIDTH,
+		(HudChallengeCard.WIDTH + HudChallengeCard.MIN_WIDTH) * 0.5,
+		HudChallengeCard.MIN_WIDTH
+	]
+	var lefts: Array[float] = [margin, _left_corner_edge(origin) + gap]
+	var found := ChallengeFit.place(
+		Rect2(Vector2.ZERO, size),
+		top,
+		lefts,
+		widths,
+		func(width: float) -> float: return challenge.fit_width(width).y,
+		avoid[&"hard"],
+		avoid[&"soft"]
+	)
+	challenge.fit_width(found.size.x)
+	challenge.offset_left = found.position.x
+	challenge.offset_right = found.end.x
+	challenge.offset_top = found.position.y - usual
 	challenge.offset_bottom = challenge.offset_top
+
+
+## What the prompt keeps a `gap` off, in this HUD's units: `hard`, the cards that stay up (the
+## corner columns whole, so whatever stands in one besides the cards, a tag, is in its box), the box
+## round the middle of the screen and the touch buttons and places; and `soft`, what comes and goes
+## (the feeds, the banner, the lane's cards, the prompt) with the ground the point gains take (their
+## whole stretch, so the prompt does not move as they come and go).
+func _challenge_avoid(origin: Vector2, gap: float) -> Dictionary:
+	var hard: Array[Rect2] = []
+	var soft: Array[Rect2] = []
+	for part: Control in [round_part, objective, points, health, perks, slots, ammo]:
+		_add_box(hard, part, origin, gap)
+	for column in [_players_column, _ammo_column, _slots_column]:
+		_add_box(hard, column[&"node"], origin, gap)
+	for part: Control in [fuel, events_feed, notices, banner, marquee, boss_bar, prompt, popups]:
+		_add_box(soft, part, origin, gap)
+	# The middle of the screen, which the safe insets move from the middle of the cards' area.
+	var middle := Vector2(
+		size.x * 0.5 - (_insets.x - _insets.z) * 0.5, size.y * 0.5 - (_insets.y - _insets.w) * 0.5
+	)
+	var clear := Vector2.ONE * CENTRE_CLEAR
+	hard.append(Rect2(middle - clear, clear * 2.0).grow(gap))
+	# The gains' list is as wide as its room and centred on a place beside the crosshair, whether
+	# rows are up or not (a hidden part has no box of its own to read).
+	var gains_at := middle + GAINS_OFFSET - Vector2(gains.room * 0.5, 0.0)
+	soft.append(Rect2(gains_at, Vector2(gains.room, size.y - gains_at.y)).grow(gap))
+	for box in markers.held:
+		# Half a unit of air so that a rounding cannot put the card back on a button's edge.
+		hard.append(Rect2(box.position - origin, box.size).grow(0.5))
+	return {&"hard": hard, &"soft": soft}
+
+
+## Adds `part`'s box to `boxes`, `gap` bigger all round, in this HUD's units, when it is shown.
+func _add_box(boxes: Array[Rect2], part: Control, origin: Vector2, gap: float) -> void:
+	if part.is_visible_in_tree() and part.size.y > 0.0:
+		boxes.append(Rect2(part.get_global_rect().position - origin, part.size).grow(gap))
+
+
+## The right edge of the left corner columns' cards (the weapon strip, which is wider, stands below
+## them and is not counted), in this HUD's units: where the free ground beside them starts.
+func _left_corner_edge(origin: Vector2) -> float:
+	var edge := float(HudStyle.margin())
+	for column in [_players_column, _ammo_column]:
+		var node: Control = column[&"node"]
+		if not node.is_visible_in_tree() or node.size.y <= 0.0:
+			continue
+		var box := Rect2(node.get_global_rect().position - origin, node.size)
+		if box.get_center().x < size.x * 0.5:
+			edge = maxf(edge, box.end.x)
+	return edge
 
 
 ## The gains list takes the width from its start (beside the crosshair) to the left edge of whatever

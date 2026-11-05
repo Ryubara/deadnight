@@ -8,6 +8,9 @@ extends HudTicket
 ## `FINISHED`.
 
 const WIDTH := HudStyle.COLUMN
+## The narrowest the card is made when the HUD has less room beside the players' column: the caption
+## and the count share a row, and the words wrap to a fourth line.
+const MIN_WIDTH := 190.0
 const HOLE_RADIUS := 6.0
 const HOLE_GAP := 26.0
 const ROW := 22.0
@@ -68,9 +71,48 @@ func show_advance(advance: Dictionary) -> void:
 		if advance.get("completed", false):
 			_punched = _total
 		HudStyle.set_text(count, "%d / %d" % [int(advance["after"]), int(advance["target"])])
-	HudStyle.set_wrapped(words, String(advance["text"]), HudStyle.TEXT, words.custom_minimum_size.x)
+	_wrap_words(String(advance["text"]))
 	_holes.queue_redraw()
 	queue_redraw()
+
+
+## Makes the card `width` wide (the most `WIDTH`, the least `MIN_WIDTH`): where the HUD has no room
+## for the full card (`Hud._fit_challenge`) its words wrap onto more lines.
+func set_width(width: float) -> void:
+	var wide := clampf(width, MIN_WIDTH, WIDTH)
+	custom_minimum_size.x = wide
+	words.custom_minimum_size.x = wide - float(HudStyle.PAD + HudStyle.PAD_LEFT)
+	if words.text != "":
+		_wrap_words(words.text)
+	# A control that no container holds keeps the size it had until it is asked for its least.
+	reset_size()
+
+
+## Sets the words and the height of their lines: the label's own line height for each line the
+## words break into at the box's width (what the label asks for once it is laid out).
+func _wrap_words(text: String) -> void:
+	var width := words.custom_minimum_size.x
+	HudStyle.set_wrapped(words, text, HudStyle.TEXT, width)
+	var paragraph := TextParagraph.new()
+	paragraph.add_string(
+		text, words.get_theme_font(&"font"), words.get_theme_font_size(&"font_size")
+	)
+	paragraph.width = width
+	paragraph.break_flags = (
+		TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+	)
+	words.custom_minimum_size.y = float(paragraph.get_line_count() * words.get_line_height())
+
+
+## What the card measures at `width`, worked out from its parts and not asked of the container
+## (which answers for the width it had until the next layout): the padding, the row, the words'
+## lines and the holes.
+func size_at(width: float) -> Vector2:
+	set_width(width)
+	var wide := clampf(width, MIN_WIDTH, WIDTH)
+	var high := float(HudStyle.PAD * 2) + _row.get_combined_minimum_size().y
+	high += words.custom_minimum_size.y + _holes.custom_minimum_size.y
+	return Vector2(wide, high)
 
 
 ## The finish flash, 0 to 1 and back.
