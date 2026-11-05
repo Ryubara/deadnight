@@ -253,6 +253,20 @@ func leave(lobby: Dictionary) -> Dictionary:
 	return await _call("POST", "/lobbies/%s/leave" % lobby["id"])
 
 
+## The request a closing page sends for this lobby (`PageClosing`, Deadnight #1188):
+## `{"url", "body"}`. The browser sends it from `pagehide` as a beacon, which cannot set an
+## `Authorization` header, so the session token is in the body; an API with no session gives an
+## empty request.
+func page_closing_request(lobby: Dictionary) -> Dictionary:
+	var token := _own_token if isolated else _token
+	if token == "" or str(lobby.get("id", "")) == "":
+		return {}
+	return {
+		"url": base_url + "/lobbies/%s/page-closed" % lobby["id"],
+		"body": JSON.stringify({"token": token}),
+	}
+
+
 ## What a code says before its holder joins: `{"ok", "preview": {code, state, round, players,
 ## maxPlayers, full, hostName, names}}`. Joins nobody.
 func preview(code: String) -> Dictionary:
