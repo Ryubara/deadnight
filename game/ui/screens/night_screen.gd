@@ -191,6 +191,9 @@ func _ready() -> void:
 	_touch.look_gain = _look_gain
 	# A hit area is never under a fingertip, at the interface size this night runs at (#1217).
 	_touch.finger_units = func() -> float: return MenuScale.tap_units(get_window(), true)
+	# The stick's ring and its sprint edge are CSS pixels of the page (#1276).
+	_touch.css_per_unit = func() -> float:
+		return MenuScale.css_per_unit(get_window().size, get_window().content_scale_factor)
 	add_child(_touch)
 	wheel = BotWheelDriver.new()
 	wheel.name = "BotWheelDriver"
@@ -245,12 +248,25 @@ func touch_held() -> PackedStringArray:
 	return _touch.held_buttons() if _touch != null else PackedStringArray()
 
 
-## Whether a finger is on the move stick, and the first-run hints on screen now (a browser test
-## reads them).
-func touch_stick_down() -> bool:
-	return _touch != null and _touch.is_stick_down()
+## The move stick as `down,sprint,vx,vy,radius,margin` (a browser test reads it): a finger on it,
+## the sprint latch, the move it asks for, and the ring and the sprint margin in canvas units.
+func touch_stick() -> String:
+	if _touch == null:
+		return ""
+	return (
+		"%d,%d,%.3f,%.3f,%.1f,%.1f"
+		% [
+			int(_touch.is_stick_down()),
+			int(_touch.is_sprinting()),
+			_touch.stick_vector().x,
+			_touch.stick_vector().y,
+			_touch.stick_radius(),
+			_touch.sprint_margin(),
+		]
+	)
 
 
+## The first-run hints on screen now (a browser test reads them).
 func touch_hints() -> PackedStringArray:
 	var ids := PackedStringArray()
 	if _touch != null and _touch.hints != null:

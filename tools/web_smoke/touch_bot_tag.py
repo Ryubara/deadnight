@@ -287,13 +287,17 @@ def run(browser_type, url: str, out: Path, result: dict, size: dict, left: bool,
     page.wait_for_timeout(500)
     mid = full(page)
     turned = abs(math.remainder(mid.get("yaw", 0.0) - yaw_before, math.tau))
-    result["drag_from_tag"] = {"held": held, "stick": mid.get("touch_stick"), "turn_rad": round(turned, 4)}
+    result["drag_from_tag"] = {
+        "held": held,
+        "stick": str(mid.get("touch_stick", "")).split(",")[0] == "1",
+        "turn_rad": round(turned, 4),
+    }
     page.screenshot(path=out / "6_drag_from_tag.png")
     finger(client, "touchEnd", None)
     page.wait_for_timeout(500)
     if held != ACTION:
         problems.append(f"[check] a finger on the tag held {held!r}")
-    if mid.get("touch_stick"):
+    if str(mid.get("touch_stick", "0")).split(",")[0] == "1":
         problems.append("[check] a finger dragged from the tag started the move stick")
     if turned > MAX_STILL_RAD:
         problems.append(f"[check] a finger dragged from the tag turned the view {turned:.3f} rad")

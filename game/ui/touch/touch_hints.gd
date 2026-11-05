@@ -148,16 +148,22 @@ func text_for(id: StringName) -> String:
 func rect_of(id: StringName) -> Rect2:
 	var size := _pill_size(text_for(id))
 	var safe := controls.safe_rect()
-	var scale_value := controls.touch_scale
 	var mirrored := controls.left_handed
 	match id:
 		MOVE:
-			var rest := TouchLayout.stick_rest(safe, scale_value, mirrored)
-			var top := rest.y - TouchLayout.STICK_RADIUS * scale_value - GAP
-			var rect := Rect2(
-				Vector2(_off_the_lane(rest.x - size.x * 0.5, size.x, safe), top - size.y), size
-			)
-			# Ping stands under Pause, in the column above this hint on a short canvas (#1289).
+			# Over the ring's place at a touch scale of 1: nothing is drawn there, so the hint does
+			# not move with the scale. Not over the players' column beside it (it grows up the side
+			# with the party): the hint's near edge is where the ring's is. Ping stands under Pause,
+			# in the column above this hint on a short canvas (#1289).
+			var rest := TouchLayout.stick_rest(safe, 1.0, mirrored)
+			var top := rest.y - TouchLayout.STICK_RADIUS - GAP
+			var clear := TouchLayout.STICK_REST_CLEAR.x
+			var left := rest.x - size.x * 0.5
+			if mirrored:
+				left = minf(left, safe.end.x - clear - size.x)
+			else:
+				left = maxf(left, safe.position.x + clear)
+			var rect := Rect2(Vector2(_off_the_lane(left, size.x, safe), top - size.y), size)
 			return _below_the_buttons(rect, safe)
 		LOOK:
 			var middle := safe.get_center().x
