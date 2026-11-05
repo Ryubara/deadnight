@@ -6,11 +6,13 @@
 and `perf_sampler.gd`): one row a second of the monitors and counts of a night. The budget (default `budget.json`
 beside this file) names, for one case, the most each count may reach while the crowd stands, how much a count may
 grow over the steady seconds (a leak), and how many times a fixed piece of GDScript (`calibration_ms`) one frame may
-cost; how many times a tick a counted piece of work (`PerfProbe.count`) happens, and how many times the calibration a
-timed piece of work (`PerfProbe.end`, a row's `labels_ms`) takes a frame. A count is the same on every machine at the same
-seed, so it is held tight; a time is held as a ratio of the
-calibration, which a slow runner and a busy machine both scale, so it is held loose and is a regression catcher, not
-a frame-rate promise (docs/research/performance.md).
+cost; how many times a tick a counted piece of work (`PerfProbe.count`) happens, and what share of the frame a timed
+piece of work (`PerfProbe.end`, a row's `labels_ms`) takes. A count is the same on every machine at the same seed, so it
+is held tight. The frame is held as a ratio of the calibration, which a slow runner and a busy machine both scale, so
+it is held loose and is a regression catcher, not a frame-rate promise. A timed piece of work of a few microseconds is
+held as a share of the frame instead: on the runners it moved with the frame (a slope of 0.98 in the logs) and hardly
+with the calibration (0.35), so a ratio of the calibration swung by a factor of two between runners that ran the same
+code (docs/research/performance.md, "What the label limits mean").
 
 Exits 1 and prints every limit that is broken, with the number and the limit.
 """
@@ -79,15 +81,16 @@ def judge(report: dict, budget: dict) -> tuple[list[str], list[str]]:
         lines.append(f"{key}: {per_tick:.2f} a tick (limit {limit})")
         if per_tick > limit:
             broken.append(f"{key} happens {per_tick:.2f} times a tick, over its limit {limit}")
-    for label, limit in budget.get("max_label_ratio_of_calibration", {}).items():
-        # A piece of work timed by `PerfProbe` (a row's `labels_ms`: the mean milliseconds a frame), held as a
-        # ratio of the calibration like the frame is.
-        calibration = statistics.median(row["calibration_ms"] for row in rows)
+    for label, limit in budget.get("max_label_share_of_frame", {}).items():
+        # A piece of work timed by `PerfProbe` (a row's `labels_ms`: the mean milliseconds a frame), held as a share
+        # of the frame the same rows took (`frame_ms`, the mean wall time of a frame): both are cut the same way by a
+        # slow or a busy host, which a fixed loop of arithmetic is not.
+        frame = statistics.median(row["frame_ms"] for row in rows)
         spent = statistics.median(row.get("labels_ms", {}).get(label, 0.0) for row in rows)
-        ratio = spent / calibration
-        lines.append(f"{label}: median {ratio:.4f} times the calibration {calibration:.1f} ms (limit {limit})")
-        if ratio > limit:
-            broken.append(f"{label} is {ratio:.4f} times the calibration, over its limit {limit}")
+        share = spent / frame
+        lines.append(f"{label}: median {share:.5f} of the frame, {spent:.4f} ms of {frame:.1f} ms (limit {limit})")
+        if share > limit:
+            broken.append(f"{label} takes {share:.5f} of a frame, over its limit {limit}")
     for key, limit in budget.get("max_ratio_of_calibration", {}).items():
         calibration = statistics.median(row["calibration_ms"] for row in rows)
         ratio = statistics.median(row[key] for row in rows) / calibration
