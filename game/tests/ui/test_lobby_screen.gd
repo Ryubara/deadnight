@@ -17,8 +17,8 @@ func after_test() -> void:
 	LobbyScreen.play_as_bot = false
 	NightScreen.join_as_bot = false
 	LobbyScreen.opener = Callable()
-	NightScreen.join_url = ""
-	NightScreen.join_ticket = ""
+	# Start fills the join and the lobby a night would take; the stubbed opener never does.
+	RouterFixture.forget_join()
 	PlayerLevel.reset()
 
 

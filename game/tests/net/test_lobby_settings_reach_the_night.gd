@@ -47,9 +47,8 @@ func before_test() -> void:
 func after_test() -> void:
 	PlayerLevel.reset()
 	LobbyScreen.opener = Callable()
-	NightScreen.join_url = ""
-	NightScreen.join_ticket = ""
-	NightScreen.join_map = ""
+	# Start fills the join and the lobby a night would take; the stubbed opener never does.
+	RouterFixture.forget_join()
 	for screen in _screens:
 		if is_instance_valid(screen):
 			screen.free()

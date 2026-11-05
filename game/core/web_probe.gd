@@ -224,6 +224,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"lobby_buttons": "",
 		"lobby_rules": "",
 		"lobby_rules_editable": false,
+		# The Private night switch: "" when the lobby has none, else "on" (private) or "off".
+		"lobby_private": "",
 		"play_rules": "",
 		"play_map": "",
 		"lobby_map": "",
@@ -324,6 +326,9 @@ static func snapshot(top: Control) -> Dictionary:
 		data["lobby_buttons"] = "|".join(buttons)
 		data["lobby_rules"] = lobby.rules_text() if lobby.rules.is_visible_in_tree() else ""
 		data["lobby_rules_editable"] = lobby.rules_editable()
+		var private_row := lobby.private_switch
+		if private_row != null and private_row.toggle.is_visible_in_tree():
+			data["lobby_private"] = "on" if private_row.is_private() else "off"
 		# The map the lobby shows: the picker's choice in a lobby, the ticket of a code looked at.
 		data["lobby_map"] = (
 			lobby.rules.map_picker.selected_id
@@ -514,4 +519,10 @@ static func _spots(screen: Control) -> String:
 		for card in panel.map_picker.cards:
 			var middle := card.get_global_rect().get_center() / size
 			spots.append("map_%s:%.4f,%.4f" % [card.info.id, middle.x, middle.y])
+	if lobby != null and lobby.private_switch != null:
+		# The host's Private night switch, to tap it: `private`.
+		var toggle := lobby.private_switch.toggle
+		if toggle != null and lobby.private_switch.editable and toggle.is_visible_in_tree():
+			var at := toggle.get_global_rect().get_center() / size
+			spots.append("private:%.4f,%.4f" % [at.x, at.y])
 	return "|".join(spots)
