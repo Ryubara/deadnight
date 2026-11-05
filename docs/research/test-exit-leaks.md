@@ -24,11 +24,17 @@ script names:
   resources). Thirteen suites run first with `test_recut_skin.gd` make it clean (player, character, lobby and menu
   ones: `test_sprint_sway`, `test_lobby_screen`, `test_ui_router_robustness`, ...); others (`test_audio_mix`,
   `test_hud_shapes`, `test_poster_set_view`) make it leak 740 to 905. The split of the suites is dealt by
-  `tools/ci_test_shards.py` from the file list, so a new test file
-  moved suites between shards, and the leak moved with them.
-- Before #1234, #1214, #1228, #1229 and #1223 leaked and after it they did not, but #1234 does not touch it: on `main`
-  with #1234 the two suites leak the same 243 and 257 objects alone. Their shards changed, and `main`'s own shard 1
-  could not show it: it fails in the late-round budget step, before the tests step runs.
+  `tools/ci_test_shards.py` from the file list, so a new test file moved suites between shards, and the leak moved
+  with them.
+- Why `main` stayed clean: its runs 42011482212 (61a990d) and 42016360272 (98283f8) dealt both leaking suites to shard
+  3, with 72 others (74 suites), and shard 3 passed the leak check in both (`Run the tests` success, 620 cases, no leak
+  line). Shard 1 of those runs held 115 suites, neither of the two, and passed too. It is the mix again: the same two
+  suites leak alone and not in that shard's mix. The red `main` runs 42004177635 (d47bfae) and 42004654168 (5c42a57)
+  failed shard 1 in `Hold the late-round worst case to its budget` and skipped its tests step, so they say nothing
+  about leaks in shard 1; they are not evidence that `main` was clean.
+- #1234 does not touch the leak: on `main` with #1234 the two suites leak the same 243 and 257 objects alone. A pull
+  request's shard leaks when its deal puts the leaking suites with a mix that does not cure them, and the deal moves
+  with every test file added.
 
 The same family as the kit's lesson on dev scripts in a scanned folder (a script loaded first leaves others in use,
 `docs/godot/test-exit-leaks.md` in the kit), by a different road: the suites are handed by path here, so it is the
@@ -44,15 +50,45 @@ of `addons/gds_ui`, `core`, `gameplay`, `net`, `ui` and `world` as itself, in na
 | --- | --- | --- |
 | `test_recut_skin.gd` alone | 243 objects, 174 resources | none |
 | `test_drive_in_greybox.gd` alone | 257, 181 | none |
-| The 71 suites of #1214's shard | 996, 432 | none (595 cases, 0 failures) |
+| Five suites that leak together (listed below) | 911, 451 | none |
+| Shard 8 of this branch's deal (75 suites, holds `test_recut_skin.gd`) | none (this mix cures it) | none |
 
-The warm-up costs 7 seconds a shard (621 scripts, on a loaded machine). The leak check in `ci.yml` is as it was.
+The five suites are `test_audio_mix`, `test_hud_shapes`, `test_poster_set_view`, `test_recut_skin` and
+`test_drive_in_greybox`, in that order. That list and shard 8 each ran through both tools, one after the other, with
+the same arguments; the two runs of each ran the same cases (compared by suite and case name from each run's
+`results.xml`): 55 cases and 55, 565 cases and 565 (34 skipped in both), no case in one and not the other, 0 failures,
+0 orphans. The 71-suite shard of #1214, which gave 996 objects and 432 resources through the plain tool, was run
+earlier in this task; its list and logs were deleted, and its case counts (596 plain, 595 through the wrapper) were
+never reconciled, so nothing here rests on that pair. The warm-up costs 4 to 14 seconds a run (625 scripts, on a
+loaded machine). The leak check in `ci.yml` is as it was.
 
 - `tests/core/test_exit_leak_warmup.gd` runs the two suites that leaked alone in a child Godot through the tool and
   fails on any leak line. Pointed at the plain tool it fails on the same lines (`leaked at exit`, 243 + 257 objects).
 - `tools/ci_test_shards.py --self-test` fails when the godot job runs the plain tool again or loses its leak check.
-- A real leak (a lambda cycle, a held node, a sound at quit) is not hidden: those are in objects that are held, and the
-  suites for them (`test_audio_quit.gd`, the lessons linked in the kit's `docs/godot/test-exit-leaks.md`) still fail.
+- A real leak is not hidden, shown by running it through `warm_GdUnitCmdTool.gd` (three throwaway suites, not
+  committed): one suite that leaves a cycle of two `RefCounted` objects and a `Node` held by a static variable printed
+  `WARNING: 3 ObjectDB instances were leaked at exit` and exited 101, so CI's `! grep -E "leaked at exit|still in use"`
+  would fail on it; a suite with `assert_int(1).is_equal(2)` exited 100; a clean suite exited 0 with no leak line.
+
+## What holds it, and what this does not do
+
+The issue asks for the fix at the object that holds the graph. This is not that. As far as I found, what holds it is
+engine-side, in how a script read only as another script's dependency is kept until the process quits: it is not a
+node, a timer, a signal or a cycle in the game's code. Evidence: the held objects are GDScript, Resource, Image and
+TextLine instances; one test case alone leaks the same count as the whole suite; loading the same script as itself
+first leaves nothing; and breaking a type cycle between two classes (`ReloadPose` and `ReloadMotion`) in the game's
+scripts changed neither count, so it was reverted. I did not find the engine's holder, and I did not fix the game at
+one. The runner is the place because the set of scripts that leak is every script a suite names and nothing loads, it
+changes with every suite and class added, and the load order is what decides it: a fixed load of every script in
+name order makes the result independent of the deal. That choice, rather than a fix at the holder, is the
+maintainer's to accept.
+
+## Not yet proved by CI
+
+That `godot (1)` of #1214 and #1226 no longer fails this way is not shown by a CI run of this branch: it is shown by
+local runs of the leaking lists above. #1214's latest run on its own branch (9662a53) passed after main with #1234 was
+merged into it; that is the deal moving, not this change. This page is to be read with the first CI run of the
+branch.
 
 Why the name: GdUnit4 finds its own arguments after the argument that contains `GdUnitCmdTool.gd`, so the wrapper's
 file name ends with it (a wrapper called `gdunit_run.gd` printed the usage and ran nothing).
