@@ -11,7 +11,9 @@ extends RefCounted
 ## A FEAT is a lasting goal that is done once and gives something to show (`grants`): the calling
 ## cards and emblems of the plate (`PlateCatalog`). `grants` lists what a challenge gives, each
 ## `card:<id>`, `emblem:<id>` or `frame:<id>`. A feat may be counted over several stats (`stats`):
-## it is done when the lowest of them reaches the target ("250 kills with every weapon").
+## it is done when the lowest of them reaches the target ("250 kills with every weapon"). A feat
+## may instead count how many stats under a prefix the player has ever moved (`distinct`, such as
+## `kills:weapon:`): "Kill with five different weapons".
 
 enum Family { DAILY, ORDER, MILESTONE, FEAT }
 enum Mode { TOTAL, ONE_NIGHT }
@@ -36,6 +38,8 @@ var reward: Dictionary = {}
 var grants: Array[StringName] = []
 ## A feat over several stats: the lowest of them is its progress (`stat` is the first).
 var stats: Array[StringName] = []
+## A feat over how many stats starting with this have a lifetime total: its progress.
+var distinct := ""
 
 
 ## The definition a data record describes.
@@ -56,6 +60,7 @@ static func from_dict(record: Dictionary, p_family: Family) -> ChallengeDef:
 		def.grants.append(StringName(str(grant)))
 	for each: Variant in record.get("stats", []):
 		def.stats.append(StringName(str(each)))
+	def.distinct = String(record.get("distinct", ""))
 	if def.stat == &"" and not def.stats.is_empty():
 		def.stat = def.stats[0]
 	return def
@@ -80,7 +85,12 @@ func problems(weapon_ids: Array[StringName], type_ids: Array[StringName]) -> Arr
 	var found: Array[String] = []
 	if id == &"" or text == "":
 		found.append("%s: an id and a text are needed" % id)
-	if not ChallengeStats.is_known(stat, weapon_ids, type_ids):
+	if distinct != "":
+		if not [ChallengeStats.WEAPON_PREFIX, ChallengeStats.TYPE_PREFIX].has(distinct):
+			found.append("%s: distinct '%s' is not a prefix of stats" % [id, distinct])
+		if family != Family.FEAT or mode != Mode.TOTAL or not stats.is_empty():
+			found.append("%s: only a feat counted in total goes over distinct stats" % id)
+	elif not ChallengeStats.is_known(stat, weapon_ids, type_ids):
 		found.append("%s: unknown stat '%s'" % [id, stat])
 	if target <= 0:
 		found.append("%s: the target must be above zero" % id)

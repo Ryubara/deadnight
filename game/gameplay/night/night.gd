@@ -393,7 +393,7 @@ func _last_frame(events: Array) -> Dictionary:
 ## that runs here writes the board itself.
 func _track_challenges(online: bool = false) -> void:
 	if challenge_board != null:
-		challenges = ChallengeSession.new(challenge_board, rules_tuning)
+		challenges = ChallengeSession.new(challenge_board, rules_tuning, match_settings.map)
 		challenges.uplink = null if online else challenge_uplink
 		challenges.attach(state, online)
 		if hud != null:

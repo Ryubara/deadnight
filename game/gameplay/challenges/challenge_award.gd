@@ -39,6 +39,12 @@ const HEARD: Dictionary[StringName, bool] = {
 	&"board_repaired": true,
 	&"purchase_made": true,
 	&"player_revived": true,
+	&"player_downed": true,
+	&"bot_replaced": true,
+	&"bot_seated": true,
+	&"settings_changed": true,
+	&"blast_resolved": true,
+	&"circuit_changed": true,
 	&"points_changed": true,
 	&"round_started": true,
 	&"round_ended": true,
@@ -51,6 +57,9 @@ var enabled := true
 var catalog: ChallengeCatalog
 ## The day the dailies are dealt for: the server's (UTC), the clock the XP award uses.
 var clock: ChallengeClock
+## The night's rules, for what the odd stats need of them (the shop's doors, the map): set by the
+## night's server before a board arrives.
+var rules: GameRules
 
 var _xp: XpAward
 var _fuel_items: Array[StringName]
@@ -199,6 +208,10 @@ func _ensure_tracker() -> void:
 	if catalog == null:
 		catalog = ChallengeCatalog.load_default()
 	_tracker = ChallengeTracker.new(catalog, clock, NightTally.new(_fuel_items))
+	if rules != null:
+		_tracker.tally.know(rules.tuning, rules.settings.map)
+		for id: int in rules.players:
+			_tracker.tally.set_bot(id, rules.players[id].bot)
 	_tracker.advanced.connect(_on_advanced)
 
 
@@ -211,6 +224,8 @@ func _follow(player_id: int, board: Board) -> void:
 	# A person who takes a bot's seat, or sits down late, counts from a clean slate.
 	_tracker.tally.forget(player_id)
 	_tracker.tally.set_present(player_id)
+	if rules != null and rules.players.has(player_id):
+		_tracker.tally.set_bot(player_id, rules.players[player_id].bot)
 
 
 func _on_advanced(advance: Dictionary) -> void:
