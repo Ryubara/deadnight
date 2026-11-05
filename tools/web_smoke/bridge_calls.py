@@ -31,6 +31,7 @@ import sys
 import time
 from pathlib import Path
 
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -82,6 +83,10 @@ COUNT_JS = """
 READ_JS = "() => Object.assign({}, window.__bridge)"
 KEYS_JS = "() => Object.assign({}, window.__bridgeKeys)"
 TOP = 8
+# A picture for the reader, taken after the count. A page drawing a night on the runner's software renderer can leave
+# the compositor without a frame for longer than Playwright's 30 s (the main thread is busy), and the count is already
+# in: so the shot waits long and, when it still does not come, is left out and noted (issue #1235; lobby.py does the same).
+SHOT_TIMEOUT_MS = 120_000
 ARMS = {
     "menu": "",
     "night": "autopilot&rounds=99&hold=0&count=1&seconds=600",
@@ -90,6 +95,14 @@ ARMS = {
 
 def total(counts: dict) -> int:
     return sum(counts.values())
+
+
+def take_shot(page) -> tuple[bytes | None, str]:
+    """The page's picture and "" or, when the page never answered, no picture and why (never a failed run)."""
+    try:
+        return page.screenshot(timeout=SHOT_TIMEOUT_MS), ""
+    except PlaywrightError as error:
+        return None, f"no screenshot: {str(error).splitlines()[0]}"
 
 
 def measure(playwright, base: str, query: str, settle: float, seconds: float) -> dict:
@@ -107,7 +120,7 @@ def measure(playwright, base: str, query: str, settle: float, seconds: float) ->
     last = page.evaluate(READ_JS)
     keys = page.evaluate(KEYS_JS)
     wall = time.monotonic() - began
-    shot = page.screenshot()
+    shot, shot_note = take_shot(page)
     browser.close()
     delta = {key: last[key] - first[key] for key in last}
     return {
@@ -117,6 +130,7 @@ def measure(playwright, base: str, query: str, settle: float, seconds: float) ->
         "total_at_start": first,
         "top_touched": dict(sorted(keys.items(), key=lambda item: -item[1])[:TOP]),
         "console_errors": errors[:5],
+        "screenshot": shot_note or "taken",
         "_shot": shot,
     }
 
@@ -148,7 +162,11 @@ def main() -> int:
                     query = f"{query}&probe" if query else "probe"
                 settle = args.night_settle if name == "night" else args.settle
                 result = measure(p, base, query, settle, args.seconds)
-                (out / f"{label}_{name}.png").write_bytes(result.pop("_shot"))
+                shot = result.pop("_shot")
+                if shot is not None:
+                    (out / f"{label}_{name}.png").write_bytes(shot)
+                else:
+                    print(f"{label} {name}: {result['screenshot']}", flush=True)
                 report[name] = result
                 print(f"{label} {name}: {result['per_second']} bridge calls a second {result['calls']}", flush=True)
                 limit = args.max_per_second
