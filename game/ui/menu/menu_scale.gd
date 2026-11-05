@@ -21,6 +21,10 @@ const DESIGN := Vector2(1920.0, 1080.0)
 ## at the interface size, so 0.72 at the factor) is 44.8 CSS px. A night runs at the interface size
 ## alone: 44 CSS px are 122 units there.
 const TAP_PIXELS := 44.0
+## The least size of the words a finger-held screen shows, in CSS pixels (the written floor).
+const TEXT_PIXELS := 14.0
+## The most of the screen's height words are (a window too small to read anything).
+const TEXT_SHARE_MAX := 0.06
 ## The most of the screen's height a tap target is (a window too small to press anything).
 const TAP_SHARE_MAX := 0.2
 ## What the page's pixel ratio is for the tap size: a test says its own (negative: the device's).
@@ -67,6 +71,21 @@ static func tap_units(window: Window, touch: bool, inner_scale := 1.0) -> float:
 	return minf(
 		ceilf(TAP_PIXELS * maxf(ratio, 1.0) / per_unit), floorf(canvas_height * TAP_SHARE_MAX)
 	)
+
+
+## The size, in the units of `window` at its `content_scale_factor` now, of words that must read at
+## `TEXT_PIXELS` CSS pixels: `desktop_units` when no finger holds the screen (`touch`:
+## `TouchMode.wanted`: a desktop's scale is never changed), else that size or the one the floor
+## asks for, whichever is more. A night's unit is 0.36 CSS px on a phone's page, so 14 CSS px are
+## 39 units there and the HUD's 20 are 7.
+static func text_units(window: Window, touch: bool, desktop_units: int) -> int:
+	if not touch:
+		return desktop_units
+	var ratio := pixel_ratio if pixel_ratio > 0.0 else MouseMotion.device_pixel_ratio()
+	var per_unit := pixels_per_unit(window.size, window.content_scale_factor)
+	var canvas_height := float(window.size.y) / per_unit
+	var wanted := ceili(TEXT_PIXELS * maxf(ratio, 1.0) / per_unit)
+	return maxi(desktop_units, mini(wanted, floori(canvas_height * TEXT_SHARE_MAX)))
 
 
 ## CSS pixels in one design unit: what a person with a ruler measures. It differs from

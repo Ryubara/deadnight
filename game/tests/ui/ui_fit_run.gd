@@ -62,6 +62,7 @@ var _arrival: Variant = null
 var _asking: TogetherScreen
 var _saved_size := Vector2i.ZERO
 var _saved_scale := 1.0
+var _saved_touch: Variant = null
 
 
 func _init(scene_tree: SceneTree) -> void:
@@ -73,6 +74,7 @@ func begin() -> void:
 	var window := tree.root
 	_saved_size = window.size
 	_saved_scale = window.content_scale_factor
+	_saved_touch = TouchMode.device_is_touch
 	UIMotion.reduced = true
 
 
@@ -81,6 +83,7 @@ func restore() -> void:
 	window.size = _saved_size
 	window.content_scale_factor = _saved_scale
 	PageSize.css_override = null
+	TouchMode.device_is_touch = _saved_touch
 	UIMotion.reduced = false
 
 
