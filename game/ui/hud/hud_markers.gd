@@ -278,9 +278,13 @@ func _tag(
 		TEXT_MARGIN,
 		maxf(size.x - TEXT_MARGIN - total, TEXT_MARGIN)
 	)
-	var icon_top := baseline_centre.y - LevelTag.ICON * 0.5 - LABEL_SIZE * 0.3
+	# The icon's body is centred on the digits' ink, as the font draws them on this baseline.
+	var icon_level := int(marker.get("icon", level))
+	var icon_top := LevelTag.icon_top(
+		LevelTag.digits_centre(font, LABEL_SIZE, baseline_centre.y), icon_level
+	)
 	var icon := Rect2(left, icon_top, LevelTag.ICON, LevelTag.ICON)
-	_icons.append([icon, LevelIcons.region(int(marker.get("icon", level)))])
+	_icons.append([icon, LevelIcons.region(icon_level)])
 	var level_at := icon.end.x + LevelTag.ICON_GAP
 	var name_at := level_at + level_width + LevelTag.NAME_GAP
 	_words.append([font, Vector2(level_at, baseline_centre.y), level_text, tokens.ink])

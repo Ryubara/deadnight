@@ -95,6 +95,10 @@ const FIXED: Array[StringName] = [
 	DOWNS_EARLY,
 ]
 const BEST: Array[StringName] = [ROUND, ROUND_UNSPENT, ROUND_DARK, BLAST_BEST]
+## The stats a person cannot make alone: they need a teammate or another person in the lot. A
+## poster set (a set is playable by one person) never lists a challenge that counts one of these;
+## every other stat of `FIXED` can be moved by a solo night.
+const CROWD: Array[StringName] = [REVIVES, NIGHTS_TOGETHER, ROUNDS_WHOLE, BOARDS_SHARED]
 const WEAPON_PREFIX := "kills:weapon:"
 const TYPE_PREFIX := "kills:type:"
 ## Nights played to their end on a map: `nights:map:<id>`.

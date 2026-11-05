@@ -30,8 +30,6 @@ export interface Lobby {
   id: string;
   /** Short code to join by hand. */
   code: string;
-  /** The Discord Activity instance this lobby belongs to, when it was created from one. */
-  instanceId: string | null;
   hostId: string;
   maxPlayers: number;
   /**
@@ -129,7 +127,6 @@ export class LobbyService {
   private readonly lobbies = new Map<string, Lobby>();
   // Indexes, so a lookup does not scan every lobby.
   private readonly byCode = new Map<string, string>();
-  private readonly byInstance = new Map<string, string>();
   /** The one lobby each user is in, open or started: creating or joining another takes them out of it. */
   private readonly lobbyOf = new Map<string, string>();
   private readonly byMatch = new Map<string, string>();
@@ -161,7 +158,6 @@ export class LobbyService {
     if (this.lobbies.get(lobby.id) !== lobby) return;
     this.lobbies.delete(lobby.id);
     this.byCode.delete(lobby.code);
-    if (lobby.instanceId && this.byInstance.get(lobby.instanceId) === lobby.id) this.byInstance.delete(lobby.instanceId);
     for (const m of lobby.members) if (this.lobbyOf.get(m.userId) === lobby.id) this.lobbyOf.delete(m.userId);
     if (lobby.match) {
       this.byMatch.delete(lobby.match.id);
@@ -183,7 +179,7 @@ export class LobbyService {
     return dropped;
   }
 
-  create(host: Member, maxPlayers: number, instanceId: string | null, visibility: Visibility = "public"): Lobby {
+  create(host: Member, maxPlayers: number, visibility: Visibility = "public"): Lobby {
     this.depart(host.userId);
     let code = makeCode();
     while (this.byCode.has(code)) code = makeCode();
@@ -191,7 +187,6 @@ export class LobbyService {
     const lobby: Lobby = {
       id: randomUUID(),
       code,
-      instanceId,
       hostId: host.userId,
       maxPlayers,
       visibility,
@@ -209,7 +204,6 @@ export class LobbyService {
     };
     this.lobbies.set(lobby.id, lobby);
     this.byCode.set(code, lobby.id);
-    if (instanceId) this.byInstance.set(instanceId, lobby.id);
     this.lobbyOf.set(host.userId, lobby.id);
     return lobby;
   }
@@ -289,11 +283,6 @@ export class LobbyService {
     } catch {
       return null;
     }
-  }
-
-  findByInstance(instanceId: string): Lobby | null {
-    // A started night counts too: the friends who open the Activity later land in the same night.
-    return this.find(this.byInstance, instanceId);
   }
 
   findByCode(code: string): Lobby | null {
@@ -414,7 +403,7 @@ export class LobbyService {
         if (!(error instanceof LobbyFailure)) throw error;
       }
     }
-    const lobby = this.create(member, maxPlayers, null, "public");
+    const lobby = this.create(member, maxPlayers, "public");
     try {
       return this.start(lobby.id, member.userId, hostLevel);
     } catch (error) {
@@ -442,7 +431,7 @@ export class LobbyService {
    *
    * A night that ran its end-of-night intermission out is `finished` instead (`present`: the users the game server had
    * at that moment): the lobby opens again for the people who were there, with its code, its host (the next seat when
-   * the host is not among them), its Activity instance and the settings the host chose (map, bots, rules), ready for
+   * the host is not among them), and the settings the host chose (map, bots, rules), ready for
    * the host to start the next night. `present` is who was still connected when the room closed: a member who is not
    * (they left, or went to another lobby, which took them out of this one) is not put back, and a lobby none of them
    * can come back to is gone. A player put back is still free to create or join another lobby at once.

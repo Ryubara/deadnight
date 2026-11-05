@@ -245,8 +245,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"stage": "",
 		"quick_join": "",
 		"gamepad": "",
-		"activity_room": "",
-		"activity_code": "",
+		"signed_in": TogetherApi.signed_in(),
 		"controller_hint": false,
 		"clipboard": "",
 		"clipboard_detail": "",
@@ -266,10 +265,6 @@ static func snapshot(top: Control) -> Dictionary:
 	var clipboard := WebClipboard.read()  # what the page layer saw of copy and paste
 	data["clipboard"] = WebClipboard.note(clipboard)
 	data["clipboard_detail"] = WebClipboard.detail(clipboard)
-	var room := ActivityRoom.current
-	if room != null:
-		data["activity_room"] = ActivityRoom.State.keys()[room.state].to_lower()
-		data["activity_code"] = str(room.preview.get("code", ""))
 	var tree := top.get_tree()
 	var hint: ControllerHint = (
 		tree.root.find_child("ControllerHint", true, false) as ControllerHint

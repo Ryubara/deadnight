@@ -87,6 +87,8 @@ var board_reader := Callable()
 ## What the players are asked and the day it is for them (see `NightHost`); unset, the shipped ones.
 var challenge_catalog: ChallengeCatalog
 var challenge_clock: ChallengeClock
+## The poster sets a finished challenge may complete; unset, the shipped ones. Tests set it.
+var poster_sets: PosterSets
 ## False: no room follows any challenge board (the measurement's arm without the tracker).
 var challenge_awards := true
 ## False: no room awards XP (the measurement's arm without the tally).
@@ -322,6 +324,7 @@ func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 	room.challenge_awards = challenge_awards
 	room.challenge_catalog = challenge_catalog
 	room.challenge_clock = challenge_clock
+	room.poster_sets = poster_sets
 	room.clock = clock
 	room.report_ready.connect(_on_report.bind(match_id))
 	room.board_wanted.connect(_read_board.bind(room))

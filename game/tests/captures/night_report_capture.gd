@@ -10,12 +10,15 @@ extends Node
 ## phone: use `--resolution 2340x1080`), `--rounds=N` (rounds the autopilot plays, default 3),
 ## `--xp=N` (the account's XP when the night begins, default 0: level 1), `--seasoned` (the opening
 ## night and the day's first game were paid already), `--noaccount` (no account at all: the backend
-## was never reached) and `--out=FILE` (the PNG).
+## was never reached), `--set=N` (the night finishes poster set N, its feats done and the last one
+## told as the session tells a finished challenge: the report names the set) and `--out=FILE` (the
+## PNG).
 
 const NIGHT := "res://ui/screens/night_screen.tscn"
 const MENU := "res://ui/screens/main_menu.tscn"
 const SETTINGS_FILE := "user://night_report_capture.cfg"
 const PROFILE_FILE := "user://night_report_capture_profile.json"
+const BOARD_FILE := "user://night_report_capture_board.json"
 const SEED := 11
 const GIVE_UP_SECONDS := 1200.0
 
@@ -42,6 +45,9 @@ func _run() -> void:
 	NightScreen.start_mode = Night.Mode.AUTOPILOT
 	NightScreen.shoulder_camera = true
 	NightScreen.profile_path = PROFILE_FILE
+	if _args.has("set"):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(BOARD_FILE))
+		NightScreen.challenge_path = BOARD_FILE
 	UIRouter.reset(MENU, UITransition.Kind.CUT)
 	await UIRouter.idle
 	UIRouter.push(NIGHT, UITransition.Kind.CUT)
@@ -52,6 +58,8 @@ func _run() -> void:
 	night.player().local_input = false if night.player() != null else false
 	await get_tree().create_timer(1.0).timeout
 	night.link.broadcast(night.server.rules.apply(RulesAction.skip_break()))
+	if _args.has("set"):
+		_finish_set(night, int(_args["set"]))
 	var rounds := int(_args.get("rounds", 3))
 	var ticks := 0
 	while night.state.rounds_started < rounds and ticks < GIVE_UP_SECONDS / Night.STEP:
@@ -71,7 +79,7 @@ func _run() -> void:
 		"report: board visible ", board.visible, " canvas ", get_viewport().get_visible_rect().size
 	)
 	var card: HudNightReport = (board as HudEndBoard).report_card
-	print("report: lines ", card.lines_text, " total ", card.total_text)
+	print("report: lines ", card.lines_text, " total ", card.total_text, " sets ", card.sets_text)
 	print(
 		"report: ",
 		card.level_text,
@@ -88,6 +96,18 @@ func _run() -> void:
 	_save(str(_args.get("out", "user://night_report.png")))
 	_clean()
 	get_tree().quit()
+
+
+## Poster set `index` is finished by this night: its feats are on the board, and the last is told.
+func _finish_set(night: Night, index: int) -> void:
+	var posters := PosterSets.shipped().all()
+	if night.challenge_board == null or night.challenges == null or index >= posters.size():
+		print("report: no board to finish a poster set on")
+		return
+	var poster_set := posters[index]
+	for id in poster_set.challenges:
+		night.challenge_board.profile.feats[id] = night.challenge_board.catalog.get_def(id).target
+	night.challenges._on_advanced({"id": poster_set.challenges[-1], "completed": true})
 
 
 func _prepare_account() -> void:
@@ -119,6 +139,8 @@ func _save(path: String) -> void:
 func _clean() -> void:
 	TogetherApi.forget()
 	NightScreen.profile_path = ""
+	NightScreen.challenge_path = ""
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(BOARD_FILE))
 	NightScreen.start_mode = Night.Mode.HUMAN
 	NightScreen.shoulder_camera = false
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_FILE))

@@ -1,5 +1,5 @@
 // Rooms for friends on the web: guest sign-in, a night in progress that takes newcomers, quick join, and the
-// Activity instance that lands everyone in one night.
+// Activity players, who meet by code like everyone (#1178).
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildApp, GUEST_ID_PREFIX, GUESTS_PER_ADDRESS_PER_HOUR, guestName } from "../src/app.ts";
@@ -141,20 +141,19 @@ test("quick join with no game server up is a 503, not a lobby left behind", asyn
   await app.close();
 });
 
-test("everyone who opens the Activity in one voice channel lands in the same night, started or not", async () => {
+test("players in one Activity voice channel each make their own lobby and meet by code, started or not", async () => {
   const { app, guest, call } = await platform();
   const [a, b, c] = [await guest("a"), await guest("b"), await guest("c")];
+  // The Activity's instance id is not sent by the game any more; a stale client that still sends it changes nothing.
   const first = (await call("POST", "/lobbies", a.headers, { instanceId: "voice-42" })).json();
   assert.equal((await call("POST", `/lobbies/${first.id}/start`, a.headers)).statusCode, 200);
-  // The Activity of the second opens after the night began.
   const second = await call("POST", "/lobbies", b.headers, { instanceId: "voice-42" });
-  assert.equal(second.statusCode, 200);
-  assert.equal(second.json().id, first.id);
-  assert.equal((await call("POST", `/lobbies/${first.id}/ticket`, b.headers)).statusCode, 200);
-  assert.equal((await call("POST", "/lobbies", c.headers, { instanceId: "voice-42" })).json().id, first.id);
-  // Another channel is another night.
-  const other = (await call("POST", "/lobbies", c.headers, { instanceId: "voice-43" })).json();
-  assert.notEqual(other.id, first.id);
+  assert.equal(second.statusCode, 201);
+  assert.notEqual(second.json().id, first.id);
+  // The code reaches a night that has started, as before.
+  const joined = await call("POST", "/lobbies/join-by-code", c.headers, { code: first.code });
+  assert.equal(joined.json().id, first.id);
+  assert.equal((await call("POST", `/lobbies/${first.id}/ticket`, c.headers)).statusCode, 200);
   await app.close();
 });
 

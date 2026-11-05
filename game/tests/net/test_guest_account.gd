@@ -36,6 +36,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	TogetherApi.activity = false
 	_remove_file()
 	if _pid != 0:
 		OS.kill(_pid)
@@ -178,7 +179,7 @@ func test_a_discord_activity_keeps_no_guest_credential() -> void:
 	# Inside an Activity the player signs in with Discord; a guest fallback there is not kept.
 	var api := TogetherApi.new(self, "http://127.0.0.1:1")
 	api.guest_path = FILE
-	api.instance_id = "activity-1"
+	TogetherApi.activity = true
 	assert_str(api.call("_kept_credential")).is_empty()
 	GuestAccount.save_credential(api.base_url, "tok", FILE)
 	assert_str(api.call("_kept_credential")).is_empty()

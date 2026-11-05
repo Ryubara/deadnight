@@ -237,7 +237,7 @@ count 1 with the earlier build of the rules. Kept for the method only.
 | --- | --- | --- |
 | Draw | `tools/level_icons/draw_icons.py` | One function a drawing, the frames, the tier colours; writes the SVGs (standard library) |
 | Source | `game/assets/ui/levels/level_NN.svg` | 128 x 128, shapes and strokes, no `<text>`; a `<title>` (the working name) and a `<desc>` (the tier). The folder has a `.gdignore`: nothing the game ships reads them, and 55 more textures would only grow the pack |
-| Export | `game/tools/art/export_level_icons.gd` | `Image.load_svg_from_string` at each cell size, no window: `level_icons_64.png`, `level_icons_128.png` and `level_icons.json` in `game/assets/ui/level_atlas/`, a column per level in the tier, a row per tier |
+| Export | `game/tools/art/export_level_icons.gd` | `Image.load_svg_from_string` at each cell size, no window: `level_icons_64.png`, `level_icons_128.png` and `level_icons.json` (with each icon's body rows, which centre it on the digits: [alignment](level-badge-alignment.md)) in `game/assets/ui/level_atlas/`, a column per level in the tier, a row per tier |
 | Read | `LevelIcons` | `atlas(cell)`, `region(level, cell)`, `texture(level, cell)` (a shared `AtlasTexture`), `tier(level)` |
 | Check | `tools/check_level_icons.py` (CI, pre-commit) | The manifest holds a hash of every SVG and atlas, so an SVG changed without an export fails with no Godot and no raster compared across machines; so does an atlas changed by hand, and an SVG edited by hand that the script would overwrite |
 
