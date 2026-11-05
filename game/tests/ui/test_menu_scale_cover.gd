@@ -10,6 +10,7 @@ const NIGHT := "res://ui/screens/night_screen.tscn"
 const TEST_PATH := "user://menu_scale_cover_test.cfg"
 
 var _saved_path: String
+var _arrival := false
 
 
 func before() -> void:
@@ -23,10 +24,14 @@ func before_test() -> void:
 	_saved_path = Settings.path
 	Settings.path = TEST_PATH
 	Settings.reset_defaults()
+	# A night with no drop, as the screens here are what is read (`test_arrival_night` is about it).
+	_arrival = NightScreen.arrival_enabled
+	NightScreen.arrival_enabled = false
 
 
 func after_test() -> void:
 	await RouterFixture.clear(get_tree())
+	NightScreen.arrival_enabled = _arrival
 	Settings.reset_defaults()
 	Settings.path = _saved_path
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
