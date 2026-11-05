@@ -48,14 +48,15 @@ static func challenges_after_read(
 	before: ChallengeProfile,
 	after: ChallengeProfile,
 	catalog: ChallengeCatalog,
-	day: int
+	day: int,
+	sets: PosterSets = null
 ) -> Array:
 	var seen := ProgressSeen.open()
 	var kept := seen.bind(account_id)
 	var events: Array = []
 	if before != null and before.account == account_id:
-		var held := finished_keys(before, catalog, day)
-		var now := finished_keys(after, catalog, day)
+		var held := finished_keys(before, catalog, day, sets)
+		var now := finished_keys(after, catalog, day, sets)
 		for key: String in now:
 			if not held.has(key) and not seen.was_told(account_id, key):
 				events.append(now[key])
@@ -66,9 +67,10 @@ static func challenges_after_read(
 
 
 ## Every challenge `profile` shows as finished, `{key: event}`: today's dailies, the orders done
-## (open, or settled into the recent list) and the ladders whose last step is reached.
+## (open, or settled into the recent list), the ladders whose last step is reached and the poster
+## sets whose six feats are done (a `poster_set_done` event, told once ever).
 static func finished_keys(
-	profile: ChallengeProfile, catalog: ChallengeCatalog, day: int
+	profile: ChallengeProfile, catalog: ChallengeCatalog, day: int, sets: PosterSets = null
 ) -> Dictionary:
 	var out := {}
 	for entry in profile.dailies:
@@ -92,6 +94,9 @@ static func finished_keys(
 			out[ProgressSeen.challenge_key(def.family, def.id, day)] = _event(
 				def, def.words(def.steps[steps - 1])
 			)
+	var poster_sets := sets if sets != null else PosterSets.shipped()
+	for poster_set in poster_sets.finished_in(profile.feats_done(catalog)):
+		out[ProgressSeen.set_key(poster_set.id)] = poster_sets.event_of(poster_set)
 	return out
 
 

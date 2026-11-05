@@ -27,6 +27,7 @@ const NAMES: Array[StringName] = [
 	&"door",
 	&"target",
 	&"rack",
+	&"bolt",
 ]
 
 ## How far in a star's inner corners sit, as a share of its outer radius.
@@ -87,6 +88,8 @@ static func shapes(motif: StringName) -> Array[Dictionary]:
 			return _target()
 		&"rack":
 			return _rack()
+		&"bolt":
+			return _bolt()
 	return _ticket()
 
 
@@ -246,6 +249,14 @@ static func _planks() -> Array[Dictionary]:
 	]:
 		out.append(PlateShapes.circle(at, 2.6, _D))
 	return out
+
+
+static func _bolt() -> Array[Dictionary]:
+	return [
+		PlateShapes.poly([62, 2, 16, 58, 43, 58, 31, 99, 85, 36, 57, 36, 74, 2], _D),
+		PlateShapes.poly([60, 6, 22, 56, 47, 56, 36, 92, 79, 39, 53, 39, 68, 6], _B),
+		PlateShapes.poly([58, 14, 36, 48, 52, 48], _L),
+	]
 
 
 static func _can() -> Array[Dictionary]:

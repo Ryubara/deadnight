@@ -305,7 +305,7 @@ and which take speaks; the table of moments, takes and ranks is `SoldierVoiceCat
 | `power_on` (5), `power_low` (4) | `fuel_restored`; `fuel_low` or `fuel_empty` |
 | `grenade` (5), `boss_arrive` (5), `boss_dead` (4) | `grenade_thrown`; the boss's spawn; the boss's death |
 | `idle` (5) | quiet: five seconds with nothing said in a break that has eight more seconds to run, or ten seconds of a round with no dead within 30 m |
-| `level_up`, `tier_up`, `unlock`, `challenge_done`, `poster_set`, `card`, `emblem`, `first_game` (3 each) | the **progression cheers** (#1063): a level, a tier, an unlock, a challenge (the line after the record scratch), a poster set, a card, an emblem or a frame, the first game of the day; `SoldierVoice.celebrate(moment, speaker)`, heard by every client |
+| `level_up`, `tier_up`, `unlock`, `challenge_done`, `poster_set`, `card`, `emblem`, `first_game` (3 each) | the **progression cheers** (#1063): a level, a tier, an unlock, a challenge (the line after the record scratch), a poster set (the server's `poster_set_done`, #1073: weight 4, over a tier and over the challenge that finished it), a card, an emblem or a frame, the first game of the day; `SoldierVoice.celebrate(moment, speaker)`, heard by every client |
 
 - **One voice at a time.** A line owns the channel until it ends and a half second more; a request that meets a busy
   channel is dropped, never queued: a bark is about the moment it was said in. The teammates share the channel with the
@@ -322,8 +322,9 @@ and which take speaks; the table of moments, takes and ranks is `SoldierVoiceCat
   `challenge_done` (`ChallengeAward`, #1076) reach every client's `SoldierVoice`, which cheers the player they name:
   flat for the player at the screen, from where the soldier stands for a teammate. A level, its tier, what it unlocks
   and the challenge that paid it arrive together, so the soldier waits `cheer_window` (0.25 s) and says one cheer for
-  each player, by weight (`SoldierVoiceCatalog.CHEER_WEIGHT`): the tier (3) over a challenge or an item (a card, an
-  emblem or frame by its slot, else an unlock; 2 each, the first told of equals) over the level (1). A challenge is
+  each player, by weight (`SoldierVoiceCatalog.CHEER_WEIGHT`): a finished poster set (4, #1073: it arrives with the
+  challenge that finished it) over the tier (3) over a challenge or an item (a card, an emblem or frame by its slot,
+  else an unlock; 2 each, the first told of equals) over the level (1). A challenge is
   what the player did and the level is what it paid, so a challenge that levels you up is cheered as the challenge;
   a tier is rarer than any of them. Players who finish or level up in the same window are cheered one after the
   other. A bot has no level and no cheer. The maintainer accepted these weights (2026-11-04).
