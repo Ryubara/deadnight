@@ -21,6 +21,8 @@ var _title_width := 0.0
 var _control_width := 0.0
 ## The title above the control instead of beside it (`set_stacked`): the column that holds them.
 var _stack: VBoxContainer
+## The gaps between the title, the control and the value are `space_md` instead of `space_lg`.
+var _tight := false
 
 var _tokens := UITokens.active()
 var _title_label := UILabel.new()
@@ -61,7 +63,7 @@ func _ready() -> void:
 ## Reads the active tokens into the row's spacing and column widths.
 func _apply_tokens() -> void:
 	_tokens = UITokens.active()
-	add_theme_constant_override(&"separation", _tokens.space_lg)
+	add_theme_constant_override(&"separation", _tokens.space_md if _tight else _tokens.space_lg)
 	_text_column.custom_minimum_size.x = (
 		0.0
 		if _stack != null
@@ -95,6 +97,29 @@ func set_control(node: Control) -> void:
 	else:
 		add_child(slot)
 		move_child(slot, 1)
+
+
+## The whole title, never cut to "Break between ro...": the title's column grows to its text. For a
+## row whose card has the room (a phone's form), where the tokens' column is narrower than a title.
+func show_whole_title(on: bool) -> void:
+	_title_label.text_overrun_behavior = (
+		TextServer.OVERRUN_NO_TRIMMING if on else TextServer.OVERRUN_TRIM_ELLIPSIS
+	)
+
+
+## The gaps between the title, the control and the value one step smaller (`space_md`, 16 units
+## for 24), which gives a card that has no room to spare its 16 units back on every gap of a row.
+func set_tight(on: bool) -> void:
+	_tight = on
+	_apply_tokens()
+
+
+## Whether the title is cut short ("Break between ro...") as the row is laid out now.
+func title_cut() -> bool:
+	var font := _title_label.get_theme_font(&"font")
+	var font_size := _title_label.get_theme_font_size(&"font_size")
+	var wanted := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size).x
+	return wanted > _title_label.size.x + 0.5
 
 
 ## A row for a column narrower than the tokens' form: the title's and the control's least widths,

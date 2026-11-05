@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 ## What a player presses in a night on a phone is a tap target (Deadnight #1192). A night runs at
 ## the interface size alone (`NightScreen._ready` takes the menu's phone factor off), so one unit is
 ## 0.36 CSS px on a phone's page (844 x 390 CSS px) and a button the theme makes 79 units high is
-## 28 CSS px: under the 44 the menu keeps (`MenuLook.TAP_TARGET`, 62 units at the menu's factor).
+## 28 CSS px: under the 44 the menu keeps (`MenuLook.TAP_TARGET`, 64 units at the menu's factor).
 ## A phone's page is a 1688 x 780 window (the page's pixel ratio is 2), so sizes are read in CSS px:
 ## window pixels over the ratio. These run in a real `NightScreen` opened through the router (so
 ## with the game's theme), at the factor it really runs at: the end board's Leave, the pause card's
@@ -123,9 +123,13 @@ func test_a_phones_page_is_a_big_window_and_a_unit_is_a_third_of_a_css_pixel() -
 
 
 func test_the_menus_tap_target_and_the_nights_are_the_same_size_in_css_pixels() -> void:
-	# 62 units at the menu's phone factor (one unit 0.72 CSS px) are what 44 CSS px are at the night's.
+	# 64 units at the menu's phone factor are what 44 CSS px are at the night's: 46.2 on the 844 x 390
+	# page (one unit 0.72 CSS px), 44.4 on the narrowest, 667 x 375 (0.694).
 	var menu := MenuLook.TAP_TARGET * MenuScale.pixels_per_unit(Vector2i(844, 390), 2.0)
-	assert_float(menu).is_between(MenuScale.TAP_PIXELS, MenuScale.TAP_PIXELS + 1.5)
+	assert_float(menu).is_between(MenuScale.TAP_PIXELS, MenuScale.TAP_PIXELS + 2.5)
+	# The page's window is its canvas, 1334 x 750 at the ratio of 2.
+	var narrowest := MenuLook.TAP_TARGET * MenuScale.pixels_per_unit(Vector2i(1334, 750), 2.0) / 2.0
+	assert_float(narrowest).is_between(MenuScale.TAP_PIXELS, MenuScale.TAP_PIXELS + 1.0)
 	get_window().size = Vector2i(1688, 780)
 	get_window().content_scale_factor = 1.0
 	MenuScale.pixel_ratio = 2.0
@@ -184,16 +188,20 @@ func test_the_pause_cards_buttons_are_tap_targets_on_a_phone() -> void:
 
 
 func test_every_touch_hit_area_is_a_tap_target_on_a_phone() -> void:
-	# Pure geometry: the layout of the canvas a phone's night has. The smallest interface size (0.8)
-	# is short by 6 CSS px for the five small buttons (a separate issue: their circles overlap).
+	# The touch layer of a real night at each interface size, on the phone's page (#1192, #1217): at
+	# 0.8 the Pause, Ping, Scoreboard, Bot wheel and Melee circles were 38 to 39 CSS px.
 	var faults: Array[String] = []
-	for ui_scale: float in [1.0, 1.25]:
-		var window := Vector2i(1688, 780)
-		var per_unit := MenuScale.pixels_per_unit(window, ui_scale)
-		var canvas := Vector2(window) / per_unit
-		var circles := TouchLayout.buttons(Rect2(Vector2.ZERO, canvas), 1.0)
-		for id: StringName in circles:
-			var diameter: float = float(circles[id][&"hit"]) * 2.0 * per_unit / 2.0
-			if diameter < MenuScale.TAP_PIXELS - SLACK:
-				faults.append("%s at %s: hit area is %.1f CSS px" % [id, ui_scale, diameter])
+	var page: Dictionary = PHONES[0]
+	for ui_scale in SCALES:
+		var screen := await _night(page, ui_scale)
+		assert_bool(screen.touch_active()).is_true()
+		var ids: Array[StringName] = [TouchLayout.PAUSE, TouchLayout.PING, TouchLayout.SCOREBOARD]
+		for row in TouchLayout.BUTTONS:
+			ids.append(row[0])
+		for id in ids:
+			var circle: Dictionary = screen._touch.button_circle(id)
+			var css: float = float(circle[&"hit"]) * 2.0 * _css(page["ratio"])
+			if css < MenuScale.TAP_PIXELS - SLACK:
+				faults.append("%s at %s: hit area is %.1f CSS px" % [id, ui_scale, css])
+		await RouterFixture.clear(get_tree())
 	assert_array(faults).is_empty()

@@ -21,9 +21,20 @@ const LABELS: Array[String] = ["Concession Stand", "Projection Booth Door", ""]
 const STEPS: Array[float] = [-0.3, 0.0, 0.05, 0.12, 0.2, 0.35, 0.5, 0.65, 0.8, 0.9, 0.96, 1.0, 1.3]
 const DISTANCES: Array[float] = [3.0, 30.0, 120.0]
 
+var _window_size := Vector2i.ZERO
+var _window_factor := 1.0
+
+
+func before_test() -> void:
+	_window_size = get_window().size
+	_window_factor = get_window().content_scale_factor
+
 
 func after_test() -> void:
 	UIMotion.reduced = false
+	get_window().size = _window_size
+	get_window().content_scale_factor = _window_factor
+	MenuScale.pixel_ratio = -1.0
 
 
 ## The busiest corners: eight players, the round and the objective, perks, slots, the feeds.
@@ -90,7 +101,12 @@ func _faults(fixture: HudFixture, where: String) -> Array[String]:
 	return found
 
 
+## The canvas of a window at an interface size, which the test's own window is made too: the HUD
+## reads its words' size from it when the touch layout is up (#1218).
 func _canvas(window: Vector2i, ui_scale: float) -> Vector2:
+	get_window().size = window
+	get_window().content_scale_factor = ui_scale
+	MenuScale.pixel_ratio = 1.0
 	return Vector2(window) / MenuScale.pixels_per_unit(window, ui_scale)
 
 

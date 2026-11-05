@@ -18,6 +18,8 @@ Prints `name=true|false` lines for $GITHUB_OUTPUT:
   (`game/gameplay/progression/*.gd`, #1075), the map data they read (`game/world/maps/*.gd` and `*.tres`, #1098), or the
   `ci.yml` workflow itself: the `backend` job (the platform backend's
   own tests, #558).
+- `gdscript`: any `*.gd`, wherever it lives, or what decides how they are linted (`.pre-commit-config.yaml`, `ci.yml`,
+  `tools/gdlint_on_base.sh`): the `gdlint` and `gdlint-late` jobs (#1238).
 
 An empty list (the API listed nothing) or a list of 3000 files (the API's limit, so it may be cut short) turns everything
 on: a job that should have run never silently does not.
@@ -38,12 +40,13 @@ SITE = re.compile(r"^(docs/|mkdocs\.yml$|requirements-docs\.txt$)|\.md$")
 MARKDOWN = re.compile(r"^\.markdownlint|\.md$")
 WORKFLOWS = re.compile(r"^\.github/workflows/")
 BACKEND = re.compile(r"^(spikes/backend/(?!.*\.md$)|game/gameplay/progression/[^/]+\.gd$|game/world/maps/[^/]+\.(gd|tres)$|\.github/workflows/ci\.yml$)")
+GDSCRIPT = re.compile(r"\.gd$|^(\.pre-commit-config\.yaml|\.github/workflows/ci\.yml|tools/gdlint_on_base\.sh)$")
 
 
 def scope(files: list[str]) -> dict[str, bool]:
     """The flags for a list of changed files."""
     if not files or len(files) >= LIMIT:
-        return {"godot": True, "web": True, "docs": True, "markdown": True, "workflows": True, "backend": True}
+        return {"godot": True, "web": True, "docs": True, "markdown": True, "workflows": True, "backend": True, "gdscript": True}
     return {
         "godot": any(not NOT_GODOT.search(f) for f in files),
         "web": any(not NOT_WEB.search(f) for f in files),
@@ -51,11 +54,12 @@ def scope(files: list[str]) -> dict[str, bool]:
         "markdown": any(MARKDOWN.search(f) for f in files),
         "workflows": any(WORKFLOWS.search(f) for f in files),
         "backend": any(BACKEND.search(f) for f in files),
+        "gdscript": any(GDSCRIPT.search(f) for f in files),
     }
 
 
 def _self_test() -> None:
-    everything = {"godot": True, "web": True, "docs": True, "markdown": True, "workflows": True, "backend": True}
+    everything = {"godot": True, "web": True, "docs": True, "markdown": True, "workflows": True, "backend": True, "gdscript": True}
 
     def flags(*files: str) -> str:
         return " ".join(name for name, on in scope(list(files)).items() if on) or "-"
@@ -65,15 +69,15 @@ def _self_test() -> None:
     assert flags("docs/research/hip-fire.md", "docs/design/hud.md") == "docs markdown"
     assert flags("README.md") == "docs markdown"
     assert flags(".github/ISSUE_TEMPLATE/bug.yml") == "-"
-    assert flags("game/gameplay/player/player.gd") == "godot web"
-    assert flags("game/gameplay/player/player.gd", "docs/design/animation.md") == "godot web docs markdown"
-    assert flags(".github/workflows/ci.yml") == "godot web workflows backend"
+    assert flags("game/gameplay/player/player.gd") == "godot web gdscript"
+    assert flags("game/gameplay/player/player.gd", "docs/design/animation.md") == "godot web docs markdown gdscript"
+    assert flags(".github/workflows/ci.yml") == "godot web workflows backend gdscript"
     assert flags(".github/workflows/pr.yml") == "godot web workflows"
     # Only tests: the game's tests run, the web export does not contain them.
-    assert flags("game/tests/player/test_aim_release.gd", "game/tests/player/test_aim_release.gd.uid") == "godot"
-    assert flags("game/tests/player/test_x.gd", "docs/research/x.md") == "godot docs markdown"
+    assert flags("game/tests/player/test_aim_release.gd", "game/tests/player/test_aim_release.gd.uid") == "godot gdscript"
+    assert flags("game/tests/player/test_x.gd", "docs/research/x.md") == "godot docs markdown gdscript"
     # A test next to game code still builds the web.
-    assert flags("game/tests/player/test_x.gd", "game/gameplay/player/player.gd") == "godot web"
+    assert flags("game/tests/player/test_x.gd", "game/gameplay/player/player.gd") == "godot web gdscript"
     # The deploy files and the browser scripts are not the game.
     assert flags("deploy/web/Caddyfile") == "-"
     # The platform backend's own tests: its sources and tests, not its README, and not the game.
@@ -81,16 +85,21 @@ def _self_test() -> None:
     assert flags("spikes/backend/test/lobby.test.ts", "spikes/backend/package-lock.json") == "backend"
     assert flags("spikes/backend/README.md") == "docs markdown"
     # The backend's tests read the game's level curve and XP rules, so a change to them runs the backend job too.
-    assert flags("game/gameplay/progression/level_curve.gd") == "godot web backend"
+    assert flags("game/gameplay/progression/level_curve.gd") == "godot web backend gdscript"
     # ... and the maps' ids and unlock levels (the backend keeps a copy, the same test holds it equal).
     assert flags("game/world/maps/small_indoor.tres") == "godot web backend"
-    assert flags("game/world/maps/map_info.gd") == "godot web backend"
+    assert flags("game/world/maps/map_info.gd") == "godot web backend gdscript"
     assert flags("tools/web_smoke/smoke.py") == "web"
     assert flags("tools/audio/analyze.py") == "godot web"
     # A markdown file inside the game is documentation too.
     assert flags("game/assets/audio/eleven/LICENSE.md") == "docs markdown"
     assert flags("mkdocs.yml") == "godot web docs"
     assert flags(".markdownlint.yaml") == "godot web markdown"
+    # A script is linted wherever it lives, and so is everything when the hook's pin or the job itself changes.
+    assert flags("spikes/net/server.gd") == "gdscript"
+    assert flags(".pre-commit-config.yaml") == "godot web gdscript"
+    assert flags("tools/gdlint_on_base.sh") == "godot web gdscript"
+    assert flags("game/ui/screens/lobby_screen.tscn") == "godot web"
     print("ci_scope self-test passed")
 
 

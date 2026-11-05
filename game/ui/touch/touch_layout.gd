@@ -66,12 +66,18 @@ const STICK_RADIUS := 105.0
 const STICK_ZONE_WIDTH := 0.45
 const STICK_ZONE_TOP := 0.2
 ## A finger's hit area reaches this far past the drawn button, and is never smaller than MIN_HIT.
+## On a touch screen it is never smaller than a fingertip either (`finger`, below).
 const HIT_PAD := 24.0
 const MIN_HIT := 66.0
 
 
-## The circles: button id -> {centre, radius, hit}. `mirrored` flips the layout for a left hand.
-static func buttons(safe: Rect2, touch_scale: float, mirrored := false) -> Dictionary:
+## The circles: button id -> {centre, radius, hit, was}. `mirrored` flips it for a left hand.
+## `finger` is the least width of a hit area in canvas units (`MenuScale.tap_units`: 44 CSS pixels,
+## which is 153 units at an interface size of 0.8 and 122 at 1.0); 0 leaves the areas as they were.
+## `was` is the hit area before `finger` (see `button_at`).
+static func buttons(
+	safe: Rect2, touch_scale: float, mirrored := false, finger := 0.0
+) -> Dictionary:
 	var found := {}
 	for row in BUTTONS:
 		var radius: float = row[2] * touch_scale
@@ -82,19 +88,21 @@ static func buttons(safe: Rect2, touch_scale: float, mirrored := false) -> Dicti
 			if mirrored
 			else safe.end.x - offset.x * touch_scale
 		)
-		found[row[0]] = _circle(Vector2(across, up), radius)
+		found[row[0]] = _circle(Vector2(across, up), radius, finger)
 	var pause_radius := PAUSE_RADIUS * touch_scale
 	var pause_x := safe.end.x - PAUSE_OFFSET.x if mirrored else safe.position.x + PAUSE_OFFSET.x
-	found[PAUSE] = _circle(Vector2(pause_x, safe.position.y + PAUSE_OFFSET.y), pause_radius)
+	found[PAUSE] = _circle(Vector2(pause_x, safe.position.y + PAUSE_OFFSET.y), pause_radius, finger)
 	var ping_x := safe.end.x - PING_OFFSET.x if mirrored else safe.position.x + PING_OFFSET.x
 	found[PING] = _circle(
-		Vector2(ping_x, safe.position.y + PING_OFFSET.y), PING_RADIUS * touch_scale
+		Vector2(ping_x, safe.position.y + PING_OFFSET.y), PING_RADIUS * touch_scale, finger
 	)
 	var board_x := (
 		safe.end.x - SCOREBOARD_OFFSET.x if mirrored else safe.position.x + SCOREBOARD_OFFSET.x
 	)
 	found[SCOREBOARD] = _circle(
-		Vector2(board_x, safe.position.y + SCOREBOARD_OFFSET.y), SCOREBOARD_RADIUS * touch_scale
+		Vector2(board_x, safe.position.y + SCOREBOARD_OFFSET.y),
+		SCOREBOARD_RADIUS * touch_scale,
+		finger
 	)
 	return found
 
@@ -108,8 +116,9 @@ static func stick_zone(safe: Rect2, mirrored := false) -> Rect2:
 	return Rect2(Vector2(left, safe.position.y + top), Vector2(width, safe.size.y - top))
 
 
-static func _circle(centre: Vector2, radius: float) -> Dictionary:
-	return {&"centre": centre, &"radius": radius, &"hit": maxf(radius + HIT_PAD, MIN_HIT)}
+static func _circle(centre: Vector2, radius: float, finger: float) -> Dictionary:
+	var was := maxf(radius + HIT_PAD, MIN_HIT)
+	return {&"centre": centre, &"radius": radius, &"hit": maxf(was, finger * 0.5), &"was": was}
 
 
 static func stick_rest(safe: Rect2, touch_scale: float, mirrored := false) -> Vector2:
@@ -117,18 +126,39 @@ static func stick_rest(safe: Rect2, touch_scale: float, mirrored := false) -> Ve
 	return corner + Vector2(-1.0 if mirrored else 1.0, -1.0) * STICK_REST * touch_scale
 
 
-## The button under `point`, or "" (the first in `BUTTONS` order wins; `skip` lists hidden ones).
+## The button under `point`, or "" (`skip` lists hidden ones). Who wins a touch where hit areas
+## overlap is decided in two steps (#1217):
+## 1. The area a button had before `finger` (`was`): the first in `BUTTONS` order wins (Pause, Ping,
+##    Scoreboard, then the table's order, the contextual Interact first), exactly as it always did.
+##    A touch that pressed a button before presses the same button now.
+## 2. The margin `finger` added, which no button owned: the nearest centre wins (a tie goes to the
+##    first in order). Growing a button never takes a touch from its neighbour.
 static func button_at(point: Vector2, circles: Dictionary, skip: Array = []) -> StringName:
-	var order: Array = [PAUSE, PING, SCOREBOARD]
-	for row in BUTTONS:
-		order.append(row[0])
+	var order := _order()
 	for id: StringName in order:
 		if id in skip:
 			continue
 		var circle: Dictionary = circles[id]
-		if point.distance_to(circle[&"centre"]) <= float(circle[&"hit"]):
+		if point.distance_to(circle[&"centre"]) <= float(circle.get(&"was", circle[&"hit"])):
 			return id
-	return &""
+	var nearest := &""
+	var nearest_gap := INF
+	for id: StringName in order:
+		if id in skip:
+			continue
+		var circle: Dictionary = circles[id]
+		var gap := point.distance_to(circle[&"centre"])
+		if gap <= float(circle[&"hit"]) and gap < nearest_gap:
+			nearest = id
+			nearest_gap = gap
+	return nearest
+
+
+static func _order() -> Array:
+	var order: Array = [PAUSE, PING, SCOREBOARD]
+	for row in BUTTONS:
+		order.append(row[0])
+	return order
 
 
 ## The safe rectangle of a canvas: the whole canvas less the insets (left, top, right, bottom).
