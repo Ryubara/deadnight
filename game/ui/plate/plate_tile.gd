@@ -9,8 +9,9 @@ const WEARING := "WEARING"
 const NONE_TITLES := {
 	PlateCatalog.CARD: "No card", PlateCatalog.EMBLEM: "No emblem", PlateCatalog.FRAME: "No frame"
 }
-## The room under the art for the caption, in lines, and a line's height.
-const CAPTION_LINES := 2
+## The room under the art for the caption, in lines (the title's one and up to three for how to
+## earn it or a riddle: an emblem's tile is narrow), and a line's height.
+const CAPTION_LINES := 4
 const CAPTION_LINE := 24.0
 ## An emblem's tile is wide enough for a title like "Open for Business".
 const EMBLEM_TILE_WIDTH := 132.0
@@ -73,16 +74,20 @@ func _build(art_size: Vector2, how_to_get: String) -> void:
 		card.card_id = piece_id
 		card.titled = true
 		card.dim = 0.0 if owned else 0.55
+		card.silhouette = catalog.is_hidden(kind, piece_id) and not owned
 		_art = card
 	else:
 		var emblem := EmblemArt.new()
 		emblem.emblem_id = piece_id
 		emblem.dim = 0.0 if owned else 0.55
+		emblem.silhouette = catalog.is_hidden(kind, piece_id) and not owned
 		_art = emblem
 	_art.custom_minimum_size = art_size
 	_art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	column.add_child(_art)
-	_title = _caption(NONE_TITLES[kind] if piece_id == &"" else catalog.title(kind, piece_id))
+	_title = _caption(
+		NONE_TITLES[kind] if piece_id == &"" else catalog.shown_title(kind, piece_id, owned)
+	)
 	_title.add_theme_color_override(&"font_color", UITokens.active().ink)
 	column.add_child(_title)
 	_status = _caption(_status_text(how_to_get))
@@ -90,7 +95,7 @@ func _build(art_size: Vector2, how_to_get: String) -> void:
 		&"font_color", UITokens.active().accent_bright if worn else UITokens.active().ink_muted
 	)
 	column.add_child(_status)
-	# Two lines of caption under the art (a long way to earn one wraps onto a third).
+	# The captions under the art: the title and what it takes, which may wrap onto three lines.
 	custom_minimum_size = Vector2(
 		maxf(art_size.x, EMBLEM_TILE_WIDTH) + 2.0 * pad,
 		art_size.y + 2.0 * pad + float(CAPTION_LINES) * CAPTION_LINE + float(column_gap)

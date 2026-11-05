@@ -32,6 +32,10 @@ const LISTENS: Dictionary[StringName, bool] = {
 	&"round_started": true,
 	&"round_ended": true,
 	&"game_over": true,
+	# The hidden challenges' (`HiddenMoments`).
+	&"door_opened": true,
+	&"break_started": true,
+	&"player_died": true,
 }
 ## A server step (`Night.STEP`; a test keeps the two equal).
 const TICK_SECONDS := 1.0 / 60.0
@@ -55,12 +59,9 @@ const RUN_WEAPON := &"crowbar"
 const TOGETHER := 2
 ## Whole crew: players in the round, at least.
 const CREW := 2
-## The areas of the maps (`data/areas.json`): map id -> area id -> `[x0, z0, x1, z1]` in metres.
-const AREAS_PATH := "res://gameplay/challenges/data/areas.json"
-const BOOTH := &"booth"
 
-static var _areas: Dictionary = {}
-
+## The hidden challenges' stats: it is handed the events of `HiddenMoments.LISTENS`.
+var _hidden := HiddenMoments.new()
 var _now := 0.0
 var _map := ""
 var _door_ids: Array[StringName] = []
@@ -105,6 +106,7 @@ func know(tuning: RulesTuning, map_id: String = "") -> void:
 ## Says whether a bot plays the seat.
 func set_bot(player_id: int, bot: bool) -> void:
 	_bots[player_id] = bot
+	_hidden.set_bot(player_id, bot)
 
 
 ## A new night: what was counted is forgotten, who is a bot and what is known of the map is kept.
@@ -115,6 +117,7 @@ func reset() -> void:
 	_dark = false
 	_doors_done = false
 	_doors_open.clear()
+	_hidden.reset()
 	for each: Dictionary in [
 		_in_round,
 		_from_start,
@@ -135,6 +138,7 @@ func reset() -> void:
 
 ## A person takes a seat that was another's: what the earlier player did is not theirs.
 func forget(player_id: int) -> void:
+	_hidden.forget(player_id)
 	for each: Dictionary in [
 		_in_round,
 		_from_start,
@@ -186,25 +190,16 @@ func observe(event: Dictionary, tally: NightTally) -> void:
 			_on_round_ended(event, tally)
 		&"game_over":
 			_on_game_over(tally)
+	if HiddenMoments.LISTENS.has(event["type"]):
+		_hidden.observe(event, tally)
 
 
 func _set_map(map_id: String) -> void:
 	if map_id == "" and _map != "":
 		return
 	_map = map_id if map_id != "" else MapRegistry.DEFAULT
-	_booth = PackedFloat32Array()
-	var rect: Array = _area_of(_map, BOOTH)
-	if rect.size() == 4:
-		_booth = PackedFloat32Array(rect)
-
-
-static func _area_of(map_id: String, area: StringName) -> Array:
-	if _areas.is_empty():
-		var file := FileAccess.open(AREAS_PATH, FileAccess.READ)
-		var parsed: Variant = JSON.parse_string(file.get_as_text()) if file != null else null
-		_areas = parsed if parsed is Dictionary else {"": {}}
-	var rooms: Dictionary = _areas.get(map_id, {})
-	return rooms.get(String(area), [])
+	_booth = ChallengeAreas.rect(_map, ChallengeAreas.BOOTH)
+	_hidden.set_map(_map)
 
 
 func _on_frame(event: Dictionary) -> void:
@@ -237,9 +232,7 @@ func _read_circuits(circuits: Dictionary) -> void:
 
 
 func _read_position(id: int, at: Vector3) -> void:
-	var in_booth := (
-		at.x >= _booth[0] and at.z >= _booth[1] and at.x <= _booth[2] and at.z <= _booth[3]
-	)
+	var in_booth := ChallengeAreas.contains(_booth, at)
 	_inside[id] = in_booth
 	if not in_booth:
 		_booth_whole.erase(id)

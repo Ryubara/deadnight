@@ -29,9 +29,9 @@ func test_the_shipped_catalogue_has_no_problems() -> void:
 func test_the_launch_set_is_there() -> void:
 	# 11 tier cards, 12 grind cards and 11 odd ones; 11 tier emblems, the starting emblem, 9 easy
 	# ones, 12 grind ones and 8 easy and together ones that need a stat of #1074; 4 frames from
-	# levels and 3 from challenges.
-	assert_int(_plates.ids(PlateCatalog.CARD).size()).is_equal(34)
-	assert_int(_plates.ids(PlateCatalog.EMBLEM).size()).is_equal(41)
+	# levels and 3 from challenges; a card and an emblem for each of the 5 hidden challenges (#1172).
+	assert_int(_plates.ids(PlateCatalog.CARD).size()).is_equal(39)
+	assert_int(_plates.ids(PlateCatalog.EMBLEM).size()).is_equal(46)
 	assert_int(_plates.ids(PlateCatalog.FRAME).size()).is_equal(7)
 	var tiers := 0
 	for kind in PlateCatalog.KINDS:
@@ -66,7 +66,7 @@ func test_every_grant_of_a_challenge_is_a_piece_and_no_piece_is_given_twice() ->
 				. override_failure_message("%s has no art" % key)
 				. is_true()
 			)
-	assert_int(given.size()).is_equal(9 + 12 * 2 + 3 + 11 + 8)
+	assert_int(given.size()).is_equal(9 + 12 * 2 + 3 + 11 + 8 + 10)
 
 
 func test_what_a_player_owns_is_the_level_and_the_finished_challenges() -> void:
@@ -75,10 +75,12 @@ func test_what_a_player_owns_is_the_level_and_the_finished_challenges() -> void:
 	# Level 2 gives the starting emblem; level 5 the first tier's card and emblem.
 	assert_array(_plates.owned(PlateCatalog.EMBLEM, 2, none)).contains_exactly([&"admit_one"])
 	assert_array(_plates.owned(PlateCatalog.CARD, 5, none)).contains_exactly([&"doors_open"])
-	assert_array(_plates.owned(PlateCatalog.CARD, 55, none).slice(-1)).contains_exactly(
-		[&"last_reel"]
+	# Level 55 gives the last tier card and, with all eleven, the derived *Final cut* (#1172).
+	assert_array(_plates.owned(PlateCatalog.CARD, 55, none).slice(-2)).contains_exactly(
+		[&"last_reel", &"final_cut"]
 	)
-	assert_int(_plates.owned(PlateCatalog.CARD, 55, none).size()).is_equal(11)
+	assert_int(_plates.owned(PlateCatalog.CARD, 55, none).size()).is_equal(12)
+	assert_int(_plates.owned(PlateCatalog.CARD, 54, none).size()).is_equal(10)
 	# A challenge gives its piece once done, and nothing before.
 	var done := _done("f_dead_eye")
 	assert_bool(_plates.owns(PlateCatalog.CARD, &"dead_eye", 1, none)).is_false()

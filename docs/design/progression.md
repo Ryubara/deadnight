@@ -382,8 +382,9 @@ hour: not a loophole. Level 10 arrives after about half an hour ([the curve](#th
   [calling cards](../research/calling-cards.md). **Built (#1071):** plate frames: the four of the ladder (Chrome 29,
   Brass 37, Neon 50, Gold 55) and three from challenges the night counts today (round 20, 25 revives, 100 nights), a
   Frames tab on the equip screen and the frame on every plate that shows one. **Built (#1074):** the stats and the 19
-  feats of the odd, easy and together lists below ([the odd and together stats](#the-odd-and-together-stats)). Not
-  built: the frames for beating a map (#1072), poster sets (#1073), the hidden challenges (#1172).
+  feats of the odd, easy and together lists below ([the odd and together stats](#the-odd-and-together-stats)). **Built (#1172):**
+  the five hidden challenges ([the hidden challenges](#the-hidden-challenges)). Not built: the frames for beating a map
+  (#1072) and poster sets (#1073).
 - Launch set: **11 tier cards and 11 tier emblems** from the ladder, and **31 challenge cards and 31 emblems**: 42 of
   each. A challenge gives a card, an emblem, a frame or a mix, as the tables say (never two gates in series). The rarity
   of a frame or card is not assumed (#1053).
@@ -460,10 +461,10 @@ A stat is a name; a challenge names one.
 | `downs` | `player_downed` |
 | `revives` | `player_revived` with a teammate's `reviver_id` (a round's end gets everyone up with a `reviver_id` of 0: nobody's) |
 
-The odd and together stats follow below. **Not counted yet, and no challenge asks for them** (a challenge the night
-cannot finish is a broken promise): weapon mastery steps (mastery is not built), the hidden challenges (*Intermission*,
-*The long way round*, *Dead on arrival*, *Standing room only*), every challenge that needs a **win** (extraction, issue
-number 1056), and every "Together" order. Each is one stat and a data record the day its event exists.
+The odd, together and hidden stats follow below. **Not counted yet, and no challenge asks for them** (a challenge the
+night cannot finish is a broken promise): weapon mastery steps (mastery is not built), every challenge that needs a
+**win** (extraction, issue number 1056), and every "Together" order. Each is one stat and a data record the day its
+event exists.
 
 ### The odd and together stats
 
@@ -507,6 +508,50 @@ board, a purchase, a blast, a circuit, a down) and an event it ignores costs the
 Rules that make a stat honest: the booth is read at every frame, so one tick outside ends it; a lone player is no
 crew; the dark and the dry gun need the frame to have said the circuits and the ammunition (a night that never said
 them counts neither); a round's players are those present at its start, so a late joiner does not inherit a clear.
+
+### The hidden challenges
+
+Built in #1172. A challenge with `"hidden": true` and a `"riddle"` in `feats.json` is a feat the player is not told of:
+**until it is done, nothing a player can read holds its title or its words.** The equip screen shows its card and
+emblem as a flat silhouette with a `?`, the name `???` and the riddle where the way to earn one goes; pressing it says the
+riddle. A test scans every text of the equip screen, the main menu, the news and the prompt and popup cards for the words
+and the titles of the five (`test_hidden_challenges_ui`). Once done, the pieces show their art and name like any other.
+Hidden challenges are feats only, give a card and an emblem each, and a poster set may not take one.
+
+| Challenge (title of its card) | Stat | Counts |
+| --- | --- | --- |
+| *Intermission* (**Snack Break**) | `breaks:stand` | a break between two rounds spent whole at the stand: in the stand's rectangle (`data/areas.json`) at the break's start (`break_started`, `next_round` above 1: the wait before round one is no break between rounds) and in every frame of it until the next round starts; one step out ends it for that player, and a break the night ends in or with no frame in it counts nothing |
+| *The long way round* (**The Long Way Round**) | `round:long_way` (best, round 8 in one night) | the latest round started while the map's second door (`second_door` in `data/areas.json`: `door_booth`, the second of the lot's doors in the opening order) was still shut, for the whole lot; opening it (`door_opened`, or a frame that lists it) stops the count for everyone; the back rooms name no second door and count nothing |
+| *Dead on arrival* (**Dead on Arrival**) | `deaths:round_one` | a death in round 1: a bleed-out (`player_died`), or the night ending with everyone down (`game_over` `all_down`, `round_reached` 1) for each in the lot; once a night for a player |
+| *Standing room only* (**Standing Room Only**) | `nights:full_lot` | `game_over` with four or more **people** (a bot is no one) in the lot who are exactly the people it had when round 1 began: one who left, came in late or was replaced by a bot spoils it |
+| *Final cut* (**Final Cut**) | none: **derived** | done when the player owns every tier card (`ChallengeDef.derived` `tier_cards`) |
+
+*Final cut* is derived, not counted: it has no stat and no progress. `PlateCatalog.is_done` says it is done when the
+level opens every calling card the ladder gives as a tier's (the eleven `tier_card` rows, so level 55 now; a retuned
+ladder moves it with no edit), and ownership of its pieces follows, for the equip screen, the game server's
+`PlateTable` and a ticket alike. It is never in the finished list. Tested at level 54 and 55, with a ladder of three tier
+cards and with none (`test_hidden_challenges`).
+
+Choices made here, not the maintainer's (the issue left them open): **the second door is `door_booth`**; **the stand is
+its whole interior**, the floor of the greybox's `Concession` node (a test checks the rectangle against the scene);
+**"four on the lot" is four or more people**; **Dead on arrival counts the night's end** as well as a bleed-out, since a
+solo player goes down with nobody to bleed out for; each hidden challenge gives **a card and an emblem**; the card of
+*Intermission* is titled **Snack Break**, since *Intermission* is the title of a tier card (level 20) and one title
+names one thing. The riddles are a first draft for the maintainer to rewrite: "The reel stops. Join the line." (Snack
+Break), "Eight reels in, one door shut." (The Long Way Round), "Some never see the second reel." (Dead on Arrival), "A
+full house. Nobody leaves." (Standing Room Only), "Every ticket, then one more." (Final Cut); they are the `riddle`
+lines of `feats.json`.
+
+What it costs: a frame reads the round, the doors list and one rectangle for each player (the stand) and writes one flag
+for each; the other events are rare (a break, a round, a door, a death, the night's end); a kill and a shot cost
+nothing more than before. Measured (`challenge_award_micro`, the tracker alone, four boards): a frame of four players
+4.2 us after the odd stats (#1074, calibration loop 2.6 ms) and 4.9 us now, the best of three runs on a busier machine
+(calibration loop 4.4 ms; the other two runs were noisier, 9 and 11 us, with the calibration loop unchanged); a kill
+with its four other events 66 us and a shot 2.7 us (66 and 2.6 after #1074), an ignored event 0.42 us (the same).
+
+The game server tells what a night's end finished (`NightServer._step_over` now hands out `challenges.take_events()`: it
+only did when a client sent something that happens to drain them, so a card finished by the last event of a night
+(*Dead on arrival*, *Standing room only*) could go untold).
 
 ### The read API
 
@@ -695,10 +740,10 @@ extraction (#1056).
 | Hold the line | Five revives in one night | yes (`revives`) |
 | Nobody home | Let a round end with you having killed nothing in it | yes (`rounds:no_kills`) |
 
-**Hidden** (shown as `???` with a riddle until done): *Intermission* (stand at the stand for a whole break: event),
-*The long way round* (reach round 8 without using the second door: event), *Dead on arrival* (die in round 1: line),
-*Standing room only* (a night with four on the lot and the same four at the end: line), *Final cut* (finish all eleven
-tier cards: derived).
+**Hidden** (shown as `???` with a riddle until done; built in #1172, [how](#the-hidden-challenges)): *Intermission*
+(stand at the stand for a whole break), *The long way round* (reach round 8 without using the second door), *Dead on
+arrival* (die in round 1), *Standing room only* (a night with four on the lot and the same four at the end) and *Final
+cut* (finish all eleven tier cards: derived).
 
 **Numbers:** 12 easy, 12 grind, 11 odd, 5 together, 5 hidden = 45 challenges. The existing 26 dailies, 12 orders and
 12 milestones stay, and **pay XP** (and a card for finishing a family of orders, or a poster set, below). The

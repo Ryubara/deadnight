@@ -60,6 +60,14 @@ const DOORS_ALL_EARLY := &"doors:all_early"
 const CRAWLER_RUNS := &"crawler_runs"
 ## Times the player went down in the first seconds of a round.
 const DOWNS_EARLY := &"downs:early"
+## Breaks (between two rounds) the player spent whole at the stand.
+const BREAKS_STAND := &"breaks:stand"
+## The latest round started with the map's second door still shut. A best stat.
+const ROUND_LONG_WAY := &"round:long_way"
+## Times the player died in the first round (bled out, or the night ended with them down).
+const DEATHS_ROUND_ONE := &"deaths:round_one"
+## Nights that ended with the same four or more people in the lot as at the first round.
+const NIGHTS_FULL_LOT := &"nights:full_lot"
 
 const FIXED: Array[StringName] = [
 	KILLS,
@@ -93,8 +101,12 @@ const FIXED: Array[StringName] = [
 	DOORS_ALL_EARLY,
 	CRAWLER_RUNS,
 	DOWNS_EARLY,
+	BREAKS_STAND,
+	ROUND_LONG_WAY,
+	DEATHS_ROUND_ONE,
+	NIGHTS_FULL_LOT,
 ]
-const BEST: Array[StringName] = [ROUND, ROUND_UNSPENT, ROUND_DARK, BLAST_BEST]
+const BEST: Array[StringName] = [ROUND, ROUND_UNSPENT, ROUND_DARK, BLAST_BEST, ROUND_LONG_WAY]
 const WEAPON_PREFIX := "kills:weapon:"
 const TYPE_PREFIX := "kills:type:"
 ## Nights played to their end on a map: `nights:map:<id>`.

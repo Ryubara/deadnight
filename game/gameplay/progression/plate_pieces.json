@@ -33,7 +33,12 @@
     {"id": "house_regular", "title": "House Regular", "motif": "ticket", "palette": "teal", "side": "right"},
     {"id": "the_big_take", "title": "The Big Take", "motif": "coins", "palette": "gold", "side": "left"},
     {"id": "full_rack", "title": "Full Rack", "motif": "rack", "palette": "violet", "side": "right"},
-    {"id": "pest_control", "title": "Pest Control", "motif": "target", "palette": "ivory", "side": "left"}
+    {"id": "pest_control", "title": "Pest Control", "motif": "target", "palette": "ivory", "side": "left"},
+    {"id": "snack_break", "title": "Snack Break", "motif": "cup", "palette": "sunset", "side": "right"},
+    {"id": "the_long_way_round", "title": "The Long Way Round", "motif": "door", "palette": "ice", "side": "left"},
+    {"id": "dead_on_arrival", "title": "Dead on Arrival", "motif": "skull", "palette": "violet", "side": "right"},
+    {"id": "standing_room_only", "title": "Standing Room Only", "motif": "marquee", "palette": "cherry", "side": "left"},
+    {"id": "final_cut", "title": "Final Cut", "motif": "strip", "palette": "gold", "side": "right"}
   ],
   "emblems": [
     {"id": "admit_one", "title": "Admit One", "motif": "ticket", "palette": "ivory", "shape": "ticket"},
@@ -76,7 +81,12 @@
     {"id": "house_regular", "title": "House Regular", "motif": "ticket", "palette": "teal", "shape": "hex"},
     {"id": "the_big_take", "title": "The Big Take", "motif": "coins", "palette": "gold", "shape": "hex"},
     {"id": "full_rack", "title": "Full Rack", "motif": "rack", "palette": "violet", "shape": "hex"},
-    {"id": "pest_control", "title": "Pest Control", "motif": "target", "palette": "ivory", "shape": "hex"}
+    {"id": "pest_control", "title": "Pest Control", "motif": "target", "palette": "ivory", "shape": "hex"},
+    {"id": "snack_break", "title": "Snack Break", "motif": "cup", "palette": "sunset", "shape": "hex"},
+    {"id": "the_long_way_round", "title": "The Long Way Round", "motif": "door", "palette": "ice", "shape": "hex"},
+    {"id": "dead_on_arrival", "title": "Dead on Arrival", "motif": "skull", "palette": "violet", "shape": "hex"},
+    {"id": "standing_room_only", "title": "Standing Room Only", "motif": "marquee", "palette": "cherry", "shape": "hex"},
+    {"id": "final_cut", "title": "Final Cut", "motif": "strip", "palette": "gold", "shape": "hex"}
   ],
   "frames": [
     {"id": "chrome", "title": "Chrome", "palette": "chrome", "style": "double"},

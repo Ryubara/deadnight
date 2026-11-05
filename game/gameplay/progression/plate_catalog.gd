@@ -9,6 +9,11 @@ extends RefCounted
 ## level (from XP) and the list of finished challenges (`Profile.done`), so a retune needs no
 ## migration and nothing is stored twice.
 ##
+## A HIDDEN challenge's pieces (`ChallengeDef.hidden`) are not named until the challenge is done:
+## `shown_title` is `???` and `how_to_get` its riddle, and the art is a silhouette. Every screen
+## asks those two, never `title` and the challenge's words. A DERIVED challenge (*Final cut*) is
+## done when its rule is true of the level (`is_done`), so it needs no stored finish.
+##
 ## A new piece is a line in `plate_pieces.json` and a row in `unlocks.json` or a `grants` entry in
 ## a challenge file; the poster sets (#1073) and the stats the odd challenges need (#1074) add
 ## theirs the same way.
@@ -19,6 +24,8 @@ const EMBLEM := &"emblem"
 ## A border for the plate (#1071): a level gives some, a challenge the rest.
 const FRAME := &"frame"
 const KINDS: Array[StringName] = [CARD, EMBLEM, FRAME]
+## What a hidden piece is called until its challenge is done.
+const CONCEALED := "???"
 ## The ladder rows that give each kind a piece.
 const LADDER_SLOTS := {
 	CARD: [&"tier_card"], EMBLEM: [&"tier_emblem", &"emblem"], FRAME: [&"plate_frame"]
@@ -33,6 +40,8 @@ var _order: Dictionary = {CARD: [], EMBLEM: [], FRAME: []}
 ## kind -> piece id -> `{level}` or `{challenge: ChallengeDef}`.
 var _sources: Dictionary = {CARD: {}, EMBLEM: {}, FRAME: {}}
 var _problems: Array[String] = []
+## The cards the ladder gives as a tier's (`tier_card` rows), for the derived *Final cut*.
+var _tier_cards: Array[StringName] = []
 
 
 ## The shipped catalogue, read once for the process.
@@ -123,7 +132,20 @@ func owns(kind: StringName, id: StringName, level: int, done: Array[StringName])
 	if from.has("level"):
 		return level >= int(from["level"])
 	if from.has("challenge"):
-		return done.has((from["challenge"] as ChallengeDef).id)
+		return is_done(from["challenge"], level, done)
+	return false
+
+
+## Whether a player at `level` who finished `done` has finished the challenge: it is on their list,
+## or it is derived and its rule holds (every tier card owned).
+func is_done(def: ChallengeDef, level: int, done: Array[StringName]) -> bool:
+	if done.has(def.id):
+		return true
+	if def.derived == ChallengeDef.DERIVED_TIER_CARDS:
+		for card in _tier_cards:
+			if not owns(CARD, card, level, done):
+				return false
+		return not _tier_cards.is_empty()
 	return false
 
 
@@ -136,14 +158,28 @@ func owned(kind: StringName, level: int, done: Array[StringName]) -> Array[Strin
 	return found
 
 
-## What it takes to get a piece, in words: "Reach level 10" or the challenge's own.
+## What it takes to get a piece, in words: "Reach level 10", the challenge's own, or a hidden
+## challenge's riddle.
 func how_to_get(kind: StringName, id: StringName) -> String:
 	var from := source(kind, id)
 	if from.has("level"):
 		return "Reach level %d" % int(from["level"])
 	if from.has("challenge"):
-		return (from["challenge"] as ChallengeDef).words()
+		return (from["challenge"] as ChallengeDef).hint()
 	return ""
+
+
+## Whether a challenge keeps this piece secret until it is done.
+func is_hidden(kind: StringName, id: StringName) -> bool:
+	var from := source(kind, id)
+	return from.has("challenge") and (from["challenge"] as ChallengeDef).hidden
+
+
+## What a screen calls the piece: its title, or `???` while it is a hidden piece not yet owned.
+func shown_title(kind: StringName, id: StringName, is_owned: bool) -> String:
+	if not is_owned and is_hidden(kind, id):
+		return CONCEALED
+	return title(kind, id)
 
 
 ## What a player wears of what they chose: `{card, emblem, frame}` (ids, `&""` for none), a choice
@@ -174,6 +210,8 @@ func _add_ladder(ladder: LadderUnlocks) -> void:
 			for kind in KINDS:
 				if row["slot"] in LADDER_SLOTS[kind]:
 					_give(kind, StringName(row["item"]), {"level": level})
+					if row["slot"] == &"tier_card":
+						_tier_cards.append(StringName(row["item"]))
 
 
 func _add_grants(challenges: ChallengeCatalog) -> void:
