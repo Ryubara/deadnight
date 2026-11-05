@@ -10,28 +10,38 @@ var lit := 0.0:
 		lit = value
 		queue_redraw()
 
-var body := VBoxContainer.new()
+## The box the card's words go in, inside the padding. The padding and the box are made the first
+## time something asks for them, so a card that stays hidden until it is needed (the scoreboard)
+## holds neither: the late-round budget counts every canvas item of the tree, shown or not.
+var body: VBoxContainer:
+	get:
+		if _body == null:
+			_build_body()
+		return _body
 
-var _pad := MarginContainer.new()
+var _pad: MarginContainer
+var _body: VBoxContainer
 
 
-func _init() -> void:
-	super()
+func _get_minimum_size() -> Vector2:
+	return _pad.get_combined_minimum_size() if _pad != null else Vector2.ZERO
+
+
+func _build_body() -> void:
+	_pad = MarginContainer.new()
+	_body = VBoxContainer.new()
 	_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pad.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_pad.add_theme_constant_override(&"margin_left", HudStyle.PAD_LEFT)
 	_pad.add_theme_constant_override(&"margin_right", HudStyle.PAD)
 	_pad.add_theme_constant_override(&"margin_top", HudStyle.PAD)
 	_pad.add_theme_constant_override(&"margin_bottom", HudStyle.PAD)
-	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	body.add_theme_constant_override(&"separation", 0)
-	_pad.add_child(body)
+	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_body.add_theme_constant_override(&"separation", 0)
+	_pad.add_child(_body)
 	add_child(_pad)
 	_pad.minimum_size_changed.connect(update_minimum_size)
-
-
-func _get_minimum_size() -> Vector2:
-	return _pad.get_combined_minimum_size()
+	update_minimum_size()
 
 
 func _draw() -> void:
