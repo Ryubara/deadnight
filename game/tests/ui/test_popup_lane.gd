@@ -192,9 +192,9 @@ func test_an_unlock_card_says_what_it_is_and_its_name() -> void:
 	assert_array(_texts(cards[0])).is_equal(["NEW TOP", "Letter jacket"])
 	assert_array(_texts(cards[1])).is_equal(["NEW COLOUR", "Cherry"])
 	assert_array(_texts(cards[2])).is_equal(["NEW HEADWEAR", "Usher's cap"])
-	# A colour has its swatch; a cap has a chip with its slot's letter.
-	assert_object(PopupLadder.swatch_of(&"colour", &"cherry")).is_not_null()
-	assert_object(PopupLadder.swatch_of(&"headwear", &"ushers_cap")).is_null()
+	# Each shows the wardrobe's picture of the item (`test_popup_thumbnails.gd` holds the rest).
+	for card in cards:
+		assert_bool(card.has_thumbnail()).is_true()
 	# An unlock card is half the height of a level card.
 	assert_float(cards[0].size.y).is_less(PopupCard.LEVEL_SIZE.y * 0.65)
 	assert_array(_cues).is_equal([&"unlock", &"unlock", &"unlock"])
@@ -505,6 +505,100 @@ func test_the_lane_is_clear_of_the_hud_on_the_phone_layout() -> void:
 		for mirrored in [false, true]:
 			for boss in [false, true]:
 				problems.append_array(await _problems(canvas, true, mirrored, boss))
+				_host.queue_free()
+	assert_array(problems).is_empty()
+
+
+## The first run on a phone with a stack of cards on the lane (#1132): the touch hints are up (the
+## stick, the look drag and a prompt's tap) and no hint rectangle meets a card, a HUD part or a
+## button.
+func _hint_problems(canvas: Vector2, mirrored: bool, boss: bool) -> Array[String]:
+	var insets := Vector4(96.0, 0.0, 96.0, 24.0)
+	await _make(canvas, 4)
+	_fixture.fill_late_round()
+	_hud.touch_layout = true
+	_hud.mirrored = mirrored
+	_hud.offset_left = insets.x
+	_hud.offset_top = insets.y
+	_hud.offset_right = -insets.z
+	_hud.offset_bottom = -insets.w
+	_hud.state.set_prompt(&"buy_door", "Projection booth door", 750)
+	_hud.banner.show_banner("ROUND 24 SURVIVED", "CATCH YOUR BREATH", HudBanner.Rank.ROUND)
+	if boss:
+		(
+			_hud
+			. state
+			. apply_event(
+				{
+					"type": &"zombie_spawn_requested",
+					"zombie_id": 902,
+					"zombie_type": &"headliner",
+					"boss": true,
+					"health": 1000.0,
+				}
+			)
+		)
+	var touch := TouchFixture.make(self, canvas, _hud.state)
+	if mirrored:
+		touch.left_handed()
+	touch.controls.insets_override = insets
+	touch.controls.refresh()
+	_hud.feed([_level(12), _unlock(&"top", &"letter_jacket", 12), _unlock(&"colour", &"teal", 12)])
+	await _settle(2.0)
+	var label := (
+		"canvas %s%s%s" % [canvas, ", mirrored" if mirrored else "", ", boss" if boss else ""]
+	)
+	var found: Array[String] = []
+	var hints := touch.controls.hints
+	var safe := touch.controls.safe_rect()
+	if hints.showing() != TouchHints.ORDER:
+		found.append("%s: the hints showing are %s" % [label, hints.showing()])
+	var cards := _hud.popups.cards()
+	if cards.is_empty():
+		found.append("%s: no card stands" % label)
+	var circles := TouchLayout.buttons(safe, 1.0, mirrored)
+	var kept: Array[Control] = [
+		_hud.ammo, _hud.prompt, _hud.health, _hud.perks, _hud.points, _hud.round_part
+	]
+	for id in hints.showing():
+		var rect := hints.rect_of(id)
+		if not safe.encloses(rect):
+			found.append("%s: %s %s leaves the safe area %s" % [label, id, rect, safe])
+		for card in cards:
+			var over := rect.intersection(Rect2(card.get_global_rect()))
+			if over.has_area():
+				found.append(
+					"%s: %s %s covers a card %s" % [label, id, rect, card.get_global_rect()]
+				)
+		# The parts that always stand (the feed, the notices and the gains come and go: the hints
+		# sit where the first-run test of the labels has always let them).
+		for part in _hud.boxed_parts():
+			if part == _hud.popups or not part.is_visible_in_tree():
+				continue
+			if not part in kept:
+				continue
+			if rect.intersects(Rect2(part.get_global_rect())):
+				found.append("%s: %s %s covers %s" % [label, id, rect, part.name])
+		for button: StringName in circles:
+			var centre: Vector2 = circles[button][&"centre"]
+			if (
+				centre.clamp(rect.position, rect.end).distance_to(centre)
+				<= circles[button][&"radius"]
+			):
+				found.append("%s: %s covers the %s button" % [label, id, button])
+	touch.free_all()
+	return found
+
+
+func test_the_first_run_touch_hints_keep_clear_of_the_cards_at_every_canvas() -> void:
+	var problems: Array[String] = []
+	# The canvases of the lane, and a wide one with bars (the buttons climb to the look hint).
+	var canvases := CANVASES.duplicate()
+	canvases.append(Vector2(2340, 864))
+	for canvas: Vector2 in canvases:
+		for mirrored in [false, true]:
+			for boss in [false, true]:
+				problems.append_array(await _hint_problems(canvas, mirrored, boss))
 				_host.queue_free()
 	assert_array(problems).is_empty()
 

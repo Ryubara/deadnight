@@ -9,7 +9,9 @@ extends Control
 ##   holes toward it.
 ## - TIER: the level card made longer: `TIER UP` and the tier's name, with the marquee's bulbs
 ##   chasing along its top and bottom edges.
-## - UNLOCK: half the height: a swatch (or a chip) beside `NEW TOP` and the name of the item.
+## - UNLOCK: half the height: the item's thumbnail beside `NEW TOP` and the name of the item, both
+##   from the wardrobe's own source (`LadderItem`, `ItemIcons`): the icon of a wearable, the paint
+##   chip of a colour, the picture of a map; a chip with its slot's letter for what has no art yet.
 ## - CHALLENGE: `CHALLENGE DONE` and the challenge's words.
 ## - MORE: `3 NEW ITEMS`, what the cards that did not fit say together.
 ##
@@ -24,7 +26,8 @@ const MORE_SIZE := Vector2(372.0, 48.0)
 const WIDTH := LEVEL_SIZE.x
 
 const ICON := 64.0
-const CHIP := 40.0
+const CHIP := 48.0
+const CHIP_INSET := 3.0
 const HOLE_RADIUS := 5.0
 const HOLE_GAP := 22.0
 const PERFORATION_GAP := 10.0
@@ -54,7 +57,8 @@ var _next_level := _ink(HudStyle.label("", HudStyle.SMALL, _tokens.hot, true))
 var _next_name := _ink(HudStyle.label("", HudStyle.SMALL, _tokens.ink_on_accent))
 var _chip := Control.new()
 var _chip_letter := _ink(HudStyle.label("", HudStyle.TEXT, _tokens.ink, true))
-var _swatch: Variant = null
+var _item: Dictionary = {}
+var _picture: Texture2D = null
 var _punched := 0
 var _chase := 0
 
@@ -130,6 +134,18 @@ func set_chase(step: int) -> void:
 			queue_redraw()
 
 
+## Whether an unlock card shows the item's own picture (an icon, a paint chip, a map's picture)
+## and not the letter chip of an item with no art, for tests.
+func has_thumbnail() -> bool:
+	if kind != PopupQueue.Kind.UNLOCK:
+		return false
+	var item_kind: int = _item.get("kind", LadderItem.Kind.OTHER)
+	return (
+		item_kind != LadderItem.Kind.OTHER
+		and (item_kind != LadderItem.Kind.MAP or _picture != null)
+	)
+
+
 ## How many holes are punched (a level card), for tests.
 func punched() -> int:
 	return _punched
@@ -175,7 +191,7 @@ func _set_level() -> void:
 		_next.size = Vector2(room, 24.0)
 		LevelTag.set_icon(_next_icon, int(next["level"]))
 		HudStyle.set_text(_next_level, str(int(next["level"])))
-		HudStyle.set_text(_next_name, PopupLadder.name_of(next["item"]))
+		HudStyle.set_text(_next_name, PopupLadder.name_of(next["slot"], next["item"]))
 		_next_level.custom_minimum_size.x = LevelTag.level_room(
 			_next_level.get_theme_font(&"font"), HudStyle.SMALL
 		)
@@ -186,10 +202,13 @@ func _set_level() -> void:
 func _set_unlock() -> void:
 	var slot: StringName = data.get("slot", &"")
 	var item: StringName = data.get("item", &"")
-	_swatch = PopupLadder.swatch_of(slot, item)
+	_item = LadderItem.of(slot, item)
+	_picture = null
+	if _item["kind"] == LadderItem.Kind.MAP:
+		_picture = (_item["info"] as MapInfo).preview()
 	_chip.visible = true
 	_chip.position = Vector2(float(HudStyle.PAD_LEFT) + 2.0, (size.y - CHIP) * 0.5)
-	HudStyle.set_text(_chip_letter, "" if _swatch != null else PopupLadder.chip_letter(slot))
+	HudStyle.set_text(_chip_letter, "" if has_thumbnail() else PopupLadder.chip_letter(slot))
 	_chip.queue_redraw()
 	var at := _chip.position.x + CHIP + PADDING * 0.75
 	var room := size.x - at - float(HudStyle.PAD)
@@ -197,7 +216,7 @@ func _set_unlock() -> void:
 	_caption.add_theme_font_size_override(&"font_size", HudStyle.SMALL)
 	HudStyle.set_text(_caption, PopupLadder.caption_of(slot))
 	_place(_words, Rect2(at, 28.0, room, 30.0))
-	HudStyle.set_fitted(_words, PopupLadder.name_of(item), HudStyle.TEXT, room)
+	HudStyle.set_fitted(_words, _item["name"], HudStyle.TEXT, room)
 	_punched = 0
 
 
@@ -295,8 +314,21 @@ func _add_stamp(shapes: HudShapes) -> void:
 		shapes.circle(Vector2(size.x - 24.0 - i * 18.0, y), HOLE_RADIUS - 1.0, _tokens.bg)
 
 
+## The thumbnail on its plate, the wardrobe cell's own drawing at the size of a card's chip.
 func _draw_chip() -> void:
 	var rect := Rect2(Vector2.ZERO, Vector2(CHIP, CHIP))
-	var fill: Color = _swatch if _swatch != null else PopupLadder.CHIP_FALLBACK
+	var inner := rect.grow(-CHIP_INSET)
 	_chip.draw_rect(rect, _tokens.ink_on_accent)
-	_chip.draw_rect(rect.grow(-2.0), fill)
+	if not has_thumbnail():
+		_chip.draw_rect(rect.grow(-2.0), PopupLadder.CHIP_FALLBACK)
+		return
+	_chip.draw_rect(rect.grow(-2.0), _tokens.surface_raised)
+	match int(_item["kind"]):
+		LadderItem.Kind.PART:
+			ItemIcons.draw(_chip, inner, _item["slot"], _item["id"], false)
+		LadderItem.Kind.COLOUR:
+			ItemIcons.draw_chip(_chip, inner, _item["colour"], false)
+		LadderItem.Kind.MAP:
+			var wide := Vector2(inner.size.x, inner.size.x * 9.0 / 16.0)
+			var at := inner.position + (inner.size - wide) * 0.5
+			_chip.draw_texture_rect(_picture, Rect2(at, wide), false)

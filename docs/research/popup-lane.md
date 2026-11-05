@@ -11,7 +11,8 @@ How the progression's cards (#1064) are built and what proves them. The design i
 | `PopupQueue` | The plain data and the clock: which card starts when, the three-at-most and eight-waiting limits, the merge into "N new items", the tier made of its level card, the drop, the stamp, the slide. Moved by `advance(delta)`, no `Tween`, so a test steps it by hand |
 | `PopupCard` | One paper ticket. It draws itself once; the lane moves, fades and scales its icon from outside, so a card standing still costs no redraw |
 | `PopupLane` | A `HudPart`: hears the events of the local player, makes the cards, plays their cues (`PopupLink` sends them to `Audio.play_ui`), follows the part above it |
-| `PopupLadder` | The words of an item (slot caption, name, swatch), the next unlock of a level and the holes |
+| `PopupLadder` | The words of an item (slot caption, name), the next unlock of a level and the holes |
+| `LadderItem` | What a row of `unlocks.json` is: its name and what to draw, read from the part registry, the cloth palette or `MapRegistry` (the wardrobe's own sources) |
 | `MenuPopups` | The same lane in the router's layer for every menu screen; a night's screen sends it away (`set_night`) |
 
 ## What the lane does that a column cannot
@@ -25,6 +26,27 @@ How the progression's cards (#1064) are built and what proves them. The design i
   with a boss bar too, one.
 - **It waits while the HUD is hidden** (the helicopter drop, #1057): the queue is blocked, nothing starts and nothing
   ages, and the cards are shown when the HUD comes back.
+
+## The first-run touch hints (#1132)
+
+`TouchHints` draws over the lane, so on a first run a level up read "DRAG TO LOOK" through its words. Two ways out were
+weighed. Holding a card until the hint is gone ties the lane to the touch layer, delays progress by as long as a player
+goes without a look drag (the hint is there until used, and a player who aims with auto-fire may never drag), and
+leaves the cue waiting too. Moving the hint costs one rectangle: the lane's column is known from the safe area
+(centre, `PopupCard.WIDTH` wide), so the look hint sits on the look area's side of it, and the stick's hint steps off
+it where a small canvas puts it under the cards. The look hint also steps down, 8 units at a time, past a touch button
+that climbs to its place on a short screen (2340 x 864). The look hint still may meet the top right feed and notices of
+a night (rows that fade after seconds); the test measures it against the parts that always stand, as before.
+
+## One source with the wardrobe
+
+An unlock card shows the item's thumbnail and name as the wardrobe's grid does (#1131): `LadderItem.of(slot, item)`
+finds the row, reads the part's label from `LookCatalog` (the cell's own title), a colour's from the cloth palette,
+a map's from `MapRegistry` (the map whose `unlock_level` is the row's level), and the card draws `ItemIcons` (a
+wearable), `ItemIcons.draw_chip` (a colour) or the map's preview on the cell's plate. A row with no art (a plate item)
+keeps the letter chip and its id spelled out. `test_popup_thumbnails.gd` compares every announced row's name with the
+wardrobe cell's title at level 55. A name too long for the card is cut by the label's ellipsis, never wider than the
+card.
 
 ## Layout before the first frame
 
@@ -64,6 +86,8 @@ the same over the menu.
 `tests/ui/test_popup_queue.gd` (order, caps, merge, timings, drop, stamp, slide, blocked), `test_popup_lane.gd` (the
 server's real events through `XpAward`, the words and order of a card, the setting, mouse filter, the HUD's wait, the
 lane against every other part of the HUD and the crosshair at five canvases, with and without a boss bar, on the phone
-layout and mirrored), `tests/ui/test_menu_news.gd` and `tests/progression/test_progress_news.gd` (the menu's sources
-and the ledger), and the captures `tests/captures/popup_menu.gd`, `popup_news.gd` and `popup_night.gd` (a game server
-night whose seat's account earns XP the way a kill or a challenge reward does, the dead on screen).
+layout and mirrored, and the touch hints against the cards at those canvases and both hands),
+`tests/ui/test_menu_news.gd` and `tests/progression/test_progress_news.gd` (the menu's sources and the ledger), and the
+captures `tests/captures/popup_menu.gd`, `popup_news.gd` and `popup_night.gd` (a game server night whose seat's account
+earns XP the way a kill or a challenge reward does, the dead on screen) and `touch_hints_tour.gd --levelup` (a first run
+on a phone with a level up).
