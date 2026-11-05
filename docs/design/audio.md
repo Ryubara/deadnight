@@ -322,8 +322,9 @@ and which take speaks; the table of moments, takes and ranks is `SoldierVoiceCat
   `challenge_done` (`ChallengeAward`, #1076) reach every client's `SoldierVoice`, which cheers the player they name:
   flat for the player at the screen, from where the soldier stands for a teammate. A level, its tier, what it unlocks
   and the challenge that paid it arrive together, so the soldier waits `cheer_window` (0.25 s) and says one cheer for
-  each player, by weight (`SoldierVoiceCatalog.CHEER_WEIGHT`): the tier (3) over a challenge or an item (a card, an
-  emblem or frame by its slot, else an unlock; 2 each, the first told of equals) over the level (1). A challenge is
+  each player, by weight (`SoldierVoiceCatalog.CHEER_WEIGHT`): a finished poster set (4, #1073: it arrives with the
+  challenge that finished it) over the tier (3) over a challenge or an item (a card, an emblem or frame by its slot,
+  else an unlock; 2 each, the first told of equals) over the level (1). A challenge is
   what the player did and the level is what it paid, so a challenge that levels you up is cheered as the challenge;
   a tier is rarer than any of them. Players who finish or level up in the same window are cheered one after the
   other. A bot has no level and no cheer. The maintainer accepted these weights (2026-11-04).
