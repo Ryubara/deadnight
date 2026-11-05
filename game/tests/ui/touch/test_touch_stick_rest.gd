@@ -137,7 +137,7 @@ func test_the_resting_ring_is_clear_of_every_button_and_a_finger_at_its_centre_s
 					. is_greater(0.0)
 				)
 			# A finger put at the ring's centre starts the stick: its zone, and no button or place.
-			var zone := TouchLayout.stick_zone(safe, left)
+			var zone := controls._stick_zone()
 			(
 				assert_bool(zone.has_point(centre))
 				. override_failure_message(what + ": no zone")

@@ -147,7 +147,8 @@ func rect_of(id: StringName) -> Rect2:
 		MOVE:
 			# Over the ring's place at a touch scale of 1: nothing is drawn there, so the hint does
 			# not move with the scale. Not over the players' column beside it (it grows up the side
-			# with the party): the hint's near edge is where the ring's is.
+			# with the party): the hint's near edge is where the ring's is. Ping stands under Pause,
+			# in the column above this hint on a short canvas (#1289).
 			var rest := TouchLayout.stick_rest(safe, 1.0, mirrored)
 			var top := rest.y - TouchLayout.STICK_RADIUS - GAP
 			var clear := TouchLayout.STICK_REST_CLEAR.x
@@ -156,7 +157,8 @@ func rect_of(id: StringName) -> Rect2:
 				left = minf(left, safe.end.x - clear - size.x)
 			else:
 				left = maxf(left, safe.position.x + clear)
-			return Rect2(Vector2(_off_the_lane(left, size.x, safe), top - size.y), size)
+			var rect := Rect2(Vector2(_off_the_lane(left, size.x, safe), top - size.y), size)
+			return _below_the_buttons(rect, safe)
 		LOOK:
 			var middle := safe.get_center().x
 			var left := middle - LANE_HALF - GAP - size.x if mirrored else middle + LANE_HALF + GAP
@@ -190,7 +192,7 @@ func _off_the_lane(left: float, width: float, safe: Rect2) -> float:
 ## down: the buttons climb up to the look hint's place beside the lane, and on a short screen a hint
 ## sent far down lands on the ammo card (#1277), so the smaller move wins.
 func _below_the_buttons(rect: Rect2, safe: Rect2) -> Rect2:
-	var circles := TouchLayout.buttons(safe, controls.touch_scale, controls.left_handed)
+	var circles := controls.circles()
 	var steps := int(safe.size.y / SEARCH_STEP)
 	for step in steps:
 		# Down first at a tie: the hint was always found below.
