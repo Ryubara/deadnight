@@ -1,3 +1,4 @@
+# gdlint: disable=max-public-methods
 class_name CustomizeScreen
 extends UIScreen
 ## The wardrobe: a lit turntable with the character on it, a strip of tabs (Body, Hair, Hats, Tops,
@@ -149,6 +150,21 @@ func choose(key: String, index: int) -> void:
 	var picked := cell(key, index)
 	if picked != null:
 		picked.pressed.emit()
+
+
+## Takes the unlocks of a level that changed under the screen, and locks or opens every cell by it
+## (the catalogue's order does not depend on them, so each grid's specs line up with its cells).
+func set_unlocks(value: LookUnlocks) -> void:
+	unlocks = value
+	for key: String in _cells:
+		var specs := _specs(key)
+		var cells: Array[WardrobeCell] = _cells[key]
+		for i in cells.size():
+			var spec: Dictionary = specs[i]
+			assert(cells[i].slot == spec["slot"] and cells[i].id == spec["id"])
+			cells[i].soon = spec["soon"]
+			cells[i].instructions = spec["instructions"]
+			cells[i].locked = spec["locked"]
 
 
 ## Writes the working look to the settings file.

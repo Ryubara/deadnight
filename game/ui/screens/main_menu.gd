@@ -47,6 +47,8 @@ func _ready() -> void:
 	_follow_account_board(shell.context.board)
 	shell.context.action.connect(_on_action)
 	add_child(shell)
+	# The account's profile is read after the menu is up: the plate and the locks follow it.
+	ProfileFeed.shared.adopted.connect(_on_profile_adopted)
 
 
 func screen_enter() -> void:
@@ -97,6 +99,16 @@ func _follow_account_board(board: Object) -> void:
 		return
 	board.watch_file()
 	board.changed.connect(shell.refresh_panels)
+
+
+## The profile file was replaced by the account's (`ProfileFeed`): what the XP decides is shown
+## again.
+## Nothing is touched when the XP is the one shown (a cache that was current), so a look being
+## chosen is not disturbed for nothing.
+func _on_profile_adopted() -> void:
+	var fresh := MenuProfile.load_saved()
+	if shell != null and fresh.xp != shell.context.profile.xp:
+		shell.set_profile(fresh)
 
 
 func _open_board() -> Object:

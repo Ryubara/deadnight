@@ -160,6 +160,9 @@ func set_profile(profile: MenuProfile) -> void:
 	context.profile = profile
 	view.unlocks = LookUnlocks.at_level(profile.level())
 	view.reload_look()
+	var loadout := _panels.get(MenuTab.Id.LOADOUT) as LoadoutPanel
+	if loadout != null:
+		loadout.set_unlocks(view.unlocks)
 	plate.show_profile(profile)
 	refresh_panels()
 

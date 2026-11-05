@@ -55,10 +55,12 @@ func read() -> bool:
 
 ## Puts the account's profile in the store (`ProfileStore.adopt`) and tells the menu of the levels
 ## it holds beyond what this machine knew: the cache's level, and the highest a card was shown for
-## (`ProgressNews`). A cache that was not this account's is no baseline.
+## (`ProgressNews`). A cache that was not this account's is no baseline. The screens that were built
+## from the older file read it again (`ProfileFeed`).
 static func adopt_and_tell(store: ProfileStore, answer: Dictionary, account_id: String) -> void:
 	var cached := store.profile.level() if account_id != "" and store.account == account_id else 0
 	store.adopt(answer, account_id)
+	ProfileFeed.shared.adopted.emit()
 	if account_id != "":
 		MenuPopups.announce(
 			ProgressNews.levels_after_read(account_id, cached, store.profile.level())

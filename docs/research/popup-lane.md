@@ -81,6 +81,18 @@ cards show once. A client's own profile write is held to about 2 XP a second by 
 high level credits it as a game server does (`/internal/matches/<id>/report`). `tests/captures/popup_news.gd` records
 the same over the menu.
 
+**The menu says one level (#1153).** The read lands after the menu is up (the start-up sign-in does not make it
+wait), so the menu was built from the older file: in the real `Main` the plate said LEVEL 4 under cards for levels 7 and
+8, and the wardrobe's locks, the shop's "Yours" and the stage's unlocks were level 4's too (52 of 124 cells locked,
+where level 12 leaves 39). `ProfileUplink.adopt_and_tell` now tells `ProfileFeed.shared.adopted` once the file is
+written, and `MainMenu` reads the file again (`MenuShell.set_profile`) when its XP differs from the one shown; a
+cache that was current touches nothing. `set_profile` also re-locks the wardrobe (`CustomizeScreen.set_unlocks`), which
+until then took its unlocks once, when the menu was built: a level gained in a night showed the old locks too. The map
+gate is not in the menu: the Play screen builds its map picker when it is opened, from the file. Proof:
+`tests/ui/test_menu_follows_account_profile.gd` (three of its five fail without the change) and the capture
+`tests/captures/menu_level_real.gd`, which loads `main.tscn` as it is and signs in through the real backend; run it with
+`APPDATA` pointing at a folder of its own so the "real" cache and credential paths are a throwaway user's.
+
 ## Proof
 
 `tests/ui/test_popup_queue.gd` (order, caps, merge, timings, drop, stamp, slide, blocked), `test_popup_lane.gd` (the
