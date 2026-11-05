@@ -77,8 +77,7 @@ and hair, its colours. Nothing new is saved: wearing one sets an ordinary look, 
   soldier. The grid of the palette itself is not widened: gold is still level 42 in every channel for anyone choosing it.
 - **Which costumes a new player has.** Only two presets are made of starting pieces (Soda jerk and Carhop). The plan said
   four ([progression](progression.md#wardrobe-costumes-and-the-locks)); no four can be made of the ladder as it is, and
-  that is an open question for the maintainer (#1066): re-dress two presets in starting pieces, open two pieces at level
-  1, or keep two.
+  the maintainer kept the two (2026-11-04, #1066).
 
 ## Saved and sent
 
