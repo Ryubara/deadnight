@@ -65,10 +65,22 @@ jobs:
         run: |
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
           xvfb-run -a -s "-screen 0 1920x1080x24" "$godot" --path repos/deadnight/game --quit-after 5 --verbose 2>&1 | grep -iE "OpenGL|Mesa|llvmpipe|Vulkan|Renderer|GLES|display|X11" | head -20 || true
+      - name: SPIKE, the hang of the kit lesson
+        # Two suites in one process, the first one pushing mouse events (the pair that hung on a private Windows desktop).
+        timeout-minutes: 8
+        continue-on-error: true
+        run: |
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          start=$(date +%s)
+          timeout 400 xvfb-run -a -s "-screen 0 1920x1080x24" "$godot" --path repos/deadnight/game --audio-driver Dummy \
+            -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests/ui/test_main_menu_input.gd \
+            -a res://tests/ui/test_night_crosshair.gd -c 2>&1 \
+            | grep -E "Overall Summary|Total execution|PASSED|FAILED" | tail -30 || true
+          echo "pair took $(( $(date +%s) - start )) s"
       - name: Run the suites in a window
         timeout-minutes: 80
         env:
-          SUITES: ${{ inputs.suites || 'test_level_ink,test_poster_art_pixels,test_night_crosshair,test_night_mouse_look,test_hover_room,test_main_menu,test_hud_layout' }}
+          SUITES: ${{ inputs.suites }}
           LIBGL_ALWAYS_SOFTWARE: "1"
         run: |
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
