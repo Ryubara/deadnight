@@ -230,16 +230,29 @@ func test_a_press_given_up_by_a_scroll_leaves_no_hover_behind(
 	assert_int(button.mouse_filter).is_equal(Control.MOUSE_FILTER_PASS)
 
 
-func test_a_tap_that_scrolled_nothing_leaves_the_hover_as_it_was() -> void:
-	# What a tap always did: the button stays hovered under the lifted finger until the mouse
-	# moves. Only a press given up by a scroll is cleared.
-	await _card("ui")
+## The time a tap's press feedback needs and a little more, in time (a spring is read after it has
+## run its course, not after a count of frames).
+func _after_the_press_feedback() -> void:
+	await get_tree().create_timer(UITouchRest.REST_DELAY_S + 0.15).timeout
+
+
+## A tap leaves the finger over its button and no mouse exit is ever sent: the button must go back
+## to its resting look on its own, once its press feedback has run.
+func test_a_tap_leaves_the_button_at_rest_once_the_press_feedback_has_run(
+	kind: String, test_parameters := [["ui"], ["plain"]]  # gdlint: ignore=unused-argument
+) -> void:
+	await _card(kind)
 	var button := _buttons[1]
 	var at := _centre(button)
 	await _touch(at, true)
-	await _lift(at)
-	await get_tree().process_frame
 	assert_bool(button.is_hovered()).is_true()
+	await _lift(at)
+	# The press has fired and its feedback is still running: the look has not been taken yet.
+	assert_array(_pressed).is_equal([0, 1, 0])
+	assert_bool(button.is_hovered()).is_true()
+	await _after_the_press_feedback()
+	assert_bool(button.is_hovered()).is_false()
+	assert_int(button.mouse_filter).is_equal(Control.MOUSE_FILTER_PASS)
 	assert_array(_pressed).is_equal([0, 1, 0])
 
 

@@ -84,15 +84,15 @@ button after a touch elsewhere, in the sum of the three channels):
 - this change without the fix: Start 95, Copy the link 68, Copy the code 81 (stays lit until the next touch);
 - with the fix: Start 23 (the fill's own gradient and grain), Copy the link 2, Copy the code 7 (resting).
 
-A tap leaves its button lit the same way before and after this change (Copy the link after a tap: 37, 34, 43 against
-14, 11, 21 at rest, in both exports): the engine's behaviour, not touched here. The fix is for the press a scroll gave
-up: a scroll area that took the touch (`take_touch`) notes `scroll_started`, and when the finger lifts it takes the hover
-off the buttons that have it (`_drop_hover`: the filter is set to `IGNORE` and back, which makes the engine send the
-mouse exit; hiding the button does the same but drops its focus, and a motion out of the window does it too but is an
-event the player's `_unhandled_input` would see; measured in a headless run, all three clear it and none brings it back
-by itself). The press itself needs nothing: the button gives it up when the scroll begins. The unit test tells the area
-`scroll_started` by hand (headless is not a touch screen); `phone_drag.py` measures it for real and fails, with the
-look of each button, when one stays lit (it fails on the export without the fix: 95, 68, 81).
+A tap left its button lit the same way before and after that change (Copy the link after a tap: 37, 34, 43 against 14,
+11, 21 at rest, in both exports); it is fixed by "A tapped button stayed lit" below. The fix for the press a scroll
+gave up: a scroll area that took the touch (`take_touch`) notes `scroll_started`, and when the finger lifts it takes
+the hover off the buttons that have it (`_drop_hover`: the filter is set to `IGNORE` and back, which makes the engine
+send the mouse exit; hiding the button does the same but drops its focus, and a motion out of the window does it too
+but is an event the player's `_unhandled_input` would see; measured in a headless run, all three clear it and none
+brings it back by itself). The press itself needs nothing: the button gives it up when the scroll begins. The unit
+test tells the area `scroll_started` by hand (headless is not a touch screen); `phone_drag.py` measures it for real
+and fails, with the look of each button, when one stays lit (it fails on the export without the fix: 95, 68, 81).
 
 ## What did not change
 
@@ -116,3 +116,40 @@ a text field in a card still takes its drag: it is not a button and a drag on it
 touch only on a touch screen. `test_button_scroll_drag.gd` therefore checks what the engine would be given (the card
 receives every touch and drag step that starts on a button, and none with the old filter), the slip, and the presses;
 `tools/web_smoke/phone_drag.py` is where the scroll itself is measured. CI does not run it.
+
+## A tapped button stayed lit (#1268)
+
+A plain tap has the same cause as the drag's lit button: the finger lifts over its button and the engine sends no mouse
+exit, so the button keeps the hover (pale, grown by the hover spring) until the next touch. Outside a card as well as in
+one. Measured in the web export (`phone_drag.py`, the colour of the fill left of the words, the sum of the three
+channels apart from the same button after a touch elsewhere; the fill's own gradient and grain move it up to 23; two
+runs of each export):
+
+| button | before | after |
+| --- | --- | --- |
+| Copy the link, in the card | 66, 70 | 4, 2 |
+| Copy the code, in the card | 84, 88 | 5, 3 |
+| Start, in the card | 92, 96 | 7, 4 |
+| Join with the code, outside any card | 90, 98 | 6, 8 |
+
+`UITouchRest` (`pass_touch_in_scroll` sets it up, so every button class that is a place for a finger has it, in a card or
+not) listens to the button's own `gui_input`. A touch release (an `InputEventScreenTouch` that is not pressed) starts a
+timer of `REST_DELAY_S` (0.3 s: the press spring is underdamped and settles in about that long, so the squash ends as
+designed before the look returns); when it is due the button, if it still exists and is still hovered, has its mouse
+filter set to `IGNORE` and back, which makes the engine send the mouse exit (the same trick as `UIScroll._drop_hover`).
+
+- **From the event, not the device.** A mouse release is not a touch release, so a desktop mouse keeps its hover (the
+  desktop run of the probe: Copy the link after a click stays lit, 71 apart from rest before and 61 after, the pointer
+  still over it). A
+  laptop with a touch screen does whatever its last hand did. A real mouse motion (`device` is not
+  `InputEvent.DEVICE_ID_EMULATION`; the motion a touch makes is) over the button before the delay ends calls the rest off.
+- **A new touch calls it off too**, so a second tap inside the delay is not taken from under the finger. Each touch
+  or motion gives the button a new number (a meta) and a timer acts only on its own number.
+- **A press that frees its button or leaves the tree** is safe: the timer holds the object id, not the object
+  (`instance_from_id` is null for a freed one), so nothing is resumed on a dead instance (an `await` on a freed
+  instance prints an error).
+- The controller's focus look is not touched: only the mouse hover is taken off, never the focus.
+
+The unit tests are in `test_button_scroll_drag.gd` (a tap in a card and outside one, a mouse click, a mouse move after a
+tap, a second tap, a freed button, a button out of the tree); they read the hover after the delay in time, as the
+press spring runs, not after a count of frames.
