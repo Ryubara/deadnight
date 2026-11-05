@@ -86,6 +86,12 @@ func refresh() -> void:
 	_show_mastery(_weapon)
 
 
+## The level changed (the account's profile was read, a night ended): the wardrobe's locks follow.
+func set_unlocks(unlocks: LookUnlocks) -> void:
+	if wardrobe != null:
+		wardrobe.set_unlocks(unlocks)
+
+
 ## The tab is shown again: what was committed on leaving is what is saved, so start from it.
 func on_show() -> void:
 	_weapon = MenuHero.saved_weapon()
