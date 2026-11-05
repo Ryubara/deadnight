@@ -24,9 +24,9 @@
     "challenge.advance": 0.48,
     "challenge.told": 0.03
   },
-  "max_label_ratio_of_calibration": {
-    "server.xp": 0.01,
-    "server.challenges": 0.04
+  "max_label_share_of_frame": {
+    "server.xp": 0.0015,
+    "server.challenges": 0.0065
   },
   "max_ratio_of_calibration": {
     "frame_median_ms": 15
