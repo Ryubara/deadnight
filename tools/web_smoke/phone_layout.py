@@ -350,11 +350,10 @@ def together_states(frame: Frame, out: Path, label: str, results: list[dict]) ->
     back(frame)
 
 
-def lobby_states(frame: Frame, out: Path, label: str, results: list[dict]) -> None:
-    """Create a night (the stub backend answers with a lobby of one): the lobby with its rules, then scrolled to the end."""
-    to_tab(frame, "Play")
+def open_create(frame: Frame) -> None:
+    """Play together, then a press of Create a night, which is under Server browser in a desktop's column and beside it
+    in a phone's two: the focus says which, so no section counts the arrows of one layout."""
     go(frame, "Play", 0, "together_screen")
-    # Create a night is under Server browser on a desktop's column and beside it on a phone's two.
     for key in ("ArrowRight", "ArrowDown"):
         press(frame, key)
         frame.page.wait_for_timeout(500)
@@ -362,6 +361,12 @@ def lobby_states(frame: Frame, out: Path, label: str, results: list[dict]) -> No
             break
     wait_for(frame, "the Create button", lambda s: s.get("focus") == "CreateNight", 5)
     press(frame, "Enter")
+
+
+def lobby_states(frame: Frame, out: Path, label: str, results: list[dict]) -> None:
+    """Create a night (the stub backend answers with a lobby of one): the lobby with its rules, then scrolled to the end."""
+    to_tab(frame, "Play")
+    open_create(frame)
     wait_for(frame, "the name prompt or the lobby", lambda s: s.get("naming") or s.get("screen") == "lobby_screen", 40)
     if frame.state().get("naming"):
         frame.page.keyboard.type("Alex", delay=40)
@@ -426,9 +431,7 @@ def lobby(frame: Frame, out: Path, label: str, results: list[dict], backend: Stu
 
     The page must show the switch on screen, read it as public, and after each tap say so and have told the backend (the
     stand-in keeps every visibility it was sent): private, then public again."""
-    go(frame, "Play", 0, "together_screen")
-    press(frame, "ArrowDown")  # Server browser -> Create a night
-    press(frame, "Enter")
+    open_create(frame)
     # A player with no saved name is asked for one first.
     wait_for(frame, "the name prompt or the lobby", lambda s: s.get("naming") or s.get("room_code"), 20)
     together_name(frame)
