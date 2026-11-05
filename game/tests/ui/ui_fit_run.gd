@@ -13,6 +13,7 @@ const PLAY := "res://ui/screens/play_screen.tscn"
 const TOGETHER := "res://ui/screens/together_screen.tscn"
 const JOIN := "res://ui/screens/join_screen.tscn"
 const LOBBY := "res://ui/screens/lobby_screen.tscn"
+const BROWSER := "res://ui/screens/server_browser_screen.tscn"
 const SETTINGS := "res://ui/screens/settings_screen.tscn"
 const CREDITS := "res://ui/screens/credits_screen.tscn"
 const CARDS := "res://ui/screens/cards_screen.tscn"
@@ -265,8 +266,9 @@ static func screen_names() -> Array[String]:
 		"lobby code",
 		"credits",
 		"cards",
-		"quick join failed",
-		"quick join found",
+		"browser many",
+		"browser empty",
+		"browser failed",
 	]
 	for tab in SETTINGS_TABS:
 		names.append("settings %d" % tab)
@@ -285,8 +287,8 @@ func open(screen_name: String) -> Dictionary:
 		subject = await _open_lobby(
 			screen_name, screen_name == "lobby host", screen_name == "lobby code"
 		)
-	elif screen_name.begins_with("quick join"):
-		subject = await _open_quick_join(screen_name, screen_name == "quick join failed")
+	elif screen_name.begins_with("browser"):
+		subject = await _open_browser(screen_name)
 	elif screen_name == "together name":
 		subject = await open_screen(TOGETHER, screen_name)
 		_asking = subject["root"] as TogetherScreen
@@ -299,31 +301,28 @@ func open(screen_name: String) -> Dictionary:
 	return subject
 
 
-## The Quick join card in its two tall states: a failure with the longest words the backend has
-## (and Create a night and Close), and the night's map found while the search goes on.
-func _open_quick_join(label: String, failed: bool) -> Dictionary:
+## The Server Browser in its three states: a list of every kind of night (a full one, a long host
+## name),
+## an empty list, and a list that failed, with the longest words the backend has.
+func _open_browser(label: String) -> Dictionary:
+	var api := BrowserFixture.FakeApi.new(tree.root)
+	if label == "browser many":
+		api.nights = BrowserFixture.nights()
+	elif label == "browser failed":
+		api.list_failure = "network"
 	await close()
 	_scale_window()
-	var layer := CanvasLayer.new()
-	layer.layer = 100
-	tree.root.add_child(layer)
-	_holder = layer
-	var stage := Control.new()
-	stage.theme = UIThemeBuilder.build(UITokens.active())
-	stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	layer.add_child(stage)
-	var overlay := QuickJoinOverlay.new()
-	stage.add_child(overlay)
-	if failed:
-		overlay.state = QuickJoinOverlay.State.FAILED
-		overlay.status.text = TogetherApi.TEXTS["not_member"]
-	else:
-		overlay.state = QuickJoinOverlay.State.SEARCHING
-		overlay.map_card.info = MapRegistry.default_map()
-		overlay.map_card.visible = true
-	overlay._show_buttons()
+	UIRouter.reset(BROWSER, UITransition.Kind.CUT, {"api": api})
+	await UIRouter.idle
 	await frames()
-	return screen_subject(overlay, label)
+	var browser := UIRouter.top() as ServerBrowserScreen
+	if label == "browser many":
+		# One host name as long as a name goes, and a night in progress at its latest round.
+		api.nights[0]["hostName"] = "A".repeat(MenuProfile.MAX_NAME)
+		api.nights[0]["round"] = 9999
+		browser.feed.refresh()
+		await frames()
+	return screen_subject(browser, label)
 
 
 func _open_lobby(label: String, host: bool, code_only: bool) -> Dictionary:

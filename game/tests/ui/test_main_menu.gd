@@ -109,9 +109,11 @@ func test_each_ask_opens_its_screen() -> void:
 		assert_object(UIRouter.top()).is_same(menu)
 
 
-func test_quick_join_opens_no_screen_of_the_menu() -> void:
-	# It joins from a card over the menu (`test_quick_join.gd`); the route table has no entry for it.
-	assert_bool(MainMenu.ROUTES.has(&"quick_join")).is_false()
+func test_the_server_browser_is_a_route_of_the_menu_and_no_route_is_a_second_way_in() -> void:
+	# The Play tab's second start opens the list of nights (`test_server_browser.gd` presses a row).
+	assert_str(MainMenu.ROUTES[&"browser"][0]).is_equal(MainMenu.BROWSER_SCREEN)
+	for id: StringName in MainMenu.ROUTES:
+		assert_bool(String(id).begins_with("quick")).is_false()
 
 
 func test_solo_opens_the_play_screen() -> void:

@@ -56,7 +56,7 @@ func test_the_default_ui_actions_have_gamepad_buttons() -> void:
 func test_dpad_moves_focus_down_the_starts_and_up_to_the_tab_bar() -> void:
 	assert_str(_focused_name()).is_equal("together")
 	await _tap(JOY_BUTTON_DPAD_DOWN)
-	assert_str(_focused_name()).is_equal("quick_join")
+	assert_str(_focused_name()).is_equal("browser")
 	await _tap(JOY_BUTTON_DPAD_DOWN)
 	assert_str(_focused_name()).is_equal("solo")
 	await _tap(JOY_BUTTON_DPAD_UP)
