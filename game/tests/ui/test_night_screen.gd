@@ -8,6 +8,12 @@ const NIGHT := "res://ui/screens/night_screen.tscn"
 var _arrival := false
 
 
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
+
+
 func before_test() -> void:
 	# The helicopter drop a window plays at the start of a night (#1057) holds the look, the
 	# touch layer and the HUD until it ends; a headless run has none. This suite is about

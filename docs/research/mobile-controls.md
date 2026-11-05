@@ -283,6 +283,32 @@ stick and the HUD's corner columns), 6 (haptics default is on, a setting turns i
 Android), 7 (keyboard glyphs hide on the first touch and return on a key, pad or real click) and 8 (auto detects a
 coarse pointer; On and Off force it).
 
+## Tap targets in a night (#1192)
+
+A phone's page is 844 x 390 CSS px with a pixel ratio of 2 (the page caps it, `PhoneRender`), so the engine's window is
+**1688 x 780** and the canvas 2337 x 1080 units. A night runs at the interface size alone (no phone factor,
+`NightScreen._ready`): one unit is 0.72 window px, **0.36 CSS px**, and a finger meets CSS px. Do not read a night's
+sizes in window px, and do not detect a phone by the window's short side there (`MenuScale.is_phone` is false for 780).
+
+- **The size:** `MenuScale.TAP_PIXELS` is 44 CSS px; `MenuLook.TAP_TARGET` (62 units at the menu's phone factor,
+  0.72 CSS px a unit) is the same 44.8 CSS px. `MenuScale.tap_units(window, touch)` turns it into units at the screen's
+  own factor: 122 units at the night's factor, 98 at an interface size of 1.25, 153 at 0.8. It is zero when
+  `TouchMode.wanted` is false, so a desktop keeps the theme's size, and never more than a fifth of the canvas's height
+  (a headless test's 64 x 64 window would ask for 1320 units).
+- **What was under it, on main, in a real `NightScreen` with the router's theme at 1688 x 780:** the end board's Leave
+  (Back alone) 149 x 79 units, 53.8 x 28.5 CSS px, and the pause card's Resume, Settings and Leave night 79 units,
+  28.5 CSS px. (The issue read about 14 px off a capture; the router's theme gives 28.5, which is what the tests
+  read. The cause of the 14 was not found.) Now 122 units, 44.1 CSS px, in the
+  engine's capture and in the exported page (`tools/web_smoke/night_taps.py`, a real touch just inside the top edge of
+  Leave night leaves the night).
+- **Touch layer hit areas** (`TouchLayout`: radius plus 24, never under 66 units): 47.7 CSS px at the night's factor and
+  at 1.25; at 0.8 the Pause, Ping, Scoreboard, Bot wheel and Melee circles are 38 to 39 CSS px, and Pause, Ping and
+  Scoreboard overlap their neighbours. Left as it is (its own issue).
+- **The objective's words** (`HudMarkers`) slide to the nearest place that is on the screen and under no corner card
+  (`Hud.corner_cards`): they were drawn under the health card (`SSION STAND 30 m`). The diamond itself can still stand
+  under a card; only its words move.
+- **HUD text at this factor** is small: the 20 unit marker words are 7 CSS px.
+
 ## Sources
 
 - [Apple HIG, Layout](https://developer.apple.com/design/human-interface-guidelines/layout)

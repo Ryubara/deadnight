@@ -472,6 +472,7 @@ func _show_overlay(title: String, note: String, can_resume: bool) -> void:
 	_touch.live = false
 	_title.text = title
 	_note.text = note
+	_fit_taps()
 	_resume.visible = can_resume
 	_settings_button.visible = can_resume
 	_overlay.show()
@@ -562,6 +563,14 @@ func _build_overlay() -> void:
 	box.add_child(_resume)
 	box.add_child(_settings_button)
 	box.add_child(_quit)
+
+
+## The card's buttons are tap targets on a phone: the night runs at the interface size alone, where
+## the theme's 79 unit button is 28 px at 844 x 390 (#1192).
+func _fit_taps() -> void:
+	var least := MenuScale.tap_units(get_window(), TouchMode.wanted(get_tree()))
+	for button: UIButton in [_resume, _settings_button, _quit]:
+		button.custom_minimum_size = Vector2(0.0, least)
 
 
 func _label(style: UILabel.Style) -> UILabel:

@@ -17,6 +17,12 @@ var _quiet := ""
 var _arrival := false
 
 
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
+
+
 func before_test() -> void:
 	_arrival = NightScreen.arrival_enabled
 	# No drop due, as headless always has it (`--noarrival`): this suite is not about the drop.
