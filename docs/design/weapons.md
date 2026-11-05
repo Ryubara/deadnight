@@ -205,8 +205,8 @@ weapon: it is not in the catalogue's `IDS`, nobody buys, carries or wins it, and
   (50 health) *and* round 2 (58) in one blow, and the tables and the simulator, which read the body, said 40. The
   blow is now the number it shows, and the head bonus is not hidden in the sweep. The bat, the axe and the crowbar
   had the same fault (#924): their tables said 60, 150 and 45 on the body, and the real blow was the head's, 90, 375 and
-  68 (the axe killed every walker to round 16 in one blow, not 10). They are flat too now (crowbar 55, bat 60, axe 150
-  in every zone). See [hits to kill](#hits-to-kill-by-round).
+  68 (the axe killed every walker to round 16 in one blow, not 10). They are flat too now (crowbar 55, bat 55, axe 132
+  in every zone, the numbers of the class audit, #972). See [hits to kill](#hits-to-kill-by-round).
 - **Server:** `CombatAction.quick_melee` (a bit in the command's flags, `NetWire.F_MELEE`, protocol 11) is swept from
   the head along the view with `defs/quick_melee.tres` exactly as a melee weapon's blow is, through the same rewind,
   and hurts as a `melee` hit: the zombie takes the damage, the kill pays the melee price (130). A fixed cooldown of
@@ -241,8 +241,8 @@ table since #924. A walker has `health_for_round` health (50 + 8 a round to roun
 | Walker health | 50 | 58 | 66 | 74 | 82 | 90 | 98 | 106 | 123 | 143 |
 | **Quick melee (V), 50** | **1** | **2** | **2** | **2** | **2** | **2** | **2** | **3** | **3** | **3** |
 | **Crowbar, 55** | **1** | **2** | **2** | **2** | **2** | **2** | **2** | **2** | **3** | **3** |
-| **Baseball bat, 60** | **1** | **1** | **2** | **2** | **2** | **2** | **2** | **2** | **3** | **3** |
-| **Fire axe, 150** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** |
+| **Baseball bat, 55** | **1** | **2** | **2** | **2** | **2** | **2** | **2** | **2** | **3** | **3** |
+| **Fire axe, 132** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **2** |
 | Before #897: quick melee (60) | 1 | 1 | 2 | 2 | 2 | 2 | 2 | 2 | 3 | 3 |
 | Before #924: crowbar (68) | 1 | 1 | 1 | 2 | 2 | 2 | 2 | 2 | 2 | 3 |
 | Before #924: bat (90) | 1 | 1 | 1 | 1 | 1 | 1 | 2 | 2 | 2 | 2 |
@@ -259,9 +259,9 @@ and striking: every blow was in the head zone, so the blow was the table's numbe
   than the free blow on round 1, and 45 would have left a round-1 walker at 5 health after a crowbar blow that V
   finishes. 55 is in the same bracket as V (50 to 57), so the crowbar is the same count with a faster swing, a longer
   reach and two targets (100 a second against 83). A test holds each carried melee weapon at V's blow or more.
-- **The bat and the axe keep the numbers their tables always showed** (60, 150): the bat kills round 2 (58) in one blow
-  and then needs two, 150 a second with four targets; the axe kills a walker of any round to 10 (143) in one, as the
-  design said (the real blow of 375 killed to round 16).
+- **The bat and the axe take the numbers of the class audit** (55, 132; they were 60 and 150, #972): the bat needs two
+  blows from round 2 (58), 138 a second with four targets; the axe kills a walker of any round to 9 (123) in one and
+  needs two on round 10 (143), 147 a second (the real blow of 375 killed to round 16).
 - **Why flat.** A person swinging from the eye cannot choose the zone (the sweep leaves the eye at 1.55 m with a 0.4
   m thickness and the head sphere is at 1.62 m, so it is the head at every reach and every aim, whatever the
   crosshair is on), so a head bonus is a hidden multiplier; a flat blow gives the same count on the head, the chest
