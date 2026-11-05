@@ -19,7 +19,7 @@ const SHADE_ALPHA := 0.55
 ## scrolls. A button inside the area takes the press and hands the touch to the area (its mouse
 ## filter passes), and the area ends the press when it starts to scroll, so a deadzone of 0 loses
 ## the press of every finger that moves a hair: the area uses this one for a touch that starts on
-## a button (`use_slip`).
+## a button (`take_touch`).
 static var slip_units := Callable()
 
 ## Whether the area takes the focus and scrolls on the keys (see the class comment).
@@ -40,6 +40,7 @@ func _init() -> void:
 	horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	follow_focus = true
 	focus_mode = Control.FOCUS_NONE
+	UIScroll.take_touch(self)
 	_shade = Control.new()
 	_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -64,7 +65,6 @@ func _on_tokens_changed(_next: UITokens) -> void:
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
-	UIScroll.use_slip(self)
 	UITokens.active_changed().connect(_on_tokens_changed)
 	get_v_scroll_bar().changed.connect(_on_scrolled)
 	get_v_scroll_bar().value_changed.connect(_on_scrolled.unbind(1))
@@ -113,12 +113,50 @@ static func side_room(scroll: ScrollContainer) -> float:
 	return UIScroll.margins(scroll).x + scroll.get_v_scroll_bar().get_combined_minimum_size().x
 
 
-## Makes `scroll` (any `ScrollContainer`) wait for `slip_units` of movement before a touch drag
-## that starts on a button scrolls it, so the press of a finger that moves a hair is not given up.
-## A drag that starts anywhere else scrolls at once, as it always did. The size is read at each
-## press, so a window that is resized, or a scale that changes, is followed. A `UIScroll` does this
-## itself; a plain `ScrollContainer` calls it once.
-static func use_slip(scroll: ScrollContainer) -> void:
+## Makes `button` hand a drag that starts on it to the scroll area it sits in, and only then. A
+## button stops the pointer (`MOUSE_FILTER_STOP`), so the touch, its drag steps and the lift
+## never reach the area behind it; a button that passes them (`MOUSE_FILTER_PASS`) lets the area
+## scroll from it, but with nothing that stops the press above it the press goes on to
+## `_unhandled_input` too (the player's click that takes the pointer), so it passes only while a
+## stopping `ScrollContainer` is above it. Decided each time the button enters the tree, so one that
+## is moved into or out of a card is right at once.
+static func pass_touch_in_scroll(button: BaseButton) -> void:
+	if not button.tree_entered.is_connected(_follow_scroll.bind(button)):
+		button.tree_entered.connect(_follow_scroll.bind(button))
+	if button.is_inside_tree():
+		_follow_scroll(button)
+
+
+## The mouse filter of `button` for where it sits: PASS in a scroll area, STOP elsewhere. A button
+## whose filter is IGNORE (one that is only drawn) is left alone.
+static func _follow_scroll(button: BaseButton) -> void:
+	if button.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+		return
+	button.mouse_filter = (
+		Control.MOUSE_FILTER_PASS if _in_scroll(button) else Control.MOUSE_FILTER_STOP
+	)
+
+
+## Whether a scroll area that takes the pointer is above `node`.
+static func _in_scroll(node: Node) -> bool:
+	var up := node.get_parent()
+	while up != null:
+		var scroll := up as ScrollContainer
+		if scroll != null and scroll.mouse_filter == Control.MOUSE_FILTER_STOP:
+			return true
+		up = up.get_parent()
+	return false
+
+
+## Makes `scroll` (any `ScrollContainer`) the area a button hands a touch to: it stops the pointer
+## itself, so a press that went through a button into it goes no further (a plain
+## `ScrollContainer` passes the pointer on), and it waits for `slip_units` of movement before a
+## touch drag that starts on a button scrolls it, so the press of a finger that moves a hair is not
+## given up. A drag that starts anywhere else scrolls at once, as it always did. The size is read
+## at each press, so a window that is resized, or a scale that changes, is followed. A `UIScroll`
+## does this itself; a plain `ScrollContainer` calls it once, before a button enters it.
+static func take_touch(scroll: ScrollContainer) -> void:
+	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
 	if not scroll.has_meta(&"ui_slip"):
 		scroll.set_meta(&"ui_slip", true)
 		scroll.gui_input.connect(_read_slip.bind(scroll))

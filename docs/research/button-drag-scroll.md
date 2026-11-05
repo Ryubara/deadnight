@@ -19,15 +19,21 @@ The engine already has the cure for the other half: once the card starts to scro
 
 ## What was done
 
-- **Every button that sits in a scrolling card has the mouse filter `PASS`** (`UIButton`, `UICheckBox`, `UIToggle`, and
-  the game's `MapCard`, `NightRow`, `ChallengeRow`, `MenuItemButton`, `PosterSetView`, `WardrobeCell`): it takes the
-  press and passes the touch up. A new `Button` subclass that sits in a card needs the same line, and a place in the
-  list of `test_button_scroll_drag.gd`.
+- **A button passes the touch up only while a scroll area is above it** (`UIScroll.pass_touch_in_scroll(button)`, called
+  by `UIButton`, `UICheckBox`, `UIToggle`, and the game's `MapCard`, `NightRow`, `ChallengeRow`, `MenuItemButton`,
+  `PosterSetView`, `WardrobeCell`). It is decided each time the button enters the tree (`tree_entered`, which a
+  reparent and a moved branch fire too): `PASS` under a `ScrollContainer` that stops the pointer, `STOP` everywhere
+  else, so a button outside a card is what it always was. A button whose filter is `IGNORE` is left alone. A new
+  `Button` subclass that sits in a card calls it too and gets a place in the list of `test_button_outside_scroll.gd`.
+- **The area stops the pointer itself** (`UIScroll.take_touch(scroll)`). The engine's `ScrollContainer` has the filter
+  `PASS`, not `STOP` (measured: `ScrollContainer.new().mouse_filter` is 1), and a press that reaches a `PASS` area goes
+  on to whatever is above it. `take_touch` sets `STOP` (a `UIScroll` does it in `_init`, a plain `ScrollContainer` the game
+  builds calls it before its buttons enter the tree; a test scans the game's code for one that does not). A button
+  under a plain, `PASS` area stays `STOP`: no drag from it, and no leak.
 - **A slip.** The engine's `scroll_deadzone` is 0: the first movement of the finger scrolls and takes the press. A
-  thumb on a button always rolls a little, so a card would have lost presses it used to keep. `UIScroll.use_slip(scroll)`
-  (every `UIScroll` does it itself; a plain `ScrollContainer` calls it, a test scans for the ones that forget) sets the
-  deadzone at each touch: `TouchSlop.units` when the touch lands on a button, 0 elsewhere, so a drag from words or margin
-  scrolls at once, exactly as before.
+  thumb on a button always rolls a little, so a card would have lost presses it used to keep. `take_touch` (the same
+  call) sets the deadzone at each touch: `TouchSlop.units` when the touch lands on a button, 0 elsewhere, so a drag from
+  words or margin scrolls at once, exactly as before.
 - **The slip is 10 CSS pixels** (`TouchSlop.CSS_PIXELS`), in units at the scale the window runs at: 14 on a phone's
   menu, 28 in a night (0.36 CSS px a unit), 10 on a desktop. Android scrolls after 8 dp, iOS after about 10 pt and
   Chromium counts a touch that moved under 15 CSS pixels as a click; 10 is the middle and a quarter of the 44 CSS px
@@ -37,11 +43,44 @@ The engine already has the cure for the other half: once the card starts to scro
 - The finger loses the slip's distance when it starts on a button (a 40 px drag moves the card 30), as on a phone's own
   lists; a drag from words or margin loses nothing.
 
+## What went wrong first, and what was measured
+
+The first version of this change set `PASS` on every button class, wherever it sat. A press on a `PASS` button with
+nothing above it that stops the pointer goes on to `_unhandled_input`. Measured with the real classes through the
+`Input` singleton, in `test_button_outside_scroll.gd` (a mouse click and a touch tap, on every class, each alone in a
+host that ignores the pointer, as the end board's are), against that first version:
+
+- A mouse click: the button is pressed 1 time, and 2 events (down, up) reach `_unhandled_input`.
+- A touch tap (and the mouse the engine makes of it): pressed 1 time, and 4 events (mouse down, touch down, mouse up,
+  touch up) reach `_unhandled_input`.
+
+That is for each of the nine classes, and for the end board's Leave (`HudEndBoard.leave_button`, every ancestor
+`IGNORE`). `player.gd` takes an unhandled mouse press (`_unhandled_input`, a click) to give the pointer lock back
+(`set_controls_enabled(true)`, `grip.retry()`), so a click on Leave could have taken the lock as the player left; any
+other `UIButton` with no stopping ancestor (the router's and shell's own screens read `_unhandled_input` too) had the
+same leak, and a touch that goes unhandled is the touch look. The cause is the `PASS` filter alone: a `STOP` button
+marks the event handled, a `PASS` one does not, and nothing above it did.
+
+After the change (`STOP` outside a card, `PASS` in a `take_touch` area): each class, outside a card and in one, is
+pressed exactly once by a click and once by a tap, and nothing reaches `_unhandled_input` (0 events); the end board's
+Leave is pressed once by a click and once by a tap with 0 leaked events. `phone_drag.py` on the new export is unchanged
+from the first version (the table in the pull request): the drag from Start moves the card 30 px, and the slips
+press or scroll at the same sizes.
+
+A note on a probe that said a `PASS` button is not pressed at all (pressed = 0): in a headless project the window is
+64 x 64, and the probe's buttons sat at x = 200, outside it, so the click never reached them. The same probe with the
+button at 0, 0 presses once and leaks the press. A probe of pointer input needs a window as large as what it puts in it.
+
 ## What did not change
 
 A mouse press, a mouse drag across a button, the wheel over a button, and a controller's accept press act as before
-(`phone_drag.py --desktop` on the old and the new export, and the same cases in `test_button_scroll_drag.gd`: a mouse
-drag moves nothing, a click presses once, the wheel scrolls the card over a button).
+(`phone_drag.py --desktop` on the old and the new export: a mouse drag over Start moves nothing, a click presses once,
+the wheel scrolls the card 60 px, all the same before and after; and the same cases in `test_button_scroll_drag.gd`).
+Outside a card every button is `STOP` again, exactly as before the change. The walk
+`test_every_button_the_end_board_and_the_screens_build_follows_the_rule` checks the buttons the end board, the
+customize, settings and credits screens build: `PASS` under an area that stops the pointer, `STOP` elsewhere. The pause
+card's buttons sit under no scroll area of their own, so they stop the pointer (a pause card in a night was not built
+in a test: its buttons are the same classes under the same rule).
 
 ## Not shown
 

@@ -49,7 +49,7 @@ func after_test() -> void:
 func _card(kind: String) -> void:
 	_scroll = UIScroll.new() if kind == "ui" else ScrollContainer.new()
 	if kind == "plain":
-		UIScroll.use_slip(_scroll)
+		UIScroll.take_touch(_scroll)
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.custom_minimum_size = VIEW
 	_scroll.size = VIEW
@@ -309,8 +309,9 @@ func test_a_controller_presses_the_focused_button() -> void:
 
 
 func test_every_button_the_menus_scroll_past_lets_a_drag_through() -> void:
-	# The classes whose buttons sit in a scrolling card: none may stop the touch.
-	var made: Array[Control] = [
+	# The classes whose buttons sit in a scrolling card: none may stop the touch there (outside
+	# a card they stop it: `test_button_outside_scroll.gd`).
+	var made: Array[BaseButton] = [
 		UIButton.new(),
 		UICheckBox.new(),
 		UIToggle.new(),
@@ -321,13 +322,16 @@ func test_every_button_the_menus_scroll_past_lets_a_drag_through() -> void:
 		PosterSetView.new(),
 		WardrobeCell.new(),
 	]
+	var card := UIScroll.new()
+	add_child(card)
 	for control in made:
+		card.add_child(control)
 		(
 			assert_int(control.mouse_filter)
 			. override_failure_message("%s stops a drag" % control.get_script().get_global_name())
 			. is_equal(Control.MOUSE_FILTER_PASS)
 		)
-		control.free()
+	card.free()
 
 
 func test_every_scroll_area_the_game_builds_waits_for_the_slip() -> void:
@@ -340,7 +344,7 @@ func test_every_scroll_area_the_game_builds_waits_for_the_slip() -> void:
 			for index in lines.size():
 				if lines[index].contains("ScrollContainer.new()"):
 					var near := "\n".join(lines.slice(index, index + 3))
-					if not near.contains("UIScroll.use_slip"):
+					if not near.contains("UIScroll.take_touch"):
 						bare.append("%s:%d" % [path, index + 1])
 	assert_array(bare).is_empty()
 

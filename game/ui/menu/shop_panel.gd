@@ -26,7 +26,7 @@ func _ready() -> void:
 	_balance = MenuLook.label("", MenuLook.SIZE_BODY, MenuLook.INK)
 	column.add_child(_balance)
 	_scroll = ScrollContainer.new()
-	UIScroll.use_slip(_scroll)
+	UIScroll.take_touch(_scroll)
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.follow_focus = true
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
