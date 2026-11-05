@@ -47,9 +47,11 @@ func _ready() -> void:
 	wardrobe.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	wardrobe.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_child(wardrobe)
-	# A phone has 372 units for the tab: the weapon row scrolls with the pickers.
+	# A phone has 372 units for the tab: the weapon row scrolls with the pickers, at the end of the
+	# Body tab's page, so the card opens on items (#1271: at the top of the page it was all the
+	# card showed).
 	if context.compact:
-		wardrobe.prepend_row(weapon_box)
+		wardrobe.append_row(weapon_box)
 	# The weapon row lines up with the wardrobe's rows, and is as narrow as they are.
 	_weapon_row.set_widths(wardrobe.row_widths.x, wardrobe.row_widths.y)
 	wardrobe.look_changed.connect(_on_look_changed)

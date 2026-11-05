@@ -264,6 +264,8 @@ def snap(frame: Frame, out: Path, label: str, results: list[dict], what: str) ->
         "tab": state.get("tab"),
         "phone": state.get("phone"),
         "console_errors": len(ERRORS),
+        "header_overlap": state.get("header_overlap"),
+        "loadout_items": state.get("loadout_items"),
         "inner": inner,
         **layout,
         **{f"audit_{k}": v for k, v in audit.items()},
@@ -528,6 +530,12 @@ def problems(results: list[dict]) -> list[str]:
             found.append(f"{entry['what']}: text {low_text} px {entry.get('audit_text_small')}")
         if low_tap is not None and low_tap < MIN_TAP_PX - 0.05:
             found.append(f"{entry['what']}: tap {low_tap} px {entry.get('audit_tap_small')}")
+        # The plate over the end of the tab bar (MORE read MOR), and a Loadout card with no item to
+        # choose from before it is scrolled (#1271).
+        if (entry.get("header_overlap") or 0.0) > 0.5:
+            found.append(f"{entry['what']}: the plate covers {entry['header_overlap']} units of a tab")
+        if entry.get("loadout_items") is not None and entry["loadout_items"] == 0:
+            found.append(f"{entry['what']}: no item is whole in the Loadout card's view")
     return found
 
 

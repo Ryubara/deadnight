@@ -6,9 +6,11 @@ extends Button
 ## strip as they walk the menu's.
 
 const PADDING := 10.0
-const PADDING_COMPACT := 7.0
+const PADDING_COMPACT := 4.0
 const TYPE := 25
-const TYPE_COMPACT := 22
+## A phone's tab: 21 units are 14.6 CSS px on the narrowest page (0.694 a unit), over the floor of
+## 14; all ten tabs then fit one row of the narrowest card (#1271).
+const TYPE_COMPACT := 21
 const HEIGHT := 56.0
 
 ## The tab's id (`CustomizeScreen.TABS`).
@@ -50,6 +52,11 @@ func _init(tab_key: StringName, label: String, small := false) -> void:
 
 func ui_sound_role() -> StringName:
 	return &"tab"
+
+
+## The size of the words it draws itself, for the ruler (`UiAudit`).
+func drawn_text_sizes() -> Array[int]:
+	return [_type_size]
 
 
 func label() -> String:
