@@ -11,3 +11,5 @@ and fetches the pinned Godot and Blender):
 pinned Godot.
 
 The [docs](https://ryubara.github.io/deadnight/) hold the design and what we learned building it.
+
+<!-- hold proof t0 -->
