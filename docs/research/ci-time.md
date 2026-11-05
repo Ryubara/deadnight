@@ -23,9 +23,9 @@ one, which includes its `before()` and `after()`; sorting those gaps gives the l
 After the speed-ups below the same job took 15 min 10 s (suites 853 s, down about 420 s on the suites both runs had; `main`
 had grown by 26 suites and 150 s meanwhile). The rest is compute and real time, so the job is also split.
 
-## Jobs by test folder (three), six (#775), eight by script seconds (#1015), nine (#1151)
+## Jobs by test folder (three), six (#775), eight by script seconds (#1015), nine (#1151), ten (#1193)
 
-`godot` is a matrix of parallel shards (`godot (1)` to `godot (9)`), each running its own test scripts. The history:
+`godot` is a matrix of parallel shards (`godot (1)` to `godot (10)`), each running its own test scripts. The history:
 three shards by folder (#524, then single scripts moved by hand, #676), six (#775), and each time the heaviest shard was
 back at the 15-minute limit within a day or two, because the suite grows with every merge (28 new scripts in one
 afternoon, #1015) and the shards were balanced by hand from a table that went stale. A shard that is over its limit is
@@ -36,8 +36,12 @@ folders. Every `tests/**/test_*.gd` is one item, weighed by its seconds in `tool
 are dealt out heaviest first to the shard with the least so far; a script that is not in the file counts
 `default_seconds` (10), so a new script lands in the lightest shard and is never left out. The self-test (run in every
 shard) fails when a script is in no shard or two, or when the workflow's matrix is not the same shards or the job's
-limit is not the one the check assumes. Shard 1 starts with 60 s already counted, for the main scene, the night run
-and the late-round budget run it alone does (about 120 s of its job, 50 of them the budget run).
+limit is not the one the check assumes. Shard 1 starts with 200 s already counted, for the main scene, the night run
+and the two budget runs it alone does: the four-player late-round case (94 s on the CI runner, the main scene and
+the night about 25 more) and, since #1193, the worst room of 8 people and 7 bots (85 s of night, 137 s on the
+runner: the crowd takes a minute to reach 90 percent of its cap, and 15 bodies run at a third of the speed of 4).
+The 137 s took the nine shards' expected time from 471 s to 487 s each, over the 440 s of `--report` (as 471 s
+already was) and a minute over the 9-minute annotation of a job; the tenth shard (#1193) brings them to 438 s.
 
 Measured on six complete CI runs (five of `main`, one of the late-round budget pull request, #968). The seconds of a
 suite are the duration on its `Statistics:` line (`tools/ci_shard_time.py`, `suite_times`; the same as the gap between

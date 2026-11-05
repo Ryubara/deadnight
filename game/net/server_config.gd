@@ -20,9 +20,10 @@ extends RefCounted
 ##                       can ask for fewer, never more
 ##   BOTS_OFF            1, true, yes or on: the kill-switch, no room seats a bot and the bots
 ##                       standing leave (default off)
-##   BOT_BUDGET          the most bots in all the rooms of this process together (default 3, 0 is no
-##                       budget: every room seats what the cap and its host allow); each room is cut
-##                       to its share of it
+##   BOT_BUDGET          the most bots in all the rooms of this process together (default 3, 0 is
+##                       none); each room is cut to its share of it (a lone room 3, 2 or 3 rooms: 1
+##                       each, 4 rooms: none). Sized from the cost of a room with bots
+##                       (docs/research/crowd-budget.md, #1222)
 
 var backend_url := ""
 var game_server_secret := ""
@@ -66,8 +67,10 @@ static func from_environment(getenv: Callable = Callable()) -> ServerConfig:
 	config.bots_off = (
 		str(read.call("BOTS_OFF")).strip_edges().to_lower() in ["1", "true", "yes", "on"]
 	)
-	var bots := str(read.call("BOT_BUDGET")).strip_edges()
-	config.bot_budget = maxi(int(bots), 0) if bots.is_valid_int() else config.bot_budget
+	var bots_total := str(read.call("BOT_BUDGET")).strip_edges()
+	config.bot_budget = (
+		maxi(int(bots_total), 0) if bots_total.is_valid_int() else config.bot_budget
+	)
 	return config
 
 

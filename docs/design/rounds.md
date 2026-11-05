@@ -276,13 +276,12 @@ started. The defaults are today's game exactly, and every shipped test runs on t
       from a person who wears the same one.
     - **The server's limits.** The host's setting is a request. An operator limits it with three variables
       (`ServerConfig`, `BotLimits`, [platform backend](../research/platform-backend.md)): `MAX_BOTS` caps one room
-      (0 to 7, default 7), `BOT_BUDGET` shares a number of bots among the open rooms (default 3, 0 is none; the
-      budget over the rooms, rounded down, at most the cap), and `BOTS_OFF` is the kill-switch (no room seats a bot).
-      A room takes
-      its limit when it opens and again whenever a room opens or closes (`GameServer.set_bot_limits` for a change
-      made while it runs); a limit that drops sends the highest seats' bots away at once (`NightBots.fill`) and the
-      night goes on, one that rises seats them again. The limit never reaches Solo, where the person's machine is the
-      only one it costs.
+      (0 to 7, default 7), `BOT_BUDGET` shares a number of bots among the open rooms (default 3 since #1222, 2 in
+      #1193, 0 is none; the budget over the rooms, rounded down, at most the cap), and `BOTS_OFF` is the kill-switch
+      (no room seats a bot). A room takes its limit when it opens and again whenever a room opens or closes
+      (`GameServer.set_bot_limits` for a change made while it runs); a limit that drops sends the highest seats' bots
+      away at once (`NightBots.fill`) and the night goes on, one that rises seats them again. The limit never reaches
+      Solo, where the person's machine is the only one it costs.
 - **Adding a setting.** One definition serves rooms and solo: the Play screen (Solo) and the lobby both hold a
   `MatchSettingsPanel`. A new setting is a key of `MatchSettings.KEYS` and a row in the panel (`_row(key, title)`, its
   entry in `HINTS`); `test_solo_match_settings.gd` fails on a key without a row, and on a screen of the two that shows a
