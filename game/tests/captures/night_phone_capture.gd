@@ -14,6 +14,8 @@ extends Node
 ## `--shot=pause` (the pause card), `--shot=hud` (the HUD with an objective in the bottom left,
 ## `--at=0.2,0.93` is where it stands on the screen), `--shot=markers` (an objective and an ally,
 ## standing and down, on the middle of every card of the HUD's corners: Deadnight #1218),
+## `--shot=middle` (a diamond on the round banner, a teammate on the prompt and another on a popup
+## card, and tags at the top edge: Deadnight #1230),
 ## `--on=objective@health,ally@ammo,downed@round` puts only those, `--on=free` three on free ground,
 ## `--touch=0` is a desktop, `--ratio=X` the page's pixel ratio, `--scale=X` (the interface size,
 ## default 1) and `--out=FILE`.
@@ -75,6 +77,8 @@ func _run() -> void:
 			await _pause(screen)
 		"markers":
 			await _markers(screen)
+		"middle":
+			await _middle(screen)
 		_:
 			await _hud(screen)
 	# The end sequence's own cards give way to the board over about two seconds of the clock.
@@ -190,6 +194,39 @@ func _markers(screen: NightScreen) -> void:
 		n += 1
 	hud.state.set_markers(list)
 	print("night: markers ", n)
+
+
+## Markers over the cards of the middle of the screen and at the top edge: a diamond on the round
+## banner, a teammate on the prompt of a door, another on the card of a level gained, and teammates
+## with and without a level on the top edge, where a tag over them would be cut.
+func _middle(screen: NightScreen) -> void:
+	var night := screen.night
+	night.link.broadcast(night.server.rules.apply(RulesAction.skip_break()))
+	NightFixture.run(night, 3)
+	night.set_paused(true)
+	night.markers.set_process(false)
+	var hud := screen._hud
+	hud.state.set_area("The Concession Stand", "Light the booth to open the back lot")
+	hud.state.set_ammo(30, 150, "Shotgun")
+	hud.state.set_prompt(&"buy_door", "Projection booth", 750)
+	hud.state.apply_event(
+		{"type": &"level_up", "player_id": hud.state.local_player_id, "level": 15, "total": 0}
+	)
+	for _i in 30:
+		await get_tree().process_frame
+		hud.popups.advance(0.05)
+	var list: Array[Dictionary] = [
+		HudFixture.late_marker(&"a", &"objective", 0.5, 0.1, 30.0, "Concession Stand", false),
+		HudFixture.late_marker(&"b", &"ally", 0.5, 0.93, 12.0, "Ruby", false),
+		HudFixture.late_marker(&"c", &"ally", 0.5, 0.3, 12.0, "Moe", false),
+		HudFixture.late_marker(&"d", &"ally", 0.9, 0.0, 12.0, "Cal", false),
+		HudFixture.late_marker(&"e", &"ally", 0.8, 0.0, 12.0, "Dee", true),
+	]
+	list[2]["level"] = 22
+	list[2]["icon"] = 22
+	list[3]["level"] = 41
+	list[3]["icon"] = 41
+	hud.state.set_markers(list)
 
 
 func _report(screen: NightScreen, per_unit: float, ratio: float) -> void:
