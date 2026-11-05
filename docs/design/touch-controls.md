@@ -24,7 +24,7 @@ Each finger has one job until it lifts, tracked by its touch index, so move, loo
 | Jump | two chevrons up, above Fire | `jump`. A press while crouched stands the body up first, and the jump goes on |
 | Crouch | a chevron down onto a floor line, below and left of Fire | `crouch`, a **toggle** (#1277): a tap crouches and stays, the next tap or a Jump stands. The button stays lit while it is on |
 | Weapons and grenades | the HUD's own strip in the bottom corner of the stick's side, under the players' column (a left hand flips it); not buttons of the layer | #1280. There is no Swap button and no Grenade button: a tap on a weapon's place takes that weapon (`weapon_slot_1`..`3`, the key's action), and the grenades' place after the weapons, with their count, is held while the pin is out (`throw_grenade`) and lets go to throw; a drag that starts on it also looks (#599), because the right thumb is on it for the whole hold and the left has the stick, so the throw can be aimed. Every place is at least 44 CSS px wide and high (`MenuScale.tap_units`). The layer asks the HUD where the places are (`TouchControls.zones`, `HudSlots.touch_zones`) and presses the action of the one a finger lands on; a finger that starts on a weapon's place only picks it, it never fires or looks |
-| Shoulder swap (a person, an arrow each way) | small, on the arc round Fire, outside the middle of the screen | `swap_shoulder`: the camera moves to the other shoulder, to see round a corner |
+| Shoulder swap (no button) | two quick taps on free ground (#1288) | `swap_shoulder`, pressed 90 ms at least: the camera moves to the other shoulder, to see round a corner. See [the double tap](#the-double-tap-that-changes-shoulder) |
 | Melee (a blade) | small, on the far right edge below Fire and above the ammo card (60 left, 310 up) | `quick_melee` (#588): a tap is one blow with whatever is in hand, at once; the server's 0.6 s cooldown holds a thumb that taps again and a finger that stays down is still one blow ([quick melee](weapons.md#quick-melee)) |
 | Bots (a wheel) | small, on the far right edge above Melee (60 left, 405 up) | `bot_wheel` (#642): **hold** it and the bot command wheel opens over the middle of the screen; **drag** from where the thumb landed toward Follow (up), Roam (down right) or Hold (down left) and let go to give that order; letting go in the middle, or a tap, gives none. The view does not turn while it is held ([bot wheel](../research/bot-wheel.md)) |
 | Ping (a pin) | small, top edge, right of Pause (538 right of the safe edge, 80 down) | `ping` (#642): a tap marks what the crosshair is on for the team, as Z, the middle mouse button and the pad's d-pad right do; the server's one mark a second per player holds a thumb that taps again |
@@ -45,6 +45,35 @@ Everything presses the game's own input actions, so the player and the night rea
 motion in mouse pixels, so the sensitivity setting, the ADS slow-down and invert Y apply. A press lasts at least 90 ms so
 a quick tap is still seen by the next physics tick. Sizes and places are in `TouchLayout`; a test checks every button
 against the safe area, a thumb-sized hit area, each other and the HUD cards that stay (ammo, prompt, health, points, round).
+
+## The double tap that changes shoulder
+
+`swap_shoulder` is a fight verb but a rare one (a corner, a wall), so it has no circle on the glass
+(`TouchDoubleTap`, #1288). Two taps on free ground (not on a button, a HUD place, the pause card or the stick's side of
+the screen) press it. The numbers are real time and the finger's own size, so the gesture is the same on every phone:
+
+- **A tap** lifts in under 250 ms and never moved 10 CSS px (`TouchSlop`: 28 units on a phone's night) from where it
+  landed. A flick, a drag and a rest are not taps.
+- **The second tap lands** at most 350 ms after the first lifts (Android's double tap is first up to second down too).
+- Any other touch between them (a button, the stick, a HUD place) and any look drag ends the pair: it means two taps
+  in a row. A third tap is the first of a new pair.
+- Other fingers may be down: a double tap works while the other thumb walks or holds Fire. A second finger on the
+  stick's side of the screen is the stick's, and never counts.
+
+**What a phone player sees.** The camera glides to the other shoulder (the player's `shoulder_side` flips, the view
+slides sideways over about a fifth of a second, `SHOULDER_RATE`), the character moves to the other side of the view,
+and the Side circle is gone from the right-hand column. Nothing flashes: the haptic buzz of a press is the only other
+sign.
+
+**The look is not lost.** A touch on free ground turns nothing while it can still be a tap, and what it made so far
+goes out at once the moment it is not: when it leaves the slop, when it has lasted 250 ms, or when it lifts after
+250 ms. So a drag turns exactly what it made, as before; only the first 10 CSS px of a fresh drag arrive as one piece
+(the look smoother spreads it over its 40 ms), and a shake inside a tap turns nothing. A finger that starts on a
+button (Fire, Jump...) or on the stick is never held back.
+
+The first-run hint says it once ("DOUBLE TAP / SWAP SIDE" on two lines, where the look hint was): it waits for the
+first look, stays 8 seconds and is then seen, used or not. The Settings Touch tab has a "Switch shoulder" row that
+says the same in words. On a keyboard the key `C` and the pad's button are unchanged.
 
 ## Left-handed layout
 

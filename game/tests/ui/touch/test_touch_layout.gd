@@ -297,13 +297,12 @@ func test_the_bots_and_ping_buttons_are_on_screen_clear_of_the_rest_on_the_small
 			)
 
 
-func test_the_shoulder_button_sits_clear_of_the_thumb_arc_and_the_look_area_stays_free() -> void:
+func test_the_side_button_is_gone_and_its_ground_is_free_for_the_double_tap() -> void:
 	for mirrored in HANDS:
 		var circles := _circles(CANVASES[1], Vector4.ZERO, 1.0, mirrored)
-		var side: Dictionary = circles[TouchLayout.SHOULDER]
-		var centre: Vector2 = side[&"centre"]
-		# Not in the middle 40 percent of the width, which is the view.
-		assert_float(absf(centre.x - CANVASES[1].x * 0.5)).is_greater(CANVASES[1].x * 0.2)
+		assert_bool(circles.has(TouchDoubleTap.ACTION)).is_false()
+	for row in TouchLayout.BUTTONS:
+		assert_str(String(row[0])).is_not_equal(String(TouchDoubleTap.ACTION))
 
 
 func test_a_notch_moves_the_buttons_in_with_the_safe_area() -> void:

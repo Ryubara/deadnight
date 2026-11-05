@@ -27,7 +27,6 @@ const CROUCH := &"crouch"
 const INTERACT := &"interact"
 const PAUSE := &"pause"
 const SCOREBOARD := &"scoreboard"
-const SHOULDER := &"swap_shoulder"
 ## The quick melee (#411, #588): a blow with whatever is in hand; the button presses its action. It
 ## sits on the far right edge above the ammo card, close enough to the corner to be on screen on a
 ## phone's 540 unit high canvas too (the menu's phone factor stays on while a night runs).
@@ -53,8 +52,9 @@ const RING_GAP := 42.0
 ## touch tests them in: the contextual button first, so it wins where it overlaps. The ring's
 ## buttons stand `FIRE_RADIUS + radius + RING_GAP` from Fire's centre, Crouch at 40 degrees below
 ## straight left, Reload at 8 above it (the same row), Aim at 56 and Jump at 104 (nearly straight
-## up); `test_touch_layout` checks the air. Shoulder, Melee and the Bots keep their old places until
-## the homes the audit names are built (#1275). The weapons and the grenades are the HUD's own
+## up); `test_touch_layout` checks the air. Melee and the Bots keep their old places until the homes
+## the audit names are built (#1275). The shoulder has no button: a double tap on free ground
+## (`TouchDoubleTap`, #1288). The weapons and the grenades are the HUD's own
 ## places, not buttons of this layer (#1280).
 const BUTTONS := [
 	[INTERACT, Vector2(540.0, 500.0), 80.0],
@@ -63,7 +63,6 @@ const BUTTONS := [
 	[AIM, Vector2(325.0, 527.0), 72.0],
 	[JUMP, Vector2(154.0, 556.0), 70.0],
 	[CROUCH, Vector2(361.0, 219.0), 62.0],
-	[SHOULDER, Vector2(545.0, 672.0), 48.0],
 	[MELEE, Vector2(60.0, 310.0), 44.0],
 	[BOT_WHEEL, Vector2(60.0, 405.0), 40.0],
 ]

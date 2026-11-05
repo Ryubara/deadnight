@@ -416,6 +416,16 @@ func test_the_touch_layer_does_every_action_it_offers() -> void:
 			continue
 		if how == &"stick":
 			await _push_stick(row[0])
+		elif how == TouchDoubleTap.ACTION:
+			# No button: two quick taps on free ground, and the press is still down when they end.
+			var free := Vector2(1700.0, 300.0)
+			for tap in 2:
+				await _fixture.touch(0, free)
+				_fixture.pass_time(0.05)
+				await _fixture.lift(0)
+				_fixture.pass_time(0.1)
+			await _hold("touch", row[0])
+			_let_go()
 		else:
 			# A weapon's or the grenades' place on the HUD, or one of the layer's buttons.
 			var spot := _fixture.zone_centre(how)

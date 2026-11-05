@@ -19,19 +19,30 @@ extends Control
 const MOVE := &"move"
 const LOOK := &"look"
 const INTERACT := &"interact"
+## The double tap on free ground that changes shoulder (#1288). It has no button to point at, so it
+## waits until the player has looked, shows for `SWAP_SECONDS` and is then seen, used or not.
+const SWAP := &"swap"
 ## The order is the bit each hint owns in the saved mask.
-const ORDER: Array[StringName] = [MOVE, LOOK, INTERACT]
+const ORDER: Array[StringName] = [MOVE, LOOK, INTERACT, SWAP]
 
 const TEXT := {
 	MOVE: "DRAG TO MOVE",
 	LOOK: "DRAG TO LOOK",
 	INTERACT: "TAP TO USE",
+	SWAP: "DOUBLE TAP\nSWAP SIDE",
 }
 ## The interact button's caption for a prompt that is held, not tapped (the fence).
 const HOLD_VERB := "HOLD"
 const HOLD_TEXT := "HOLD TO REPAIR"
 
+## How long the shoulder hint stays, seconds: long enough to read it twice, short enough that a
+## player who never needs the other shoulder is not shown it all night.
+const SWAP_SECONDS := 8.0
+
 const TEXT_SIZE := 36
+## A hint of two lines (the shoulder's: a line break in its text) steps down this far between
+## baselines: the smallest canvas has 436 units between the popup lane and the edge for a label.
+const LINE_STEP := 44.0
 const PAD := Vector2(22.0, 14.0)
 const ICON_WIDTH := 64.0
 const ICON_GAP := 14.0
@@ -94,6 +105,8 @@ func showing() -> Array[StringName]:
 			continue
 		if id == INTERACT and controls.interact_verb() == "":
 			continue
+		if id == SWAP and not is_seen(LOOK):
+			continue  # first the look, then the other shoulder
 		found.append(id)
 	return found
 
@@ -151,7 +164,7 @@ func rect_of(id: StringName) -> Rect2:
 			return Rect2(
 				Vector2(_off_the_lane(rest.x - size.x * 0.5, size.x, safe), top - size.y), size
 			)
-		LOOK:
+		LOOK, SWAP:
 			var middle := safe.get_center().x
 			var left := middle - LANE_HALF - GAP - size.x if mirrored else middle + LANE_HALF + GAP
 			var top := safe.position.y + safe.size.y * LOOK_AT_Y - size.y * 0.5
@@ -220,6 +233,8 @@ func _process(delta: float) -> void:
 		_leaving[id] = float(_leaving[id]) - delta
 		if float(_leaving[id]) <= 0.0:
 			_leaving.erase(id)
+	if float(_age.get(SWAP, 0.0)) >= SWAP_SECONDS:
+		mark_used(SWAP)  # said once: it is seen now, used or not
 	var painting := not now.is_empty() or not _leaving.is_empty()
 	var key := _look_key(now) if painting else 0
 	# One more redraw after the last label goes, or its last, faint frame stays on the screen.
@@ -280,12 +295,19 @@ func _draw_hint(id: StringName, alpha: float, tokens: UITokens) -> void:
 	draw_rect(rect, fill)
 	draw_rect(rect, Color(tokens.accent, alpha), false, 3.0)
 	_draw_icon(id, tokens, _icon_box(rect), alpha)
+	var lines := text_for(id).split("\n")
 	var at := (
-		rect.position + Vector2(PAD.x + ICON_WIDTH + ICON_GAP, rect.size.y * 0.5 + TEXT_SIZE * 0.35)
+		rect.position
+		+ Vector2(
+			PAD.x + ICON_WIDTH + ICON_GAP,
+			rect.size.y * 0.5 + TEXT_SIZE * 0.35 - LINE_STEP * 0.5 * (lines.size() - 1)
+		)
 	)
-	draw_string(
-		font, at, text_for(id), HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE, Color(tokens.ink, alpha)
-	)
+	for line in lines:
+		draw_string(
+			font, at, line, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE, Color(tokens.ink, alpha)
+		)
+		at.y += LINE_STEP
 
 
 func _icon_box(rect: Rect2) -> Rect2:
@@ -297,13 +319,18 @@ func _icon_box(rect: Rect2) -> Rect2:
 func _draw_icon(id: StringName, tokens: UITokens, box: Rect2, alpha: float) -> void:
 	var centre := box.get_center()
 	var ink := Color(tokens.accent_bright, alpha)
-	if id == INTERACT:
+	if _is_tap(id):
 		draw_circle(centre, TAP_DOT, ink)
 		return
 	var half := _track_half()
 	draw_line(
 		centre - Vector2(half, 0.0), centre + Vector2(half, 0.0), Color(ink, alpha * 0.5), 3.0, true
 	)
+
+
+## A hint of a tap (a dot and a swelling ring), not of a drag.
+func _is_tap(id: StringName) -> bool:
+	return id == INTERACT or id == SWAP
 
 
 func _track_half() -> float:
@@ -333,7 +360,7 @@ func _move_marks(now: Array[StringName]) -> void:
 			continue
 		if mark == null:
 			mark = _Mark.new()
-			mark.ring = id == INTERACT
+			mark.ring = _is_tap(id)
 			add_child(mark)
 			_marks[id] = mark
 		mark.set_ink(tokens.accent_bright)
@@ -350,10 +377,21 @@ func _move_marks(now: Array[StringName]) -> void:
 
 
 func _pill_size(text: String) -> Vector2:
-	var width := (
-		_font(UITokens.active()).get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE).x
+	var width := 0.0
+	var lines := text.split("\n")
+	for line in lines:
+		width = maxf(
+			width,
+			(
+				_font(UITokens.active())
+				. get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE)
+				. x
+			)
+		)
+	return Vector2(
+		PAD.x * 2.0 + ICON_WIDTH + ICON_GAP + width,
+		PAD.y * 2.0 + TEXT_SIZE + LINE_STEP * (lines.size() - 1)
 	)
-	return Vector2(PAD.x * 2.0 + ICON_WIDTH + ICON_GAP + width, PAD.y * 2.0 + TEXT_SIZE)
 
 
 func _font(tokens: UITokens) -> Font:
