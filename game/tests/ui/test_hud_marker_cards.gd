@@ -116,7 +116,9 @@ func _show_centre_cards(fixture: HudFixture) -> void:
 ## `up` names the contextual ones that are.
 func _buttons(safe: Rect2, mirrored: bool, up: Array[StringName] = []) -> Array[Rect2]:
 	var boxes: Array[Rect2] = []
-	var circles := TouchLayout.buttons(safe, 1.0, mirrored)
+	# The night's fingertip rule: Ping stands a fingertip-sized length under Pause (#1289).
+	var finger := MenuScale.tap_units(get_window(), true)
+	var circles := TouchLayout.buttons(safe, 1.0, mirrored, finger)
 	for id: StringName in circles:
 		if id in CONTEXTUAL and not id in up:
 			continue
