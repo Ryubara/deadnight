@@ -78,16 +78,29 @@ func test_no_rule_of_the_lobby_is_cut_on_a_phone_page() -> void:
 	assert_array(problems).override_failure_message("\n".join(problems)).is_empty()
 
 
-## The solo screen is not cut on the pages of 844 x 390 CSS pixels and wider; on the narrowest
-## phone (667 x 375, a 960 unit canvas) it still is, and the whole title overflows its card there.
+## The solo screen is not cut on any page, the narrowest phone included (667 x 375, a 960 unit
+## canvas: its whole titles used to overflow the card by 20 units there, #1250).
 func test_the_solo_screens_rules_are_not_cut_either() -> void:
 	var problems: Array[String] = []
 	for entry: Array in UiFitRun.PAGES:
-		if entry[0].x < 1688:
-			continue
 		await _run.set_window(entry[0], 1.0, entry[1])
 		var play := (await _run.open("play"))["root"] as PlayScreen
 		for key: String in play.panel.rows:
 			if play.panel.row_for(key).title_cut():
 				problems.append("%s: the title of %s is cut" % [entry[0], key])
 	assert_array(problems).override_failure_message("\n".join(problems)).is_empty()
+
+
+## What fits the narrowest phone is a step smaller gap in a row, and only there: the desktop keeps
+## the gap it had, and a change of the tokens does not undo it.
+func test_a_phones_rows_have_a_smaller_gap_than_a_desktops() -> void:
+	var tokens := UITokens.active()
+	var row := UIRow.new()
+	auto_free(row)
+	assert_int(row.get_theme_constant(&"separation")).is_equal(tokens.space_lg)
+	row.set_tight(true)
+	assert_int(row.get_theme_constant(&"separation")).is_equal(tokens.space_md)
+	row._on_tokens_changed(tokens)
+	assert_int(row.get_theme_constant(&"separation")).is_equal(tokens.space_md)
+	row.set_tight(false)
+	assert_int(row.get_theme_constant(&"separation")).is_equal(tokens.space_lg)
