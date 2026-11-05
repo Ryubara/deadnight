@@ -29,8 +29,18 @@ var _count := MatchSettings.MIN_COUNT_MULTIPLIER
 var _host_level := 12
 
 
+## The shipped tuning with the dead coming at once: a round is a few seconds of waiting, not a
+## dozen. Nothing the stats read (the events, the frames, the windows of time) changes with it.
+func _fast_tuning() -> RulesTuning:
+	var tuning := RulesFixture.tuning()
+	tuning.rounds.first_spawn_delay = 0.1
+	tuning.rounds.spawn_interval_start = 0.1
+	tuning.rounds.spawn_interval_min = 0.05
+	return tuning
+
+
 func before_test() -> void:
-	_tuning = null
+	_tuning = _fast_tuning()
 	_count = MatchSettings.MIN_COUNT_MULTIPLIER
 	_map = "drive_in"
 
@@ -332,7 +342,7 @@ func _prices_paid(night: Night, seat: int) -> int:
 
 
 func test_doors_bought_early_the_lot_opened_and_a_seat_that_never_spent_reaches_round_six() -> void:
-	_tuning = RulesFixture.tuning()
+	_tuning = _fast_tuning()
 	_tuning.rounds.intro_seconds = 120.0
 	await _start()
 	var crew := await _crew(["ann", "bo", "cy"])
@@ -600,7 +610,7 @@ func test_three_boards_by_one_and_a_board_beside_a_teammates_are_a_rush_and_a_pi
 
 
 func test_a_blast_that_kills_three_is_the_best_of_three_for_one() -> void:
-	_tuning = RulesFixture.tuning()
+	_tuning = _fast_tuning()
 	_tuning.rounds.first_spawn_delay = 0.2
 	await _start()
 	var crew := await _crew(["ann", "bo"])
@@ -646,7 +656,7 @@ func test_a_blast_that_kills_three_is_the_best_of_three_for_one() -> void:
 
 
 func test_five_different_weapons_each_with_a_kill_finish_try_the_lot() -> void:
-	_tuning = RulesFixture.tuning()
+	_tuning = _fast_tuning()
 	_tuning.rounds.first_spawn_delay = 0.2
 	await _start()
 	var crew := await _crew(["ann"])
@@ -689,7 +699,7 @@ func test_five_different_weapons_each_with_a_kill_finish_try_the_lot() -> void:
 
 
 func test_five_rescues_by_a_real_hold_in_one_night_are_a_hand_up_and_holding_the_line() -> void:
-	_tuning = RulesFixture.tuning()
+	_tuning = _fast_tuning()
 	_tuning.rounds.first_spawn_delay = 600.0
 	_tuning.health.revive_seconds = 0.5
 	await _start()

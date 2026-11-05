@@ -28,26 +28,27 @@ func test_a_played_night_is_counted_saved_and_agrees_with_the_client() -> void:
 	var melee := WeaponCatalog.IDS.filter(
 		func(id: StringName) -> bool: return WeaponCatalog.get_def(id).is_melee()
 	)
-	state.event_received.connect(
-		func(event: Dictionary) -> void:
-			match event["type"]:
-				&"round_started":
-					seen["fired"] = false
-					seen["killed"] = false
-				&"shot_fired":
-					if event["shooter_id"] == state.player_id and not melee.has(event["weapon_id"]):
-						seen["fired"] = true
-				&"zombie_removed":
-					if event["killer_id"] == state.player_id and event["cause"] == &"killed":
-						seen["killed"] = true
-				&"purchase_made":
-					if event["player_id"] == state.player_id:
-						seen["spent"] += int(event["price"])
-				&"round_ended":
-					if (event["standing"] as Array).has(state.player_id):
-						seen["unfired"] += 0 if seen["fired"] else 1
-						seen["no_kills"] += 0 if seen["killed"] else 1
-	)
+	var player_id := state.player_id
+	var counter := func(event: Dictionary) -> void:
+		match event["type"]:
+			&"round_started":
+				seen["fired"] = false
+				seen["killed"] = false
+			&"shot_fired":
+				if event["shooter_id"] == player_id and not melee.has(event["weapon_id"]):
+					seen["fired"] = true
+			&"zombie_removed":
+				if event["killer_id"] == player_id and event["cause"] == &"killed":
+					seen["killed"] = true
+			&"purchase_made":
+				if event["player_id"] == player_id:
+					seen["spent"] += int(event["price"])
+			&"round_ended":
+				if (event["standing"] as Array).has(player_id):
+					seen["unfired"] += 0 if seen["fired"] else 1
+					seen["no_kills"] += 0 if seen["killed"] else 1
+	# The lambda names the player's id, not the state it listens to: no cycle to leak at exit.
+	state.event_received.connect(counter)
 	var ticks := 0
 	while state.rounds_started < ROUNDS and not state.over and ticks < GIVE_UP_SECONDS / Night.STEP:
 		await get_tree().physics_frame
@@ -90,6 +91,7 @@ func test_a_played_night_is_counted_saved_and_agrees_with_the_client() -> void:
 	var saved: ChallengeProfile = ChallengeSave.read(path)["profile"]
 	assert_int(int(saved.lifetime[&"kills"])).is_greater(0)
 	assert_int(int(saved.lifetime[&"kills"])).is_less_equal(state.kills)
+	state.event_received.disconnect(counter)
 	await NightFixture.settle_bake(night)
 	night.queue_free()
 
