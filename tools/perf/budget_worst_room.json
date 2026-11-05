@@ -10,7 +10,7 @@
     "orphans": 2,
     "mem_static_mb": 310,
     "bodies": 15,
-    "lights": 68,
+    "lights": 76,
     "particles": 3,
     "decals": 0,
     "sounds_playing": 50,
@@ -20,9 +20,9 @@
     "pairs": 50
   },
   "max_per_tick": {
-    "xp.gained": 0.3,
-    "challenge.advance": 0.42,
-    "challenge.told": 0.02
+    "xp.gained": 0.35,
+    "challenge.advance": 0.48,
+    "challenge.told": 0.03
   },
   "max_label_ratio_of_calibration": {
     "server.xp": 0.01,

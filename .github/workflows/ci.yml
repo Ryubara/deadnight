@@ -84,7 +84,7 @@ jobs:
     needs: conventions
     if: needs.conventions.outputs.godot == 'true'
     runs-on: ubuntu-24.04
-    # The suite is split over nine parallel jobs, `godot (1)` to `godot (9)`, by the seconds each test script takes
+    # The suite is split over ten parallel jobs, `godot (1)` to `godot (10)`, by the seconds each test script takes
     # (tools/ci_test_shards.py deals them out from tools/ci_test_times.json; one job took 15 to 20 minutes, #524; three
     # took 12 to 15 each, #775; six hit the limit again, #1015). A balanced shard takes 6 to 9 minutes (about 1 of setup),
     # and the limit is 15. The last step of each shard (tools/ci_shard_time.py) annotates a job past 9 minutes and fails
@@ -94,7 +94,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
       - name: Start the shard's clock
         # The share-of-the-limit check at the end measures the job from here (the checkout is part of its time).
