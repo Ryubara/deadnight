@@ -1,5 +1,4 @@
 {
-  "test_night_screen_end": "#1201",
   "test_hud_prompt_fit": "llvmpipe: no result in 900 s (39 s on a GPU); draws every prompt at every size",
   "test_menu_hero_arms": "llvmpipe: 9 min 40 s (17 s on a GPU); draws every weapon at every angle live",
   "test_menu_stage": "llvmpipe: counts frames drawn per tick, and a software renderer draws fewer (passes on a GPU)",

@@ -49,8 +49,9 @@ Compared suite by suite with the real window (on the `main` of that morning):
 - **Fail in a real window and pass on the runner (2 suites, fixed since by #1203).** `test_hud_idle_redraws` and
   `test_ui_check_box` read a value after a count of frames, and a real window has no frame cap. A virtual display is a
   window, but not every window: the runner does not see a frame-rate dependence of this kind.
-- **Not caught by the guard's source scan but caught by the window.** `test_night_screen_end` fails in both windows
-  (#1201); it reaches the night through the Play screen.
+- **Not caught by the guard's source scan but caught by the window.** `test_night_screen_end` failed in both windows
+  (#1201, fixed by #1208); it reaches the night through the Play screen. The known list is down to the four unjudged
+  suites: every failure listed with an issue was fixed (#1194, #1198, #1203, #1208) before this landed.
 
 ## The job (`.github/workflows/ui-windowed.yml`)
 

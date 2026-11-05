@@ -1,6 +1,6 @@
 # The UI suites in a window, on a schedule (#1196). CI runs every GdUnit suite headless, where the game's own switches
 # that a window turns the other way are off (the helicopter drop, the loading screen, a 64 pixel window that never makes
-# the menu shell a phone's), so three suites failed for days only in a window (#1187) and more still do (#1195). This
+# the menu shell a phone's), so three suites failed for days only in a window (#1187) and three more did (#1195). This
 # runs `game/tests/ui` on a Linux runner under a virtual display (`xvfb-run`, Mesa's software GL, the Compatibility
 # renderer), one Godot process a suite with its own timeout, and reports the suites that fail there.
 #
@@ -12,9 +12,6 @@
 name: ui-windowed
 
 on:
-  push: # TRIAL
-    branches: [ci-run-the-ui-suites-windowed-on-a-schedule-so]
-    paths: [.github/workflows/ui-windowed.yml]
   schedule:
     - cron: "47 4 * * *"
   workflow_dispatch:
@@ -142,15 +139,12 @@ jobs:
           GH_REPO: ${{ github.repository }}
           STATE: ${{ steps.report.outputs.state }}
           SUBSET: ${{ steps.report.outputs.subset }}
-          EVENT: ${{ github.event_name }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
           [[ "$STATE" =~ ^(clean|known-only|failing|could-not-run)$ ]] || { echo "::error::no state from the report"; exit 1; }
           title="Windowed UI suites need a look"
-          if [ "$EVENT" = push ]; then
-            title="$title (trial run of the branch)" # TRIAL
-          elif [ "$SUBSET" = true ]; then
+          if [ "$SUBSET" = true ]; then
             # A run of a few suites by hand says nothing about the folder: it neither opens nor closes the issue.
             echo "A subset was run ($STATE): the issue is left alone."
             exit 0
