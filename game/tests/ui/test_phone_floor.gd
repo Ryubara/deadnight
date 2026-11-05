@@ -3,19 +3,20 @@ extends GdUnitTestSuite
 ## finger presses is at least 44 CSS pixels high (#1197). The page is 844 x 390 CSS pixels: the
 ## window is its canvas, 1688 x 780 at the pixel ratio of 2 the game reports (`PhoneRender`) and
 ## 2532 x 1170 at the phone's own 3. A unit must be 0.72 CSS pixels on all of them (0.8 on the
-## taller 932 x 430 page); before the test for a phone read the page, it was 0.36 and the type
-## 7.9 px.
+## taller 932 x 430 page, 0.69 on the narrowest, 667 x 375: 1334 x 750 at the ratio of 2); before
+## the test for a phone read the page, it was 0.36 and the type 7.9 px.
 ##
 ## The measuring is `UiAudit`, the numbers the web probe publishes
 ## (`tools/web_smoke/phone_layout.py`).
 
 const TEST_PATH := "user://phone_floor_test.cfg"
-## 844 x 390 as a window (the native phone), and as a page at each ratio.
+## 844 x 390 as a window (the native phone), and as a page at each ratio, and the narrowest page.
 const CASES: Array = [
 	[Vector2i(844, 390), 1.0],
 	[Vector2i(1688, 780), 2.0],
 	[Vector2i(2532, 1170), 3.0],
 	[Vector2i(1864, 860), 2.0],
+	[Vector2i(1334, 750), 2.0],
 ]
 
 var _run: UiFitRun

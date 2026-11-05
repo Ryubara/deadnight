@@ -52,7 +52,8 @@ The layout does not depend on the ratio: the factor multiplies the base stretch,
 `UiAudit` measures the smallest text and the smallest thing a finger presses in CSS pixels (a node's rectangle and font
 size times the window's stretch and the page's CSS pixels per window pixel). The web probe publishes it
 (`window.deadnight_audit`, `tools/web_smoke/phone_layout.py`), `test_phone_floor.gd` fails under 14 and 44. Faults that
-nobody had seen at a layout no page reached, all the same fix (`TapFloor`, 62 units on a phone's canvas) or a size:
+nobody had seen at a layout no page reached, all the same fix (`TapFloor`, 62 units then, 64 now: see the narrowest
+page below) or a size:
 
 - sliders, toggles, selectors and text fields: 37.6 CSS px (`control_height` is 52 units): `TapFloor.fit`, in the match
   rules panel, Settings, Play together, Join and the name field;
@@ -91,6 +92,17 @@ cut at the narrowest phone (667 x 375, a 960 unit canvas): the whole title overf
 (`PlayScreen.WHOLE_TITLES_WIDTH`).
 
 Not fixed here, filed: the night's pause card and Settings from a night (#1205), tablets and small desktop windows (#1206).
+
+## The narrowest page's taps (#1264)
+
+Every phone page is 540 units high (the factor makes the canvas 540 whatever the page), so a unit is the page's height
+over 540: 0.722 CSS px at 844 x 390, 0.694 at 667 x 375. 62 units, the tap size set on the 844 page (44.8 CSS px),
+were 43.1 on the narrow one, on nine screens, and `test_phone_floor` never walked it. `MenuLook.TAP_TARGET` is 64 now:
+44.4 CSS px at 667 x 375 (46.2 at 844 x 390), with no change of width, so no text narrows. The page 1334 x 750 (the
+667 x 375 page at the ratio of 2) is in `test_phone_floor`'s `CASES`; a smaller page (568 x 320: 0.59 CSS px a unit)
+would ask for 75 units and is not covered. The Cards screen's short tabs were 13.9 CSS px of type there (20 units) and
+are 21 now. The rule: a size meant for the finger is the least units that make 44 CSS px on the *shortest* page that
+counts as a phone, and every phone page is walked.
 
 ## Numbers
 

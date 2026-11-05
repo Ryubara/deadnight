@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## The least size of what a finger presses on a phone's canvas (#1197): the kit's controls are 52
 ## units high, 37.6 CSS pixels at the phone factor, and a phone's canvas raises them to a tap
-## target (62 units, 44.8). A bigger canvas gives back the height they had.
+## target (64 units, 44.4 and over). A bigger canvas gives back the height they had.
 
 
 func test_a_phone_canvas_raises_a_slider_a_toggle_a_selector_and_a_field_to_a_tap_target() -> void:

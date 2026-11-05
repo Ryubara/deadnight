@@ -39,8 +39,8 @@ and `game/ui/screens/main_menu.gd`.
 - **The headless test window is 64 pixels**, which the phone rule reads as a phone. The shell treats a headless run as
   a desktop; a test that wants the phone layout sets `phone_mode`.
 - **The wardrobe's own labels are 16 units**, 11.6 px on a phone: under the written 14 px. On a phone the Loadout tab
-  raises every label to the caption size and every picker to a tap target (62 units, 44 px); a test walks every label
-  and every pressable control of every tab at 844 x 390.
+  raises every label to the caption size and every picker to a tap target (64 units, 44 CSS px or more); a test
+  walks every label and every pressable control of every tab at 844 x 390.
 - **Focus order is written, not guessed.** Down from the last start, with the rows in another container, went nowhere;
   the Play tab chains its starts and rows explicitly and ends the chain on the last row.
 - **Hover moves the focus** (the same rule as the buttons of the addon), so the keyboard and the mouse never disagree.
@@ -66,7 +66,7 @@ and `game/ui/screens/main_menu.gd`.
   `test_ui_fit.gd` (below), by `tests/captures/solo_settings_tour.tscn` (real fonts; it prints each control outside the
   window) and by
   `tools/web_smoke/solo_settings.py` (a finger and a keyboard through the real build). On a phone the screen drops the
-  overline, the hints and the margins and makes every row and button a tap target (62 units).
+  overline, the hints and the margins and makes every row and button a tap target (64 units).
 
 - **A hovered button is paint, and a scroll area cuts paint** (#628). `UIButton` grows 3.5 percent on hover; the lobby's
   rows are full-width buttons in a `ScrollContainer`, which clips at its own rectangle, so "Copy the link" lost its
