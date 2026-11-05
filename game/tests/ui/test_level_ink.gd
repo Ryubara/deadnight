@@ -29,6 +29,12 @@ extends GdUnitTestSuite
 
 const CANVAS := Vector2i(1920, 1080)
 const PHONE := Vector2i(844, 390)
+## The same phone as a web page has it (#1197): an 844 x 390 CSS pixel page at the pixel ratio of 2
+## the game reports is a 1688 x 780 window. The menu's factor 2 and the night's 1 then give twice
+## the pixels to a unit that `PHONE` does (1.44 and 0.72 against 0.72 and 0.36), and the digits and
+## the icon land on other whole pixels, so the places are read there too.
+const PAGE := Vector2i(1688, 780)
+const PAGE_RATIO := 2.0
 ## Largest gap between the digits' centre and the icon body's. The engine sets a glyph on a whole
 ## unit and the icon's art lands where it falls, so half a unit is the best a place can do:
 ## 0.75 in the `exact` reading (which has no rounding of its own); in the `real` ones the rows of
@@ -59,6 +65,7 @@ var _tokens := UITokens.active()
 var _report: Array[String] = []
 var _window_size := Vector2i.ZERO
 var _window_scale := 1.0
+var _touch: Variant
 
 
 func before_test() -> void:
@@ -68,6 +75,7 @@ func before_test() -> void:
 	HudPortrait.live = false
 	_window_size = get_tree().root.size
 	_window_scale = get_tree().root.content_scale_factor
+	_touch = TouchMode.device_is_touch
 
 
 func after_test() -> void:
@@ -76,6 +84,8 @@ func after_test() -> void:
 	LobbyScreen.opener = Callable()
 	get_tree().root.size = _window_size
 	get_tree().root.content_scale_factor = _window_scale
+	TouchMode.device_is_touch = _touch
+	PageSize.css_override = null
 	var folder := OS.get_environment("LEVEL_INK_SHOTS")
 	if not folder.is_empty() and not _report.is_empty():
 		var file := FileAccess.open(folder.path_join("ink.txt"), FileAccess.READ_WRITE)
@@ -136,6 +146,11 @@ func _real(size: Vector2i, ui_scale := 1.0, night := false) -> Reading:
 	reading.name = "real_%dx%d_%sx%.2f" % [size.x, size.y, "night_" if night else "", ui_scale]
 	var window := get_tree().root
 	window.size = size
+	if size == PAGE:
+		TouchMode.device_is_touch = true
+		PageSize.css_override = Vector2(size) / PAGE_RATIO
+	else:
+		PageSize.css_override = null
 	window.content_scale_factor = ui_scale if night else MenuScale.factor(size, ui_scale)
 	var host := Control.new()
 	host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -632,11 +647,16 @@ func _every_reading(
 	if in_night:
 		for ui_scale in PHONE_NIGHT_SCALES:
 			readings.append(func() -> Reading: return _real(PHONE, ui_scale, true))
+			readings.append(func() -> Reading: return _real(PAGE, ui_scale, true))
 	else:
 		readings.append(func() -> Reading: return _real(PHONE))
+		readings.append(func() -> Reading: return _real(PAGE))
 	for make: Callable in readings:
 		var probe: Reading = make.call()
-		var phone := probe.name.begins_with("real_%dx%d" % [PHONE.x, PHONE.y])
+		var phone := (
+			probe.name.begins_with("real_%dx%d" % [PHONE.x, PHONE.y])
+			or probe.name.begins_with("real_%dx%d" % [PAGE.x, PAGE.y])
+		)
 		_dispose(probe)
 		# What each place built shows: all the levels, or on a scrolling phone one at a time.
 		var groups: Array = [LEVELS]

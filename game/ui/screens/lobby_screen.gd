@@ -232,6 +232,9 @@ func _ready() -> void:
 	rules.custom_minimum_size.x = FIELD_WIDTH
 	rules.changed.connect(_on_rules_changed)
 	box.add_child(rules)
+	# A phone's canvas gets the panel's phone form, as the Play screen does (#1197).
+	resized.connect(_fit_phone)
+	_fit_phone()
 	_rules_note = _label(RULES_UNSUPPORTED, UILabel.Style.CAPTION)
 	_rules_note.name = "RulesNote"
 	_rules_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -645,6 +648,13 @@ func send_rules() -> void:
 
 
 ## The panel: the host's while the lobby waits, otherwise what the lobby holds.
+## The rules panel's phone form on a phone's canvas, and every control a fingertip high.
+func _fit_phone() -> void:
+	var phone := TapFloor.phone_canvas(size)
+	rules.set_compact(phone)
+	TapFloor.fit(self, phone)
+
+
 func _show_rules() -> void:
 	var live := mode == Mode.LIVE
 	_rules_title.visible = live
