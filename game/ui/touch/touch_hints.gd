@@ -180,22 +180,32 @@ func _off_the_lane(left: float, width: float, safe: Rect2) -> float:
 	return minf(lane.position.x - width, safe.end.x - width)
 
 
-## `rect` moved down, a step at a time, until no touch button is under it: on a short screen the
-## buttons climb up to the look hint's place beside the lane.
+## `rect` moved, a step at a time, to the nearest place where no touch button is under it, up or
+## down: the buttons climb up to the look hint's place beside the lane, and on a short screen a hint
+## sent far down lands on the ammo card (#1277), so the smaller move wins.
 func _below_the_buttons(rect: Rect2, safe: Rect2) -> Rect2:
 	var circles := TouchLayout.buttons(safe, controls.touch_scale, controls.left_handed)
-	var moved := rect
-	while moved.end.y <= safe.end.y:
-		var clear := true
-		for button: StringName in circles:
-			var centre: Vector2 = circles[button][&"centre"]
-			var reach := float(circles[button][&"radius"]) + BUTTON_CLEAR
-			if centre.clamp(moved.position, moved.end).distance_to(centre) <= reach:
-				clear = false
-		if clear:
-			return moved
-		moved.position.y += SEARCH_STEP
+	var steps := int(safe.size.y / SEARCH_STEP)
+	for step in steps:
+		# Down first at a tie: the hint was always found below.
+		for way in [1.0, -1.0]:
+			var moved := rect
+			moved.position.y += way * float(step) * SEARCH_STEP
+			if moved.position.y < safe.position.y or moved.end.y > safe.end.y:
+				continue
+			if _clear_of(moved, circles):
+				return moved
 	return rect
+
+
+## Whether no button of `circles` is under `rect` or within `BUTTON_CLEAR` of it.
+func _clear_of(rect: Rect2, circles: Dictionary) -> bool:
+	for button: StringName in circles:
+		var centre: Vector2 = circles[button][&"centre"]
+		var reach := float(circles[button][&"radius"]) + BUTTON_CLEAR
+		if centre.clamp(rect.position, rect.end).distance_to(centre) <= reach:
+			return false
+	return true
 
 
 func _process(delta: float) -> void:
