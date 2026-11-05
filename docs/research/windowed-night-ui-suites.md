@@ -84,3 +84,8 @@ when the board is up. The rules cannot end a night under a person's drop (the dr
 purpose (`test_the_night_ending_under_the_drop_leaves_the_board_alone`; it fails on the old screen with the same line).
 Signal order is the lesson: two handlers of one signal that touch the same node run in connect order, and the screen
 connects before the night's own.
+
+`skip_now` emits `arrival_ended` inside the call, so a script that skips the show and then awaits `arrival_ended` waits
+for ever (Deadnight #1278: a capture recorded 3000 frames of the wait). After `skip_now` the show is over; read
+`is_arriving()` instead, and give every capture its own frame limit (`auto_reload_capture.gd` counts frames in
+`_process` and quits).
