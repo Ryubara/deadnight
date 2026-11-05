@@ -85,7 +85,6 @@ from pathlib import Path
 from playwright.sync_api import Page, sync_playwright
 
 sys.path.insert(0, str(Path(__file__).parent))
-import page_closing
 import rooms
 import smoke
 
@@ -796,11 +795,6 @@ def main() -> int:
         action="store_true",
         help="run spikes/backend with the stub Discord sign-in (backend argument: -)",
     )
-    parser.add_argument(
-        "--closing",
-        action="store_true",
-        help="after making a night, check what a tab closed on the waiting room does (#1188; tools/web_smoke/page_closing.py)",
-    )
     parser.add_argument("--invite-fails", action="store_true", help="the stand-in client's openInviteDialog fails too")
     parser.add_argument("--pad", action="store_true", help="give the page a virtual gamepad (navigator.getGamepads)")
     parser.add_argument(
@@ -1003,17 +997,6 @@ def run(args: argparse.Namespace, bridge_js: bytes | None) -> int:
                             failed = f"the code shown in the lobby does not open that night: {shown}"
                             state = {}
                         page.screenshot(path=args.out / f"lobby_{kind}.png")
-            if args.closing and state.get("room_code"):
-                # The page behind the Discord stand-in: the list, a tab switch, a quiet host, then the page closed for real.
-                lines, ok = page_closing.closing_checks(
-                    page, frame, page_closing.Backend(args.backend), state["room_code"], args.out
-                )
-                server.shutdown()
-                (args.out / "console.txt").write_text(chr(10).join(console), encoding="utf-8")
-                print(chr(10).join(log + lines))
-                print(f"closing ({kind}): {'held' if ok else 'FAILED'}")
-                browser.close()
-                return 0 if ok else 1
             page.wait_for_timeout(2000)
             if args.parent_focus and args.embed != "none":
                 probe = "window.deadnightGamepad ? window.deadnightGamepad() : ''"

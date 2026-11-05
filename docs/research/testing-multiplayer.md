@@ -65,18 +65,6 @@ runs against a deployed backend, or a local one: `node spikes/backend/src/main.t
 uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/lobby.py <web URL or build/web> <backend address> <out folder>
 ```
 
-`tools/web_smoke/page_closing.py` closes a real tab on the waiting room (#1188): the night must stay listed through a
-tab switch, leave the list while its host is quiet and come back with the host's next poll, and be gone from the list
-within 3 s of `page.close()`. It starts a backend of its own (or takes `--backend <deployed address>` with
-`CORS_ORIGINS=http://127.0.0.1:8082`); `--control` sends no word to show the fallback alone, and `activity.py
---closing` runs the same checks behind the Discord stand-in. `page_closing_transport.py` measures which request a
-closing tab can still send, in Chromium, Firefox and WebKit:
-
-```text
-uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/page_closing.py build/web <out folder>
-uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/page_closing_transport.py <out folder> --runs 5
-```
-
 `tools/web_smoke/guest_account.py` proves a Guest account lasts (#1080) against a backend of its own: a guest signs in
 from the web build, a save is written to the account, the page is reloaded and the probe reads the same account and
 save back; a second browser with empty storage is a new account. It serves the build on `127.0.0.1:8087` (list it in

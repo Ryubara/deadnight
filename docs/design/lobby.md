@@ -139,7 +139,7 @@ backstop for a client that vanished without a word.
 
 | State | What it holds | Ends when | Backstop |
 | --- | --- | --- | --- |
-| **Open** (waiting room) | code, seats, host, the host's rules | the last member leaves, or moves to another lobby (at once); a member's page says it is going (`pagehide`, below); the host starts it (it becomes **Started**) | 10 minutes without a poll; a member quiet for a minute is dropped while another is still there. A lobby nobody has been heard from in for 15 s is left out of the list (below) |
+| **Open** (waiting room) | code, seats, host, the host's rules | the last member leaves, or moves to another lobby (at once); the host starts it (it becomes **Started**) | 10 minutes without a poll; a member quiet for a minute is dropped while another is still there |
 | **Started** (a night) | the match on a game server, the members, the round | the last member leaves or moves (at once); the game server says the last person's seat is empty (`POST /internal/matches/:id/left`); the game server says the match is over (`/end`, at once when the last person leaves the room, bots or not); a finished night reopens it | the heartbeat stops listing the match (5 minute grace), 2 hours of age |
 | **Reopened** (a finished night's waiting room) | the same code, host and rules, the people who were still in the room | a member reads it (it is an **Open** one from then on); the last member leaves or moves | nobody reads it within a minute (the night screen asks every half second for 10 s), so nobody is coming back to it |
 | **Gone** | nothing: no code, no members, no match, no slot | | |
@@ -149,7 +149,7 @@ backstop for a client that vanished without a word.
 | State | Ends when (and what the player can do next) |
 | --- | --- |
 | **Menu** (in no lobby) | create, join or Quick join puts them in a lobby |
-| **Waiting room** (member of an open lobby) | Leave, Back or Esc (`leave`, from `LobbyScreen._exit_tree`); a closed tab (the page's last word on `pagehide`, `page-closed`); the host's Start (to **Night**); create, join or Quick join elsewhere (moves them); a minute without polling while another member is there (dropped; their next poll says `not_member`) |
+| **Waiting room** (member of an open lobby) | Leave, Back or Esc (`leave`, from `LobbyScreen._exit_tree`); the host's Start (to **Night**); create, join or Quick join elsewhere (moves them); a minute without polling while another member is there (dropped; their next poll says `not_member`) |
 | **Night** (member of a started lobby, connected) | *Leave night* in the Esc menu and the end board's *Leave* (`NightScreen._go_back`: `leave`, then the socket closes); a closed tab or an Activity that closed (the browser closes the socket with code 1001, an abrupt close is a dropped connection; the game server frees the seat and says so, `user_left`); create, join or Quick join elsewhere (moves them); the night ends (to **Reopened**) |
 | **Away** (the socket dropped, not on purpose) | they come back with their token inside 30 s, or the seat is freed and the game server says so; create, join or Quick join elsewhere moves them at once |
 | **End-of-night intermission** | Leave, a closed tab (as above), or the server's clock: the room says `finished` with who was still there, and the lobby reopens for them |
@@ -165,8 +165,7 @@ backstop for a client that vanished without a word.
 | Closing the tab or the Activity during a night | socket 1001 (an abrupt close is the row below), seat freed, `/left` to the backend, the lobby loses the member (or goes with the last one) | yes |
 | A dropped connection | the seat is held 30 s for a resume (a person may come back), then freed and `/left` | after the resume window |
 | A night that ended | `/end` with `finished` and who was in the room: the lobby reopens for them | yes |
-| Closing the tab on the waiting room | the page sends its last word on `pagehide` (`POST /lobbies/:id/page-closed`, a beacon): a Leave, so the host role passes on and an empty lobby is gone | yes, when the word arrives |
-| The same, but the word is lost (the system discards the page, no network) | nobody is polling the lobby, so it leaves the list within 15 s; it goes with its backstop | out of the list in seconds, gone in 10 minutes; the player is not held by it |
+| Closing the tab on the waiting room, alone | the backend hears nothing (no beacon is sent), so the lobby waits for its backstop | no, 10 minutes; but the player is not held by it |
 | Create, join or Quick join from anywhere | takes the player out of the lobby they were in first (a join refused as `full` leaves them where they were) | yes |
 
 ### What was wrong
@@ -191,82 +190,12 @@ the room empties, `_end_room` posts `/end`, and the lobby is dropped), and leavi
 then creating, joining or Quick joining a night all worked before the fix, so "bots do not count as empty" was not a
 cause.
 
-### What the list shows, and the page's last word (#1188)
-
-The maintainer: *"Why aren't lobbies immediately disbanded of and we clear player state whenever the lobby is empty?"*
-A player alone on the waiting room who closed the tab sent nothing, so the lobby waited for its 10-minute backstop and
-the Server Browser would list a dead night that a player could press. Two parts, both needed, because neither covers what
-the other does.
-
-**The list does not show a lobby nobody has been heard from in** (`LobbyService.isHeard`, used by `GET /lobbies` and by
-Quick join). A waiting lobby is shown while at least one member polled it in the last 15 s (`memberQuietMs`, the mark the
-lobby screen shows as *away*); a night in progress has no poll and is judged by its match as before. This *hides* the
-lobby and does not end it, because a quiet tab is not a closed one: a host who goes to a chat to paste the invite stops
-polling (a tab in the background), and a shorter idle timer would take the lobby from them. The code still opens it
-(a friend who joins is a voice, so it is listed again), and the host's next poll lists it again. A press on a row whose
-lobby has just gone is an ordinary `join-by-code` of a code that is gone: `not_found`, "There is no night with that code",
-and the player stays in the lobby they were in (a refused join never moves anyone).
-
-**The page says it is going** (`PageClosing`, `POST /lobbies/:id/page-closed`). While the lobby screen is up the page holds
-one request ready, and the browser's `pagehide` sends it. What the signal means:
-
-- It is a **Leave**, and final: the member is out, the host role passes on, and a lobby left with nobody is gone at once,
-  with its code (a poll or a join of it answers `not_found`). The backend answers `{left: false}` and changes nothing for
-  a person who is not in the lobby, for a lobby that is gone, and for a night in progress (the game server's socket close
-  frees that seat).
-- It is sent **only for a page that is going for good**: `pagehide` with `persisted` false (a closed tab, a reload, a
-  navigation away). A page that is hidden or frozen and kept (a phone that switches app, a tab in the background) fires
-  `visibilitychange` and no unload, and a page the browser keeps in its back-forward cache fires `pagehide` with `persisted`
-  true. Neither sends anything, so someone who comes back finds the lobby as they left it, with its code, and listed again.
-  The page that does send has no one coming back to it: a reload makes a new page that starts at the menu.
-- A page the system throws away without a word sends nothing. That falls back to the first part: the lobby leaves the list
-  within 15 s and goes with its backstop.
-
-How it is sent was measured by closing a real tab (`tools/web_smoke/page_closing_transport.py`, Playwright's Chromium,
-Firefox and WebKit, a page on one origin and the backend on another as the website is deployed). Against a backend on
-Railway (about 110 ms away), five closes each, the lobby gone from the backend after:
-
-| Request sent on `pagehide` | Chromium | Firefox | WebKit |
-| --- | --- | --- | --- |
-| `sendBeacon(url, string)`, `text/plain`, token in the body | 5/5, 0.11 to 0.14 s | 5/5, 0.12 to 0.14 s | 5/5, 0.11 to 0.12 s |
-| `fetch` `keepalive`, `text/plain`, token in the body | 5/5, 0.11 to 0.13 s | 5/5, 0.11 to 0.12 s | 5/5, 0.10 to 0.12 s |
-| `fetch` `keepalive` with an `Authorization` header | 5/5, 0.23 to 0.41 s | 5/5, 0.23 to 0.83 s | 5/5, 0.23 to 0.27 s |
-| `sendBeacon(url, Blob text/plain)` | 5/5 | **0/5** (1/5 with no delay in between) | 5/5 |
-| `sendBeacon(url, Blob application/json)` | **0/5** | **0/5** | **0/5** |
-
-The game sends the first and falls back to the second if the browser refuses the beacon (its queue is full). Two
-findings decide it:
-
-- A **string** body, not a `Blob`: Firefox reads a Blob after the page is gone and never sends it when the tab closes
-  (a navigation does send it; closing does not). `application/json` is not a "simple" request, so it needs a CORS
-  preflight, which a beacon never waits for: no browser sent it.
-- The **header** version arrived in all three (in these builds, from a desktop, 5 of 5), so it is not shown to fail; it
-  takes two round trips (the preflight first) where the body version takes one, and #1177 found it unreliable somewhere
-  this run could not reach (a phone, a slower network). The body version needs no preflight on the website's other origin
-  and no header for Discord's proxy to keep, so it does not depend on either.
-
-The token is in the body because a beacon cannot set a header. The route reads the body (and the header too, for a caller
-that can send one); it is the only route that does, the body is never logged, and the token is the session the page
-already holds. A bad token is a `401` and changes nothing.
-
-**What only a real client can show.** The Discord desktop and phone clients were not available to the tests, and no phone
-was run. The Activity was run behind the harness that stands in for `<id>.discordsays.com`
-(`tools/web_smoke/activity.py --closing`: HTTPS, the `/api` prefix kept, gzip answers, the game in an iframe of another
-origin), where closing the page unloads the Activity's frame and the beacon crossed that proxy and ended the lobby. Whether
-the real Discord client unloads the frame with a `pagehide` when the Activity is closed, or ends the process without one,
-is not shown by that: if it does not, the lobby falls back to the list (gone from the Server Browser within 15 s) and its
-backstop. What a real phone fires when it switches app is as the browsers document it (`visibilitychange`, no unload), not
-measured here.
-
 ### Not covered
 
-- A guest on the waiting room of a lobby that **has started** (they have not pressed Play yet) who closes the tab sends
-  nothing the backend acts on: the page's word is ignored for a started lobby, and the game server only frees a seat that
-  connected. They stay a member until the night ends; they hold nobody (their next create or join moves them).
-- A member of a lobby **with others in it** whose page was lost without a word is still dropped by the one-minute rule,
-  not at once.
-- The press on a row is the Server Browser screen's (#1180): this makes the backend's answer to it plain and keeps the
-  player where they were, and the screen has to show it.
+A sole member who **closes the tab on the waiting room** sends nothing (a `pagehide` request with an `Authorization`
+header cannot be proven reliable across browsers and Discord's proxy from here), so that lobby waits for its 10-minute
+backstop. It holds nobody, but a lobby list would show it until then; if that matters, the fix is a beacon on `pagehide`,
+not a shorter timer (a host who goes to a chat to paste the invite is quiet for minutes).
 
 ## Poll or push
 

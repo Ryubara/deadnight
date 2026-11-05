@@ -44,12 +44,8 @@ image):
   is refused when `NODE_ENV=production`. Returns a one-hour session token and the Discord
   `access_token` (the Embedded App SDK needs it for `authenticate()`).
 - `POST /lobbies` always creates a lobby (the Activity's `instanceId` is not read any more, #1178),
-  `POST /lobbies/join-by-code`, `GET /lobbies/:id`, `POST /lobbies/:id/leave`, `POST /lobbies/:id/page-closed` (the closing
-  page's own Leave, a `text/plain` beacon carrying the token in its body; always `200 {left}` for a good token),
-  `POST /lobbies/:id/start` (host only; allocates a game server). `GET /lobbies` leaves out a waiting lobby nobody has
-  been heard from in for 15 s (hidden, not ended:
-  [what the list shows](../design/lobby.md#what-the-list-shows-and-the-pages-last-word-1188)).
-  A user is in one lobby at a time, open or started: creating or joining another takes them out
+  `POST /lobbies/join-by-code`, `GET /lobbies/:id`, `POST /lobbies/:id/leave`, `POST /lobbies/:id/start` (host only;
+  allocates a game server). A user is in one lobby at a time, open or started: creating or joining another takes them out
   of it, so no call is refused for it ([every state](../design/lobby.md#leaving-and-moving-every-state-and-what-ends-it)).
 - `POST /lobbies/:id/ticket` returns `{address: {url, activityPath}, ticket}` for the caller's seat. The ticket names
   the game server it is for (`serverId`) and has a unique id (`jti`); see [the ticket](#the-game-server-ticket).
@@ -398,7 +394,7 @@ injected clock.
 
 | What | Ends when |
 | --- | --- |
-| Open lobby | Its last member leaves or moves to another lobby, or the member's page says it is going (`page-closed`), at once. The backstop: idle for 10 minutes (create, join, leave, start and a member's `GET` all count as activity). A member not seen for a minute is dropped while another is still there ([presence](#the-lobby-before-the-night)). |
+| Open lobby | Its last member leaves or moves to another lobby (at once). The backstop: idle for 10 minutes (create, join, leave, start and a member's `GET` all count as activity). A member not seen for a minute is dropped while another is still there ([presence](#the-lobby-before-the-night)). |
 | Started lobby | Its last member leaves or moves, or the game server says the last person's seat is empty (`/left`), or calls `POST /internal/matches/:id/end` (a finished night reopens the lobby), at once. The backstop: its heartbeat stops listing the match, or it is 2 hours old. |
 | Reopened lobby | A member reads it (then it is an open one), else it is dropped a minute after it opened. |
 | A user's place | A user is in one lobby, open or started. Leaving it, its end, or creating or joining another frees them: a move takes the player out of the old lobby first (the host role passes to the next member), and a join refused as `full` leaves them where they were. |

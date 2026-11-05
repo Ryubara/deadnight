@@ -335,7 +335,6 @@ func screen_enter() -> void:
 func _exit_tree() -> void:
 	if watch != null:
 		watch.stop()
-	PageClosing.disarm(str(lobby.get("id", "")))
 	if mode != Mode.LIVE or _entering or _over or lobby.is_empty() or api == null:
 		return
 	# Gone by Back or Esc: the seat goes with it, said from a caller that outlives this screen.
@@ -461,7 +460,6 @@ func _go_in(held: bool) -> void:
 	NightScreen.remember_lobby(api, lobby, get_tree().root)
 	_entering = true
 	watch.stop()
-	_sync_page_closing()
 	if opener.is_valid():
 		opener.call()
 	else:
@@ -485,7 +483,6 @@ func _on_happened(events: Array) -> void:
 
 func _on_ended(text: String) -> void:
 	_over = true
-	_sync_page_closing()
 	_set_enabled(true)
 	start_button.visible = false
 	play_button.visible = false
@@ -498,26 +495,6 @@ func _on_ended(text: String) -> void:
 	leave_button.text = "Back"
 	status.text = text if text != "" else TogetherApi.TEXTS["not_found"]
 	note.text = ""
-
-
-## Holds the closing page's word ready while this screen is a waiting room the player is in, and
-## takes it back when it is not (the night started and the socket speaks for them, the lobby ended,
-## the screen is going): `PageClosing`, Deadnight #1188.
-func _sync_page_closing() -> void:
-	var id := str(lobby.get("id", ""))
-	var waiting: bool = (
-		mode == Mode.LIVE
-		and api != null
-		and not _over
-		and not _entering
-		and id != ""
-		and str(lobby.get("state", "")) != "started"
-	)
-	var request := api.page_closing_request(lobby) if waiting else {}
-	if request.is_empty():
-		PageClosing.disarm(id)
-	else:
-		PageClosing.arm(id, request)
 
 
 # --- What the screen shows ---
@@ -551,7 +528,6 @@ func _show() -> void:
 	if not _over:
 		status.text = status_text(lobby, _me) if live else preview_text(preview)
 	_set_enabled(not _busy)
-	_sync_page_closing()
 
 
 ## Whether the player can move the panel now.
