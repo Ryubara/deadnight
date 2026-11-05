@@ -22,8 +22,9 @@ thumbs, so most of the work is deciding what to remove, fold into another contro
   dead zone to stop drift ([Cursa](https://cursa.app/en/page/touch-controls-for-mobile-games-input-patterns-and-feedback)).
 - Common practice: the stick's base re-centres where the touch began, the knob is clamped to a radius, and the output
   is the offset divided by that radius, so the same drag feels the same on every screen size.
-- **Sprint by pushing the stick to its edge** (past about 90 percent of the radius) removes a button. Common practice
-  in shooters on touch; keep it a held state with a little hysteresis so it does not flicker at the threshold.
+- **Sprint by pushing the stick past its edge** removes a button. Common practice in shooters on touch. Deadnight's
+  first version sprinted at 95 percent of the radius, which a thumb reaches without meaning to; the maintainer's
+  rework (#1276) makes the edge a full walk and the sprint a latch past it (see "The stick's sprint latch" below).
 
 ### Look: drag on the right half
 
@@ -182,7 +183,7 @@ dp. Buttons are drawn at 50 percent opacity at rest and 90 percent while held, w
 
 | Control | Where | Size | Behaviour |
 | --- | --- | --- | --- |
-| Move stick | floating, anywhere in the left 40 percent, below the top 20 percent | base 22 mm, knob 10 mm | appears under the thumb; 8 percent dead zone; past 90 percent of the radius = `sprint` held |
+| Move stick | floating, anywhere in the left 40 percent, below the top 20 percent | base 22 mm, knob 10 mm | appears under the thumb (nothing is drawn without a finger); 8 percent dead zone; past the edge by a margin = `sprint` held until the finger lifts (#1276) |
 | Look | the right 60 percent not covered by a button | whole area | drag turns the camera; default 180 degrees per screen-height hip, 60 percent of that ADS; no acceleration |
 | Fire | 88 x 62 | 17 mm | `fire` held; a drag that started on it also looks |
 | Aim (ADS) | 74 x 44, above-left of Fire | 12 mm | hold (toggle option) |
@@ -229,7 +230,7 @@ game does now:
 | Places in percent of the safe area, sizes in mm | Offsets from the safe area's bottom right corner and radii in canvas units (`TouchLayout`); a 1080 unit tall canvas is 60 to 70 mm on a phone, so Fire is about 12 mm across and no hit area is under about 9 mm | The HUD already lives in canvas units and the UI scale divides them; one unit system means the buttons scale with the HUD and a test can compare rectangles |
 | Interact, a pill at bottom centre | A round button left of Fire, captioned with the verb (OPEN, BUY, REPAIR, FUEL, SWITCH, TAKE, REVIVE) | The prompt card is at bottom centre and stays (it names the object and the price); the thumb reaches the button without leaving Fire |
 | Jump above Fire | Jump below and left of Fire, Reload and Aim above it | The ammo card fills the bottom right corner: the first layout put Jump 26 units into it and Fire's rim touched it, found in the captures, so the arc moved up and left (Fire 350 units up, Jump 360 left) |
-| Stick: dead zone 8 percent, sprint past 90 percent | Dead zone 10 percent, sprint on at 95 percent and off at 75 percent | Hysteresis, or sprint flickers at the rim; the base follows a thumb that goes past the rim, so travel never runs out |
+| Stick: dead zone 8 percent, sprint past 90 percent | Dead zone 10 percent; the edge is a full walk and a drag 18 CSS px past it latches the sprint until the finger lifts (#1276; it was on at 95 percent and off at 75 percent) | Sprinting too easily was the maintainer's complaint, and a hysteresis band still flickered under a nervous thumb; once latched the base follows the thumb, so travel never runs out |
 | Look: 180 degrees per screen height, no acceleration | 1.6 radians (92 degrees, a little under 200 degrees for one width of a phone; it was 3.2 until #470, when a thumb flew round) per screen height at sensitivity 1, a flick gain rising from 1 to 1.6 between 450 and 2400 units per second, and the mouse sensitivity setting on top | A turn of 180 degrees in one swipe needs more than a slow drag gives; the slow range stays 1:1 for aiming. The ADS slow-down is the camera's own, not a separate 60 percent |
 | Rest opacity 50 percent | 70 percent (setting 30 to 100), 100 percent while held | At 60 the Fire label was hard to read on a lit ground |
 | Grenade hidden at zero | Always shown | The HUD state has no grenade count for the local player in a shape the layer reads yet |
@@ -435,9 +436,9 @@ sizes in window px, and do not detect a phone by the window's short side there (
   pinned marker's arrow already did that), on the side of the shape that faces the place or, when that would be over
   the words, a card or a marker moved before it, on a flank or under or over the shape. The touch buttons are in the
   same list (`TouchControls.button_boxes`, `layout_changed`, set by `NightScreen`): a diamond moved off the ammo card
-  landed under Fire in the first capture. The resting ring of the stick is not in it (a faint ring over a name still
-  reads). `HudMarkers.shown` tells where each marker was drawn (its box is what it draws: shape, words and arrow) and
-  whether it moved; `placed` is where it points.
+  landed under Fire in the first capture. The stick's ring is not in it (it is drawn only under a finger,
+  #1276). `HudMarkers.shown` tells where each marker was drawn (its box is what it draws: shape, words and
+  arrow) and whether it moved; `placed` is where it points.
 - **Markers moved off neighbouring cards keep clear of each other** when there is room (the objective off the health
   card and a teammate down on the round card both took the pocket between the cards).
 
@@ -526,7 +527,8 @@ the HUD is the phone's weapon control; the Swap and Grenade buttons are gone fro
 - **The stick's resting ring** (`TouchLayout.STICK_REST`, #1276's) now overlaps the top of the points card by about
   20 units: the column is a strip's height higher. It is a faint ring and the stick floats to wherever the thumb lands,
   and the move hint is placed from it (`TouchHints`), so moving it moved the hint over the round card and the scoreboard
-  button on the smallest canvas (`test_touch_hints` failed): left for the stick's own issue, with the clearance test.
+  button on the smallest canvas (`test_touch_hints` failed): left for the stick's own issue, with the clearance test
+  (done there: "The stick's resting place" below).
 - **Not done here:** a first-run hint for the places (the hints label the stick, the look and Interact only); a cancel
   for a cooking grenade (the throw's other action `toss_grenade` has no touch control either).
 
@@ -559,6 +561,79 @@ design only).
 - **Markers.** Strike stands in the one column the markers use: with it up the 667 x 375 page at 1.25 holds two
   markers before two meet (four with Interact up); the table is in the audit page. Every marker is still off every
   card and button.
+
+## The stick's sprint latch (#1276)
+
+The maintainer, 2026-11-05: nothing on the left until the screen is pressed; the edge of the circle is the top
+speed of a walk; "if they drag above the top of the circle, it should vibrate and start sprinting until the finger is
+let go (even if they drag finger back into the circle)". What was built:
+
+- **No resting ring.** `TouchControls._draw_stick` draws nothing without a finger. A faint outer line at the sprint
+  edge shows where it starts; once latched the ring turns to the accent colour with SPRINT over the knob.
+- **The edge is in CSS pixels of the page** (`TouchTuning.stick_radius_px` 40, `sprint_margin_px` 18, turned into
+  canvas units by `MenuScale.css_per_unit`, so it is the same movement of the thumb at 667 x 375 and 844 x 390: both
+  measured in a browser at 40.0 and 40 + 18 CSS px). The ring was 38 CSS px on a phone before.
+- **The latch is the finger's.** `TouchStick` is made on the press, kept in that finger's touch entry
+  (`_touches[index][&"pad"]`) and dies with it. It clears on the lift, when the layer goes down
+  (`_release_everything`: a menu, the result, portrait, the setting off) and when the same index presses again
+  without a lift (`_touch_down` lifts the old touch first). A different finger never inherits it.
+  Before the latch the base stays where the finger landed, so the edge is one place for the whole drag; after it the base
+  follows the finger one radius behind, as the old stick did, so "back inside the circle" is the moved ring.
+- **Any direction past the edge sprints**, not only the top: the body sprints in every direction
+  (`PlayerSimulation._sprint_allowed`, the body turns to face the way it goes), and a cone would make the stick behave
+  differently by direction. A drag to the edge sideways or backward walks at full speed like the top.
+- **One buzz** when it latches (`TouchTuning.sprint_haptic_ms` 40, silenced by the haptics setting). `sprint_started`
+  is the signal a test counts. The on-stick cue is there with or without a buzz. iOS Safari is thought to have no
+  `navigator.vibrate` (MDN: "Limited availability"; not verified on a device); Discord's webview was not checked
+  (no Discord client to run: Godot only prints that vibration is unsupported when the function is missing).
+- **What cancels a sprint, and what that does to the latch.** The latch only says the `sprint` action is held; the
+  body decides (`_sprint_allowed`): the stick finger lifting ends it and clears the latch; losing the layer and a
+  reused index clear it; holding Aim (button or toggle) stops the body sprinting but keeps the latch, and the sprint
+  returns when the aim is let go with the finger still down; a push under half (`sprint_min_input`) walks, latch kept;
+  a Crouch tap (a toggle since #1277) stops the body sprinting too, with the latch kept, and the sprint returns when a
+  second tap (or a Jump) stands it with the finger still down; being airborne after a jump keeps a sprint going.
+- **The stick's resting place.** With no ring on the screen the resting place is only where the first-run "DRAG TO
+  MOVE" hint stands. It was a corner offset (330 right, 390 up, times the touch scale), and the column of the HUD, a
+  strip's height higher since #1280, reached into it (the points card by 26 units with one player at 1.0, and the perk
+  badges beside the column). It cannot be put above the column: the column grows up the side with the party (the points
+  card's top is at 769 units with one player, 607 with four and 503 with eight, on the 1080 unit canvas). So it is
+  **beside** the column: `STICK_REST_CLEAR` is where the ring's left edge stands (right of the column, the perk badges
+  and a gap, 496 units) and where its bottom edge stands (271 units up, above the tallest strip: 196), whatever the
+  touch scale, and the ring's top at a scale of 1 stays 495 units up, where it always was, so the hint above it stays
+  put. `STICK_RADIUS` is the drawn ring (40 CSS px = 111.1 units on every page and interface size), it was 105.
+  `test_touch_stick_rest` holds the ring clear of every card, every place of the strip and every button, and a finger at
+  its centre starting the stick, for both hands, the two phone pages, interface sizes 0.8, 1.0 and 1.25, touch scales
+  0.8, 1.0 and 1.4, and parties of one, four, eight and eight with seven bots (it fails with the old numbers: the ring
+  was over the points card and the perk badges).
+- **What happens where a finger lands.** The ring is drawn where the finger lands, anywhere in the stick's zone (the
+  left 45 percent below the top fifth, or below Ping's hit area where that is lower: #1289), and the zone is over the
+  players' column: a finger that lands there makes a
+  ring over the cards, and the cards (which ignore the pointer) are under the touch layer. The ring is a translucent
+  disc and the finger is on it, so the words under it are covered by the thumb in any case; it goes with the finger.
+  Nothing moves for it: the HUD does not know where the ring is. A new player is not asked to land there, because the
+  hint points at the resting place beside the column. The hint itself stands at the resting place, between the column
+  and the popup lane; on the smaller canvases it cannot be wholly right of the column (the lane takes the room), so it
+  is over the column's x range at the height of the ring's top, as it always was: clear of the cards for a party of up
+  to four, over the points card for eight on the 1.0 and 1.25 canvases for the moment it is up (it goes on the first
+  drag). The objective card is under it at an interface size of 1.25 on the smallest canvas, and was before.
+- **Measured** in a web export (`tools/web_smoke/touch_sprint.py`, real touches through the DevTools protocol): the
+  edge walks at 4.80 m/s (`run_speed`) on both pages, a drag 15 CSS px past the ring still walks with no buzz, the
+  latch sprints at 7.0 m/s (`sprint_speed`) on every side, one buzz, and stays on at a 0.67 push and at the middle
+  of the ring until the lift (4.09 m/s at 0.67 after one second: the stick is analog, so a latched sprinter who relaxes
+  the thumb slows down but is still sprinting); a new press walks. Run again after #1280, #1281 and #1283 on the merged
+  game (844 x 390 and 667 x 375 at a pixel ratio of 3, CSS px per unit 0.3611 and 0.3472): the ring is 40.0 CSS px and
+  the sprint starts at 58.0 on both; the edge walks at 4.80 m/s with 0 buzzes; a drag 15 CSS px past the ring walks, 0
+  buzzes; past the line one buzz of 40 ms (`navigator.vibrate` replaced by a counter, 10 buzzes in the whole run: one
+  per sprint start); 7.0 m/s to the right, down and up-right; a finger put back in the ring and at its middle keeps the
+  latch (at the middle no push, so the body walks off the sprint with the latch kept); the lift clears it; the pause
+  menu with a latched stick leaves nothing held and a press after it walks. Sideways at the edge: 4.67 m/s (the
+  diagonal's share of the push) and no latch. Ending the body's sprint with the latch kept, second finger held on the
+  stick finger: Aim held 1.71 m/s (the aimed walk) then 7.0 m/s again when it lifts; one Crouch tap 2.4 m/s, the
+  second tap 7.0 m/s again, the sprint cue on the ring the whole time. (The speeds that read 0.0 in the log are the
+  player's face against the wall after the first push: the edge's 4.8 is the peak of the first second.)
+- **Where the cue is.** With the phone's buzz missing the ring is the cue: accent colour, thicker, a tinted disc and
+  SPRINT above the knob (captures in the pull request; the web build cannot tell the game whether the phone buzzes).
+  iOS Safari is believed to have no `navigator.vibrate` (not checked on a device), Discord's webview was not checked.
 
 ## Ping under Pause, a thumb apart (#1289)
 

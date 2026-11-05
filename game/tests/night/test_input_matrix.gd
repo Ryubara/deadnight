@@ -24,8 +24,9 @@ const INTRO_SECONDS := 1.0
 const FAR_OFF := 600.0
 ## Where a thumb lands in the stick's zone (canvas units) and how far each push goes.
 const STICK_START := Vector2(300.0, 800.0)
-const STICK_WALK := 70.0
-const STICK_RIM := 150.0
+const STICK_WALK := 80.0
+## Past the ring and the margin beyond it (111 + 50 units on this canvas): the sprint (#1276).
+const STICK_RIM := 200.0
 ## The actions a keyboard has and a gamepad does not: the pad and the phone swap with one button.
 const KEYBOARD_ONLY: Array[StringName] = [&"weapon_slot_1", &"weapon_slot_2", &"weapon_slot_3"]
 ## Input actions of the map that belong to menus, not to the night.
@@ -431,7 +432,7 @@ func test_the_touch_layer_does_every_action_it_offers() -> void:
 			_let_go()
 
 
-## A thumb in the stick's zone pushed the way the action goes (to the rim for a sprint).
+## A thumb in the stick's zone pushed the way the action goes (past the ring's edge for a sprint).
 func _push_stick(action: StringName) -> void:
 	var push := (
 		{

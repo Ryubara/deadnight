@@ -19,7 +19,7 @@ already shows it takes the touch), **CONTEXT** (a button that shows only when it
 
 | Action (desktop key) | Home on a phone | Verdict | Built by |
 | --- | --- | --- | --- |
-| `move_*` (WASD), `sprint` (Shift) | the floating stick, sprint past its rim | KEEP | #1276 |
+| `move_*` (WASD), `sprint` (Shift) | the floating stick, a sprint latched past its edge | KEEP | #1276 (done) |
 | `look_*`, the mouse | a drag on free ground, or from any right button | KEEP | #1283 |
 | `fire` (left button) | Fire, the ring's centre | KEEP | #1283 |
 | `aim` (right button) | Aim, held with auto-fire on, a toggle off | KEEP | #1283, #1281 |

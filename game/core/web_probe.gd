@@ -252,6 +252,9 @@ static func snapshot(top: Control) -> Dictionary:
 		"kills": 0,
 		"quick_melees": 0,
 		"dead_gap_m": -1.0,
+		"touch_stick": "",
+		"ground_speed": 0.0,
+		"sprinting": false,
 		"grenade_cooking": false,
 		"grenade_count": 0,
 		"tab": "",
@@ -402,6 +405,9 @@ static func snapshot(top: Control) -> Dictionary:
 	var player: Player = night_screen.night.player() if night_screen.night.server != null else null
 	if player != null:
 		data["yaw"] = player.camera_rig.yaw  # so a browser test can see the mouse turn the view
+		# So a browser test can measure the walk and the sprint the stick asks for (#1276).
+		data["ground_speed"] = player.ground_speed()
+		data["sprinting"] = player.is_sprinting()
 		data["crouching"] = player.state.crouching  # the touch layer's Crouch toggle (#1277)
 		# So a browser test can see the view is the person's own soldier, not a bot's (#702).
 		data["view_is_players"] = (
@@ -440,6 +446,7 @@ static func snapshot(top: Control) -> Dictionary:
 	data["kills"] = state.kills
 	data["quick_melees"] = state.quick_melees
 	data["dead_gap_m"] = StrikeReach.nearest(state)
+	data["touch_stick"] = night_screen.touch_stick()
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)
