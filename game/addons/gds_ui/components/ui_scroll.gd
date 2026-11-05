@@ -119,8 +119,10 @@ static func side_room(scroll: ScrollContainer) -> float:
 ## scroll from it, but with nothing that stops the press above it the press goes on to
 ## `_unhandled_input` too (the player's click that takes the pointer), so it passes only while a
 ## stopping `ScrollContainer` is above it. Decided each time the button enters the tree, so one that
-## is moved into or out of a card is right at once.
+## is moved into or out of a card is right at once. The call also makes the button go back to its
+## resting look after a tap (`UITouchRest`), in a card or not: a lifted finger sends no mouse exit.
 static func pass_touch_in_scroll(button: BaseButton) -> void:
+	UITouchRest.follow(button)
 	if not button.tree_entered.is_connected(_follow_scroll.bind(button)):
 		button.tree_entered.connect(_follow_scroll.bind(button))
 	if button.is_inside_tree():
@@ -188,9 +190,7 @@ static func _drop_hover(scroll: ScrollContainer) -> void:
 	for node in scroll.find_children("*", "BaseButton", true, false):
 		var button := node as BaseButton
 		if button.is_hovered():
-			var filter := button.mouse_filter
-			button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			button.mouse_filter = filter
+			UITouchRest.drop_hover(button)
 
 
 ## The button under `point` (in `scroll`'s own coordinates) that a press would reach, or null.

@@ -295,7 +295,13 @@ static func snapshot(top: Control) -> Dictionary:
 		else null
 	)
 	data["controller_hint"] = hint != null and hint.label.is_visible_in_tree()
-	if top is MainMenu or top is PlayScreen or top is LobbyScreen or top is ServerBrowserScreen:
+	if (
+		top is MainMenu
+		or top is PlayScreen
+		or top is LobbyScreen
+		or top is ServerBrowserScreen
+		or top is TogetherScreen
+	):
 		# Where a finger taps each start and button, as fractions of the window.
 		data["spots"] = _spots(top)
 	var menu := top as MainMenu

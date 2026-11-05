@@ -14,6 +14,10 @@ It measures, in CSS pixels:
 - a tap on Start: it presses once and the card stays;
 - the resting look: after a drag that scrolled the card from a button and lifted, the button is drawn as it is after a
   touch elsewhere, not hovered (the finger lifts over it, the content having moved with it);
+- the resting look after a tap (issue #1268): the same measure after a tap on a button that stays on screen, for the
+  buttons inside the card (Copy the link, Copy the code, Start) and for one outside any scroll area (the Play together
+  screen's "Join with the code", reached by Leave); a lifted finger sends no mouse exit, so the engine kept the button
+  lit until the next touch. With `--desktop` the same click keeps the hover (a mouse pointer stays over its button);
 - a slip sweep: a finger that lands on Start and moves `slip` CSS pixels, then lifts on it. The press must survive a
   small slip and a slip past the threshold must scroll the card and give the press up.
 
@@ -70,6 +74,8 @@ SETTLE_MS = 1200
 # fill and its gradient move it up to 23; a lit button is 68 or more away: measured 95, 68 and 81).
 LOOK_OFFSET_PX = 110.0
 LIT_DISTANCE = 40
+# Where nothing is: a touch here puts every button back to what it is at rest (CSS pixels), outside any card.
+EMPTY_SPOT = (20.0, 20.0)
 
 
 class Phone:
@@ -129,6 +135,15 @@ class Phone:
         image = Image.open(io.BytesIO(self.page.screenshot())).convert("RGB")
         scale = image.width / self.size[0]
         return image.getpixel((int((x - LOOK_OFFSET_PX) * scale), int(y * scale)))
+
+    def look_after_tap(self, name: str, elsewhere: tuple[float, float], shot: Path | None = None) -> tuple:
+        """The colour of `name`'s fill after a tap on it has finished, and at rest (after a touch at `elsewhere`)."""
+        self.tap(self.at(name))
+        lit = self.fill(name)
+        if shot is not None:
+            self.page.screenshot(path=shot)
+        self.tap(elsewhere)
+        return lit, self.fill(name)
 
     def card_y(self) -> float:
         """Where the Start button is: the card's scroll, read as a position."""
@@ -226,6 +241,17 @@ def finger_cases(phone: Phone, out: Path, label: str, rows: list[dict]) -> list[
         rows.append({"case": f"look {name}", "lifted": lifted, "resting": resting, "distance": distance})
         if distance > LIT_DISTANCE:
             wrong.append(f"{name} stays lit after a drag that scrolled the card from it (colour {distance} from rest)")
+    # The resting look after a tap: the button stays on screen, the finger lifts over it and no mouse exit is sent.
+    for name in ("Copy the link", "Copy the code", "Start the night"):
+        slug = name.replace(" ", "_")
+        shot = out / f"{label}_resting_after_tap_{slug}.png"
+        lifted, resting = phone.look_after_tap(name, (MARGIN_X, MARGIN_Y), shot)
+        distance = sum(abs(a - b) for a, b in zip(lifted, resting))
+        print(f"look of {name:16s} after a tap {lifted}, at rest {resting}: {distance} apart (in the card)")
+        rows.append({"case": f"tap look {name}", "lifted": lifted, "resting": resting, "distance": distance})
+        if distance > LIT_DISTANCE:
+            wrong.append(f"{name} stays lit after a tap (colour {distance} from rest)")
+        phone.restore(top)
     # A flick: fast and released at once, so the card coasts.
     for name in ("margin", "Start the night"):
         start = (MARGIN_X, MARGIN_Y) if name == "margin" else phone.at(name)
@@ -260,7 +286,25 @@ def finger_cases(phone: Phone, out: Path, label: str, rows: list[dict]) -> list[
             wrong.append(f"a slip of {slip} px: pressed {pressed}x, moved {shift:.1f} px (it must scroll, not press)")
         phone.restore(top)
     phone.page.screenshot(path=out / f"{label}_lobby_end.png")
+    wrong += outside_cases(phone, out, label, rows)
     return wrong
+
+
+def outside_cases(phone: Phone, out: Path, label: str, rows: list[dict]) -> list[str]:
+    """A tap on a button that sits in no scroll area: Leave goes back to the Play together screen, whose "Join with
+    the code" answers a tap without a code by staying where it is."""
+    phone.tap(phone.at("Leave"))
+    layout.wait_for(phone.game, "the Play together screen", lambda s: s.get("screen") == "together_screen", 20)
+    phone.page.wait_for_timeout(1500)
+    name = "Join with the code"
+    shot = out / f"{label}_resting_after_tap_outside_a_card.png"
+    lifted, resting = phone.look_after_tap(name, EMPTY_SPOT, shot)
+    distance = sum(abs(a - b) for a, b in zip(lifted, resting))
+    print(f"look of {name:18s} after a tap {lifted}, at rest {resting}: {distance} apart (outside a card)")
+    rows.append({"case": f"tap look outside {name}", "lifted": lifted, "resting": resting, "distance": distance})
+    if distance > LIT_DISTANCE:
+        return [f"{name} (outside a card) stays lit after a tap (colour {distance} from rest)"]
+    return []
 
 
 def mouse_cases(phone: Phone, out: Path, label: str, rows: list[dict]) -> list[str]:
@@ -300,6 +344,20 @@ def mouse_cases(phone: Phone, out: Path, label: str, rows: list[dict]) -> list[s
     rows.append({"case": "wheel", "moved_css_px": wheel_moved})
     if abs(wheel_moved) < 1.0:
         wrong.append("the wheel over Start did not scroll the card")
+    # A click leaves a mouse pointer over its button, which stays hovered (lit): the look is not taken away.
+    name = "Copy the link"
+    page.mouse.move(*phone.at(name))
+    page.mouse.click(*phone.at(name))
+    page.wait_for_timeout(SETTLE_MS)
+    held = phone.fill(name)
+    page.mouse.move(MARGIN_X, MARGIN_Y)
+    page.wait_for_timeout(SETTLE_MS)
+    resting = phone.fill(name)
+    distance = sum(abs(a - b) for a, b in zip(held, resting))
+    print(f"look of {name:16s} after a click {held}, at rest {resting}: {distance} apart (the mouse still over it)")
+    rows.append({"case": f"click look {name}", "held": held, "resting": resting, "distance": distance})
+    if distance <= LIT_DISTANCE:
+        wrong.append(f"{name} lost its hover after a mouse click (colour {distance} from rest)")
     page.screenshot(path=out / f"{label}_desktop_end.png")
     return wrong
 
