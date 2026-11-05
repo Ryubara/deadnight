@@ -279,6 +279,32 @@ measured here.
   the `not_found` of the backend is *That night has ended. Here is the list again.* (tested over the real backend and
   the real screen). The window is one refresh of the list (a few seconds) at most.
 
+### The deployed probe, and two ways it failed on production (#1240)
+
+`game/tests/captures/deployed_leaving_probe.gd` (`--backend=<url> --ended`) plays the rules above against the real
+backend and game server with two clients. On 2026-11-05 it failed 2 of 16, and each failure had its own cause, found
+in the backend's logs (`railway logs -d <deployment id> --service backend`):
+
+1. **`tab then list`: the probe joined the row it had just left.** It joined the first row of the list. That row was
+   Ann's own night: her socket had closed (that is the scenario), and the game server's `/left` takes the night out of
+   the list a moment after the socket closes (the join came 360 ms later; the backend log shows `GET /lobbies` 200 and
+   the `join-by-code` 404 in the same 3 ms). It repeated on every run (a fault of the probe, not of the list: the
+   Server Browser answers a row that has gone with *That night has ended*, above). The probe now joins Bo's waiting
+   room by the row it finds in the list, which Bo reads every two seconds as the screen does (a waiting room nobody
+   reads is hidden from the list after 15 s), and checks that the night Ann left is out of the list.
+2. **`ended`: the backend was deployed during the night.** Lobbies live in the memory of one backend (see *After a
+   backend restart* in `docs/research/platform-backend.md`) and production deploys the backend every few minutes as main
+   merges. The log shows the lobby made and started on the old container, which stopped at 10:41:36, the new container
+   listening at 10:41:29, and the night's round report, then 36 s of `preview` answers `404`, on the new one. The lobby,
+   with its match, was gone before the night ended, so nothing could reopen it. Nothing in the code is wrong; a player
+   in that night keeps playing and cannot return to a lobby that no longer exists (the menu is where the screen sends
+   them, #1241).
+
+`GET /health` now names the run of the backend (`boot`, new on every start). The probe reads it before and after, and a
+failing run whose `boot` changed ends `PROBE INCONCLUSIVE` with exit code 2: run it again. A game server that was
+deployed during the night drops Ann's socket before the night closes; the probe says so (`PROBE the game server dropped
+Ann...`) and does not wait out the 8 minutes.
+
 ## Poll or push
 
 **Polling.** `GET /lobbies/:id` every 2 s while the lobby screen is up, and nothing at other times.

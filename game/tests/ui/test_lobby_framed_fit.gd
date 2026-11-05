@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## A lobby of eight seats, every one with a calling card, an emblem and a frame, still fits (#1161).
-## A frame is drawn inside the seat's row, over its top and bottom edge (`LobbyScreen._show_plate`
+## A frame is drawn inside the seat's row, over its top and bottom edge (`LobbySeatRow.show_plate`
 ## keeps its room clear at the two ends only: the level's icon, 24 units in a 45 unit row, is clear
 ## of the border's 7), so a framed seat is as tall as a plain one. This holds that: the panel
 ## stays inside the window, nothing is cut or put under another control (`UiFit`, the check of
