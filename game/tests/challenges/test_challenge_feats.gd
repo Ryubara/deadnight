@@ -37,9 +37,14 @@ func _count(stat: StringName, value: int, delta: int = 1) -> Array[Dictionary]:
 	return moved
 
 
+## What a night does to a stat, as far as the feat `id` is told.
+func _count_for(id: StringName, stat: StringName, value: int, delta: int = 1) -> Array[Dictionary]:
+	return _count(stat, value, delta).filter(func(a: Dictionary) -> bool: return a["id"] == id)
+
+
 func test_the_shipped_feats_are_the_launch_set_and_sound() -> void:
 	var feats := _catalog.of_family(ChallengeDef.Family.FEAT)
-	assert_int(feats.size()).is_equal(24)
+	assert_int(feats.size()).is_equal(43)
 	assert_array(_catalog.problems(_weapon_ids(), _type_ids())).is_empty()
 	for def in feats:
 		(
@@ -92,11 +97,11 @@ func test_a_feat_over_several_stats_is_as_far_as_the_lowest() -> void:
 	var last: StringName = rack.stats[rack.stats.size() - 1]
 	# Every weapon but the last at 250: the lowest is 0, so the feat has not begun.
 	for stat in rack.stats.slice(0, rack.stats.size() - 1):
-		assert_array(_count(stat, 250, 250)).is_empty()
+		assert_array(_count_for(rack.id, stat, 250, 250)).is_empty()
 	assert_int(int(_profile.feats.get(rack.id, 0))).is_equal(0)
-	assert_array(_count(last, 100, 100)).is_empty()
+	assert_array(_count_for(rack.id, last, 100, 100)).is_empty()
 	assert_int(_profile.feats[rack.id]).is_equal(100)
-	var moved := _count(last, 150, 150)
+	var moved := _count_for(rack.id, last, 150, 150)
 	assert_int(moved.size()).is_equal(1)
 	assert_bool(moved[0]["completed"]).is_true()
 	assert_int(_profile.feats[rack.id]).is_equal(250)
