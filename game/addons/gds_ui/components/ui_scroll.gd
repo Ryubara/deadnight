@@ -160,16 +160,37 @@ static func take_touch(scroll: ScrollContainer) -> void:
 	if not scroll.has_meta(&"ui_slip"):
 		scroll.set_meta(&"ui_slip", true)
 		scroll.gui_input.connect(_read_slip.bind(scroll))
+		scroll.scroll_started.connect(scroll.set_meta.bind(&"ui_scrolled", true))
 
 
 static func _read_slip(event: InputEvent, scroll: ScrollContainer) -> void:
 	var touch := event as InputEventScreenTouch
-	if touch == null or not touch.pressed or not scroll.is_inside_tree():
+	if touch == null or not scroll.is_inside_tree():
 		return
+	if not touch.pressed:
+		# The finger lifts. If this touch scrolled the area, the buttons gave their press up, but the
+		# finger is still over one (the content moved with it): it must not stay lit.
+		if scroll.get_meta(&"ui_scrolled", false):
+			scroll.set_meta(&"ui_scrolled", false)
+			_drop_hover(scroll)
+		return
+	scroll.set_meta(&"ui_scrolled", false)
 	var slip := 0.0
 	if slip_units.is_valid() and _button_at(scroll, touch.position) != null:
 		slip = float(slip_units.call(scroll.get_window()))
 	scroll.scroll_deadzone = maxi(roundi(slip), 0)
+
+
+## Takes the hover off every button of `scroll` that has it. A finger that lifts sends no mouse
+## exit, so the engine keeps the button it lifted over hovered (and drawn lit) until the next mouse
+## motion; a button that stops being a pointer target for a moment is told the mouse left it.
+static func _drop_hover(scroll: ScrollContainer) -> void:
+	for node in scroll.find_children("*", "BaseButton", true, false):
+		var button := node as BaseButton
+		if button.is_hovered():
+			var filter := button.mouse_filter
+			button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			button.mouse_filter = filter
 
 
 ## The button under `point` (in `scroll`'s own coordinates) that a press would reach, or null.

@@ -12,6 +12,8 @@ It measures, in CSS pixels:
 - a drag of `DRAG_PX` from the card's margin (nothing under the finger: the control), then from each button (Start,
   Copy the link, Copy the code, Leave): how far the card moved, and whether any button was pressed;
 - a tap on Start: it presses once and the card stays;
+- the resting look: after a drag that scrolled the card from a button and lifted, the button is drawn as it is after a
+  touch elsewhere, not hovered (the finger lifts over it, the content having moved with it);
 - a slip sweep: a finger that lands on Start and moves `slip` CSS pixels, then lifts on it. The press must survive a
   small slip and a slip past the threshold must scroll the card and give the press up.
 
@@ -19,7 +21,7 @@ It measures, in CSS pixels:
 presses it, a mouse drag across a button moves nothing, the wheel over a button scrolls the card.
 
     uv run --project <kit>/python gds quiet -- \\
-        uv run --with playwright==1.64.1 python tools/web_smoke/phone_drag.py <web folder> <out folder> \\
+        uv run --with playwright==1.64.1 --with pillow python tools/web_smoke/phone_drag.py <web folder> <out folder> \\
         [--label after] [--desktop] [--no-fail]
 
 Exits 1 when a drag from a button scrolls less than `MIN_SHARE` of what the same drag from the margin does, when a
@@ -30,11 +32,13 @@ button was pressed by a drag, when a tap or a slip under `PRESS_SLIP_PX` does no
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import sys
 import time
 from pathlib import Path
 
+from PIL import Image
 from playwright.sync_api import CDPSession, Page, sync_playwright
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -61,6 +65,11 @@ SLIPS = [0.0, 3.0, 6.0, 8.0, 9.0, 12.0, 16.0, 24.0]
 PRESS_SLIP_PX = 9.0
 SCROLL_SLIP_PX = 12.0
 SETTLE_MS = 1200
+# The resting look: the colour of the button's fill is read left of its words (CSS pixels from its centre), and a
+# button that is lit differs from its resting colour by more than this sum over the three channels (the grain of the
+# fill and its gradient move it up to 23; a lit button is 68 or more away: measured 95, 68 and 81).
+LOOK_OFFSET_PX = 110.0
+LIT_DISTANCE = 40
 
 
 class Phone:
@@ -113,6 +122,13 @@ class Phone:
         self.page.wait_for_timeout(80)
         self.touch("touchEnd")
         self.page.wait_for_timeout(SETTLE_MS)
+
+    def fill(self, name: str) -> tuple[int, int, int]:
+        """The colour of `name`'s fill, read in a screenshot at a point left of its words."""
+        x, y = self.at(name)
+        image = Image.open(io.BytesIO(self.page.screenshot())).convert("RGB")
+        scale = image.width / self.size[0]
+        return image.getpixel((int((x - LOOK_OFFSET_PX) * scale), int(y * scale)))
 
     def card_y(self) -> float:
         """Where the Start button is: the card's scroll, read as a position."""
@@ -196,6 +212,20 @@ def finger_cases(phone: Phone, out: Path, label: str, rows: list[dict]) -> list[
         wrong.append("a drag pressed Start")
     if phone.note():
         wrong.append(f"a drag pressed a copy button ({phone.note()!r})")
+    # The resting look: a drag that scrolled the card from a button, lifted, leaves the button as a touch elsewhere does.
+    for name in ("Start the night", "Copy the link", "Copy the code"):
+        phone.drag(phone.at(name), -DRAG_PX)
+        lifted = phone.fill(name)
+        if name == "Start the night":
+            phone.page.screenshot(path=out / f"{label}_resting_after_drag_from_start.png")
+        phone.restore(top)
+        phone.tap((MARGIN_X, MARGIN_Y))
+        resting = phone.fill(name)
+        distance = sum(abs(a - b) for a, b in zip(lifted, resting))
+        print(f"look of {name:16s} after the lift {lifted}, at rest {resting}: {distance} apart")
+        rows.append({"case": f"look {name}", "lifted": lifted, "resting": resting, "distance": distance})
+        if distance > LIT_DISTANCE:
+            wrong.append(f"{name} stays lit after a drag that scrolled the card from it (colour {distance} from rest)")
     # A flick: fast and released at once, so the card coasts.
     for name in ("margin", "Start the night"):
         start = (MARGIN_X, MARGIN_Y) if name == "margin" else phone.at(name)

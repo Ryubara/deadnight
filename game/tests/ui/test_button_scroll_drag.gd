@@ -211,6 +211,38 @@ func test_a_press_that_slips_under_the_slop_still_presses(
 	assert_array(_pressed).is_equal([0, 1, 0])
 
 
+## A finger that scrolls the card from a button lifts with the content moved under it, so the
+## engine still has that button hovered: it would stay drawn lit until the next mouse motion.
+## Headless is not a touch screen, so the scroll is told to the card by hand (`scroll_started`,
+## which the engine emits when a drag passes the deadzone); `phone_drag.py` measures it for real.
+func test_a_press_given_up_by_a_scroll_leaves_no_hover_behind(
+	kind: String, test_parameters := [["ui"], ["plain"]]  # gdlint: ignore=unused-argument
+) -> void:
+	await _card(kind)
+	var button := _buttons[1]
+	var at := _centre(button)
+	await _touch(at, true)
+	assert_bool(button.is_hovered()).is_true()
+	_scroll.scroll_started.emit()
+	await _lift(at)
+	await get_tree().process_frame
+	assert_bool(button.is_hovered()).is_false()
+	assert_int(button.mouse_filter).is_equal(Control.MOUSE_FILTER_PASS)
+
+
+func test_a_tap_that_scrolled_nothing_leaves_the_hover_as_it_was() -> void:
+	# What a tap always did: the button stays hovered under the lifted finger until the mouse
+	# moves. Only a press given up by a scroll is cleared.
+	await _card("ui")
+	var button := _buttons[1]
+	var at := _centre(button)
+	await _touch(at, true)
+	await _lift(at)
+	await get_tree().process_frame
+	assert_bool(button.is_hovered()).is_true()
+	assert_array(_pressed).is_equal([0, 1, 0])
+
+
 func test_the_slop_is_ten_css_pixels_on_the_phone_page() -> void:
 	# 1688 x 780 at the phone factor: 0.72 CSS px a unit, so 10 CSS px are 14 units.
 	assert_float(TouchSlop.units(get_window())).is_between(13.5, 14.2)

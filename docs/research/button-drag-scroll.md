@@ -71,6 +71,29 @@ A note on a probe that said a `PASS` button is not pressed at all (pressed = 0):
 64 x 64, and the probe's buttons sat at x = 200, outside it, so the click never reached them. The same probe with the
 button at 0, 0 presses once and leaks the press. A probe of pointer input needs a window as large as what it puts in it.
 
+## A button stayed lit after a scroll from it
+
+Found in the capture: after a drag from Start that scrolled the card, Start was drawn paler and larger (its hover) in
+the shot taken after the finger lifted and 1.2 s had passed. A finger that lifts sends no mouse exit, so the engine
+keeps the button it lifted over hovered until the next mouse motion; before this change a drag from a button moved the
+finger off it, so the button went back, but now the card moves with the finger and the finger lifts over the button.
+Measured in the web export (`phone_drag.py`, the colour of the fill left of the words after the lift against the same
+button after a touch elsewhere, in the sum of the three channels):
+
+- before this change: Start 16 apart, Copy the link 6, Copy the code 3 (resting);
+- this change without the fix: Start 95, Copy the link 68, Copy the code 81 (stays lit until the next touch);
+- with the fix: Start 23 (the fill's own gradient and grain), Copy the link 2, Copy the code 7 (resting).
+
+A tap leaves its button lit the same way before and after this change (Copy the link after a tap: 37, 34, 43 against
+14, 11, 21 at rest, in both exports): the engine's behaviour, not touched here. The fix is for the press a scroll gave
+up: a scroll area that took the touch (`take_touch`) notes `scroll_started`, and when the finger lifts it takes the hover
+off the buttons that have it (`_drop_hover`: the filter is set to `IGNORE` and back, which makes the engine send the
+mouse exit; hiding the button does the same but drops its focus, and a motion out of the window does it too but is an
+event the player's `_unhandled_input` would see; measured in a headless run, all three clear it and none brings it back
+by itself). The press itself needs nothing: the button gives it up when the scroll begins. The unit test tells the area
+`scroll_started` by hand (headless is not a touch screen); `phone_drag.py` measures it for real and fails, with the
+look of each button, when one stays lit (it fails on the export without the fix: 95, 68, 81).
+
 ## What did not change
 
 A mouse press, a mouse drag across a button, the wheel over a button, and a controller's accept press act as before
