@@ -1,8 +1,8 @@
 class_name TogetherApi
 extends RefCounted
 ## What the game says to the platform backend to play with other people: sign in as a guest (a
-## visitor with no Discord), make a night and its invite code, join by code, Quick join, and trade
-## a lobby for the game server's address and a ticket (docs/research/platform-backend.md).
+## visitor with no Discord), make a night and its invite code, list the public nights, join by code,
+## and trade a lobby for the game server's address and a ticket (docs/research/platform-backend.md).
 ##
 ## Every call is awaited and answers `{"ok": true, ...}` or `{"ok": false, "error": <the backend's
 ## reason, or "network">, "text": <what to show a player>}`; none throws. The session is kept for
@@ -35,6 +35,8 @@ const TEXTS := {
 	"already_started": "The night has started already.",
 	"too_many_guests": "Too many people signed in from here. Try again later.",
 	"unauthorized": "Your sign-in ran out. Try again.",
+	"too_many_requests":
+	"That was too many refreshes in a row. The list updates again in a moment.",
 	"network": "Could not reach the game's servers. Check your connection.",
 }
 
@@ -261,7 +263,8 @@ func preview(code: String) -> Dictionary:
 	return {"ok": true, "preview": seen} if seen["ok"] else seen
 
 
-## The Server Browser's rows (#1179; the screen is #1180): the public nights a player can join,
+## The Server Browser's rows (#1179; the screen is `ServerBrowserScreen`, #1180): the public nights
+## a player can join,
 ## waiting or in progress, with room first. `{"ok", "nights", "total", "maxPlayers"}`, a row being
 ## `{id, code, map, hostName, players, maxPlayers, bots, kind, state, round, full}`: `players` is
 ## people only (a bot holds no seat, it is in `bots`), `kind` is `lobby` (waiting) or `match` (in
@@ -306,12 +309,6 @@ func join_code(code: String) -> Dictionary:
 	if clean.is_empty():
 		return _failed("not_found")
 	var joined := await _call("POST", "/lobbies/join-by-code", {"code": clean})
-	return {"ok": true, "lobby": joined} if joined["ok"] else joined
-
-
-## A public night with room, or a new one.
-func quick() -> Dictionary:
-	var joined := await _call("POST", "/lobbies/quick")
 	return {"ok": true, "lobby": joined} if joined["ok"] else joined
 
 
@@ -443,6 +440,7 @@ func _call(
 			detail = str((json as Dictionary).get("detail", ""))
 	var failed := _failed(reason, detail)
 	failed["status"] = status
+	failed["retry_after"] = float(answer.get("retry_after", 0.0))
 	return failed
 
 

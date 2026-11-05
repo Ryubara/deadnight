@@ -11,9 +11,9 @@ func _screen() -> TogetherScreen:
 	return screen
 
 
-func test_it_offers_quick_join_a_night_of_your_own_and_a_code() -> void:
+func test_it_offers_the_server_browser_a_night_of_your_own_and_a_code() -> void:
 	var screen := _screen()
-	assert_str(screen.quick_button.text).is_equal("Quick join")
+	assert_str(screen.browser_button.text).is_equal("Server browser")
 	assert_str(screen.create_button.text).is_equal("Create a night")
 	assert_object(screen.code_field).is_not_null()
 	assert_bool(screen.code_field.max_length > 0).is_true()
@@ -202,8 +202,8 @@ func test_a_link_to_a_night_that_is_gone_says_so_and_shows_the_menu() -> void:
 	TogetherScreen.auto_code = "NOPE"
 	await screen.screen_enter()
 	assert_str(screen.status.text).contains("no night with that code")
-	assert_bool(screen.quick_button.is_visible_in_tree()).is_true()
-	assert_bool(screen.quick_button.disabled).is_false()
+	assert_bool(screen.browser_button.is_visible_in_tree()).is_true()
+	assert_bool(screen.browser_button.disabled).is_false()
 	assert_object(UIRouter.top() as LobbyScreen).is_null()
 	screen.queue_free()
 	Settings.set_value(SettingsService.PROFILE_CACHE, before)
@@ -253,7 +253,7 @@ func test_a_player_with_no_name_is_asked_for_one_before_signing_in() -> void:
 	assert_bool(screen.needs_name()).is_true()
 	screen.call("_ask_name")
 	assert_bool(screen.name_field.is_visible_in_tree()).is_true()
-	assert_bool(screen.quick_button.is_visible_in_tree()).is_false()
+	assert_bool(screen.browser_button.is_visible_in_tree()).is_false()
 	screen.name_field.text = "  Ruby  "
 	screen.name_continue_button.pressed.emit()
 	assert_str(MenuProfile.load_saved().display_name).is_equal("Ruby")

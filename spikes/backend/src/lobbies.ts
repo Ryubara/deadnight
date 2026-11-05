@@ -33,8 +33,8 @@ export interface Lobby {
   hostId: string;
   maxPlayers: number;
   /**
-   * A public night is listed (`listed`, the Server Browser) and one Quick join may put a stranger in; a private one is for
-   * whoever has its code. A new night is public: its host makes it private (`setVisibility`).
+   * A public night is listed (`listed`, the Server Browser) for any player to join; a private one is for whoever has its
+   * code. A new night is public: its host makes it private (`setVisibility`).
    */
   visibility: Visibility;
   members: Member[];
@@ -390,26 +390,6 @@ export class LobbyService {
     lobby.match = { id: matchId, server, hostLevel };
     this.byMatch.set(matchId, lobby.id);
     return lobby;
-  }
-
-  /** Quick join: a public night with room (open or started), else a new public one, started at once. */
-  quick(member: Member, hostLevel: number, maxPlayers = MAX_PLAYERS): Lobby {
-    for (const lobby of [...this.lobbies.values()]) {
-      if (lobby.visibility !== "public" || this.expired(lobby)) continue;
-      if (lobby.members.some((m) => m.userId === member.userId)) return lobby;
-      try {
-        return this.join(lobby.id, member);
-      } catch (error) {
-        if (!(error instanceof LobbyFailure)) throw error;
-      }
-    }
-    const lobby = this.create(member, maxPlayers, "public");
-    try {
-      return this.start(lobby.id, member.userId, hostLevel);
-    } catch (error) {
-      this.remove(lobby);
-      throw error;
-    }
   }
 
   /** The game server's count of the players in a match, from its heartbeat. Unknown matches are ignored. */

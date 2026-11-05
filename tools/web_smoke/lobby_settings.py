@@ -108,7 +108,7 @@ def main() -> int:
             page.goto(url, wait_until="commit")
             smoke.reach_menu(page)
             smoke.open_together(page)
-            smoke.press(page, "ArrowDown")  # Quick join -> Create a night
+            smoke.press(page, "ArrowDown")  # Server browser -> Create a night
             smoke.press(page, "Enter")
             smoke.give_name(page, "Ann")
             wait_for(
