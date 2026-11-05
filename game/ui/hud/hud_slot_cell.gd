@@ -36,6 +36,13 @@ func _init() -> void:
 	resized.connect(_layout)
 
 
+## Types the number at `px` (a finger holds the screen: the number is read at the HUD's least text
+## size for a phone, `MenuScale.text_units`).
+func set_number_size(px: int) -> void:
+	_number.add_theme_font_size_override(&"font_size", px)
+	_layout()
+
+
 ## Shows `slot_number` holding `id` (`&""` for an empty place), lit when `in_hand`. `picture` is the
 ## weapon's silhouette; without one (a weapon with no model) its name stands in.
 func show_slot(slot_number: int, id: StringName, in_hand: bool, picture: Texture2D) -> void:
@@ -52,9 +59,14 @@ func show_slot(slot_number: int, id: StringName, in_hand: bool, picture: Texture
 	_picture.modulate = ink
 	_name.add_theme_color_override(&"font_color", ink)
 	_number.add_theme_color_override(&"font_color", ink)
-	HudStyle.set_text(_number, str(slot_number))
+	HudStyle.set_text(_number, _number_text(slot_number))
 	_layout()
 	queue_redraw()
+
+
+## What the corner says: the slot's number (a grenade place says its count).
+func _number_text(slot_number: int) -> String:
+	return str(slot_number)
 
 
 ## The colour of the number and the weapon: dark on the lit paper, cream on the dark, dim when the
@@ -105,4 +117,11 @@ func _draw() -> void:
 	shapes.polygon(shadow, _tokens.shadow)
 	shapes.polygon(outline, paper)
 	shapes.polyline(edge, _tokens.accent_bright if held else _tokens.outline, float(_tokens.border))
+	_add_art(shapes)
 	shapes.flush(self)
+
+
+## What a kind of place draws over its ticket, into the same command (none for a weapon: its
+## silhouette is a texture).
+func _add_art(_shapes: HudShapes) -> void:
+	pass
