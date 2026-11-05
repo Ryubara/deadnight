@@ -97,6 +97,22 @@ func set_control(node: Control) -> void:
 		move_child(slot, 1)
 
 
+## The whole title, never cut to "Break between ro...": the title's column grows to its text. For a
+## row whose card has the room (a phone's form), where the tokens' column is narrower than a title.
+func show_whole_title(on: bool) -> void:
+	_title_label.text_overrun_behavior = (
+		TextServer.OVERRUN_NO_TRIMMING if on else TextServer.OVERRUN_TRIM_ELLIPSIS
+	)
+
+
+## Whether the title is cut short ("Break between ro...") as the row is laid out now.
+func title_cut() -> bool:
+	var font := _title_label.get_theme_font(&"font")
+	var font_size := _title_label.get_theme_font_size(&"font_size")
+	var wanted := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size).x
+	return wanted > _title_label.size.x + 0.5
+
+
 ## A row for a column narrower than the tokens' form: the title's and the control's least widths,
 ## and no value column (a row with no number beside it), so a card that cannot be wider than its
 ## area still holds the row (#980).
