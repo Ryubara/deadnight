@@ -41,7 +41,7 @@ DEVICE_SCALE = 2
 CSS_PX_PER_MM = 6.0
 TAP_CSS_PX = 44.0
 # The buttons a drag from which turns the view: every button of the right thumb but the wheel.
-LOOKING = ("fire", "aim", "reload", "jump", "crouch", "swap_weapon", "throw_grenade", "swap_shoulder", "quick_melee")
+LOOKING = ("fire", "aim", "reload", "jump", "crouch", "swap_shoulder", "quick_melee")
 DRAG_PX = 90.0
 STEPS = 15
 STEP_PERIOD_S = 0.03

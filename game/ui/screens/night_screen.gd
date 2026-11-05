@@ -183,7 +183,11 @@ func _ready() -> void:
 	_touch.safe_insets_changed.connect(_on_safe_insets_changed)
 	_touch.mirrored_changed.connect(_on_mirrored_changed)
 	_touch.active_changed.connect(func(active: bool) -> void: _hud.touch_layout = active)
-	_touch.layout_changed.connect(func() -> void: _hud.markers.held = _touch.button_boxes())
+	_touch.layout_changed.connect(_keep_markers_off_the_buttons)
+	# The HUD's weapon places are the phone's weapon controls (#1280): the layer asks it where they
+	# are, and the world markers keep clear of them as of the buttons.
+	_touch.zones = _hud.slots.touch_zones
+	_hud.slots_moved.connect(_keep_markers_off_the_buttons)
 	_touch.look_gain = _look_gain
 	# A hit area is never under a fingertip, at the interface size this night runs at (#1217).
 	_touch.finger_units = func() -> float: return MenuScale.tap_units(get_window(), true)
@@ -217,6 +221,11 @@ func _start_if_run_alone() -> void:
 		screen_enter()
 
 
+## Hands the world markers every box a finger presses: the buttons and the weapon places.
+func _keep_markers_off_the_buttons() -> void:
+	_hud.markers.held = _touch.button_boxes()
+
+
 ## True while the touch controls are on screen and taking touches.
 func touch_active() -> bool:
 	return _touch != null and _touch.is_active()
@@ -226,6 +235,11 @@ func touch_active() -> bool:
 ## reads them).
 func touch_circles() -> Dictionary:
 	return _touch.circles() if _touch != null else {}
+
+
+## The HUD's weapon places a finger presses (`HudSlots.touch_zones`): a browser test reads them.
+func touch_zones() -> Array[Dictionary]:
+	return _hud.slots.touch_zones() if _hud != null else []
 
 
 func touch_held() -> PackedStringArray:

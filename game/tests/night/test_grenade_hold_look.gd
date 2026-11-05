@@ -114,6 +114,17 @@ func _assert_thrown_on_release() -> void:
 	assert_bool(_cooking()).is_false()
 
 
+## The grenade is the HUD's place beside the weapons, not a button of the layer's own (#1280): the
+## touch layer over a HUD, and the centre of the place a thumb lands on.
+func _grenade_place() -> Vector2:
+	_fixture = TouchFixture.make(self, TouchFixture.PHONE, null, false, true)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var place := _fixture.zone_centre(&"throw_grenade")
+	assert_bool(place.is_finite()).is_true()
+	return place
+
+
 func test_the_mouse_turns_the_view_while_a_grenade_is_held() -> void:
 	var key := _bound(&"throw_grenade", false)
 	_send(key, true)
@@ -146,8 +157,7 @@ func test_the_gamepad_stick_turns_the_view_while_a_grenade_is_held() -> void:
 
 
 func test_a_thumb_that_holds_the_grenade_button_turns_the_view_by_dragging() -> void:
-	_fixture = TouchFixture.make(self)
-	var grenade := _fixture.at(TouchLayout.GRENADE)
+	var grenade := await _grenade_place()
 	await _fixture.touch(0, grenade)
 	await _pull_pin()
 	var yaw := _night.player().camera_rig.yaw
@@ -163,8 +173,7 @@ func test_a_thumb_that_holds_the_grenade_button_turns_the_view_by_dragging() -> 
 
 
 func test_another_finger_on_the_look_area_turns_the_view_while_the_grenade_is_held() -> void:
-	_fixture = TouchFixture.make(self)
-	var grenade := _fixture.at(TouchLayout.GRENADE)
+	var grenade := await _grenade_place()
 	await _fixture.touch(0, grenade)
 	await _pull_pin()
 	var yaw := _night.player().camera_rig.yaw

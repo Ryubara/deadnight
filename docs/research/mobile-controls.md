@@ -188,8 +188,8 @@ dp. Buttons are drawn at 50 percent opacity at rest and 90 percent while held, w
 | Aim (ADS) | 74 x 44, above-left of Fire | 12 mm | hold (toggle option) |
 | Jump | 93 x 36, above Fire | 12 mm | `jump` |
 | Reload | 76 x 80, beside Fire | 11 mm | `reload`; also a tap on the ammo card |
-| Swap weapon | 63 x 70 | 10 mm | `swap_weapon`; a tap cycles |
-| Grenade | 63 x 56 | 10 mm | `throw_grenade`; hidden at zero grenades |
+| Swap weapon | 63 x 70 | 10 mm | `swap_weapon`; a tap cycles (removed in #1280: a tap on the weapon on the HUD) |
+| Grenade | 63 x 56 | 10 mm | `throw_grenade`; hidden at zero grenades (moved to the HUD strip in #1280, dim at zero) |
 | Interact | 50 x 62, centre bottom | 15 mm wide pill | appears only when `HudPrompt` has a target; shows the verb and price; `interact` |
 | Pause | 50 x 4, top centre, under the banner | 9 mm | `pause`; the banner moves when a touch is held |
 | Crouch, shoulder swap | in settings | | not on the screen; shoulder swap is a camera setting (see "What the build showed": a button was built) |
@@ -326,8 +326,9 @@ around", and "All of the mobile touch controls icons must be icons instead".
   orders, Ping a pin, Pause two bars, Scoreboard the rows of a table. **Interact keeps its word** under a tap mark:
   OPEN, BUY, AMMO, PLAY, TAKE, FUEL, HOLD, SWITCH, REVIVE are nine different things at different prices that a
   picture would have to teach one by one, and the prompt card above names the object.
-- **What waits for a home.** Swap and the Grenade (#1280), Shoulder, Melee and the Bots stay reachable where they were
-  (Swap and Shoulder moved a little so Interact has room) until the audit's homes are built (#1275); they look when
+- **What waits for a home.** (Swap and the Grenade have theirs since #1280, the HUD's weapon strip below.)
+  Shoulder, Melee and the Bots stay reachable where they were (Swap and Shoulder moved a little so Interact has
+  room) until the audit's homes are built (#1275); they look when
   dragged too, except the Bots.
 - **Interact is out of the markers' way until it shows.** `button_boxes` listed the hidden Interact, and at its new
   place it took the column the world markers need between the cards and the buttons on the smallest page (344 units
@@ -434,6 +435,62 @@ columns a draw tries for all its markers.
 - **Cost.** No node (`test_moving_markers_adds_no_canvas_item`). A frame on the busiest case, eight markers under the
   cards moved by a pixel every frame (a draw each frame; headless, the whole frame): 7.2 ms on the smallest page against
   37 ms with the old search (worst 16 ms against 83 ms), and 7.8 ms against 12.7 ms on a 1688 x 780 page at 1.0.
+
+## Weapons and grenades on the HUD (#1280)
+
+The maintainer: "Why do we have a swap weapons button when we clearly have a UI showing the weapons, the user could
+just click between both of them", and grenades "next to the weapons ... pressed and held to throw". The weapon strip of
+the HUD is the phone's weapon control; the Swap and Grenade buttons are gone from the layer (`TouchLayout.BUTTONS`).
+
+- **The trap, and how it is crossed.** The HUD's root and nearly all of its nodes ignore the pointer, and the touch
+  layer takes every finger itself with the engine's touch-to-mouse emulation off, so a `Button` on a cell would never
+  get a tap. The layer asks the HUD where the places are (`TouchControls.zones`, a callable set by `NightScreen`
+  to `HudSlots.touch_zones`: the action and the global box of each) and presses that action like a button of its own
+  (`_touch_down`, after `TouchLayout.button_at`: a button wins where the two meet, and the tests keep them apart).
+  The HUD nodes keep ignoring the pointer. `button_boxes()` (the world markers' keep-clear list, #1218) holds the
+  boxes, and the HUD says when they move (`Hud.slots_moved`, once a frame at most) so the night screen hands the
+  markers the new list.
+- **A weapon's place** presses `weapon_slot_N`, the key's own action, held for the layer's minimum so a tick sees a tap;
+  a finger that starts there only picks the weapon (it is not in `LOOKING_BUTTONS`): it never fires or looks, however
+  far it drags. **The grenades' place** presses `throw_grenade`, held while the thumb is down (the server's cook),
+  looks while it drags (#599) and throws on the lift; it is lit while the pin is out and shows `x3`. There is no cancel
+  to carry over: none exists today (a cook ends by a throw or in the hand).
+- **Layout.** Under a finger the strip leaves the ammo column for a column of its own at the bottom of the players'
+  column's corner (the stick's side; a left hand flips it), the players' column lifted by its height. Each place is
+  `MenuScale.tap_units` high (44 CSS px; 122 units at the night's factor, 98 at an interface size of 1.25, 153 at 0.8),
+  the weapons a quarter wider, the grenades as wide as high; with the perk's third slot the row is 3 x 1.25 + 1 fingers
+  and three gaps, 599 units at 1.0 (two weapons: 450; the prompt card's edge is at 750 on a 1920 canvas, and the stick's
+  resting ring far above). At 1.25 on the smallest page (1536 x 864) it is 485 units (366) and the prompt starts at 558.
+- **Measured in the exported page** (`tools/web_smoke/touch_weapon_places.py`, real touches through the DevTools
+  protocol, pages of 844 x 390 and 667 x 375 CSS px at a ratio of 2, both hands, interface sizes 0.8, 1.0 and 1.25):
+  the weapons' places are 55.2 to 55.6 x 44.1 to 44.3 CSS px and the grenades' 44.1 to 44.3 square (a fingertip is 44);
+  all are on the hand's side of the page, inside it and clear of every button's hit area; a finger on a weapon's place
+  takes it (the pistol and the crowbar, tapped three times: slot 1, 2, 1) and the lit slot follows; a drag of 120 CSS px
+  from a weapon's place turns the view 0.000 rad and holds no other button; a finger on the grenades' place holds
+  `throw_grenade`, the server says the pin is out (1 s later and after a drag of 120 CSS px), the drag turns the view 0.51
+  to 0.53 rad, and the lift ends the cook and takes one from the count (3 to 2). Six runs, no problem. In the engine
+  `test_touch_weapon_places` holds the same with real touch events at every page, interface size and hand.
+- **Two things the strip's size showed.** (1) The search for a place clear of the cards (`HudMarkers._nearest_clear`)
+  rests a marker against a card's edge, and the marker is measured again where it stands: its box is 1e-4 taller than
+  the model's, so on the 667 x 375 page at 1.0 with eight players, the lifted column and the strip, every candidate
+  at an exact edge counted as touching and the marker stayed under the players' card (`test_hud_marker_cards`). A place
+  now rests `EDGE_EPSILON` (0.05 units) past the card. (2) A window that is no phone's (a test's 64 pixels) asks
+  `tap_units` for a fifth of the screen: the HUD takes a fingertip of at most 12 percent of its height and 160 units
+  (`Hud.FINGER_SHARE_MAX`, `FINGER_UNITS_MAX`; a phone's is 11.3 percent and 153 at most), or the strip fills it.
+- **After #1283 (the ring round Fire, the icons).** The strip's places hold their size and clearance with the new right
+  side: the suite's clearance test runs over the ring's buttons (Crouch and Reload on the left of Fire), `TouchIcons` lost
+  its Swap and Grenade drawings with their rows, and the grenades' place looks while it drags like every right button
+  (`TouchControls`, `GRENADE`, as `looks_when_dragged` reads only the layer's own table).
+  One number moved: on the 667 x 375 page at the usual interface size, eight markers (one on every card) no longer all
+  clear each other, as the ring's buttons and the strip leave less free ground in the corner, so
+  `test_markers_one_on_each_card_keep_clear_of_the_cards_and_of_each_other` holds six there (`CROWDED_HOLDS`); every
+  marker still stays off every card and button.
+- **The stick's resting ring** (`TouchLayout.STICK_REST`, #1276's) now overlaps the top of the points card by about
+  20 units: the column is a strip's height higher. It is a faint ring and the stick floats to wherever the thumb lands,
+  and the move hint is placed from it (`TouchHints`), so moving it moved the hint over the round card and the scoreboard
+  button on the smallest canvas (`test_touch_hints` failed): left for the stick's own issue, with the clearance test.
+- **Not done here:** a first-run hint for the places (the hints label the stick, the look and Interact only); a cancel
+  for a cooking grenade (the throw's other action `toss_grenade` has no touch control either).
 
 ## Sources
 
