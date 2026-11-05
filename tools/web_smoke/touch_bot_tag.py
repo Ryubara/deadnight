@@ -134,10 +134,18 @@ def start_night(page, client, size: dict, bots: int) -> None:
     menu.tap(client, spot(state, "Solo", size))
     menu.wait_for(page, "the Play screen", lambda s: s.get("screen") == "play_screen", 60)
     page.wait_for_timeout(1500)
-    for _ in range(bots):
-        menu.tap(client, spot(full(page), "bots:end", size))
-    page.wait_for_timeout(300)
-    menu.tap(client, spot(full(page), "Start the night", size))
+    # The Play screen is walked with the keyboard from Start, by control name (`solo_settings.py`): on the narrowest page
+    # at the biggest interface size the bots' stepper is below the fold, where a finger cannot find it. The night is
+    # what this proves, and everything in it is a finger.
+    if bots:
+        smoke.focus_control(page, "bots", "ArrowUp")
+        smoke.step_value(page, "bots", "ArrowRight", bots)
+        page.wait_for_timeout(300)
+        rules = str(full(page).get("play_rules", ""))
+        if not rules.endswith(f"|{bots} bots") and f"{bots} bots" not in rules:
+            raise RuntimeError(f"the Play screen says {rules!r}, not {bots} bots")
+    smoke.focus_control(page, "Start", "ArrowDown")
+    smoke.press(page, "Enter")
     smoke.wait_for_night(page)
 
 
