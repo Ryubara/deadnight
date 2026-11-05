@@ -9,6 +9,8 @@ night with the keyboard, and sends what a thumb does through the DevTools protoc
   stays on when the finger goes back inside the ring and to its middle, until it lifts (and a full push on any side
   sprints at `sprint_speed`);
 - a new press walks; a drag past the edge to the right and on a diagonal sprints as well;
+- what ends the body's sprint while the latch stays on: a second finger holding Aim (the sprint is let go while it is
+  down and comes back when it lifts) and a tap on Crouch (the body stops sprinting until a second tap stands it);
 - a second finger that opens the pause menu while the sprint is latched leaves the stick clear afterwards.
 
 The ring and the margin are CSS pixels, so the page's own size is what is measured: the distance in CSS pixels at which
@@ -150,14 +152,27 @@ def buzzes(page: Page) -> int:
     return len(page.evaluate("window.__buzz"))
 
 
-def pause_spot(page: Page, size: dict) -> tuple[float, float]:
-    """The Pause button's centre in CSS pixels, from the hit areas the game reports."""
+def spot(page: Page, size: dict, button: str) -> tuple[float, float]:
+    """A touch button's centre in CSS pixels, from the hit areas the game reports."""
     for entry in str(read(page).get("touch_hits", "")).split("|"):
         name, _, numbers = entry.partition(":")
-        if name == "pause":
+        if name == button:
             x, y = (float(n) for n in numbers.split(",")[:2])
             return x * size["width"], y * size["height"]
-    raise RuntimeError("the game reported no Pause button")
+    raise RuntimeError(f"the game reported no {button} button")
+
+
+def second_finger_down(client: CDPSession, thumb: Thumb, at: tuple[float, float]) -> None:
+    thumb.also = [(2, *at)]
+    touch(client, "touchStart", thumb.points())
+    time.sleep(STEP_PERIOD_S)
+
+
+def second_finger_up(client: CDPSession, thumb: Thumb) -> None:
+    """Lifts the second finger and keeps the first: a move without it releases it."""
+    thumb.also = []
+    touch(client, "touchMove", thumb.points())
+    time.sleep(STEP_PERIOD_S)
 
 
 def start_night(page: Page) -> None:
@@ -261,11 +276,38 @@ def run_size(url: str, label: str, size: dict, out: Path) -> dict:
         result["sideways_edge"] = hold(page, 0.6)
         thumb.up()
 
+        # What ends the body's sprint while the latch stays on (the stick finger is held the whole time).
+        thumb.down()
+        thumb.to(radius_px + margin_px + 4.0, 0.0)
+        result["cancels"] = {"sprint": hold(page, 0.5)}
+        second_finger_down(client, thumb, spot(page, size, "aim"))
+        result["cancels"]["aim_held"] = hold(page, 0.6)
+        second_finger_up(client, thumb)
+        result["cancels"]["aim_lifted"] = hold(page, 0.6)
+        crouch = spot(page, size, "crouch")
+        second_finger_down(client, thumb, crouch)
+        second_finger_up(client, thumb)
+        result["cancels"]["crouched"] = hold(page, 0.8)
+        shot("8_crouched_with_the_sprint_latched")
+        second_finger_down(client, thumb, crouch)
+        second_finger_up(client, thumb)
+        result["cancels"]["stood"] = hold(page, 0.6)
+        thumb.up()
+        result["cancels"]["lifted"] = hold(page, 0.5)
+
+        # A finger that lands over the players' column makes its ring over the cards: the capture shows what that is.
+        over = Thumb(client, (size["width"] * 0.08, size["height"] * 0.72))
+        over.down()
+        over.to(0.0, -radius_px)
+        shot("9_ring_made_over_the_players_column")
+        result["over_the_column"] = stick(page) | {"at_css_px": list(over.home)}
+        over.up()
+
         # A second finger opens the pause menu while the sprint is latched: the layer goes down and lets go.
         thumb.down()
         thumb.to(0.0, -(radius_px + margin_px + 4.0))
         time.sleep(0.4)
-        pause = pause_spot(page, size)
+        pause = spot(page, size, "pause")
         thumb.also = [(2, *pause)]
         touch(client, "touchStart", thumb.points())
         time.sleep(0.15)
@@ -329,6 +371,28 @@ def verdict(label: str, r: dict) -> list[str]:
         need(seen["latched"] and seen["buzzes_made"] == 1, f"a drag past the edge to the {name} did not sprint once")
         need(near(seen["peak_speed"], SPRINT_SPEED), f"a sprint to the {name} ran {seen['peak_speed']:.2f} m/s")
     need(not r["sideways_edge"]["latched"], "a sideways drag to the edge sprinted")
+    cancels = r["cancels"]
+    need(cancels["sprint"]["latched"] and cancels["sprint"]["sprinting"], "the latched sprint did not start")
+    need(near(cancels["sprint"]["peak_speed"], SPRINT_SPEED), f"sprint ran {cancels['sprint']['peak_speed']:.2f} m/s")
+    need(
+        cancels["aim_held"]["latched"] and not cancels["aim_held"]["sprinting"],
+        "holding Aim did not stop the body sprinting with the latch kept",
+    )
+    need(cancels["aim_held"]["speed"] < SPRINT_SPEED * 0.7, f"aiming ran at {cancels['aim_held']['speed']:.2f} m/s")
+    need(
+        cancels["aim_lifted"]["latched"] and cancels["aim_lifted"]["sprinting"],
+        "the sprint did not come back when Aim was let go",
+    )
+    need(
+        cancels["crouched"]["latched"] and not cancels["crouched"]["sprinting"],
+        "a Crouch tap did not stop the body sprinting with the latch kept",
+    )
+    need(cancels["crouched"]["speed"] < RUN_SPEED, f"crouched ran at {cancels['crouched']['speed']:.2f} m/s")
+    need(
+        cancels["stood"]["latched"] and cancels["stood"]["sprinting"],
+        "the sprint did not come back when Crouch was tapped again",
+    )
+    need(not cancels["lifted"]["latched"] and not cancels["lifted"]["sprinting"], "the sprint outlived the finger")
     need(not r["after_pause"].get("down", True) and not r["after_pause"]["latched"], "the pause left the stick down")
     need(not r["after_menu_press"]["latched"], "a press after the menu started sprinting")
     return wrong

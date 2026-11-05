@@ -16,7 +16,7 @@ Each finger has one job until it lifts, tracked by its touch index, so move, loo
 
 | Control | Where | Does |
 | --- | --- | --- |
-| Move | anywhere on the left, below the top fifth | a stick that floats under the thumb and follows it past the rim; the rim is a sprint |
+| Move | anywhere on the left, below the top fifth | a ring that appears where the finger lands and goes when it lifts (nothing is drawn without a finger); a drag to its edge walks at full speed, a drag 18 CSS px past the edge sprints with one buzz and the sprint stays on until the finger lifts (#1276) |
 | Look | the rest of the screen | a drag turns the view; one swipe across the screen's height turns about 92 degrees at sensitivity 1 (100 px on a 390 px tall phone is 23 degrees), a fast flick gains up to 1.6 times; the view follows the finger a few frames behind, evenly (`LookSmoother`, 40 ms, [why](../research/touch-look-smoothness.md)) |
 | Fire | big, right thumb (a bullet) | `fire` held, wherever the player aims (hip, aimed, auto-fire on or off); a drag that starts on it also looks, at the look sensitivity (#497) |
 | Aim | a scope, up and to the left of Fire | `aim`, **held** with auto-fire on (the default), a **toggle** with auto-fire off: a tap aims, the next tap leaves the aim, so the player can aim and shoot by hand. The button stays lit while the toggle is on. A drag that starts on it also looks, held or toggled (#497), so one thumb can aim and turn |
@@ -50,7 +50,7 @@ against the safe area, a thumb-sized hit area, each other and the HUD cards that
 
 The setting `controls/left_handed` (Settings, Touch tab, off by default) flips the layout left to right. It is a mirror,
 not a second layout: `TouchLayout.buttons(safe, scale, mirrored)` measures every offset from the bottom left corner
-instead of the bottom right, the stick zone is the right 45 percent and its resting ring is bottom right, and Pause moves
+instead of the bottom right, the stick zone is the right 45 percent and its resting place is bottom right, and Pause moves
 to the right of the HUD's round card. The look area is still the rest of the screen. The HUD flips with it
 (`Hud.mirrored`): the corner columns swap sides (round and objective, the fuel, event and notice lists, points and health,
 ammo), so the cards that stay clear of the buttons still do; the banner, the prompt and the gains stay in the middle. The
@@ -63,7 +63,9 @@ mirrored without overlap.
 The HUD's weapon slot strip (#682) is over the ammo card on a keyboard, where the right thumb's corner is empty. With the
 touch controls up (`TouchControls.active_changed`, which the night screen hands to `Hud.touch_layout`) it moves under the
 health card, as wide as it, because Fire and Melee sit where it would; `slots` is one of the kept cards the buttons are
-tested against. The stick's resting ring is 60 units higher so it clears the players' column and the strip under it.
+tested against. The stick's resting place (where its hint stands, and the ring a finger would make there) is beside the
+players' column, the perk badges and the strip, not above them: `TouchLayout.STICK_REST_CLEAR`, tested for either hand on
+the two phone pages at every interface size and touch scale (`test_touch_stick_rest`).
 
 ## First run and key hints
 
@@ -71,8 +73,8 @@ tested against. The stick's resting ring is 60 units higher so it clears the pla
   with nothing else used yet); the prompt card's glyph then draws a round tap mark (rings round a dot) and no letter
   ([HUD prompt](hud.md)). A key or a gamepad button brings the keycap back, and so does a real mouse click; mouse
   *motion* does not, because the layer sends its look as motion, and the engine's touch copies are marked as emulated.
-- **Hints once per control** (`TouchHints`, a child of the layer): "DRAG TO MOVE" over the stick's resting ring, "DRAG TO
-  LOOK" in the look area and "TAP TO USE" ("HOLD TO REPAIR" at a fence) beside the Interact button while it shows. Each
+- **Hints once per control** (`TouchHints`, a child of the layer): "DRAG TO MOVE" over the stick's resting place, "DRAG
+  TO LOOK" in the look area and "TAP TO USE" ("HOLD TO REPAIR" at a fence) beside the Interact button while it shows. Each
   goes the moment its control is used: a finger on the stick, the first look drag (also one that started on Fire), a
   press of Interact. The Interact hint waits for the first prompt, and a prompt that goes unused brings it back with the
   next one. What was used is a bit in the setting `controls/touch_hints_seen`, so a player sees each hint once ever;

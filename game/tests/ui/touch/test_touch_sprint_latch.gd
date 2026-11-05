@@ -154,6 +154,28 @@ func test_aiming_leaves_the_latch_on_and_the_player_ignores_it_while_the_aim_is_
 	await _fixture.lift(0)
 
 
+## Crouch is a toggle on a phone (#1277): the tap stands the body down and the latch stays, so the
+## sprint is back when a second tap (or a Jump) stands it with the stick finger still down.
+func test_a_crouch_tap_leaves_the_latch_on_and_the_sprint_returns_when_the_body_stands() -> void:
+	var past := _up(_controls().stick_radius() + _controls().sprint_margin() + 20.0)
+	await _fixture.touch(0, START)
+	await _move_to(0, START, past)
+	var crouch := _fixture.at(TouchLayout.CROUCH)
+	await _fixture.touch(1, crouch)
+	await _fixture.lift(1, crouch)
+	assert_bool(_controls().is_crouch_latched()).is_true()
+	# The action stays pressed; `PlayerSimulation._sprint_allowed` refuses it while the body crouches.
+	assert_bool(_controls().is_sprinting()).is_true()
+	assert_bool(Input.is_action_pressed(&"sprint")).is_true()
+	assert_bool(Input.is_action_pressed(&"crouch")).is_true()
+	await _fixture.touch(1, crouch)
+	await _fixture.lift(1, crouch)
+	assert_bool(_controls().is_crouch_latched()).is_false()
+	assert_bool(_controls().is_sprinting()).is_true()
+	assert_int(_starts).is_equal(1)
+	await _fixture.lift(0)
+
+
 ## The edge is a circle: a drag past it sprints on every side, not only at the top.
 func test_a_drag_past_the_edge_sprints_in_every_direction() -> void:
 	var far := _controls().stick_radius() + _controls().sprint_margin() + 6.0

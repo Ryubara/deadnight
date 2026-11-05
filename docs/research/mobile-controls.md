@@ -489,7 +489,8 @@ the HUD is the phone's weapon control; the Swap and Grenade buttons are gone fro
 - **The stick's resting ring** (`TouchLayout.STICK_REST`, #1276's) now overlaps the top of the points card by about
   20 units: the column is a strip's height higher. It is a faint ring and the stick floats to wherever the thumb lands,
   and the move hint is placed from it (`TouchHints`), so moving it moved the hint over the round card and the scoreboard
-  button on the smallest canvas (`test_touch_hints` failed): left for the stick's own issue, with the clearance test.
+  button on the smallest canvas (`test_touch_hints` failed): left for the stick's own issue, with the clearance test
+  (done there: "The stick's resting place" below).
 - **Not done here:** a first-run hint for the places (the hints label the stick, the look and Interact only); a cancel
   for a cooking grenade (the throw's other action `toss_grenade` has no touch control either).
 
@@ -521,7 +522,31 @@ let go (even if they drag finger back into the circle)". What was built:
   body decides (`_sprint_allowed`): the stick finger lifting ends it and clears the latch; losing the layer and a
   reused index clear it; holding Aim (button or toggle) stops the body sprinting but keeps the latch, and the sprint
   returns when the aim is let go with the finger still down; a push under half (`sprint_min_input`) walks, latch kept;
-  being airborne after a jump keeps a sprint going, and there is no touch crouch.
+  a Crouch tap (a toggle since #1277) stops the body sprinting too, with the latch kept, and the sprint returns when a
+  second tap (or a Jump) stands it with the finger still down; being airborne after a jump keeps a sprint going.
+- **The stick's resting place.** With no ring on the screen the resting place is only where the first-run "DRAG TO
+  MOVE" hint stands. It was a corner offset (330 right, 390 up, times the touch scale), and the column of the HUD, a
+  strip's height higher since #1280, reached into it (the points card by 26 units with one player at 1.0, and the perk
+  badges beside the column). It cannot be put above the column: the column grows up the side with the party (the points
+  card's top is at 769 units with one player, 607 with four and 503 with eight, on the 1080 unit canvas). So it is
+  **beside** the column: `STICK_REST_CLEAR` is where the ring's left edge stands (right of the column, the perk badges
+  and a gap, 496 units) and where its bottom edge stands (271 units up, above the tallest strip: 196), whatever the
+  touch scale, and the ring's top at a scale of 1 stays 495 units up, where it always was, so the hint above it stays
+  put. `STICK_RADIUS` is the drawn ring (40 CSS px = 111.1 units on every page and interface size), it was 105.
+  `test_touch_stick_rest` holds the ring clear of every card, every place of the strip and every button, and a finger at
+  its centre starting the stick, for both hands, the two phone pages, interface sizes 0.8, 1.0 and 1.25, touch scales
+  0.8, 1.0 and 1.4, and parties of one, four, eight and eight with seven bots (it fails with the old numbers: the ring
+  was over the points card and the perk badges).
+- **What happens where a finger lands.** The ring is drawn where the finger lands, anywhere in the stick's zone (the
+  left 45 percent below the top fifth), and the zone is over the players' column: a finger that lands there makes a
+  ring over the cards, and the cards (which ignore the pointer) are under the touch layer. The ring is a translucent
+  disc and the finger is on it, so the words under it are covered by the thumb in any case; it goes with the finger.
+  Nothing moves for it: the HUD does not know where the ring is. A new player is not asked to land there, because the
+  hint points at the resting place beside the column. The hint itself stands at the resting place, between the column
+  and the popup lane; on the smaller canvases it cannot be wholly right of the column (the lane takes the room), so it
+  is over the column's x range at the height of the ring's top, as it always was: clear of the cards for a party of up
+  to four, over the points card for eight on the 1.0 and 1.25 canvases for the moment it is up (it goes on the first
+  drag). The objective card is under it at an interface size of 1.25 on the smallest canvas, and was before.
 - **Measured** in a web export (`tools/web_smoke/touch_sprint.py`, real touches through the DevTools protocol): the
   edge walks at 4.80 m/s (`run_speed`) on both pages, a drag 15 CSS px past the ring still walks with no buzz, the
   latch sprints at 7.0 m/s (`sprint_speed`) on every side, one buzz, and stays on at a 0.67 push and at the middle
