@@ -81,7 +81,7 @@ jobs:
         # suites fail; only a run that could not run ends it red.
         timeout-minutes: 75
         env:
-          SUITES: ${{ inputs.suites || 'test_does_not_exist' }}
+          SUITES: ${{ inputs.suites || 'test_night_screen,test_night_menu,test_night_mouse_look,test_night_screen_end,test_night_crosshair,test_bot_wheel_input,test_hover_room,test_level_ink,test_poster_art_pixels' }}
           SUITE_TIMEOUT: ${{ inputs.timeout || '300' }}
           LIBGL_ALWAYS_SOFTWARE: "1"
         run: |
