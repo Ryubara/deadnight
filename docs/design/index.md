@@ -8,8 +8,8 @@ The game as it stands. Each subject gets one page here, updated in place as the 
    buy fuel, doors and weapons, so every round asks what stays powered.
 2. **A night that closes in.** Rounds grow harder and the night darker; the map opens outward from the screen to the
    ticket plaza at the back of the lot.
-3. **Played together.** Built for two to eight players (people and bots together) in a browser or a Discord call;
-   solo is supported, never the focus.
+3. **Played together.** Built for two to eight players (people; the bots the host sets come on top) in a browser or a
+   Discord call; solo is supported, never the focus.
 
 ## The loop
 

@@ -65,6 +65,14 @@ func show_credits(
 	visible = not credits.is_empty()
 
 
+## Takes the card off the board (a screen too short for it, #1179); `show_credits` brings it back.
+func hide_card() -> void:
+	_signature = ""
+	visible = false
+	rows_text.clear()
+	row_ids.clear()
+
+
 func _rebuild(
 	credits: Array[Dictionary], members: Dictionary, xp: Dictionary, local_id: int
 ) -> void:

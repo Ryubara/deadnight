@@ -433,6 +433,10 @@ func _step_over(delta: float, with_frame: bool) -> Array[Dictionary]:
 		_holds_ended = true
 		_revive.end_all(&"down")
 	_over_left = maxf(_over_left - delta, 0.0)
+	# What the night's end finished (a hidden challenge counted by it: *Dead on arrival*,
+	# *Standing room only*) is told in the first step after it, not when a client next asks for
+	# something.
+	_outbox.append_array(challenges.take_events())
 	if _over_left <= 0.0 and not _closed:
 		_closed = true
 		_outbox.append({"type": NIGHT_CLOSED})
@@ -460,7 +464,7 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 	_bodies[player_id].dead = _dead_fields[player_id]
 	if not bot:
 		crowd.join(player_id, OS.has_feature("web") if local else true)
-	looks.join(player_id)
+	looks.join(player_id, bot)
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
 	_repairing[player_id] = &""

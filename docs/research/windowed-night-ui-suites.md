@@ -41,3 +41,19 @@ true for nothing. The test waits for the first frame and compares both with the 
 A suite that is about something other than the drop sets `NightScreen.arrival_enabled = false` in `before_test` and
 puts it back in `after_test` (`--noarrival`, what a headless run always has); `test_arrival_night` and
 `test_night_crosshair` are the ones that play it.
+
+## The end board under the drop (`test_night_screen_end`)
+
+`test_the_board_replaces_the_hud_and_the_clock_ends_on_the_play_screen_with_its_rules` failed windowed with two lines
+(and passed headless): `screen._hud.visible` was false on the night's first frame (the drop hides the HUD, the test
+started its night from the Play screen with the drop due) and true after the night ended. The first is the test's: the
+suite is about the end, so it starts with no drop due, as the others do (windowed 3 of 3 pass, from 1 of 2).
+
+The second is the game's. When a night ends, `NightScreen._on_night_over` hides the HUD and puts the board up, then
+`Night._on_over` closes a show still playing (`arrival_show.skip_now()`), which emits `arrival_ended`, and
+`_on_arrival_ended` showed the HUD again, with the reticle and touch layer live, over the board. Now it does nothing
+when the board is up. The rules cannot end a night under a person's drop (the dropping player is shielded, so
+"everyone is down" cannot hold, and the cap is 12 s), so no player has met it; the test ends the night under the drop on
+purpose (`test_the_night_ending_under_the_drop_leaves_the_board_alone`; it fails on the old screen with the same line).
+Signal order is the lesson: two handlers of one signal that touch the same node run in connect order, and the screen
+connects before the night's own.

@@ -353,8 +353,12 @@ func _on_arrival_started() -> void:
 	_touch.live = false
 
 
-## The drop is over and the night is the player's.
+## The drop is over and the night is the player's. A night that ended under it (`Night._on_over`
+## closes the show when the end arrives, after this screen has put the board up) is not: the board
+## stays alone over the end camera.
 func _on_arrival_ended() -> void:
+	if _end.visible:
+		return
 	_hud.show()
 	if not _overlay.visible:
 		_hud.reticle.set_shown(true)
