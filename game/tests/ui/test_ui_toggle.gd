@@ -2,6 +2,10 @@
 # spring, and reduced motion snaps it (#37).
 extends GdUnitTestSuite
 
+## The most frame time a spring gets to settle in: it needs about a second, so this is slack, not
+## a tolerance.
+const SETTLE_SECONDS := 5.0
+
 var _toggle: UIToggle
 var _was_reduced := false
 
@@ -19,6 +23,22 @@ func before_test() -> void:
 
 func after_test() -> void:
 	UIMotion.reduced = _was_reduced
+
+
+## Waits for frames until `spring` has settled, at most `SETTLE_SECONDS` of frame time.
+func _settle(spring: UISpring) -> void:
+	var elapsed := 0.0
+	while not spring.is_settled() and elapsed < SETTLE_SECONDS:
+		await await_idle_frame()
+		elapsed += get_process_delta_time()
+
+
+## Waits for frames until `spring` has moved off `from`, at most `SETTLE_SECONDS` of frame time.
+func _leave(spring: UISpring, from: float) -> void:
+	var elapsed := 0.0
+	while spring.value == from and elapsed < SETTLE_SECONDS:
+		await await_idle_frame()
+		elapsed += get_process_delta_time()
 
 
 func test_a_click_flips_it_and_emits_toggled() -> void:
@@ -61,11 +81,17 @@ func test_its_size_comes_from_the_tokens() -> void:
 func test_the_knob_rides_a_spring_to_the_new_side() -> void:
 	UIMotion.reduced = false
 	_toggle.button_pressed = true
+	# One frame is not a length of time: `UISpring` takes a step only for each 1/240 s it is given, so
+	# a frame shorter than that (a window with no frame cap, a headless run) leaves the value where it
+	# was. What one frame does settle is the target; the value is read once it has left its start.
 	await await_idle_frame()
+	assert_float(_toggle._on.target).is_equal(1.0)
+	await _leave(_toggle._on, 0.0)
+	assert_float(_toggle._on.value).is_greater(0.0)
 	assert_float(_toggle._on.value).is_less(1.0)
-	for _i in 120:
-		await await_idle_frame()
-	assert_float(_toggle._on.value).is_equal_approx(1.0, 0.02)
+	await _settle(_toggle._on)
+	assert_bool(_toggle._on.is_settled()).is_true()
+	assert_float(_toggle._on.value).is_equal(1.0)
 
 
 func test_reduced_motion_snaps_the_knob() -> void:
