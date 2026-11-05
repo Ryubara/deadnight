@@ -29,8 +29,6 @@ const IDS: Array[StringName] = [
 	TouchLayout.JUMP,
 	TouchLayout.CROUCH,
 	TouchLayout.RELOAD,
-	TouchLayout.SWAP,
-	TouchLayout.GRENADE,
 	TouchLayout.SHOULDER,
 	TouchLayout.MELEE,
 	TouchLayout.BOT_WHEEL,
@@ -63,10 +61,6 @@ static func add(
 			_crouch(box)
 		TouchLayout.RELOAD:
 			_reload(box)
-		TouchLayout.SWAP:
-			_swap(box)
-		TouchLayout.GRENADE:
-			_grenade(box)
 		TouchLayout.SHOULDER:
 			_shoulder(box)
 		TouchLayout.MELEE:
@@ -129,20 +123,6 @@ static func _reload(box: _Box) -> void:
 	var end := Vector2.RIGHT.rotated(deg_to_rad(to)) * 0.62
 	var along := Vector2.RIGHT.rotated(deg_to_rad(to + 90.0))
 	box.arrow_head(end + along * 0.16, along, 0.48)
-
-
-static func _swap(box: _Box) -> void:
-	box.line(Vector2(-0.8, -0.38), Vector2(0.45, -0.38), STROKE)
-	box.arrow_head(Vector2(0.95, -0.38), Vector2.RIGHT, 0.5)
-	box.line(Vector2(0.8, 0.38), Vector2(-0.45, 0.38), STROKE)
-	box.arrow_head(Vector2(-0.95, 0.38), Vector2.LEFT, 0.5)
-
-
-static func _grenade(box: _Box) -> void:
-	box.dot(Vector2(0.0, 0.22), 0.66)
-	box.rect(Vector2(-0.2, -0.62), Vector2(0.2, -0.3))
-	box.line(Vector2(0.05, -0.7), Vector2(0.72, -0.5), THIN)
-	box.ring(Vector2(0.72, -0.82), 0.26, THIN)
 
 
 static func _shoulder(box: _Box) -> void:

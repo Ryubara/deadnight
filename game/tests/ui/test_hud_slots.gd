@@ -164,7 +164,7 @@ func test_a_longer_weapon_is_drawn_wider_and_none_fills_the_whole_picture() -> v
 		assert_float(share).is_less_equal(WeaponSilhouettes.FILL.x + 0.001)
 
 
-func test_with_the_touch_controls_up_the_strip_sits_under_the_health_card_as_wide_as_it() -> void:
+func test_with_the_touch_controls_up_the_strip_takes_the_corner_under_the_players_column() -> void:
 	for mirrored in [false, true]:
 		var hud := _fixture.hud
 		hud.mirrored = mirrored
@@ -174,9 +174,12 @@ func test_with_the_touch_controls_up_the_strip_sits_under_the_health_card_as_wid
 		await get_tree().process_frame
 		var strip := hud.slots.get_global_rect()
 		var health := hud.health.get_global_rect()
+		# Under the health card, on its side of the screen, at the bottom (its own column: it is
+		# wider than the cards above, #1280).
 		assert_float(strip.position.y).is_greater_equal(health.end.y)
-		assert_float(strip.position.x).is_equal_approx(health.position.x, 1.0)
-		assert_float(strip.size.x).is_equal_approx(health.size.x, 1.0)
+		var edge := strip.position.x if not mirrored else strip.end.x
+		var card_edge := health.position.x if not mirrored else health.end.x
+		assert_float(edge).is_equal_approx(card_edge, 1.0)
 		# The right thumb's corner is the ammo card's alone.
 		assert_bool(hud.slots.get_parent() == hud.ammo.get_parent()).is_false()
 	_fixture.hud.touch_layout = false
