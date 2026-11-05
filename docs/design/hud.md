@@ -54,7 +54,7 @@ local player) into the direction on screen.
 | `HudReticle` | centre | the reticle (see Decisions): four short ticks round a gap and a dot, cream with a dark edge, static and small; hidden under the pause card and while you are down |
 | `HudCrosshair` | centre, over the reticle | hit marker (ticks: cream hit, amber headshot, larger red kill) and floating damage numbers, small, nudged apart, at most eight |
 | `HudDamage` | full screen | a red arc toward the attacker per blow; a red frame under a third health (pulses; held while down) |
-| `HudMarkers` | full screen | objective diamonds with distance, smaller as they get farther; teammates' names at constant size; the important marker pins to the edge with an arrow when off-screen |
+| `HudMarkers` | full screen | objective diamonds with distance, smaller as they get farther; teammates' names at constant size; the important marker pins to the edge with an arrow when off-screen; a marker that would be under a card (those of the corners and, while they are up, the banner, the prompt and the popup cards) or a touch button is moved to the nearest clear place with an arrow back to where it points; a teammate's tag at the top edge goes under its pointer; on a phone's page the words and the shapes grow to read at 14 CSS px (the desktop's scale does not change) |
 
 The interaction prompt takes its key from the `interact` action in the InputMap (E, gamepad Y), so a rebound key shows
 the new key. The glyph follows the **last device used**: a square keycap, a round gamepad button

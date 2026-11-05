@@ -100,6 +100,8 @@ var _overlay: Control
 var _title: UILabel
 var _note: UILabel
 var _card: Control
+## The card and the settings, laid out at the menu's phone factor on a phone (`PhoneScale`, #1205).
+var _scaled: PhoneScale
 var _resume: UIButton
 var _settings_button: UIButton
 var _quit: UIButton
@@ -181,7 +183,10 @@ func _ready() -> void:
 	_touch.safe_insets_changed.connect(_on_safe_insets_changed)
 	_touch.mirrored_changed.connect(_on_mirrored_changed)
 	_touch.active_changed.connect(func(active: bool) -> void: _hud.touch_layout = active)
+	_touch.layout_changed.connect(func() -> void: _hud.markers.held = _touch.button_boxes())
 	_touch.look_gain = _look_gain
+	# A hit area is never under a fingertip, at the interface size this night runs at (#1217).
+	_touch.finger_units = func() -> float: return MenuScale.tap_units(get_window(), true)
 	add_child(_touch)
 	wheel = BotWheelDriver.new()
 	wheel.name = "BotWheelDriver"
@@ -217,9 +222,25 @@ func touch_active() -> bool:
 	return _touch != null and _touch.is_active()
 
 
+## The touch layer's circles (`TouchLayout.buttons`) and the buttons a finger is on (a browser test
+## reads them).
+func touch_circles() -> Dictionary:
+	return _touch.circles() if _touch != null else {}
+
+
+func touch_held() -> PackedStringArray:
+	return _touch.held_buttons() if _touch != null else PackedStringArray()
+
+
 ## True while the settings page of the menu is open (a browser test reads it).
 func settings_open() -> bool:
 	return _settings != null
+
+
+## The pause card with its Settings while it is on screen, else null: what a person's finger meets
+## over the night, which a probe measures alone (#1205).
+func card_root() -> Control:
+	return _overlay if _overlay != null and _overlay.visible else null
 
 
 ## True while the HUD is on screen (the arrival's show hides it, #1057).
@@ -502,7 +523,7 @@ func _open_settings() -> void:
 	_settings = (load(SETTINGS_SCENE) as PackedScene).instantiate() as SettingsScreen
 	_settings.embedded = true
 	_settings.closed.connect(_close_settings)
-	_overlay.add_child(_settings)
+	_scaled.add_child(_settings)
 	_settings.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_card.hide()
 	_settings.focus_initial()
@@ -521,7 +542,7 @@ func _drop_settings() -> void:
 		return
 	var page := _settings
 	_settings = null
-	_overlay.remove_child(page)
+	_scaled.remove_child(page)
 	page.queue_free()
 	_card.show()
 
@@ -548,9 +569,14 @@ func _build_overlay() -> void:
 	dim.color = DIM
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.add_child(dim)
+	# The night itself stays at the interface size (the HUD and the touch layer are made for it); the
+	# card and the settings are the menu's, at the factor of a phone's menu.
+	_scaled = PhoneScale.new()
+	_scaled.name = "PhoneScale"
+	_overlay.add_child(_scaled)
 	_card = CenterContainer.new()
 	_card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_overlay.add_child(_card)
+	_scaled.add_child(_card)
 	var panel := UIPanel.new()
 	panel.variant = UIPanel.Variant.MARQUEE
 	_card.add_child(panel)
@@ -571,14 +597,21 @@ func _build_overlay() -> void:
 	box.add_child(_resume)
 	box.add_child(_settings_button)
 	box.add_child(_quit)
+	_scaled.resized.connect(_fit_taps)
 
 
 ## The card's buttons are tap targets on a phone: the night runs at the interface size alone, where
-## the theme's 79 unit button is 28 px at 844 x 390 (#1192).
+## the theme's 79 unit button is 28 px at 844 x 390 (#1192). The card is at the phone factor
+## (`_scaled`), so a unit there is bigger.
 func _fit_taps() -> void:
-	var least := MenuScale.tap_units(get_window(), TouchMode.wanted(get_tree()))
+	var least := MenuScale.tap_units(get_window(), TouchMode.wanted(get_tree()), _scaled.factor)
 	for button: UIButton in [_resume, _settings_button, _quit]:
 		button.custom_minimum_size = Vector2(0.0, least)
+	# The title's own size (60 units) would take a third of a phone's 540 unit canvas.
+	if _scaled.factor > 1.0:
+		_title.add_theme_font_size_override(&"font_size", _tokens.size_heading)
+	else:
+		_title.remove_theme_font_size_override(&"font_size")
 
 
 func _label(style: UILabel.Style) -> UILabel:

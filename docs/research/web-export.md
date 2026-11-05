@@ -455,6 +455,44 @@ run, and the live build is the newest *deployed* green commit until the next gre
 workflow** on `main`. Re-running the `deploy` job of an earlier run skips when a newer commit is live; to go back to an
 earlier build, roll back in Railway (below).
 
+### Failures from outside: what is repeated, and what never is
+
+Two runs failed in one afternoon for reasons outside the repository and passed on a rerun by hand (#1269): the
+`actionlint` job got a 92 byte body in place of the archive (rhysd's download script pipes `curl -L` into `tar`, so
+the job said only `gzip: stdin: not in gzip format`), and `deploy` failed with Railway's `failed to fetch snapshot` /
+`Deploy failed: Failed to build an image` (a FAILED deployment; the web page sat behind the backend and the server for
+minutes and main opened a second alert on #1265). Whether the cause was a rate limit is a guess: the body was not
+read. The new download prints it next time.
+
+| Step | What happens now | Worst case, inside |
+| --- | --- | --- |
+| `actionlint` download | `tools/ci/fetch_actionlint.sh`: to a file, `--max-time 60`; an attempt counts when the status is 200, the file is gzip, `actionlint` is in it and it prints the version asked for; a failure prints the status line, size, `retry-after` / `x-ratelimit-*` headers and the first 200 characters of the body; four attempts, 10 s and 20 s and 30 s between | about 5 minutes, job `timeout-minutes: 10` (it had none) |
+| `npm install --global @railway/cli` (three deploy jobs) | `tools/ci/retry.sh -n 3 -p 10 -t 90` | about 5 minutes of 20 / 30 |
+| `gds workspace init --fetch ...` (`godot`, `bots-soak`, `web`) | `retry.sh -n 2`, 150 s each (300 s for the templates in `web`) | 5 minutes (10 in `web`, a job of 40) |
+| `playwright install` and `install-deps` | `retry.sh -n 2 -t 240` | 8 minutes, inside the step's 10 |
+| `railway up` in `deploy/web`, `deploy/server`, `deploy/backend` | `deploy/railway_up.sh`: up to three uploads, 20 s and 40 s between; **repeated only when nothing is alive** (below) | the script ends at `RAILWAY_DEPLOY_SECONDS`: 960 s in `deploy` and `deploy-backend` (jobs of 20 minutes), 1500 s in `deploy-server` (30); an attempt gets the least of its own limit and the seconds left less 180 s kept for the health check |
+
+A deploy is not a download, so a second `railway up` is allowed only after the service itself has been asked. Before an
+attempt the newest deployment's id is read; after a failed one it is read again:
+
+- no new deployment (the upload never got there), or a new one that is `FAILED`, `CRASHED` or `REMOVED` (it is over: the
+  snapshot case): upload again;
+- a new one that is `SUCCESS`, `BUILDING`, `DEPLOYING`, `QUEUED` and the like (the CLI's stream broke, the build did not):
+  never upload again; the script's own wait for the deployment follows it, and the job fails if it ends `FAILED`;
+- the CLI cannot list the deployments (nothing shows that none is alive): the failure stands.
+
+A Dockerfile that really does not build still fails the job, after three builds instead of one, with every attempt's log
+in the job. A script with neither `RAILWAY_TOKEN` nor a linked project is refused: `railway up` on a folder called `stage`
+had made a Railway project named `stage` in the account (an old one is still there) and it did so again in a probe of this
+change. The wait loops also keep asking when one `deployment list` call fails, and stop at the script's time.
+
+`bash deploy/test_railway_up.sh` runs the three real scripts against a fake `railway` first on the PATH (a FAILED
+deployment left by `failed to fetch snapshot`, an upload that never arrived, a stream that broke on a build still going,
+a hung upload, a CLI that stops listing, a budget too small for a third attempt) and fails when `up` starts while the
+service's newest deployment is not over; `bash tools/ci/test_retry.sh` and `bash tools/ci/test_fetch_actionlint.sh` (a
+local server that answers 429 with a 92 byte body, a web page, a cut archive, a reset, a wrong version) do the same for
+the other two. The `conventions` job runs all three.
+
 ### Setting it up (once, the maintainer)
 
 A project token cannot be created by the agent's login (`projectTokenCreate` answers "Not Authorized" to the CLI's

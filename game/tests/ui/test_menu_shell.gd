@@ -24,6 +24,8 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	# The back test's cancel event stays held in the next suite's process (#1254).
+	InputFixture.release_all()
 	get_window().size = _window_before
 	Settings.reset_defaults()
 	Settings.save()

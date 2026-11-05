@@ -18,9 +18,11 @@ the list of public nights (below; `tools/web_smoke/server_browser.py`).
   seat and are never counted, #1179), one **host** (the first seat) and a status: **open** (waiting for the host) or
   **started** (a night is running, with a round).
 - A night is **public or private**. A new night is **public**: it is in the Server Browser's list (below), where any
-  player can join it. Its host can make it **private** (`PUT /lobbies/:id/visibility`, at any time, in progress
-  too); a private night is in no list, and its code still joins it. The game has no switch for it yet (the backend and
-  `TogetherApi.set_visibility` have), so every night made from the game today is public.
+  player can join it, and Quick join may seat a stranger in it. Its host can make it **private**
+  (`PUT /lobbies/:id/visibility`, at any time, in progress too); a private night is in no list, and its code still
+  joins it. The host's lobby has a **Private night** switch (below), off by default; whether a night is public until
+  then is one constant, `TogetherApi.PUBLIC_BY_DEFAULT`, which the game sends when it makes the night (the maintainer
+  has not yet confirmed public is the right default, #1186).
 - **Only the host starts.** Guests wait and can leave.
 - **Late joining stays on.** A started night takes newcomers while the game server has room (the same 8). The code says
   *Night in progress, round N* before the newcomer presses Join, and Join goes straight in.
@@ -73,6 +75,14 @@ longer starts the night. It opens the **lobby** with the player as host:
   at a time, the last change wins) and reaches the others on their next poll (within two seconds). Start sends the
   panel's values with it, so a change still waiting is never lost. A host who leaves hands the panel on with the
   rules the lobby holds. Once the night starts the panel is read only for everyone (`409 already_started`).
+- **Private night** (a switch after the rules, so it is on screen with Start: the lobby opens scrolled to the button the
+  host presses, and when the buttons below the row would push the switch out of the top of a phone page's area it is
+  scrolled back to the row if Start still fits under it, `LobbyPrivateSwitch.reveal`). Off is a public night, in the
+  Server Browser; on, only the code gets in. The host's press goes to the backend at once (`PUT
+  /lobbies/:id/visibility`, one request at a time, the last press wins, Start waits for it) and works from the keyboard,
+  a gamepad and a finger (a 64 unit row, a tap target); it stays the host's after the start. A guest sees the same
+  switch, read only, and is told when the host moves it (*Ann made the night private.*) on their next poll. A backend
+  that says nothing of `visibility` shows no switch.
 - **Start the night** (primary, focused) and **Leave** (ghost). A line under the seats says what is going on:
   *Waiting for friends. Send them the code.*
 

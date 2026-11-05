@@ -16,6 +16,13 @@ class FakeApi:
 	var started_with: Array = []
 	var rules_sent: Array[MatchSettings] = []
 	var rules_failure := ""
+	## The Private switch: the visibility each press sent ("private" / "public"), in order, what the
+	## backend refuses with, whether an answer takes a frame (so a second press can follow it), and
+	## every call of the host in order (to see the switch reach the backend before Start).
+	var visibility_sent: Array[String] = []
+	var visibility_failure := ""
+	var visibility_slow := false
+	var calls: Array[String] = []
 	var joined: Array[String] = []
 	var left: Array[String] = []
 	var tickets := 0
@@ -31,6 +38,7 @@ class FakeApi:
 		return {"ok": true, "lobby": refreshed if not refreshed.is_empty() else lobby}
 
 	func start(_held: Dictionary, settings: MatchSettings = null) -> Dictionary:
+		calls.append("start")
 		started_with.append(settings)
 		if start_failure != "":
 			return TogetherApi._failed(start_failure)
@@ -42,6 +50,18 @@ class FakeApi:
 		rules_sent.append(settings)
 		lobby = lobby.duplicate()
 		lobby["settings"] = settings.to_dict()
+		return {"ok": true, "lobby": lobby}
+
+	func set_visibility(_held: Dictionary, public_night: bool) -> Dictionary:
+		var word := TogetherApi.visibility_word(public_night)
+		calls.append("visibility " + word)
+		if visibility_slow:
+			await _parent.get_tree().process_frame
+		if visibility_failure != "":
+			return TogetherApi._failed(visibility_failure)
+		visibility_sent.append(word)
+		lobby = lobby.duplicate()
+		lobby["visibility"] = word
 		return {"ok": true, "lobby": lobby}
 
 	func preview(_code: String) -> Dictionary:
@@ -97,6 +117,8 @@ static func lobby(members: Array, state := "open", round_number: Variant = null)
 		"players": null,
 		# The real backend always says: null while the host has set no rules.
 		"settings": null,
+		# And whether the night is listed: a new one is (`TogetherApi.PUBLIC_BY_DEFAULT`).
+		"visibility": TogetherApi.visibility_word(TogetherApi.PUBLIC_BY_DEFAULT),
 	}
 
 

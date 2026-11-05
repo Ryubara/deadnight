@@ -30,10 +30,11 @@ from ci_shard_time import JOB_LIMIT_SECONDS, WEB_JOB_LIMIT_SECONDS
 # minutes in all with the setup, against a limit of 15; the rule of thumb is total / 480 s, rounded up, with a margin for
 # a slow runner and for growth (the suite grew 5 % in a day, #1015; 8 % in a day, #1151). Eight were enough for 3,250 s
 # (#1091). The workflow's matrix must list them.
-SHARDS = 9
+SHARDS = 10
 # Seconds the once-per-run steps of shard 1 take beyond the setup every shard does (main scene, a night, the late-round
-# budget run; 70 to 120 s on a runner), so shard 1 is dealt that much less test time.
-EXTRA_SECONDS = {1: 60.0}
+# budget run: 54 to 112 s for the budget run alone, 91 s on average in six `main` runs, 100 s with the rest, #1265), so
+# shard 1 is dealt that much less test time. It was 60 and shard 1's job ran 85 s longer than a shard's mean.
+EXTRA_SECONDS = {1: 100.0}
 # `--report` flags a shard whose suites are expected to take more than this (a slow runner takes 15 % more; the check
 # in ci_shard_time.py fails the job at 12 minutes of setup and suites together).
 REPORT_SHARD_BUDGET = 440.0
@@ -116,6 +117,15 @@ def self_test(root: Path) -> None:
         limit = re.search(r"timeout-minutes: (\d+)", job)
         assert limit and int(limit.group(1)) * 60 == JOB_LIMIT_SECONDS, (
             "ci_shard_time.JOB_LIMIT_SECONDS is not the job's"
+        )
+        # The run goes through the warm-up that keeps scripts from staying in use at exit (#1231): the plain tool leaks
+        # by the mix of suites in a shard, and the leak check below it fails the job with every test green.
+        assert "-s res://tools/ci/warm_GdUnitCmdTool.gd" in job, (
+            "the godot job must run GdUnit through tools/ci/warm_GdUnitCmdTool.gd"
+        )
+        assert "-s res://addons/gdUnit4/bin/GdUnitCmdTool.gd" not in job, "the godot job runs the plain GdUnit tool"
+        assert re.search(r'! grep -E "leaked at exit\|still in use" tests\.log', job), (
+            "the leak check on tests.log is gone"
         )
         web = text.split("\n  web:\n", 1)[1].split("\n  deploy:\n", 1)[0]
         web_limit = re.search(r"\n    timeout-minutes: (\d+)", web)

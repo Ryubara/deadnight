@@ -34,6 +34,8 @@ signal safe_insets_changed(insets: Vector4)
 signal mirrored_changed(mirrored: bool)
 ## The controls came up or went away (a phone shows them, a keyboard hides them).
 signal active_changed(active: bool)
+## The buttons are somewhere else now, or are there or not (`button_boxes`).
+signal layout_changed
 
 const MOVE_LEFT := &"move_left"
 const MOVE_RIGHT := &"move_right"
@@ -95,6 +97,10 @@ var hints: TouchHints
 var look_gain := Callable()
 ## The look the finger has made and the view has not turned yet (`LookSmoother`).
 var look_smoother := LookSmoother.new()
+## () -> float, the least width of a hit area in canvas units: a fingertip, 44 CSS pixels
+## (`MenuScale.tap_units`), which depends on the window and the interface size and so is asked
+## again at every layout. Without it the hit areas are the layout's own (#1217).
+var finger_units := Callable()
 
 ## Auto-fire on: Aim is held. Off: Aim is a toggle (`_aim_latched`).
 var _aim_is_hold := true
@@ -168,6 +174,33 @@ func is_mirrored() -> bool:
 
 func button_circle(id: StringName) -> Dictionary:
 	return _circles.get(id, {})
+
+
+func circles() -> Dictionary:
+	return _circles
+
+
+## The buttons a finger is on now (a browser test reads them).
+func held_buttons() -> PackedStringArray:
+	var held := PackedStringArray()
+	for touch: Dictionary in _touches.values():
+		if touch.get(&"role", &"") == &"button":
+			held.append(String(touch[&"button"]))
+	return held
+
+
+## The box of every button, in the screen's canvas units, while the controls are up (none while
+## they are down): what the world markers keep clear of, as a finger is on them (#1218).
+func button_boxes() -> Array[Rect2]:
+	var found: Array[Rect2] = []
+	if not _active:
+		return found
+	var origin := get_global_rect().position
+	for id: StringName in _circles:
+		var circle: Dictionary = _circles[id]
+		var reach := Vector2.ONE * float(circle[&"radius"])
+		found.append(Rect2(origin + Vector2(circle[&"centre"]) - reach, reach * 2.0))
+	return found
 
 
 ## The caption the interact button shows now, "" when it is hidden.
@@ -556,6 +589,7 @@ func _refresh_active() -> void:
 	if now != _active:
 		_active = now
 		active_changed.emit(now)
+		layout_changed.emit()
 		if now:
 			# Controls up and no other device used yet: the HUD shows a finger, not a keycap.
 			UIInputMode.touch = true
@@ -587,10 +621,12 @@ func _release_everything() -> void:
 func _relayout() -> void:
 	insets = insets_override if insets_override != null else _platform_insets()
 	_safe = TouchLayout.safe_rect(_canvas(), insets)
-	_circles = TouchLayout.buttons(_safe, touch_scale, left_handed)
+	var finger := float(finger_units.call()) if finger_units.is_valid() else 0.0
+	_circles = TouchLayout.buttons(_safe, touch_scale, left_handed, finger)
 	if insets != _last_insets:
 		_last_insets = insets
 		safe_insets_changed.emit(insets)
+	layout_changed.emit()
 
 
 ## The notch, rounded corners and home bar, in canvas units. On the web the page's CSS insets

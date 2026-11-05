@@ -34,6 +34,8 @@ func before_test() -> void:
 func after_test() -> void:
 	NightScreen.warm_up_enabled = _warm_up
 	NightScreen.arrival_enabled = _arrival
+	# The drop's night leaves it seen for the next suite's night (#1254).
+	NightArrival.reset()
 	NightScreen.join_url = ""
 	NightScreen.join_ticket = ""
 	await RouterFixture.clear(get_tree())

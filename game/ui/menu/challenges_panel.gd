@@ -54,6 +54,7 @@ func _ready() -> void:
 		chips.add_child(chip)
 		_chips[id] = chip
 	_scroll = ScrollContainer.new()
+	UIScroll.take_touch(_scroll)
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.follow_focus = true
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL

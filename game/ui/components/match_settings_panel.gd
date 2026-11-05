@@ -227,9 +227,14 @@ func missing_keys() -> Array:
 
 ## The phone's form: every row a tap target high (`MenuLook.TAP_TARGET`) and the hints left out,
 ## which gives the canvas of a phone held sideways (540 units) its room. `false` is the desktop's.
+## Every row title shows whole, never "Break between ro...": the titles' column grows to the longest
+## (#1227), and the gaps in a row are a step smaller, so the widest row (the break between rounds)
+## still fits the narrowest phone's card of 848 units (#1250).
 func set_compact(on: bool) -> void:
 	for key: String in rows:
 		var row := rows[key] as UIRow
+		row.show_whole_title(on)
+		row.set_tight(on)
 		row.custom_minimum_size.y = MenuLook.TAP_TARGET if on else 0.0
 		row.hint = "" if on else HINTS[key]
 	map_picker.set_compact(on)
