@@ -32,6 +32,8 @@ func before_test() -> void:
 func after_test() -> void:
 	for action in [&"fire", &"move_forward", &"jump"]:
 		Input.action_release(action)
+	# A drop shown here is seen by the next suite's night (#1254).
+	NightArrival.reset()
 	if is_instance_valid(_night):
 		_night.queue_free()
 	await get_tree().process_frame

@@ -48,6 +48,8 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	# The accept event of the rows' test stays held in the next suite's process (#1254).
+	InputFixture.release_all()
 	Engine.physics_ticks_per_second = _saved_ticks
 
 
