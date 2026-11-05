@@ -16,6 +16,10 @@ const TILE_CARD_WIDTH := 240.0
 const TILE_EMBLEM := 64.0
 ## A frame's swatch: a plate with the frame round it.
 const TILE_FRAME := Vector2(160.0, 56.0)
+## A short screen's words for them.
+const SHORT_TAB_WORDS := {
+	PlateCatalog.CARD: "Cards", PlateCatalog.EMBLEM: "Emblems", PlateCatalog.FRAME: "Frames"
+}
 ## The tabs, in order, and their words.
 const TAB_WORDS := {
 	PlateCatalog.CARD: "Calling cards", PlateCatalog.EMBLEM: "Emblems", PlateCatalog.FRAME: "Frames"
@@ -23,7 +27,10 @@ const TAB_WORDS := {
 ## At or below this width the screen is a phone's: one column of cards, three of emblems.
 const PHONE_WIDTH := 960.0
 ## Below this height the screen is a short one: a phone held sideways.
-const SHORT_HEIGHT := 640.0
+const SHORT_HEIGHT := 700.0
+## A short screen's tabs are low and small, so the list keeps its room.
+const SHORT_TAB_HEIGHT := 34.0
+const SHORT_TAB_FONT := 14
 
 var store: ProfileStore
 var back_button: UIButton
@@ -39,6 +46,7 @@ var _grids: Dictionary = {}
 var _tab_buttons: Dictionary = {}
 var _tab: StringName = PlateCatalog.CARD
 var _phone := false
+var _short := false
 var _done: Array[StringName] = []
 
 
@@ -66,6 +74,7 @@ func _ready() -> void:
 	# A short screen (a phone held sideways is 540 units) drops the overline and shows a smaller
 	# preview, so the list keeps its room.
 	var short := get_viewport_rect().size.y < SHORT_HEIGHT
+	_short = short
 	if not short:
 		card.add_child(_label("THE PLATE", UILabel.Style.OVERLINE))
 	card.add_child(_label("Your plate", UILabel.Style.TITLE))
@@ -90,8 +99,25 @@ func _ready() -> void:
 	}
 	for kind in PlateCatalog.KINDS:
 		list.add_child(_grids[kind])
-	card.add_child(_tab_row())
-	card.move_child(card.get_child(card.get_child_count() - 1), _note.get_index() + 1)
+	var tabs := _tab_row(short)
+	if short:
+		# A short screen puts the tabs on the title's line: the list keeps its room.
+		var title := card.get_child(card.get_child_count() - 1 if false else 0)
+		for each in card.get_children():
+			if each is UILabel and (each as UILabel).style == UILabel.Style.TITLE:
+				title = each
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override(&"separation", _tokens.space_md)
+		card.add_child(line)
+		card.move_child(line, title.get_index())
+		card.remove_child(title)
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(title)
+		tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(tabs)
+	else:
+		card.add_child(tabs)
+		card.move_child(tabs, _note.get_index() + 1)
 	back_button = UIButton.new()
 	back_button.name = "Back"
 	back_button.text = "Back"
@@ -191,6 +217,8 @@ func _preview_row(share := 1.0) -> Control:
 	# The frame runs round the card, outside it so it never covers the printed title, and the row
 	# keeps that room clear.
 	var room := ceilf(PlateFrames.width_for(_preview_card.custom_minimum_size.y) * 3.0) + 2.0
+	if share < 1.0:
+		room = 4.0
 	_preview_frame = FrameArt.new()
 	_preview_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_preview_frame.grow = Vector2.ONE * room
@@ -208,15 +236,18 @@ func _preview_row(share := 1.0) -> Control:
 
 
 ## The tabs: one button for each kind, the one on show lit.
-func _tab_row() -> Control:
+func _tab_row(short: bool) -> Control:
 	var row := HBoxContainer.new()
 	row.name = "Tabs"
 	row.add_theme_constant_override(&"separation", _tokens.space_sm)
 	for kind in PlateCatalog.KINDS:
 		var button := UIButton.new()
 		button.name = "Tab" + String(kind).capitalize()
-		button.text = TAB_WORDS[kind]
+		button.text = SHORT_TAB_WORDS[kind] if short else TAB_WORDS[kind]
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if short:
+			button.custom_minimum_size.y = SHORT_TAB_HEIGHT
+			button.add_theme_font_size_override(&"font_size", SHORT_TAB_FONT)
 		button.pressed.connect(_show_tab.bind(kind))
 		row.add_child(button)
 		_tab_buttons[kind] = button
@@ -291,8 +322,13 @@ func _summary(level: int) -> String:
 	var cards := _catalog.owned(PlateCatalog.CARD, level, _done).size()
 	var emblems := _catalog.owned(PlateCatalog.EMBLEM, level, _done).size()
 	var frames := _catalog.owned(PlateCatalog.FRAME, level, _done).size()
+	var words := (
+		"%d/%d cards, %d/%d emblems, %d/%d frames are yours."
+		if _short
+		else "%d of %d calling cards, %d of %d emblems and %d of %d frames are yours."
+	)
 	var line := (
-		"%d of %d calling cards, %d of %d emblems and %d of %d frames are yours."
+		words
 		% [
 			cards,
 			_catalog.ids(PlateCatalog.CARD).size(),
