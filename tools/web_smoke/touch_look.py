@@ -187,15 +187,51 @@ def turns(page: Page) -> tuple[float, float]:
     return biggest, len(trace)
 
 
-def start_night(page: Page) -> None:
+def use_the_keyboard(page: Page, client: CDPSession) -> None:
+    """A finger types on the keypad of Play together and on the name field's keyboard, and leaves the screen: what a
+    player who joined by a code does before a night (issue #1183). The touch controls must work after it."""
+    import phone_keyboard as pk
+    import rooms
+
+    smoke.open_together(page)
+    pk.tap_box(page, client, pk.css_box(page, "fields", "Code"))
+    smoke.wait_for(page, "the keypad", lambda s: "Delete" in str(rooms.read_probe(page).get("spots", "")), 20)
+    page.wait_for_timeout(600)
+    for letter in "AB2":
+        x, y = pk.key_point(page, letter)
+        pk.tap(page, client, x, y)
+        page.wait_for_timeout(150)
+    page.wait_for_timeout(600)  # the game publishes its state every 0.25 s
+    typed = rooms.read_probe(page).get("code_text")
+    if typed != "AB2":
+        page.screenshot(path="keypad_failed.png")
+        raise SystemExit(f"the keypad did not type the code: the field holds {typed!r}")
+    x, y = pk.key_point(page, "Join")
+    pk.tap(page, client, x, y)
+    smoke.wait_for(page, "the name prompt", lambda s: bool(rooms.read_probe(page).get("naming")), 30)
+    page.wait_for_timeout(1000)
+    pk.tap(page, client, 40, 40)
+    page.wait_for_timeout(600)
+    pk.tap_box(page, client, pk.css_box(page, "fields", "PlayerName"))
+    page.wait_for_timeout(1000)
+    page.keyboard.insert_text("Cal")
+    page.wait_for_timeout(500)
+    pk.tap(page, client, 40, 40)
+    page.wait_for_timeout(600)
+    smoke.back_to_menu(page)
+
+
+def start_night(page: Page, client: CDPSession | None = None, keyboard: bool = False) -> None:
     smoke.wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", LOAD_TIMEOUT_S)
     page.wait_for_timeout(3000)
+    if keyboard and client is not None:
+        use_the_keyboard(page, client)
     smoke.start_solo(page)
     smoke.wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), 240)
     page.wait_for_timeout(2500)
 
 
-def run(url: str, out: Path) -> dict:
+def run(url: str, out: Path, keyboard: bool = False) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     problems: list[str] = []
     result: dict = {"viewport": VIEWPORT, "device_scale_factor": DEVICE_SCALE}
@@ -213,9 +249,9 @@ def run(url: str, out: Path) -> dict:
         page.add_init_script("(" + POINTER_JS.strip() + ")();")
         page.add_init_script("(" + NO_POINTER_LOCK_JS.strip() + ")();")
         page.goto(f"{url}?touch=1", wait_until="commit")
-        start_night(page)
-        page.evaluate(YAW_TRACE_JS)
         client = context.new_cdp_session(page)
+        start_night(page, client, keyboard)
+        page.evaluate(YAW_TRACE_JS)
         result["pointer_lock_requests"] = page.evaluate("window.__lockRequests")
         result["probe_touch"] = smoke.probe(page).get("touch")
         page.screenshot(path=str(out / "night_touch.png"))
@@ -285,6 +321,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("build", help="the exported web folder, or a URL")
     parser.add_argument("out", type=Path)
+    parser.add_argument(
+        "--after-keyboard",
+        action="store_true",
+        help="type on Play together's keypad and keyboard first (#1183), then start the night",
+    )
     args = parser.parse_args()
     server = None
     if args.build.startswith(("http://", "https://")):
@@ -293,7 +334,7 @@ def main() -> int:
         server, port = smoke.serve(Path(args.build))
         url = f"http://127.0.0.1:{port}/index.html"
     try:
-        result = run(url, args.out)
+        result = run(url, args.out, args.after_keyboard)
     finally:
         if server:
             server.shutdown()

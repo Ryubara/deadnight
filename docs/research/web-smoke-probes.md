@@ -59,3 +59,5 @@ a bot in the night (`--late --godot <the pinned Godot>`); it counts the WebGL ca
 (`smoke.trace`) and fails on a console error, a show that never began or ended, or a HUD that did not give way. A page that
 asks for the probes does not play the show unless it has `?arrival` (`--unasked` checks that it does not). Numbers:
 [the arrival](arrival.md).
+
+Typing on a phone (`phone_keyboard.py`, `phone_join.py`) is on its own page: [phone keyboard](phone-keyboard.md).

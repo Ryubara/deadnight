@@ -207,6 +207,7 @@ func _build_menu() -> VBoxContainer:
 	code_field.placeholder_text = "Code from a friend"
 	code_field.max_length = CODE_LENGTH
 	code_field.custom_minimum_size.x = FIELD_WIDTH
+	TouchField.fit(code_field)
 	code_field.text_changed.connect(
 		func(text: String) -> void:
 			var upper := text.to_upper()
@@ -217,6 +218,8 @@ func _build_menu() -> VBoxContainer:
 	)
 	code_field.text_submitted.connect(func(_text: String) -> void: await _join())
 	column.add_child(code_field)
+	# A finger types a code on the game's own keypad: no system keyboard has to open for it (#1183).
+	CodeKeypad.attach(code_field, self)
 	join_button = _button("Join with the code", UIButton.Variant.SECONDARY)
 	join_button.name = "JoinCode"
 	join_button.pressed.connect(_join)
@@ -241,6 +244,7 @@ func _build_naming() -> VBoxContainer:
 	name_field.placeholder_text = "Your name"
 	name_field.max_length = MenuProfile.MAX_NAME
 	name_field.custom_minimum_size.x = FIELD_WIDTH
+	TouchField.fit(name_field)
 	name_field.text_submitted.connect(func(_text: String) -> void: _decide_name(true))
 	column.add_child(name_field)
 	name_continue_button = _button("Continue", UIButton.Variant.PRIMARY)
