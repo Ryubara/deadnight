@@ -716,8 +716,8 @@ of the two tickets share the screen's height, to a floor, so eight players fit t
   marquee and the boss bar at every canvas, and the phone layout.
 - **Look:** the paper ticket of the menu and the night's prompt ("the program"): cream, dark ink, a notch, a
   perforation. A **level card** is wide: the icon on the left, `LEVEL UP`, the big number, a row of punch holes toward
-  the next. An **unlock card** is half the height: a swatch or thumbnail, `NEW TOP`, the name. A small XP gain is a
-  line on the level bar, not a card.
+  the next. An **unlock card** is half the height: the item's thumbnail (the wardrobe's own), `NEW TOP`, the
+  wardrobe's name for it. A small XP gain is a line on the level bar, not a card.
 - **Motion** (one language; "Animations for this stuff need to be good"): the level card drops in 0.25 s with a small
   overshoot, the icon scales 0.8 to 1.1 to 1 (a stamp); unlock cards follow 0.15 s apart; each holds 2.6 s (unlock 2.0
   s, tier 3.6 s) and slides up when the one above leaves; **three visible at most**, the oldest leaves first; a queue

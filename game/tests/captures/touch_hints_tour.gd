@@ -4,9 +4,11 @@ extends Node
 ## were used (the hints gone, the card still a tap mark). Not part of the game.
 ##
 ## `godot --path game res://tests/captures/touch_hints_tour.tscn -- --out=<folder>
-## [--window=844x390] [--scale=2] [--notch] [--left] [--used]` saves `first-run.png`, `door.png`,
-## `stick-fire.png` and `used.png`. `--left` flips the layout for a left hand (the HUD's corner
-## columns with it) and `--used` starts with every hint already used, to show the layout alone.
+## [--window=844x390] [--scale=2] [--notch] [--left] [--used] [--levelup]` saves `first-run.png`,
+## `door.png`, `stick-fire.png` and `used.png`. `--left` flips the layout for a left hand (the HUD's
+## corner columns with it) and `--used` starts with every hint already used, to show the layout
+## alone. `--levelup` also saves `first-run-level-up.png`: a level up and its unlock on the popup
+## lane while the hints are up (#1132).
 ## The window is sized like a phone held sideways (the project's canvas, 1920 x 1080 or more,
 ## stretched to it), `--scale` times its pixels so the type can be read, and the touches are real
 ## events sent to it. A Movie Maker frame is always 1920 x 1080, hence stills.
@@ -16,6 +18,8 @@ const AT_DOOR := Vector3(0.0, 0.1, -2.0)
 const NOTCH := Vector4(96.0, 0.0, 96.0, 24.0)
 const HOLD_FRAMES := 40
 const SETTLE_FRAMES := 4
+## Frames the lane gets to bring a level up card in, with `--levelup`.
+const LEVEL_UP_FRAMES := 90
 
 var _night: Night
 var _controls: TouchControls
@@ -60,6 +64,25 @@ func _ready() -> void:
 	_night.state.apply_events(_night.server.rules.apply(RulesAction.skip_break()))
 	await _hold(HOLD_FRAMES)
 	await _snap(args, "first-run")
+	if args.has("levelup"):
+		(
+			_night
+			. hud
+			. feed(
+				[
+					{"type": &"level_up", "player_id": 1, "level": 12, "total": 0},
+					{
+						"type": &"unlock_earned",
+						"player_id": 1,
+						"level": 12,
+						"slot": &"top",
+						"item": &"letter_jacket",
+					},
+				]
+			)
+		)
+		await _hold(LEVEL_UP_FRAMES)
+		await _snap(args, "first-run-level-up")
 	_night.player().teleport(_night.world.door_points(DOOR)[0] + AT_DOOR)
 	_night.state.apply_events(_night.server.rules.apply(RulesAction.grant_points(1, 900)))
 	await _hold(HOLD_FRAMES)

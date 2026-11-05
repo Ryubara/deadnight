@@ -1,10 +1,11 @@
 class_name LadderUnlocks
 extends RefCounted
 ## What each level of the ladder gives, from `unlocks.json` (the design page's table: a row is
-## `{level, slot, item, available}`). A level with no row gives only its icon. An item whose art is
-## not drawn yet has `available` false: it is listed, but nobody is told they earned it (the level's
-## own card is enough) until the piece lands and the row is flipped. The wardrobe, the maps and the
-## plate read the same file, so a row is added in one place.
+## `{level, slot, item, part, label, available}`; `part` is a wearable's catalogue key, `label` the
+## name of one the art does not have yet). A level with no row gives only its icon. An item whose
+## art is not drawn yet has `available` false: it is listed, but nobody is told they earned it (the
+## level's own card is enough) until the piece lands and the row is flipped. The wardrobe, the maps
+## and the plate read the same file, so a row is added in one place.
 
 const PATH := "res://gameplay/progression/unlocks.json"
 
@@ -39,11 +40,22 @@ static func from_text(text: String) -> LadderUnlocks:
 					"level": level,
 					"slot": StringName(row["slot"]),
 					"item": StringName(row["item"]),
+					"part": String(row.get("part", "")),
+					"label": String(row.get("label", "")),
 					"available": row.get("available", true) == true,
 				}
 			)
 		)
 	return table
+
+
+## The row of `item` in `slot`, or an empty dictionary: what the server's `unlock_earned` names.
+func find(slot: StringName, item: StringName) -> Dictionary:
+	for at in levels():
+		for row: Dictionary in _by_level[at]:
+			if row["slot"] == slot and row["item"] == item:
+				return row
+	return {}
 
 
 ## Every row a level gives, available or not.
