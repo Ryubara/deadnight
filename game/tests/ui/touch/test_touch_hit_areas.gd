@@ -1,7 +1,7 @@
 # The touch layer's hit areas are a fingertip, and which button wins a touch where they overlap is
 # decided on purpose (Deadnight #1217). A phone's page is 844 x 390 CSS px at a pixel ratio of 2,
 # a 1688 x 780 window; a night runs at the interface size alone, so at 0.8 one unit is 0.29 CSS px
-# and the 66 unit hit areas of Pause, Ping, Scoreboard, Bot wheel and Melee were 38 to 39 CSS px.
+# and the 66 unit hit areas of Pause, Ping, Scoreboard and Melee were 38 to 39 CSS px.
 # The rule these tests hold (`TouchLayout.button_at`):
 #   1. Where two buttons' old areas overlap, the first in order wins, as it always did.
 #   2. The margin added to reach a fingertip belongs to the nearest centre and takes nothing from
@@ -17,11 +17,7 @@ const HANDS: Array[bool] = [false, true]
 const SLACK := 0.5
 ## The buttons that grow at the default touch size and the smallest interface size.
 const SMALL: Array[StringName] = [
-	TouchLayout.PAUSE,
-	TouchLayout.PING,
-	TouchLayout.SCOREBOARD,
-	TouchLayout.BOT_WHEEL,
-	TouchLayout.MELEE
+	TouchLayout.PAUSE, TouchLayout.PING, TouchLayout.SCOREBOARD, TouchLayout.MELEE
 ]
 ## Where a point's step is checked on the grid sweep, in canvas units.
 const GRID_STEP := 7.0
@@ -206,7 +202,7 @@ func test_in_the_new_margin_between_ping_and_scoreboard_the_nearest_centre_wins(
 
 
 ## Where old areas overlapped, the first in the order wins, as before: Pause over Ping over
-## Scoreboard, and Melee over the Bot wheel, whatever the nearest centre.
+## Scoreboard, whatever the nearest centre.
 func test_where_old_areas_overlap_the_first_in_order_still_wins() -> void:
 	_controls(0.8)
 	var pause := _centre(TouchLayout.PAUSE)
@@ -221,12 +217,6 @@ func test_where_old_areas_overlap_the_first_in_order_still_wins() -> void:
 	# The centres themselves are their own.
 	assert_object(await _press(ping)).is_equal(TouchLayout.PING)
 	assert_object(await _press(board)).is_equal(TouchLayout.SCOREBOARD)
-	var melee := _centre(TouchLayout.MELEE)
-	var wheel := _centre(TouchLayout.BOT_WHEEL)
-	var toward_wheel := melee + (wheel - melee).normalized() * (_was(TouchLayout.MELEE) - 4.0)
-	assert_float(toward_wheel.distance_to(wheel)).is_less(toward_wheel.distance_to(melee))
-	assert_object(await _press(toward_wheel)).is_equal(TouchLayout.MELEE)
-	assert_object(await _press(wheel)).is_equal(TouchLayout.BOT_WHEEL)
 
 
 ## A finger on the new margin of each of the five presses it; with no rule the same touch was the

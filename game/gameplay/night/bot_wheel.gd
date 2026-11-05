@@ -1,8 +1,8 @@
 class_name BotWheel
 extends RefCounted
 ## The bot command wheel as plain data: what is held, where the pointer is and which order it is on.
-## Holding the wheel's key, button or touch control starts it; after `OPEN_AFTER` seconds it is open
-## (a tap never is); the pointer (a mouse's motion, the right stick, a finger's drag) picks one of
+## Holding the wheel's key or button starts it; after `OPEN_AFTER` seconds it is open
+## (a tap never is); the pointer (a mouse's motion, the right stick) picks one of
 ## three orders by direction; letting go on an order gives it, letting go in the middle or before it
 ## opened gives nothing. No nodes, no clock of its own: the driver calls `advance`, so a test steps
 ## it by hand (`BotWheelDriver` feeds it, `HudBotWheel` draws it).
@@ -15,11 +15,12 @@ const ORDERS: Array[StringName] = [FOLLOW, ROAM, HOLD]
 ## What the wheel and the HUD call each order, and a line under the name.
 const NAMES := {FOLLOW: "FOLLOW", ROAM: "ROAM", HOLD: "HOLD"}
 const CAPTIONS := {FOLLOW: "STICK WITH ME", ROAM: "FAN OUT", HOLD: "STAY HERE"}
-## What the HUD says briefly after the order changed.
+## What the HUD says briefly after the order changed: the bots' state, which a player reads without
+## knowing the wheel (a ping's own "HOLD HERE" is what a ping says).
 const NOTICES := {
-	FOLLOW: "BOTS: FOLLOW ME",
-	ROAM: "BOTS: ROAM",
-	HOLD: "BOTS: HOLD HERE",
+	FOLLOW: "BOTS: FOLLOWING YOU",
+	ROAM: "BOTS: ROAMING",
+	HOLD: "BOTS: HOLDING POSITION",
 }
 ## The standing order of a team that was never told one (`BotOrders`'s default).
 const DEFAULT_ORDER := ROAM
@@ -28,10 +29,8 @@ const DEFAULT_ORDER := ROAM
 const OPEN_AFTER := 0.18
 ## The pointer is in the middle (no order) under this share of the wheel's reach.
 const CENTRE := 0.3
-## Mouse motion (canvas units) that takes the pointer from the middle to the rim, and a finger's
-## drag (canvas units) that does the same on a touch screen.
+## Mouse motion (canvas units) that takes the pointer from the middle to the rim.
 const MOUSE_REACH := 120.0
-const TOUCH_REACH := 90.0
 ## Seconds the wheel takes to grow open, for the drawing.
 const GROW_SECONDS := 0.12
 
@@ -56,6 +55,12 @@ static func entry_at(at: Vector2) -> StringName:
 	var angle := fposmod(atan2(at.x, -at.y), TAU)
 	var sector := TAU / float(ORDERS.size())
 	return ORDERS[int(roundf(angle / sector)) % ORDERS.size()]
+
+
+## The order after `order` in the wheel's round (Follow, Roam, Hold, Follow...): what a tap on the
+## touch screen's tag gives. An unknown order is followed by the first.
+static func next_after(order: StringName) -> StringName:
+	return ORDERS[(ORDERS.find(order) + 1) % ORDERS.size()]
 
 
 ## The direction (unit, x right and y down) the entry stands in.

@@ -13,6 +13,11 @@ extends HudPart
 ## once: each place is at least a fingertip wide and high, and a place for the grenades stands after
 ## the weapons. The touch layer reads the places' boxes (`touch_zones`) and presses the action of
 ## the one a finger lands on: the key of that slot, or the grenade button (held to cook).
+##
+## The bots' order tag (`HudBotOrder`, #1286) stands at the strip's inner end under a finger, only
+## while the room has a bot: it is the phone's bot control, a place like the others, and the first
+## the touch layer tries. It is here, not in the cards above, because the stick's resting ring
+## crosses the players' column and no tag can stand in it clear of the ring.
 
 const WIDTH := HudAmmo.WIDTH
 const HEIGHT := 64.0
@@ -30,6 +35,8 @@ var silhouettes := WeaponSilhouettes.new()
 var touch := false
 ## The grenades' place, there only while `touch` (a desktop's strip is what it was).
 var grenade_cell: HudGrenadeCell
+## The bots' order tag, there only while `touch`; shown while the room has a bot.
+var bot_tag: HudBotOrder
 
 ## Whether the cells were made from the state once.
 var _built := false
@@ -39,6 +46,8 @@ var _cells: Array[HudSlotCell] = []
 ## number in it.
 var _finger := 0.0
 var _number_px := HudStyle.SMALL
+## The layout is flipped for a left hand: the tag then stands before the places, at the inner end.
+var _mirrored := false
 
 
 func _init() -> void:
@@ -72,6 +81,8 @@ func _rebuild() -> void:
 		var id: StringName = state.slot_ids[i] if i < state.slot_ids.size() else &""
 		_cells[i].show_slot(i + 1, id, state.slot_held == i + 1, silhouettes.texture_of(id))
 	_show_grenades()
+	if bot_tag != null and bot_tag.state == null:
+		bot_tag.bind(state)
 
 
 ## Puts the strip under a finger, or back for a keyboard or a pad: a place is `finger` canvas units
@@ -86,19 +97,33 @@ func fit_touch(on: bool, finger: float, number_px := HudStyle.SMALL) -> void:
 	if not on and grenade_cell != null:
 		grenade_cell.queue_free()
 		grenade_cell = null
+	if not on and bot_tag != null:
+		bot_tag.queue_free()
+		bot_tag = null
 	if is_node_ready() and state != null:
 		_rebuild()
 	else:
 		_fit_cells(maxi(WeaponSlots.count(), _cells.size()))
 
 
+## The layout is flipped for a left hand (`Hud.mirrored`): the bots' tag moves to the other end of
+## the row, so it stays on the side of the screen's middle.
+func set_mirrored(on: bool) -> void:
+	_mirrored = on
+	_order_tag()
+
+
 ## What a finger can press, in the screen's units: the action each place sends and its box. The
-## weapons' places send their slot's key, the grenades' the throw. None while the strip is not
-## under a finger or is not shown (the arrival's show, a pause).
+## bots' tag comes first, so it keeps its taps wherever another place is laid over the same ground
+## (`TouchControls.zone_at` takes the first that holds a point); then the weapons' places send
+## their slot's key, the grenades' the throw. None while the strip is not under a finger or is not
+## shown (the arrival's show, a pause).
 func touch_zones() -> Array[Dictionary]:
 	var found: Array[Dictionary] = []
 	if not touch or not is_visible_in_tree():
 		return found
+	if bot_tag != null:
+		found.append_array(bot_tag.touch_zones())
 	for i in _cells.size():
 		found.append({&"action": WeaponSlots.ACTIONS[i], &"rect": _cells[i].get_global_rect()})
 	if grenade_cell != null:
@@ -170,6 +195,26 @@ func _fit_touch_cells() -> void:
 	grenade_cell.custom_minimum_size = grenade
 	grenade_cell.size_flags_horizontal = Control.SIZE_FILL
 	grenade_cell.set_number_size(_number_px)
-	custom_minimum_size = Vector2(
-		weapon.x * _cells.size() + grenade.x + GAP * float(_cells.size()), weapon.y
-	)
+	if bot_tag == null:
+		bot_tag = HudBotOrder.new()
+		bot_tag.visibility_changed.connect(_fit_touch_cells)
+		_row.add_child(bot_tag)
+		if state != null:
+			bot_tag.bind(state)
+	bot_tag.size_flags_horizontal = Control.SIZE_FILL
+	bot_tag.fit_touch(true, _finger, _number_px)
+	_order_tag()
+	var width := weapon.x * _cells.size() + grenade.x + GAP * float(_cells.size())
+	if bot_tag.visible:
+		width += bot_tag.custom_minimum_size.x + GAP
+	custom_minimum_size = Vector2(width, weapon.y)
+
+
+## The tag stands last in the row, first for a left hand.
+func _order_tag() -> void:
+	if bot_tag == null or bot_tag.get_parent() != _row:
+		return
+	var at := 0 if _mirrored else _row.get_child_count() - 1
+	if bot_tag.get_index() != at:
+		# Deferred: a row that is setting up its children (a layout pass) refuses a move.
+		_row.move_child.call_deferred(bot_tag, 0 if _mirrored else -1)

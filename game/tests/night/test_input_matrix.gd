@@ -28,6 +28,8 @@ const STICK_WALK := 70.0
 const STICK_RIM := 150.0
 ## The actions a keyboard has and a gamepad does not: the pad and the phone swap with one button.
 const KEYBOARD_ONLY: Array[StringName] = [&"weapon_slot_1", &"weapon_slot_2", &"weapon_slot_3"]
+## The actions only a phone's HUD presses (a tap on the bots' tag, #1286): no key and no pad button.
+const TOUCH_ONLY: Array[StringName] = [&"bot_order_next"]
 ## Input actions of the map that belong to menus, not to the night.
 const MENU_PREFIX := "ui_"
 
@@ -71,7 +73,11 @@ const ROWS: Array = [
 	# The bot command wheel (#642): it opens on a hold and gives an order at the release, which is
 	# `test_bot_wheel_input.gd`'s business; here its key, button and touch control must reach the
 	# action, as for every row.
-	[&"bot_wheel", &"bot_wheel"],
+	[&"bot_wheel", &""],
+	# The wheel is a keyboard and a pad idea: a phone has the HUD's tag, a tap on which gives the
+	# next order of the round (`test_bot_wheel_input.gd` proves the order, here the action must
+	# reach the controller's side of the night).
+	[&"bot_order_next", &"bot_order_next"],
 	[&"pause", &""],
 	[&"scoreboard", &""],
 ]
@@ -170,8 +176,8 @@ func _read(action: StringName, c: NightCommand) -> bool:
 			return c.motion.melee
 		&"ping":
 			return _ping_edge
-		&"bot_wheel":
-			return Input.is_action_pressed(&"bot_wheel")
+		&"bot_wheel", &"bot_order_next":
+			return Input.is_action_pressed(action)
 	# The look stick turns the camera rig and not the command: `_shown` checks the view turned.
 	return true
 
@@ -356,7 +362,7 @@ func test_every_action_has_a_row() -> void:
 func test_every_action_but_the_look_stick_has_a_key_or_mouse_binding() -> void:
 	for row in ROWS:
 		var action: StringName = row[0]
-		if String(action).begins_with("look_"):
+		if String(action).begins_with("look_") or TOUCH_ONLY.has(action):
 			continue
 		(
 			assert_array(_bound(action, false))
@@ -368,7 +374,7 @@ func test_every_action_but_the_look_stick_has_a_key_or_mouse_binding() -> void:
 func test_every_action_has_a_gamepad_binding() -> void:
 	for row in ROWS:
 		var action: StringName = row[0]
-		if KEYBOARD_ONLY.has(action):
+		if KEYBOARD_ONLY.has(action) or TOUCH_ONLY.has(action):
 			continue
 		(
 			assert_array(_bound(action, true))
@@ -396,6 +402,8 @@ func test_a_gamepad_that_is_not_device_zero_does_every_action() -> void:
 	for row in ROWS:
 		if row[0] == &"pause" or row[0] == &"scoreboard" or KEYBOARD_ONLY.has(row[0]):
 			continue
+		if TOUCH_ONLY.has(row[0]):
+			continue
 		for event in _bound(row[0], true):
 			_send(event, true)
 			await _hold("gamepad %d" % PAD, row[0])
@@ -406,8 +414,9 @@ func test_a_gamepad_that_is_not_device_zero_does_every_action() -> void:
 func test_the_touch_layer_does_every_action_it_offers() -> void:
 	_fixture = TouchFixture.make(self, TouchFixture.PHONE, null, false, true)
 	var hud_state := _fixture.hud.state
-	# The interact button shows only where there is something to use.
+	# The interact button shows only where there is something to use, the bots' tag only with a bot.
 	hud_state.set_prompt(&"repair", "Broken fence", 0)
+	hud_state.apply_event({"type": &"player_added", "player_id": 99, "bot": true})
 	await get_tree().process_frame
 	await get_tree().process_frame
 	for row in ROWS:

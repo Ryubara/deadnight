@@ -13,6 +13,9 @@ const CANVASES: Array[Vector2] = [
 const KEPT_PARTS: Array[StringName] = [
 	&"ammo", &"prompt", &"health", &"perks", &"points", &"round_part"
 ]
+## The hints a room without bots can show (the bots' hint waits for the HUD's tag, which these
+## fixtures have none of: `test_touch_bot_tag.gd`).
+const WITHOUT_BOTS: Array[StringName] = [TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT]
 const ON_THE_STICK := Vector2(300.0, 760.0)
 const ON_THE_LOOK_AREA := Vector2(1700.0, 330.0)
 
@@ -53,7 +56,7 @@ func test_a_new_player_sees_move_and_look_and_interact_waits_for_a_prompt() -> v
 	assert_array(_hints().showing()).is_equal([TouchHints.MOVE, TouchHints.LOOK])
 	state.set_prompt(&"buy_door", "Concession door", 350)
 	await _frames()
-	assert_array(_hints().showing()).is_equal(TouchHints.ORDER)
+	assert_array(_hints().showing()).is_equal(WITHOUT_BOTS)
 	assert_str(_hints().text_for(TouchHints.INTERACT)).is_equal("TAP TO USE")
 	state.clear_prompt()
 	await _frames()
@@ -277,7 +280,7 @@ func test_the_labels_keep_clear_of_the_buttons_and_the_hud_for_either_hand() -> 
 			await _frames()
 			var hints := fixture.controls.hints
 			var safe := fixture.controls.safe_rect()
-			assert_array(hints.showing()).is_equal(TouchHints.ORDER)
+			assert_array(hints.showing()).is_equal(WITHOUT_BOTS)
 			var circles := TouchLayout.buttons(safe, 1.0, mirrored)
 			var rects := {}
 			for id in hints.showing():

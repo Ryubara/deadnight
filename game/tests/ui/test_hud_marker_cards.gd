@@ -64,7 +64,10 @@ func _page(window: Vector2i, ui_scale: float, ratio: float) -> Vector2:
 	return Vector2(window) / MenuScale.pixels_per_unit(window, ui_scale)
 
 
-func _busy_hud(canvas: Vector2, insets: Vector4, mirrored: bool, touch: bool) -> HudFixture:
+## `with_bot`: one of the bodies is a bot, so the bots' tag is up on a phone (#1286).
+func _busy_hud(
+	canvas: Vector2, insets: Vector4, mirrored: bool, touch: bool, with_bot := true
+) -> HudFixture:
 	var host: Control = auto_free(Control.new())
 	host.size = canvas
 	add_child(host)
@@ -75,6 +78,8 @@ func _busy_hud(canvas: Vector2, insets: Vector4, mirrored: bool, touch: bool) ->
 	hud.set_safe_insets(insets)
 	fixture.into_round_one()
 	var state := hud.state
+	if touch and with_bot:
+		state.apply_event({"type": &"player_added", "player_id": 3, "bot": true})
 	state.set_ammo(30, 150, "Shotgun")
 	state.set_equipment("Flare", 2)
 	state.set_area("The Concession Stand", "Light the booth to open the back lot")

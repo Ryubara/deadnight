@@ -36,10 +36,6 @@ const MELEE := &"quick_melee"
 ## on the top edge beside Pause, where the other thumb reaches it between fights; the right thumb's
 ## corner is full (Reload takes the bottom of MELEE's column on a 1080 unit canvas).
 const PING := &"ping"
-## The bot command wheel (#642): held, it opens the wheel, and the thumb's drag picks an order; the
-## button presses `bot_wheel`. It sits in MELEE's column on the far right edge, above the ammo card
-## and clear of Reload, so it is on screen on a phone's 540 unit high canvas too.
-const BOT_WHEEL := &"bot_wheel"
 
 ## The centre of Fire, from the bottom right corner (left, up): the thumb's resting place, and the
 ## middle of the ring the other four buttons of the right thumb stand on.
@@ -53,9 +49,9 @@ const RING_GAP := 42.0
 ## touch tests them in: the contextual button first, so it wins where it overlaps. The ring's
 ## buttons stand `FIRE_RADIUS + radius + RING_GAP` from Fire's centre, Crouch at 40 degrees below
 ## straight left, Reload at 8 above it (the same row), Aim at 56 and Jump at 104 (nearly straight
-## up); `test_touch_layout` checks the air. Shoulder, Melee and the Bots keep their old places until
-## the homes the audit names are built (#1275). The weapons and the grenades are the HUD's own
-## places, not buttons of this layer (#1280).
+## up); `test_touch_layout` checks the air. Shoulder and Melee keep their old places until the homes
+## the audit names are built (#1275). The weapons and the grenades are the HUD's own places, not
+## buttons of this layer (#1280), and so is the tag of the bots' order (`HudBotOrder`, #1286).
 const BUTTONS := [
 	[INTERACT, Vector2(540.0, 500.0), 80.0],
 	[FIRE, FIRE_OFFSET, FIRE_RADIUS],
@@ -65,11 +61,8 @@ const BUTTONS := [
 	[CROUCH, Vector2(361.0, 219.0), 62.0],
 	[SHOULDER, Vector2(545.0, 672.0), 48.0],
 	[MELEE, Vector2(60.0, 310.0), 44.0],
-	[BOT_WHEEL, Vector2(60.0, 405.0), 40.0],
 ]
-## The buttons whose finger does not look while it drags: the wheel's drag picks an order. Every
-## other button of `BUTTONS` is a right button (#1277): a finger on it also turns the view.
-const DRAG_OWNERS: Array[StringName] = [BOT_WHEEL]
+## Every button of `BUTTONS` is a right button (#1277): a finger on it also turns the view.
 ## Pause sits on the top edge, right of the HUD's left column.
 const PAUSE_OFFSET := Vector2(442.0, 80.0)
 const PAUSE_RADIUS := 36.0
@@ -179,8 +172,6 @@ static func button_at(point: Vector2, circles: Dictionary, skip: Array = []) -> 
 ## Whether a finger that starts on `id` also looks while it drags: every button of the right thumb
 ## does, so a thumb that has pressed Reload, Jump or Crouch turns the view for the rest of the drag.
 static func looks_when_dragged(id: StringName) -> bool:
-	if id in DRAG_OWNERS:
-		return false
 	for row in BUTTONS:
 		if row[0] == id:
 			return true

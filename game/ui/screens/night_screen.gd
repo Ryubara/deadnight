@@ -196,7 +196,6 @@ func _ready() -> void:
 	wheel.name = "BotWheelDriver"
 	wheel.night = night
 	wheel.hud_wheel = _hud.bot_wheel
-	wheel.touch = _touch
 	add_child(wheel)
 	_build_end()
 	_build_overlay()
@@ -244,6 +243,20 @@ func touch_zones() -> Array[Dictionary]:
 
 func touch_held() -> PackedStringArray:
 	return _touch.held_buttons() if _touch != null else PackedStringArray()
+
+
+## Whether a finger is on the move stick, and the first-run hints on screen now (a browser test
+## reads them).
+func touch_stick_down() -> bool:
+	return _touch != null and _touch.is_stick_down()
+
+
+func touch_hints() -> PackedStringArray:
+	var ids := PackedStringArray()
+	if _touch != null and _touch.hints != null:
+		for id in _touch.hints.showing():
+			ids.append(String(id))
+	return ids
 
 
 ## True while the settings page of the menu is open (a browser test reads it).

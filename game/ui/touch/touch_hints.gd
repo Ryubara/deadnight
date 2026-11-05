@@ -1,8 +1,9 @@
 class_name TouchHints
 extends Control
 ## First-run labels on the touch controls: "DRAG TO MOVE" over the stick's place, "DRAG TO LOOK" in
-## the look area and "TAP TO USE" beside the Interact button the first time it shows. Each is
-## short, appears once, and goes the moment its control is used; what was used is remembered in the
+## the look area, "TAP TO USE" beside the Interact button the first time it shows and "TAP TO ORDER
+## BOTS" beside the HUD's bot-order tag the first time a room with bots shows it. Each is short,
+## appears once, and goes the moment its control is used; what was used is remembered in the
 ## setting `controls/touch_hints_seen` (one bit per hint), so a player sees each hint once, ever.
 ## Resetting the settings to their defaults brings them back.
 ##
@@ -19,13 +20,15 @@ extends Control
 const MOVE := &"move"
 const LOOK := &"look"
 const INTERACT := &"interact"
+const BOTS := &"bots"
 ## The order is the bit each hint owns in the saved mask.
-const ORDER: Array[StringName] = [MOVE, LOOK, INTERACT]
+const ORDER: Array[StringName] = [MOVE, LOOK, INTERACT, BOTS]
 
 const TEXT := {
 	MOVE: "DRAG TO MOVE",
 	LOOK: "DRAG TO LOOK",
 	INTERACT: "TAP TO USE",
+	BOTS: "TAP TO ORDER BOTS",
 }
 ## The interact button's caption for a prompt that is held, not tapped (the fence).
 const HOLD_VERB := "HOLD"
@@ -83,8 +86,9 @@ func _ready() -> void:
 			_seen = int(service.call(&"get_value", SettingsService.TOUCH_HINTS_SEEN))
 
 
-## The hints on screen now, in order: controls up, not used yet, and for Interact only while the
-## button shows.
+## The hints on screen now, in order: controls up, not used yet, for Interact only while the button
+## shows and for the bots only while the HUD's tag does and no prompt card is up (the label stands
+## where the prompt card does, and a prompt is worth more than a first-run label).
 func showing() -> Array[StringName]:
 	var found: Array[StringName] = []
 	if controls == null or not controls.is_active():
@@ -93,6 +97,8 @@ func showing() -> Array[StringName]:
 		if is_seen(id):
 			continue
 		if id == INTERACT and controls.interact_verb() == "":
+			continue
+		if id == BOTS and (not _tag_rect().has_area() or controls.interact_verb() != ""):
 			continue
 		found.append(id)
 	return found
@@ -162,7 +168,20 @@ func rect_of(id: StringName) -> Rect2:
 			var beside := float(circle[&"radius"]) + GAP * 0.6
 			var left: float = centre.x + beside if mirrored else centre.x - beside - size.x
 			return Rect2(Vector2(left, centre.y - size.y * 0.5), size)
+		BOTS:
+			# Beside the tag, on the side away from the screen's edge it stands against.
+			var tag := _tag_rect()
+			var left := tag.position.x - GAP - size.x if mirrored else tag.end.x + GAP
+			return Rect2(Vector2(left, tag.get_center().y - size.y * 0.5), size)
 	return Rect2()
+
+
+## The HUD's bot-order tag in the controls' coordinates; an empty rectangle while it is not there.
+func _tag_rect() -> Rect2:
+	var zone := controls.zone_rect(HudBotOrder.ACTION)
+	if not zone.has_area():
+		return Rect2()
+	return Rect2(zone.position - controls.get_global_rect().position, zone.size)
 
 
 ## The left edge of a hint `width` wide that would have its left edge at `left`, moved sideways off
@@ -247,6 +266,7 @@ func _look_key(now: Array[StringName]) -> int:
 			controls.touch_scale,
 			controls.left_handed,
 			controls.interact_verb(),
+			_tag_rect(),
 			UITokens.active().get_instance_id(),
 			UIMotion.reduced,
 		]
@@ -297,7 +317,7 @@ func _icon_box(rect: Rect2) -> Rect2:
 func _draw_icon(id: StringName, tokens: UITokens, box: Rect2, alpha: float) -> void:
 	var centre := box.get_center()
 	var ink := Color(tokens.accent_bright, alpha)
-	if id == INTERACT:
+	if id == INTERACT or id == BOTS:
 		draw_circle(centre, TAP_DOT, ink)
 		return
 	var half := _track_half()
@@ -333,7 +353,7 @@ func _move_marks(now: Array[StringName]) -> void:
 			continue
 		if mark == null:
 			mark = _Mark.new()
-			mark.ring = id == INTERACT
+			mark.ring = id == INTERACT or id == BOTS
 			add_child(mark)
 			_marks[id] = mark
 		mark.set_ink(tokens.accent_bright)

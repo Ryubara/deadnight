@@ -31,7 +31,6 @@ const IDS: Array[StringName] = [
 	TouchLayout.RELOAD,
 	TouchLayout.SHOULDER,
 	TouchLayout.MELEE,
-	TouchLayout.BOT_WHEEL,
 	TouchLayout.PING,
 	TouchLayout.PAUSE,
 	TouchLayout.SCOREBOARD,
@@ -65,8 +64,6 @@ static func add(
 			_shoulder(box)
 		TouchLayout.MELEE:
 			_melee(box)
-		TouchLayout.BOT_WHEEL:
-			_wheel(box)
 		TouchLayout.PING:
 			_ping(box)
 		TouchLayout.PAUSE:
@@ -157,14 +154,6 @@ static func _melee(box: _Box) -> void:
 		[Vector2(-0.1, 0.24), Vector2(0.1, 0.24), Vector2(0.1, 0.72), Vector2(-0.1, 0.72)], turn
 	)
 	box.dot(Vector2(0.0, 0.84).rotated(turn), 0.14)
-
-
-static func _wheel(box: _Box) -> void:
-	# The orders' wheel: a ring cut in three, a hub.
-	box.ring(Vector2.ZERO, 0.8, STROKE)
-	for angle in [-90.0, 30.0, 150.0]:
-		box.line(Vector2.ZERO, Vector2.RIGHT.rotated(deg_to_rad(angle)) * 0.8, THIN)
-	box.dot(Vector2.ZERO, 0.22)
 
 
 static func _ping(box: _Box) -> void:
