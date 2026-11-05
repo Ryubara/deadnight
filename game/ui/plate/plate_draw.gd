@@ -27,6 +27,24 @@ static func emblem(item: CanvasItem, rect: Rect2, id: StringName) -> void:
 	_draw(item, PlateCompose.emblem(piece), piece, at, side / PlateCompose.EMBLEM_SIZE.x, Rect2())
 
 
+## A `?` over a silhouette (a hidden piece not yet earned), centred in `rect`, a shade lighter than
+## the silhouette's colour so it reads and gives nothing away.
+static func question_mark(item: CanvasItem, rect: Rect2) -> void:
+	var font := ThemeDB.fallback_font
+	var px := maxi(int(minf(rect.size.x, rect.size.y) * 0.62), 8)
+	var ink := ItemIcons.SILHOUETTE.lightened(0.3)
+	var baseline := rect.get_center().y + (font.get_ascent(px) - font.get_descent(px)) * 0.5
+	item.draw_string(
+		font,
+		Vector2(rect.position.x, baseline),
+		"?",
+		HORIZONTAL_ALIGNMENT_CENTER,
+		rect.size.x,
+		px,
+		ink
+	)
+
+
 ## The frame `id` on a plate that fills `rect`, over `ground` (a swatch of the plate).
 static func frame(
 	item: CanvasItem, rect: Rect2, id: StringName, ground := Color(0, 0, 0, 0)

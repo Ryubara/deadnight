@@ -53,13 +53,29 @@ var row_ids: Array[int] = []
 ## The level each row shows (0 for none), in row order.
 var row_levels: Array[int] = []
 ## The way out: Leave online, Back alone.
-var leave_button: UIButton
+var leave_button: UIButton:
+	get:
+		_build()
+		return leave_button
+## The least height and width of the way out, canvas units: a tap target on a phone
+## (`MenuScale.tap_units`: 44 CSS px), none (0) with no touch screen. A negative value reads the
+## window's own; a test says its own.
+var tap_units := -1.0:
+	set(value):
+		tap_units = value
+		_fit_tap()
 ## The night report: the local player's XP lines and level bar, on a ticket under the round
 ## (`show_report`); hidden until a report is given.
-var report_card := HudNightReport.new()
+var report_card: HudNightReport:
+	get:
+		_build()
+		return report_card
 ## The film credits: a crew title for every player, under the players' ticket (`show_credits`);
 ## hidden until given.
-var credits_card := HudCredits.new()
+var credits_card: HudCredits:
+	get:
+		_build()
+		return credits_card
 
 var _tokens := UITokens.active()
 ## Player id -> what the board last heard of them, kept after they leave.
@@ -68,23 +84,76 @@ var _local_id := 0
 var _round := 0
 var _clock := 0
 var _signature := ""
-var _margin := MarginContainer.new()
-var _title := HudStyle.label(TITLE, HudStyle.BIG, _tokens.danger, true, 2.0)
-var _round_label := HudStyle.label("", HudStyle.MEDIUM, _tokens.hot, true)
-var _caption := HudStyle.label("", HudStyle.SMALL, _tokens.ink_muted, false, 2.0)
-var _number := HudStyle.label("", HudStyle.NUMERAL, _tokens.accent, true)
-var _ticket := HudTicket.new()
-var _grid := VBoxContainer.new()
+## The board's parts are made the first time something asks for one (`_build`, the night's end): a
+## board built and hidden would be twenty canvas items of every night, and the late-round budget
+## counts every one of the tree.
+var _built := false
+var _margin: MarginContainer:
+	get:
+		_build()
+		return _margin
+var _title: Label:
+	get:
+		_build()
+		return _title
+var _round_label: Label:
+	get:
+		_build()
+		return _round_label
+var _caption: Label:
+	get:
+		_build()
+		return _caption
+var _number: Label:
+	get:
+		_build()
+		return _number
+## The left column, and (made when a screen is too short for the report, #1192) the row that holds
+## the countdown beside Leave. A row built for every board would be two canvas items more in every
+## night the late-round budget plays.
+var _left: VBoxContainer
+var _beside_row: HBoxContainer
+var _beside_count: VBoxContainer
+var _beside := false
+var _ticket: HudTicket:
+	get:
+		_build()
+		return _ticket
+var _grid: VBoxContainer:
+	get:
+		_build()
+		return _grid
 var _insets := Vector4.ZERO
 var _report := {}
 var _crew := {}
-var _right := VBoxContainer.new()
+var _right: VBoxContainer:
+	get:
+		_build()
+		return _right
 
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = false
+	resized.connect(_rebuild_later)
+
+
+## Makes the board's parts, once.
+func _build() -> void:
+	if _built:
+		return
+	_built = true
+	report_card = HudNightReport.new()
+	credits_card = HudCredits.new()
+	_margin = MarginContainer.new()
+	_title = HudStyle.label(TITLE, HudStyle.BIG, _tokens.danger, true, 2.0)
+	_round_label = HudStyle.label("", HudStyle.MEDIUM, _tokens.hot, true)
+	_caption = HudStyle.label("", HudStyle.SMALL, _tokens.ink_muted, false, 2.0)
+	_number = HudStyle.label("", HudStyle.NUMERAL, _tokens.accent, true)
+	_ticket = HudTicket.new()
+	_grid = VBoxContainer.new()
+	_right = VBoxContainer.new()
 	_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_margin)
@@ -104,7 +173,13 @@ func _init() -> void:
 	_right.add_child(_ticket)
 	_right.add_child(credits_card)
 	across.add_child(_right)
-	resized.connect(_rebuild_later)
+	_fit_tap()
+
+
+func _notification(what: int) -> void:
+	# The row that holds the countdown beside Leave is out of the tree while they are stacked.
+	if what == NOTIFICATION_PREDELETE and _beside_row != null and _beside_row.get_parent() == null:
+		_beside_row.free()
 
 
 func _draw() -> void:
@@ -151,6 +226,7 @@ func _build_left() -> Control:
 	leave_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	leave_button.pressed.connect(func() -> void: leave_pressed.emit())
 	left.add_child(leave_button)
+	_left = left
 	return left
 
 
@@ -161,6 +237,9 @@ func show_results(state: HudState, caption: String, leave_text: String) -> void:
 	_caption.text = caption
 	leave_button.text = leave_text
 	visible = true
+	_fit_tap()
+	if not get_window().size_changed.is_connected(_fit_tap):
+		get_window().size_changed.connect(_fit_tap)
 	refresh(state)
 	leave_button.grab_focus.call_deferred()
 
@@ -202,12 +281,33 @@ func show_credits(input: Dictionary) -> void:
 ## The height the report's ticket has: what the screen leaves besides the rest of the left column
 ## (read as it is laid out: the title's type fits one line, the countdown's type steps down).
 func report_room() -> float:
-	# A gap of the column lies between every two of its seven parts (the spacer is one).
+	# A gap of the column lies between every two of its parts (the spacer is one): seven, or five
+	# with the countdown beside Leave.
 	var taken := float(HudStyle.SM)
-	for part: Control in [_title, _round_label, _caption, _number, leave_button]:
+	var parts: Array[Control] = [_title, _round_label]
+	if _beside:
+		parts.append(_beside_row)
+	else:
+		parts.append_array([_caption, _number, leave_button])
+	for part: Control in parts:
 		taken += part.get_combined_minimum_size().y + float(HudStyle.SM)
 	var margins := float(HudStyle.margin()) * 2.0 + _insets.y + _insets.w
 	return size.y - margins - taken
+
+
+## The way out is at least a tap target on a phone. The window's factor is read when the board is
+## shown and when the window changes: the night runs at the interface size alone (a unit is 0.36 px
+## at 844 x 390 CSS px), where the theme's 79 unit button is 28 px (#1192).
+func _fit_tap() -> void:
+	if not _built:
+		return
+	var least := tap_units
+	if least < 0.0:
+		if not is_inside_tree():
+			return
+		least = MenuScale.tap_units(get_window(), TouchMode.wanted(get_tree()))
+	leave_button.custom_minimum_size = Vector2(least, least)
+	_fit_report()
 
 
 ## The title on one line: its type steps down from `HudStyle.BIG` until the text fits the column's
@@ -220,23 +320,58 @@ func _fit_title() -> void:
 
 ## Gives the report the room the left column has, and the countdown's numerals what the report
 ## cannot give up: the rows go to their floor first, the numerals after, so Leave stays on screen.
+## When they are at their floor and the report still does not fit (a phone at the largest interface
+## size: Leave is a tap target there), the countdown stands beside Leave, not over it.
 func _fit_report() -> void:
 	if _report.is_empty():
 		return
 	if size.y <= 0.0:
 		report_card.show_report(_report)
 		return
-	_set_number_size(HudStyle.NUMERAL)
-	report_card.show_report(_report, report_room())
-	var over := report_card.height() - report_room()
-	if over > 0.0:
-		var font := _number.get_theme_font(&"font")
-		var allowed := font.get_height(HudStyle.NUMERAL) - over
-		var size_px := HudStyle.NUMERAL
-		while size_px > NUMBER_FLOOR and font.get_height(size_px) > allowed:
-			size_px -= NUMBER_STEP
-		_set_number_size(size_px)
+	for beside: bool in [false, true]:
+		_set_beside(beside)
+		_set_number_size(HudStyle.NUMERAL)
 		report_card.show_report(_report, report_room())
+		var over := report_card.height() - report_room()
+		if over > 0.0:
+			var font := _number.get_theme_font(&"font")
+			var allowed := font.get_height(HudStyle.NUMERAL) - over
+			var size_px := HudStyle.NUMERAL
+			while size_px > NUMBER_FLOOR and font.get_height(size_px) > allowed:
+				size_px -= NUMBER_STEP
+			_set_number_size(size_px)
+			report_card.show_report(_report, report_room())
+		if report_card.height() <= report_room():
+			return
+
+
+## The countdown over Leave (the column's own order), or beside it in a row made the first time.
+func _set_beside(beside: bool) -> void:
+	if beside == _beside or _left == null:
+		return
+	_beside = beside
+	var focused := leave_button.has_focus()
+	if beside:
+		if _beside_row == null:
+			_beside_row = HBoxContainer.new()
+			_beside_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_beside_row.add_theme_constant_override(&"separation", HudStyle.LG)
+			_beside_count = VBoxContainer.new()
+			_beside_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_beside_count.add_theme_constant_override(&"separation", HudStyle.SM)
+			_beside_row.add_child(_beside_count)
+		_left.add_child(_beside_row)
+		_caption.reparent(_beside_count, false)
+		_number.reparent(_beside_count, false)
+		leave_button.reparent(_beside_row, false)
+		leave_button.size_flags_vertical = Control.SIZE_SHRINK_END
+	else:
+		_left.remove_child(_beside_row)
+		for part: Control in [_caption, _number, leave_button]:
+			part.reparent(_left, false)
+		leave_button.size_flags_vertical = Control.SIZE_FILL
+	if focused:
+		leave_button.grab_focus()
 
 
 func _set_number_size(size_px: int) -> void:
@@ -351,6 +486,8 @@ func _crew_input(ids: Array[int]) -> Dictionary:
 
 
 func _set_margins() -> void:
+	if not _built:
+		return
 	var margin := HudStyle.margin()
 	_margin.add_theme_constant_override(&"margin_left", margin + int(_insets.x))
 	_margin.add_theme_constant_override(&"margin_top", margin + int(_insets.y))

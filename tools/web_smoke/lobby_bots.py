@@ -113,7 +113,7 @@ def main() -> int:
             smoke.press(a, "Enter")
             wait_for(a, "Play together", lambda s: s.get("screen") == "together_screen", smoke.SCREEN_TIMEOUT_S)
             a.wait_for_timeout(1500)
-            smoke.press(a, "ArrowDown")  # Quick join -> Create a night
+            smoke.press(a, "ArrowDown")  # Server browser -> Create a night
             smoke.press(a, "Enter")
             smoke.give_name(a, "Ann")
             alone = wait_for(a, "A's lobby", lambda s: s.get("screen") == "lobby_screen" and s.get("room_code"), 60)

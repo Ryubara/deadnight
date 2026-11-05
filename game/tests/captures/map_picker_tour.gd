@@ -3,7 +3,7 @@ extends Node
 ## `--out=<folder>` named `<--label=><step>`: the menu's Play tab (what the picker sits beside),
 ## Solo's Play screen with the picker, the keyboard on the card that is not built yet (a press
 ## chooses nothing), the room host's lobby (the picker beside the other rules), a guest's lobby
-## (the host's map, read only), a code looked at, and Quick join having found a night. It prints
+## (the host's map, read only), and a code looked at. It prints
 ## the screen each step shows and whether its controls fit the window. Run through the no-focus
 ## launcher, not headless: `gds godot -- --path game res://tests/captures/map_picker_tour.tscn
 ## --windowed --resolution 1280x720 -- --out=<folder> --label=desktop`; a phone is
@@ -57,7 +57,6 @@ func _ready() -> void:
 	await _room(true, "4-host-lobby")
 	await _room(false, "5-guest-lobby")
 	await _preview()
-	await _quick_join()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
 	Settings.reset_defaults()
 	PlayerLevel.reset()
@@ -106,44 +105,6 @@ func _preview() -> void:
 	await _still("6-code-preview")
 	UIRouter.pop()
 	await UIRouter.idle
-
-
-## Quick join pressed with a backend that answers at once: the card names the map of the night it
-## found for the moment before the night opens (held here, so the capture can see it).
-func _quick_join() -> void:
-	var menu := UIRouter.top() as MainMenu
-	QuickJoinOverlay.api_factory = func(_parent: Node) -> TogetherApi: return _SlowApi.new(self)
-	QuickJoinOverlay.opener = func() -> void: pass
-	var play := menu.shell.panel(MenuTab.Id.PLAY) as PlayPanel
-	play.button(&"quick_join").pressed.emit()
-	await get_tree().create_timer(0.6).timeout
-	await _still("7-quick-join")
-	# Let the slow ticket give up, so the overlay is gone before the program quits.
-	await get_tree().create_timer(_SlowApi.TICKET_SECONDS + 1.0).timeout
-	QuickJoinOverlay.api_factory = Callable()
-	QuickJoinOverlay.opener = Callable()
-
-
-## The backend a Quick join talks to, found a night and slow to give the ticket.
-class _SlowApi:
-	extends TogetherApi
-	const TICKET_SECONDS := 3.0
-
-	func sign_in(_display_name: String = "") -> Dictionary:
-		return {"ok": true}
-
-	func quick() -> Dictionary:
-		return {"ok": true, "lobby": {"id": "q1", "code": "QUICK1", "state": "started"}}
-
-	func ticket(_held: Dictionary) -> Dictionary:
-		await _parent.get_tree().create_timer(TICKET_SECONDS).timeout
-		return {"ok": false, "text": "never"}
-
-	func leave(_held: Dictionary) -> Dictionary:
-		return {"ok": true}
-
-	func detached(_parent_node: Node) -> TogetherApi:
-		return self
 
 
 func _key(code: Key) -> void:

@@ -11,8 +11,6 @@ const TICK := &"tick"
 const SKIP_BREAK := &"skip_break"
 const ADD_PLAYER := &"add_player"
 const REMOVE_PLAYER := &"remove_player"
-const SEAT_PERSON := &"seat_person"
-const SEAT_BOT := &"seat_bot"
 const SET_DOWNED := &"set_downed"
 const REVIVE := &"revive"
 const BLOW := &"blow"
@@ -61,8 +59,6 @@ const REQUIRED := {
 	SKIP_BREAK: {},
 	ADD_PLAYER: {"player_id": TYPE_INT},
 	REMOVE_PLAYER: {"player_id": TYPE_INT},
-	SEAT_PERSON: {"player_id": TYPE_INT},
-	SEAT_BOT: {"player_id": TYPE_INT},
 	SET_DOWNED: {"player_id": TYPE_INT, "downed": TYPE_BOOL},
 	ARRIVAL: {"player_id": TYPE_INT, "begin": TYPE_BOOL},
 	REVIVE: {"player_id": TYPE_INT, "target_id": TYPE_INT},
@@ -120,18 +116,6 @@ static func add_player(player_id: int, bot := false) -> Dictionary:
 	if bot:
 		action["bot"] = true
 	return action
-
-
-## A person takes the seat of the bot `player_id`: the seat goes on as it stands, only no longer a
-## bot's (`bot_replaced`). Refused as `unknown_player` when the seat is no bot's.
-static func seat_person(player_id: int) -> Dictionary:
-	return {"type": SEAT_PERSON, "player_id": player_id}
-
-
-## A bot takes the seat of the person `player_id` who left, as it stands (`bot_seated`). Refused as
-## `unknown_player` when the seat is no person's.
-static func seat_bot(player_id: int) -> Dictionary:
-	return {"type": SEAT_BOT, "player_id": player_id}
 
 
 ## The drop of `player_id` begins or, with `begin` false, ends (`ArrivalPlay`).

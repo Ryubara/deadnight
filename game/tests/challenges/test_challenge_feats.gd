@@ -44,7 +44,7 @@ func _count_for(id: StringName, stat: StringName, value: int, delta: int = 1) ->
 
 func test_the_shipped_feats_are_the_launch_set_and_sound() -> void:
 	var feats := _catalog.of_family(ChallengeDef.Family.FEAT)
-	assert_int(feats.size()).is_equal(43)
+	assert_int(feats.size()).is_equal(48)
 	assert_array(_catalog.problems(_weapon_ids(), _type_ids())).is_empty()
 	for def in feats:
 		(

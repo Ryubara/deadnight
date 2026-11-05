@@ -233,6 +233,7 @@ func set_compact(on: bool) -> void:
 		row.custom_minimum_size.y = MenuLook.TAP_TARGET if on else 0.0
 		row.hint = "" if on else HINTS[key]
 	map_picker.set_compact(on)
+	TapFloor.fit(self, on)
 	# A phone's canvas is 540 units high: the rows sit close together (a row is a tap target high
 	# either way).
 	var tokens := UITokens.active()

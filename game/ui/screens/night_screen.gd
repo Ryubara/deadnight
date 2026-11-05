@@ -66,7 +66,7 @@ static var own_look: CharacterLook
 static var challenge_path := ""
 ## The profile file a person's night adds its XP to ('' for tests and captures: no file is touched).
 static var profile_path := ""
-## The lobby the night was entered from (a lobby screen, the Together screen, Quick join set them:
+## The lobby the night was entered from (a lobby screen, the Server Browser set them:
 ## `remember_lobby`) and the way to ask the backend about it; taken once, as `join_url` is. At the
 ## end of the night the player goes back to this lobby, which the backend opens again for them.
 static var return_api: TogetherApi
@@ -124,6 +124,14 @@ static func look_from_flag(text: String) -> CharacterLook:
 
 func _exit_tree() -> void:
 	MenuPopups.set_night(false)
+	# The screen under a night (the Play screen Leave night returns to) is the menu's and runs on
+	# the menu's factor: the shell is hidden under it and cannot put the factor back (#1197). A
+	# frame later: the factor emits `size_changed`, and this screen's parts have left the tree.
+	var window := get_window()
+	if window != null and is_inside_tree():
+		get_tree().process_frame.connect(
+			MenuShell.restore_scale_of.bind(get_tree()), CONNECT_ONE_SHOT
+		)
 
 
 func _ready() -> void:
@@ -353,8 +361,12 @@ func _on_arrival_started() -> void:
 	_touch.live = false
 
 
-## The drop is over and the night is the player's.
+## The drop is over and the night is the player's. A night that ended under it (`Night._on_over`
+## closes the show when the end arrives, after this screen has put the board up) is not: the board
+## stays alone over the end camera.
 func _on_arrival_ended() -> void:
+	if _end.visible:
+		return
 	_hud.show()
 	if not _overlay.visible:
 		_hud.reticle.set_shown(true)
@@ -468,6 +480,7 @@ func _show_overlay(title: String, note: String, can_resume: bool) -> void:
 	_touch.live = false
 	_title.text = title
 	_note.text = note
+	_fit_taps()
 	_resume.visible = can_resume
 	_settings_button.visible = can_resume
 	_overlay.show()
@@ -558,6 +571,14 @@ func _build_overlay() -> void:
 	box.add_child(_resume)
 	box.add_child(_settings_button)
 	box.add_child(_quit)
+
+
+## The card's buttons are tap targets on a phone: the night runs at the interface size alone, where
+## the theme's 79 unit button is 28 px at 844 x 390 (#1192).
+func _fit_taps() -> void:
+	var least := MenuScale.tap_units(get_window(), TouchMode.wanted(get_tree()))
+	for button: UIButton in [_resume, _settings_button, _quit]:
+		button.custom_minimum_size = Vector2(0.0, least)
 
 
 func _label(style: UILabel.Style) -> UILabel:

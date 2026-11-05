@@ -7,11 +7,21 @@ extends Node
 ##
 ## Run: godot --headless --path game res://tests/captures/deployed_leaving_probe.tscn --
 ## --backend=https://... Prints `PROBE ...` lines; the last is `PROBE RESULT passed=N failed=M`.
+##
+## Lobbies live in the memory of one backend, and production deploys the backend every few minutes
+## as main merges (#1240): a deploy during the run wipes every lobby it holds, so a check that
+## reads one cannot pass. `/health` names each run of the backend (`boot`); when it changed during
+## the run, a failing run ends with `PROBE INCONCLUSIVE` and exit code 2 (run it again) instead of
+## a failure nobody could have avoided.
+
+const WAITING_ROOM_READS_EVERY := 2.0
 
 var _backend := ""
 var _passed := 0
 var _failed := 0
 var _nights: Array[Night] = []
+var _boot := ""
+var _reading := true
 
 
 func _ready() -> void:
@@ -21,22 +31,61 @@ func _ready() -> void:
 			_backend = arg.trim_prefix("--backend=")
 		elif arg == "--ended":
 			with_end = true
+	_boot = await _boot_of_backend()
+	print("PROBE backend run ", _boot)
 	var ann := await _client("Ann")
 	var bo := await _client("Bo")
-	# Bo waits in a lobby of his own on the lobby screen (polling it), as a friend would.
+	# Bo waits in a lobby of his own on the lobby screen, reading it every couple of seconds as the
+	# screen does: a waiting room nobody reads is left out of the Server Browser after 15 s.
 	var waiting: Dictionary = (await bo.api.create_lobby())["lobby"]
 	var waiting_code: String = waiting["code"]
+	_keep_reading(bo, waiting)
 	await _leave_then_move(ann, bo, waiting, waiting_code, "button", "join")
-	await _leave_then_move(ann, bo, waiting, waiting_code, "tab", "quick")
+	await _leave_then_move(ann, bo, waiting, waiting_code, "tab", "list")
 	await _leave_then_move(ann, bo, waiting, waiting_code, "tab", "create")
 	if with_end:
 		await _ended_night(ann, bo)
+	_reading = false
 	print("PROBE RESULT passed=%d failed=%d" % [_passed, _failed])
+	var after := await _boot_of_backend()
+	var restarted := _boot != "" and after != "" and after != _boot
+	if restarted and _failed > 0:
+		print(
+			(
+				"PROBE INCONCLUSIVE the backend was deployed during the run (%s, then %s)"
+				% [_boot, after]
+			)
+		)
+		print("PROBE its lobbies went with it; run the probe again")
 	for night in _nights:
 		if is_instance_valid(night) and night.link != null:
 			night.link.close()
 	await get_tree().create_timer(1.0).timeout
-	get_tree().quit(1 if _failed > 0 else 0)
+	get_tree().quit(2 if restarted and _failed > 0 else (1 if _failed > 0 else 0))
+
+
+## Which run of the backend answers (`/health` `boot`); "" from a backend that does not say.
+func _boot_of_backend() -> String:
+	var health := await HttpJson.send(self, "GET", _backend + "/health")
+	if health["status"] != 200 or not health["json"] is Dictionary:
+		return ""
+	return str(health["json"].get("boot", ""))
+
+
+## The codes of the rows `list_nights` gave.
+func _codes(listed: Dictionary) -> Array:
+	var out := []
+	for row: Dictionary in listed.get("nights", []):
+		out.append(str(row["code"]))
+	return out
+
+
+## `client` reads `lobby` every `WAITING_ROOM_READS_EVERY` seconds until the probe is done.
+func _keep_reading(client: Client, lobby: Dictionary) -> void:
+	while _reading:
+		await get_tree().create_timer(WAITING_ROOM_READS_EVERY).timeout
+		if _reading:
+			await client.api.refresh(lobby)
 
 
 class Client:
@@ -137,8 +186,19 @@ func _leave_then_move(
 	match next:
 		"join":
 			answer = await client.api.join_code(waiting_code)
-		"quick":
-			answer = await client.api.quick()
+		"list":
+			# The Server Browser's way in: read the list, then join the row by its code. The row is
+			# Bo's waiting room (read every couple of seconds, so listed), never the first row: that
+			# is the night she has just left, which the game server's word that the seat is empty
+			# takes out of the list a moment after (#1240), and on production anyone else's night.
+			var listed := await client.api.list_nights()
+			var codes := _codes(listed)
+			var row_there: bool = codes.has(waiting_code)
+			_check(
+				row_there,
+				"%s: the Server Browser lists Bo's waiting room (%d nights)" % [tag, codes.size()]
+			)
+			answer = await client.api.join_code(waiting_code) if row_there else listed
 		_:
 			answer = await client.api.create_lobby()
 	var moved_ms := Time.get_ticks_msec() - left_at
@@ -160,14 +220,21 @@ func _leave_then_move(
 			% [tag, old_code, Time.get_ticks_msec() - left_at]
 		)
 	)
-	if next == "join" and answer["ok"]:
+	if next == "list":
+		# And the night she left is out of the list from the very next call.
+		var again := await watcher.api.list_nights()
+		_check(
+			not _codes(again).has(old_code),
+			"%s: the night left (%s) is out of the Server Browser" % [tag, old_code]
+		)
+	if next != "create" and answer["ok"]:
 		var seen := await watcher.api.refresh(waiting)
 		var names: Array = seen["lobby"]["members"].map(
 			func(m: Dictionary) -> String: return m["name"]
 		)
 		_check(names.has(client.name), "%s: Bo's waiting room lists Ann (%s)" % [tag, names])
 		await client.api.leave(answer["lobby"])
-	elif answer["ok"] and next != "join":
+	elif answer["ok"]:
 		# Whatever the move made is left too, so the next scenario starts from the menu.
 		await client.api.leave(answer["lobby"])
 
@@ -183,8 +250,12 @@ func _ended_night(ann: Client, bo: Client) -> void:
 		return
 	var code: String = ann.lobby["code"]
 	var began := Time.get_ticks_msec()
-	while not ann.night.state.closed and Time.get_ticks_msec() - began < 480000:
+	var dropped := [false]
+	ann.night.connection_ended.connect(func() -> void: dropped[0] = true)
+	while not ann.night.state.closed and not dropped[0] and Time.get_ticks_msec() - began < 480000:
 		await get_tree().create_timer(1.0).timeout
+	if dropped[0] and not ann.night.state.closed:
+		print("PROBE the game server dropped Ann before the night closed (a deploy of it?)")
 	_check(
 		ann.night.state.over,
 		"ended: the night ended by itself after %d s" % ((Time.get_ticks_msec() - began) / 1000)

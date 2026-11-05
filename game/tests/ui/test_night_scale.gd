@@ -12,6 +12,12 @@ const TEST_PATH := "user://night_scale_test.cfg"
 var _saved_path: String
 
 
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
+
+
 func before_test() -> void:
 	await RouterFixture.clear(get_tree())
 	_saved_path = Settings.path
@@ -47,6 +53,7 @@ func test_the_night_runs_on_the_players_scale_and_the_menu_gets_the_phone_factor
 	assert_float(get_window().content_scale_factor).is_equal(own)
 	UIRouter.pop(UITransition.Kind.CUT)
 	await UIRouter.idle
+	await get_tree().process_frame
 	assert_object(UIRouter.top()).is_same(menu)
 	assert_float(get_window().content_scale_factor).is_equal(own * MenuScale.PHONE_FACTOR)
 
@@ -59,3 +66,23 @@ func test_a_ui_scale_change_in_the_night_does_not_bring_the_phone_factor_back() 
 	await get_tree().process_frame
 	await get_tree().process_frame
 	assert_float(get_window().content_scale_factor).is_equal_approx(1.2, 0.001)
+
+
+func test_a_screen_under_the_night_gets_the_menus_factor_when_the_night_ends() -> void:
+	# Leave night returns to the Play screen, with the menu's shell hidden below it: the shell
+	# cannot put the factor back, the night does (#1197). On a real page the Play screen was left
+	# at the night's 0.36 CSS pixels to the unit.
+	var menu := await _phone_menu()
+	var own := float(Settings.get_value(SettingsService.UI_SCALE))
+	UIRouter.push("res://ui/screens/play_screen.tscn", UITransition.Kind.CUT)
+	await UIRouter.idle
+	assert_bool(menu.shell.is_visible_in_tree()).is_false()
+	UIRouter.push(NIGHT, UITransition.Kind.CUT)
+	await UIRouter.idle
+	assert_float(get_window().content_scale_factor).is_equal(own)
+	UIRouter.pop(UITransition.Kind.CUT)
+	await UIRouter.idle
+	for _i in 3:
+		await get_tree().process_frame
+	assert_bool(menu.shell.is_visible_in_tree()).is_false()
+	assert_float(get_window().content_scale_factor).is_equal(own * MenuScale.PHONE_FACTOR)

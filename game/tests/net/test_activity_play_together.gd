@@ -2,7 +2,7 @@
 # field and the create button, and no lobby made until the player asks. It used to read the lobby of
 # the Activity's instance and make one when there was none, so two players who both pressed Play
 # together each got a lobby of their own. Every request goes through `HttpJson.responder`, so a
-# lobby made by any path (a screen, the sign-in, the quick join card) shows in `_requests`.
+# lobby made by any path (a screen, the sign-in, the server browser) shows in `_requests`.
 extends GdUnitTestSuite
 
 var _main: Node
@@ -124,7 +124,7 @@ func _lobby_on_top() -> LobbyScreen:
 
 func _menu_of(screen: TogetherScreen) -> Array[String]:
 	var seen: Array[String] = []
-	for button: UIButton in [screen.quick_button, screen.create_button, screen.join_button]:
+	for button: UIButton in [screen.browser_button, screen.create_button, screen.join_button]:
 		seen.append("%s:%s" % [button.text, button.is_visible_in_tree()])
 	seen.append("code:%s" % screen.code_field.is_visible_in_tree())
 	return seen
