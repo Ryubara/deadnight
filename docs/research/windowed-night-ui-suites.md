@@ -2,7 +2,7 @@
 
 CI runs every GdUnit suite headless; a suite run in a window (`gds godot -- ... GdUnitCmdTool.gd -a <suite>`) saw a
 different game. #1187 fixed three suites for the menu shell's phone layout, the helicopter drop and the loading
-screen (the method and the first table are in `windowed-vs-headless-tests.md` once that page has merged). #1195 is the
+screen (the method and the first table are in [windowed vs headless tests](windowed-vs-headless-tests.md)). #1195 is the
 other three, found by deciding per failure whether the game or the test was wrong, by running the real path:
 
 | Suite | Windowed on main | Cause | Whose |
