@@ -154,9 +154,7 @@ func test_fire_aim_and_the_big_buttons_keep_their_hit_areas_at_the_default_touch
 			TouchLayout.AIM,
 			TouchLayout.INTERACT,
 			TouchLayout.JUMP,
-			TouchLayout.GRENADE,
 			TouchLayout.RELOAD,
-			TouchLayout.SWAP,
 		]:
 			assert_float(with_rule[id][&"hit"]).is_equal(without[id][&"hit"])
 

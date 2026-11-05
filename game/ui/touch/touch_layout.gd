@@ -15,8 +15,6 @@ const FIRE := &"fire"
 const AIM := &"aim"
 const JUMP := &"jump"
 const RELOAD := &"reload"
-const SWAP := &"swap_weapon"
-const GRENADE := &"throw_grenade"
 const INTERACT := &"interact"
 const PAUSE := &"pause"
 const SCOREBOARD := &"scoreboard"
@@ -41,9 +39,7 @@ const BUTTONS := [
 	[FIRE, Vector2(205.0, 350.0), 100.0],
 	[AIM, Vector2(320.0, 520.0), 70.0],
 	[RELOAD, Vector2(115.0, 525.0), 62.0],
-	[SWAP, Vector2(515.0, 475.0), 56.0],
 	[JUMP, Vector2(360.0, 150.0), 70.0],
-	[GRENADE, Vector2(520.0, 165.0), 56.0],
 	[SHOULDER, Vector2(565.0, 640.0), 52.0],
 	[MELEE, Vector2(60.0, 310.0), 44.0],
 	[BOT_WHEEL, Vector2(60.0, 405.0), 40.0],

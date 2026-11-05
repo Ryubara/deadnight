@@ -108,9 +108,7 @@ func test_a_quick_tap_still_lasts_long_enough_for_a_physics_tick_to_see() -> voi
 
 
 func test_each_button_presses_its_action() -> void:
-	var ids: Array[StringName] = [
-		TouchLayout.AIM, TouchLayout.RELOAD, TouchLayout.SWAP, TouchLayout.GRENADE
-	]
+	var ids: Array[StringName] = [TouchLayout.AIM, TouchLayout.RELOAD]
 	for id in ids:
 		var point := _fixture.at(id)
 		await _fixture.touch(0, point)
