@@ -5,7 +5,7 @@ extends Node
 ## drag next, and what happened (the crosshair's distance from the chest, shots, friction). Not
 ## part of the game: `tools/web_smoke/touch_assist.py` exports a copy of the project that starts on
 ## this scene and reads `window.__assist`. The page's query sets the assist:
-## `?touch=1&assist=0.5&auto=1`.
+## `?touch=1&assist=1&auto=1`.
 
 const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
@@ -54,7 +54,7 @@ func _run() -> void:
 	_night = screen.night
 	# Through the settings, as the player does: the assist re-reads them whenever one changes.
 	var settings := get_tree().root.get_node("Settings")
-	settings.set_value(SettingsService.TOUCH_AIM_ASSIST, float(query.get("assist", "0.5")))
+	settings.set_value(SettingsService.TOUCH_AIM_ASSIST, float(query.get("assist", "1")) > 0.0)
 	settings.set_value(SettingsService.TOUCH_AUTO_FIRE, int(query.get("auto", "0")))
 	# No mouse here, as on a phone: the player asked for the lock when it entered the night, and a
 	# lock given up later reads as lost (the night pauses, the touch layer goes dead, the look

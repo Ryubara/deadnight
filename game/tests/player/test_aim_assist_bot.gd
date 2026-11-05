@@ -66,7 +66,9 @@ func test_the_assist_does_not_aim_for_the_player() -> void:
 	assert_float(_share[1.0]).is_less(0.75)
 
 
-func test_the_default_strength_is_gentle() -> void:
-	var default_gain := _gain(0.5)
-	assert_float(default_gain).is_less(_gain(1.0))
-	assert_float(default_gain).is_greater(0.05)
+func test_the_setting_is_on_at_the_top_of_the_scale_and_that_win_is_the_biggest() -> void:
+	# The toggle (#1279) is on at 1.0, the slider's far right; its win is what the player gets.
+	var on_gain := _gain(TouchAimAssist.ON_STRENGTH)
+	assert_float(on_gain).is_greater(_gain(0.75))
+	assert_float(on_gain).is_between(0.3, 0.5)
+	assert_float(_share[TouchAimAssist.ON_STRENGTH]).is_greater(0.6)

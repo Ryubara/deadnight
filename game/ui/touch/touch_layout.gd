@@ -4,8 +4,14 @@ extends RefCounted
 ## (canvas units) and the player's touch scale and it answers a circle per button.
 ##
 ## Buttons are placed by their offset from the safe rectangle's bottom right corner, where the
-## right thumb rests, in an arc round Fire. A left-handed layout (`mirrored`) is the same layout
-## flipped left to right: offsets from the bottom left corner, the stick on the right.
+## right thumb rests. The right thumb does Fire, Aim, Jump, Reload and Crouch (#1277), so those five
+## are one ring round Fire (`RING_GAP` of air between the rims): the thumb that rests on Fire rolls
+## to a neighbour without leaving the screen's corner, and Reload is the one on Fire's left, in the
+## same row. Interact, which shows only at something to use, sits one thumb-length out, up and left
+## of Reload and no farther from the edge than the buttons that wait for a home: the world markers
+## need the column between the HUD's cards and the buttons (#1230). A left-handed layout
+## (`mirrored`) is the same layout flipped left to right: offsets from the bottom left corner, the
+## stick on the right.
 ## The HUD's ammo card (bottom right) and prompt card (bottom centre) are kept clear;
 ## `test_touch_layout` checks that against the busiest HUD.
 ## Sizes are in canvas units: about 8 to 9 mm on a phone (the canvas is 1080 units high on a screen
@@ -15,6 +21,9 @@ const FIRE := &"fire"
 const AIM := &"aim"
 const JUMP := &"jump"
 const RELOAD := &"reload"
+## Crouch (#1277): the simulation acts on `crouch` held; on a phone a tap toggles it, so the right
+## thumb is free for Fire and the look again (`TouchControls`).
+const CROUCH := &"crouch"
 const SWAP := &"swap_weapon"
 const GRENADE := &"throw_grenade"
 const INTERACT := &"interact"
@@ -34,20 +43,36 @@ const PING := &"ping"
 ## and clear of Reload, so it is on screen on a phone's 540 unit high canvas too.
 const BOT_WHEEL := &"bot_wheel"
 
+## The centre of Fire, from the bottom right corner (left, up): the thumb's resting place, and the
+## middle of the ring the other four buttons of the right thumb stand on.
+const FIRE_OFFSET := Vector2(205.0, 350.0)
+const FIRE_RADIUS := 100.0
+## Air between the rims of Fire and its neighbours: 2 to 3 mm on a phone, a thumb's own width of
+## room (`docs/research/mobile-controls.md`, "The right side").
+const RING_GAP := 42.0
+
 ## Offset from the bottom right corner (left, up) and radius, by button. The order is the order a
-## touch tests them in: the contextual button first, so it wins where it overlaps.
+## touch tests them in: the contextual button first, so it wins where it overlaps. The ring's
+## buttons stand `FIRE_RADIUS + radius + RING_GAP` from Fire's centre, Crouch at 40 degrees below
+## straight left, Reload at 8 above it (the same row), Aim at 56 and Jump at 104 (nearly straight
+## up); `test_touch_layout` checks the air. Swap, the Grenade, Shoulder, Melee and the Bots keep
+## their old places until the homes the audit names are built (#1275, #1280).
 const BUTTONS := [
-	[INTERACT, Vector2(415.0, 350.0), 86.0],
-	[FIRE, Vector2(205.0, 350.0), 100.0],
-	[AIM, Vector2(320.0, 520.0), 70.0],
-	[RELOAD, Vector2(115.0, 525.0), 62.0],
-	[SWAP, Vector2(515.0, 475.0), 56.0],
-	[JUMP, Vector2(360.0, 150.0), 70.0],
+	[INTERACT, Vector2(540.0, 500.0), 80.0],
+	[FIRE, FIRE_OFFSET, FIRE_RADIUS],
+	[RELOAD, Vector2(411.0, 379.0), 66.0],
+	[AIM, Vector2(325.0, 527.0), 72.0],
+	[JUMP, Vector2(154.0, 556.0), 70.0],
+	[CROUCH, Vector2(361.0, 219.0), 62.0],
+	[SWAP, Vector2(575.0, 340.0), 56.0],
 	[GRENADE, Vector2(520.0, 165.0), 56.0],
-	[SHOULDER, Vector2(565.0, 640.0), 52.0],
+	[SHOULDER, Vector2(545.0, 672.0), 48.0],
 	[MELEE, Vector2(60.0, 310.0), 44.0],
 	[BOT_WHEEL, Vector2(60.0, 405.0), 40.0],
 ]
+## The buttons whose finger does not look while it drags: the wheel's drag picks an order. Every
+## other button of `BUTTONS` is a right button (#1277): a finger on it also turns the view.
+const DRAG_OWNERS: Array[StringName] = [BOT_WHEEL]
 ## Pause sits on the top edge, right of the HUD's left column.
 const PAUSE_OFFSET := Vector2(442.0, 80.0)
 const PAUSE_RADIUS := 36.0
@@ -152,6 +177,17 @@ static func button_at(point: Vector2, circles: Dictionary, skip: Array = []) -> 
 			nearest = id
 			nearest_gap = gap
 	return nearest
+
+
+## Whether a finger that starts on `id` also looks while it drags: every button of the right thumb
+## does, so a thumb that has pressed Reload, Jump or Crouch turns the view for the rest of the drag.
+static func looks_when_dragged(id: StringName) -> bool:
+	if id in DRAG_OWNERS:
+		return false
+	for row in BUTTONS:
+		if row[0] == id:
+			return true
+	return false
 
 
 static func _order() -> Array:
