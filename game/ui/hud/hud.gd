@@ -88,6 +88,7 @@ var touch_layout := false:
 			touch_layout = value
 			if is_node_ready():
 				_home_slots()
+				_fit_markers()
 var round_part := HudRound.new()
 var objective := HudObjective.new()
 var fuel := HudFuel.new()
@@ -168,8 +169,10 @@ func _ready() -> void:
 		part.bind(state)
 	resized.connect(_fit_gains)
 	resized.connect(_fit_popups)
+	resized.connect(_fit_markers)
 	_fit_gains()
 	_fit_popups()
+	_fit_markers()
 
 
 ## Keeps the cards inside the platform's safe area (a phone's notch, rounded corners and home bar),
@@ -288,6 +291,13 @@ func _place_perks() -> void:
 	var at := Vector2(x, card.end.y - perks.size.y) - origin
 	if not perks.position.is_equal_approx(at):
 		perks.position = at
+
+
+## The markers' words read at 14 CSS px where a finger holds the screen (#1218): a phone's night is
+## 0.36 CSS px a unit, so that is 39 units and not 20. A desktop keeps its 20.
+func _fit_markers() -> void:
+	if is_inside_tree():
+		markers.label_size = MenuScale.text_units(get_window(), touch_layout, HudStyle.MIN_TEXT)
 
 
 ## The cards of the popup lane stop above the box round the middle of the screen.
