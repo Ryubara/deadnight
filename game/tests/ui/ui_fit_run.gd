@@ -13,6 +13,7 @@ const PLAY := "res://ui/screens/play_screen.tscn"
 const TOGETHER := "res://ui/screens/together_screen.tscn"
 const JOIN := "res://ui/screens/join_screen.tscn"
 const LOBBY := "res://ui/screens/lobby_screen.tscn"
+const BROWSER := "res://ui/screens/server_browser_screen.tscn"
 const SETTINGS := "res://ui/screens/settings_screen.tscn"
 const CREDITS := "res://ui/screens/credits_screen.tscn"
 const CARDS := "res://ui/screens/cards_screen.tscn"
@@ -31,6 +32,16 @@ const SIZES: Array[Vector2i] = [
 	Vector2i(844, 390),
 	Vector2i(932, 430),
 	Vector2i(667, 375),
+]
+## The canvases a phone's web page really has: [canvas, pixel ratio]. A page of 844 x 390 CSS pixels
+## is a 1688 x 780 canvas at the ratio of 2 the game reports on a touch device (`PhoneRender`) and a
+## 2532 x 1170 one at the phone's own 3. The window is the canvas; the page is the canvas over the
+## ratio, and the menu must lay out as it does in a 844 x 390 window (#1197).
+const PAGES: Array = [
+	[Vector2i(1688, 780), 2.0],
+	[Vector2i(2532, 1170), 3.0],
+	[Vector2i(1864, 860), 2.0],
+	[Vector2i(1334, 750), 2.0],
 ]
 ## Frames a screen is given to lay out after it is shown.
 const SETTLE_FRAMES := 4
@@ -63,14 +74,21 @@ func restore() -> void:
 	var window := tree.root
 	window.size = _saved_size
 	window.content_scale_factor = _saved_scale
+	PageSize.css_override = null
 	UIMotion.reduced = false
 
 
 ## Sizes the window as a player's is, and applies the menu's phone factor when the short side
-## calls for it.
-func set_window(size: Vector2i, interface_scale := 1.0) -> void:
+## calls for it. `page_ratio` over 1 makes it a touch device's web page: the window is the canvas
+## and the page's size in CSS pixels the canvas over the ratio.
+func set_window(size: Vector2i, interface_scale := 1.0, page_ratio := 1.0) -> void:
 	var window := tree.root
 	window.size = size
+	if page_ratio > 1.0:
+		TouchMode.device_is_touch = true
+		PageSize.css_override = Vector2(size) / page_ratio
+	else:
+		PageSize.css_override = null
 	phone = MenuScale.is_phone(size)
 	ui_scale = interface_scale
 	Settings.set_value(SettingsService.UI_SCALE, interface_scale)
@@ -108,6 +126,24 @@ func problems(subject: Dictionary) -> Array[String]:
 	var lines: Array[String] = []
 	for line in found:
 		lines.append("%s: %s" % [subject["name"], line])
+	return lines
+
+
+## The sentences for the text under 14 CSS pixels and the targets under 44 that a person with a
+## ruler finds on the subject's screen (`UiAudit`, #1197). A tab's subject is read with its header
+## and footer: the whole shell.
+func floor_problems(subject: Dictionary) -> Array[String]:
+	var root: Node = subject.get("shell", subject["root"])
+	var audit := UiAudit.scan(root, PageSize.css_per_pixel(tree.root.size))
+	var lines: Array[String] = []
+	if not audit.text_small.is_empty():
+		lines.append(
+			"%s: text under %d px: %s" % [subject["name"], UiAudit.MIN_TEXT_PX, audit.text_small]
+		)
+	if not audit.tap_small.is_empty():
+		lines.append(
+			"%s: target under %d px: %s" % [subject["name"], UiAudit.MIN_TAP_PX, audit.tap_small]
+		)
 	return lines
 
 
@@ -230,8 +266,9 @@ static func screen_names() -> Array[String]:
 		"lobby code",
 		"credits",
 		"cards",
-		"quick join failed",
-		"quick join found",
+		"browser many",
+		"browser empty",
+		"browser failed",
 	]
 	for tab in SETTINGS_TABS:
 		names.append("settings %d" % tab)
@@ -250,8 +287,8 @@ func open(screen_name: String) -> Dictionary:
 		subject = await _open_lobby(
 			screen_name, screen_name == "lobby host", screen_name == "lobby code"
 		)
-	elif screen_name.begins_with("quick join"):
-		subject = await _open_quick_join(screen_name, screen_name == "quick join failed")
+	elif screen_name.begins_with("browser"):
+		subject = await _open_browser(screen_name)
 	elif screen_name == "together name":
 		subject = await open_screen(TOGETHER, screen_name)
 		_asking = subject["root"] as TogetherScreen
@@ -264,31 +301,28 @@ func open(screen_name: String) -> Dictionary:
 	return subject
 
 
-## The Quick join card in its two tall states: a failure with the longest words the backend has
-## (and Create a night and Close), and the night's map found while the search goes on.
-func _open_quick_join(label: String, failed: bool) -> Dictionary:
+## The Server Browser in its three states: a list of every kind of night (a full one, a long host
+## name),
+## an empty list, and a list that failed, with the longest words the backend has.
+func _open_browser(label: String) -> Dictionary:
+	var api := BrowserFixture.FakeApi.new(tree.root)
+	if label == "browser many":
+		api.nights = BrowserFixture.nights()
+	elif label == "browser failed":
+		api.list_failure = "network"
 	await close()
 	_scale_window()
-	var layer := CanvasLayer.new()
-	layer.layer = 100
-	tree.root.add_child(layer)
-	_holder = layer
-	var stage := Control.new()
-	stage.theme = UIThemeBuilder.build(UITokens.active())
-	stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	layer.add_child(stage)
-	var overlay := QuickJoinOverlay.new()
-	stage.add_child(overlay)
-	if failed:
-		overlay.state = QuickJoinOverlay.State.FAILED
-		overlay.status.text = TogetherApi.TEXTS["not_member"]
-	else:
-		overlay.state = QuickJoinOverlay.State.SEARCHING
-		overlay.map_card.info = MapRegistry.default_map()
-		overlay.map_card.visible = true
-	overlay._show_buttons()
+	UIRouter.reset(BROWSER, UITransition.Kind.CUT, {"api": api})
+	await UIRouter.idle
 	await frames()
-	return screen_subject(overlay, label)
+	var browser := UIRouter.top() as ServerBrowserScreen
+	if label == "browser many":
+		# One host name as long as a name goes, and a night in progress at its latest round.
+		api.nights[0]["hostName"] = "A".repeat(MenuProfile.MAX_NAME)
+		api.nights[0]["round"] = 9999
+		browser.feed.refresh()
+		await frames()
+	return screen_subject(browser, label)
 
 
 func _open_lobby(label: String, host: bool, code_only: bool) -> Dictionary:

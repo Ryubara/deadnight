@@ -39,9 +39,6 @@ const DEAD_RING := 18
 const COMMAND := &"command"
 const JOIN := &"join"
 const LEAVE := &"leave"
-## A person takes the seat of a bot: `seat_person` {player_id}. The seat, its body, points and
-## weapons stay as they are; the rules say `bot_replaced`.
-const SEAT_PERSON := &"seat_person"
 const START_NIGHT := &"start_night"
 ## A player marks something for the others: `ping` {kind, pos, subject}, see `PingBoard`.
 const PING := &"ping"
@@ -287,9 +284,6 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			_join(action["player_id"], action.get("local", false), action.get("bot", false))
 		LEAVE:
 			_leave(action["player_id"])
-		SEAT_PERSON, RulesAction.SEAT_BOT:
-			rules.apply({"type": action["type"], "player_id": action["player_id"]})
-			_platform_of_seat(action["player_id"], action["type"] == SEAT_PERSON)
 		START_NIGHT:
 			rules.apply(RulesAction.start())
 		LOOK:
@@ -476,18 +470,6 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 	# What the rules say the player starts with, the firearm last so it is the one in hand.
 	for shop_id in rules.players[player_id].weapons:
 		_combat(CombatAction.give_weapon(player_id, WeaponCatalog.catalog_id(shop_id)))
-
-
-## A seat changed hands: a bot has no screen, so it counts for nothing in the crowd's ceiling (the
-## ceiling follows the people's platforms, `CrowdCeiling`); a person who takes a bot's seat counts
-## as a browser until its client says what it is, like any remote person that joins.
-func _platform_of_seat(player_id: int, person: bool) -> void:
-	if not _bodies.has(player_id):
-		return
-	if person:
-		crowd.join(player_id, true)
-	else:
-		crowd.leave(player_id)
 
 
 func _leave(player_id: int) -> void:
