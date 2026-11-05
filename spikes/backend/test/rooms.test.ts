@@ -408,6 +408,20 @@ test("a setting the backend does not know is refused by name, on the change and 
   await app.close();
 });
 
+test("the health answer names this run of the backend, so a client can tell a deploy wiped its lobbies (#1240)", async () => {
+  const first = await platform();
+  const again = (await first.app.inject({ method: "GET", url: "/health" })).json();
+  const once = (await first.app.inject({ method: "GET", url: "/health" })).json();
+  assert.equal(typeof once.boot, "string");
+  assert.ok(once.boot.length >= 16);
+  assert.equal(again.boot, once.boot, "the same run says the same boot every time");
+  const other = await platform();
+  const restarted = (await other.app.inject({ method: "GET", url: "/health" })).json();
+  assert.notEqual(restarted.boot, once.boot, "a new run (a deploy) says another boot");
+  await first.app.close();
+  await other.app.close();
+});
+
 test("the health answer lists the settings this backend takes, so the deploy can compare them with the game's", async () => {
   const { app } = await platform();
   const health = (await app.inject({ method: "GET", url: "/health" })).json();

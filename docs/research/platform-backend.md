@@ -422,7 +422,11 @@ runs; it does not report a load number.
    membership is gone with the lobby). The same happens when a lobby expired or the match ended.
 3. A client that lost its game-server connection after a restart cannot get a new ticket for that match. The match
    keeps running on the server and is counted again from the next heartbeat, but this backend cannot rejoin a player to
-   it. Persisting lobbies in Postgres is the fix and is not built.
+   it. Persisting lobbies in Postgres is the fix and is not built (#1241).
+
+`GET /health` names the run of the backend (`boot`, a new random id on every start), so a client or a probe that held
+lobbies across a deploy can tell that they are gone: the deployed leaving probe ends `INCONCLUSIVE` (exit code 2)
+when it changed during a failing run (#1240).
 
 ## The game-server ticket
 
