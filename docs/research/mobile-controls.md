@@ -290,11 +290,12 @@ A phone's page is 844 x 390 CSS px with a pixel ratio of 2 (the page caps it, `P
 `NightScreen._ready`): one unit is 0.72 window px, **0.36 CSS px**, and a finger meets CSS px. Do not read a night's
 sizes in window px, and do not detect a phone by the window's short side there (`MenuScale.is_phone` is false for 780).
 
-- **The size:** `MenuScale.TAP_PIXELS` is 44 CSS px; `MenuLook.TAP_TARGET` (62 units at the menu's phone factor,
-  0.72 CSS px a unit) is the same 44.8 CSS px. `MenuScale.tap_units(window, touch)` turns it into units at the screen's
-  own factor: 122 units at the night's factor, 98 at an interface size of 1.25, 153 at 0.8. It is zero when
-  `TouchMode.wanted` is false, so a desktop keeps the theme's size, and never more than a fifth of the canvas's height
-  (a headless test's 64 x 64 window would ask for 1320 units).
+- **The size:** `MenuScale.TAP_PIXELS` is 44 CSS px; `MenuLook.TAP_TARGET` (64 units at the menu's phone factor:
+  46.2 CSS px at 0.72 a unit on an 844 x 390 page, 44.4 at 0.694 on 667 x 375) is the same.
+  `MenuScale.tap_units(window, touch)` turns it into units at the screen's own factor: 122 units at the night's
+  factor, 98 at an interface size of 1.25, 153 at 0.8. It is zero when `TouchMode.wanted` is false, so a desktop
+  keeps the theme's size, and never more than a fifth of the canvas's height (a headless test's 64 x 64 window would
+  ask for 1320 units).
 - **What was under it, on main, in a real `NightScreen` with the router's theme at 1688 x 780:** the end board's Leave
   (Back alone) 149 x 79 units, 53.8 x 28.5 CSS px, and the pause card's Resume, Settings and Leave night 79 units,
   28.5 CSS px. (The issue read about 14 px off a capture; the router's theme gives 28.5, which is what the tests
