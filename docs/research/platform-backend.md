@@ -45,7 +45,8 @@ image):
   `access_token` (the Embedded App SDK needs it for `authenticate()`).
 - `POST /lobbies` creates a lobby (or joins the open one of the same Activity `instanceId`),
   `POST /lobbies/join-by-code`, `GET /lobbies/:id`, `POST /lobbies/:id/leave`, `POST /lobbies/:id/start` (host only;
-  allocates a game server). A user is in at most one open lobby (409 `already_in_lobby`).
+  allocates a game server). A user is in one lobby at a time, open or started: creating or joining another takes them out
+  of it, so no call is refused for it ([every state](../design/lobby.md#leaving-and-moving-every-state-and-what-ends-it)).
 - `POST /lobbies/:id/ticket` returns `{address: {url, activityPath}, ticket}` for the caller's seat. The ticket names
   the game server it is for (`serverId`) and has a unique id (`jti`); see [the ticket](#the-game-server-ticket).
 - `PUT/GET /saves/:slot`: a save is `{revision, schemaVersion, data}`; a stale `revision` is a 409 instead of lost
@@ -57,8 +58,11 @@ image):
 - `POST /internal/servers/heartbeat` (shared secret): a game server announces itself, its capacity and the ids of the
   matches it is running. `POST /internal/matches/:id/end` (shared secret): a match is over, its slot is free. A night
   that ran its end-of-night intermission out sends `{finished: true, present: [user ids still in the room]}` and its
-  lobby opens again for them (open, same code, host, settings and Activity instance; a user already in another lobby
-  is not put back); any other end drops the lobby ([end of a night](end-of-night.md)).
+  lobby opens again for them (open, same code, host, settings and Activity instance; a user who has moved to another
+  lobby is not put back, and a reopened lobby nobody reads within a minute is dropped); any other end drops the lobby
+  ([end of a night](end-of-night.md)). `POST /internal/matches/:id/left {userId}` (shared secret): a person's seat in the
+  match is empty (Leave, a closed tab, a dropped connection not taken back): they leave the lobby at once and the last
+  one out ends it; unknown matches and users are ignored.
   How lobbies and capacity end: [Lobby and match lifecycle](#lobby-and-match-lifecycle).
 - `src/stub-gameserver.ts` stands in for headless Godot: it heartbeats, and admits only a valid ticket
   that is unexpired, for this server and unused (`jti`), sent as the first WebSocket message.
@@ -374,9 +378,12 @@ injected clock.
 
 | What | Ends when |
 | --- | --- |
-| Open lobby | Idle for 10 minutes (create, join, leave, start and a member's `GET` all count as activity), or its last member leaves. A member not seen for a minute is dropped while another is still there ([presence](#the-lobby-before-the-night)). |
-| Started lobby | The game server calls `POST /internal/matches/:id/end` (a finished night reopens the lobby), or its heartbeat stops listing the match, or it is 2 hours old, or its last member leaves. |
-| A user's place | A user is in one open lobby; starting the lobby, leaving it or its end frees them. The host role passes to the next member when the host leaves. |
+| Open lobby | Its last member leaves or moves to another lobby (at once). The backstop: idle for 10 minutes (create, join, leave, start and a member's `GET` all count as activity). A member not seen for a minute is dropped while another is still there ([presence](#the-lobby-before-the-night)). |
+| Started lobby | Its last member leaves or moves, or the game server says the last person's seat is empty (`/left`), or calls `POST /internal/matches/:id/end` (a finished night reopens the lobby), at once. The backstop: its heartbeat stops listing the match, or it is 2 hours old. |
+| Reopened lobby | A member reads it (then it is an open one), else it is dropped a minute after it opened. |
+| A user's place | A user is in one lobby, open or started. Leaving it, its end, or creating or joining another frees them: a move takes the player out of the old lobby first (the host role passes to the next member), and a join refused as `full` leaves them where they were. |
+
+The whole sweep, state by state and way out by way out, is in [the lobby design](../design/lobby.md#leaving-and-moving-every-state-and-what-ends-it).
 
 A sweep every 30 s drops expired lobbies, and a lookup of an expired one answers `not_found` at once.
 
@@ -392,8 +399,8 @@ runs; it does not report a load number.
 
 1. A client already connected to its game server keeps playing; the match belongs to the game server, not the backend.
 2. A client that polls the lobby (waiting room) or asks for a ticket and gets `not_found` shows "this lobby is gone" and
-   returns to the menu, where it can create or join again (its old membership is gone with the lobby, so it is not
-   blocked by `already_in_lobby`). The same happens when a lobby expired or the match ended.
+   returns to the menu, where it can create or join again (nothing holds a player for the lobby they were in, and its
+   membership is gone with the lobby). The same happens when a lobby expired or the match ended.
 3. A client that lost its game-server connection after a restart cannot get a new ticket for that match. The match
    keeps running on the server and is counted again from the next heartbeat, but this backend cannot rejoin a player to
    it. Persisting lobbies in Postgres is the fix and is not built.

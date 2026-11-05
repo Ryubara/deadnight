@@ -22,6 +22,10 @@ signal player_left(player_id: int)
 ## A player's socket dropped and the seat is held for them; and they came back on a new one.
 signal player_away(player_id: int)
 signal player_resumed(player_id: int)
+## A person's seat is empty for good (they left, closed the tab, or their dropped socket was not
+## taken back in time) while the night was on. Not said once the night has closed: the people there
+## then are the ones the lobby opens again for (`returning`). `user` is the backend's id.
+signal user_left(user: String)
 ## The night is built and the room takes players.
 signal built
 ## What the seats with an account earned, to be posted to the backend: at the end of a round
@@ -437,6 +441,7 @@ func _on_disconnected(transport_id: int) -> void:
 		and not peer.kicked
 		and not on_purpose
 		and _night_began()
+		and not finished
 	):
 		# The body stays where it is, with no commands coming (it stands still after a moment);
 		# the player takes it back with the token, or the time runs out.
@@ -444,11 +449,11 @@ func _on_disconnected(transport_id: int) -> void:
 		_log("away", {"player": peer.player_id, "players": _by_player.size()})
 		player_away.emit(peer.player_id)
 		return
-	_free_seat(peer.player_id)
+	_free_seat(peer.player_id, peer.user)
 
 
 ## Frees a seat for good: the body leaves the lot and the id can be given to someone new.
-func _free_seat(player_id: int) -> void:
+func _free_seat(player_id: int, user: String = "") -> void:
 	_away.erase(player_id)
 	_names.erase(player_id)
 	if server != null:
@@ -468,6 +473,8 @@ func _free_seat(player_id: int) -> void:
 		_fill_bots()
 	_log("left", {"player": player_id, "players": _by_player.size()})
 	player_left.emit(player_id)
+	if user != "" and not finished:
+		user_left.emit(user)
 
 
 func _expire_away() -> void:
@@ -475,7 +482,7 @@ func _expire_away() -> void:
 	for player_id in _away.keys():
 		if now >= _away[player_id].until:
 			_log("expired", {"player": player_id})
-			_free_seat(player_id)
+			_free_seat(player_id, _away[player_id].user)
 
 
 func _on_packet(transport_id: int, data: PackedByteArray) -> void:

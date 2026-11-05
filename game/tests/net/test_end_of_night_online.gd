@@ -343,9 +343,12 @@ func test_the_host_who_leaves_during_the_intermission_hands_the_reopened_lobby_o
 	room.server.end_seconds = SECONDS
 	_end(room)
 	assert_bool(await _until(func() -> bool: return ann.night.state.over)).is_true()
-	# The host presses Leave (the screen closes the link and leaves the lobby).
+	# The host presses Leave (the screen closes the link and leaves the lobby). The game server says
+	# the seat is empty as fast as the screen does, so whichever is heard second finds her gone
+	# (`not_member`): she is out either way.
 	ann.night.link.close()
-	assert_bool((await ann.api.leave(ann.lobby))["ok"]).is_true()
+	var said := await ann.api.leave(ann.lobby)
+	assert_bool(said["ok"] or said.get("error") == "not_member").is_true()
 	var closed := await _until(
 		func() -> bool: return bo.night.state.closed and cy.night.state.closed, 20.0
 	)
