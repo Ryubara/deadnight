@@ -376,22 +376,32 @@ func level_of(member: Dictionary) -> Vector2i:
 	return Vector2i(level, int(member.get("icon", level)))
 
 
-## The calling card and emblem a team member wears, `{card, emblem}` (piece ids, `&""` for none): a
-## bot has none, nor has a seat with no account (the server tells each seat's, `PlateTable`).
+## The calling card, emblem and frame a team member wears, `{card, emblem, frame}` (piece ids,
+## `&""` for none): a bot has none, nor has a seat with no account (the server tells each seat's,
+## `PlateTable`).
 func plate_of(member: Dictionary) -> Dictionary:
 	if bool(member.get("bot", false)):
-		return {"card": &"", "emblem": &""}
+		return {"card": &"", "emblem": &"", "frame": &""}
 	return {
-		"card": StringName(member.get("card", &"")), "emblem": StringName(member.get("emblem", &""))
+		"card": StringName(member.get("card", &"")),
+		"emblem": StringName(member.get("emblem", &"")),
+		"frame": StringName(member.get("frame", &"")),
 	}
 
 
-## Sets the calling card and emblem a player wears (`&""` for none).
-func set_player_plate(player_id: int, card: StringName, emblem: StringName) -> void:
+## Sets the calling card, emblem and frame a player wears (`&""` for none).
+func set_player_plate(
+	player_id: int, card: StringName, emblem: StringName, frame: StringName = &""
+) -> void:
 	var member := _member(player_id)
-	if StringName(member["card"]) != card or StringName(member["emblem"]) != emblem:
+	if (
+		StringName(member["card"]) != card
+		or StringName(member["emblem"]) != emblem
+		or StringName(member["frame"]) != frame
+	):
 		member["card"] = card
 		member["emblem"] = emblem
+		member["frame"] = frame
 		_mark(TEAM)
 	_flush()
 
@@ -496,7 +506,9 @@ func load_snapshot(data: Dictionary) -> void:
 		var saved: Dictionary = players[player_id]
 		var member := _member(int(player_id))
 		if kept.has(int(player_id)):
-			for field in ["name", "seat", "look", "ping", "level", "icon", "card", "emblem"]:
+			for field in [
+				"name", "seat", "look", "ping", "level", "icon", "card", "emblem", "frame"
+			]:
 				member[field] = kept[int(player_id)][field]
 		member["downed"] = bool(saved.get("downed", false))
 		member["dead"] = bool(saved.get("dead", false))
@@ -528,13 +540,15 @@ func load_snapshot(data: Dictionary) -> void:
 			var pair := LevelCurve.seat_tag(held)
 			team[player_id]["level"] = pair.x
 			team[player_id]["icon"] = pair.y
-	# The calling cards and emblems of the seats (`plates`: player id -> {card, emblem}).
+	# The calling cards, emblems and frames of the seats (`plates`: player id -> {card, emblem,
+	# frame}).
 	var plates: Variant = data.get("plates")
 	if typeof(plates) == TYPE_DICTIONARY:
 		for player_id in team:
 			var worn: Variant = plates.get(player_id, plates.get(str(player_id), {}))
 			team[player_id]["card"] = StringName(str((worn as Dictionary).get("card", "")))
 			team[player_id]["emblem"] = StringName(str((worn as Dictionary).get("emblem", "")))
+			team[player_id]["frame"] = StringName(str((worn as Dictionary).get("frame", "")))
 	var local: Dictionary = team.get(local_player_id, {})
 	points = int(local.get("points", 0))
 	grenades = int(local.get("grenades", 0))
@@ -907,19 +921,21 @@ func _member(player_id: int) -> Dictionary:
 			"icon": 0,
 			"card": &"",
 			"emblem": &"",
+			"frame": &"",
 		}
 		_mark(TEAM)
 	return team[player_id]
 
 
-## A seat's level, and for a seat that just sat down its calling card and emblem.
+## A seat's level, and for a seat that just sat down its calling card, emblem and frame.
 func _on_account_event(event: Dictionary) -> void:
 	set_player_level(int(event["player_id"]), int(event["level"]), int(event["level"]))
 	if event["type"] == &"account_seated":
 		set_player_plate(
 			int(event["player_id"]),
 			StringName(str(event.get("card", ""))),
-			StringName(str(event.get("emblem", "")))
+			StringName(str(event.get("emblem", ""))),
+			StringName(str(event.get("frame", "")))
 		)
 
 

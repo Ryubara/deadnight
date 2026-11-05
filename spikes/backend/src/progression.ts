@@ -43,9 +43,9 @@ export const DAY_MS = 86_400_000;
 /** Largest raw XP a profile may hold (a sanity bound, far above level 55's 18,010). */
 export const MAX_PROFILE_XP = 1_000_000_000;
 export const MAX_DONE = 2000;
-/** How many finished challenges a ticket carries, when it carries a calling card or an emblem. */
+/** How many finished challenges a ticket carries, when it carries a calling card, an emblem or a frame. */
 export const TICKET_DONE = 256;
-/** A calling card's or an emblem's id as the game writes them: lower case, digits and underscores. */
+/** A calling card's, an emblem's or a frame's id as the game writes them: lower case, digits and underscores. */
 const PIECE_ID = /^[a-z0-9_]{1,40}$/;
 
 /** What a ticket says about a seat's progression (the game's `TicketVerifier.account_of` reads it). */
@@ -55,6 +55,7 @@ export interface TicketClaims {
   xp: number;
   card?: string;
   emblem?: string;
+  frame?: string;
   done?: string[];
 }
 
@@ -63,10 +64,11 @@ interface Known {
   level: number;
   card?: string;
   emblem?: string;
+  frame?: string;
 }
 
 function knownOf(profile: ProfileData): Known {
-  return { level: levelOf(profile.xp), card: pieceId(profile.equipped.card), emblem: pieceId(profile.equipped.emblem) };
+  return { level: levelOf(profile.xp), card: pieceId(profile.equipped.card), emblem: pieceId(profile.equipped.emblem), frame: pieceId(profile.equipped.frame) };
 }
 
 /** A piece id from the profile's `equipped`, or undefined when it is not one. */
@@ -243,7 +245,7 @@ const WRITE_ATTEMPTS = 8;
 export class ProgressService {
   private readonly store: Store;
   private readonly now: () => number;
-  /** What each account was last known as (level, card, emblem), so a lobby's member list (which is built without waiting) can show it. */
+  /** What each account was last known as (level, card, emblem, frame), so a lobby's member list (which is built without waiting) can show it. */
   private readonly known = new Map<string, Known>();
 
   constructor(store: Store, now: () => number = Date.now) {
@@ -263,9 +265,9 @@ export class ProgressService {
 
   /**
    * The claims a ticket carries for a seat, read from the stored profile and never the client's word on this call:
-   * the level, its icon and the raw XP; the calling card and the emblem the player chose (`equipped`, absent for none
-   * or for an id that is not a plain name), and the challenges they finished, which the game server holds those two
-   * choices to (it owns the list of what each gives). The list is the last `TICKET_DONE` ids, far more than the game
+   * the level, its icon and the raw XP; the calling card, the emblem and the frame the player chose (`equipped`,
+   * absent for none or for an id that is not a plain name), and the challenges they finished, which the game server
+   * holds those choices to (it owns the list of what each gives). The list is the last `TICKET_DONE` ids, far more than the game
    * has challenges.
    */
   async claimsFor(userId: string): Promise<TicketClaims> {
@@ -273,21 +275,22 @@ export class ProgressService {
     const level = levelOf(profile.xp);
     this.known.set(userId, knownOf(profile));
     const claims: TicketClaims = { level, icon: iconOf(level), xp: profile.xp };
-    const { card, emblem } = knownOf(profile);
+    const { card, emblem, frame } = knownOf(profile);
     if (card) claims.card = card;
     if (emblem) claims.emblem = emblem;
-    if (card || emblem) claims.done = profile.done.slice(-TICKET_DONE);
+    if (frame) claims.frame = frame;
+    if (card || emblem || frame) claims.done = profile.done.slice(-TICKET_DONE);
     return claims;
   }
 
   /**
-   * The level and icon an account was last seen at (a ticket, a lobby join, a report) with the calling card and emblem
+   * The level and icon an account was last seen at (a ticket, a lobby join, a report) with the calling card, emblem and frame
    * it chose, or null when this process has not seen it yet. The lobby's list shows them as chosen; the game server
    * holds them to what the account owns when the night starts (`PlateTable`).
    */
-  knownLevel(userId: string): { level: number; icon: string; card?: string; emblem?: string } | null {
+  knownLevel(userId: string): { level: number; icon: string; card?: string; emblem?: string; frame?: string } | null {
     const known = this.known.get(userId);
-    return known === undefined ? null : { level: known.level, icon: iconOf(known.level), ...(known.card ? { card: known.card } : {}), ...(known.emblem ? { emblem: known.emblem } : {}) };
+    return known === undefined ? null : { level: known.level, icon: iconOf(known.level), ...(known.card ? { card: known.card } : {}), ...(known.emblem ? { emblem: known.emblem } : {}), ...(known.frame ? { frame: known.frame } : {}) };
   }
 
   /**

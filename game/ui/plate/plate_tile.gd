@@ -1,12 +1,14 @@
 class_name PlateTile
 extends UIButton
-## One calling card or one emblem on the equip screen (`CardsScreen`): its art, its title, and under
-## it what it is to the player: the one they wear, one they may put on, or one still to earn with
-## how to earn it. A piece not yet earned is dimmed and still shows what it looks like, so a player
-## sees what they are playing for.
+## One calling card, emblem or frame on the equip screen (`CardsScreen`): its art, its title, and
+## under it what it is to the player: the one they wear, one they may put on, or one still to earn
+## with how to earn it. A piece not yet earned is dimmed and still shows what it looks like, so a
+## player sees what they are playing for.
 
 const WEARING := "WEARING"
-const NONE_TITLE := "No card"
+const NONE_TITLES := {
+	PlateCatalog.CARD: "No card", PlateCatalog.EMBLEM: "No emblem", PlateCatalog.FRAME: "No frame"
+}
 ## The room under the art for the caption, in lines, and a line's height.
 const CAPTION_LINES := 2
 const CAPTION_LINE := 24.0
@@ -57,9 +59,15 @@ func _build(art_size: Vector2, how_to_get: String) -> void:
 	column.offset_right = -pad
 	column.offset_bottom = -pad
 	add_child(column)
-	if piece_id == &"":
+	if piece_id == &"" and kind != PlateCatalog.FRAME:
 		_art = Control.new()
 		_art.custom_minimum_size = art_size
+	elif kind == PlateCatalog.FRAME:
+		var frame := FrameArt.new()
+		frame.frame_id = piece_id
+		frame.ground = UITokens.active().bg
+		frame.dim = 0.0 if owned else 0.55
+		_art = frame
 	elif kind == PlateCatalog.CARD:
 		var card := CardArt.new()
 		card.card_id = piece_id
@@ -74,7 +82,7 @@ func _build(art_size: Vector2, how_to_get: String) -> void:
 	_art.custom_minimum_size = art_size
 	_art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	column.add_child(_art)
-	_title = _caption(NONE_TITLE if piece_id == &"" else catalog.title(kind, piece_id))
+	_title = _caption(NONE_TITLES[kind] if piece_id == &"" else catalog.title(kind, piece_id))
 	_title.add_theme_color_override(&"font_color", UITokens.active().ink)
 	column.add_child(_title)
 	_status = _caption(_status_text(how_to_get))

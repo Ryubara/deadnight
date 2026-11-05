@@ -51,13 +51,17 @@ async function platform() {
   return { app, player, claims };
 }
 
-test("a ticket carries the chosen card and emblem and the challenges finished", async () => {
+test("a ticket carries the chosen card, emblem and frame and the challenges finished", async () => {
   const { app, player, claims } = await platform();
-  const ana = await player("ana", { equipped: { card: "dead_eye", emblem: "walk_in" }, done: ["f_dead_eye", "f_walk_in"] });
+  const ana = await player("ana", {
+    equipped: { card: "dead_eye", emblem: "walk_in", frame: "filmstrip" },
+    done: ["f_dead_eye", "f_walk_in", "f_filmstrip"],
+  });
   const ticket = await claims(ana);
   assert.equal(ticket.card, "dead_eye");
   assert.equal(ticket.emblem, "walk_in");
-  assert.deepEqual(ticket.done, ["f_dead_eye", "f_walk_in"]);
+  assert.equal(ticket.frame, "filmstrip");
+  assert.deepEqual(ticket.done, ["f_dead_eye", "f_walk_in", "f_filmstrip"]);
   await app.close();
 });
 
@@ -67,6 +71,7 @@ test("a player who chose nothing carries neither, and no list of what they finis
   const ticket = await claims(ben);
   assert.equal("card" in ticket, false);
   assert.equal("emblem" in ticket, false);
+  assert.equal("frame" in ticket, false);
   assert.equal("done" in ticket, false);
   assert.equal(ticket.level, 1, "the level claim is still there");
   await app.close();
@@ -74,10 +79,11 @@ test("a player who chose nothing carries neither, and no list of what they finis
 
 test("an id that is not a plain name is not signed", async () => {
   const { app, player, claims } = await platform();
-  const eve = await player("eve", { equipped: { card: "Dead Eye; DROP", emblem: 7 }, done: [] });
+  const eve = await player("eve", { equipped: { card: "Dead Eye; DROP", emblem: 7, frame: "../x" }, done: [] });
   const ticket = await claims(eve);
   assert.equal("card" in ticket, false);
   assert.equal("emblem" in ticket, false);
+  assert.equal("frame" in ticket, false);
   const long = await player("long", { equipped: { card: "a".repeat(41), emblem: "ok_name" }, done: [] });
   const second = await claims(long);
   assert.equal("card" in second, false);
@@ -85,9 +91,9 @@ test("an id that is not a plain name is not signed", async () => {
   await app.close();
 });
 
-test("the lobby's member list shows each member's chosen card and emblem beside the level", async () => {
+test("the lobby's member list shows each member's chosen card, emblem and frame beside the level", async () => {
   const { app, player } = await platform();
-  const ana = await player("ana", { equipped: { card: "cartoon", emblem: "admit_one" } });
+  const ana = await player("ana", { equipped: { card: "cartoon", emblem: "admit_one", frame: "chrome" } });
   const bo = await player("bo", {});
   const lobby = (await app.inject({ method: "POST", url: "/lobbies", headers: ana.headers, payload: {} })).json();
   // The profile is read once, when the member joins or asks for a ticket (the list is built without waiting).
@@ -96,8 +102,8 @@ test("the lobby's member list shows each member's chosen card and emblem beside 
   await app.inject({ method: "POST", url: `/lobbies/${lobby.id}/start`, headers: ana.headers, payload: {} });
   await app.inject({ method: "POST", url: `/lobbies/${lobby.id}/ticket`, headers: ana.headers, payload: {} });
   const view = (await app.inject({ method: "GET", url: `/lobbies/${lobby.id}`, headers: ana.headers })).json();
-  const members = view.members as { userId: string; card?: string; emblem?: string }[];
-  assert.deepEqual([members[0]!.card, members[0]!.emblem], ["cartoon", "admit_one"]);
+  const members = view.members as { userId: string; card?: string; emblem?: string; frame?: string }[];
+  assert.deepEqual([members[0]!.card, members[0]!.emblem, members[0]!.frame], ["cartoon", "admit_one", "chrome"]);
   assert.equal("card" in members[1]!, false, "a member who chose nothing has no card key");
   await app.close();
 });

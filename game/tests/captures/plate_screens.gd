@@ -1,17 +1,18 @@
 extends Node
-## The plate's screens (#1070), one PNG into `--out=<file>`: `--page=cards` the equip screen,
-## `--page=loadout` the Loadout tab's Plate button, `--page=scoreboard` the Tab board,
-## `--page=report`
-## the night's end board, `--page=lobby` the lobby's seats, `--page=unlock` the unlock cards of a
-## card and an emblem. `--empty` shows the same without cards or emblems (the before). Run it
-## through the no-focus launcher, not headless:
-## `gds godot -- --path game res://tests/captures/plate_screens.tscn --resolution 1920x1080
-## -- --out=<abs>/cards.png --page=cards`. Not part of the game.
+## The plate's screens (#1070), one PNG into `--out=<file>`: `--page=cards` the equip screen
+## (`--tab=frame` its Frames tab), `--page=loadout` the Loadout tab's Plate button,
+## `--page=scoreboard` the Tab board, `--page=report`  the night's end board, `--page=lobby` the
+## lobby's seats, `--page=unlock` the unlock cards of a card and an emblem. `--empty` shows the
+## same without cards or emblems, and `--noframes` without the frames (#1071), the before. Run it
+## through the no-focus launcher, not headless: `gds godot -- --path game
+## res://tests/captures/plate_screens.tscn --resolution 1920x1080 -- --out=<abs>/cards.png
+## --page=cards`. Not part of the game.
 
 const NAMES: Array[String] = ["Ruby", "Moe", "Dee", "Cal"]
 const LEVELS: Array[int] = [12, 30, 55, 7]
 const CARDS: Array[StringName] = [&"cartoon", &"dead_eye", &"midnight_show", &"the_big_take"]
 const EMBLEMS: Array[StringName] = [&"admit_one", &"walk_in", &"headliner", &"pocket_money"]
+const FRAMES: Array[StringName] = [&"gold", &"neon", &"filmstrip", &"chrome"]
 const PROFILE := "user://plate_capture_profile.json"
 
 var _args := NetArgs.new()
@@ -47,9 +48,13 @@ func _ready() -> void:
 func _profile(wearing := true) -> void:
 	var profile := Profile.new()
 	profile.xp = LevelCurve.xp_for(30)
-	profile.done = [&"f_dead_eye", &"f_walk_in", &"f_hammer", &"f_cheese", &"f_extras"]
+	profile.done = [
+		&"f_dead_eye", &"f_walk_in", &"f_hammer", &"f_cheese", &"f_extras", &"f_filmstrip"
+	]
 	if wearing and not _args.has("empty"):
 		profile.equipped = {"card": "dead_eye", "emblem": "walk_in"}
+		if not _args.has("noframes"):
+			profile.equipped["frame"] = "chrome"
 	ProfileSave.write(profile, [], 1, PROFILE)
 	MenuProfile.profile_path = PROFILE
 
@@ -60,6 +65,9 @@ func _cards() -> void:
 	screen.params = {"path": PROFILE, "account": func() -> bool: return true}
 	add_child(screen)
 	await get_tree().process_frame
+	if _args.get_string("tab") == "frame":
+		(screen as CardsScreen).show_tab(PlateCatalog.FRAME)
+		await get_tree().process_frame
 
 
 func _loadout() -> void:
@@ -86,10 +94,14 @@ func _state() -> HudState:
 		state.team[i + 1]["kills"] = 61 - 12 * i
 		state.set_player_level(i + 1, LEVELS[i], LEVELS[i])
 		if not _args.has("empty"):
-			state.set_player_plate(i + 1, CARDS[i], EMBLEMS[i])
+			state.set_player_plate(i + 1, CARDS[i], EMBLEMS[i], _frame(i))
 	state.team[4]["bot"] = true
 	state.round_number = 9
 	return state
+
+
+func _frame(index: int) -> StringName:
+	return &"" if _args.has("noframes") else FRAMES[index]
 
 
 func _hud_layer() -> Hud:
@@ -109,7 +121,9 @@ func _scoreboard() -> void:
 		for key in ["points", "kills"]:
 			hud.state.team[id][key] = state.team[id][key]
 		hud.state.set_player_level(id, LEVELS[id - 1], LEVELS[id - 1])
-		hud.state.set_player_plate(id, state.team[id]["card"], state.team[id]["emblem"])
+		hud.state.set_player_plate(
+			id, state.team[id]["card"], state.team[id]["emblem"], state.team[id]["frame"]
+		)
 	hud.state.team[4]["bot"] = true
 	Input.action_press(Hud.SCOREBOARD_ACTION)
 	hud.scoreboard.set_shown(true)
@@ -140,6 +154,7 @@ func _lobby() -> void:
 		if not _args.has("empty"):
 			member["card"] = String(CARDS[i])
 			member["emblem"] = String(EMBLEMS[i])
+			member["frame"] = String(_frame(i))
 		members.append(member)
 	var held := {
 		"id": "l1",
@@ -175,6 +190,8 @@ func _unlock() -> void:
 		[&"tier_emblem", &"doors_open", 5],
 		[&"tier_card", &"newsreel", 15],
 		[&"emblem", &"admit_one", 2],
+		[&"plate_frame", &"chrome", 29],
+		[&"plate_frame", &"gold", 55],
 	]:
 		var card := PopupCard.new()
 		card.setup(PopupQueue.Kind.UNLOCK, {"slot": entry[0], "item": entry[1], "level": entry[2]})

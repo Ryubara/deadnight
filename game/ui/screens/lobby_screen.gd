@@ -618,7 +618,7 @@ func _show_seats() -> void:
 	# Each member's `Vector2i(level, icon)` as the backend reads it from their profile (zero for
 	# none), when the viewer wants levels shown.
 	var levels: Array[Vector2i] = []
-	# Each member's `{card, emblem}` as they chose them (the backend's list), when they exist.
+	# Each member's `{card, emblem, frame}` as they chose them (the backend's list), when they exist.
 	var plates: Array[Dictionary] = []
 	var show_levels := bool(Settings.get_value(SettingsService.SHOW_LEVELS))
 	var max_players := NightHost.MAX_PLAYERS
@@ -665,19 +665,22 @@ func _show_seats() -> void:
 			(row["tag"] as Label).text = ""
 
 
-## The calling card and emblem a member chose, only those the game has (the backend lists what
-## the account chose; the night holds it to what the account owns).
+## The calling card, emblem and frame a member chose, only those the game has (the backend lists
+## what the account chose; the night holds it to what the account owns).
 func _plate_of(member: Dictionary) -> Dictionary:
 	var catalog := PlateCatalog.shipped()
 	var card := StringName(str(member.get("card", "")))
 	var emblem := StringName(str(member.get("emblem", "")))
+	var frame := StringName(str(member.get("frame", "")))
 	return {
 		"card": card if catalog.has(PlateCatalog.CARD, card) else &"",
 		"emblem": emblem if catalog.has(PlateCatalog.EMBLEM, emblem) else &"",
+		"frame": frame if catalog.has(PlateCatalog.FRAME, frame) else &"",
 	}
 
 
-## The card behind a seat's row and the emblem after the name (`PlateRow`); gone for none.
+## The card behind a seat's row, the emblem after the name and the frame round it (`PlateRow`);
+## gone for none.
 func _show_plate(row: Dictionary, plate: Dictionary) -> void:
 	var card := row["card"] as CardArt
 	card.card_id = plate.get("card", &"")
@@ -685,6 +688,15 @@ func _show_plate(row: Dictionary, plate: Dictionary) -> void:
 	var emblem := row["emblem"] as EmblemArt
 	emblem.emblem_id = plate.get("emblem", &"")
 	emblem.visible = emblem.emblem_id != &""
+	var frame := row["frame"] as FrameArt
+	frame.frame_id = plate.get("frame", &"")
+	frame.visible = frame.frame_id != &""
+	# The seat keeps the border's room clear at both ends, so the number is not under it.
+	var clear := PlateRow.frame_clear(frame.frame_id, SEAT_ROW_HEIGHT)
+	var inset := (row["box"] as Control).get_theme_stylebox(&"panel") as StyleBoxEmpty
+	inset.content_margin_left = clear
+	inset.content_margin_right = clear
+	frame.grow = Vector2(clear, 0.0)
 
 
 ## The icon and the level of a seat's row, the badge before the name (`LevelTag`): gone for a bot,
@@ -747,6 +759,10 @@ func _make_seat_row() -> Dictionary:
 	card.visible = false
 	holder.add_child(card)
 	holder.add_child(box)
+	var frame := FrameArt.new()
+	frame.name = &"Frame"
+	frame.visible = false
+	holder.add_child(frame)
 	_seats.add_child(holder)
 	# Two digits of room, so the names of the people start on one line (a level of 55 is whole).
 	level.custom_minimum_size.x = LevelTag.level_room(
@@ -756,6 +772,7 @@ func _make_seat_row() -> Dictionary:
 		"box": holder,
 		"card": card,
 		"emblem": emblem,
+		"frame": frame,
 		"number": number,
 		"who": who,
 		"badge": badge,

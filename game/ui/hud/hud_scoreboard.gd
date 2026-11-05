@@ -197,6 +197,7 @@ func _player_row(player_id: int, cells: Array[String]) -> Control:
 	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color(tokens.accent, LOCAL_WASH) if local else Color.TRANSPARENT
+	var clear := PlateRow.frame_clear(state.plate_of(member)["frame"], ROW_HEIGHT)
 	wash.add_theme_stylebox_override(&"panel", box)
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -227,6 +228,8 @@ func _player_row(player_id: int, cells: Array[String]) -> Control:
 		var room := (
 			widths[i] - (HudLevelCell.taken(shown, plate["emblem"], ROW_HEIGHT) if i == 0 else 0.0)
 		)
+		if i == cells.size() - 1:
+			room -= clear
 		var label := HudStyle.clip(HudStyle.label("", HudStyle.MEDIUM, ink, i > 0))
 		label.custom_minimum_size = Vector2(room, ROW_HEIGHT)
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -238,4 +241,6 @@ func _player_row(player_id: int, cells: Array[String]) -> Control:
 			row.add_child(HudLevelCell.wrap(label, shown, tokens.ink, ROW_HEIGHT, plate["emblem"]))
 		else:
 			row.add_child(label)
+	PlateRow.clear_the_frame(row, clear)
+	PlateRow.frame_over(wash, state.plate_of(member)["frame"])
 	return wash

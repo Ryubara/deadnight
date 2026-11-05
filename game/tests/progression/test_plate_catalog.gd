@@ -1,8 +1,8 @@
 extends GdUnitTestSuite
-## The calling cards and emblems (#1070): every piece has one art and exactly one gate (a level or a
-## challenge, never both and never two), every grant of a challenge is a piece that exists, what a
-## player owns is derived from the level and the finished challenges, and what they wear is held to
-## it.
+## The calling cards, emblems and frames (#1070, #1071): every piece has one art and exactly one
+## gate (a level or a challenge, never both and never two), every grant of a challenge is a piece
+## that exists, what a player owns is derived from the level and the finished challenges, and what
+## they wear is held to it.
 
 var _plates: PlateCatalog
 var _ladder: LadderUnlocks
@@ -28,15 +28,17 @@ func test_the_shipped_catalogue_has_no_problems() -> void:
 
 func test_the_launch_set_is_there() -> void:
 	# 11 tier cards, 12 challenge cards and 2 poster sets' cards; 11 tier emblems, the starting
-	# emblem, 9 easy and 12 grind ones and 2 poster sets' emblems.
+	# emblem, 9 easy and 12 grind ones and 2 poster sets' emblems; 4 frames from levels and 3 from
+	# challenges.
 	assert_int(_plates.ids(PlateCatalog.CARD).size()).is_equal(25)
 	assert_int(_plates.ids(PlateCatalog.EMBLEM).size()).is_equal(35)
+	assert_int(_plates.ids(PlateCatalog.FRAME).size()).is_equal(7)
 	var tiers := 0
 	for kind in PlateCatalog.KINDS:
 		for id in _plates.ids(kind):
 			if _plates.source(kind, id).has("level"):
 				tiers += 1
-	assert_int(tiers).is_equal(11 + 12)
+	assert_int(tiers).is_equal(11 + 12 + 4)
 
 
 func test_a_tier_card_comes_at_the_level_the_ladder_gives_it() -> void:
@@ -64,7 +66,7 @@ func test_every_grant_of_a_challenge_is_a_piece_and_no_piece_is_given_twice() ->
 				. override_failure_message("%s has no art" % key)
 				. is_true()
 			)
-	assert_int(given.size()).is_equal(9 + 12 * 2)
+	assert_int(given.size()).is_equal(9 + 12 * 2 + 3)
 
 
 func test_what_a_player_owns_is_the_level_and_the_finished_challenges() -> void:

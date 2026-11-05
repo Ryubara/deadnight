@@ -93,6 +93,8 @@ static func label_of(row: Dictionary) -> String:
 			return "%s card" % words
 		&"tier_emblem", &"emblem":
 			return "%s emblem" % words
+		&"plate_frame":
+			return "%s frame" % words
 	return words
 
 

@@ -137,6 +137,10 @@ merge:
   delete_branch_on_merge: true
   linear_history: true
   required_checks: [pr-rules, conventions, build-ok, mkdocs, markdownlint, actionlint]
+  # The hold (the kit's docs/hooks.md#hold): `check` fails while a pull request carries `label`, and the ruleset requires
+  # it from the app `app_id` (15368 is GitHub Actions), so a commit status with the same name does not count. It stays
+  # out of required_checks: a hold is a decision, not a failure, so `pr-status` does not call it `S-ci-failing`.
+  hold: {label: S-hold, check: hold, app_id: 15368}
   # A pull request that changes one of these is merged by a maintainer by hand: tools and agent hooks refuse to turn
   # on auto-merge for it (`needs-maintainer`). The rules that judge agents are changed only by a person.
   manual_paths: [.github/conventions.yml, AGENTS.md, .claude/settings.json, .claude/hooks/]
@@ -223,6 +227,8 @@ labels:
     - {name: S-blocked, color: "000000", description: "Status: waiting for another issue or a decision"}
     # Set and cleared on open pull requests only, by the pr-status workflow (never by hand, never on an issue).
     - {name: S-conflict, color: d93f0b, description: "Status: the pull request conflicts with its base; rebase it"}
+    # On a pull request only; set by `gds pr hold` or by hand, taken off only by the maintainer (merge.hold).
+    - {name: S-hold, color: b60205, description: "Status: a maintainer holds this pull request; no route merges it while this label is on"}
     - {name: S-ci-failing, color: e99695, description: "Status: a required check failed on the latest commit"}
     - {name: good first issue, color: 7057ff, description: "Good for newcomers"}
     - {name: help wanted, color: "008672", description: "Extra attention is needed"}

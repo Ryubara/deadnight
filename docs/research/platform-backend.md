@@ -307,10 +307,10 @@ for each member (`ProgressService.knownLevel`, read when the member joins and mo
 the tag the ticket will carry; a Guest account's is its own like any other. How the game server shows them:
 [the level and icon beside a name](multiplayer.md#the-level-and-icon-beside-a-name-1077).
 
-The ticket also carries the calling card and emblem the player chose (`card`, `emblem`, from the profile's `equipped`;
-only plain names `[a-z0-9_]{1,40}` are signed, nothing when none is chosen) and, only then, `done`, the last 256 finished
-challenges, which the game server holds the two choices to (`TicketClaims`, `ProgressService.claimsFor`); the lobby's
-member list carries `card` and `emblem` as chosen. [Calling cards](calling-cards.md#how-a-card-reaches-every-client).
+The ticket also carries the calling card, emblem and frame the player chose (`card`, `emblem`, `frame`, from the
+profile's `equipped`; only plain names `[a-z0-9_]{1,40}` are signed, nothing when none is chosen) and, only then, `done`,
+the last 256 finished challenges, which the game server holds the choices to (`TicketClaims`,
+`ProgressService.claimsFor`); the lobby's member list carries `card`, `emblem` and `frame` as chosen. [Calling cards](calling-cards.md#how-a-card-reaches-every-client).
 
 What the game server must send, and when: [the game server's tally](../design/progression.md#who-awards-xp-and-live-xp)
 (#1059) posts one report a seat at each round's end (`kind: round`, `round: n`) and one at the night's end (`kind:

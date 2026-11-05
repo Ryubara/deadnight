@@ -1,8 +1,9 @@
 class_name PlateDraw
 extends RefCounted
-## A calling card or an emblem drawn once onto any canvas item, for a place that is not worth a
-## control of its own (the thumbnail on an unlock's popup card): the same shapes `CardArt` and
-## `EmblemArt` are built from (`PlateCompose`), as one command (`HudShapes`).
+## A calling card, an emblem or a frame drawn once onto any canvas item, for a place that is not
+## worth a control of its own (the thumbnail on an unlock's popup card): the same shapes `CardArt`,
+## `EmblemArt` and `FrameArt` are built from (`PlateCompose`, `PlateFrames`), as one command
+## (`HudShapes`).
 
 
 ## The card `id` in `rect`: the card keeps its proportions, fitting the rectangle's width and
@@ -24,6 +25,40 @@ static func emblem(item: CanvasItem, rect: Rect2, id: StringName) -> void:
 	var side := minf(rect.size.x, rect.size.y)
 	var at := rect.position + (rect.size - Vector2.ONE * side) * 0.5
 	_draw(item, PlateCompose.emblem(piece), piece, at, side / PlateCompose.EMBLEM_SIZE.x, Rect2())
+
+
+## The frame `id` on a plate that fills `rect`, over `ground` (a swatch of the plate).
+static func frame(
+	item: CanvasItem, rect: Rect2, id: StringName, ground := Color(0, 0, 0, 0)
+) -> void:
+	var piece := PlateCatalog.shipped().piece(PlateCatalog.FRAME, id)
+	if piece.is_empty():
+		return
+	var shape := PlateFrames.rect_outline(rect)
+	var ops := PlateFrames.build(
+		StringName(piece.get("style", "")),
+		StringName(piece.get("palette", "")),
+		shape,
+		PlateFrames.width_for(rect.size.y)
+	)
+	flush_frame(item, ops, shape, ground, 0.0)
+
+
+## Draws the ops of a frame (`PlateFrames.build`) as one command, over `ground` inside `shape` when
+## it has any colour, darkened by `dim`.
+static func flush_frame(
+	item: CanvasItem, ops: Array[Dictionary], shape: PackedVector2Array, ground: Color, dim: float
+) -> void:
+	var out := HudShapes.new()
+	if ground.a > 0.0:
+		out.polygon(shape, ground)
+	for op in ops:
+		var colour: Color = (op["c"] as Color).lerp(Color(0, 0, 0, op["c"].a), dim)
+		if op["k"] == "line":
+			out.polyline(op["p"], colour, op["w"])
+		else:
+			out.polygon(op["p"], colour)
+	out.flush(item)
 
 
 static func _draw(

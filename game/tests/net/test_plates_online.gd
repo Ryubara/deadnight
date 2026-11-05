@@ -69,8 +69,10 @@ func _url() -> String:
 
 
 ## The progression the backend signs for an account: the XP of `level`, what it chose and finished.
-func _account(level: int, card := "", emblem := "", done: Array = []) -> Dictionary:
+func _account(level: int, card := "", emblem := "", done: Array = [], frame := "") -> Dictionary:
 	var account := {"xp": LevelCurve.xp_for(level)}
+	if frame != "":
+		account["frame"] = frame
 	if card != "":
 		account["card"] = card
 	if emblem != "":
@@ -129,6 +131,33 @@ func test_every_client_shows_every_seats_card_and_emblem_and_a_late_joiner_too()
 	assert_str(_plate(late_hud, bo.state.player_id)["emblem"]).is_equal("walk_in")
 	var room := _server.room_of_match("plates")
 	assert_dict(room._welcome_snapshot()["plates"]).has_size(2)
+
+
+func test_every_client_shows_every_seats_frame_held_to_what_the_seat_owns() -> void:
+	await _start()
+	var first := _hud()
+	# Ann is level 30 and wears Chrome (level 29); Bo finished the filmstrip challenge; Cy asks for
+	# Gold (level 55) at level 30, and for the velvet rope without the challenge: nothing.
+	var ann := await _client("frames", "ann", _account(30, "", "", [], "chrome"), first)
+	var bo_hud := _hud()
+	var bo := await _client(
+		"frames", "bo", _account(3, "", "", ["f_filmstrip"], "filmstrip"), bo_hud
+	)
+	var cy := await _client("frames", "cy", _account(30, "", "", [], "gold"))
+	var di := await _client("frames", "di", _account(30, "", "", [], "velvet_rope"))
+	await _ticks(10)
+	for hud in [first, bo_hud]:
+		assert_str(_plate(hud, ann.state.player_id)["frame"]).is_equal("chrome")
+		assert_str(_plate(hud, bo.state.player_id)["frame"]).is_equal("filmstrip")
+		assert_str(_plate(hud, cy.state.player_id)["frame"]).is_equal("")
+		assert_str(_plate(hud, di.state.player_id)["frame"]).is_equal("")
+	# Someone who sits down later reads the others from the WELCOME.
+	var late_hud := _hud()
+	await _client("frames", "ed", _account(7), late_hud)
+	await _ticks(10)
+	assert_str(_plate(late_hud, ann.state.player_id)["frame"]).is_equal("chrome")
+	assert_str(_plate(late_hud, bo.state.player_id)["frame"]).is_equal("filmstrip")
+	assert_dict(_server.room_of_match("frames")._welcome_snapshot()["plates"]).has_size(2)
 
 
 func test_a_card_the_seat_does_not_own_is_not_worn() -> void:
@@ -198,6 +227,7 @@ func test_a_client_cannot_give_itself_a_card_whatever_it_sends() -> void:
 						"level": 55,
 						"card": &"last_reel",
 						"emblem": &"last_reel",
+						"frame": &"gold",
 					}
 				]
 			)
@@ -206,7 +236,7 @@ func test_a_client_cannot_give_itself_a_card_whatever_it_sends() -> void:
 			1,
 			60,
 			PackedByteArray([0, 0, 0, 0, 0, 0, 0, 0]),
-			{"plates": {1: {"card": &"last_reel", "emblem": &"last_reel"}}}
+			{"plates": {1: {"card": &"last_reel", "emblem": &"last_reel", "frame": &"gold"}}}
 		),
 		PackedByteArray([NetWire.Type.COMMAND, 55, 55, 55, 55]),
 	]
@@ -216,4 +246,5 @@ func test_a_client_cannot_give_itself_a_card_whatever_it_sends() -> void:
 	await _ticks(40)
 	assert_dict(room.plates.to_dict()).is_empty()
 	assert_str(room.plates.of_seat(1)["card"]).is_equal("")
+	assert_str(room.plates.of_seat(1)["frame"]).is_equal("")
 	assert_object(bo).is_not_null()

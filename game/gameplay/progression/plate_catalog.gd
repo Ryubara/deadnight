@@ -1,9 +1,10 @@
 class_name PlateCatalog
 extends RefCounted
-## Every calling card and emblem there is, what each looks like (`plate_pieces.json`: a title, a
-## motif and a palette, the parts `PlateMotifs` composes it from) and where each comes from.
-## One gate per piece (docs/design/progression.md rule 3): the ladder gives a piece at a level
-## (`LadderUnlocks`: the `tier_card`, `tier_emblem` and `emblem` rows) or a challenge gives it
+## Every calling card, emblem and frame there is, what each looks like (`plate_pieces.json`: a
+## title, a palette and, for a card or an emblem a motif, for a frame a style: the parts
+## `PlateMotifs` and `PlateFrames` compose it from) and where each comes from. One gate per piece
+## (docs/design/progression.md rule 3): the ladder gives a piece at a level (`LadderUnlocks`: the
+## `tier_card`, `tier_emblem`, `emblem` and `plate_frame` rows) or a challenge gives it
 ## (`ChallengeDef.grants`), never both and never two. What a player owns is therefore derived: the
 ## level (from XP) and the list of finished challenges (`Profile.done`), so a retune needs no
 ## migration and nothing is stored twice.
@@ -16,18 +17,22 @@ extends RefCounted
 const PATH := "res://gameplay/progression/plate_pieces.json"
 const CARD := &"card"
 const EMBLEM := &"emblem"
-const KINDS: Array[StringName] = [CARD, EMBLEM]
+## A border for the plate (#1071): a level gives some, a challenge the rest.
+const FRAME := &"frame"
+const KINDS: Array[StringName] = [CARD, EMBLEM, FRAME]
 ## The ladder rows that give each kind a piece.
-const LADDER_SLOTS := {CARD: [&"tier_card"], EMBLEM: [&"tier_emblem", &"emblem"]}
+const LADDER_SLOTS := {
+	CARD: [&"tier_card"], EMBLEM: [&"tier_emblem", &"emblem"], FRAME: [&"plate_frame"]
+}
 
 static var _shared: PlateCatalog
 
 ## kind -> piece id -> the piece's record (`{id, title, motif, palette, ...}`).
-var _pieces: Dictionary = {CARD: {}, EMBLEM: {}}
+var _pieces: Dictionary = {CARD: {}, EMBLEM: {}, FRAME: {}}
 ## kind -> piece ids in the order they are listed: the ladder by level, then the challenges.
-var _order: Dictionary = {CARD: [], EMBLEM: []}
+var _order: Dictionary = {CARD: [], EMBLEM: [], FRAME: []}
 ## kind -> piece id -> `{level}`, `{challenge: ChallengeDef}` or `{set: PosterSet}`.
-var _sources: Dictionary = {CARD: {}, EMBLEM: {}}
+var _sources: Dictionary = {CARD: {}, EMBLEM: {}, FRAME: {}}
 var _problems: Array[String] = []
 
 
@@ -66,7 +71,7 @@ static func from_parts(
 
 
 ## What is wrong with the catalogue (empty when sound): a piece with no source or two, a source
-## with no piece, a motif or a palette nobody has, an id twice.
+## with no piece, a motif, a style or a palette nobody has, an id twice.
 func problems() -> Array[String]:
 	var found := _problems.duplicate()
 	for kind in KINDS:
@@ -75,7 +80,10 @@ func problems() -> Array[String]:
 			var label := "%s %s" % [kind, id]
 			if not _sources[kind].has(id):
 				found.append("%s: nothing gives it" % label)
-			if not PlateMotifs.has(StringName(record.get("motif", ""))):
+			if kind == FRAME:
+				if not PlateFrames.has(StringName(record.get("style", ""))):
+					found.append("%s: unknown style '%s'" % [label, record.get("style", "")])
+			elif not PlateMotifs.has(StringName(record.get("motif", ""))):
 				found.append("%s: unknown motif '%s'" % [label, record.get("motif", "")])
 			if not PlatePalettes.has(StringName(record.get("palette", ""))):
 				found.append("%s: unknown palette '%s'" % [label, record.get("palette", "")])
@@ -98,7 +106,8 @@ func has(kind: StringName, id: StringName) -> bool:
 	return _pieces.get(kind, {}).has(id)
 
 
-## A piece's record (`id`, `title`, `motif`, `palette`, and `side` or `shape`); empty for none.
+## A piece's record (`id`, `title`, `palette`, and `motif` with `side` or `shape`, or a frame's
+## `style`); empty for none.
 func piece(kind: StringName, id: StringName) -> Dictionary:
 	return _pieces.get(kind, {}).get(id, {})
 
@@ -147,10 +156,11 @@ func how_to_get(kind: StringName, id: StringName) -> String:
 	return ""
 
 
-## What a player wears of what they chose: `{card, emblem}` (ids, `&""` for none), a choice they
-## do not own left out. `chosen` is `{card: id, emblem: id}` as the profile keeps it (`equipped`).
+## What a player wears of what they chose: `{card, emblem, frame}` (ids, `&""` for none), a choice
+## they do not own left out. `chosen` is `{card: id, emblem: id, frame: id}` as the profile keeps
+## it (`equipped`).
 func worn(chosen: Dictionary, level: int, done: Array[StringName]) -> Dictionary:
-	var out := {CARD: &"", EMBLEM: &""}
+	var out := {CARD: &"", EMBLEM: &"", FRAME: &""}
 	for kind in KINDS:
 		var id := StringName(str(chosen.get(String(kind), "")))
 		if id != &"" and owns(kind, id, level, done):

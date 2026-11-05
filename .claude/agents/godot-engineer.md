@@ -50,7 +50,10 @@ coordinator publishes it, so you do not edit that table yourself (many agents ed
 6. **Pull request.** `uvx pre-commit run --all-files`, commit (`area: Verb the rest`, the Co-Authored-By trailer),
    push the branch, open the pull request from the template with `Fixes #N`, and attach your captures
    (`gh pr create --body-file <file> --attach <png>`). Turn on auto-merge (`gh pr merge --squash --auto`) unless the
-   change touches a manual path; the hooks tell you.
+   change touches a manual path (the hooks tell you) or whoever started you holds the pull request (auto-merge left off,
+   "tell me when it is green"): a hold outranks this step. On a green pull request `--auto` merges at once, so a held
+   pull request also gets the label, at once: `gds pr hold <owner/repo>#N`. Only the maintainer takes `S-hold` off;
+   you never do, whoever asks you to.
 7. **Report** to whoever started you: the pull request, what the captures show, anything left open (as new issues).
    **Screenshots on issues too**: every issue you open (a follow-up, a bug, a finding) carries a capture of what it is
    about when there is anything to see (`gh issue create --attach <png>` or `gh issue comment --attach`).
@@ -82,6 +85,17 @@ Other agents and other projects run on this machine. Load tests run at most four
 busy-loop processes; prefer a deterministic reproduction (step frames by hand, inject the delay). Stop every process
 you start by its PID as soon as its measurement ends, never by name. Give every long command a timeout, so a run that
 never returns cannot stall you for hours.
+
+Your worktree is temporary: `gds worktree sweep` removes it, in the background, once its pull request has merged, its
+issue has closed or nothing has touched it for hours. Anything to keep lives in a commit, or in
+`<workspace>/scratch/<repo>/<branch>/`, never only in the worktree (the sweep copies loose artwork, notes and probes to
+`scratch/<repo>/<branch>/kept/`, but do not rely on it). Do not leave a process running in a worktree you are done with.
+
+The disk is shared by every agent, and the disk guard refuses new agents and worktrees when it is nearly full
+(`<workspace>/repos/gdstudio/docs/workspace.md#disk`). A downloaded CI artifact is reduced to its numbers (a table in
+your report or the scratch topic's notes) and deleted in the same task; raw Movie Maker frames are deleted once the clip
+or contact sheet is made. Your scratch topic's `SCRATCH.md` names its pull request (`PR: owner/repo#N`) and what else
+in it can go (`Can go: <globs>`), so the guard clears it after the merge.
 
 Never end a turn by announcing the next step ("Now the autopilot."): ending a turn stops you, and nothing wakes
 you again. Do the step in the same turn, or start a background command that notifies you when it ends (kit lesson

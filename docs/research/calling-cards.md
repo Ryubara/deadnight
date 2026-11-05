@@ -1,7 +1,7 @@
-# Calling cards and emblems (#1070)
+# Calling cards, emblems and frames (#1070, #1071)
 
-What a player wears on their plate: a **calling card** (a 440 by 120 sheet, shown behind their name) and an **emblem**
-(a small badge after the name). The design is
+What a player wears on their plate: a **calling card** (a 440 by 120 sheet, shown behind their name), an **emblem**
+(a small badge after the name) and a **frame** (a border round the plate, [below](#frames)). The design is
 [the plate](../design/progression.md#plate-calling-cards-emblems-and-frames); this page is how it is built and what
 was measured.
 
@@ -13,9 +13,9 @@ challenges (`Profile.done`), so nothing is stored twice and a retune needs no mi
 
 | File | Says |
 | --- | --- |
-| `gameplay/progression/plate_pieces.json` | every card and emblem: title, motif, palette, and a card's `side` or an emblem's `shape` |
-| `gameplay/progression/unlocks.json` | the ladder's rows (`tier_card`, `tier_emblem`, `emblem`) with the level of each |
-| `gameplay/challenges/data/feats.json` | the 21 lasting goals the night counts today, each with `grants` (`card:<id>`, `emblem:<id>`) |
+| `gameplay/progression/plate_pieces.json` | every card, emblem and frame: title, palette, and a card's motif and `side`, an emblem's motif and `shape`, a frame's `style` |
+| `gameplay/progression/unlocks.json` | the ladder's rows (`tier_card`, `tier_emblem`, `emblem`, `plate_frame`) with the level of each |
+| `gameplay/challenges/data/feats.json` | the 24 lasting goals the night counts today, each with `grants` (`card:<id>`, `emblem:<id>`, `frame:<id>`) |
 
 A **feat** is a new challenge family (`ChallengeDef.Family.FEAT`): done once, says nothing on the way (only the finish
 reaches the prompt), counted in total or in one night, and over several stats when it asks for "every weapon" (the lowest
@@ -81,13 +81,63 @@ wardrobe: a tier card is `Kind.CARD` ("Cartoon calling card", the card drawn by 
 emblem or the level 2 starting emblem `Kind.EMBLEM`, and the `calling_cards` row shows the first card. A piece the
 plate does not have keeps the letter chip and the spelled id. `test_popup_thumbnails` runs over every available row.
 
+## Frames
+
+A frame is a border run just **inside** the outline of a plate: the points box of the HUD (its ticket shape), a roster
+row (the scoreboard, the night report), a lobby seat, a swatch. It is composed like a card from shared parts:
+`PlateFrames` has six styles (`double`, `rivets`, `glow`, `bulbs`, `holes`, `rope`), each a few bands and a row of dots
+or dashes in the four colours of a palette, so another frame is a line of `plate_pieces.json` (`id`, `title`,
+`palette`, `style`). `FrameArt` draws the ops as one command like the other plate art (`HudShapes`), and
+`PlateDraw.frame` does it onto any canvas item (the unlock card's chip).
+
+| Frame | From | Look |
+| --- | --- | --- |
+| Chrome, Brass, Neon, Gold | the ladder, levels 29, 37, 50, 55 (`plate_frame` rows, now `available`) | double bar, riveted bar, neon glow, marquee bulbs |
+| Filmstrip | "Reach round 20" (`f_filmstrip`) | a dark strip with sprocket holes |
+| Velvet Rope | "Get 25 teammates back on their feet" (`f_velvet_rope`) | a twisted cord |
+| Searchlight | "Play 100 nights" (`f_searchlight`) | a cold glow |
+
+**Only challenges the night counts.** The three challenge frames name stats the night produces today (`round`,
+`revives`, `nights`); `test_plate_frames` fails on a frame whose challenge asks for a stat that is not in
+`ChallengeStats.FIXED`. The "beat this map" frames (the maintainer's example) are #1072: they need extraction (#1056)
+and, for "reach a round on a named map", a per-map stat the tally does not have (`NightTally` never learns the map).
+
+**How it reaches everyone.** The same way as the card and the emblem, with a third key: `equipped.frame` on the profile,
+`frame` in the ticket (the backend's `claimsFor`, and `knownLevel` for the lobby's list), `PlateTable` holds it to what
+the seat owns (the ladder's by level, the challenge's by `done`), `account_seated` and the WELCOME's `plates` carry it,
+and `HudState.plate_of` is what every part reads. The protocol stays 15.
+
+**Where it is drawn.**
+
+- `HudPlayerBox`: a `FrameArt` over the card and the tab, under the words, on the box's ticket outline (a downed seat
+  dims it with the card). The border is at most 2.2 strokes deep and the box keeps 12 units of padding before its
+  words, so nothing moves (a test compares the badge's rectangles and the number's end with and without).
+- The scoreboard and the night report: `PlateRow.frame_over` puts a `FrameArt` last in the row's panel. A panel inset by
+  padding would inset the frame with it, so the room at the right end is taken from the last cell and kept by a spacer
+  (`PlateRow.clear_the_frame`); the lobby's seat takes the frame **outside** its inset rectangle (`FrameArt.grow`).
+- The equip screen (`CardsScreen`): one tab for each kind (Calling cards, Emblems, Frames; a tab shows its page when it
+  is pressed, so the pad's focus never switches a page by itself), each a grid of tiles; a frame tile is a swatch of a
+  plate with the frame round it. The preview shows the frame outside the card, so it never covers the printed title.
+- The unlock card of a frame's level (`PopupCard`, `LadderItem.Kind.FRAME`, caption "NEW FRAME").
+
+**Width.** The stroke is `floor(height * 0.085)` clamped to 2 to 5 (`PlateFrames.width_for`): 2 on the compact box of a
+party of five or more, 3 on a roster row, 4 on a teammate's box, 5 on your own. The first version used 3 to 4 on every
+box and the compact one read as all border.
+
+**A row made `available`.** The four `plate_frame` rows were flipped by this work, so the readers of `unlocks.json` were
+listed first: `LadderUnlocks` (`earned_at`, `next_after`, `label_of`: "chrome frame"), `XpAward.crossing` and
+`ProgressNews` (generic: they announce what `earned_at` says), `PopupLadder` (the caption and the cue were there),
+`PopupCard` and `LadderItem` (the new `FRAME` kind: art, and the name "Chrome plate frame"), `NightReport` (the label),
+the voice catalog (`plate_frame` already cheers like an emblem) and `LookCatalog` (reads only rows with a `part`).
+`test_popup_thumbnails` runs over every available row and found nothing missing.
+
 ## What is not here
 
 - A live popup for a card or emblem earned (see above) and the client marking an online finish at once on its file.
 - A local night (solo) never tells the HUD its player's level (no event seats the local account), so the player's own box
   shows no level and no card there; that needs `night.gd`, which is at the line limit.
-- The hidden challenges and the odd ones that need events the night does not count (#1074) and frames (#1071, #1072) are
-  their own issues. Poster sets are [below](#poster-sets-1073).
+- The hidden challenges and the odd ones that need events the night does not count (#1074) and the frames for
+  beating a map (#1072) are their own issues. Poster sets are [below](#poster-sets-1073).
 
 ## Poster sets (#1073)
 
