@@ -187,3 +187,55 @@ the numbers are the same at both:
 The night itself stays at factor 1, 0.36 CSS px (`in the night`: 7.2 px, #1192 and #1189). Tests: `test_phone_floor` (the
 card and every Settings tab on four pages; 48 problems on main, none now), `test_night_scale` (the factor, the card's
 canvas, a page that stops being a phone).
+
+## The tab bar and the Loadout card on the narrowest page (#1271)
+
+Two faults a floor test on text and taps does not see, both on the 667 x 375 page (a 1334 x 750 canvas, 960 x 540
+units) and read in the web export (`phone_layout.py --size 667x375 --dpr 2`), then walked on every screen of the tour
+at 667 x 375, 844 x 390 and 932 x 430.
+
+**The plate over MORE.** `MenuShell` sized the plate once, in `_build_chrome`, from `get_viewport_rect()`. A menu built
+under a screen that is not shown yet (the router's) runs `_ready` before the phone factor is on the window
+(`_apply_scale` does nothing while the shell is hidden), so the canvas was still 1920 units wide and the plate took its
+whole 372: it stood at x = 560 over a bar that ends at 589, 29 units of MORE under it ("MOR"). `MenuPlate.fit` now
+lays the plate out again whenever the canvas may have changed (`MenuShell._fit_plate`: the factor set, `resized`), and
+`MenuShell.header_overlap()` is what the web probe publishes (`header_overlap`; `phone_layout.py` fails on more than
+half a unit). The tests (`test_menu_header.gd`) build the shell the way the page does: hidden, on a window at the
+interface size, shown a frame later. Every earlier test set the phone factor first, which is why none of them saw it.
+
+- Where it goes up the page sizes: only where the canvas is narrower than 1005 units (28 + the bar's 561 + 16 + the
+  plate's 372 + 28), that is a page whose width over its height is under 1.86: 667 x 375, 640 x 360, 568 x 320 and a
+  960 x 540 window. 844 x 390 (1169 units) has the plate at 769 and 100 units to spare.
+- A tap on the covered part still takes: the plate and everything in it are `MOUSE_FILTER_IGNORE`, so a click at the
+  left edge, the middle and 3 units from the right end of MORE opened it on the code before the fix
+  (`test_the_last_tab_takes_a_tap_along_its_whole_width`). The fault was what a person reads, not what they press.
+
+**The Loadout card with nothing to choose from.** The card is 372 units (540 less the header's 104 and the footer's 64)
+on every phone page, and its own chrome took almost all of it: 32 and 24 units of the theme's margin and 8 of the
+inner one on each side, the tab strip (two rows of 62 on the narrowest card: ten tabs need 721 units and the card has
+576), the detail line (36), a 79 unit Randomize row under the card and the gaps. What was left for the scroll area is
+below, as the web probe and `test_menu_header` read it (the view's height; items whole inside it):
+
+| Page (CSS px) | Canvas (units) | View before | Items whole before | View after | Items whole after |
+| --- | --- | --- | --- | --- | --- |
+| 667 x 375 | 960 x 540 | 33 | 0 | 187 | 2 (and the heading) |
+| 844 x 390 | 1169 x 540 | 99 | 0 (the weapon row, the Plate button cut) | 187 | 2 |
+| 932 x 430 | 1170 x 540 | 99 | 0 | 187 | 2 |
+
+The weapon row sat first on the Body page, so the first thing in the view was the "Weapon" label cut through its
+letters; at 844 x 390 the same ("weapon" and "Hunting rifle" cut at the top, the Plate button under the line). Now:
+
+- the card's margins are 8 and 6 units on a phone (`CustomizeScreen.CARD_MARGIN_COMPACT`), the Randomize button and
+  the detail line share the card's last row (`_fold_footer`; the saved line is kept and hidden), the strip is one row
+  (21 units of type, 14.6 CSS px at 0.694 a unit, over the floor of 14; 5 units of padding and no gap, so the room
+  between two words is the same 10; the ticket's notch is 4 units), and the weapon row is at the end of the Body
+  page (`append_row`). Focus: `LoadoutPanel.first_focus` was the weapon selector, which `follow_focus` scrolled the
+  card to the foot for (a key or bumper into the tab); on a phone it is the wardrobe's current tab now.
+- `WardrobeTab` and `MenuTabBar.TabButton` draw their own words, so the ruler did not read them: they say their size
+  (`drawn_text_sizes`) and `test_phone_floor` and the web probe count them.
+- Not the same fault, measured: the other tabs at 667 x 375 keep their content in view (the scroll area's height; items
+  whole inside it): Play 372 (6), Shop 233 (2 rows), Challenges 217 (7), More 372 (4). Their last row is cut at the bottom
+  as a scroll area's is, and none opens on a label cut at the top.
+- Open, not done: the key hints at the foot of the menu are hidden on a touch screen (`MenuHints`: "a finger sees
+  nothing") but the panel still leaves the 64 units for them, so a phone has 372 units where it could have 436. That
+  would give every tab room; it moves every panel, so it is its own change.

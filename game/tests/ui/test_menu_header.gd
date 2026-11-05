@@ -187,7 +187,17 @@ func test_the_loadout_card_shows_a_full_row_of_items_on_opening() -> void:
 	var problems: Array[String] = []
 	for entry: Array in PAGES:
 		var shell := await _open_hidden(entry[0], entry[1], MenuTab.Id.LOADOUT)
+		# A key or a bumper into the tab puts the focus on its first control, as a real page does.
+		shell.focus_panel()
+		await _run.frames(3)
 		var seen := _wardrobe_view(shell)
+		var scrolled: int = (
+			(seen["loadout"] as LoadoutPanel).wardrobe._picker_scroll.scroll_vertical
+		)
+		if scrolled != 0:
+			problems.append(
+				"%s: the card opened scrolled by %d units" % [_tag(entry[0], entry[1]), scrolled]
+			)
 		var tag := _tag(entry[0], entry[1])
 		if seen["whole_cells"] < 1:
 			problems.append("%s: no item is whole in the card's view %s" % [tag, seen["view"]])

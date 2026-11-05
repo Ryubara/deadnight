@@ -6,10 +6,14 @@ extends Button
 ## strip as they walk the menu's.
 
 const PADDING := 10.0
-const PADDING_COMPACT := 4.0
+const PADDING_COMPACT := 5.0
+## The notch of the active tab's ticket: a phone's tabs have 5 units of room, so it is smaller.
+const NOTCH := 6.0
+const NOTCH_COMPACT := 4.0
 const TYPE := 25
 ## A phone's tab: 21 units are 14.6 CSS px on the narrowest page (0.694 a unit), over the floor of
-## 14; all ten tabs then fit one row of the narrowest card (#1271).
+## 14; with no gap between the tabs (the padding is the gap) all ten fit one row of the narrowest
+## card (#1271).
 const TYPE_COMPACT := 21
 const HEIGHT := 56.0
 
@@ -66,7 +70,9 @@ func label() -> String:
 func _draw() -> void:
 	var lit := has_focus() or is_hovered()
 	if active:
-		MenuLook.draw_ticket(self, size, MenuLook.PAPER, MenuLook.PAPER_SHADE, 6.0)
+		MenuLook.draw_ticket(
+			self, size, MenuLook.PAPER, MenuLook.PAPER_SHADE, NOTCH_COMPACT if compact else NOTCH
+		)
 	var colour := (
 		MenuLook.PAPER_INK if active else (MenuLook.INK if lit else MenuLook.INK.darkened(0.12))
 	)

@@ -66,7 +66,11 @@ func width(compact: bool) -> float:
 	return 860.0 if compact else 900.0
 
 
+## The weapon row on a desktop. On a phone it is at the end of the Body tab's page, below the fold:
+## focusing it scrolled the card to its foot (#1271), so the focus starts on the wardrobe's tab.
 func first_focus() -> Control:
+	if context.compact and wardrobe != null:
+		return wardrobe.tab_button(wardrobe.current_tab())
 	return _weapon_selector
 
 

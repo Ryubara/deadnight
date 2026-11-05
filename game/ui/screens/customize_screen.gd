@@ -492,7 +492,7 @@ func _rest_hint() -> String:
 
 func _build_tab_strip() -> Control:
 	var strip := HFlowContainer.new()
-	strip.add_theme_constant_override(&"h_separation", 2 if _compact else 6)
+	strip.add_theme_constant_override(&"h_separation", 0 if _compact else 6)
 	strip.add_theme_constant_override(&"v_separation", 4)
 	for tab: Dictionary in TABS:
 		var button := WardrobeTab.new(tab["key"], tab["title"], _compact)
