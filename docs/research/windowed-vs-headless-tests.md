@@ -24,8 +24,24 @@ What each did:
   under it and back when it ends (solo and joined, a Resume under it, a drop that ends under the pause card). The game
   was right: a player has a reticle from the moment the drop ends.
 
-## Not fixed here
+## The other three
 
-`test_night_mouse_look` (3 of 4 fail windowed, 1 with the drop off), `test_night_screen` (3 of 8, 1 with the drop off)
-and `test_night_menu` (12 of 13 and 7 errors) also fail windowed on `main` and pass headless; the drop explains most
-but not all of them. They are their own issue.
+`test_night_mouse_look`, `test_night_screen` and `test_night_menu` (#1195) are in
+[the night UI suites](windowed-night-ui-suites.md): the drop explained part of them, the loading screen's fade the
+rest of the menu's, and a frame count the last line of the HUD test.
+
+## Frame time (#1202)
+
+Two more suites failed in a window with the game right: a window with no frame cap runs a frame in about 4 ms, where
+the headless run and a 60 Hz screen take 16 ms, so a number of frames is a different length of time.
+
+- **`test_hud_idle_redraws`, the low-fuel pulse.** The pulse is `0.65 + 0.35 * sin(5 t)` on the generator's clock, so
+  its period is 1.26 s. The test read 60 frames, which is 0.25 s in a window, and saw 0.085 of swing, not the 0.2 it
+  asks of a quarter of a turn. It now reads one whole period of frame time (`get_process_delta_time()` summed), with a
+  frame cap so a stuck clock fails. The idle-redraw check is unchanged (a mutation that redraws the layer per pulse
+  still fails it), and a second test holds the pulse's alpha equal after the same time in steps of 30, 60, 144 and 240
+  a second (it fails if the clock counts frames).
+- **`test_ui_check_box`, the fill spring.** `UISpring` steps on a fixed 1/240 s, so it ends in the same place at any
+  frame rate (`test_a_spring_ends_in_the_same_place_at_any_frame_rate`); the test read it after 90 frames, which is
+  0.36 s in a window and the spring was mid-swing at 0.96. It now waits until the spring has settled (at most 5 s of frame
+  time) and asserts the exact end value, so the bounds are tighter than before.

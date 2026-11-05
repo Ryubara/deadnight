@@ -97,3 +97,24 @@ func down(id: int) -> void:
 
 func n(id: int, stat: StringName) -> int:
 	return tally.count(id, stat)
+
+
+## The break before round `next_round` begins (the rules say it right after a round's end).
+func begin_break(next_round: int, seconds := 15.0) -> void:
+	feed({"type": &"break_started", "next_round": next_round, "seconds": seconds})
+
+
+func open_door(door: StringName) -> void:
+	feed({"type": &"door_opened", "door_id": door})
+
+
+func died(id: int) -> void:
+	feed({"type": &"player_died", "player_id": id, "cause": &"bleed_out"})
+
+
+func game_over(round_reached: int, reason := &"all_down") -> void:
+	feed({"type": &"game_over", "reason": reason, "round_reached": round_reached})
+
+
+func leave(id: int) -> void:
+	feed({"type": &"player_removed", "player_id": id})

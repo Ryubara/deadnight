@@ -45,6 +45,14 @@ var by_height := false:
 		by_height = value
 		_dirty = true
 		queue_redraw()
+## Draw only the card's outline in the flat colour of a locked piece (`ItemIcons.SILHOUETTE`): a
+## hidden calling card not yet earned, which shows its shape and nothing it would give away.
+var silhouette := false:
+	set(value):
+		if silhouette != value:
+			silhouette = value
+			_dirty = true
+			queue_redraw()
 ## Dim the card (a downed player's).
 var dim := 0.0:
 	set(value):
@@ -86,7 +94,7 @@ func _build() -> void:
 		for point in item["p"] as PackedVector2Array:
 			points.append(point * factor)
 		var colour := PlatePalettes.colour(palette, item["r"])
-		colour = colour.lerp(Color.BLACK, dim)
+		colour = ItemIcons.SILHOUETTE if silhouette else colour.lerp(Color.BLACK, dim)
 		if clip.is_empty():
 			_built.append({"p": points, "c": colour})
 			continue
@@ -105,7 +113,9 @@ func _draw() -> void:
 			colour = colour.lerp(Color(veil, 1.0), veil.a)
 		shapes.polygon(item["p"], colour)
 	shapes.flush(self)
-	if titled:
+	if silhouette:
+		PlateDraw.question_mark(self, Rect2(Vector2.ZERO, size))
+	elif titled:
 		_draw_title()
 
 

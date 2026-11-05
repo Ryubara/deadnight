@@ -54,6 +54,11 @@
     {"id": "f_whole_crew", "text": "Finish a round with everyone upright", "stat": "rounds:whole_crew", "target": 1, "grants": ["emblem:whole_crew"]},
     {"id": "f_pit_crew", "text": "Mend a board a teammate is also mending", "stat": "boards:shared", "target": 1, "grants": ["emblem:pit_crew"]},
     {"id": "f_hold_the_line", "text": "Get teammates up 5 times in a night", "stat": "revives", "mode": "night", "target": 5, "grants": ["emblem:hold_the_line"]},
-    {"id": "f_nobody_home", "text": "End a round without a kill of yours", "stat": "rounds:no_kills", "target": 1, "grants": ["emblem:nobody_home"]}
+    {"id": "f_nobody_home", "text": "End a round without a kill of yours", "stat": "rounds:no_kills", "target": 1, "grants": ["emblem:nobody_home"]},
+    {"id": "f_snack_break", "text": "Stay at the stand for a whole break", "stat": "breaks:stand", "target": 1, "hidden": true, "riddle": "The reel stops. Join the line.", "grants": ["card:snack_break", "emblem:snack_break"]},
+    {"id": "f_long_way_round", "text": "Reach round 8 without opening the second door", "stat": "round:long_way", "mode": "night", "target": 8, "hidden": true, "riddle": "Eight reels in, one door shut.", "grants": ["card:the_long_way_round", "emblem:the_long_way_round"]},
+    {"id": "f_dead_on_arrival", "text": "Die in round 1", "stat": "deaths:round_one", "target": 1, "hidden": true, "riddle": "Some never see the second reel.", "grants": ["card:dead_on_arrival", "emblem:dead_on_arrival"]},
+    {"id": "f_standing_room_only", "text": "End a night with the same four people you began it with", "stat": "nights:full_lot", "target": 1, "hidden": true, "riddle": "A full house. Nobody leaves.", "grants": ["card:standing_room_only", "emblem:standing_room_only"]},
+    {"id": "f_final_cut", "text": "Own all eleven tier cards", "derived": "tier_cards", "target": 1, "hidden": true, "riddle": "Every ticket, then one more.", "grants": ["card:final_cut", "emblem:final_cut"]}
   ]
 }

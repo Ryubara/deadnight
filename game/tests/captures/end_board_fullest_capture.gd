@@ -6,7 +6,8 @@ extends Node
 ## `gds godot -- --path game res://tests/captures/end_board_fullest_capture.tscn --resolution
 ## 1536x864 -- --out=<folder>/board.png`
 ##
-## Arguments after `--`: `--players=N` (default 8), `--scale=X` (the UI scale setting, default 1:
+## Arguments after `--`: `--players=N` people (default 8), `--bots=N` bots on top of them (default
+## 0; 7 is the fullest room, #1179), `--scale=X` (the UI scale setting, default 1:
 ## 1.25 makes a 1920x1080 window a 1536x864 canvas), `--phone` (a phone's safe insets),
 ## `--nocredits` and `--out=FILE`.
 
@@ -22,8 +23,9 @@ func _ready() -> void:
 
 func _run() -> void:
 	var players := int(_args.get("players", NightHost.MAX_PLAYERS))
+	var bots := int(_args.get("bots", 0))
 	get_window().content_scale_factor = float(_args.get("scale", 1.0))
-	var state := EndBoardFixtures.state(players)
+	var state := EndBoardFixtures.state(players, bots)
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	var board := HudEndBoard.new()
@@ -34,7 +36,7 @@ func _run() -> void:
 	board.set_left(15)
 	board.show_report(EndBoardFixtures.fullest_report())
 	if not _args.has("nocredits"):
-		board.show_credits(EndBoardFixtures.fullest_credits(players))
+		board.show_credits(EndBoardFixtures.fullest_credits(players, 1500, bots))
 	for _i in 6:
 		await get_tree().process_frame
 	print("board: canvas ", get_viewport().get_visible_rect().size)

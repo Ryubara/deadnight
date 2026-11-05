@@ -182,7 +182,8 @@ test("over HTTP: create, join and quick never answer 409, and the game server's 
   const [ann, bo] = [await guest("Ann"), await guest("Bo")];
 
   const first = (await call("POST", "/lobbies", ann, {})).json();
-  assert.equal((await call("POST", "/lobbies", ann, {})).statusCode, 201); // her old lobby is gone, not a 409
+  // Her old lobby is gone, not a 409. The new one is private: a new night is public, and Quick join would seat Bo in it.
+  assert.equal((await call("POST", "/lobbies", ann, { visibility: "private" })).statusCode, 201);
   assert.equal((await call("GET", `/lobbies/${first.id}`, ann)).statusCode, 404);
   const night = (await call("POST", "/lobbies/quick", bo)).json();
   const joined = await call("POST", "/lobbies/join-by-code", ann, { code: night.code });
