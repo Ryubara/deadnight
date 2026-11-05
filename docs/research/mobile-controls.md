@@ -336,6 +336,44 @@ around", and "All of the mobile touch controls icons must be icons instead".
 - **Not measurable without a hand.** Whether 12 mm is comfortable for every hand (small hands, a case, a tablet) is a
   real-device question; the numbers above are from the layout and the 6 CSS px per mm of a 460 ppi phone.
 
+## The audit (#1275)
+
+The maintainer (2026-11-05): "we're not prioritizing a unique set of touch controls for our game, we're still
+treating the users as if they're playing the desktop version but just with touch controls", and "stuff that touch
+players can be taking advantage of on existing components without adding too many bloat controls (basically
+duplicates)". The table of every action and every element, with a verdict each, is
+[the phone audit](../design/touch-audit.md); this is what it rests on.
+
+- **What phone shooters do (design only, nothing copied).** Call of Duty: Mobile's own guide numbers 23 elements in its
+  multiplayer HUD, gives the player a layout editor for "the size and opacity of everything on-screen", and shows the
+  knife only when it applies: "When an enemy gets within striking distance, a big knife icon will appear here"
+  ([Activision, Getting a Grip on the Call of Duty: Mobile Controls, 2019](https://blog.activision.com/call-of-duty/2019-10/Getting-a-Grip-on-the-Call-of-Duty-Mobile-Controls)).
+  A context-only melee is therefore the precedent for Strike, and it is what the game's own Interact button already
+  does. A search summary of a TechRadar review of Apex Legends Mobile says its touch layout is crowded and that pings
+  sometimes fire when the player did not mean them (the page text could not be read here, so this is *unverified*):
+  enough to keep Ping a deliberate button and out of the look surface.
+- **Three rules came out of the review of this game's screen.** One thumb, one job at a time (the right thumb holds Fire
+  and looks, so only what a fight needs is under it). A touch goes to the element that already shows the thing before
+  a control is added (the weapon strip for weapons and grenades, #1284; the players' column for the scoreboard; a tag
+  for the bots' order). A control that shows only when it applies costs no screen the rest of the time (Interact,
+  Strike).
+- **Findings in the code, by what a phone assumed a keyboard for.** The bot order showed for two seconds in the feed
+  and nowhere else (a wheel can be driven blind, a cycle cannot be read blind: the tag shows the state). The Controls
+  tab of Settings holds the phone's own look sensitivity under "Mouse sensitivity". The prompt card kept a 48 unit key
+  and a 16 unit gap for a mark that pointed at nothing, in a card that is 64 units short of room for the words on a
+  phone. The health card said `GRENADES x3` and the strip beside the weapons said `x3`.
+- **Built in the audit's own pull request:** the prompt card without a key while the touch layer is up
+  (`HudPrompt.touch_layout`; a capture from a script is not in touch mode, so it followed "a finger was the last input"
+  and could show "E"), the health card without the grenade count, and bot order notices that say the bots' state
+  rather than a line that reads as an order to the player (`BOTS: HOLD HERE` became `BOTS: HOLDING POSITION`).
+- **Markers.** At 667 x 375 and an interface size of 1.0 the screen held eight markers before two met, six with the
+  Interact button up. With only the ring, Reload and Pause on the glass it holds ten or more either way, and at 1.25
+  it goes from 3 to 5 (three diamonds) and 4 to 7 (one). Measured with the helpers of `test_hud_marker_cards.gd`; the
+  table is in the audit page. The remaining limit at 1.25 is the cards, not the buttons.
+- **Not proved.** Comfort of Strike's place (21 mm from Fire) on a real hand; the double tap against a thumb's own
+  taps; the tag's tap against the stick's zone. Each is in the issue that builds it with a test that sends real touches
+  to the real page.
+
 ## Tap targets in a night (#1192)
 
 A phone's page is 844 x 390 CSS px with a pixel ratio of 2 (the page caps it, `PhoneRender`), so the engine's window is
@@ -538,6 +576,8 @@ one verb no element on screen already shows) and gets the room two controls need
 - [Cursa, Touch controls for mobile games](https://cursa.app/en/page/touch-controls-for-mobile-games-input-patterns-and-feedback)
 - [GGRecon, Call of Duty: Mobile settings guide](https://www.ggrecon.com/guides/best-call-of-duty-mobile-season-9-settings-guide/)
 - [Pistol Arena, mobile controls](https://pistol-arena.pages.dev/controls/mobile/)
+- [Activision, Getting a Grip on the Call of Duty: Mobile Controls (2019)](https://blog.activision.com/call-of-duty/2019-10/Getting-a-Grip-on-the-Call-of-Duty-Mobile-Controls)
+- [TechRadar, Apex Legends Mobile has learned a great lesson from Call of Duty Mobile][techradar] (summary only)
 - MDN: [`touch-action`](https://developer.mozilla.org/en-US/docs/Web/CSS/touch-action),
   [`overscroll-behavior`](https://developer.mozilla.org/en-US/docs/Web/CSS/overscroll-behavior),
   [`env()`](https://developer.mozilla.org/en-US/docs/Web/CSS/env),
@@ -548,3 +588,5 @@ one verb no element on screen already shows) and gets the room two controls need
   [Exporting for the Web](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html)
 - Discord: [Embedded App SDK](https://docs.discord.com/developers/developer-tools/embedded-app-sdk),
   [Activities, mobile guide](https://docs.discord.com/developers/activities/development-guides/mobile.md)
+
+[techradar]: https://techradar.com/au/news/apex-legends-mobile-has-learned-a-great-lesson-from-call-of-duty-mobile
