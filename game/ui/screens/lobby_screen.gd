@@ -74,6 +74,10 @@ var rules: MatchSettingsPanel
 ## lobby of a member shows the map in `rules` (the host's picker, a guest's read-only one).
 var map_card: MapCard
 
+## The night's visibility, a row of its own after the rules (`LobbyPrivateSwitch`): its `row`,
+## `toggle`, `is_private()` and `editable`.
+var private_switch: LobbyPrivateSwitch
+
 var _rules_title: UILabel
 ## Said under the panel when the backend keeps no rules at all (a build from before them): the
 ## night will be the usual one, and the host is told, not left to find out (Deadnight #944).
@@ -169,6 +173,12 @@ static func event_text(event: Dictionary) -> String:
 			)
 		&"started":
 			return "%s started the night." % who
+		&"visibility":
+			return (
+				"%s made the night private. Only the code gets in." % who
+				if event.get("private", false)
+				else "%s made the night public. It is in the Server Browser." % who
+			)
 	return ""
 
 
@@ -237,6 +247,13 @@ func _ready() -> void:
 	_rules_note.custom_minimum_size.x = FIELD_WIDTH
 	_rules_note.visible = false
 	box.add_child(_rules_note)
+	# After the rules, with Start: the screen opens scrolled to the button the host presses, and
+	# this is the last thing they set before it.
+	private_switch = LobbyPrivateSwitch.new()
+	box.add_child(private_switch.build(get_tree(), FIELD_WIDTH))
+	private_switch.pressed.connect(_send_visibility)
+	private_switch.said.connect(_say)
+	private_switch.appeared.connect(func() -> void: private_switch.reveal(_scroll, start_button))
 	_rules_timer = Timer.new()
 	_rules_timer.one_shot = true
 	_rules_timer.wait_time = RULES_DELAY
@@ -255,6 +272,10 @@ func _ready() -> void:
 	var actions := _row(box, "Actions")
 	start_button = _button("Start the night", UIButton.Variant.PRIMARY, "Start")
 	start_button.pressed.connect(start)
+	# The scroll follows the focus to Start when the screen is up, after the row has come on screen.
+	start_button.focus_entered.connect(
+		func() -> void: private_switch.reveal(_scroll, start_button), CONNECT_ONE_SHOT
+	)
 	play_button = _button("Play", UIButton.Variant.PRIMARY, "Play")
 	play_button.pressed.connect(func() -> void: await _go_in(false))
 	join_button = _button("Join", UIButton.Variant.PRIMARY, "Join")
@@ -423,6 +444,7 @@ func start() -> void:
 	_rules_waiting = null
 	_set_enabled(false)
 	_say("Starting the night...")
+	await private_switch.flush(api, lobby, is_host())
 	# The rules as the panel shows them now: a change still waiting to be sent goes with the start.
 	var started := await api.start(lobby, rules.settings())
 	if not started["ok"]:
@@ -521,6 +543,7 @@ func _on_ended(text: String) -> void:
 	_shares.visible = false
 	copy_field.visible = false
 	map_card.visible = false
+	private_switch.hide_row()
 	leave_button.text = "Back"
 	status.text = text if text != "" else TogetherApi.TEXTS["not_found"]
 	note.text = ""
@@ -558,6 +581,7 @@ func _show() -> void:
 	link_label.text = page_link
 	link_label.visible = live and page_link != code_label.text
 	_show_seats()
+	private_switch.show_lobby(lobby, live and not _over, is_host())
 	_show_rules()
 	map_card.visible = not live and not _over
 	if not live:
@@ -579,6 +603,11 @@ func _show() -> void:
 		status.text = status_text(lobby, _me) if live else preview_text(preview)
 	_set_enabled(not _busy)
 	_sync_page_closing()
+
+
+## Sends the host's latest press of the switch (a press calls this).
+func _send_visibility() -> void:
+	await private_switch.send(api, lobby, is_host())
 
 
 ## Whether the player can move the panel now.

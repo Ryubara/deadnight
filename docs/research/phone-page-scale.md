@@ -112,8 +112,19 @@ On the real page the menu came back to the factor 2 after a night, and the Play 
 ## What this does not prove
 
 A real phone, a real iOS Safari (Chromium in emulation is not one), Discord's own webview (an iframe of another origin
-stands in, `--iframe`), the lobby on a page (it needs a backend; `test_phone_floor` opens it with a fixture), text
-drawn by custom `_draw` (ticket titles, the plate), which `UiAudit` does not see, and the night's HUD (#1192, #1189).
+stands in, `--iframe`), text drawn by custom `_draw` (ticket titles, the plate), which `UiAudit` does not see, and the
+night's HUD (#1192, #1189).
+
+## The host's lobby on a page (#1186)
+
+`phone_layout.py --section lobby` opens Create a night against the stand-in backend (`POST /lobbies`, the poll, the
+rules, the visibility), reads the lobby on a 844 x 390 page at ratio 3 (a 1688 x 780 canvas, factor 2: text 18.8 CSS px,
+targets 44.8) and taps the Private night switch with a finger (`window.deadnight.spots` names it `private`,
+`lobby_private` reads it back), then taps it again; the script fails unless the stand-in was told `private`, then
+`public`. Before `LobbyPrivateSwitch.reveal` the lobby came up scrolled to the end of its area (Start with the copy
+buttons and the Server Browser under it) and the switch sat half out of the top: the fixture lobbies of the suites could
+not show it (their scroll stops at Start), only the real page could. What it cannot show: a real backend (the lobby's own
+suites `test_lobby_private_online` use one).
 
 ## The night's pause card and its Settings (#1205)
 

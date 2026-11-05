@@ -177,7 +177,11 @@ func test_create_in_the_activity_makes_one_lobby_and_sends_no_instance_id() -> v
 		if request["method"] == "POST" and request["path"] == "/lobbies":
 			created.append(request)
 	assert_int(created.size()).is_equal(1)
-	assert_dict(created[0]["body"]).is_equal({"maxPlayers": NightHost.MAX_PLAYERS})
+	# The seats and the night's visibility: no instance id, nothing of the voice channel.
+	assert_dict(created[0]["body"]).is_equal(
+		{"maxPlayers": NightHost.MAX_PLAYERS, "visibility": "public"}
+	)
+	assert_bool(TogetherApi.PUBLIC_BY_DEFAULT).is_true()
 
 
 func test_a_code_made_in_the_activity_is_joined_by_typing_it() -> void:
