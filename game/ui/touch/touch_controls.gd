@@ -95,6 +95,10 @@ var hints: TouchHints
 var look_gain := Callable()
 ## The look the finger has made and the view has not turned yet (`LookSmoother`).
 var look_smoother := LookSmoother.new()
+## () -> float, the least width of a hit area in canvas units: a fingertip, 44 CSS pixels
+## (`MenuScale.tap_units`), which depends on the window and the interface size and so is asked
+## again at every layout. Without it the hit areas are the layout's own (#1217).
+var finger_units := Callable()
 
 ## Auto-fire on: Aim is held. Off: Aim is a toggle (`_aim_latched`).
 var _aim_is_hold := true
@@ -168,6 +172,19 @@ func is_mirrored() -> bool:
 
 func button_circle(id: StringName) -> Dictionary:
 	return _circles.get(id, {})
+
+
+func circles() -> Dictionary:
+	return _circles
+
+
+## The buttons a finger is on now (a browser test reads them).
+func held_buttons() -> PackedStringArray:
+	var held := PackedStringArray()
+	for touch: Dictionary in _touches.values():
+		if touch.get(&"role", &"") == &"button":
+			held.append(String(touch[&"button"]))
+	return held
 
 
 ## The caption the interact button shows now, "" when it is hidden.
@@ -587,7 +604,8 @@ func _release_everything() -> void:
 func _relayout() -> void:
 	insets = insets_override if insets_override != null else _platform_insets()
 	_safe = TouchLayout.safe_rect(_canvas(), insets)
-	_circles = TouchLayout.buttons(_safe, touch_scale, left_handed)
+	var finger := float(finger_units.call()) if finger_units.is_valid() else 0.0
+	_circles = TouchLayout.buttons(_safe, touch_scale, left_handed, finger)
 	if insets != _last_insets:
 		_last_insets = insets
 		safe_insets_changed.emit(insets)

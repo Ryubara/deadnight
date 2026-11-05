@@ -184,16 +184,20 @@ func test_the_pause_cards_buttons_are_tap_targets_on_a_phone() -> void:
 
 
 func test_every_touch_hit_area_is_a_tap_target_on_a_phone() -> void:
-	# Pure geometry: the layout of the canvas a phone's night has. The smallest interface size (0.8)
-	# is short by 6 CSS px for the five small buttons (a separate issue: their circles overlap).
+	# The touch layer of a real night at each interface size, on the phone's page (#1192, #1217): at
+	# 0.8 the Pause, Ping, Scoreboard, Bot wheel and Melee circles were 38 to 39 CSS px.
 	var faults: Array[String] = []
-	for ui_scale: float in [1.0, 1.25]:
-		var window := Vector2i(1688, 780)
-		var per_unit := MenuScale.pixels_per_unit(window, ui_scale)
-		var canvas := Vector2(window) / per_unit
-		var circles := TouchLayout.buttons(Rect2(Vector2.ZERO, canvas), 1.0)
-		for id: StringName in circles:
-			var diameter: float = float(circles[id][&"hit"]) * 2.0 * per_unit / 2.0
-			if diameter < MenuScale.TAP_PIXELS - SLACK:
-				faults.append("%s at %s: hit area is %.1f CSS px" % [id, ui_scale, diameter])
+	var page: Dictionary = PHONES[0]
+	for ui_scale in SCALES:
+		var screen := await _night(page, ui_scale)
+		assert_bool(screen.touch_active()).is_true()
+		var ids: Array[StringName] = [TouchLayout.PAUSE, TouchLayout.PING, TouchLayout.SCOREBOARD]
+		for row in TouchLayout.BUTTONS:
+			ids.append(row[0])
+		for id in ids:
+			var circle: Dictionary = screen._touch.button_circle(id)
+			var css: float = float(circle[&"hit"]) * 2.0 * _css(page["ratio"])
+			if css < MenuScale.TAP_PIXELS - SLACK:
+				faults.append("%s at %s: hit area is %.1f CSS px" % [id, ui_scale, css])
+		await RouterFixture.clear(get_tree())
 	assert_array(faults).is_empty()

@@ -174,6 +174,8 @@ func _ready() -> void:
 	_touch.mirrored_changed.connect(_on_mirrored_changed)
 	_touch.active_changed.connect(func(active: bool) -> void: _hud.touch_layout = active)
 	_touch.look_gain = _look_gain
+	# A hit area is never under a fingertip, at the interface size this night runs at (#1217).
+	_touch.finger_units = func() -> float: return MenuScale.tap_units(get_window(), true)
 	add_child(_touch)
 	wheel = BotWheelDriver.new()
 	wheel.name = "BotWheelDriver"
@@ -207,6 +209,16 @@ func _start_if_run_alone() -> void:
 ## True while the touch controls are on screen and taking touches.
 func touch_active() -> bool:
 	return _touch != null and _touch.is_active()
+
+
+## The touch layer's circles (`TouchLayout.buttons`) and the buttons a finger is on (a browser test
+## reads them).
+func touch_circles() -> Dictionary:
+	return _touch.circles() if _touch != null else {}
+
+
+func touch_held() -> PackedStringArray:
+	return _touch.held_buttons() if _touch != null else PackedStringArray()
 
 
 ## True while the settings page of the menu is open (a browser test reads it).
