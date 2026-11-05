@@ -76,6 +76,15 @@ const LOBBY_STATUS: Record<string, number> = {
   bad_visibility: 400,
 };
 
+function parseObject(text: string): Record<string, unknown> | null {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return parsed !== null && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
 function sameSecret(given: string, expected: string): boolean {
   const a = Buffer.from(given);
   const b = Buffer.from(expected);
@@ -351,7 +360,7 @@ export function buildApp(deps: Deps): FastifyInstance {
     },
     async (request, reply) => {
       // Always a new lobby, on the website and in a Discord Activity alike: players reach each other by code, link or
-      // Quick join, never by the Activity instance they share (#1178).
+      // the Server Browser, never by the Activity instance they share (#1178).
       const { maxPlayers = MAX_PLAYERS, visibility = "public" } = request.body ?? {};
       return reply.code(201).send(lobbyView(lobbies.create(await member(request.userId), maxPlayers, visibility)));
     },
@@ -400,14 +409,23 @@ export function buildApp(deps: Deps): FastifyInstance {
     return lobbyView(lobbies.view(request.params.id, request.userId));
   });
 
-  // Quick join: into a public night with room, or a new public one that starts at once.
-  app.post("/lobbies/quick", { onRequest: requireUser }, async (request, reply) => {
-    return reply.code(200).send(lobbyView(lobbies.quick(await member(request.userId), await progress.levelFor(request.userId))));
-  });
-
   app.post<{ Params: { id: string } }>("/lobbies/:id/leave", { onRequest: requireUser }, async (request, reply) => {
     lobbies.leave(request.params.id, request.userId);
     return reply.code(204).send();
+  });
+
+  // The page says it is going (`pagehide` of a page that will not come back): a Leave, sent by the browser itself while the
+  // tab closes. A beacon cannot set an `Authorization` header (and a `keepalive` fetch with one costs a CORS preflight, a
+  // second round trip), so this one route also takes the session token in its body (`{"token": "..."}`, sent by
+  // `navigator.sendBeacon` as `text/plain`: a simple request, one round trip, measured in Chromium, Firefox and WebKit).
+  // The header still works for a caller that can send it. A bad token is a 401; for a good one the answer is
+  // `{left}` and says whether anyone was taken out (nothing reads it: the page is gone).
+  app.post<{ Params: { id: string }; Body: unknown }>("/lobbies/:id/page-closed", async (request, reply) => {
+    const body = typeof request.body === "string" ? parseObject(request.body) : (request.body as Record<string, unknown> | null);
+    const given = bearer(request) ?? (typeof body?.token === "string" ? body.token : null);
+    const claims = given ? verifyToken(config.sessionSecret, "session", given) : null;
+    if (!claims) return reply.code(401).send({ error: "unauthorized" });
+    return { left: lobbies.pageClosed(request.params.id, claims.sub) };
   });
 
   // The host makes the night private (not listed, not handed to a stranger; its code still joins) or public again.

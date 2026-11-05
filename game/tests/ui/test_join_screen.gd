@@ -22,7 +22,7 @@ func test_the_main_menu_offers_join_on_the_play_tab() -> void:
 	add_child(menu)
 	var play := menu.shell.panel(MenuTab.Id.PLAY) as PlayPanel
 	assert_object(play.button(&"together")).is_not_null()
-	assert_object(play.button(&"quick_join")).is_not_null()
+	assert_object(play.button(&"browser")).is_not_null()
 	assert_str(MainMenu.ROUTES[&"together"][0]).is_equal(MainMenu.JOIN_SCREEN)
 	menu.queue_free()
 

@@ -236,7 +236,7 @@ func test_three_people_or_a_bot_among_four_do_not() -> void:
 	assert_int(with_bot.n(1, ChallengeStats.NIGHTS_FULL_LOT)).is_equal(0)
 
 
-func test_one_who_leaves_or_one_who_comes_in_or_a_seat_a_bot_takes_over_spoils_it() -> void:
+func test_one_who_leaves_or_one_who_comes_in_spoils_it() -> void:
 	_lot([1, 2, 3, 4])
 	_b.start(1)
 	_b.leave(4)
@@ -250,14 +250,6 @@ func test_one_who_leaves_or_one_who_comes_in_or_a_seat_a_bot_takes_over_spoils_i
 	late.join(5)
 	late.game_over(2)
 	assert_int(late.n(1, ChallengeStats.NIGHTS_FULL_LOT)).is_equal(0)
-	# A bot takes the seat of a person who left.
-	var swapped := MomentsBench.new()
-	for id in [1, 2, 3, 4]:
-		swapped.join(id)
-	swapped.start(1)
-	swapped.feed({"type": &"bot_seated", "player_id": 3})
-	swapped.game_over(2)
-	assert_int(swapped.n(1, ChallengeStats.NIGHTS_FULL_LOT)).is_equal(0)
 
 
 func test_one_who_left_and_came_back_before_the_end_is_still_the_same_four() -> void:

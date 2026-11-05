@@ -405,9 +405,9 @@ numbers are in [rounds](../design/rounds.md#match-settings).
 
 The Bots setting (#643) adds no byte and no version: `bots` is a key of `match_settings` (a snapshot without it reads
 as 0, and a ticket or snapshot with it is taken by a build that does not know it, which ignores the key), a
-`player_added` event carries `bot`, a `bot_replaced` event said a person took a bot's seat (nothing sends it since
-issue 1179, when a bot stopped holding a seat), and each player of the snapshot has `bot`. The bots' names ride the
-WELCOME's `names` like any seat's. See [rounds](../design/rounds.md#bots).
+`player_added` event carries `bot` (the events that said a seat changed hands are gone: since issue 1179 a bot holds
+no seat, and #1185 removed them; a client ignores an event type it does not know), and each player of the snapshot
+has `bot`. The bots' names ride the WELCOME's `names` like any seat's. See [rounds](../design/rounds.md#bots).
 
 ## The level and icon beside a name (#1077)
 
