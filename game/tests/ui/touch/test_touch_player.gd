@@ -69,7 +69,10 @@ func test_a_100_unit_drag_turns_about_8_degrees_in_small_steps_at_the_default_se
 	# 1.6 rad per full height at sensitivity 1: 100 of 1080 units is 0.148 rad, 8.5 degrees. The
 	# first design turned twice that and a phone flew round.
 	assert_float(rad_to_deg(absf(angle_difference(start, rig.yaw)))).is_equal_approx(8.5, 0.3)
-	assert_float(rad_to_deg(biggest)).is_less(1.0)
+	# The limit was 1.0 degree. The first 28 units of a drag wait in the double tap's gate (#1288) and
+	# come out together once the finger is past the slop, so the step after them measures 1.0 to 1.06
+	# degrees (the smoother spreads that piece over its 40 ms): 1.5 keeps a step small and not a jump.
+	assert_float(rad_to_deg(biggest)).is_less(1.5)
 
 
 ## A frame longer than the smoothing's window lets out what the finger made and the view has not
