@@ -45,3 +45,20 @@ the headless run and a 60 Hz screen take 16 ms, so a number of frames is a diffe
   frame rate (`test_a_spring_ends_in_the_same_place_at_any_frame_rate`); the test read it after 90 frames, which is
   0.36 s in a window and the spring was mid-swing at 0.96. It now waits until the spring has settled (at most 5 s of frame
   time) and asserts the exact end value, so the bounds are tighter than before.
+
+### One frame is not a length of time either (#1215)
+
+The same spring test still failed at its release line (`Expecting to be less than: 1.0 but was 1.0`), headless, with
+no load at all, and passed in a 60 Hz window. `UISpring.step` adds the frame's delta to a carry and integrates one
+step for each whole 1/240 s in it, so a frame shorter than 4.17 ms moves nothing: the box's `_process` had already
+set the target to 0.0 on the frame the test read, but the value stayed at 1.0 until the carry reached a step.
+A probe printed frames of 0.19 ms to 20 ms in one headless run. The game is right (sub-step lag is by design, and the
+spring ends in the same place at any rate); the test asserted a movement after one frame. It now asserts what one
+frame does settle (the target), waits in time for the value to leave its start, checks it is strictly between the
+ends (so it is a spring, not a snap), and settles for the exact end value.
+
+`--fixed-fps N` makes every frame the same length, which turns the frame-time claim into a sweep (passed to
+`GdUnitCmdTool.gd` runs, headless or through `gds godot`): the old test failed at 1000 and 480 frames a second and
+passed at 240 and below, the new one passes at 1000, 480, 240, 120, 60 and 10. Use it on any test that reads a
+`delta`-driven value. `UISpring` has a unit test for the sub-step frame and its carry
+(`test_a_frame_shorter_than_one_step_moves_nothing_and_is_not_lost`).
