@@ -12,6 +12,9 @@ const NIGHTS := 60
 const SEED := 4000
 
 static var _done: Dictionary = {}
+## The cells `warm` has played on this thread (by key and assist), so a suite that warms before
+## every batch pays for each cell once.
+static var _warmed: Dictionary = {}
 
 
 static func key_of(spec: Array) -> String:
@@ -62,29 +65,36 @@ static func _run(specs: Array) -> void:
 ## table, the zombie tuning, the scripts and enums a rule reaches) is not safe to start from several
 ## threads at once: two workers filling the maps' table, or loading the tuning, together crashed
 ## the engine (#1149). So one night of every cell is played here, on this thread, before `play`
-## starts the workers; from then on they only read.
-static func warm(specs: Array) -> void:
+## (or any group task of a suite) starts the workers; from then on they only read. Every group
+## task in the tests calls this first (`test_shipped_cells_workers.gd` scans for one that does not).
+## `assist` is the touch aim assist the cells will be played with (#286): it reaches the assist's
+## own script, which a night without it never loads. A cell is played once per process and assist.
+static func warm(specs: Array, assist: float = 0.0) -> void:
 	SimWeapons.warm()
 	for spec: Array in specs:
-		cell(spec, RulesFixture.tuning(), 1)
+		var warmed_key := "%s@%s" % [key_of(spec), str(assist)]
+		if not _warmed.has(warmed_key):
+			cell(spec, RulesFixture.tuning(), 1, assist)
+			_warmed[warmed_key] = true
 
 
 ## The cells of `specs`, `nights` nights each, one per worker thread, each with a tuning of its own;
 ## `warm` first.
-static func play(specs: Array, nights: int) -> Array[Dictionary]:
+static func play(specs: Array, nights: int, assist: float = 0.0) -> Array[Dictionary]:
 	var tunings: Array[RulesTuning] = []
 	for _i in specs.size():
 		tunings.append(RulesFixture.tuning())
 	var results: Array[Dictionary] = []
 	results.resize(specs.size())
-	var run := func(index: int) -> void: results[index] = cell(specs[index], tunings[index], nights)
+	var run := func(index: int) -> void:
+		results[index] = cell(specs[index], tunings[index], nights, assist)
 	var task := WorkerThreadPool.add_group_task(run, specs.size(), -1, true, "shipped cells")
 	WorkerThreadPool.wait_for_group_task_completion(task)
 	return results
 
 
-## One cell of `nights` nights of `spec` for `tuning`.
-static func cell(spec: Array, tuning: RulesTuning, nights: int) -> Dictionary:
+## One cell of `nights` nights of `spec` for `tuning`, with the touch aim assist `assist` (0: none).
+static func cell(spec: Array, tuning: RulesTuning, nights: int, assist: float = 0.0) -> Dictionary:
 	var settings: MatchSettings = null
 	if spec.size() > 2:
 		settings = MatchSettings.new()
@@ -98,7 +108,7 @@ static func cell(spec: Array, tuning: RulesTuning, nights: int) -> Dictionary:
 		BalanceBatch.DEFAULT_STEP,
 		BalanceBatch.DEFAULT_MAX_ROUNDS,
 		[],
-		0.0,
+		assist,
 		{},
 		settings
 	)
