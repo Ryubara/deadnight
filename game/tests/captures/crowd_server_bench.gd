@@ -15,6 +15,7 @@ extends Node
 ## `--bots=N` seats N bots in every room (`NightBots`, the host's own class) and runs them as
 ## `NightHost._physics_process` does (#1193): a frame is built on every step, every bot hears the
 ## step's events and the frame, then decides; their time is `bots_ms_*` and is part of the tick.
+## `--sites=0` turns `UseSites` off (every body is asked every offer, the cost before #1222).
 ## `--probes=0` leaves the probes out of the line (a service cuts a log line at 5,000 characters).
 ## `--map=ID` plays a map of `MapRegistry` (default the lot). The events of the step between two
 ## sends are kept for the next one, as the host keeps them, so the bytes are the host's.
@@ -125,6 +126,9 @@ func _build_room(index: int) -> BenchRoom:
 	)
 	# The page measured with the bodies drawn (the default): `--drawn=0` is the shipped server.
 	room.server.drawn_bodies = _flag("drawn", true)
+	# `--sites=0` asks every offer for every body, as the server did before `UseSites` (#1222): the
+	# same build as its own control in one container.
+	room.server.use_sites.always_near = not _flag("sites", true)
 	room.server.sim.tuning.hard_cap = _crowd
 	room.timed = TimedPathing.new(room.world.map())
 	room.server.sim.pathing = room.timed
@@ -308,6 +312,8 @@ func _report() -> void:
 		"map": _map,
 		"drawn_bodies": _flag("drawn", true),
 		"bodies_per_room": _players + _bots,
+		"use_sites": _flag("sites", true),
+		"bot_commands": _bot_hash(),
 		"filled_in_ticks": _filled_in,
 		"alive": snappedf(_alive_sum / ticks, 0.1),
 		"ticks": ticks,
@@ -332,6 +338,16 @@ func _report() -> void:
 	result.merge(_spread("tick_ms", _tick_ms))
 	print("CROWD_SERVER ", JSON.stringify(result))
 	get_tree().quit()
+
+
+## One number for every command every bot of every room sent in the run (`BotHost.command_hash`):
+## two builds that print the same one made the bots decide the same, step for step.
+func _bot_hash() -> int:
+	var all: Array[int] = []
+	for room in _rooms:
+		if room.bots != null:
+			all.append(room.bots.host.command_hash())
+	return hash(all)
 
 
 ## Mean, median, 95th and 99th percentile, worst and the count over the tick budget of per-tick

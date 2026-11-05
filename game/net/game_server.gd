@@ -28,6 +28,11 @@ const DEFAULT_CAPACITY := 3
 ## processor (`docs/research/crowd-budget.md`). One room may stand all of it; with three each
 ## stands 40.
 const DEFAULT_ALIVE_BUDGET := 120
+## Bots in all the rooms of a process together unless told otherwise (`BotLimits`): a lone room
+## seats 3, two rooms 1 each, three rooms 1 each. What the process's tick lets them cost, measured
+## on Railway beside the same build without bots (`docs/research/crowd-budget.md`, #1222); a bot
+## costs about 0.9 ms of the tick, so 7 in every room is not paid for yet.
+const DEFAULT_BOT_BUDGET := 3
 ## Seconds between heartbeats (the default of `heartbeat_every`).
 const HEARTBEAT_EVERY := 5.0
 ## The least a room is cut to by the budget (rooms beyond the budget over this stand this many).
