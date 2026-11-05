@@ -9,22 +9,36 @@ extends RefCounted
 ##     item["kind"]    # LadderItem.Kind.PART, with item["slot"] = &"torso", item["id"] = &"rolled"
 ##
 ## A wearable is read from the part registry (`LookCatalog`), a colour from the cloth palette, a map
-## from `MapRegistry`; anything else (a plate item whose art is not drawn) is its id spelled out.
+## from `MapRegistry`; a calling card or an emblem of the plate from `PlateCatalog` (its title, its
+## art); anything else (a plate item whose art is not drawn) is its id spelled out.
 
-enum Kind { PART, COLOUR, MAP, OTHER }
+enum Kind { PART, COLOUR, MAP, OTHER, CARD, EMBLEM }
+
+## The ladder's slots that give a piece of the plate, and the kind of piece. The `calling_cards`
+## row (level 2) opens the feature and shows the first card.
+const PLATE_SLOTS := {
+	&"tier_card": PlateCatalog.CARD,
+	&"tier_emblem": PlateCatalog.EMBLEM,
+	&"emblem": PlateCatalog.EMBLEM,
+}
+const CALLING_CARDS_SLOT := &"calling_cards"
 
 ## The colour channel whose palette the ladder's colours belong to (the cloth channels share it).
 const COLOUR_CHANNEL := &"primary"
 
 
 ## The item `item` of `slot` gives. `{kind, name}` and, by kind: a PART has `slot` and `id` (the
-## catalogue's), a COLOUR has `colour`, a MAP has `info`. `table` is `unlocks.json`.
+## catalogue's), a COLOUR has `colour`, a MAP has `info`, a CARD or an EMBLEM has `plate` (the
+## piece's id). `table` is `unlocks.json`.
 static func of(slot: StringName, item: StringName, table: LadderUnlocks = null) -> Dictionary:
 	var rows := table if table != null else LadderUnlocks.shipped()
 	var row := rows.find(slot, item)
 	var out := {"kind": Kind.OTHER, "name": spelled(item)}
 	if row.is_empty():
 		return out
+	var plate := plate_item(slot, item)
+	if not plate.is_empty():
+		return plate
 	if slot == &"colour":
 		for entry: Dictionary in LookCatalog.palette(COLOUR_CHANNEL):
 			if entry["id"] == item:
@@ -40,6 +54,26 @@ static func of(slot: StringName, item: StringName, table: LadderUnlocks = null) 
 		if label != "":
 			return {"kind": Kind.PART, "name": label, "slot": part_slot, "id": part_id}
 	return out
+
+
+## What a plate row gives, `{kind, name, plate}`; empty for a row of another slot or a piece the
+## plate has not got.
+static func plate_item(slot: StringName, item: StringName) -> Dictionary:
+	var plates := PlateCatalog.shipped()
+	if slot == CALLING_CARDS_SLOT:
+		var cards := plates.ids(PlateCatalog.CARD)
+		return (
+			{}
+			if cards.is_empty()
+			else {"kind": Kind.CARD, "name": "Calling cards", "plate": cards[0]}
+		)
+	if not PLATE_SLOTS.has(slot) or not plates.has(PLATE_SLOTS[slot], item):
+		return {}
+	var kind: StringName = PLATE_SLOTS[slot]
+	var title := plates.title(kind, item)
+	if kind == PlateCatalog.CARD:
+		return {"kind": Kind.CARD, "name": "%s calling card" % title, "plate": item}
+	return {"kind": Kind.EMBLEM, "name": "%s emblem" % title, "plate": item}
 
 
 ## The name the wardrobe gives the part `id` of `slot` (a piece with a model, or one still to come).

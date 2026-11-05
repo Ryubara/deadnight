@@ -137,6 +137,8 @@ var returning: Array[String] = []
 ## Reports made (`report_ready`), and whether the night's own has gone.
 var reports_made := 0
 var night_reported := false
+## The calling card and emblem each seat with an account wears, held to what the seat owns.
+var plates := PlateTable.new()
 
 var _peers: Dictionary[int, HostPeer] = {}
 var _by_player: Dictionary[int, HostPeer] = {}
@@ -144,7 +146,7 @@ var _by_player: Dictionary[int, HostPeer] = {}
 ## are left out and are `PLAYER n` on every screen. Kept with the seat while it is away.
 var _names: Dictionary = {}
 ## Players whose socket dropped, by id: their seat, kept until they come back or the time is up.
-var _away: Dictionary[int, Away] = {}
+var _away: Dictionary[int, HostAway] = {}
 var _events: Array[Dictionary] = []
 ## What the server said outside a step (a join, a name, a ping a bot made) that the bots have not
 ## heard yet: they hear it with the next step's events.
@@ -248,7 +250,7 @@ func users() -> Array[String]:
 	for peer: HostPeer in _by_player.values():
 		if peer.user != "" and not out.has(peer.user):
 			out.append(peer.user)
-	for away: Away in _away.values():
+	for away: HostAway in _away.values():
 		if away.user != "" and not out.has(away.user):
 			out.append(away.user)
 	return out
@@ -398,7 +400,7 @@ func peer_of(transport_id: int) -> HostPeer:
 func owns_token(token: PackedByteArray) -> bool:
 	if token.size() != NetWire.TOKEN_SIZE:
 		return false
-	for away: Away in _away.values():
+	for away: HostAway in _away.values():
 		if away.token == token:
 			return true
 	for peer: HostPeer in _by_player.values():
@@ -438,7 +440,7 @@ func _on_disconnected(transport_id: int) -> void:
 	):
 		# The body stays where it is, with no commands coming (it stands still after a moment);
 		# the player takes it back with the token, or the time runs out.
-		_away[peer.player_id] = Away.new(peer.token, _now() + resume_within, peer.user)
+		_away[peer.player_id] = HostAway.new(peer.token, _now() + resume_within, peer.user)
 		_log("away", {"player": peer.player_id, "players": _by_player.size()})
 		player_away.emit(peer.player_id)
 		return
@@ -453,6 +455,7 @@ func _free_seat(player_id: int) -> void:
 		if server.xp.has_seat(player_id):
 			_collect([{"type": &"account_left", "player_id": player_id}])
 		server.xp.release(player_id)
+		plates.release(player_id)
 		server.challenges.release(player_id)
 		# The seat has no account now (a bot has no level, and wears its cast look whole).
 		server.player_levels.erase(player_id)
@@ -611,6 +614,7 @@ func _welcome_snapshot(for_player: int = 0) -> Dictionary:
 	names.merge(_names, true)
 	snapshot["names"] = names
 	snapshot["levels"] = server.xp.levels()
+	snapshot["plates"] = plates.to_dict()
 	if server.xp.has_seat(for_player):
 		snapshot["account_xp"] = server.xp.total_of(for_player)
 	return snapshot
@@ -626,11 +630,13 @@ func register_account(player_id: int, user: String, account: Dictionary = {}) ->
 	if not server.xp.has_seat(player_id):
 		return
 	# What the seat may wear is held to the level the ticket's XP gives (#1065).
-	server.player_levels[player_id] = server.xp.levels()[player_id]
+	var level: int = server.xp.levels()[player_id]
+	server.player_levels[player_id] = level
+	plates.seat(player_id, account, level)
 	if not seated:
-		# Everyone already here learns this seat's level (the joiner reads the others' in its WELCOME).
-		var level: int = server.xp.levels()[player_id]
-		_collect([{"type": &"account_seated", "player_id": player_id, "level": level}])
+		# Everyone already here learns this seat's level and plate (the joiner reads the others' in
+		# its WELCOME).
+		_collect([plates.seated_event(player_id, level)])
 	# The seat's challenges are followed from its board, which is read once and never waited for.
 	if server.challenges.seat(player_id, user):
 		board_wanted.emit(user)
@@ -754,7 +760,7 @@ func _claim_seat(token: PackedByteArray, user: String = "") -> int:
 	# The seat of a ticket's user is theirs whatever token they hold: a second tab or a reload with
 	# a new ticket takes the seat back instead of making a second player.
 	for player_id in _away:
-		var held: Away = _away[player_id]
+		var held: HostAway = _away[player_id]
 		if (by_token and held.token == token) or (user != "" and held.user == user):
 			return player_id
 	for player_id in _by_player:
@@ -950,51 +956,3 @@ func _log(event: String, fields: Dictionary = {}) -> void:
 		line["room"] = room_id
 	line.merge(fields)
 	print(JSON.stringify(line))
-
-
-## A seat held for a player whose socket dropped.
-class Away:
-	extends RefCounted
-	var token: PackedByteArray
-	## When the seat is given up (the host's clock, seconds).
-	var until: float
-	## The backend's user id of the player (`""` without a ticket).
-	var user: String
-
-	func _init(p_token: PackedByteArray, p_until: float, p_user: String = "") -> void:
-		token = p_token
-		until = p_until
-		user = p_user
-
-
-## One connection to the server.
-class HostPeer:
-	extends RefCounted
-	var transport_id: int
-	## 0 until the client has said hello and been given a seat.
-	var player_id := 0
-	## The frame this client last had, the baseline of the next delta.
-	var last_frame: Dictionary = {}
-	## Ticks in a row the socket would not take (the client stopped reading).
-	var missed_ticks := 0
-	## The step at which a refused client is hung up on, or -1.
-	var close_at := -1
-	var refused := false
-	var kicked := false
-	## When the connection opened (seconds), for the time it has to say hello.
-	var connected_at := 0.0
-	var limits := PeerLimits.new()
-	## The zombies this client has (`ZombieDelta`), and the number of the next delta to it.
-	var zombie_base: Dictionary[int, PackedByteArray] = {}
-	var zombie_sequence := 0
-	## What the client was given at WELCOME to take its seat back with.
-	var token := PackedByteArray()
-	## Who the backend's ticket says this is (`""` when the server has no backend), and their name.
-	var user := ""
-	var user_name := ""
-	## The progression the ticket carries (`TicketVerifier.account_of`).
-	var account: Dictionary = {}
-
-	func _init(p_transport_id: int, now: float = 0.0) -> void:
-		transport_id = p_transport_id
-		connected_at = now

@@ -123,7 +123,17 @@ func test_a_night_that_crosses_levels_lists_them_and_what_they_give() -> void:
 	var items: Array[StringName] = []
 	for row: Dictionary in model["unlocked"]:
 		items.append(row["item"])
-	assert_array(items).is_equal([&"cherry", &"rolled_sleeves", &"tan"])
+	assert_array(items).is_equal(
+		[
+			&"calling_cards",
+			&"admit_one",
+			&"cherry",
+			&"rolled_sleeves",
+			&"tan",
+			&"doors_open",
+			&"doors_open"
+		]
+	)
 	assert_float(model["fraction_from"]).is_equal(0.0)
 	assert_int(model["in_level"]).is_equal(10)
 	# Level 5 is the last of the first tier: 85 XP to leave it.
@@ -142,7 +152,9 @@ func test_a_night_inside_a_level_keeps_where_it_began_on_the_bar() -> void:
 	assert_array(model["unlocked"]).is_empty()
 	assert_float(model["fraction_from"]).is_equal_approx(30.0 / 85.0, 0.0001)
 	assert_float(model["fraction_to"]).is_equal_approx(50.0 / 85.0, 0.0001)
-	assert_int(model["next"]["level"]).is_equal(3)
+	# Level 2 opens the calling cards, so that is what the bar points at.
+	assert_int(model["next"]["level"]).is_equal(2)
+	assert_str(model["next"]["label"]).is_equal("calling cards")
 
 
 func test_the_top_of_the_ladder_has_a_full_bar_and_nothing_next() -> void:

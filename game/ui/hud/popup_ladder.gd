@@ -18,7 +18,7 @@ const CAPTIONS := {
 	&"eyewear": "NEW EYEWEAR",
 	&"neck": "NEW NECKWEAR",
 	&"map": "NEW MAP",
-	&"calling_cards": "NEW CALLING CARDS",
+	&"calling_cards": "NEW CARDS",
 	&"emblem": "NEW EMBLEM",
 	&"tier_card": "NEW TIER CARD",
 	&"tier_emblem": "NEW TIER EMBLEM",

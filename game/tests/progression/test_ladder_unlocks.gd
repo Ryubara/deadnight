@@ -17,7 +17,11 @@ func test_the_shipped_table_is_the_designs() -> void:
 	assert_array(_slots(table.at_level(10))).contains_exactly_in_any_order(
 		[&"map", &"tier_card", &"tier_emblem"]
 	)
-	assert_array(_items(table.earned_at(10))).is_equal([&"back_rooms"])
+	assert_array(_items(table.earned_at(10))).is_equal([&"back_rooms", &"cartoon", &"cartoon"])
+	# The plate's pieces are drawn: level 2 opens the calling cards with the first emblem.
+	assert_array(_items(table.earned_at(2))).is_equal([&"calling_cards", &"admit_one"])
+	assert_str(LadderUnlocks.label_of(table.earned_at(10)[1])).is_equal("cartoon card")
+	assert_str(LadderUnlocks.label_of(table.earned_at(10)[2])).is_equal("cartoon emblem")
 	# Every row is in the ladder, and ten colours are given across it.
 	var colours := 0
 	for level in table.levels():

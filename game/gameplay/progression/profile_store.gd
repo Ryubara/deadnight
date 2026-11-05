@@ -21,7 +21,8 @@ extends RefCounted
 ## leave it empty, so they never write the player's file.
 
 var profile := Profile.new()
-## Writes the backend has not taken: each `{id, xp, opening_night, bonus_day}`, oldest first.
+## Writes the backend has not taken: each `{id, xp, opening_night, bonus_day}` (and `done`,
+## `equipped` when it carries them), oldest first.
 var queue: Array[Dictionary] = []
 var path := ProfileSave.DEFAULT_PATH
 ## Why the file could not be used (`ProfileSave.NEWER_VERSION`): the store then works in memory and
@@ -86,6 +87,17 @@ func finished(id: StringName) -> void:
 		_enqueue(0, false, Profile.NO_DAY, [String(id)])
 
 
+## Chooses the calling card or emblem to wear (`kind` is `card` or `emblem`, an empty `id` takes
+## it off), for an account: the choice is on the cached profile at once and queued for the
+## backend, which is where the game server reads it from when the player joins a night. Returns
+## false and changes nothing for a player with no account or a choice already made.
+func equip(kind: StringName, id: StringName) -> bool:
+	if not has_account() or profile.chosen(kind) == id:
+		return false
+	_enqueue(0, false, Profile.NO_DAY, [], {String(kind): String(id)})
+	return true
+
+
 ## The account's own profile, as `TogetherApi.read_save` answers it, replaces the cached one; the
 ## writes still queued stay on top of it. A queue kept for another account is dropped. A profile in
 ## a newer layout than this game reads is left alone.
@@ -117,6 +129,11 @@ func coalesce() -> void:
 		for id: Variant in write.get("done", []):
 			if not finished_ids.has(id):
 				finished_ids.append(id)
+		# A later choice wins over an earlier one of the same kind.
+		var chosen: Dictionary = merged.get("equipped", {})
+		chosen.merge(write.get("equipped", {}), true)
+		if not chosen.is_empty():
+			merged["equipped"] = chosen
 	merged["done"] = finished_ids
 	queue.assign([merged])
 
@@ -163,7 +180,7 @@ func save() -> bool:
 	return false
 
 
-func _enqueue(xp: int, opening_night: bool, bonus_day: int, done: Array) -> void:
+func _enqueue(xp: int, opening_night: bool, bonus_day: int, done: Array, equipped := {}) -> void:
 	var write := {
 		"id": "%016x" % _ids.randi(),
 		"xp": xp,
@@ -172,6 +189,8 @@ func _enqueue(xp: int, opening_night: bool, bonus_day: int, done: Array) -> void
 	}
 	if not done.is_empty():
 		write["done"] = done
+	if not equipped.is_empty():
+		write["equipped"] = equipped
 	profile.apply_write(write)
 	queue.append(write)
 	save()

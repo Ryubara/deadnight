@@ -1,14 +1,16 @@
 class_name ChallengeCatalog
 extends RefCounted
 ## Every challenge there is, read from the data files beside this script: `dailies.json` (the pool
-## a day's three are dealt from), `orders.json` (the Concession Orders pool) and `milestones.json`
-## (lifetime ladders). Changing what is asked is a data edit; the tests check the files are sound.
+## a day's three are dealt from), `orders.json` (the Concession Orders pool), `milestones.json`
+## (lifetime ladders) and `feats.json` (lasting goals that give a calling card or an emblem).
+## Changing what is asked is a data edit; the tests check the files are sound.
 
 const DATA_DIR := "res://gameplay/challenges/data/"
 const FILES := {
 	ChallengeDef.Family.DAILY: "dailies.json",
 	ChallengeDef.Family.ORDER: "orders.json",
 	ChallengeDef.Family.MILESTONE: "milestones.json",
+	ChallengeDef.Family.FEAT: "feats.json",
 }
 
 var _by_id: Dictionary[StringName, ChallengeDef] = {}
@@ -68,6 +70,26 @@ func ladders_over(stat: StringName) -> Array:
 				found.append(def)
 		_ladders[stat] = found
 	return found
+
+
+## Every challenge that gives something to wear, in file order: `[{def, grant}]` with the grant
+## split into its kind (`card`, `emblem`, `frame`) and the piece's id.
+func grants() -> Array[Dictionary]:
+	var found: Array[Dictionary] = []
+	for family in FILES:
+		for def in of_family(family):
+			for grant in def.grants:
+				var parts := String(grant).split(":")
+				found.append({"def": def, "kind": StringName(parts[0]), "id": StringName(parts[1])})
+	return found
+
+
+## The challenge that gives this piece (`kind` is `card`, `emblem` or `frame`), or null.
+func giver_of(kind: StringName, piece: StringName) -> ChallengeDef:
+	for grant in grants():
+		if grant["kind"] == kind and grant["id"] == piece:
+			return grant["def"]
+	return null
 
 
 ## The dailies of one tier, in file order.

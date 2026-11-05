@@ -11,11 +11,15 @@ extends MenuPanel
 ## leaves: another tab, a screen the menu opens, or closing the menu (`MenuShell`).
 
 const CUSTOMIZE := "res://ui/screens/customize_screen.tscn"
+## The width the Plate button keeps on the mastery line, desktop and phone.
+const PLATE_BUTTON_WIDTH := 300.0
+const PLATE_BUTTON_WIDTH_COMPACT := 110.0
 
 var wardrobe: CustomizeScreen
 
 var _weapon_selector: UIOptionSelector
 var _weapon_row: UIRow
+var _plate_button: UIButton
 var _mastery_label: Label
 var _weapons: Array[StringName] = []
 ## The showcase weapon chosen on the tab, saved or not yet.
@@ -64,6 +68,16 @@ func first_focus() -> Control:
 	return _weapon_selector
 
 
+## The button that opens the plate's calling cards and emblems.
+func plate_button() -> UIButton:
+	return _plate_button
+
+
+## What the plate button says: the card and emblem the player wears.
+func plate_text() -> String:
+	return _plate_button.text
+
+
 ## The weapons the row offers: those whose class has a model.
 func weapons() -> Array[StringName]:
 	return _weapons
@@ -95,6 +109,7 @@ func set_unlocks(unlocks: LookUnlocks) -> void:
 ## The tab is shown again: what was committed on leaving is what is saved, so start from it.
 func on_show() -> void:
 	_weapon = MenuHero.saved_weapon()
+	_show_plate()
 	super.on_show()
 
 
@@ -144,7 +159,40 @@ func _build_weapon_row() -> Control:
 	_mastery_label = MenuLook.label("", MenuLook.SIZE_CAPTION, MenuLook.MUTED, &"wide")
 	_mastery_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	line.add_child(_mastery_label)
+	# The plate's button shares the mastery line, so the tab is no taller than it was.
+	_plate_button = UIButton.new()
+	_plate_button.name = "PlateButton"
+	_plate_button.variant = UIButton.Variant.GHOST
+	_plate_button.pressed.connect(func() -> void: context.request(&"cards"))
+	line.add_child(_plate_button)
+	_show_plate()
 	return box
+
+
+## The button's words: the card and the emblem worn, or what to do when there are none.
+func _show_plate() -> void:
+	if _plate_button == null:
+		return
+	var read: Variant = ProfileSave.read(MenuProfile.profile_path)["profile"]
+	var catalog := PlateCatalog.shipped()
+	var worn := {"card": &"", "emblem": &""}
+	if read != null:
+		var profile := read as Profile
+		worn = catalog.worn(profile.equipped, profile.level(), profile.done)
+	var words: Array[String] = []
+	for kind in PlateCatalog.KINDS:
+		if worn[kind] != &"":
+			words.append(catalog.title(kind, worn[kind]))
+	_plate_button.text = (
+		"Plate: " + " + ".join(words) if not words.is_empty() else "Plate: cards and emblems"
+	)
+	# A phone's tab has 372 units: the button says only what it opens.
+	if context.compact:
+		_plate_button.text = "Plate"
+	_plate_button.clip_text = true
+	_plate_button.custom_minimum_size.x = (
+		PLATE_BUTTON_WIDTH_COMPACT if context.compact else PLATE_BUTTON_WIDTH
+	)
 
 
 ## On a phone every picker is at least a tap target high and no text is under the type floor.
@@ -159,6 +207,9 @@ func _fit_for_fingers() -> void:
 			control.custom_minimum_size.y = maxf(control.custom_minimum_size.y, MenuLook.TAP_TARGET)
 	_weapon_selector.custom_minimum_size.y = maxf(
 		_weapon_selector.custom_minimum_size.y, MenuLook.TAP_TARGET
+	)
+	_plate_button.custom_minimum_size.y = maxf(
+		_plate_button.custom_minimum_size.y, MenuLook.TAP_TARGET
 	)
 
 

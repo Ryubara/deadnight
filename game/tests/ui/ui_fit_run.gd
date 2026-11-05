@@ -15,6 +15,7 @@ const JOIN := "res://ui/screens/join_screen.tscn"
 const LOBBY := "res://ui/screens/lobby_screen.tscn"
 const SETTINGS := "res://ui/screens/settings_screen.tscn"
 const CREDITS := "res://ui/screens/credits_screen.tscn"
+const CARDS := "res://ui/screens/cards_screen.tscn"
 const SETTINGS_TABS := [0, 1, 2, 3, 4]
 
 ## The windows a player has: a laptop, a desktop, a big desktop, the shortest window that is not
@@ -228,6 +229,7 @@ static func screen_names() -> Array[String]:
 		"lobby guest",
 		"lobby code",
 		"credits",
+		"cards",
 		"quick join failed",
 		"quick join found",
 	]
@@ -238,7 +240,9 @@ static func screen_names() -> Array[String]:
 
 ## Opens one of `screen_names` and returns its subject.
 func open(screen_name: String) -> Dictionary:
-	var plain := {"play": PLAY, "together": TOGETHER, "join": JOIN, "credits": CREDITS}
+	var plain := {
+		"play": PLAY, "together": TOGETHER, "join": JOIN, "credits": CREDITS, "cards": CARDS
+	}
 	var subject: Dictionary
 	if plain.has(screen_name):
 		subject = await open_screen(plain[screen_name], screen_name)

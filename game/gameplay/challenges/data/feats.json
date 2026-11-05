@@ -1,0 +1,37 @@
+{
+  "challenges": [
+    {"id": "f_walk_in", "text": "Play your first night", "stat": "nights", "target": 1, "grants": ["emblem:walk_in"]},
+    {"id": "f_hammer", "text": "Mend 10 boards", "stat": "boards_repaired", "target": 10, "grants": ["emblem:hammer_and_nails"]},
+    {"id": "f_open", "text": "Open a way through", "stat": "doors_bought", "target": 1, "grants": ["emblem:open_for_business"]},
+    {"id": "f_fill", "text": "Deliver a fuel can", "stat": "fuel_cans", "target": 1, "grants": ["emblem:fill_er_up"]},
+    {"id": "f_cheese", "text": "Land your first headshot kill", "stat": "kills:head", "target": 1, "grants": ["emblem:say_cheese"]},
+    {"id": "f_fire", "text": "Blow up a zombie with a grenade", "stat": "kills:blast", "target": 1, "grants": ["emblem:fire_in_the_hole"]},
+    {"id": "f_round_5", "text": "Reach round 5", "stat": "round", "mode": "night", "target": 5, "grants": ["emblem:round_five"]},
+    {"id": "f_regular", "text": "Spend at the stand 5 times in one night", "stat": "buys", "mode": "night", "target": 5, "grants": ["emblem:regular_customer"]},
+    {"id": "f_pocket", "text": "Take in 2,000 points in one night", "stat": "points_earned", "mode": "night", "target": 2000, "grants": ["emblem:pocket_money"]},
+    {"id": "f_extras", "text": "Put down 10,000 zombies", "stat": "kills", "target": 10000, "grants": ["card:ten_thousand_extras", "emblem:ten_thousand_extras"]},
+    {"id": "f_dead_eye", "text": "Land 1,500 headshot kills", "stat": "kills:head", "target": 1500, "grants": ["card:dead_eye", "emblem:dead_eye"]},
+    {"id": "f_ironwork", "text": "Mend 1,000 boards", "stat": "boards_repaired", "target": 1000, "grants": ["card:ironwork", "emblem:ironwork"]},
+    {"id": "f_gas_man", "text": "Deliver 150 fuel cans", "stat": "fuel_cans", "target": 150, "grants": ["card:gas_man", "emblem:gas_man"]},
+    {"id": "f_demolition", "text": "Blow up 1,000 zombies with grenades", "stat": "kills:blast", "target": 1000, "grants": ["card:demolition_crew", "emblem:demolition_crew"]},
+    {"id": "f_hands_only", "text": "Take down 1,000 zombies in melee", "stat": "kills:melee", "target": 1000, "grants": ["card:hands_only", "emblem:hands_only"]},
+    {"id": "f_headliner_hunter", "text": "Bring down 100 headliners", "stat": "kills:boss", "target": 100, "grants": ["card:headliner_hunter", "emblem:headliner_hunter"]},
+    {"id": "f_long_run", "text": "Reach round 30", "stat": "round", "mode": "night", "target": 30, "grants": ["card:long_run", "emblem:long_run"]},
+    {"id": "f_house_regular", "text": "Play 250 nights", "stat": "nights", "target": 250, "grants": ["card:house_regular", "emblem:house_regular"]},
+    {"id": "f_big_take", "text": "Take in 1,000,000 points", "stat": "points_earned", "target": 1000000, "grants": ["card:the_big_take", "emblem:the_big_take"]},
+    {
+      "id": "f_full_rack",
+      "text": "Put down 250 zombies with every weapon",
+      "stats": ["kills:weapon:house_pistol", "kills:weapon:pistol", "kills:weapon:smg", "kills:weapon:shotgun", "kills:weapon:rifle", "kills:weapon:flare_gun", "kills:weapon:crowbar", "kills:weapon:baseball_bat", "kills:weapon:fire_axe", "kills:weapon:mp5", "kills:weapon:ppsh", "kills:weapon:m4a1", "kills:weapon:m249", "kills:weapon:fifty_cal", "kills:weapon:pump_870", "kills:weapon:dual_pistols", "kills:weapon:ray_gun", "kills:weapon:freeze_gun"],
+      "target": 250,
+      "grants": ["card:full_rack", "emblem:full_rack"]
+    },
+    {
+      "id": "f_pest_control",
+      "text": "Put down 500 zombies of every kind",
+      "stats": ["kills:type:walker", "kills:type:runner", "kills:type:crawler", "kills:type:brute"],
+      "target": 500,
+      "grants": ["card:pest_control", "emblem:pest_control"]
+    }
+  ]
+}

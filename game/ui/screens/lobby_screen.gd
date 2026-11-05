@@ -19,6 +19,8 @@ const NIGHT_SCREEN := "res://ui/screens/night_screen.tscn"
 const FIELD_WIDTH := 620.0
 const SEAT_NUMBER_WIDTH := 48.0
 const TAG_WIDTH := 96.0
+## A seat row's height, which the card behind it fits and the emblem is cut to.
+const SEAT_ROW_HEIGHT := 40.0
 const LEAVE_WIDTH := 150.0
 ## How long the host's last change waits for another before it is sent (a slider drag is a stream).
 const RULES_DELAY := 0.35
@@ -616,6 +618,8 @@ func _show_seats() -> void:
 	# Each member's `Vector2i(level, icon)` as the backend reads it from their profile (zero for
 	# none), when the viewer wants levels shown.
 	var levels: Array[Vector2i] = []
+	# Each member's `{card, emblem}` as they chose them (the backend's list), when they exist.
+	var plates: Array[Dictionary] = []
 	var show_levels := bool(Settings.get_value(SettingsService.SHOW_LEVELS))
 	var max_players := NightHost.MAX_PLAYERS
 	if mode == Mode.LIVE:
@@ -626,6 +630,7 @@ func _show_seats() -> void:
 			away.append(bool(member.get("away", false)))
 			var tag := LevelCurve.member_tag(member.get("level"), member.get("icon"))
 			levels.append(tag if show_levels else Vector2i.ZERO)
+			plates.append(_plate_of(member))
 	else:
 		max_players = int(preview.get("maxPlayers", NightHost.MAX_PLAYERS))
 		for who: Variant in preview.get("names", []):
@@ -642,6 +647,7 @@ func _show_seats() -> void:
 		(row["number"] as Label).text = str(i + 1)
 		var held: Vector2i = levels[i] if i < levels.size() else Vector2i.ZERO
 		_show_level(row, held)
+		_show_plate(row, plates[i] if i < plates.size() else {})
 		if i >= names.size() and i >= bot_from and i < max_players:
 			(row["name"] as Label).text = NightBots.name_for(i + 1, bots_skill())
 			(row["name"] as Label).modulate.a = 1.0
@@ -657,6 +663,28 @@ func _show_seats() -> void:
 			(row["name"] as Label).text = "(open)"
 			(row["name"] as Label).modulate.a = 0.5
 			(row["tag"] as Label).text = ""
+
+
+## The calling card and emblem a member chose, only those the game has (the backend lists what
+## the account chose; the night holds it to what the account owns).
+func _plate_of(member: Dictionary) -> Dictionary:
+	var catalog := PlateCatalog.shipped()
+	var card := StringName(str(member.get("card", "")))
+	var emblem := StringName(str(member.get("emblem", "")))
+	return {
+		"card": card if catalog.has(PlateCatalog.CARD, card) else &"",
+		"emblem": emblem if catalog.has(PlateCatalog.EMBLEM, emblem) else &"",
+	}
+
+
+## The card behind a seat's row and the emblem after the name (`PlateRow`); gone for none.
+func _show_plate(row: Dictionary, plate: Dictionary) -> void:
+	var card := row["card"] as CardArt
+	card.card_id = plate.get("card", &"")
+	card.visible = card.card_id != &""
+	var emblem := row["emblem"] as EmblemArt
+	emblem.emblem_id = plate.get("emblem", &"")
+	emblem.visible = emblem.emblem_id != &""
 
 
 ## The icon and the level of a seat's row, the badge before the name (`LevelTag`): gone for a bot,
@@ -700,16 +728,34 @@ func _make_seat_row() -> Dictionary:
 	badge.add_child(level)
 	who.add_child(badge)
 	who.add_child(seat_name)
+	# The emblem follows the name's room; the card is a chip behind the whole row.
+	var emblem := EmblemArt.make(&"", PlateRow.emblem_side(SEAT_ROW_HEIGHT))
+	emblem.name = &"Emblem"
+	emblem.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	emblem.visible = false
 	box.add_child(number)
 	box.add_child(who)
+	box.add_child(emblem)
 	box.add_child(tag)
-	_seats.add_child(box)
+	var holder := PanelContainer.new()
+	holder.name = &"Seat"
+	holder.add_theme_stylebox_override(&"panel", StyleBoxEmpty.new())
+	var card := CardArt.new()
+	card.name = &"Card"
+	card.by_height = true
+	card.veil = Color(_tokens.bg, PlateRow.VEIL)
+	card.visible = false
+	holder.add_child(card)
+	holder.add_child(box)
+	_seats.add_child(holder)
 	# Two digits of room, so the names of the people start on one line (a level of 55 is whole).
 	level.custom_minimum_size.x = LevelTag.level_room(
 		level.get_theme_font(&"font"), level.get_theme_font_size(&"font_size")
 	)
 	return {
-		"box": box,
+		"box": holder,
+		"card": card,
+		"emblem": emblem,
 		"number": number,
 		"who": who,
 		"badge": badge,

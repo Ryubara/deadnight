@@ -135,6 +135,51 @@ func test_a_finished_challenge_adds_its_xp_once_and_is_remembered() -> void:
 	assert_int(session.xp()).is_equal(1)
 
 
+func test_a_played_night_finishes_a_feat_and_the_card_it_gives_can_be_worn() -> void:
+	_account = true
+	var store := _store("feat")
+	_state = ClientState.new()
+	var board := ChallengeBoard.open(
+		ChallengeFixture.save_path("xp_feat_board"), ChallengeFixture.clock_on(DAY)
+	)
+	var challenges := ChallengeSession.new(board)
+	var session := ProgressSession.new(store, ChallengeFixture.clock_on(DAY))
+	challenges.attach(_state)
+	session.attach(_state, challenges)
+	var plates := PlateCatalog.shipped()
+	(
+		assert_array(plates.owned(PlateCatalog.EMBLEM, store.profile.level(), store.profile.done))
+		. is_empty()
+	)
+	# Round one is all head shots: the first headshot kill is the feat "Say cheese" (an emblem).
+	var made := ChallengeFixture.night(1)
+	_state.apply_events(made["events"])
+	_state.apply_events(ChallengeFixture.play_round_one(made["rules"], 1))
+	assert_array(store.profile.done).contains([&"f_cheese"])
+	# What the player now owns, from the profile as the night wrote it (and as the file keeps it).
+	var read := ProfileStore.open(store.path).profile
+	assert_array(plates.owned(PlateCatalog.EMBLEM, read.level(), read.done)).contains(
+		[&"say_cheese"]
+	)
+	assert_bool(store.equip(&"emblem", &"say_cheese")).is_true()
+	assert_str(store.profile.chosen(&"emblem")).is_equal("say_cheese")
+	# The game server, given the ticket this profile would make, seats the player wearing it.
+	var table := PlateTable.new()
+	table.seat(
+		1,
+		{
+			"xp": store.profile.xp,
+			"emblem": "say_cheese",
+			"done": store.profile.done.map(func(id: StringName) -> String: return String(id))
+		},
+		store.profile.level()
+	)
+	assert_str(table.of_seat(1)["emblem"]).is_equal("say_cheese")
+	# A feat is paid once: another round's headshots do not finish it again.
+	var count := store.profile.done.count(&"f_cheese")
+	assert_int(count).is_equal(1)
+
+
 func test_a_kill_raises_the_running_total_as_it_is_earned() -> void:
 	_account = true
 	var session := _session(_store("live"))
