@@ -14,8 +14,11 @@ const CANVASES: Array[Vector2] = [
 const KEPT_PARTS: Array[StringName] = [
 	&"ammo", &"prompt", &"health", &"perks", &"points", &"round_part"
 ]
-## What a new player is shown with a prompt up: the shoulder hint waits for the first look.
-const FIRST_RUN: Array[StringName] = [TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT]
+## What a new player is shown with a prompt up and a dead in reach: every hint but the shoulder's,
+## which waits for the first look.
+const FIRST_RUN: Array[StringName] = [
+	TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT, TouchHints.STRIKE
+]
 const ON_THE_STICK := Vector2(300.0, 760.0)
 const ON_THE_LOOK_AREA := Vector2(1700.0, 330.0)
 
@@ -56,7 +59,10 @@ func test_a_new_player_sees_move_and_look_and_interact_waits_for_a_prompt() -> v
 	assert_array(_hints().showing()).is_equal([TouchHints.MOVE, TouchHints.LOOK])
 	state.set_prompt(&"buy_door", "Concession door", 350)
 	await _frames()
-	assert_array(_hints().showing()).is_equal(FIRST_RUN)
+	# No dead in reach, so no Strike: the other three.
+	assert_array(_hints().showing()).is_equal(
+		[TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT]
+	)
 	assert_str(_hints().text_for(TouchHints.INTERACT)).is_equal("TAP TO USE")
 	state.clear_prompt()
 	await _frames()

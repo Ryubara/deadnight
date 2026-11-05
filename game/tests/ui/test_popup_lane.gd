@@ -552,7 +552,10 @@ func _hint_problems(canvas: Vector2, mirrored: bool, boss: bool) -> Array[String
 	var found: Array[String] = []
 	var hints := touch.controls.hints
 	var safe := touch.controls.safe_rect()
-	var first_run: Array[StringName] = [TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT]
+	# Every hint but the shoulder's, which waits for the first look.
+	var first_run: Array[StringName] = [
+		TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT, TouchHints.STRIKE
+	]
 	if hints.showing() != first_run:
 		found.append("%s: the hints showing are %s" % [label, hints.showing()])
 	var cards := _hud.popups.cards()
