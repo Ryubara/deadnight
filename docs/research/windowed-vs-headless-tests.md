@@ -24,8 +24,8 @@ What each did:
   under it and back when it ends (solo and joined, a Resume under it, a drop that ends under the pause card). The game
   was right: a player has a reticle from the moment the drop ends.
 
-## Not fixed here
+## The other three
 
-`test_night_mouse_look` (3 of 4 fail windowed, 1 with the drop off), `test_night_screen` (3 of 8, 1 with the drop off)
-and `test_night_menu` (12 of 13 and 7 errors) also fail windowed on `main` and pass headless; the drop explains most
-but not all of them. They are their own issue.
+`test_night_mouse_look`, `test_night_screen` and `test_night_menu` (#1195) are in
+[the night UI suites](windowed-night-ui-suites.md): the drop explained part of them, the loading screen's fade the
+rest of the menu's, and a frame count the last line of the HUD test.

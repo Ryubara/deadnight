@@ -5,8 +5,20 @@ extends GdUnitTestSuite
 const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
 
+var _arrival := false
+
+
+func before_test() -> void:
+	# The helicopter drop a window plays at the start of a night (#1057) holds the look, the
+	# touch layer and the HUD until it ends; a headless run has none. This suite is about
+	# the night as a screen, in a night the player has control of (`--noarrival`);
+	# `test_arrival_night` is about the drop.
+	_arrival = NightScreen.arrival_enabled
+	NightScreen.arrival_enabled = false
+
 
 func after_test() -> void:
+	NightScreen.arrival_enabled = _arrival
 	# The way out leads back to the menu, which would stay on the shared router for the next suite.
 	await RouterFixture.clear(get_tree())
 
@@ -48,14 +60,21 @@ func test_play_starts_a_night_the_player_can_move_in() -> void:
 
 func test_the_hud_is_on_the_night_and_hears_it() -> void:
 	var screen := await _enter_night()
-	await get_tree().physics_frame
-	await get_tree().physics_frame
+	# The night's first frame (the server's first tick) comes a few physics frames after the start:
+	# how many depends on the machine (a window with its loading screen has the HUD's events before
+	# it, a headless run neither), so the test waits for it instead of counting frames.
+	for _i in 120:
+		if screen.night.state.frame.has("tick"):
+			break
+		await get_tree().physics_frame
+	assert_bool(screen.night.state.frame.has("tick")).is_true()
 	var huds := screen.find_children("*", "Hud", true, false)
 	assert_array(huds).has_size(1)
 	var hud := huds[0] as Hud
 	assert_bool(hud.state.team.has(Night.PLAYER_ID)).is_true()
 	assert_int(hud.state.phase).is_equal(HudState.PHASE_BREAK)
 	assert_int(hud.state.points).is_equal(screen.night.state.points())
+	assert_int(hud.state.points).is_equal(screen.night.rules_tuning.economy.start_points)
 	await _leave(screen)
 
 
