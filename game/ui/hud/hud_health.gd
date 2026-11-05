@@ -13,6 +13,12 @@ const TICK_GAP := 4.0
 const WIDTH := HudStyle.COLUMN
 
 var shown_downed := false
+## The grenade count on the card. A phone's weapon strip has the grenades' place with its own
+## count, so the card drops it there: one home for what is carried (#1275).
+var grenades_shown := true:
+	set(value):
+		grenades_shown = value
+		_grenades.visible = value
 var grenade_text: String:
 	get:
 		return _grenades.text
