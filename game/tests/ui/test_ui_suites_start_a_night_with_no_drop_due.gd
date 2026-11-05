@@ -21,13 +21,11 @@ const SETS_THE_DROP := "NightScreen\\.arrival_enabled = (false|true)\\b"
 const PUSHES_THE_NIGHT := '\\w*(push|reset|replace)\\w*\\(\\s*(NIGHT\\b|"[^"]*night_screen\\.tscn")'
 ## Another scan that names the calls in its own assertions without pushing a night.
 const EXEMPT: Array[String] = ["test_suites_leave_the_router_empty.gd"]
-## Suites that push the night and set nothing yet, each with the issue that fixes it. An entry that
-## sets the switch now fails the scan: delete it, so the list only shrinks.
-const NOT_YET := {
-	"test_night_menu.gd": "#1195",
-	"test_night_mouse_look.gd": "#1195",
-	"test_night_screen.gd": "#1195",
-}
+## Suites that push the night and set nothing yet, each with the issue that fixes it: empty since
+## #1195 and #1194 landed. A suite that another pull request is fixing is listed here, so this
+## scan can merge first; an entry that sets the switch now fails the scan: delete it, so the list
+## only shrinks.
+const NOT_YET := {}
 
 
 func test_every_ui_suite_that_pushes_the_night_says_whether_the_drop_is_due() -> void:

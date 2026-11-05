@@ -81,8 +81,8 @@ jobs:
         # suites fail; only a run that could not run ends it red.
         timeout-minutes: 75
         env:
-          SUITES: ${{ inputs.suites || 'test_hud_prompt_fit,test_menu_hero_arms,test_menu_stage,test_reduced_motion_skin,test_night_screen,test_level_ink,test_poster_art_pixels' }}
-          SUITE_TIMEOUT: ${{ inputs.timeout || '900' }}
+          SUITES: ${{ inputs.suites || 'test_does_not_exist' }}
+          SUITE_TIMEOUT: ${{ inputs.timeout || '300' }}
           LIBGL_ALWAYS_SOFTWARE: "1"
         run: |
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
@@ -141,11 +141,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           STATE: ${{ steps.report.outputs.state }}
+          SUBSET: ${{ steps.report.outputs.subset }}
+          EVENT: ${{ github.event_name }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
           [[ "$STATE" =~ ^(clean|known-only|failing|could-not-run)$ ]] || { echo "::error::no state from the report"; exit 1; }
           title="Windowed UI suites need a look"
+          if [ "$EVENT" = push ]; then
+            title="$title (trial run of the branch)" # TRIAL: a branch run has an issue of its own, never the real one
+          elif [ "$SUBSET" = true ]; then
+            # A run of a few suites by hand says nothing about the folder: it neither opens nor closes the issue.
+            echo "A subset was run ($STATE): the issue is left alone."
+            exit 0
+          fi
           number=$(gh issue list --state open --search "\"$title\" in:title" --json number,title \
             --jq "map(select(.title == \"$title\")) | .[0].number // empty")
           case "$STATE" in

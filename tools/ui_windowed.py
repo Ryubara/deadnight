@@ -146,7 +146,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     launcher = args.launcher[1:] if args.launcher[:1] == ["--"] else args.launcher
     if not launcher:
         raise SystemExit("run: give the launcher after `--`, for example: -- xvfb-run -a godot")
-    names = suites_in(project, [s.strip() for s in args.suites.split(",") if s.strip()])
+    requested = [s.strip() for s in args.suites.split(",") if s.strip()]
+    names = suites_in(project, requested)
     started = time.time()
     results: list[dict] = []
 
@@ -157,6 +158,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             "finished": time.time(),
             "complete": complete,
             "planned": len(names),
+            "subset": bool(requested),
             "suites": results,
         }
         (out / "result.json").write_text(json.dumps(body, indent=1), encoding="utf-8")
@@ -268,6 +270,8 @@ def render(
 ) -> tuple[str, str]:
     """The job summary and the issue text (the same lines; the issue adds a pointer to the run)."""
     lines = ["## Windowed UI suites", ""]
+    if result and result.get("subset"):
+        lines += ["**A subset of the suites was run**: this speaks for those suites only.", ""]
     if state == "could-not-run":
         lines += [
             "**The windowed run could not run**, so nothing is known about the window today.",
@@ -350,7 +354,8 @@ def cmd_report(args: argparse.Namespace) -> int:
     print(f"state={state}")
     if args.github_output:
         with open(args.github_output, "a", encoding="utf-8") as handle:
-            handle.write(f"state={state}\n")
+            subset = "true" if result and result.get("subset") else "false"
+            handle.write(f"state={state}\nsubset={subset}\n")
     return 0
 
 
@@ -434,6 +439,8 @@ def self_test() -> int:
     body = issue_body(text, "failing", "https://x/run/2", "2026-11-05")
     assert body.startswith("From: the ui-windowed workflow, 2026-11-05") and "## Summary" in body
     assert "## Windowed UI suites" not in body and state_marker("failing") in body and "Run: https://x/run/2" in body
+    sub, _ = render("failing", "success", {"suites": rows, "complete": True, "subset": True}, groups, known, "")
+    assert "A subset of the suites was run" in sub
     text, _ = render("failing", "success", {"suites": rows, "complete": True}, groups, known, "")
     assert "`test_win`" in text and "(#1)" in text and "test_x" in text and "`test_level_ink` not-run" in text
     # A timeout really ends a process group that holds a child (POSIX: the runner's; Windows has no process groups).
