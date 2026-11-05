@@ -546,13 +546,19 @@ column already shows the points and names: the scoreboard's short form. A finger
   838 for eight and seven bots), centred. At 844 x 390 and the usual size nothing is under it; at the biggest
   interface size (1.25) the right thumb's ring starts 477 units from the edge on a canvas that is only 1536 wide at
   667 x 375, and the busiest night is as tall as the page. A container puts its child's scale back to one
-  (`fit_child_in_rect`), so `BoardFit` moves and scales the holder the ticket stands in. Measured (the matrix of
+  (`fit_child_in_rect`), so `BoardFit` moves and scales the holder the ticket stands in. It moves it along the screen
+  between the buttons and the column, and, since Ping stands under Pause (#1289) inside the rows of a tall ticket on the
+  small page (its box is 194 to 266 units down, 72 wide, right of the column), up or down the screen to the nearest
+  place where no button is at its rows, trying the largest size first. Measured (the matrix of
   `test_touch_scoreboard`) on the two pages, three interface sizes, both hands and four parties: whole and in
-  the middle at 0.8 and,
-  at 1.0, on 844 x 390 and for every party but a full room on 667 x 375 (0.85 then); at 1.25 one player is whole
-  everywhere, and on 844 x 390 eight people are 0.95 and a full room 0.70, on 667 x 375 four are 0.70, eight 0.65 and a
-  full room 0.60 (the ticket keeps clear of the column too, so the thumb that holds it does not cover it). The text is
-  then 8 to 10 CSS px, as the ticket's already is at the usual size on that page; the test holds the least at 0.55.
+  the middle at 0.8 and, at 1.0, on 844 x 390 and for every party but a full room on 667 x 375 (0.85 then); at 1.25
+  one player is whole everywhere, on 844 x 390 eight people are whole and a full room is 0.80, on 667 x 375 four are
+  0.70, eight 0.70 (131 units lower than the middle for the full room, 32 for eight) and a full room 0.65 (the ticket
+  keeps clear of the column too, so the thumb that holds it does not cover it). Without the vertical move, the same
+  matrix on main after #1293 had the full room at 0.50 there (Ping's right edge took the column's place as the strip's
+  left bound: 502 units where the column had made it 376, and the strip was 417 wide for a ticket 448 wide at the
+  least step). The text is then 8 to 10 CSS px, as the ticket's already is at the usual size on that page; the test
+  holds the least at 0.60.
 - **The hint.** "HOLD FOR SCORES" stands beside the column (above the perk badges when they stand there), goes with
   the first hold, and takes the next bit of `controls/touch_hints_seen`, so nobody who has seen the others sees
   anything else new except this one.

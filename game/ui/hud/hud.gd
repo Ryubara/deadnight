@@ -361,15 +361,19 @@ func _fit_board() -> void:
 	var room := get_global_rect()
 	var share := 1.0
 	var shift := 0.0
+	var drop := 0.0
 	if touch_layout and scoreboard.visible and not _board_avoid.is_empty():
 		var size := scoreboard.get_combined_minimum_size()
 		var found := BoardFit.fit(room, size, _board_avoid)
 		share = found[&"scale"]
 		shift = found[&"shift"]
+		drop = found[&"drop"]
 	# The holder is scaled, not the ticket: a container puts its child's scale back to one. The
 	# ticket is in the middle of the holder, so the holder's middle is the pivot.
 	holder.offset_left = shift
 	holder.offset_right = shift
+	holder.offset_top = drop
+	holder.offset_bottom = drop
 	holder.pivot_offset = holder.size * 0.5
 	holder.scale = Vector2.ONE * share
 

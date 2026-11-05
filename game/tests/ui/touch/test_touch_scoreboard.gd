@@ -18,8 +18,9 @@ const PARTIES: Array[Vector2i] = [Vector2i(1, 0), Vector2i(4, 0), Vector2i(8, 0)
 const FINGER_CSS := 44.0
 const SLACK_CSS := 0.05
 ## The least share of its own size the ticket is shrunk to anywhere in the matrix: the smallest page
-## at the biggest interface size with a full room is the worst, at 0.60 when this was written.
-const LEAST_SHARE := 0.55
+## at the biggest interface size with a full room is the worst, at 0.65 when this was written (the
+## ticket stands lower there, clear of Ping, which a ticket in the middle would be 0.50 beside).
+const LEAST_SHARE := 0.60
 
 var _window_size := Vector2i.ZERO
 var _window_factor := 1.0
