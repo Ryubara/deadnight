@@ -161,8 +161,7 @@ func _click(at: Vector2) -> void:
 
 ## What the Loadout card shows on opening: the wardrobe's own scroll area, its view and what lies
 ## inside it.
-func _wardrobe_view(shell: MenuShell) -> Dictionary:
-	var loadout := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
+func _wardrobe_view(loadout: LoadoutPanel) -> Dictionary:
 	var scroll: ScrollContainer = loadout.wardrobe._picker_scroll
 	var view := scroll.get_global_rect()
 	var whole_cells := 0
@@ -180,31 +179,40 @@ func _wardrobe_view(shell: MenuShell) -> Dictionary:
 			whole_cells += 1
 		if rect.position.y < view.position.y - 0.5:
 			cut_at_top.append("%s %s" % [control.name, rect])
-	return {"view": view, "whole_cells": whole_cells, "cut_at_top": cut_at_top, "loadout": loadout}
+	return {"view": view, "whole_cells": whole_cells, "cut_at_top": cut_at_top}
+
+
+## What is wrong with the view of the wardrobe's tab on show: no item whole in it, a label cut at
+## its top, a page that is scrolled when it opens.
+func _view_problems(tag: String, loadout: LoadoutPanel) -> Array[String]:
+	var found: Array[String] = []
+	var seen := _wardrobe_view(loadout)
+	var scrolled: int = loadout.wardrobe._picker_scroll.scroll_vertical
+	if scrolled != 0:
+		found.append("%s: the card opened scrolled by %d units" % [tag, scrolled])
+	if seen["whole_cells"] < 1:
+		found.append("%s: no item is whole in the card's view %s" % [tag, seen["view"]])
+	if not (seen["cut_at_top"] as Array).is_empty():
+		found.append("%s: cut at the top of the view: %s" % [tag, seen["cut_at_top"]])
+	return found
 
 
 func test_the_loadout_card_shows_a_full_row_of_items_on_opening() -> void:
 	var problems: Array[String] = []
 	for entry: Array in PAGES:
 		var shell := await _open_hidden(entry[0], entry[1], MenuTab.Id.LOADOUT)
+		var tag := _tag(entry[0], entry[1])
+		var loadout := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
 		# A key or a bumper into the tab puts the focus on its first control, as a real page does.
 		shell.focus_panel()
 		await _run.frames(3)
-		var seen := _wardrobe_view(shell)
-		var scrolled: int = (
-			(seen["loadout"] as LoadoutPanel).wardrobe._picker_scroll.scroll_vertical
-		)
-		if scrolled != 0:
-			problems.append(
-				"%s: the card opened scrolled by %d units" % [_tag(entry[0], entry[1]), scrolled]
-			)
-		var tag := _tag(entry[0], entry[1])
-		if seen["whole_cells"] < 1:
-			problems.append("%s: no item is whole in the card's view %s" % [tag, seen["view"]])
-		if not (seen["cut_at_top"] as Array).is_empty():
-			problems.append("%s: cut at the top of the view: %s" % [tag, seen["cut_at_top"]])
+		# Every tab of the wardrobe, each as it is shown by a press: the card's own, and the first
+		# one on show.
+		for key in loadout.wardrobe.tab_keys():
+			loadout.wardrobe.show_tab(key)
+			await _run.frames(3)
+			problems.append_array(_view_problems("%s %s" % [tag, key], loadout))
 		# The card's strip of tabs is one row where the canvas allows (the narrowest does).
-		var loadout: LoadoutPanel = seen["loadout"]
 		var top := loadout.wardrobe.tab_button(&"body").get_global_rect().position.y
 		for key in loadout.wardrobe.tab_keys():
 			var tab_top := loadout.wardrobe.tab_button(key).get_global_rect().position.y
