@@ -86,3 +86,68 @@ func test_a_screen_under_the_night_gets_the_menus_factor_when_the_night_ends() -
 		await get_tree().process_frame
 	assert_bool(menu.shell.is_visible_in_tree()).is_false()
 	assert_float(get_window().content_scale_factor).is_equal(own * MenuScale.PHONE_FACTOR)
+
+
+func _paused_night(page: Vector2i, ratio: float) -> NightScreen:
+	# A phone's page: the window is the canvas, the page the canvas over the pixel ratio.
+	TouchMode.device_is_touch = true
+	PageSize.css_override = Vector2(page) / ratio
+	MenuScale.pixel_ratio = ratio
+	get_window().size = page
+	NightScreen.arrival_enabled = false
+	RouterFixture.forget_join()
+	UIRouter.reset(NIGHT, UITransition.Kind.CUT)
+	await UIRouter.idle
+	var screen := UIRouter.top() as NightScreen
+	await screen.night.ready_to_play
+	screen._pause()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return screen
+
+
+func _end_page() -> void:
+	PageSize.css_override = null
+	MenuScale.pixel_ratio = -1.0
+	TouchMode.device_is_touch = null
+
+
+func test_the_pause_card_is_laid_out_at_the_phone_factor_and_the_night_is_not() -> void:
+	var saved_size := get_window().size
+	var saved_touch: Variant = TouchMode.device_is_touch
+	var screen := await _paused_night(Vector2i(1688, 780), 2.0)
+	var own := float(Settings.get_value(SettingsService.UI_SCALE))
+	# The window (so the HUD and the touch layer) keeps the interface size alone.
+	assert_float(get_window().content_scale_factor).is_equal(own)
+	var layer: PhoneScale = screen._scaled
+	assert_float(layer.factor).is_equal(MenuScale.PHONE_FACTOR)
+	assert_vector(layer.scale).is_equal(Vector2(2.0, 2.0))
+	# Its canvas is the menu's: 1169 x 540 units, a unit 0.72 CSS px.
+	assert_float(layer.size.y).is_equal_approx(540.0, 0.5)
+	assert_float(layer.size.x).is_equal_approx(1168.5, 0.5)
+	# The card's buttons are tap targets (44 CSS px = 61 units here) and its type is the 14 px floor.
+	var audit := UiAudit.scan(screen._overlay, PageSize.css_per_pixel(get_window().size))
+	assert_float(audit.tap_min).is_greater_equal(44.0)
+	assert_float(audit.text_min).is_greater_equal(14.0)
+	_end_page()
+	get_window().size = saved_size
+	TouchMode.device_is_touch = saved_touch
+
+
+func test_the_pause_card_goes_back_to_the_interface_size_on_a_page_that_is_not_a_phone() -> void:
+	var saved_size := get_window().size
+	var saved_touch: Variant = TouchMode.device_is_touch
+	var screen := await _paused_night(Vector2i(1688, 780), 2.0)
+	var layer: PhoneScale = screen._scaled
+	assert_float(layer.factor).is_equal(2.0)
+	# A tablet's page: the page's short side is over the limit.
+	PageSize.css_override = Vector2(1024, 768)
+	get_window().size = Vector2i(2048, 1536)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_float(layer.factor).is_equal(1.0)
+	assert_vector(layer.scale).is_equal(Vector2.ONE)
+	assert_vector(layer.size).is_equal_approx(screen._overlay.size, Vector2(0.5, 0.5))
+	_end_page()
+	get_window().size = saved_size
+	TouchMode.device_is_touch = saved_touch

@@ -67,7 +67,8 @@ nobody had seen at a layout no page reached, all the same fix (`TapFloor`, 62 un
   `phone_layout.py` answers for the backend itself (`StubBackend`) and shows the list, the empty list, the one still
   loading and the one that failed (`--section browser`).
 
-Not fixed here, filed: the night's pause card and Settings from a night (#1205), tablets and small desktop windows (#1206).
+Not fixed here, filed: the night's pause card and Settings from a night (fixed in #1205, below), tablets and small desktop
+windows (#1206).
 
 ## Numbers
 
@@ -102,7 +103,8 @@ Other pages, the same probe (CSS px per unit, factor, phone?):
 | Desktop window 1280 x 720 | 1280 x 720 | 1 | 0.67 | no |
 | Desktop window 800 x 450, ratio 1 | 800 x 450 | 2 | 0.83 | yes (by its canvas, as before) |
 | Desktop window 900 x 450, ratio 2 | 1800 x 900 | 1 | 0.42 | no (as before, #1206) |
-| A night (844 x 390 page), left as it is | 1688 x 780 | 1 | 0.36 | phone, HUD at the interface size (#1192, #1189, #1205) |
+| A night (844 x 390 page), its HUD | 1688 x 780 | 1 | 0.36 | phone, HUD at the interface size (#1192, #1189) |
+| A night's pause card and its Settings | 1688 x 780 | 1, drawn at 2 | 0.72 | phone, `PhoneScale` (#1205) |
 
 On the real page the menu came back to the factor 2 after a night, and the Play screen under it did too once
 `NightScreen._exit_tree` restored it (it stayed at 0.36 before).
@@ -112,3 +114,37 @@ On the real page the menu came back to the factor 2 after a night, and the Play 
 A real phone, a real iOS Safari (Chromium in emulation is not one), Discord's own webview (an iframe of another origin
 stands in, `--iframe`), the lobby on a page (it needs a backend; `test_phone_floor` opens it with a fixture), text
 drawn by custom `_draw` (ticket titles, the plate), which `UiAudit` does not see, and the night's HUD (#1192, #1189).
+
+## The night's pause card and its Settings (#1205)
+
+A night keeps the window's factor at the interface size (its HUD and touch layer are made for 1080 units), so the card
+that opens over it was 0.36 CSS px to the unit: card text 11.6 px, Settings text 9.4 px and its controls 18.8 px.
+Changing the window's factor for the pause would move the HUD behind the card, so the card is drawn at the phone
+factor by a control instead: `PhoneScale` sits over the screen with `scale = 2` and a size of the screen over 2, so its
+children lay out on the menu's 1169 x 540 canvas (0.72 CSS px a unit) while the window stays at 2337 x 1080 units.
+Godot draws the scaled text sharp (a capture shows it).
+
+- `PhoneScale.factor_for` asks `MenuScale.is_phone`, and asks again on `size_changed`: a page that turns or resizes under
+  an open card follows. On a tablet or a desktop it is 1 and the card is what it was.
+- What lays out by its own size (`SettingsScreen._fit`: compact under 600 units) now sees 540 and takes the phone form.
+  What asked the window (`UIFitScroll` read the viewport's height) takes a `limit`: the Settings sets it to itself.
+- A button's least size in units is `MenuScale.tap_units(window, touch, inner_scale)`: 44 CSS px over the units of the
+  scaled part (61 here). `UiAudit` multiplies by the control's own global scale, so the ruler reads the card as drawn.
+- The web probe's audit measures the card alone while it is open (`NightScreen.card_root`): the HUD behind is another
+  page's (#1192). `phone_layout.py --section night` opens the card, then each Settings tab, and now fails on them.
+
+Measured in the web export, 844 x 390 CSS px page, ratio 2 (1688 x 780 canvas) and ratio 3 (`?dprcap=3`, 2532 x 1170);
+the numbers are the same at both:
+
+| Screen | Before: text, target (CSS px) | After: text, target (CSS px) |
+| --- | --- | --- |
+| Pause card | 11.6, 44.1 | 23.1, 57.1 |
+| Settings, Video | 9.4, 18.8 | 18.8, 44.8 |
+| Settings, Audio | 9.4, 18.8 | 20.9, 44.8 |
+| Settings, Accessibility | 9.4, 18.8 | 18.8, 44.8 |
+| Settings, Controls | 9.4, 18.8 | 18.8, 44.8 |
+| Settings, Touch | 9.4, 18.8 | 18.8, 44.8 |
+
+The night itself stays at factor 1, 0.36 CSS px (`in the night`: 7.2 px, #1192 and #1189). Tests: `test_phone_floor` (the
+card and every Settings tab on four pages; 48 problems on main, none now), `test_night_scale` (the factor, the card's
+canvas, a page that stops being a phone).
