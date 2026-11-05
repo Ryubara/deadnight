@@ -32,7 +32,11 @@ func _ready() -> void:
 	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(centre)
+	# Only this screen's own root holds the mouse while the night loads; `finish` lets it go and the
+	# fade (`FADE_SECONDS`) is over a night the player already has, so nothing in it may catch a
+	# click (a container's default filter is `PASS`, a ColorRect's `STOP`).
 	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.custom_minimum_size.x = BAR_WIDTH
 	box.add_theme_constant_override(&"separation", _tokens.space_md)
 	centre.add_child(box)
@@ -41,6 +45,7 @@ func _ready() -> void:
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_title)
 	_track.color = _tokens.outline
+	_track.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_track.custom_minimum_size = Vector2(BAR_WIDTH, _tokens.track_height)
 	box.add_child(_track)
 	_fill.color = _tokens.accent
