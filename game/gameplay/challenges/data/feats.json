@@ -32,6 +32,25 @@
       "stats": ["kills:type:walker", "kills:type:runner", "kills:type:crawler", "kills:type:brute"],
       "target": 500,
       "grants": ["card:pest_control", "emblem:pest_control"]
-    }
+    },
+    {"id": "f_try_the_lot", "text": "Kill with five different weapons", "distinct": "kills:weapon:", "target": 5, "grants": ["emblem:try_the_lot"]},
+    {"id": "f_out_the_back", "text": "Play a night in the back rooms", "stat": "nights:map:small_indoor", "target": 1, "grants": ["emblem:out_the_back"]},
+    {"id": "f_twos_company", "text": "Play a night with another person", "stat": "nights:together", "target": 1, "grants": ["emblem:twos_company"]},
+    {"id": "f_hands_in_pockets", "text": "Clear a round without firing a shot", "stat": "rounds:unfired", "target": 1, "grants": ["card:hands_in_pockets"]},
+    {"id": "f_stingy", "text": "Reach round 6 without spending a point", "stat": "round:unspent", "mode": "night", "target": 6, "grants": ["card:stingy"]},
+    {"id": "f_three_for_one", "text": "Kill three with one grenade", "stat": "blast:best", "mode": "night", "target": 3, "grants": ["card:three_for_one"]},
+    {"id": "f_carpenters_rush", "text": "Mend 3 boards on one window in 10 s", "stat": "board_rushes", "target": 1, "grants": ["card:carpenters_rush"]},
+    {"id": "f_door_to_door", "text": "Open every way through before round 5", "stat": "doors:all_early", "target": 1, "grants": ["card:door_to_door"]},
+    {"id": "f_early_bird", "text": "Open a door in the first 30 seconds", "stat": "doors:early", "target": 1, "grants": ["card:early_bird"]},
+    {"id": "f_lights_out", "text": "Clear round 3 with every circuit off", "stat": "round:dark", "mode": "night", "target": 3, "grants": ["card:lights_out"]},
+    {"id": "f_last_bullet", "text": "End a round on your last bullet", "stat": "rounds:dry", "target": 1, "grants": ["card:last_bullet"]},
+    {"id": "f_whack_a_mole", "text": "Five crawlers with the crowbar in 30 s", "stat": "crawler_runs", "target": 1, "grants": ["card:whack_a_mole"]},
+    {"id": "f_booth_holder", "text": "Stay in the booth for a whole round", "stat": "rounds:booth", "target": 1, "grants": ["card:booth_holder"]},
+    {"id": "f_fell_asleep", "text": "Get downed in a round's first 5 seconds", "stat": "downs:early", "target": 1, "grants": ["card:fell_asleep_in_the_car"]},
+    {"id": "f_hand_up", "text": "Get a teammate up from the ground", "stat": "revives", "target": 1, "grants": ["emblem:hand_up"]},
+    {"id": "f_whole_crew", "text": "Finish a round with everyone upright", "stat": "rounds:whole_crew", "target": 1, "grants": ["emblem:whole_crew"]},
+    {"id": "f_pit_crew", "text": "Mend a board a teammate is also mending", "stat": "boards:shared", "target": 1, "grants": ["emblem:pit_crew"]},
+    {"id": "f_hold_the_line", "text": "Get teammates up 5 times in a night", "stat": "revives", "mode": "night", "target": 5, "grants": ["emblem:hold_the_line"]},
+    {"id": "f_nobody_home", "text": "End a round without a kill of yours", "stat": "rounds:no_kills", "target": 1, "grants": ["emblem:nobody_home"]}
   ]
 }

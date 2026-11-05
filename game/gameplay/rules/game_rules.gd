@@ -39,6 +39,8 @@ extends RefCounted
 ##     breaks into pieces instead of falling)
 ##   zombie_crippled: zombie_id, zombie_type (the crawler it became), player_id, cause (legs or
 ##     wounded), health, speed_scale
+##   blast_resolved: player_id, kills (dead the blast left), hits (zombies it reached); once, after
+##     the zombie events of one blast that killed
 ##   grenade_count_changed: player_id, count, reason (thrown, refill, purchase)
 ##   player_added: player_id, grenades (the count they start with), health, max_health, bot (true
 ##     when a bot plays the seat)

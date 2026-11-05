@@ -27,12 +27,14 @@ var _following := -1
 var _server_follows := false
 
 
-## `tuning` names the shop's fuel items; the board is the player's.
-func _init(p_board: ChallengeBoard, tuning: RulesTuning = null) -> void:
+## `tuning` names the shop's fuel items and doors, `map_id` the map the night is on ("" is the
+## default one); the board is the player's.
+func _init(p_board: ChallengeBoard, tuning: RulesTuning = null, map_id: String = "") -> void:
 	board = p_board
 	tracker = ChallengeTracker.new(
 		board.catalog, board.clock, NightTally.new(NightTally.fuel_items_of(tuning))
 	)
+	tracker.tally.know(tuning, map_id)
 	tracker.advanced.connect(_on_advanced)
 
 

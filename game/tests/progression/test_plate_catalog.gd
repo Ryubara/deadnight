@@ -27,10 +27,10 @@ func test_the_shipped_catalogue_has_no_problems() -> void:
 
 
 func test_the_launch_set_is_there() -> void:
-	# 11 tier cards and 12 challenge cards; 11 tier emblems, the starting emblem, 9 easy and 12 grind
-	# ones.
-	assert_int(_plates.ids(PlateCatalog.CARD).size()).is_equal(23)
-	assert_int(_plates.ids(PlateCatalog.EMBLEM).size()).is_equal(33)
+	# 11 tier cards and 12 grind cards and 11 odd ones; 11 tier emblems, the starting emblem, 9 easy
+	# ones, 12 grind ones and 8 easy and together ones that need a stat of #1074.
+	assert_int(_plates.ids(PlateCatalog.CARD).size()).is_equal(34)
+	assert_int(_plates.ids(PlateCatalog.EMBLEM).size()).is_equal(41)
 	var tiers := 0
 	for kind in PlateCatalog.KINDS:
 		for id in _plates.ids(kind):
@@ -64,7 +64,7 @@ func test_every_grant_of_a_challenge_is_a_piece_and_no_piece_is_given_twice() ->
 				. override_failure_message("%s has no art" % key)
 				. is_true()
 			)
-	assert_int(given.size()).is_equal(9 + 12 * 2)
+	assert_int(given.size()).is_equal(9 + 12 * 2 + 11 + 8)
 
 
 func test_what_a_player_owns_is_the_level_and_the_finished_challenges() -> void:

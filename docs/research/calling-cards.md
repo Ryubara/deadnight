@@ -86,5 +86,5 @@ plate does not have keeps the letter chip and the spelled id. `test_popup_thumbn
 - A live popup for a card or emblem earned (see above) and the client marking an online finish at once on its file.
 - A local night (solo) never tells the HUD its player's level (no event seats the local account), so the player's own box
   shows no level and no card there; that needs `night.gd`, which is at the line limit.
-- The hidden challenges and the odd ones that need events the night does not count (#1074), poster sets (#1073) and
-  frames (#1071, #1072) are their own issues.
+- The hidden challenges, poster sets (#1073) and frames (#1071, #1072) are their own issues. The odd, easy and
+  together challenges' stats were built in #1074 ([the stats](../design/progression.md#the-odd-and-together-stats)).

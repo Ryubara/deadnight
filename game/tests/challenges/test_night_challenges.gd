@@ -23,6 +23,31 @@ func test_a_played_night_is_counted_saved_and_agrees_with_the_client() -> void:
 	var state := night.state
 	var advances: Array[Dictionary] = []
 	night.challenges.advanced.connect(func(advance: Dictionary) -> void: advances.append(advance))
+	# The odd stats, counted again here by code of this test's own from the same night's events.
+	var seen := {"fired": false, "killed": false, "unfired": 0, "no_kills": 0, "spent": 0}
+	var melee := WeaponCatalog.IDS.filter(
+		func(id: StringName) -> bool: return WeaponCatalog.get_def(id).is_melee()
+	)
+	state.event_received.connect(
+		func(event: Dictionary) -> void:
+			match event["type"]:
+				&"round_started":
+					seen["fired"] = false
+					seen["killed"] = false
+				&"shot_fired":
+					if event["shooter_id"] == state.player_id and not melee.has(event["weapon_id"]):
+						seen["fired"] = true
+				&"zombie_removed":
+					if event["killer_id"] == state.player_id and event["cause"] == &"killed":
+						seen["killed"] = true
+				&"purchase_made":
+					if event["player_id"] == state.player_id:
+						seen["spent"] += int(event["price"])
+				&"round_ended":
+					if (event["standing"] as Array).has(state.player_id):
+						seen["unfired"] += 0 if seen["fired"] else 1
+						seen["no_kills"] += 0 if seen["killed"] else 1
+	)
 	var ticks := 0
 	while state.rounds_started < ROUNDS and not state.over and ticks < GIVE_UP_SECONDS / Night.STEP:
 		await get_tree().physics_frame
@@ -45,6 +70,13 @@ func test_a_played_night_is_counted_saved_and_agrees_with_the_client() -> void:
 	for weapon in WeaponCatalog.IDS:
 		by_weapon += tally.count(me, ChallengeStats.weapon_kills(weapon))
 	assert_int(by_weapon + tally.count(me, ChallengeStats.KILLS_BLAST)).is_equal(state.kills)
+	assert_int(tally.count(me, ChallengeStats.ROUNDS_UNFIRED)).is_equal(seen["unfired"])
+	assert_int(tally.count(me, ChallengeStats.ROUNDS_NO_KILLS)).is_equal(seen["no_kills"])
+	assert_int(tally.count(me, ChallengeStats.POINTS_SPENT)).is_equal(seen["spent"])
+	assert_int(tally.count(me, ChallengeStats.POINTS_SPENT)).is_greater(0)
+	# The bot plays the night with a gun in hand and a purse to spend: it is no round in the dark
+	# (the circuits start lit) and the booth is not where it stood the whole of a round.
+	assert_int(tally.count(me, ChallengeStats.ROUND_DARK)).is_equal(0)
 	# It reached the profile and the screen's prompt, not only the tally.
 	var profile := board.profile
 	assert_int(int(profile.lifetime[&"kills"])).is_equal(state.kills)

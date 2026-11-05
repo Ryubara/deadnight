@@ -13,11 +13,17 @@ const FILES := {
 	ChallengeDef.Family.FEAT: "feats.json",
 }
 
+const _NONE: Array = []
+
 var _by_id: Dictionary[StringName, ChallengeDef] = {}
 var _by_family: Dictionary[int, Array] = {}
 var _duplicates: Array[StringName] = []
 ## The ladders over each stat, found once (a night asks for them at every change a kill makes).
 var _ladders: Dictionary[StringName, Array] = {}
+## The feats a change of each stat can move, and the feats over distinct stats (found once).
+var _feats_over: Dictionary[StringName, Array] = {}
+var _distinct: Array[ChallengeDef] = []
+var _feats_indexed := false
 
 
 ## The shipped catalogue.
@@ -40,6 +46,7 @@ func add(def: ChallengeDef) -> void:
 		return
 	_by_id[def.id] = def
 	_ladders.clear()
+	_feats_indexed = false
 	var list: Array = _by_family.get(def.family, [])
 	list.append(def)
 	_by_family[def.family] = list
@@ -70,6 +77,38 @@ func ladders_over(stat: StringName) -> Array:
 				found.append(def)
 		_ladders[stat] = found
 	return found
+
+
+## The feats a change of `stat` can move (the same array each time: do not change it).
+func feats_over(stat: StringName) -> Array:
+	_index_feats()
+	return _feats_over.get(stat, _NONE)
+
+
+## The feats that count how many stats under a prefix have moved.
+func distinct_feats() -> Array[ChallengeDef]:
+	_index_feats()
+	return _distinct
+
+
+func _index_feats() -> void:
+	if _feats_indexed:
+		return
+	_feats_indexed = true
+	_feats_over.clear()
+	_distinct.clear()
+	for def in of_family(ChallengeDef.Family.FEAT):
+		if def.distinct != "":
+			_distinct.append(def)
+		var counted: Array[StringName] = [def.stat]
+		counted.append_array(def.stats)
+		for each in counted:
+			if each == &"":
+				continue
+			var list: Array = _feats_over.get(each, [])
+			if not list.has(def):
+				list.append(def)
+			_feats_over[each] = list
 
 
 ## Every challenge that gives something to wear, in file order: `[{def, grant}]` with the grant
