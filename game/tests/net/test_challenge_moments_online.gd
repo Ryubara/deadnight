@@ -179,14 +179,20 @@ func _stat(user: String, stat: StringName) -> int:
 
 ## The ids of the challenges the server told this client were done for `seat`.
 func _done(night: Night, seat: int) -> Array:
-	return (
-		_heard[night]
-		. filter(
-			func(e: Dictionary) -> bool:
-				return e["type"] == ChallengeAward.DONE and e["player_id"] == seat
-		)
-		. map(func(e: Dictionary) -> StringName: return e["id"])
-	)
+	var ids: Array = []
+	for event: Dictionary in _heard[night]:
+		if event["type"] == ChallengeAward.DONE and event["player_id"] == seat:
+			ids.append(event["id"])
+	return ids
+
+
+## How many events of `type` this client has heard; of one `field` equal to `value` when given.
+func _heard_count(night: Night, type: StringName, field := &"", value := 0) -> int:
+	var found := 0
+	for event: Dictionary in _heard[night]:
+		if event["type"] == type and (field == &"" or event.get(field, 0) == value):
+			found += 1
+	return found
 
 
 ## Starts the round and ticks until it is over, killing the dead as they stand; `kill_with` is
@@ -278,27 +284,11 @@ func test_a_crew_round_with_no_gun_fired_and_one_killer_is_counted_for_each_seat
 	var bo := crew[1]
 	var command: NightCommand = _commands[bo]
 	command.aim_along(Vector3(0.0, 0.0, -1.0))
-	var shots_before: int = (
-		_heard[bo]
-		. filter(
-			func(e: Dictionary) -> bool: return e["type"] == &"shot_fired" and e["shooter_id"] == 2
-		)
-		. size()
-	)
+	var shots_before := _heard_count(bo, &"shot_fired", &"shooter_id", 2)
 	_act(RulesAction.skip_break())
 	var fired := func() -> bool:
 		command.fire = true
-		return (
-			(
-				_heard[bo]
-				. filter(
-					func(e: Dictionary) -> bool:
-						return e["type"] == &"shot_fired" and e["shooter_id"] == 2
-				)
-				. size()
-			)
-			> shots_before
-		)
+		return _heard_count(bo, &"shot_fired", &"shooter_id", 2) > shots_before
 	assert_bool(await _until(fired, 20.0)).is_true()
 	command.fire = false
 	var rules := _rules()
@@ -317,15 +307,7 @@ func test_a_crew_round_with_no_gun_fired_and_one_killer_is_counted_for_each_seat
 	assert_int(_stat("ann", ChallengeStats.ROUNDS_NO_KILLS)).is_equal(1)
 	assert_int(_stat("cy", ChallengeStats.ROUNDS_NO_KILLS)).is_equal(1)
 	# The count made again from what ann's client heard.
-	var told_round_two := func() -> bool:
-		return (
-			(
-				_heard[ann]
-				. filter(func(e: Dictionary) -> bool: return e["type"] == &"round_ended")
-				. size()
-			)
-			== 2
-		)
+	var told_round_two := func() -> bool: return _heard_count(ann, &"round_ended") == 2
 	assert_bool(await _until(told_round_two)).is_true()
 	var melee: Array = WeaponCatalog.IDS.filter(
 		func(id: StringName) -> bool: return WeaponCatalog.get_def(id).is_melee()
@@ -732,14 +714,7 @@ func test_five_rescues_by_a_real_hold_in_one_night_are_a_hand_up_and_holding_the
 	assert_int(rules.revives_of(2)).is_equal(5)
 	var told := crew[0]
 	var rescues_heard := func() -> int:
-		return (
-			_heard[told]
-			. filter(
-				func(e: Dictionary) -> bool:
-					return e["type"] == &"player_revived" and e.get("reviver_id", 0) == 2
-			)
-			. size()
-		)
+		return _heard_count(told, &"player_revived", &"reviver_id", 2)
 	assert_bool(await _until(func() -> bool: return rescues_heard.call() == 5)).is_true()
 	assert_int(_stat("bo", ChallengeStats.REVIVES)).is_equal(5)
 	assert_int(_stat("ann", ChallengeStats.REVIVES)).is_equal(0)
