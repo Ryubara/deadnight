@@ -35,16 +35,16 @@ func _ready() -> void:
 	var shell := menu.shell
 	var play := shell.panel(MenuTab.Id.PLAY) as PlayPanel
 	var together := play.button(&"together")
-	var quick := play.button(&"quick_join")
+	var browser := play.button(&"browser")
 	var solo := play.button(&"solo")
 
 	_mark("mouse over the three starts, slowly")
-	for target: Control in [together, quick, solo, quick, together]:
+	for target: Control in [together, browser, solo, browser, together]:
 		await _move_to(target)
 		await _wait(0.45)
 	_mark("mouse sweep over the starts, fast, three times")
 	for _i in 3:
-		for target: Control in [together, quick, solo, quick]:
+		for target: Control in [together, browser, solo, browser]:
 			await _move_to(target)
 			await _wait(0.06)
 	await _wait(0.6)

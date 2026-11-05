@@ -51,6 +51,16 @@ func test_a_spring_settles_on_its_target_with_little_overshoot() -> void:
 	assert_float(peak).is_less(1.0 + OVERSHOOT_LIMIT)
 
 
+func test_a_frame_shorter_than_one_step_moves_nothing_and_is_not_lost() -> void:
+	var spring := UISpring.new()
+	spring.snap(1.0)
+	spring.target = 0.0
+	spring.step(UISpring.STEP * 0.5)
+	assert_float(spring.value).is_equal(1.0)
+	spring.step(UISpring.STEP * 0.5)
+	assert_float(spring.value).is_less(1.0)
+
+
 func test_a_spring_ends_in_the_same_place_at_any_frame_rate() -> void:
 	var ends := []
 	for rate in SPRING_FRAME_RATES:
