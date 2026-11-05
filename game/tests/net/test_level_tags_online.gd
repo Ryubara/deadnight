@@ -441,3 +441,63 @@ func test_a_level_paid_to_a_seat_that_left_in_the_same_tick_is_not_an_error() ->
 	)
 	assert_dict(ann.state.levels).is_equal({ann.state.player_id: 8})
 	assert_vector(one[1].state.level_of(one[1].state.team[gone])).is_equal(Vector2i.ZERO)
+
+
+# --- The night report shows the level the night crossed (#1116) ---
+
+
+func test_the_report_of_the_paid_client_shows_the_levels_crossed_and_the_other_not() -> void:
+	await _start()
+	var one := await _viewer("report", "ann", _account(3))
+	var two := await _viewer("report", "bo", _account(2))
+	var room := _server.room_of_match("report")
+	room.server.end_seconds = 60.0
+	var ann: Night = one[0]
+	var bo: Night = two[0]
+	# Before anything is paid both reports sit in the level they began in.
+	for night: Night in [ann, bo]:
+		assert_bool(night.report.is_kept()).is_true()
+	assert_array(ann.report.model()["crossed"]).is_empty()
+	# Ann is paid up to level 6 through the tally; the room's tick tells every client.
+	_pay_up_to(room, ann.state.player_id, 6)
+	var paid := func() -> bool: return ann.report.model()["level_to"] >= 6
+	assert_bool(await _until(paid)).is_true()
+	# Everyone goes down in a round: the night ends and each client reads its own report.
+	var rules := room.server.rules
+	rules.apply(RulesAction.skip_break())
+	room._collect(rules.apply(RulesAction.set_downed(ann.state.player_id, true)))
+	room._collect(rules.apply(RulesAction.set_downed(bo.state.player_id, true)))
+	var over := func() -> bool: return ann.state.over and bo.state.over
+	assert_bool(await _until(over)).is_true()
+	await _ticks(10)
+	var mine := ann.report.model()
+	assert_bool(mine["kept"]).is_true()
+	assert_int(mine["level_from"]).is_equal(3)
+	assert_int(mine["level_to"]).is_equal(6)
+	assert_array(mine["crossed"]).is_equal([4, 5, 6])
+	# The levels' items are on the report (level 5 opens a tier), each from a level it crossed.
+	var gave: Array[int] = []
+	for row: Dictionary in mine["unlocked"]:
+		gave.append(row["level"])
+	assert_array(gave).is_not_empty()
+	for level in gave:
+		assert_bool(level in [4, 5, 6]).is_true()
+	assert_bool(5 in gave).is_true()
+	# The card the end board draws says it: from where the night began to where it ended.
+	var card := HudNightReport.new()
+	one[1].add_child(card)
+	card.show_report(mine)
+	assert_str(card.level_text).is_equal("LEVEL 3 TO 6")
+	assert_str(card.unlocked_text).starts_with("UNLOCKED: ")
+	# Bo was never paid that level: its report crossed nothing and shows its own level.
+	var theirs := bo.report.model()
+	assert_bool(theirs["kept"]).is_true()
+	assert_array(theirs["crossed"]).is_empty()
+	assert_int(theirs["level_to"]).is_equal(theirs["level_from"])
+	assert_int(theirs["level_to"]).is_less(6)
+	assert_array(theirs["unlocked"]).is_empty()
+	var other := HudNightReport.new()
+	two[1].add_child(other)
+	other.show_report(theirs)
+	assert_str(other.level_text).is_equal("LEVEL %d" % theirs["level_to"])
+	assert_str(other.unlocked_text).is_empty()
