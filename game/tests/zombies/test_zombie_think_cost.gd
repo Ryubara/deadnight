@@ -5,9 +5,11 @@ extends GdUnitTestSuite
 ## reached before the cuts, and a step asks the map's sight only for a zombie that may swing.
 
 ## The digest of the scripted night, taken on the code before the cuts. A change of the dead's
-## behaviour moves it; update it only for a change that is meant to move the dead.
-const GOLDEN_FLAT := "c1da01f3416ab19fd0e47b19ce97eb68"
-const GOLDEN_STOREY := "c99cc0d5ccafcd57b997cd1be04ab2d8"
+## behaviour moves it; update it only for a change that is meant to move the dead. It moved once:
+## a route that sends a dead back the way it is going is kept unless it is much shorter (#1347;
+## with that rule off, the digests are the ones taken before the cuts, c1da01f3... and c99cc0d5...).
+const GOLDEN_FLAT := "cbf68bb98cfdaff8c3c403e502a7acd8"
+const GOLDEN_STOREY := "8d899c341962c40584dd7d22ba0ba092"
 const STEPS := 450
 const STOREY := 3.4
 const GATE := &"nw"
