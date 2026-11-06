@@ -289,7 +289,29 @@ func _fit_slots() -> void:
 	if not is_equal_approx(_players_column[&"dy"], dy):
 		_players_column[&"dy"] = dy
 		_place(_players_column)
+	_fit_players()
 	_queue_slots_moved()
+
+
+## Tells the players' column how much height it has while the touch layout is up (#1301): from a
+## gap under the round and the objective at their tallest (two lines of words, so the column does
+## not move when the words change) to the health card's top, which stands over the weapon strip.
+## A party that does not fit it takes the teammates two to a row (`HudPoints.room`). Without the
+## touch layout nothing limits it: a desktop and a pad keep their column as it was.
+func _fit_players() -> void:
+	var room := INF
+	if touch_layout and size.y > 0.0:
+		var gap := float(HudStyle.GAP)
+		var above := (
+			float(HudStyle.margin())
+			+ round_part.get_combined_minimum_size().y
+			+ gap
+			+ objective.max_height()
+			+ gap
+		)
+		var below := size.y + float(_players_column[&"dy"]) - health.get_combined_minimum_size().y
+		room = maxf(below - gap - above, 0.0)
+	points.room = room
 
 
 ## A fingertip in this HUD's units (`MenuScale.tap_units`), never more than `FINGER_SHARE_MAX` of
