@@ -115,6 +115,17 @@ tag instead: the standing order in a word and a colour, a tap for the next of Fo
   The strip's row is under the ring and takes no column height, and it is where the left thumb already taps the weapons.
   `HudBotOrder` is its own part: moving it into the column later means making it in `Hud` instead of `HudSlots` and
   moving the challenge card's top.
+- **The order's word has to read at a glance, in a corner the film darkens.** The first capture read dim, about
+  like an empty weapon slot. The cause is the film's vignette (`film_grain.gdshader`, 0.62) over the whole screen,
+  which takes the bottom-left corner, where the strip stands, to about 0.6 of its brightness (the ammo card's number
+  in the other corner measures the same): cream `ink` (244, 234, 210) renders as (148, 142, 128). Measured on the
+  844 x 390 captures (the brightest pixels of the word against the ticket, rendered): ROAM 6.0, FOLLOW 4.2, HOLD 3.3
+  (the first HOLD, the token `hot` itself, was 5.3 against the ticket before the film and 3.6 while a finger lit it).
+  Done: the word is 1.35 times the caption (`HudBotOrder.WORD_SCALE`, the ticket grows to hold two lines), HOLD is `hot`
+  lightened by 0.35 so every order's colour keeps 7 : 1 against the ticket and 4.5 : 1 lit
+  (`test_the_word_of_the_order_is_larger_than_its_caption_and_keeps_its_contrast`). Not done: under the vignette
+  HOLD and FOLLOW stay under 4.5 in the corner, because no red-orange lighter than that stays red-orange; the word,
+  its size and the stripe say the order too, and the film's strength is the whole game's, not this tag's.
 - **A refused order is invisible to the client until the frame says so.** The client's own link refuses only what cannot
   be sent (an unknown order, a position that is not finite); the server also refuses a second order inside
   `BotOrders.GAP` (0.5 s), answering with `bot_order_refused`, which nothing on the client reads. The driver therefore

@@ -553,7 +553,9 @@ func _hint_problems(canvas: Vector2, mirrored: bool, boss: bool) -> Array[String
 	var hints := touch.controls.hints
 	var safe := touch.controls.safe_rect()
 	# This HUD has no bot in the room, so no tag and no hint for it (`test_touch_bot_tag.gd`).
-	var without_bots: Array[StringName] = [TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT]
+	var without_bots: Array[StringName] = [
+		TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT, TouchHints.STRIKE
+	]
 	if hints.showing() != without_bots:
 		found.append("%s: the hints showing are %s" % [label, hints.showing()])
 	var cards := _hud.popups.cards()

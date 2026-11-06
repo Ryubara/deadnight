@@ -138,6 +138,37 @@ func test_the_tag_says_the_standing_order_in_a_word_and_a_colour_of_its_own() ->
 	)
 
 
+## The word of the order is the thing to read at a glance (the capture of #1286 read dim beside the
+## HUD's other words): larger than the caption above it, and each order's colour keeps AAA contrast
+## against the ticket, lit by a finger or not.
+func test_the_word_of_the_order_is_larger_than_its_caption_and_keeps_its_contrast() -> void:
+	await _page(PAGES[1], 1.0)
+	var tag := _fixture.hud.slots.bot_tag
+	var tokens := UITokens.active()
+	assert_int(tag.word_px()).is_greater(tag.caption_px())
+	var lit := tokens.surface_raised.lerp(tokens.accent_bright, 0.16)
+	for order in BotWheel.ORDERS:
+		var ink := tag.colour_of(order)
+		for case: Array in [
+			[tokens.surface_raised, HudBotOrder.WORD_CONTRAST], [lit, HudBotOrder.WORD_CONTRAST_LIT]
+		]:
+			var ratio := HudPlayerBox.contrast(ink, case[0])
+			(
+				assert_float(ratio)
+				. override_failure_message("%s on %s: %.2f" % [order, case[0], ratio])
+				. is_greater_equal(case[1])
+			)
+	# The caption keeps the HUD's AA.
+	assert_float(HudPlayerBox.contrast(tokens.ink_muted, tokens.surface_raised)).is_greater_equal(
+		4.5
+	)
+	# Two lines of it fit the tag at every interface size.
+	for ui_scale in UI_SCALES:
+		await _page(PAGES[1], ui_scale)
+		var box := _fixture.hud.slots.bot_tag
+		assert_float(box.lines_height()).is_less(box.size.y)
+
+
 func test_the_tag_is_a_fingertip_wide_and_high_on_the_screen_clear_of_the_rest() -> void:
 	await _every_page(
 		func(page: Vector3, ui_scale: float, left: bool) -> void:

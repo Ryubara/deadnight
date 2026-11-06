@@ -13,9 +13,11 @@ const CANVASES: Array[Vector2] = [
 const KEPT_PARTS: Array[StringName] = [
 	&"ammo", &"prompt", &"health", &"perks", &"points", &"round_part"
 ]
-## The hints a room without bots can show (the bots' hint waits for the HUD's tag, which these
-## fixtures have none of: `test_touch_bot_tag.gd`).
-const WITHOUT_BOTS: Array[StringName] = [TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT]
+## The hints a room without bots can show with the Interact and Strike buttons up (the bots' hint
+## waits for the HUD's tag, which these fixtures have none of: `test_touch_bot_tag.gd`).
+const WITHOUT_BOTS: Array[StringName] = [
+	TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT, TouchHints.STRIKE
+]
 const ON_THE_STICK := Vector2(300.0, 760.0)
 const ON_THE_LOOK_AREA := Vector2(1700.0, 330.0)
 

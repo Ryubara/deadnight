@@ -8,15 +8,26 @@ extends HudPart
 ## round. The wheel (hold and drag) stays for the keyboard and the pad, where this tag is never
 ## made.
 ##
-## The tag is a fingertip high and wide at least (`fit_touch`, `MenuScale.tap_units`) and its words
-## are read at the HUD's least text for a phone (14 CSS px, `MenuScale.text_units`). One canvas
-## item: it draws its own words, so a room without bots holds a single hidden node.
+## The tag is a fingertip high and wide at least (`fit_touch`, `MenuScale.tap_units`). BOTS is read
+## at the HUD's least text for a phone (14 CSS px, `MenuScale.text_units`); the order's word, the
+## thing to read at a glance, is `WORD_SCALE` times larger, in an order colour that keeps at least
+## `WORD_CONTRAST` against the ticket. One canvas item: it draws its own words, so a room without
+## bots holds a single hidden node.
 
 ## The action a tap on the tag presses.
 const ACTION := &"bot_order_next"
 const CAPTION := "BOTS"
 ## The widest word, which sets the tag's width so it does not change size when the order does.
 const WIDEST := "FOLLOW"
+## The order's word is this much larger than the caption above it.
+const WORD_SCALE := 1.35
+## The least contrast (WCAG ratio) each order's colour keeps against the ticket: AAA for text, and
+## AA while a finger lights the ticket.
+const WORD_CONTRAST := 7.0
+const WORD_CONTRAST_LIT := 4.5
+## Hold's red-orange is the token `hot` lightened by this much towards white: the token itself is
+## 5.3 against the ticket (3.6 lit), under what a word read at a glance wants.
+const HOLD_LIGHTEN := 0.35
 
 ## Whether a finger holds the screen: the tag is shown (when there are bots) and takes touches.
 var touch := false
@@ -59,14 +70,28 @@ func fit_touch(on: bool, finger: float, text_px := HudStyle.MIN_TEXT) -> void:
 	refresh()
 
 
-## The tag's size: a fingertip high, as wide as `FOLLOW` and the card's padding, never narrower than
-## a fingertip. Zero without a finger.
+## The tag's size: a fingertip high (more if the two lines need it), as wide as `FOLLOW` and the
+## card's padding, never narrower than a fingertip. Zero without a finger.
 func tag_size() -> Vector2:
 	if not touch:
 		return Vector2.ZERO
-	var words := HudStyle.text_width(_font(), WIDEST, _text_px)
+	var words := HudStyle.text_width(_font(), WIDEST, word_px())
 	var wide := maxf(_finger, ceilf(words + float(HudStyle.PAD_LEFT + HudStyle.PAD)))
-	return Vector2(wide, ceilf(_finger))
+	return Vector2(wide, maxf(ceilf(_finger), ceilf(lines_height()) + 2.0 * float(HudStyle.NOTCH)))
+
+
+## The size of the caption's type, and of the order's word, which is larger.
+func caption_px() -> int:
+	return _text_px
+
+
+func word_px() -> int:
+	return roundi(_text_px * WORD_SCALE)
+
+
+## The height of the two lines together.
+func lines_height() -> float:
+	return _font().get_height(caption_px()) + _font().get_height(word_px())
 
 
 ## What a finger can press: the tag's action and its box in the screen's canvas units. None while
@@ -89,7 +114,7 @@ func colour_of(of_order: StringName) -> Color:
 		BotWheel.FOLLOW:
 			return tokens.accent
 		BotWheel.HOLD:
-			return tokens.hot
+			return tokens.hot.lightened(HOLD_LIGHTEN)
 	return tokens.ink
 
 
@@ -109,25 +134,24 @@ func _draw() -> void:
 	var accent := colour_of(order)
 	HudStyle.draw_ticket(self, Rect2(Vector2.ZERO, size), accent, 1.0 if _pressed else 0.0)
 	var font := _font()
-	var caption_px := _text_px
-	var lines := font.get_height(caption_px) + font.get_height(_text_px)
+	var lines := lines_height()
 	var left := float(HudStyle.PAD_LEFT)
 	var top := (size.y - lines) * 0.5
 	draw_string(
 		font,
-		Vector2(left, top + font.get_ascent(caption_px)),
+		Vector2(left, top + font.get_ascent(caption_px())),
 		CAPTION,
 		HORIZONTAL_ALIGNMENT_LEFT,
 		size.x - left,
-		caption_px,
+		caption_px(),
 		tokens.ink_muted
 	)
 	draw_string(
 		font,
-		Vector2(left, top + font.get_height(caption_px) + font.get_ascent(_text_px)),
+		Vector2(left, top + font.get_height(caption_px()) + font.get_ascent(word_px())),
 		word(),
 		HORIZONTAL_ALIGNMENT_LEFT,
 		size.x - left,
-		_text_px,
+		word_px(),
 		accent
 	)
