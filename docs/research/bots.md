@@ -2657,9 +2657,16 @@ obstacles, where the first leg of a route can point away from the target for oth
 prize crane: the crane spots are `(-6.4, 5)`, `(6, 14)`, `(-24, -14)` and `(40, 10)`, the nearest 21 m away, and no
 shop spot is nearer than 7 m. Dead started on a 0.3 m grid from `(-10, 24)` to `(-7, 29)` (both speeds, plaza open, a
 person in the north field), with the hold off, all reached the field within 70 s, so no strip there turns a route
-back. Its cause is not found: the spot is 2.5 m outside the projection booth's west wall, by a container at `(-7.2,
-27.5)`, and what its target was is not in the night's record. Issue #1352's crawlers were not this either: its cause
-is the crane's cabinet landing on two dead (kit lesson `2026-11-06-the-crane-landed-on-two-dead-and-hid-them-from-
-every-shot.md`).
+back. It did not come back (#1362): 400 nights on `main` with #1359 (`regular_3_hold_person`, seeds 1 to 400, round cap
+20, stall at 8 game minutes) ended 400 of 400 (`over`), 0 stalled rounds, 0 timeouts, 0 engine errors, longest tail
+median 84 s, p90 132 s, max 290 s. A probe in a copy of the soak (not shipped) recorded every dead that stayed within
+1.5 m for 60 s, with its mode, target and route, and it recorded none, anywhere. At 0 in 400 the stall rate is below
+0.75% a night (95%, rule of three); had it been the nightly's 1 in 100, 0 in 400 would happen 1.8% of the time. The
+spot is 2.5 m outside the projection booth's west wall, by a container at `(-7.2, 27.5)`; the one sighting stays
+unexplained, and its cause is not found (the nightly ran before #1359, and its target is not in the record). The probe
+sees a stall: with the hold off, seeds 46 and 47 (the #1347 nights) gave a stalled round 7 with a crawler (CHASE, not
+tearing) at `(-8.4, 45.4)`, and a 60 s probe entry at `(-8.6, 45.0)` in round 11. Issue #1352's crawlers
+were not this either: its cause is the crane's cabinet landing on two dead (kit lesson
+`2026-11-06-the-crane-landed-on-two-dead-and-hid-them-from-every-shot.md`).
 
 Kit lesson: [a slow dead stood six minutes between two near-equal ways round a booth](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-06-a-slow-dead-chattered-between-two-ways-round-a-booth.md).
