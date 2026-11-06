@@ -2509,3 +2509,54 @@ gun's rounds cost 50 points each against the pistol's 1.3, and the bot's `useful
 does to ordinary dead (it shatters them), so against a headliner, which it only slows, a bot with 600 points buys
 twelve rounds that do less than the pistol's thirty. (3) Of the other cells, regular_4's three round-5 tails (155 to
 208 s) and the Follow and Hold cells were not read.
+
+## A crawler that parks at the drive-in's west ticket booth (#1347)
+
+In the third nightly run's `regular_3_hold_person` cell, 12 of the 13 rounds that would not end had one
+crawler standing at `(-8.5, 45.2)` for 365 to 413 s. It was not stuck, and nothing about the spot is special except what
+stands next to it: the drive-in's west ticket booth, a 2.4 m box at `(-6, 45.2)`, whose west face is 1.3 m east of the
+spot.
+
+**Cause.** The way round the booth to the north and the way round it to the south are within a metre or two of one length
+from a start beside the west face. The walking mesh's search names the north way from a diagonal strip beside the face
+and the south way from both sides of it. A body asks for a new route every 0.3 m (a crawler walks 1.2 m/s), so a dead
+that took the north way walked out of the strip, was told the south way, walked back into the strip and was told the north
+way again, for ever. It moved all the time (so a stuck detector never fired) and `tearing` was false, mode 1 (CHASE). A
+person can see it and can walk to it: the capture from the player's camera shows the crawler plainly at 1.6 m with the
+ray to it clear on every frame, so the guess that it was out of reach or out of sight was wrong.
+
+**Test first.** `test_zombie_booth_fork.gd` opens the plaza, puts a person far north in the field and puts a dead on a
+0.3 m grid beside the west face (x -9.4 to -7.3, z 44.2 to 46.4), once at 1.2 m/s and once at 1.8 m/s. Every one must be
+north of the plaza's gate (z 38) within 40 s (a stroll takes 18 s). With the fix switched off: 31 crawlers and 18 walkers
+at 1.8 m/s stayed south of the gate; with it on: none.
+
+**Fix.** `ZombieSim._keeps_its_route` already kept the old route against a new one that is `ROUTE_FLIP` (6 m)
+longer, while the old one ended near the target (#950). It now also keeps it against a new route that sends the zombie
+back the way it is going (`_turns_back`: the first leg of the new route, past `LEG_LEAST` 0.3 m, points against the leg
+being walked) unless the new one
+is `ROUTE_GAIN` (4 m) shorter than what is left. A zombie more than `ROUTE_STRAY` (1 m) from its leg (shoved by the
+crowd, thrown by a blast) takes the new route whatever it gains, and a new route that goes on the same way is taken as
+ever, so a crowd still spreads round an obstacle. `test_zombie_think_cost.gd`'s two golden digests moved once, as the
+note beside them says; with the rule off they are the old ones.
+
+**Numbers** (`bots_soak.tscn`, regular, Hold, 3 bots and a person; seeds 101 to 145, before = the rule off, after = this
+change; both arms `--max-round 20`). Nights are not repeatable (#1350), so the two arms are compared by counts, not night
+by night.
+
+| Cell | Arm | Nights | Rounds that would not end | Longest tail (median / p90 / max) | Round (median) | Mean spread |
+| --- | --- | ---: | ---: | --- | ---: | ---: |
+| regular_3_hold_person | before | 45 | 9 (20%), all at `(-8.5, 45.2)` give or take 0.3 m | 115 / 400 / 404 s | 10 | 3.95 |
+| regular_3_hold_person | after | 45 | 0 | 95 / 152 / 211 s | 11 | 3.87 |
+| regular_4 (seeds 101 to 130) | before | 30 | 0 | 51 / 92 / 123 s | 11 | 37.4 |
+| regular_4 (seeds 101 to 130) | after | 30 | 0 | 50 / 86 / 117 s | 11.5 | 37.9 |
+
+The crowd's spread (how far apart the dead are when a round ends) did not fall, so holding a route did not herd them.
+The Hold cell still has tails of 150 to 210 s that are not a round that does not end (`BotHunt` skips Hold, see
+above); they were not read here.
+
+**Not covered.** The issue's other stall, a crawler at `(-8.5, 26.1)` (1 night of 13), is a different place (outside the
+projection booth's west wall, by the containers) and did not show in either arm's 45 nights; it was not reproduced, so
+whether it is the same chatter at another obstacle is open. Issue #1352's crawler at `(-23.4, -12.5)`, is a
+different place again and was not read.
+
+Kit lesson: [a slow dead stood six minutes between two near-equal ways round a booth](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-06-a-slow-dead-chattered-between-two-ways-round-a-booth.md).
