@@ -290,6 +290,11 @@ def build(arm):
                     UpperArm_L=lift[0])  # fmt: skip
     strike = offset(ready, UpperArm_R=(-25, 0, 0), LowerArm_R=(0, 0, -20), Torso=(18, -12, 0), UpperArm_L=lift[1])
     follow = offset(ready, UpperArm_R=(-35, 0, 0), LowerArm_R=(0, 0, -25), Torso=(22, -18, 0), UpperArm_L=lift[2])
+    # The armband on the upper arm lay 41 mm in the chest as it came down across it (#1282): the arm goes out.
+    if SWING_OUT[0]:
+        strike = _abduct(arm, strike, "R", SWING_OUT[0])
+    if SWING_OUT[1]:
+        follow = _abduct(arm, follow, "R", SWING_OUT[1])
     keys = [(0, ready), (6, windup), (10, strike), (13, follow), (22, ready)]
     write(arm, "Swing_Melee", keys, up, "upper", False, "Melee", {"whoosh": 6, "hit_start": 9, "hit_end": 12,
                                                                    "can_swing_again": 22})  # fmt: skip
@@ -335,21 +340,26 @@ STRIKE_LEFT_SHARE = (0.3, 0.8, 1.0)
 # The windup's right arm swung out to his right by this (UpperArm.R Y-, degrees, times the class's share): raised
 # straight up, the pistol arm's forearm passed through the side of the head (74 mm).
 STRIKE_WINDUP_OUT = 25
+# Swing_Melee's blow and follow-through: the upper arm swung out from the body by this many degrees.
+SWING_OUT = (8.0, 16.0)
+# The pistol's windup swings out further (degrees, times its share): the hand over the shoulder lay 32 mm in the
+# chest of the rolled-sleeve body.
+STRIKE_WINDUP_OUT_CLASS = {"Pistol": 38}
 
 
 def strikes(arm, bases, up):
     """Strike_Rifle, Strike_Shotgun, Strike_Pistol and Strike_Melee, each from its class's aim pose."""
     for cls, base in bases.items():
         k = STRIKE[cls]
-        windup, strike, follow = strike_keys(base, k)
+        windup, strike, follow = strike_keys(base, k, out=STRIKE_WINDUP_OUT_CLASS.get(cls, STRIKE_WINDUP_OUT))
         keys = [(0, base), (3, windup), (6, strike), (8, follow), (13, base)]
         write(arm, f"Strike_{cls}", keys, up, "upper", False, cls, dict(STRIKE_EVENTS))  # fmt: skip
 
 
-def strike_keys(base, k, left=True):
+def strike_keys(base, k, left=True, out=STRIKE_WINDUP_OUT):
     """The windup, the blow and the follow-through of a quick strike from `base`, the right arm doing `k` of it."""
     lift = [tuple(v * share for v in STRIKE_LEFT) if left else (0, 0, 0) for share in STRIKE_LEFT_SHARE]
-    windup = offset(base, UpperArm_R=(35 * k, -STRIKE_WINDUP_OUT * k, 0), LowerArm_R=(0, 0, 25 * k),
+    windup = offset(base, UpperArm_R=(35 * k, -out * k, 0), LowerArm_R=(0, 0, 25 * k),
                     Torso=(-8, 14, 0), Abdomen=(-2, 6, 0), UpperArm_L=lift[0])  # fmt: skip
     blow = offset(base, UpperArm_R=(-15 * k, 0, 0), LowerArm_R=(0, 0, -15 * k), Torso=(15, -11, 0),
                   Abdomen=(5, -5, 0), UpperArm_L=lift[1])  # fmt: skip
@@ -377,7 +387,7 @@ def grenade(arm, up, idle, idle_mid, aim):
     # UpperArm.L, Y- swings the hand forward.
     # The cooked hold: the grenade at the right of the chest in the gun hold's hand (x -0.16, y -0.92, z 1.17).
     held = offset(aim, UpperArm_R=(-10, 0, 0), LowerArm_R=(0, 0, 12))
-    grab = offset(held, Torso=(0, 0, 6), UpperArm_L=(26, -100, -19), LowerArm_L=(1, 0, 16))  # left hand on the ring
+    grab = offset(held, Torso=(0, 0, 6), UpperArm_L=(26, -100, -19), LowerArm_L=(1, 0, 30))  # left hand on the ring
     pulled = offset(held, Torso=(0, 0, -4), UpperArm_L=(36, -22, 0), LowerArm_L=(8, 0, -37))  # ring out to the left
     keys = [(0, idle), (5, blend(idle, held, 0.7)), (8, held), (11, grab), (14, pulled), (20, held)]
     write(arm, "Grenade_Cook", keys, up, "upper", False, "Grenade",
@@ -651,6 +661,8 @@ DOWNED_CRAWL_KNEES = DOWNED_KNEES  # the knees' bend while the heels pull
 # kept on the belly (#504) was in the way of the left knee each time it came up (130 mm into the shin, #939). Each hand
 # this much further out (x, kit metres) than the downed left hand, clear of the thighs.
 DOWNED_CRAWL_OUT = 0.08
+# The right hand's place (from the hips, like DOWNED_ELBOW) and its elbow's bend in the pose the arm blends through.
+DOWNED_CRAWL_LEAD = ((0.7, 0.2, 0.42), (0.3, 0.8, -0.5))
 
 
 def at_hips(arm, pose, x, y, z):
@@ -761,6 +773,14 @@ def revive(arm, acts):
     write(arm, "Downed_Crawl", keys, every, "full", True, events=events, skip=FINGERS)
     CLIPS["Downed_Crawl"]["ground_speed"] = round(gl.measure_gait(arm, bpy.data.actions["Downed_Crawl"], GAME_SCALE), 2)
 
+    # ---- Downed_Crawl_Arm: where the right arm goes between the sit and the crawl (a still pose) -------------------
+    # The game blends the two clips by the ground speed, bone by bone, and the right arm's way from the forearm over the
+    # knee to the elbow on the ground crossed the belly and the thigh (31-65 mm over the blend, 81-87 mm in the game,
+    # #1282). Its blend (DownedPose) passes the arm through this pose instead: the hand out and up beside the hip.
+    lead = copy(sit)
+    downed_arms(arm, lead, right=DOWNED_CRAWL_LEAD)
+    write(arm, "Downed_Crawl_Arm", [(0, lead), (24, lead)], every, "full", True, skip=FINGERS)
+
     # ---- Revive_Kneel: down on the right knee, both hands on the teammate's chest, pressing twice a second ----------
     stand = full(arm, sample(acts["Idle"], 0))
     kneel = copy(stand)
@@ -860,6 +880,9 @@ GAME = Path(__file__).resolve().parents[2] / "game"
 # Pistol: Run_Gun's right arm (the kit's own one-handed gun run: the forearm pumps 46 degrees a stride), with the upper
 # arm swinging this share of the left arm's swing, half a stride later, so the gun hand swings at the side too.
 SPRINT_PISTOL_SWING = 0.35
+# The gun arm held out from the side by this (degrees): at the hip, the fingers of the house pistol's and the ray gun's
+# grips lay 33-37 mm in the jacket.
+SPRINT_PISTOL_OUT = 6.0
 # Melee: a runner's arm with the bat in the fist. The upper arm hangs (`upper`, chest frame) and swings fore and aft
 # from the shoulder, against the left arm (back at frame 0, when the left hand leads), `swing` degrees each way; the
 # forearm stays bent forward (`fore`) and pumps `pump` times the arm's swing, so the bat stays up and rocks with the
@@ -867,7 +890,7 @@ SPRINT_PISTOL_SWING = 0.35
 # head from the shoulder camera behind him.
 # `shaft` is the way the weapon's shaft leans (chest frame): the forearm is turned about its own axis to bring it as
 # close as it can, up and back over the shoulder and a little out.
-SPRINT_MELEE = {"upper": (-0.5, 0.1, -1.0), "fore": (-0.3, -1.0, 0.3), "shaft": (-0.25, 0.45, 1.0), "swing": 24.0,
+SPRINT_MELEE = {"upper": (-0.75, 0.1, -1.0), "fore": (-0.3, -1.0, 0.3), "shaft": (-0.25, 0.45, 1.0), "swing": 24.0,
                 "pump": 1.2}  # fmt: skip
 
 
@@ -925,6 +948,17 @@ def _pose_arm(arm, pose):
         pb.rotation_quaternion = pose[pb.name]["rot"]
         pb.location = pose[pb.name]["loc"]
     bpy.context.view_layer.update()
+
+
+def _abduct(arm, pose, side, degrees):
+    """`pose` with the `side` upper arm swung out from the body by `degrees`, about the front-to-back axis."""
+    _pose_arm(arm, pose)
+    r, _ = _world(arm, f"UpperArm.{side}")
+    axis = Vector((0, 1, 0))  # the Soldier faces -Y
+    _set_world_rot(
+        arm, f"UpperArm.{side}", Matrix.Rotation(math.radians(degrees * (1 if side == "R" else -1)), 3, axis) @ r
+    )
+    return _read_pose(arm, pose)
 
 
 def _read_pose(arm, like):
@@ -1133,7 +1167,7 @@ def sprint_carries(arm, acts, aim, up):
         e = (mean.inverted() @ other).to_euler("XYZ")  # the left arm's swing about its mean, in its own axes
         mirrored = Euler((e.x, -e.y, -e.z), "XYZ").to_quaternion()  # the same swing on the right side
         p["UpperArm.R"]["rot"] = p["UpperArm.R"]["rot"] @ Quaternion().slerp(mirrored, SPRINT_PISTOL_SWING)
-        keys.append((f, p))
+        keys.append((f, _abduct(arm, p, "R", SPRINT_PISTOL_OUT)))
     write(arm, "Sprint_Pistol", keys, up, "upper", True, "Pistol")
     PISTOL_SPRINT.clear()
     PISTOL_SPRINT.extend(keys)

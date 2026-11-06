@@ -53,6 +53,14 @@
         "pull_left": 16
       },
       "ground_speed": 0.45
+    },
+    "Downed_Crawl_Arm": {
+      "layer": "full",
+      "loop": true,
+      "class": null,
+      "frames": 24,
+      "seconds": 1.0,
+      "events": {}
     }
   }
 }

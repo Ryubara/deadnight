@@ -16,7 +16,11 @@ extends Node
 ##
 ## `--trace` adds one `TRACE` line per kept pose with a fault: the tick, the check, how deep, the
 ## group and its place in the skeleton's frame. `--every=N` keeps a pose every N ticks, and
-## `--reload-only` plays each weapon's equip and reload and nothing else (a few seconds a weapon).
+## `--only=<beat>,...` keeps poses of those beats only; `--near=<factor>` moves a view's camera
+## toward the player by that factor and `--look-y=<m>` lowers the point it looks at.
+## `--reload-only` plays each weapon's equip and reload and nothing else (a few seconds a weapon);
+## `--tail-only` plays only the beats after the weapons (the repair, grenade, downed, crawl and
+## revive).
 ##
 ## Film (windowed, off the person's desktop): the player's shoulder camera, or `--view=side` a close
 ## view from his right, `--view=front` from ahead and to his right, `--view=left` from his left:
@@ -26,7 +30,8 @@ extends Node
 ##
 ## `--shots=<dir>` (windowed) saves one still of each beat at the tick that shows its arms
 ## (`SHOT_AT`; `--reload-shot=<tick>` for the reload's) as
-## `<dir>/<look>_<view>_<weapon>_<beat><tick>.png`, with no movie.
+## `<dir>/<look>_<view>_<weapon>_<beat><tick>.png`, with no movie; `--at=<beat>:<tick>,...` moves
+## them.
 ##
 ## Prints one `BEAT <weapon> <beat> frame <n>` line as each beat starts (frames at the fixed fps).
 
@@ -81,7 +86,13 @@ var _trace := false
 var _every := SAMPLE_EVERY
 var _reload_only := false
 var _reload_shot := -1
+var _tail_only := false
+var _only: Array[String] = []
+var _near := 1.0
+var _look_at := LOOK
 var _shots := ""
+## `SHOT_AT` with the ticks `--at=<beat>:<tick>,...` changed.
+var _shot_at := SHOT_AT.duplicate()
 var _weapons: Array[StringName] = []
 var _latest: Array[Transform3D] = []
 ## Kept poses: [weapon, beat, clip, tick, poses].
@@ -101,6 +112,18 @@ func _ready() -> void:
 			_every = int(arg.trim_prefix("--every="))
 		elif arg == "--reload-only":
 			_reload_only = true
+		elif arg == "--tail-only":
+			_tail_only = true
+		elif arg.begins_with("--only="):
+			for beat in arg.trim_prefix("--only=").split(","):
+				_only.append(beat)
+		elif arg.begins_with("--look-y="):
+			_look_at.y = float(arg.trim_prefix("--look-y="))
+		elif arg.begins_with("--near="):
+			_near = float(arg.trim_prefix("--near="))
+		elif arg.begins_with("--at="):
+			for pair in arg.trim_prefix("--at=").split(","):
+				_shot_at[pair.get_slice(":", 0)] = int(pair.get_slice(":", 1))
 		elif arg == "--trace":
 			_trace = true
 		elif arg.begins_with("--look="):
@@ -146,7 +169,8 @@ func _process(_delta: float) -> void:
 		return
 	var at := _player.global_position
 	var yaw := Basis(Vector3.UP, _player.rotation.y)
-	_camera.look_at_from_position(at + yaw * VIEWS[_view], at + LOOK, Vector3.UP)
+	var offset: Vector3 = _look_at + (VIEWS[_view] - LOOK) * _near
+	_camera.look_at_from_position(at + yaw * offset, at + _look_at, Vector3.UP)
 
 
 func _grab() -> void:
@@ -168,9 +192,10 @@ func _beat(weapon: StringName, beat: String, ticks: int, each := Callable()) -> 
 		await get_tree().physics_frame
 		await get_tree().process_frame
 		_ticks += 1
-		if _measure and beat != "" and t % _every == 0 and not _latest.is_empty():
+		var wanted := _only.is_empty() or beat in _only
+		if _measure and beat != "" and wanted and t % _every == 0 and not _latest.is_empty():
 			_samples.append([weapon, beat, String(_animation.action_clip), t, _latest.duplicate()])
-		var shoot: int = SHOT_AT.get(beat, -1)
+		var shoot: int = _shot_at.get(beat, -1)
 		if beat == "reload" and _reload_shot >= 0:
 			shoot = _reload_shot
 		if _shots != "" and shoot == t:
@@ -182,7 +207,7 @@ func _beat(weapon: StringName, beat: String, ticks: int, each := Callable()) -> 
 
 func _run() -> void:
 	await _beat(&"-", "", 30)
-	for id in _weapons:
+	for id in [] if _tail_only else _weapons:
 		_animation.equip(id)
 		await _beat(id, "equip", EQUIP_TICKS)
 		if _reload_only:
