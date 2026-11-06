@@ -45,6 +45,9 @@ var shopping: Array[StringName] = []
 ## Items on that list the player saves for: while one is not yet affordable, nothing after it is
 ## bought (a player who wants the re-cut does not spend the points on a door first).
 var saves_for: Array[StringName] = []
+## The least share of the crane's draw the player would take for a play to be worth its price
+## (`CraneOdds`, the rule the hosted bots read: `BotProfile.crane_min_odds`).
+var crane_min_odds: float = CraneOdds.MIN_SHARE
 ## How many weapons the player re-cuts in a night (the list is read again at every break, and a
 ## re-cut can be bought again for another weapon, so the player needs a stopping point).
 var re_cuts: int = 1
@@ -58,6 +61,7 @@ func jittered(rng: RandomNumberGenerator, spread: float) -> SimSkill:
 	copy.shopping = shopping
 	copy.saves_for = saves_for
 	copy.re_cuts = re_cuts
+	copy.crane_min_odds = crane_min_odds
 	copy.circuits = circuits
 	copy.swaps = swaps
 	copy.ammo_floor_mags = ammo_floor_mags

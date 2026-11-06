@@ -207,8 +207,8 @@ spot offers use: with it merged the three tests of `test_bot_crane.gd` give the 
 retune of #1023 (it raised the odds a little: a pistol-only Rookie's share of takeable prizes at round 3 / 5 / 8 went
 from 0.43 / 0.17 / 0.39 to 0.50 / 0.24 / 0.54). The rule is older: the free hand weighed by the round is #827
 (2026-11-03), the 1.5 margin #566 (2026-11-02), the buy-on-any-prize rule #271 (2026-11-01), and the simulator's
-shoppers (`NightSim._crane_can_pay_off`) buy on any prize too, so the model wastes plays in the same way and was
-left as it was (`docs/research/balance-simulator.md`).
+shoppers (`NightSim._crane_can_pay_off`) bought on any prize too, so the model wasted plays in the same way: they follow
+the same rule since #1331 ([below](#the-simulators-shoppers-at-the-crane-1331)).
 
 The soak's medians (`tools/bots/soak_report.py`, one Godot process of five nights a chunk, roam, the simulator's
 numbers from 60 nights each; the first row of every pair is `main`, the second the fix):
@@ -229,13 +229,100 @@ twenty. What the fix changes for certain is the points a bot spends on the crane
 crane soak, which go to the other things on its list: the spend ratio of the regular and veteran cells rose by about
 0.1). So the cells of `bots-nightly` that read bot strength (the median within 1.5 of the simulator, the Kolmogorov
 distance under 0.2, the spend ratio within 0.20 of the simulator's) can move by a round either way and the spend ratio
-by a tenth. The simulator's shoppers still buy on any prize (`NightSim._crane_can_pay_off`) and are not touched:
-mirroring the rule there moves its medians (the crane price was tuned against it, [the balance
-simulator](balance-simulator.md)) and is an issue of its own, not a retune made here. The gates that read the bots'
+by a tenth. The simulator's shoppers were not touched by #1330; they follow the rule since #1331
+([below](#the-simulators-shoppers-at-the-crane-1331)). The gates that read the bots'
 behaviour (the engine error, stuck and idle gates, the far-from-the-person gate) are not moved: the walk back to the
 glass is a note of `crane`, which `SoakWatch.ERRAND_NOTES` counts as an errand.
 
 A person's crane is the rules' and is untouched: the change is in `gameplay/bots/` only.
+
+### The simulator's shoppers at the crane (#1331)
+
+After #1330 the bots paid for a play only at 25% odds, and the simulator's shoppers (the model the crane's price was
+tuned against, [the balance simulator](balance-simulator.md#the-cranes-price)) still paid on any one prize worth
+taking. The parity reads of `bots-nightly` (#767, #772) set a bot cell beside the simulator's, so the two now spent
+differently. The simulator uses the bots' rule, from one place:
+
+- `CraneOdds` (`gameplay/bots/crane_odds.gd`): `share` is the weight of the prizes the shopper lacks and would take over
+  the weight of all it lacks (the weights `ShopItem.roll` draws by), `worth_playing` is "some chance, and at least the
+  minimum share" and `MIN_SHARE` (0.25) is the default of `BotProfile.crane_min_odds` and of the new
+  `SimSkill.crane_min_odds`. `BotEconomy.crane_odds` and `NightSim._crane_share` both call `share`, the first with its
+  `worth_taking`, the second with `_worth_taking` (the same `WeaponWorth` test: the weapon beats the weakest carried by
+  1.5 times, a free hand against the quick melee).
+- `CranePass` (`gameplay/bots/crane_pass.gd`): the round and the weapons carried when a prize was left on the glass.
+  `BotBeliefs.pass_crane` keeps one, each `NightSim.SimPlayer` keeps one, and a shopper plays no more in that round
+  with those hands. A prize the simulator's shopper does not take (`_play_crane`: it does not beat the weakest weapon)
+  is the pass; the model never leaves a prize it wants.
+- Not shared, and why: the pool. The simulator takes the ray gun and the freeze gun out of the draw
+  (`NightSim.UNMODELLED`, #788), so its shoppers draw among 15 prizes and the bots among 17; the shares are over the
+  pool each one plays. The simulator's shoppers are also always at the glass, so there is no walk, wait or reach.
+- `test_sim_crane_shopper.gd`: the simulator's share of the draw equals the bots' on a grid of rounds and hands (it
+  fails when the two drift apart), a play at a slim chance is not paid for, a pass ends the plays of a round until the
+  round or the hands change.
+
+Before and after, the simulator's cells the parity batch reads, plus the balance gate's other cells: 2,000 simulated
+nights a cell (two independent sets of 1,000, seeds from 1 and from 5001; the nightly reads 300), the same seeds before
+and after, the tree frozen for the run. The mean round has the standard error of 2,000 nights in brackets:
+
+| Sim cell | Median round | Mean round (se) | Spend ratio | Plays a player-night | Share of earnings into the crane |
+| --- | --- | --- | --- | --- | --- |
+| weak x1 | 5 to 5 | 5.57 (0.06) to 5.61 (0.06) | 0.693 to 0.679 | 2.17 to 2.01 | 0.250 to 0.226 |
+| weak x2 | 5 to 5 | 6.20 (0.05) to 6.32 (0.06) | 0.712 to 0.704 | 2.33 to 2.18 | 0.291 to 0.258 |
+| weak x4 | 5 to 5 | 6.64 (0.06) to 6.83 (0.06) | 0.723 to 0.717 | 1.69 to 1.63 | 0.214 to 0.191 |
+| average x1 | 12 to 12 | 11.39 (0.09) to 11.36 (0.09) | 0.678 to 0.658 | 3.52 to 2.80 | 0.107 to 0.086 |
+| average x2 | 14 to 15 | 13.10 (0.06) to 13.39 (0.06) | 0.737 to 0.729 | 3.60 to 2.65 | 0.117 to 0.083 |
+| average x4 | 16 to 16 | 15.12 (0.06) to 15.52 (0.05) | 0.796 to 0.788 | 2.68 to 1.93 | 0.077 to 0.052 |
+| strong x1 | 18 to 18 | 16.54 (0.09) to 16.64 (0.09) | 0.653 to 0.635 | 3.95 to 2.96 | 0.060 to 0.044 |
+| strong x2 | 19 to 19 | 18.96 (0.06) to 19.16 (0.05) | 0.706 to 0.690 | 3.83 to 2.73 | 0.058 to 0.040 |
+| strong x4 | 21 to 21 | 20.77 (0.04) to 20.82 (0.03) | 0.700 to 0.685 | 2.62 to 1.88 | 0.038 to 0.027 |
+| average x8 | 17 to 18 | 16.85 (0.05) to 17.14 (0.04) | 0.806 to 0.797 | 1.48 to 1.11 | 0.038 to 0.027 |
+
+- **The medians hardly move; the means rise a little.** One median moves a whole round (average x2, 14 to 15) and one
+  more at the top (average x8, 17 to 18). The mean round rises in 9 of 10 cells and by more than two standard errors of
+  the difference in five: average x4 +0.40 (5.0 standard errors), average x8 +0.28 (4.3), average x2 +0.29 (3.2),
+  strong x2 +0.20 (2.6), weak x4 +0.19 (2.3); the rest are within it (average x1 is -0.02). A player who keeps the
+  points of the plays it no longer makes buys the rest of the list sooner. Nothing leaves its range in `BalanceTargets`:
+  the gate's own cells, 60 nights from seed 4000 (what `test_balance_targets.gd` reads), read weak 5, average solo 10,
+  average x2 15, average x4 16, average x8 16 to 17, strong solo 17, as before but for the last, one round up.
+- **The plays fall by a fifth to three tenths** in the average and strong cells (average solo 3.5 to 2.8 a player-night,
+  strong solo 4.0 to 3.0) and by 3 to 8% for the weak shopper. The share
+  of earnings that goes into the crane falls by 0.011 to 0.035 and the spend ratio by 0.006 to 0.020 in every cell: the
+  points of the plays not made are kept.
+- The price of the crane (550) is not touched, and nothing here asks for it: no gate cell comes closer to an edge by it
+  (strong solo, 17 of 19 at the gate's seeds, 18 at 2,000 nights, did not move). A retune is the maintainer's.
+
+Against the bots (`bots_soak.tscn`, `soak_report.py`, roam, seeds 1 to 20: **20 nights a cell**, 180 bot-nights, with
+`main` after #1330; the bots are the same before and after this change, so one run serves both columns). The Kolmogorov
+distance of 20 nights against a simulator cell has a 5% noise of 0.30 by itself, so a cell crossing 0.2 on this table
+says nothing; the 100-night nightly is the read for that. The simulator's medians here are capped at round 16, as the
+nightly reads them (the table above is not):
+
+| Cell | Bot nights | Bot median (mean) | Sim median before / after | Sim mean (se) before / after | Kolmogorov before / after | Bots' spend ratio | Sim before / after | Crane share: bots / sim before / sim after | Parity read before / after |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| rookie x1 (sim weak) | 20 | 6 (5.7) | 5 / 5 | 5.57+-0.06 / 5.61+-0.06 | 0.20 / 0.20 | 0.77 | 0.69 / 0.68 | 0.273 / 0.250 / 0.226 | off / off |
+| rookie x2 (sim weak) | 20 | 7 (7.4) | 5 / 5 | 6.20+-0.05 / 6.32+-0.06 | 0.47 / 0.47 | 0.68 | 0.71 / 0.70 | 0.254 / 0.291 / 0.258 | off / off |
+| rookie x4 (sim weak) | 20 | 5 (6.0) | 5 / 5 | 6.64+-0.06 / 6.83+-0.06 | 0.18 / 0.22 | 0.46 | 0.72 / 0.72 | 0.196 / 0.214 / 0.191 | ok / off |
+| regular x1 (sim average) | 20 | 10 (10.9) | 12 / 12 | 11.36+-0.09 / 11.33+-0.09 | 0.15 / 0.15 | 0.74 | 0.68 / 0.66 | 0.078 / 0.107 / 0.086 | off / off |
+| regular x2 (sim average) | 20 | 12 (12.3) | 14 / 15 | 13.02+-0.06 / 13.27+-0.06 | 0.22 / 0.27 | 0.66 | 0.74 / 0.73 | 0.052 / 0.117 / 0.083 | off / off |
+| regular x4 (sim average) | 20 | 11 (11.3) | 16 / 16 | 14.66+-0.05 / 14.95+-0.04 | 0.63 / 0.68 | 0.55 | 0.80 / 0.79 | 0.043 / 0.077 / 0.052 | off / off |
+| veteran x1 (sim strong) | 20 | 16 (13.6) | 16 / 16 | 14.54+-0.06 / 14.54+-0.06 | 0.22 / 0.23 | 0.72 | 0.65 / 0.63 | 0.062 / 0.060 / 0.044 | off / off |
+| veteran x2 (sim strong) | 20 | 16 (14.0) | 16 / 16 | 15.73+-0.02 / 15.78+-0.02 | 0.35 / 0.37 | 0.72 | 0.71 / 0.69 | 0.046 / 0.058 / 0.040 | off / off |
+| veteran x4 (sim strong) | 20 | 16 (15.9) | 16 / 16 | 15.97+-0.01 / 15.97+-0.01 | 0.05 / 0.05 | 0.73 | 0.70 / 0.68 | 0.027 / 0.038 / 0.027 | ok / ok |
+
+- The crane's share of what the bot earns is closer to the simulator's in 7 of 9 cells (bots / simulator before / after:
+  regular x2 0.052 / 0.117 / 0.083, rookie x2 0.254 / 0.291 / 0.258, regular x1 0.078 / 0.107 / 0.086) and further in 2
+  (rookie x1, veteran x1: a bot that spends 0.27 and 0.06 against a simulator that now spends 0.23 and 0.04).
+- The total spend ratio is not the crane's: the simulator's moved toward the bots' in 3 cells (rookie x2, regular x2,
+  regular x4), stayed in 1 (rookie x4) and moved away in 5, by 0.02 at most, in the cells where the bots already spend
+  more than the simulator (rookie x1, regular x1, the three veteran cells). The spend gate (within 0.20) fails for
+  rookie x4 (the bots spend 0.46 against 0.72) and regular x4 (0.55 against 0.80), before and after.
+- What the parity reads still show is not the crane: the Regular's median is 2 to 5 rounds under the simulator's
+  average player at x2 and x4 (12 against 15, 11 against 16), as it was; it is the bots' own strength, left to the
+  issues on the bots.
+- The pass is all the memory the model has: a shopper dealt a prize it left plays no more that round with those hands,
+  and one that won plays again when its list says so (the weak list has two plays). The bots' pass also covers a prize
+  they wanted and missed (the reach, a fight); the model's never does, so a bot can still play less than the model in
+  a night of fights.
 
 ## Open
 

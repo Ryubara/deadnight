@@ -102,6 +102,12 @@ the points). The price is **550**: under the cheaper wall weapon (900), a round 
 950 cell was lost when a file was moved mid-run; the other cells are as above. The numbers are medians of a model of a
 player, not a promise: rerun with `--set=economy.items:crane_play.price=<n>`.
 
+The price above was found with shoppers who paid for a play when any one prize they lacked would be taken. Since #1331
+they pay only when they would take a quarter of the draw and not again in a round after they let a prize go (the rule
+of the hosted bots, `CraneOdds`): 21 to 29% fewer plays in the average and strong cells, a mean round up to 0.4 higher
+and the gate's cells where they were. The price was not retuned; the numbers are in [the Mystery Box
+research](mystery-box.md#the-simulators-shoppers-at-the-crane-1331).
+
 - **Pick the weapon by what it kills, not by damage a second.** Shots land whole: a 95 damage rifle against 117 health
   needs two, and does no better than a 60 damage gun. Choosing by sustained damage sent the average solo median from 11
   to 9 when the shop weapons were stepped up (#254), because the model held a slow rifle and a pump shotgun in a
@@ -159,7 +165,8 @@ was settled by the quick melee (#411, [below](#the-quick-melee-replaces-the-star
 
 A player carries two weapons, and the modelled players follow it (`NightSim`, `REPLACE_GAIN`): a wall weapon or a
 crane prize replaces the weakest weapon they carry (by sustained damage for a firearm, by blows for a melee weapon),
-and only when it is worth 1.5 times more; they play the crane only when some prize they lack would be. At 1.0 they
+and only when it is worth 1.5 times more; they play the crane only when they would take a quarter of the draw (#1331,
+`CraneOdds`, the bots' rule) and not again in a round after they let a prize go. At 1.0 they
 bought in circles (the same shotgun 79 times in 60 nights, 3 to 4 plays of the crane a night) and the average solo median
 round was 8; at 1.3 it was 9; at 1.5 it was 10 to 12. The policy matters as much as the rule, so the number is the
 average player's taste, written down. Without a carried melee weapon the simulator falls back on the quick melee's blow

@@ -288,8 +288,7 @@ func _weapon(view: View, item: ShopItem) -> Buy:
 func _crane(view: View, item: ShopItem) -> Buy:
 	if not view.is_calm() or not view.crane_ready or view.crane_passed:
 		return null
-	var odds := crane_odds(view, item)
-	if odds <= 0.0 or odds < _profile.crane_min_odds:
+	if not CraneOdds.worth_playing(crane_odds(view, item), _profile.crane_min_odds):
 		return null
 	var stands: Array[Dictionary] = []
 	for spot in _shop.spots_of(item.id):
@@ -302,21 +301,14 @@ func _crane(view: View, item: ShopItem) -> Buy:
 
 
 ## The share of the crane's draw the bot would take (#1322): the weight of the prizes it lacks that
-## `worth_taking` says yes to, over the weight of all it lacks. The server draws among the prizes
-## the buyer lacks by these weights (`ShopItem.roll`), so this is the chance one play gives a prize
-## the bot takes; 0 when it lacks none.
+## `worth_taking` says yes to, over the weight of all it lacks (`CraneOdds.share`, the rule the
+## simulator's shoppers read too).
 static func crane_odds(view: View, item: ShopItem) -> float:
-	var total := 0.0
-	var wanted := 0.0
-	for prize in item.pool:
-		var weapon := WeaponCatalog.catalog_id(prize)
-		if view.arms.has(weapon):
-			continue
-		var weight := item.weight_of(prize)
-		total += weight
-		if worth_taking(view, weapon):
-			wanted += weight
-	return wanted / total if total > 0.0 else 0.0
+	return CraneOdds.share(
+		item,
+		func(prize: StringName) -> bool: return view.arms.has(WeaponCatalog.catalog_id(prize)),
+		func(prize: StringName) -> bool: return worth_taking(view, WeaponCatalog.catalog_id(prize))
+	)
 
 
 ## The re-cut: the weapon in hand is a firearm that has not been re-cut, and the bot has not

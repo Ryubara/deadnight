@@ -820,14 +820,25 @@ func _worth_taking(player: SimPlayer, shop_id: StringName) -> bool:
 	)
 
 
-## Whether a play can give a weapon worth taking: some prize the player lacks beats their weakest.
-## Nobody pays for a prize they would leave on the glass.
+## Whether a play is worth its price (#1331, the rule of the hosted bots: `CraneOdds`): the share of
+## the draw the player would take (the prizes they lack that beat their weakest weapon, by their
+## weight in the draw) is at least `skill.crane_min_odds`, and they did not leave a prize on the
+## glass in this round with the weapons they carry now.
 func _crane_can_pay_off(player: SimPlayer) -> bool:
-	var item := rules.tuning.economy.item(&"crane_play")
-	for shop_id in item.pool_without(rules.players[player.id].weapons):
-		if _worth_taking(player, shop_id):
-			return true
-	return false
+	if player.crane_pass.holds(rules.round_number, player.arms):
+		return false
+	return CraneOdds.worth_playing(_crane_share(player), skill.crane_min_odds)
+
+
+## The share of the crane's draw (by weight, among the prizes the player lacks) the player would
+## take: `CraneOdds.share` with the player's own `_worth_taking`.
+func _crane_share(player: SimPlayer) -> float:
+	var weapons := rules.players[player.id].weapons
+	return CraneOdds.share(
+		rules.tuning.economy.item(&"crane_play"),
+		func(prize: StringName) -> bool: return weapons.has(prize),
+		func(prize: StringName) -> bool: return _worth_taking(player, prize)
+	)
 
 
 ## The weapon a player puts on the bench: the firearm that kills most, re-cut, among those not yet
@@ -878,6 +889,8 @@ func _play_crane(player: SimPlayer, price: int) -> bool:
 				if _worth_taking(player, event["weapon"]):
 					rules.apply(RulesAction.crane_take(player.id, _weakest(player)))
 					won = true
+				else:
+					player.crane_pass.note(rules.round_number, player.arms)
 			elif event["type"] == &"crane_breakdown":
 				broke = true
 		_handle(caused)
@@ -900,6 +913,8 @@ class SimPlayer:
 	var arms: Dictionary[StringName, SimArm] = {}
 	## The blow every player has whatever they carry.
 	var knife: SimArm = SimArm.of(WeaponCatalog.QUICK_MELEE)
+	## The round and the weapons of the last time the player let the crane's prize go.
+	var crane_pass := CranePass.new()
 	## Ran out of every firearm this round and fought with the quick melee.
 	var dry: bool = false
 	## Shot time banked toward the next trigger pull, in seconds.
