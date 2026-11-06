@@ -6,6 +6,10 @@ extends Node
 ## part of the game: `tools/web_smoke/touch_assist.py` exports a copy of the project that starts on
 ## this scene and reads `window.__assist`. The page's query sets the assist:
 ## `?touch=1&assist=1&auto=1`.
+##
+## The run is ready only when the touch layer takes a finger (`TouchControls.is_active`): while the
+## helicopter drop plays the layer is down, and a finger that lands then is never given the look
+## when the layer comes up (#1320).
 
 const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
@@ -44,6 +48,9 @@ func _process(delta: float) -> void:
 
 func _run() -> void:
 	var query := _query()
+	# The bench is about a thumb, not the arrival: a page that asks for the probes should skip the
+	# show on its own (`WebProbe.asked`) and this one plays it (#1323), so it is turned off here.
+	NightScreen.arrival_enabled = false
 	await get_tree().process_frame
 	UIRouter.reset(MENU, UITransition.Kind.CUT)
 	await UIRouter.idle
@@ -68,6 +75,10 @@ func _run() -> void:
 		_eval("window.__assist = {failed: 'no zombie came out'};")
 		return
 	await _settle_view()
+	for _i in SETTLE_LIMIT:
+		if _controls.is_active():
+			break
+		await get_tree().process_frame
 	# The zombie was put beside the crosshair while the shoulder camera was still easing into
 	# place: put it again, so every run starts the same distance off and the thumb has to drag.
 	_rig.place()
@@ -105,6 +116,8 @@ func _publish(ready: bool) -> void:
 	var data := {
 		"ready": ready and not _night.state.zombies.is_empty(),
 		"look_from": to_page.call(canvas * LOOK_AT),
+		"active": _controls.is_active(),
+		"looking": _is_looking(),
 		"aim": to_page.call(_controls.button_circle(TouchLayout.AIM)["centre"]),
 		"step_px": [step.x / _device_ratio(), step.y / _device_ratio()],
 		"lateral": _rig.lateral(),
@@ -123,6 +136,14 @@ func _publish(ready: bool) -> void:
 		"yaw": snappedf(_night.player().camera_rig.yaw, 0.0001),
 	}
 	_eval("window.__assist = %s;" % JSON.stringify(data))
+
+
+## Whether the touch layer has a finger that looks: the drag the probe sends is being read.
+func _is_looking() -> bool:
+	for touch: Dictionary in _controls._touches.values():
+		if touch.get(&"role", &"") == &"look":
+			return true
+	return false
 
 
 ## Metres from the lens to the first wall on the way to the zombie's chest (-1 when clear): a wall
