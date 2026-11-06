@@ -180,8 +180,11 @@ dead) and **3x with the desktop's crowd** (round 1 to 12, 25 minutes, up to 106 
   six nights read **0.4 to 0.6** MB, resources **4.2 to 5.8**, nodes **0.6 to 12.8** and objects **18 to 39** (a local
   night 9.6 and 33): the same night, on any machine. The limits written for the check (40, 200, 25 and 1.5) are
   the ones that were measured as "6, 34, 6 and 0.4" above: they were always meant per night minute, and now hold so.
-  Nodes follow the crowd: 12.8 is a round-18 crowd of 41 standing at the end of the window, not growth (nodes 5 243 at
-  the peak, 6 500 the limit, and 1.2 a night minute from minute 30 to 45 of the 60-minute night).
+  Nodes follow the crowd: 12.8 is a round-18 crowd standing at the end of the window, not growth. In that night nodes
+  rose 2.7 for each dead standing (1.4 and 1.5 on the other two nights read), the mean dead standing went from 11 in the
+  first 200 steady rows to 24 in the last, and at the quiet moments (2 dead or fewer) the night held 4 932 nodes in the
+  first quarter of its steady rows and 5 107 in the last (+175 from round 9 to 18: the parked bodies' pools filling,
+  12 a look); the 60-minute night then read 1.2 and 0.7 nodes a night minute (minutes 30 to 45 and 45 to 59).
 - **The limits.** Resources 2 500 became **2 750**: the most any night read is 2 641 in 30 minutes (2 638 at 60), so it
   is 4% over the 30-minute peak and 4% over the 60-minute plateau, where the old limit was 7.6% over its one
   measure; a feature that adds scripts spends that room and frees some first or shows what its number is. The
