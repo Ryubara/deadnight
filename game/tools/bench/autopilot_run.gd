@@ -41,6 +41,7 @@ extends Node
 ##   `seconds=S`  stop after S seconds of night whatever round it is (default 600)
 ##   `seed=N`     the night's dice (`Night.SEED` by default). A seed is a different night: its round
 ##                in 30 minutes runs from 9 to 19, so compare means over seeds (#1341)
+##   `trace=PATH` a line of hashes a tick (`NightTrace`): the first tick two runs differ (#1350)
 ##   `out=PATH`   on a desktop: write the report there and quit
 ## The report is `window.deadnightRounds` (JSON text) in a browser, and a `AUTOPILOT_RUN` line on a
 ## desktop: for each round the frames, the frame's mean, median, 95th and 99th percentile and
@@ -74,6 +75,7 @@ var _done := false
 var _ablated := false
 var _sampler: PerfSampler
 var _jumped := false
+var _traced := false
 var _hud_probed := false
 var _accounts: Dictionary[int, bool] = {}
 var _stand_ins: StandInPeople
@@ -125,6 +127,11 @@ func _process(delta: float) -> void:
 			add_child(_sampler)
 	if not _jumped:
 		_jumped = true
+		if not _traced and _args.has("trace"):
+			_traced = true
+			add_child(
+				NightTrace.new(night, _args.get_string("trace"), _args.get_int("traceevery", 1))
+			)
 		_start_at_round(night)
 	if _args.get_int("hudprobe") == 1 and not _hud_probed and night.state.zombies.size() >= 60:
 		_hud_probed = true
