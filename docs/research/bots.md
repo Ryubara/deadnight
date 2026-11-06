@@ -48,7 +48,7 @@ magnitude).
 | `ClientState` | `client_state.gd` | Frames (players with position, facing, health, downed, weapon, ammo, reserve, points, `prompt`; zombies as `ZombieCodec` bytes; doors, boards, fuel, phase) and events. It reads no game object. |
 | `use_target` / `prompt` | `night_server.gd` | What `use` would do now: a door (with price), a breach with a board down, and (#214, open when this was written) wall weapons, ammunition lockers and the crane. The bot reads it as a human reads the prompt. |
 | `RulesAction` | `rules/rules_action.gd` | The only way to change the night; validated by one schema. Bots never send these: the server turns commands into them. |
-| Autopilot | `night/autopilot.gd` | Moves with the navigation mesh, backs away inside 7 m, shoots the nearest zombie in sight (camera and barrel both clear), reloads, buys the next door, repairs boards. Plays five rounds alive (measured below). |
+| Autopilot | `night/autopilot.gd` | Moves with the navigation mesh, backs away inside 7 m (pinned against something, it walks its own way for 4 s, #1351), shoots the nearest zombie in sight (camera and barrel both clear), reloads, buys the next door, repairs boards. Plays five rounds alive (measured below). |
 | Zombie navigation | `zombies/navmesh_baker.gd` | One mesh (cell 0.25, agent radius 0.5, height 1.75, climb 0.25, slope 45 degrees, contour error 1.0 cell); rebaked when a door opens. The bot uses `NavigationServer3D.map_get_path` on it. |
 | Balance simulator | `tools/balance/` | `SimSkill` levels (weak, average, strong) with accuracy 0.45 / 0.65 / 0.82, head rate 0.68 / 0.81 / 0.85 (0.06 / 0.15 / 0.30 before the hit zones followed the bodies, #745), dodge, read; the reference for "like a human". |
 
@@ -2128,6 +2128,77 @@ What moves: every soak with `--person` (`bots_soak.tscn`, `tools/bots/soak_repor
 `test_bot_soak.gd` seats the stand-in as its fourth bot, now shopping. A night with the autopilot (`Night`, the captures)
 is set up as before.
 
+## The autopilot pinned by the dead (#1351)
+
+**Symptom.** The 30 minute night of the nightly (`autopilot_run.gd`, the person who cannot die) stopped for 100 to 640 s
+at a time with the dead alive count unchanged: the autopilot at one spot, the shotgun at 0 and 0 (the second gun dry
+too), 465 to 2 325 points unspent, one to twenty-six dead in attack (mode 2, speed 0) at 0.3 to 1.9 m, the three bots 8
+to 50 m away with no target. It was the largest loss of rounds in the nightly after #1324: 1 320 s in 3 of 8 nights.
+
+**Not the shop.** `_refill_gun` and `_plan_shopping` did what they say: with the locker reachable the bot goes and buys
+(the stalls' bots were dry for lack of a way there, not a price: 80 for a shotgun's rounds).
+
+**Cause: the flight.** `decide` flees from the nearest zombie within 7 m (`KEEP_AWAY`) before it does anything else, and
+the flight is a straight line away from that one zombie (bent a little toward home or the shop). Two things follow.
+
+- *A wall ends the flight.* Seed 2 (round 12, 520 s): the bot in the projection booth's north-east corner, pressed to
+  the east wall and the north wall at (5.45, 22.6), one zombie at (4.7, -0.1, 22.1) *inside the north wall* (the mesh
+  stops 0.5 m short of a wall, and a zombie in reach stands where it is and hits through it). The flight went into the
+  east wall; the stuck rule's sidestep (a quarter turn to one side only) went into the north wall. The path to the
+  locker started west, past the zombie, and was never taken. The zombie was no target (the sight test from the corner
+  fails, the bots' too), so nothing could end the stall: reproduced on the real lot with the doors open, both guns at 0
+  and 0 and 950 points: 0.11 m of movement in 60 s.
+- *With nothing to shoot, the flight goes nowhere.* The dead are as fast as the bot, so a bot that cannot kill only
+  gathers them: round 10 to 15 on seeds 3 and 8 had 8 to 26 dead in attack within 1.9 m of it for 100 to 640 s, in the
+  field by the concession and in front of the screen, the bot never striking (the autopilot never used the quick melee,
+  which a person does with an empty gun). Reproduced with the 23 nearest dead of seed 3 placed as they stood and both
+  guns emptied: 0 kills in 60 s, 28 dead standing.
+
+A first fix (the quick melee for a dry gun) passed a test whose single zombie stood in the open, and not the corner.
+
+**Fix** (`autopilot.gd`):
+
+- A pinned bot walks its own way. Two sidesteps less than 3 s apart (`PINNED_SIDESTEPS`, `PINNED_WINDOW`) set
+  `_breakout` for 4 s (`BREAKOUT_FOR`): no flight, a sprint to `_destination()` (the locker, the next door, home).
+- A firearm with no round in it and none to load (`_cannot_shoot`) is not fled with: the bot walks to the locker through
+  the dead, and strikes the zombie it aims at with the quick melee (`command.motion.melee`) inside its reach
+  (`QUICK_REACH` 1.6 m, `WeaponCatalog.quick_melee`).
+
+The rules alone are not enough, each for the other's state: the pin rule alone moves the corner bot and leaves the mob
+at 0 kills; the dry rule alone leaves the corner bot where it is, because the zombie there is not a target.
+
+**Tests.** `tests/night/test_autopilot_pinned.gd` plays the real night a tick at a time: the corner and the zombie in
+the wall (`main`: moved 0.11 m, 0 kills; now out of the corner and the zombie dead), one zombie on a bot against the
+concession wall (0 kills; now killed), the mob of seed 3 with both guns emptied (0 kills; 32), and the rules alone.
+`tests/captures/autopilot_night.tscn --pinned --shoulder` sets the corner up for a capture (the PR's before and after).
+
+**Ten seeds of the nightly's 30 minute night** (`autopilot_run.gd --seed=N --count=1 --bots=3`, the leak job's other
+arguments, `main` at 865b61fd against the same code with this change; both arms ran on the code before #1357, where a
+seed was a draw and not one night (seed 7, where no stall happened, came out the same in both); the stall is the seconds
+the dead alive count and the round did not change for 20 s or more, as in the #1341 data):
+
+| Seed | `main`: round, kills, stall s | Pin rule only | This change |
+| --- | --- | --- | --- |
+| 1 | 19, 294, 111 | 18, 284, 107 | 18, 317, 91 |
+| 2 | 16, 169, **432** | 17, 231, 115 | 18, 276, 84 |
+| 3 | 17, 162, 268 | 16, 186, 228 | 19, 309, 70 |
+| 4 | 19, 342, 104 | 18, 266, 34 | 18, 284, 69 |
+| 5 | 17, 164, 244 | 18, 193, 87 | 18, 266, 133 |
+| 6 | 18, 309, 21 | 17, 214, 223 | 18, 309, 21 |
+| 7 | 18, 309, 73 | 18, 309, 73 | 18, 309, 73 |
+| 8 | 14, 95, **413** | 16, 164, 389 | 19, 283, 55 |
+| 9 | 19, 298, 77 | 19, 261, 76 | 19, 261, 76 |
+| 10 | 18, 281, 162 | 18, 294, 160 | 17, 244, 160 |
+| **Mean** | **17.5, 242, 190** | 17.5, 240, 149 | **18.2, 286, 83** |
+
+Rounds: +0.7 on average (paired differences -1, 2, 2, -1, 1, 0, 0, 5, 0, -1; sd 1.9, so ten seeds do not make that a
+proof alone). What moved is the stall and the kills: the nights with 300 s or more of stall went from 2 to 0, the worst
+night from round 14 to 17, kills +18%. With a stall probe (a row each minute that the alive count had not changed for 40
+s) the ten nights with this change printed 3 rows and none past 100 s. Not looked at: the remaining 83 s a night (the
+tail of a round where the last dead walk to a bot; and ten seeds are what they are), and whether the nightly's person
+should be able to die (`AutopilotRun.PLAYER_HEALTH` is untouched; a person ringed by 26 dead would go down and be
+revived by a bot, the stand-in cannot: the maintainer's question).
+
 ## A flank bot that stood still (#953)
 
 **Symptom.** `test_under_follow_the_bots_stay_with_the_person_who_gave_the_order` (seed 53, bar 0.9) read 0.925 on `main`
@@ -2534,14 +2605,14 @@ ray to it clear on every frame, so the guess that it was out of reach or out of 
 north of the plaza's gate (z 38) within 40 s (a stroll takes 18 s). With the fix switched off: 31 crawlers and 18 walkers
 at 1.8 m/s stayed south of the gate; with it on: none.
 
-**Fix.** `ZombieSim._keeps_its_route` already kept the old route against a new one that is `ROUTE_FLIP` (6 m)
-longer, while the old one ended near the target (#950). It now also keeps it against a new route that sends the zombie
-back the way it is going (`_turns_back`: the first leg of the new route, past `LEG_LEAST` 0.3 m, points against the leg
-being walked) unless the new one
-is `ROUTE_GAIN` (4 m) shorter than what is left. A zombie more than `ROUTE_STRAY` (1 m) from its leg (shoved by the
-crowd, thrown by a blast) takes the new route whatever it gains, and a new route that goes on the same way is taken as
-ever, so a crowd still spreads round an obstacle. `test_zombie_think_cost.gd`'s two golden digests moved once, as the
-note beside them says; with the rule off they are the old ones.
+**Fix.** `ZombieRouteKeep.keeps` (moved out of `ZombieSim`, which was past the lint line limit) already kept the old
+route against a new one that is `FLIP` (6 m) longer, while the old one ended near the target (#950). It now also keeps
+it against a new route that sends the zombie back the way it is going (`ZombieRouteKeep.turns_back`: the first leg of
+the new route, past `LEG_LEAST` 0.3 m, points against the leg being walked) unless the new one is `GAIN` (4 m) shorter
+than what is left. A zombie more than `STRAY` (1 m) from its leg (shoved by the crowd, thrown by a blast) takes the
+new route whatever it gains, and a new route that goes on the same way is taken as ever, so a crowd still spreads
+round an obstacle. `test_zombie_think_cost.gd`'s two golden digests moved once, as the note beside them says; with the
+rule off they are the old ones.
 
 **Numbers** (`bots_soak.tscn`, regular, Hold, 3 bots and a person; seeds 101 to 145, before = the rule off, after = this
 change; both arms `--max-round 20`). Nights are not repeatable (#1350), so the two arms are compared by counts, not night
@@ -2558,13 +2629,14 @@ The crowd's spread (how far apart the dead are when a round ends) did not fall, 
 The Hold cell still has tails of 150 to 210 s that are not a round that does not end (`BotHunt` skips Hold, see
 above); they were not read here.
 
-**What the hold costs a chase (review of the pull request).** `_keeps_its_route` has no exemption for a close chase, and
-when little of the route is left its gain test (`length > left - ROUTE_GAIN`) is always true, so the worry was a dead
-2 to 4 m from a person who dodges past it keeping its old route and walking the wrong way. It does not, and the reason
-is geometry: the hold needs the new route's first leg to point more than a right angle from the leg being walked, and a
-route is replaced every 0.25 s, so the person has to get from in front of the dead to behind it within one repath: a
-pass within about a metre, which is inside the dead's reach (1.4 m). There the dead swings (no repaths while it swings),
-and when the swing ends the old route is stale (its end is more than `ROUTE_KEEP` from the person) and is let go.
+**What the hold costs a chase (review of the pull request).** `ZombieRouteKeep.keeps` has no exemption for a close
+chase, and when little of the route is left its gain test (`length > left - GAIN`) is always true, so the worry was a
+dead 2 to 4 m from a person who dodges past it keeping its old route and walking the wrong way. It does not, and the
+reason is geometry: the hold needs the new route's first leg to point more than a right angle from the leg being
+walked, and a route is replaced every 0.25 s, so the person has to get from in front of the dead to behind it within
+one repath: a pass within about a metre, which is inside the dead's reach (1.4 m). There the dead swings (no repaths
+while it swings), and when the swing ends the old route is stale (its end is more than `KEEP` from the person) and is
+let go.
 `test_zombie_dodge_past.gd` measures it on open ground (a two-point path, as the mesh gives): a crawler (1.2 m/s) and
 a walker (2.0 m/s) chasing a person 2, 3 and 4 m off, which sidesteps 0 to 3 m in steps of 0.3 and runs past to behind and
 on at 4.8 m/s (`PlayerTuning.run_speed`) and at 7.0 (`sprint_speed`), with three seeds (the dead's repath phase), and a

@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## What holding a route costs a dead that chases a person who runs past it (#1347). The hold
-## (`ZombieSim._keeps_its_route`) keeps the old route against a new one that sends the dead back
+## (`ZombieRouteKeep.keeps`) keeps the old route against a new one that sends the dead back
 ## the way it is going, and its gain test is always true when little of the route is left, so a
 ## person who dodges past a dead 2 to 4 m away might find it walking the wrong way for a while.
 ##
