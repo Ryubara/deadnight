@@ -503,6 +503,45 @@ closing on a person every second); the gate is set above it. The rescue never fi
 16 of seeds 21 to 28 and the 4 veteran ones: `rescued` is 0 in each): the siege and the route fix took the two causes
 found, and the net is proved by its test only.
 
+### Dead inside the prize crane's cabinet (#1352)
+
+The autopilot's night of seed 13 (round 10, `d15d770f`) stood 1 040 s on two dead at `(-23.4, -12.5)` and `(-24.0,
+-12.0)` with three bots 0.8 to 2.6 m away that had no contact and never fired. They stood **inside the crane's
+cabinet**. `CraneBlock` is the cabinet as a solid box (1.8 x 1.4 x 2.6 m, physics layer 1) that the rules move to
+another spot when the crane breaks down (`crane_moved`); the third spot is the crane's centre `(-24.0, 0.0, -12.5)`,
+no door shuts it, and a dead standing there when the box landed was inside a wall that every sight line and shot ends
+on. The dead are not physics bodies and a swing on the lot is judged by height alone (`ZombieSim._can_swing`), so it
+went on swinging at the bot beside the box (a bot's look stayed on the blow's bearing, which is why its `look` read
+the same number for 1 000 s), and `ZombieDirector`'s rescue never fired because every blow resets its quiet clock. A
+probe that dumps a physics point query at each dead's feet found it: both were inside `CraneBlock` at 0.5, 1.1 and 1.6
+m.
+
+Fix: `ZombieSim.solids` holds the box as plain data (`ZombieSolid`, kept by `CraneBlock.place`); a dead that stands to
+swing, rises or staggers inside one, and every dead inside one on the step after it landed, is put `CLEARANCE` (0.45
+m) outside the face nearest its target, so it is seen on the side of whoever it hits. A walking dead passes through as
+it always did (the walking mesh does not know the cabinet). Cost: each sim step tests every living dead once against
+the box (one transform and four compares; 120 dead at 30 Hz is 3 600 tests a second, well under 1 ms); nothing is
+allocated. Tests: `test_crane_cabinet_dead.gd` (the real lot and server: the crane breaks down onto two dead at the
+night's places; they are put outside, the bot has a line to them and kills them; failed first: the dead inside at the
+landing, "1.6 m to a wall" from the bot, both dead alive after 30 s of fire), `test_zombie_solid.gd`. Capture:
+`tests/captures/bots_crane_cabinet.tscn` (from the bot's eye, with a map of the footprint).
+
+Bodies under the box: a player's body or a bot's under the landing box is pushed out by the engine's depenetration in
+the tick after the landing, measured on the real lot and server (`test_bodies_under_the_crane.gd`, the box at its
+third spot, bodies at its middle, 0.1 m inside the face on the shop side and 0.1 m inside a corner, both a bot and a
+person). From a face or a corner the body moves 0.45 m, to 0.35 m (its radius) outside that face, along the face's
+normal; from the middle (0.7 m from the nearest face, the worst case) it moves 1.05 m, out of the face on the shop
+side. All of it is one tick, with no other solid crossed (rays at 0.3, 1.0 and 1.7 m from start to end meet nothing
+but the box), on the floor (y 0.001), inside the play bounds and on the walking mesh (0 m off). It then walks as
+before (a person's walk to a point 3 m out arrives within 3 s; a bot's own brain walks 24 m away in 6 s), a ray at it
+from the open side meets the body and from the box's side meets the box. The client's own body (a real socket, the
+client predicting its body) is put out by its own copy of the box a tick after the server's: it ends 0.00 m from the
+server's body with one correction of 1.03 m (from the middle) or 0.44 m (a corner), at most 0.77 m apart while they
+differ; it then moves at 4.5 m/s away from the box. The test also fails with the box's shape off, so it does hold the
+push-out. Not measured: a body that sprints into the landing, and several bodies under one box at once.
+
+Not fixed: a walking dead's path through a standing cabinet (the mesh is baked without it).
+
 ## Left open
 
 - Browser and weak-machine measurement of the full scene: done in the browser (Chrome with a GPU, and the processor

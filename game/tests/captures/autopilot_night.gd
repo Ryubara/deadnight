@@ -5,7 +5,9 @@ extends Node
 ## `--log` (print every event), `--fast` (quick dead for a recording), `--trace`,
 ## `--count`, `--max-alive`, `--break` (the match settings, see MatchSettings),
 ## `--shoulder` (film through the bot's own shoulder camera), `--cheap` (a cheap door and shotgun
-## and no rounds in the pistol's reserve, so a short run shows the bot shopping).
+## and no rounds in the pistol's reserve, so a short run shows the bot shopping), `--pinned` (the
+## stall of #1351: the booth's door open, both guns empty, the bot in the booth's corner with the
+## first zombie in the wall beside it).
 
 ## Frames the program waits for the navigation bake a door started before it quits.
 const BAKE_WAIT_FRAMES := 600
@@ -33,9 +35,36 @@ func _ready() -> void:
 	await _night.start(Night.Mode.AUTOPILOT, int(_args.get("seed", Night.SEED)), _tuning())
 	if _args.has("cheap"):
 		_night.server.combat.state_of(1, &"pistol").reserve = 0
+	if _args.has("pinned"):
+		await _prepare_pin()
 	_night.ticked.connect(_on_tick)
 	if _args.has("log"):
 		_night.state.event_received.connect(_print_event)
+
+
+## The stall of the nightly (#1351), set up: both booth doors paid for, the bot's guns empty with
+## 950 points left, and, when the first zombie is on the lot, the bot in the booth's north-east
+## corner with that zombie in the wall at its elbow, attacking through it.
+func _prepare_pin() -> void:
+	var rules := _night.server.rules
+	var price := 0
+	for door_id in [&"door_concession", &"door_booth"]:
+		price += _night.rules_tuning.economy.item(door_id).price
+	rules.apply(RulesAction.grant_points(1, price + 950))
+	for door_id in [&"door_concession", &"door_booth"]:
+		RulesFixture.buy(rules, 1, door_id)
+	await NightFixture.settle_bake(_night)
+	_night.server.combat.apply(CombatAction.give_weapon(1, &"shotgun"))
+	_night.server.combat.apply(CombatAction.equip(1, &"shotgun"))
+	for id: StringName in [&"shotgun", WeaponCatalog.START_WEAPON]:
+		var gun := _night.server.combat.state_of(1, id)
+		gun.ammo = 0
+		gun.reserve = 0
+	var zombie_id := NightFixture.first_zombie(_night)
+	_night.server.body_of(1).teleport(Vector3(5.45, 0.1, 22.6))
+	var zombie: ZombieBody = _night.server.sim.zombies[zombie_id]
+	zombie.position = Vector3(4.7, -0.1, 22.1)
+	zombie.enter(ZombieBody.Mode.ATTACK)
 
 
 ## `--count=N`, `--max-alive=N`, and `--break=S`: the match settings of the night.
@@ -49,9 +78,12 @@ func _match_settings() -> MatchSettings:
 
 ## `--fast`: the dead walk faster, so a short recording meets them.
 func _tuning() -> RulesTuning:
-	if not _args.has("fast") and not _args.has("cheap"):
+	if not _args.has("fast") and not _args.has("cheap") and not _args.has("pinned"):
 		return null
 	var tuning: RulesTuning = load(GameRules.DEFAULT_TUNING_PATH).duplicate(true)
+	if _args.has("pinned"):
+		# As the nightly: the dead cannot kill the bot, so the stall is a stand-still, not a death.
+		tuning.health.max_health = AutopilotRun.PLAYER_HEALTH
 	if _args.has("fast"):
 		tuning.rounds.speed_base = 2.2
 		tuning.rounds.first_spawn_delay = 0.5

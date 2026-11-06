@@ -26,6 +26,13 @@ const ARRIVED := 1.5
 ## Seconds pressed against something before it sidesteps, and for how long.
 const STUCK_AFTER := 0.5
 const SIDESTEP_FOR := 0.6
+## Sidesteps in a row (each less than `PINNED_WINDOW` seconds after the last) that mean it is pinned
+## and not just clipping a corner, and the seconds it then walks its way to its goal instead of away
+## from the dead, whatever is near: a flight is a line away from a zombie, and in a corner it ends
+## against a wall for good (#1351).
+const PINNED_SIDESTEPS := 2
+const PINNED_WINDOW := 3.0
+const BREAKOUT_FOR := 4.0
 const BIG_PRICE := 1 << 30
 ## Points it keeps back for rounds when it saves for a weapon.
 const AMMO_MONEY := 120
@@ -49,6 +56,9 @@ const SHOP_PULL := 0.8
 const THREAT_RANGE := 12.0
 ## It melees a zombie this close.
 const MELEE_RANGE := 1.9
+## Metres the quick melee reaches (`WeaponCatalog.quick_melee`, 1.6): the dead swing from 1.4, so a
+## zombie that can hit it is one it can hit back.
+const QUICK_REACH := 1.6
 
 var state: ClientState
 var map: RID
@@ -86,6 +96,9 @@ var revive := AutopilotRevive.new()
 var _yaw := 0.0
 var _sidestep := 0.0
 var _stuck_for := 0.0
+var _sidesteps := 0
+var _since_sidestep := 0.0
+var _breakout := 0.0
 var _last_pos := Vector3.ZERO
 var _ticks := 0
 var _swap_wait := 0
@@ -122,7 +135,17 @@ func decide(delta: float) -> NightCommand:
 		_shopping = _plan_shopping(here)
 	var held := _held()
 	var melee := held != null and held.is_melee()
-	var fleeing := not near.is_empty() and _flat(here, near["position"]) < KEEP_AWAY and not melee
+	_breakout = maxf(_breakout - delta, 0.0)
+	# With nothing to shoot a flight leads nowhere: the dead are as fast and the crowd grows round it
+	# until it stands in a ring of them (#1351). It walks to the locker through them, striking.
+	var empty := _cannot_shoot(held)
+	var fleeing := (
+		not near.is_empty()
+		and _flat(here, near["position"]) < KEEP_AWAY
+		and not melee
+		and not empty
+		and _breakout == 0.0
+	)
 	if fleeing:
 		wish = _flee(here, near["position"])
 	elif melee and not near.is_empty():
@@ -133,12 +156,13 @@ func decide(delta: float) -> NightCommand:
 	if wish != Vector3.ZERO:
 		_yaw = atan2(-wish.x, -wish.z)
 		command.motion.move = Vector2(0.0, -1.0)
-		command.motion.sprint = fleeing
+		command.motion.sprint = fleeing or _breakout > 0.0
 	command.motion.yaw = _yaw
 	if not target.is_empty():
 		_aim(command, here, target)
 		var close := _flat(here, target["position"]) < MELEE_RANGE
 		command.fire = not state.me().get("reloading", false) and (close or not melee)
+		command.motion.melee = empty and _flat(here, target["position"]) < QUICK_REACH
 	var threatened := not near.is_empty() and _flat(here, near["position"]) < THREAT_RANGE
 	if _swap_wait == 0 and (_wants_swap(held, threatened) or _wants_refill_gun(held, threatened)):
 		command.swap = true
@@ -175,6 +199,15 @@ func decide(delta: float) -> NightCommand:
 	elif kind == &"fuel":
 		command.use = fuel.wants_use(prompt, state.frame, state.points())
 	return command
+
+
+## Whether the gun in hand cannot fire and cannot be loaded: a firearm with no round in it and none
+## in reserve. A person strikes with the quick melee then, and goes for rounds.
+func _cannot_shoot(held: WeaponDef) -> bool:
+	if held == null or held.is_melee():
+		return false
+	var me := state.me()
+	return int(me.get("ammo", 0)) <= 0 and int(me.get("reserve", 0)) <= 0
 
 
 ## Whether it stands at a door it can pay for (it holds still to buy it): at a door it cannot pay
@@ -528,9 +561,15 @@ func _unstuck(wish: Vector3, here: Vector3, delta: float) -> Vector3:
 	else:
 		_stuck_for = 0.0
 	_last_pos = here
+	_since_sidestep += delta
 	if _stuck_for > STUCK_AFTER:
 		_sidestep = SIDESTEP_FOR
 		_stuck_for = 0.0
+		_sidesteps = _sidesteps + 1 if _since_sidestep < PINNED_WINDOW else 1
+		_since_sidestep = 0.0
+		if _sidesteps >= PINNED_SIDESTEPS:
+			_breakout = BREAKOUT_FOR
+			_sidesteps = 0
 	if _sidestep > 0.0:
 		_sidestep -= delta
 		return wish.rotated(Vector3.UP, PI * 0.5)

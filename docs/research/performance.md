@@ -276,7 +276,7 @@ resamples):
 | --- | --- | --- |
 | A bot holds a loaded ray gun with a dead inside the 3 m splash | 3 660 s in 10 nights (183 s a night) | **0** |
 | The person (the autopilot) has no rounds and no reserve, with a dead at its feet ([#1351](https://github.com/Ryubara/deadnight/issues/1351)) | 1 220 s in 4 nights | 1 320 s in 3 nights |
-| One to three dead stand and nobody has them in view (seed 13: 1 040 s; the rest 40 to 100 s; [#1352](https://github.com/Ryubara/deadnight/issues/1352)) | 1 620 s in 12 nights | 120 s in 3 nights |
+| One to three dead stand and nobody has them in view (seed 13: 1 040 s, two dead inside the crane's cabinet, [fixed](zombies.md#dead-inside-the-prize-cranes-cabinet-1352); the rest 40 to 100 s; [#1352](https://github.com/Ryubara/deadnight/issues/1352)) | 1 620 s in 12 nights | 120 s in 3 nights |
 | More than three dead stand, neither of the above | 80 s in 2 nights | 40 s in 1 night |
 
   On `main` the ray gun stall is gone and the person's is what is left. At seed 2 (round 10, 71 kills) the autopilot
@@ -303,6 +303,26 @@ rest; the seeds are 1 to 20 and 1 to 8 (never 1958, which the CI plays). An effe
 at this size, and a round is about 2 minutes of the night. The nights that differ on a second run make every number
 noisier than a fixed night would be, in the same way for every commit, so the comparisons stand and the single seeds do
 not.
+
+### The person's stall, found and fixed (#1351)
+
+The autopilot's stall (the second row of the table above) is the autopilot's own: its flight from the nearest zombie is
+a straight line that ends against a wall, and with a dry gun it kept fleeing until the dead closed a ring round it. The
+cause, the two rules that fix it and the tests are in [bots.md](bots.md#the-autopilot-pinned-by-the-dead-1351). Ten
+seeds of the same night (`--seed=1` to `10`), `main` at `865b61fd` against the change, the stall counted as above (both
+arms ran before the lot's age was fixed, [below](#why-two-runs-of-one-night-differ-1350): a seed was a draw, not one
+night, and the arms' same-seed nights were not the same night but for seed 7):
+
+| | Round, mean | Kills, mean | Seconds standing unchanged (20 s or more), mean | Nights with 300 s or more | Lowest round |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `main` | 17.5 | 242 | 190 | 2 | 14 |
+| With the change | **18.2** | **286** | **83** | **0** | 17 |
+
+The paired round difference is +0.7 (sd 1.9 over the seeds): not a result alone, as this page says of anything under
+about 2 rounds. The stall and the kills are what moved, and the probe of the ten nights with the change printed 3 rows
+(none past 100 s) where `main`'s night of seed 8 printed a stall of 640 s. What is left is not looked at: the 83 s a
+night, and the one to three dead nobody has in view ([#1352](https://github.com/Ryubara/deadnight/issues/1352)). Whether
+the nightly's person should be able to die is still the maintainer's (`AutopilotRun.PLAYER_HEALTH`, untouched).
 
 ## Why two runs of one night differ (#1350)
 
