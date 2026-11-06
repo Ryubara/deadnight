@@ -45,9 +45,6 @@ func _process(delta: float) -> void:
 
 func _run() -> void:
 	var query := _query()
-	# The bench is about a thumb, not the arrival: the drop is turned off (a page that asks for the
-	# probes should skip it on its own, `WebProbe.asked`, and plays it: #1323).
-	NightScreen.arrival_enabled = false
 	await get_tree().process_frame
 	UIRouter.reset(MENU, UITransition.Kind.CUT)
 	await UIRouter.idle

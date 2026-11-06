@@ -69,7 +69,8 @@ itself and types its members loaded the night screen first, and the drop played.
 <godot> <work folder>` exports a bench scene (`game/tests/captures/arrival_bench.tscn`, with the typed members that
 loaded the night first) and fails when `NightScreen.arrival_enabled` is true at its start or the show plays (`--phone`
 opens it as the touch benches do). The benches' own `NightScreen.arrival_enabled = false` lines (`touch_assist_bench.gd`,
-`touch_melee_bench.gd`, #1328) are no longer needed once that pull request has landed with this one and can go.
+`touch_melee_bench.gd`, #1328) are gone (#1336): both benches type `NightScreen`, which loads it first, and
+`touch_assist.py` and `touch_melee.py` pass without them, so the fix reaches those pages and the probes prove it.
 
 ## The melee and assist benches (#1320)
 
@@ -86,9 +87,9 @@ phone rework and neither was the game's fault:
   is ready only when `TouchControls.strike_up`, and the probe records the button's state at every tap (a tap on a hidden
   button presses free ground, where two taps are a double tap).
 - **`touch_assist.py` began its drag while the helicopter drop played** (see `aim-assist.md`): the touch layer is down for
-  the show and never reads a finger that landed before it came up. Benches turn the drop off
-  (`NightScreen.arrival_enabled = false`) and wait for `TouchControls.is_active()`; a page that asks for the probes
-  skips the show on its own (`WebProbe.asked`), which a bench page did not until #1323. The probe now fails with
+  the show and never reads a finger that landed before it came up. Benches wait for
+  `TouchControls.is_active()`; a page that asks for the probes skips the show on its own (`WebProbe.asked`), which a
+  bench page did not until #1323 (the benches turned the drop off themselves until #1336). The probe now fails with
   its reason when the layer takes no look finger (`looking`).
 
 Run each on its own export: `uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python
