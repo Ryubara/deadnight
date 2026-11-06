@@ -15,6 +15,15 @@ const REVIVE_CLIP := &"Revive_Kneel"
 const CRAWL_GLB := "res://assets/characters/soldier/crawl/soldier_crawl.glb"
 const CRAWL_SPEC := "res://assets/characters/soldier/crawl/clips.json"
 const CRAWL_CLIP := &"Downed_Crawl"
+## The pose the right arm passes through on its way from the sit to the crawl (a still, in the
+## crawl's file, #1282): blended bone by bone straight to the crawl, the arm's way from the forearm
+## over the knee to the elbow on the ground crossed the belly and the thigh, up to 8 cm deep. The
+## arm goes sit to this pose first, then on to the crawl with the rest of the body.
+const CRAWL_LEAD_CLIP := &"Downed_Crawl_Arm"
+const CRAWL_LEAD_BONES: Array[String] = ["Shoulder.R", "UpperArm.R", "LowerArm.R"]
+## The arm is on that pose by 1 / RAMP of the crawl's weight (sit to this pose, then this pose to
+## the crawl by the crawl's own weight).
+const CRAWL_LEAD_RAMP := 4.0
 ## How fast the body goes down and gets up, and kneels and stands (per second, exponential).
 const DOWNED_BLEND_RATE := 6.0
 const KNEEL_BLEND_RATE := 10.0
@@ -27,6 +36,7 @@ const DOWNED_BLEND_PARAMETER := &"parameters/downed/blend_amount"
 const KNEEL_BLEND_PARAMETER := &"parameters/kneel/blend_amount"
 const CRAWL_BLEND_PARAMETER := &"parameters/crawl/blend_amount"
 const CRAWL_RATE_PARAMETER := &"parameters/crawl_rate/scale"
+const CRAWL_LEAD_PARAMETER := &"parameters/crawl_lead/blend_amount"
 
 ## Down (the rules said so) and holding a revive.
 var downed := false
@@ -65,9 +75,17 @@ func has_crawl() -> bool:
 	return crawl_speed > 0.0
 
 
+## How much of the right arm's way from the sit to the lead pose is done now.
+func lead_weight() -> float:
+	return clampf(crawl_blend * CRAWL_LEAD_RAMP, 0.0, 1.0)
+
+
 ## Adds the kneel and the downed layers over `below` (the standing body) to `tree`; returns the top
-## node to connect on: `downed` over `kneel` over `below`.
-func add_nodes(tree: AnimationNodeBlendTree, below: StringName) -> StringName:
+## node to connect on: `downed` over `kneel` over `below`. `skeleton_path` is the track path of the
+## skeleton, for the bones the crawl's lead pose is filtered to.
+func add_nodes(
+	tree: AnimationNodeBlendTree, below: StringName, skeleton_path: String
+) -> StringName:
 	tree.add_node(&"revive_clip", _clip(REVIVE_CLIP))
 	tree.add_node(&"kneel", AnimationNodeBlend2.new())
 	tree.connect_node(&"kneel", 0, below)
@@ -79,8 +97,16 @@ func add_nodes(tree: AnimationNodeBlendTree, below: StringName) -> StringName:
 		tree.add_node(&"crawl_clip", _clip(CRAWL_CLIP))
 		tree.add_node(&"crawl_rate", AnimationNodeTimeScale.new())
 		tree.add_node(&"crawl", AnimationNodeBlend2.new())
+		tree.add_node(&"crawl_lead_clip", _clip(CRAWL_LEAD_CLIP))
+		var lead := AnimationNodeBlend2.new()
+		lead.filter_enabled = true
+		for bone in CRAWL_LEAD_BONES:
+			lead.set_filter_path(NodePath("%s:%s" % [skeleton_path, bone]), true)
+		tree.add_node(&"crawl_lead", lead)
 		tree.connect_node(&"crawl_rate", 0, &"crawl_clip")
-		tree.connect_node(&"crawl", 0, &"downed_clip")
+		tree.connect_node(&"crawl_lead", 0, &"downed_clip")
+		tree.connect_node(&"crawl_lead", 1, &"crawl_lead_clip")
+		tree.connect_node(&"crawl", 0, &"crawl_lead")
 		tree.connect_node(&"crawl", 1, &"crawl_rate")
 		tree.connect_node(&"downed", 1, &"crawl")
 	else:
@@ -100,6 +126,7 @@ func advance(tree: AnimationTree, speed: float, delta: float) -> void:
 		var target := clampf(share / CRAWL_FULL, 0.0, 1.0)
 		crawl_blend = _ease(crawl_blend, target, DOWNED_BLEND_RATE, delta)
 		tree.set(CRAWL_BLEND_PARAMETER, crawl_blend)
+		tree.set(CRAWL_LEAD_PARAMETER, lead_weight())
 		var rate := clampf(share, CRAWL_RATE_MIN, CRAWL_RATE_MAX)
 		tree.set(CRAWL_RATE_PARAMETER, lerpf(1.0, rate, target))
 
