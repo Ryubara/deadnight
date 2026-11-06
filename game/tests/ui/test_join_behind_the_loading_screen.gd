@@ -9,6 +9,10 @@ const WAIT_SECONDS := 40.0
 var _warm_up := false
 
 
+func before() -> void:
+	await WindowFixture.make_drawable(get_tree())
+
+
 func before_test() -> void:
 	_warm_up = NightScreen.warm_up_enabled
 	NightScreen.warm_up_enabled = true
