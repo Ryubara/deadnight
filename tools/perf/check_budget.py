@@ -40,11 +40,23 @@ def steady_rows(samples: list[dict], budget: dict) -> list[dict]:
     return rows[budget.get("skip_rows", 0) :]
 
 
-def slope_per_minute(rows: list[dict], key: str) -> float:
-    """How much `key` grows a minute over the rows: the least-squares line through (t, value)."""
+def slope_per_minute(rows: list[dict], key: str, fixed_fps: float = 0.0) -> float:
+    """How much `key` grows a minute over the rows: the least-squares line through (time, value).
+
+    The time is the row's `t`, the wall clock of the run, unless `fixed_fps` is given: then it is the frames the rows
+    stepped at that rate, the night's own minutes. A fixed step makes the night the same on every machine and the wall
+    clock not (the same 1 079 steady rows took 280 to 553 s on the runners and a laptop), so a count that rises with the
+    night read 0.9 to 2.4 MB a wall minute and 0.4 to 0.6 a night minute (#1319).
+    """
     if len(rows) < 3:
         return 0.0
-    times = [row["t"] for row in rows]
+    if fixed_fps > 0:
+        times, stepped = [], 0
+        for row in rows:
+            stepped += row["frames"]
+            times.append(stepped / fixed_fps)
+    else:
+        times = [row["t"] for row in rows]
     values = [row[key] for row in rows]
     mean_t = statistics.fmean(times)
     mean_v = statistics.fmean(values)
@@ -69,11 +81,13 @@ def judge(report: dict, budget: dict) -> tuple[list[str], list[str]]:
         lines.append(f"{key}: peak {peak} (limit {limit})")
         if peak > limit:
             broken.append(f"{key} peaked at {peak}, over its limit {limit}")
+    fixed_fps = float(budget.get("fixed_fps", 0))
+    unit = "a night minute" if fixed_fps > 0 else "a minute"
     for key, limit in budget.get("growth_per_minute", {}).items():
-        slope = slope_per_minute(rows, key)
-        lines.append(f"{key}: grows {slope:.1f} a minute (limit {limit})")
+        slope = slope_per_minute(rows, key, fixed_fps)
+        lines.append(f"{key}: grows {slope:.1f} {unit} (limit {limit})")
         if slope > limit:
-            broken.append(f"{key} grows {slope:.1f} a minute over the steady rows, over its limit {limit}")
+            broken.append(f"{key} grows {slope:.1f} {unit} over the steady rows, over its limit {limit}")
     for key, limit in budget.get("max_per_tick", {}).items():
         # Work counted by `PerfProbe.count` (a decode, a list built): the same on every machine.
         ticks = sum(row["frames"] for row in rows)
