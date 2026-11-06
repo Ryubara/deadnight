@@ -416,11 +416,10 @@ func _faults(
 	for box in held:
 		if card.intersects(box):
 			found.append("%s: the card %s is over the touch box %s" % [label, card, box])
-	# On the edge of the screen, as it always was, or beside the column and short of the middle.
-	if card.position.x >= canvas.x * 0.25 and card.end.x > canvas.x * 0.5 - CROSSHAIR_CLEAR.x * 0.5:
-		found.append(
-			"%s: the card %s is neither on the edge nor short of the middle" % [label, card]
-		)
+	# It stays in the left half of the screen, as it always did (beside the column it is over a
+	# quarter of the way across; the crosshair's box is checked above).
+	if card.end.x > canvas.x * 0.5:
+		found.append("%s: the card %s is past the middle of the screen" % [label, card])
 	return found
 
 
