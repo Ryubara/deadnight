@@ -130,7 +130,11 @@ frames a clip (four missed a windup). The night's own poses, after the hand IK, 
 `tests/captures/clip_arms_tour.tscn -- --measure`: the clips' beats are at 3 cm or under but for the start of the
 crawl and his SMG carry (31-38 mm), and #987 brought the IK's reload and long-gun hold there too
 ([the numbers](weapon-hold-ik.md#the-reload-and-the-shouldered-hold-out-of-the-body-987)), the menu's holds with them.
-Only the armbands (33-50 mm) are recorded.
+The rest of what #987 left over (the crawl's blend-in, the melee swing's and sprint's armband, the pistol
+sprint and strike, the grenade's cook) was done in #1282
+([the numbers](weapon-hold-ik.md#the-poses-987-left-over-the-tolerance-1282)):
+the whole tour is under 3 cm on both looks, and `test_pose_arm_fit.gd` holds those poses. Only the armbands
+(33-36 mm) are recorded.
 
 A sampled pose stays where it was sampled (#1143): `ClipFit.pose` pauses the player after the seek. A playing
 clip went on with the real time of the physics frames `prepare_sets` awaits, so `BodyFit.bone_point` (the live

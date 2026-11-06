@@ -52,3 +52,20 @@ func test_the_view_readout_is_behind_its_query_and_adds_nothing_to_a_players_pag
 	var opening := presets.substr(presets.rfind("<script>", start), 120)
 	assert_str(opening).contains("if(!/[?&]viewcheck/.test(location.search))return;")
 	assert_int(presets.count("createElement('pre')")).is_equal(1)
+
+
+func test_the_view_readout_names_what_separates_the_ios_candidates() -> void:
+	# #1310 (an iPhone in Safari): the verdict line, the viewport units, the safe area, the computed
+	# touch-action and the gestures the page saw are what tell a stuck zoom from a short viewport.
+	var presets := FileAccess.get_file_as_string("res://export_presets.cfg")
+	for needle: String in [
+		"all as designed",
+		"visual viewport is not the page",
+		"100svh",
+		"100dvh",
+		"safe-area-inset-top",
+		"touchAction",
+		"gesturestart",
+		"two-finger touches",
+	]:
+		assert_str(presets).contains(needle)
