@@ -52,6 +52,10 @@ RUN_SPEED = float(re.search(r"var run_speed := ([0-9.]+)", _TUNING).group(1))
 SPRINT_SPEED = float(re.search(r"var sprint_speed := ([0-9.]+)", _TUNING).group(1))
 SPEED_TOLERANCE = 0.04
 FINGER = 1
+# Where the stick's finger lands, as shares of the page: free ground on the stick's side, above the weapon strip and
+# right of the players' column (a finger held on the column shows the scoreboard, #1295, and starts no stick: the old
+# start, 0.13 across and 0.74 down, is on the column).
+STICK_START = (0.30, 0.62)
 
 VIBRATE_JS = """
 () => {
@@ -203,7 +207,7 @@ def run_size(url: str, label: str, size: dict, out: Path) -> dict:
         def shot(name: str) -> None:
             page.screenshot(path=str(out / f"{label}_{name}.png"))
 
-        origin = (size["width"] * 0.13, size["height"] * 0.74)
+        origin = (size["width"] * STICK_START[0], size["height"] * STICK_START[1])
         state = stick(page)
         per_unit = css_per_unit(state["layout"])
         result["css_per_unit"] = per_unit
