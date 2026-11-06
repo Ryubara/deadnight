@@ -2,10 +2,11 @@ class_name TouchHints
 extends Control
 ## First-run labels on the touch controls: "DRAG TO MOVE" over the stick's place, "DRAG TO LOOK" in
 ## the look area, "TAP TO USE" beside the Interact button and "STRIKE" beside the Strike
-## button the first time each shows. Each is short, appears once, and goes the moment its control
-## is used; what was used is remembered in the setting `controls/touch_hints_seen` (one bit per
-## hint), so a player sees each hint once, ever. Resetting the settings to their defaults brings
-## them back.
+## button the first time each shows, and "TAP TO ORDER BOTS" beside the HUD's bot-order tag the
+## first time a room with bots shows it. Each is short, appears once, and goes the moment its
+## control is used; what was used is remembered in the setting `controls/touch_hints_seen` (one
+## bit per hint), so a player sees each hint once, ever. Resetting the settings to their
+## defaults brings them back.
 ##
 ## It draws over `TouchControls` and only reads its geometry; the controls tell it what was used
 ## (`mark_used`). It takes no touches.
@@ -24,10 +25,12 @@ const STRIKE := &"strike"
 ## The double tap on free ground that changes shoulder (#1288). It has no button to point at, so it
 ## waits until the player has looked, shows for `SWAP_SECONDS` and is then seen, used or not.
 const SWAP := &"swap"
-## The order is the bit each hint owns in the saved mask.
-const ORDER: Array[StringName] = [MOVE, LOOK, INTERACT, STRIKE, SWAP]
+const BOTS := &"bots"
+## The order is the bit each hint owns in the saved mask: a bit already shipped never moves, a new
+## hint goes last.
+const ORDER: Array[StringName] = [MOVE, LOOK, INTERACT, STRIKE, SWAP, BOTS]
 ## The hints that sit beside a button or a place and show a tap, not a drag.
-const TAPS: Array[StringName] = [INTERACT, STRIKE, SWAP]
+const TAPS: Array[StringName] = [INTERACT, STRIKE, SWAP, BOTS]
 
 const TEXT := {
 	MOVE: "DRAG TO MOVE",
@@ -35,6 +38,7 @@ const TEXT := {
 	INTERACT: "TAP TO USE",
 	SWAP: "DOUBLE TAP\nSWAP SIDE",
 	STRIKE: "STRIKE",
+	BOTS: "TAP TO ORDER BOTS",
 }
 ## The interact button's caption for a prompt that is held, not tapped (the fence).
 const HOLD_VERB := "HOLD"
@@ -101,8 +105,10 @@ func _ready() -> void:
 			_seen = int(service.call(&"get_value", SettingsService.TOUCH_HINTS_SEEN))
 
 
-## The hints on screen now, in order: controls up, not used yet, and for Interact and Strike only
-## while their button shows.
+## The hints on screen now, in order: controls up, not used yet, for Interact and Strike only
+## while their button shows and for the bots only while the HUD's tag does and no prompt card is
+## up (the label stands where the prompt card does, and a prompt is worth more than a first-run
+## label).
 func showing() -> Array[StringName]:
 	var found: Array[StringName] = []
 	if controls == null or not controls.is_active():
@@ -116,6 +122,8 @@ func showing() -> Array[StringName]:
 			continue
 		if id == SWAP and not is_seen(LOOK):
 			continue  # first the look, then the other shoulder
+		if id == BOTS and (not _tag_rect().has_area() or controls.interact_verb() != ""):
+			continue
 		found.append(id)
 	return found
 
@@ -196,7 +204,20 @@ func rect_of(id: StringName) -> Rect2:
 			# of the stick's side stands where the row's line runs out (#1285).
 			var lift := STRIKE_LIFT if id == STRIKE else 0.0
 			return Rect2(Vector2(left, centre.y - size.y * 0.5 - lift), size)
+		BOTS:
+			# Beside the tag, on the side away from the screen's edge it stands against.
+			var tag := _tag_rect()
+			var left := tag.position.x - GAP - size.x if mirrored else tag.end.x + GAP
+			return Rect2(Vector2(left, tag.get_center().y - size.y * 0.5), size)
 	return Rect2()
+
+
+## The HUD's bot-order tag in the controls' coordinates; an empty rectangle while it is not there.
+func _tag_rect() -> Rect2:
+	var zone := controls.zone_rect(HudBotOrder.ACTION)
+	if not zone.has_area():
+		return Rect2()
+	return Rect2(zone.position - controls.get_global_rect().position, zone.size)
 
 
 ## The left edge of a hint `width` wide that would have its left edge at `left`, moved sideways off
@@ -283,6 +304,7 @@ func _look_key(now: Array[StringName]) -> int:
 			controls.touch_scale,
 			controls.left_handed,
 			controls.interact_verb(),
+			_tag_rect(),
 			UITokens.active().get_instance_id(),
 			UIMotion.reduced,
 		]

@@ -14,7 +14,6 @@ const COLOURS := {
 	&"ping": Color(0.95, 0.75, 0.2),
 	&"scoreboard": Color(0.4, 0.85, 0.4),
 	&"quick_melee": Color(0.3, 0.7, 0.95),
-	&"bot_wheel": Color(0.75, 0.45, 0.95),
 	&"fire": Color(0.95, 0.5, 0.15),
 	&"aim": Color(0.2, 0.85, 0.8),
 	&"interact": Color(0.9, 0.9, 0.9),
