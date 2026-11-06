@@ -1,7 +1,7 @@
 # Limbs and garments stay out of the body in the clips the player plays (Deadnight #895), measured
 # by `ClipFit` (a vertex of one part inside the surface of another, deeper than its tolerance):
-# - the menu's soldier, the maintainer's shot: no arm or armband in the body with any weapon, but
-#   the right forearm of a long sleeve with the long guns (up to 4 cm, recorded);
+# - the menu's soldier, the maintainer's shot: no arm or armband in the body with any weapon (#987
+#   moved the long guns' grips out of the jacket, and nothing is recorded for it);
 # - every hair cut, hat, pair of glasses and neckwear out of the shoulders in every clip;
 # - the arms in the clips: no forearm or hand deeper than the tolerance in any clip, sampled at
 #   eight frames (four missed a windup's key pose); none may be recorded (#939 reworked the clips
@@ -13,8 +13,6 @@ extends GdUnitTestSuite
 const RECORDED := "res://tests/character/clip_fit_recorded.json"
 ## How much deeper than recorded a clip may go (the sampling's own spread), metres.
 const SLACK := 0.005
-## The deepest the menu's soldier may be recorded at, metres.
-const MENU_MOST := 0.04
 ## The deepest an armband may be recorded at in a clip, metres.
 const ARMBAND_MOST := 0.055
 ## Frames sampled in each clip for the arms (the clips are short: a windup's key pose lies between
@@ -100,14 +98,11 @@ func test_the_menu_soldier_keeps_arms_and_armband_out_of_the_body_with_every_wea
 	assert_array(fails).is_empty()
 
 
-## What is recorded stays near the tolerance: the menu's holds sink the right forearm of a long
-## sleeve no more than 4 cm (her rolled sleeves, the maintainer's look, not at all).
-func test_the_recorded_menu_depths_are_small() -> void:
+## The menu's holds keep every sleeve out (#987): nothing may be recorded for them.
+func test_nothing_is_recorded_for_the_menu() -> void:
 	var recorded: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(RECORDED))
-	assert_bool(recorded.has("menu 10")).is_false()
-	for id: String in recorded.get("menu 0", {}):
-		for check: String in recorded["menu 0"][id]:
-			assert_float(recorded["menu 0"][id][check]).is_less_equal(MENU_MOST)
+	for preset in ARM_LOOKS:
+		assert_bool(recorded.has("menu %d" % preset)).is_false()
 
 
 func test_head_pieces_stay_out_of_the_shoulders_in_every_clip() -> void:

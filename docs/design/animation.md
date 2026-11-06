@@ -423,13 +423,15 @@ the weapon and counting the pixels that change (`tests/captures/reload_sheet.tsc
 
 | Weapon | Before (#383 tilt), mid-reload | After, mid-reload | After, most |
 | --- | --- | --- | --- |
-| Tommy gun | 0 | 6,684 | 6,808 |
-| Lever rifle | 284 | 8,676 | 9,352 |
+| Tommy gun | 0 | 7,840 | 8,630 |
+| Lever rifle | 284 | 6,630 | 8,280 |
 | Double-barrel | 336 | 7,332 | 9,076 |
 | Revolver | 740 | 3,688 | 4,280 |
 | Flare gun | 888 | 2,680 | 5,124 |
 
-(the median of the frames from 20 to 70 % of the reload, in pixels of the 2.07 million on screen.) So every reload
+(the median of the frames from 20 to 70 % of the reload, in pixels of the 2.07 million on screen; the Tommy gun and
+lever rifle rows were measured again after #987, which turned the rifle's gun muzzle up and moved its left hand to the
+fore-end, so it reads smaller than it did; runs differ by about 30 pixels.) So every reload
 carries the weapon **out to the right of the head and up**, turns its working side to the camera, and turns the chest
 the left shoulder forward so the short left arm still reaches it.
 
@@ -445,7 +447,13 @@ the left shoulder forward so the short left arm still reaches it.
 - **The arms** (`WeaponHandsIK`): the move and turn are added to the hold's target, the right hand follows the weapon
   through its solved grip, and the left hand reaches the key's point, blended bone by bone from where the hold left it
   (the fore-end, or the clip's arm for a one-handed gun), so it leaves and comes back without a jump. Its fingers half
-  open off the fore-end grip.
+  open off the fore-end grip. It goes round the body, not through it (#987): a straight line from a gun out to the
+  right to the belt on the left runs through the belly, so the hand's place is moved out of an ellipse round the hips
+  (`TRUNK_CLEAR`, in the belt's frame). The pouch is forward and out on the left hip (0.32 m left, 0.18 up, 0.2 ahead of
+  the hips: the arm no longer reaches any further with the chest turned). While the arm hangs the elbow goes out to the
+  left and a little back (`HANGING_ELBOW`, not the hold's pole, which then lies along the arm and turns the elbow into
+  the belly), and the hand hangs in line with the forearm. Its points on the weapon keep the big fists apart: on the
+  fore-end or the end of the magazine, ahead of the right hand, so the left forearm does not lie across it.
 - **The part and the ammunition** (`ReloadView`, owned by `PlayerAnimation`): the weapon's moving part is a node of its
   model, made in Blender at its pivot (`tools/blender/build_weapons.py`, `NODES`), turned and slid by the key's
   `part`; the ammunition is its own small model beside the gun's (`<gun>_ammo.glb`), on a `BoneAttachment3D` on the left
@@ -493,9 +501,11 @@ more than 0.35 m from the grip (the belt) and within 0.3 m of the weapon, the pa
 ammunition shows and is gone, and the weapon is back on its hold by the end of the reload time with the aim weight
 unchanged; a swap ends it, the sprint carry waits for it, and every motion's file starts and ends on the hold and names
 a part its model has. `test_hand_grips.gd` measures the right hand on its grip twice through each reload,
-`test_night_reload.gd` plays each one through the real night, and `test_remote_weapons.gd` checks that a second client
-sees the reload and the revolver's cylinder open. Captures: `tests/captures/reload_sheet.tscn` (each gun's reload
-from the shoulder camera and a teammate's from the player's screen, `--measure` for the numbers above).
+`test_night_reload.gd` plays each one through the real night, `test_remote_weapons.gd` checks that a second client
+sees the reload and the revolver's cylinder open, and `test_reload_arm_fit.gd` holds every reload and every two-handed
+hold within 3 cm of the body and the other arm on both looks (`ClipFit`, on the pose after the IK). Captures:
+`tests/captures/reload_sheet.tscn` (each gun's reload from the shoulder camera and a teammate's from the player's
+screen, `--measure` for the numbers above).
 
 ## Moving while aiming
 
