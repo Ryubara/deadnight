@@ -135,8 +135,9 @@ func test_a_desktop_keeps_the_controls_tab_with_the_mouse_words() -> void:
 	assert_str((screen._pages[3].get_child(1) as UIRow).hint).is_equal(
 		"Push the mouse forward to look down."
 	)
-	# The Touch tab is what it was: no look rows on it.
-	assert_int(screen._pages[4].get_child_count()).is_equal(7)
+	# The Touch tab is what it was, plus the shoulder's note row (#1288, a line of words that a
+	# touch screen on a desktop reads too): no look rows on it.
+	assert_int(screen._pages[4].get_child_count()).is_equal(8)
 	assert_array(_titles(screen, 4)).not_contains(["Look sensitivity", "Invert vertical look"])
 
 
@@ -190,6 +191,8 @@ func test_a_row_hands_a_drag_to_the_card_it_scrolls_in() -> void:
 	for tab in screen._pages.size():
 		for row in screen._pages[tab].get_children():
 			var control := (row as UIRow).control
+			if control == null:
+				continue  # a note row (#1288) is words only: it holds no button to hand a touch on
 			var buttons: Array[Node] = []
 			if control is BaseButton:
 				buttons.append(control)
