@@ -27,8 +27,10 @@ const NO_FOCUS := (
 const HINT := "Click the game once to use a controller"
 const UNKNOWN := ""
 
-## The IFRAME check, asked of the page once: -1 not yet, 0 a page of its own, 1 inside a frame.
-static var _framed := -1
+## The IFRAME check, asked of the page once: 0 not yet, 1 a page of its own, 2 inside a frame. It
+## has no initialiser, so "not yet" is the type's default, whatever order the scripts load in (a
+## static initialiser that runs late would read the default as an answer: `WebProbe._asked`, #1323).
+static var _framed: int
 
 
 ## Whether the game runs inside a frame (a Discord Activity). Asked once: a game in a tab or on the
@@ -36,12 +38,12 @@ static var _framed := -1
 static func in_frame() -> bool:
 	if not OS.has_feature("web"):
 		return false
-	if _framed < 0:
+	if _framed == 0:
 		var framed: Variant = JavaScriptBridge.eval(
 			"(function(){try{return window.top!==window}catch(e){return true}})()"
 		)
-		_framed = 1 if truthy(framed) else 0
-	return _framed == 1
+		_framed = 2 if truthy(framed) else 1
+	return _framed == 2
 
 
 ## What the page answered as a yes or a no. The engine's web runtime hands a script's `true` back as

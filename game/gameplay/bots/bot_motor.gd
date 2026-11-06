@@ -160,7 +160,10 @@ func command(
 		out.fire = _flare_trigger(me, wanted)
 	else:
 		out.fire = _trigger(me, eye, contact, intent.melee_ok)
-		out.motion.melee = intent.quick_melee_ok and _in_quick_reach(eye, contact)
+		out.motion.melee = (
+			(intent.quick_melee_ok or _gun_held_back_by_its_splash(me, eye, contact))
+			and _in_quick_reach(eye, contact)
+		)
 	out.reload = intent.reload and not me.get("reloading", false)
 	out.swap = intent.swap
 	out.use = intent.use
@@ -342,6 +345,17 @@ func _trigger(me: Dictionary, eye: Vector3, contact: Dictionary, melee_ok: bool 
 		return false
 	triggers += 1
 	return true
+
+
+## Whether the gun in hand has a round but is not fired because the zombie stands inside its
+## own splash (`_inside_own_splash`): the bot strikes with the quick melee instead of standing
+## (#1319: the soak found bots idle over 5 s with a loaded ray gun and a zombie at 1.3 m).
+func _gun_held_back_by_its_splash(me: Dictionary, eye: Vector3, contact: Dictionary) -> bool:
+	var weapon := _weapon_of(me)
+	if contact.is_empty() or weapon == null or weapon.is_melee() or int(me.get("ammo", 0)) <= 0:
+		return false
+	var apart := Vector2(contact["position"].x - eye.x, contact["position"].z - eye.z)
+	return _inside_own_splash(weapon, apart.length())
 
 
 ## A burst that would hurt the shooter (the ray gun's) is not fired inside its own splash.

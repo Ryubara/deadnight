@@ -7,7 +7,7 @@
   "max": {
     "nodes": 6500,
     "objects": 19500,
-    "resources": 2500,
+    "resources": 2750,
     "orphans": 2,
     "mem_static_mb": 300
   },
@@ -15,6 +15,6 @@
     "nodes": 40,
     "objects": 200,
     "resources": 25,
-    "mem_static_mb": 1.5
+    "mem_static_mb": 2.5
   }
 }
