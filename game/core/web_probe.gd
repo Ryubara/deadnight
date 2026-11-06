@@ -236,6 +236,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"night_rules": "",
 		"night_map": "",
 		"bots": 0,
+		"bot_order": "",
+		"bot_tag": "",
 		"notices": "",
 		"code_text": "",
 		"notice_log": "",
@@ -255,6 +257,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"quick_melees": 0,
 		"dead_gap_m": -1.0,
 		"touch_stick": "",
+		"touch_hints": "",
 		"ground_speed": 0.0,
 		"sprinting": false,
 		"grenade_cooking": false,
@@ -436,6 +439,10 @@ static func snapshot(top: Control) -> Dictionary:
 		data["weapon"] = String(hud_state.weapon_id)
 		data["weapon_slots"] = ",".join(PackedStringArray(hud_state.slot_ids))
 		data["weapon_slot_held"] = hud_state.slot_held
+		# The standing order the frames say, and the word on the bots' tag when it is shown.
+		data["bot_order"] = String(hud_state.bot_order)
+		var tag := night_screen.night.hud.slots.bot_tag
+		data["bot_tag"] = tag.word() if tag != null and tag.is_visible_in_tree() else ""
 	data["touch"] = night_screen.touch_active()
 	data["reticle"] = night_screen.reticle_shown()
 	data["settings_open"] = night_screen.settings_open()
@@ -453,6 +460,7 @@ static func snapshot(top: Control) -> Dictionary:
 	data["quick_melees"] = state.quick_melees
 	data["dead_gap_m"] = StrikeReach.nearest(state)
 	data["touch_stick"] = night_screen.touch_stick()
+	data["touch_hints"] = ",".join(night_screen.touch_hints())
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)

@@ -6,7 +6,7 @@ ratio of 2, as the page caps it), starts a night, and sends what a right thumb d
 - every button of the right thumb (Fire, Aim, Reload, Jump, Crouch and the ones that wait for the audit's homes) is
   pressed by a finger on its centre, and the same finger is dragged `DRAG_PX` CSS pixels: the game says the button is
   held the whole time (`touch_held`) and the view turns (`yaw`), so a thumb on Reload turns the camera;
-- the bot wheel's drag picks an order and does not turn the view;
+- there is no bot wheel button (the bots' order is the HUD's tag, `touch_bot_tag.py`);
 - a finger that lands just outside Reload's hit area and drags across Reload turns the view and presses nothing;
 - a tap on Crouch crouches and stays crouched (`crouching`), a second tap stands, and Jump from a crouch stands up;
 - every button is at least 44 CSS px across (its hit area), the least a finger needs.
@@ -40,7 +40,7 @@ import touch_look
 DEVICE_SCALE = 2
 CSS_PX_PER_MM = 6.0
 TAP_CSS_PX = 44.0
-# The buttons a drag from which turns the view: every button of the right thumb but the wheel.
+# The buttons a drag from which turns the view: every button of the right thumb.
 LOOKING = ("fire", "aim", "reload", "jump", "crouch", "swap_shoulder", "quick_melee")
 DRAG_PX = 90.0
 STEPS = 15
@@ -189,13 +189,9 @@ def run(url: str, out: Path, page_size: dict, tag: str, before: bool = False) ->
             # A crouch the drag started: put the body back on its feet.
             if name == "crouch" and state(page).get("crouching"):
                 tap(client, (circle["x"], circle["y"]))
-        # The bot wheel keeps its drag for the order.
+        # The wheel is gone from the glass (#1286): the bots' order is a tag on the HUD.
         if "bot_wheel" in found:
-            wheel = found["bot_wheel"]
-            seen = drag_from(page, client, (wheel["x"], wheel["y"]), (-DRAG_PX * 0.5, 0.0))
-            result["drags"]["bot_wheel"] = seen
-            if seen["turn_rad"] >= MIN_TURN_RAD:
-                problems.append(f"[check] a drag from the bot wheel turned the view {seen['turn_rad']} rad")
+            problems.append("[check] the touch layer still has a bot_wheel button")
 
         # Screenshots with a thumb on Reload, then still on it while it turns the view.
         reload_ = found["reload"]

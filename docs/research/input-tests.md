@@ -28,7 +28,8 @@ tests. The same hole is open for any action.
   presses the place's centre: the row's control is the place's action). A slot key shows nothing when its weapon
   is in hand, so `_prepare` puts the other weapon in hand first; the third slot has nobody to pick with two weapons
   carried, so its row proves only that the key reaches the command.
-- **The bot wheel and the ping** have rows too (#642): `bot_wheel` (Q, the d-pad left, the BOTS touch button) and `ping`
+- **The bot wheel and the ping** have rows too (#642): `bot_wheel` (Q, the d-pad left; a phone has no wheel button since
+  #1286, so its row has no touch control) and `ping`
   (Z, the middle mouse button, the d-pad right, the PING touch button). The night reads the ping key as its own edge
   (`HumanController.ping_pressed`, once a tick beside `command`), so the matrix reads both each tick the way
   `Night._human_command` does (`_tick_command`); a second binding of a ping would otherwise find the first one's edge

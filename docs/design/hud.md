@@ -120,6 +120,17 @@ the gaps is 296 units, and the left column still ends under the health card on t
 the challenge prompt between it and the round card. A downed player's portrait dims, their box darkens and the name
 says `DOWN`. There is no party ticket any more: the containers are the party list.
 
+**On a phone, in pairs when it must.** With the touch layout up the weapon strip is a fingertip high under the column and
+the round and the objective stand over it, so at the largest interface size (1.25: a 864 unit high canvas on every phone
+page) a room of eight people stood 38 units over the objective, and 106 with the bots' chips (#1301). `Hud._fit_players`
+gives the column its `room` (from a gap under the round and the objective at their tallest, so it does not move when the
+words change, to the health card), and a party whose boxes, one to a row, are taller than that puts its teammates two to
+a row (`HudPointsStack.mate_columns`; `HudPlayerBox.paired`, half the column wide, `PAIR_WIDTH`): the points alone in
+each box at the same type (24 units), `DOWN` or `DEAD` in the danger colour in their place while they are down, no name,
+level badge or emblem (the card and the frame stay). That takes eight people from 332 units high to 218. A room the boxes
+fit in (every interface size up to about 1.1 with the bots' chips, 1.18 without; a desktop or a pad never sets a room)
+keeps names and one box to a row as before. What it leaves: [Players' column on a phone](../research/players-column-phone.md).
+
 The portrait is the Soldier as the player wears it, a head-and-shoulders render of the game's own model
 (`CharacterAssembler`, the assembler the wardrobe and the lot use) in a tiny 3D world of its own, drawn once and then left
 alone (`UPDATE_ONCE`), so it costs nothing after its first frame. The state holds each player's `seat` and `look` as plain
@@ -144,13 +155,18 @@ action instead of listening for one kind of event. A pause menu or the result sw
 
 ## The bot command wheel
 
-Holding Q (the pad's d-pad left, the touch BOTS button) opens `HudBotWheel` over the middle of the screen: three
+Holding Q (the pad's d-pad left) opens `HudBotWheel` over the middle of the screen: three
 tickets, **Follow** on top, **Roam** lower right and **Hold** lower left, a dial in the middle, a flat dim behind. The
-pointer (the mouse's motion, the right stick, a finger's drag) lights one ticket; letting go over it gives the team's bots
+pointer (the mouse's motion, the right stick) lights one ticket; letting go over it gives the team's bots
 that order, letting go over the dial or tapping the key gives none. The ticket of the order that stands is marked NOW,
-and the HUD's notice list says the new order for a moment after a change (`BOTS: HOLDING POSITION`). It is a screen-sized
+and the HUD's notice list says the bots' state for a moment once it has changed (`BOTS: FOLLOWING YOU`, `ROAMING`,
+`HOLDING POSITION`). It is a screen-sized
 overlay (`Hud.screen_overlays`), so it stays on the middle of the screen whatever the safe area is, takes no room while
 closed and is not in a column. The model, the driver and what was learned are in [Bot wheel](../research/bot-wheel.md).
+
+A phone has no wheel (#1286): `HudBotOrder`, a tag at the inner end of the weapon strip, says the standing order (a word
+in the order's colour under a small BOTS) while the room has a bot, and a tap on it gives the next order of the round
+([touch controls](touch-controls.md)). It is made with the touch layout, so a keyboard's HUD holds none of it.
 
 ## Revives
 
@@ -304,6 +320,8 @@ marquee, the banner, the reward line and a late joiner into a special round), `t
 against the HUD that saw every event), `test_hud_refresh.gd` (changes announced, nodes made and a time budget for
 the break and a kill batch), `test_hud_parts.gd` (every part, the prompt with simulated input and device switching),
 `test_hud_players.gd` (a container per player, one to eight: colours, local first, down, the portrait),
+`test_players_column_phone.gd` (the busiest column against the round and objective on both phone pages, every size and
+hand; the pairs, what a paired box shows, the room),
 `test_hud_reticle.gd` (the reticle: present, centred, small, scaled by the viewport stretch, hidden under a menu or
 while down, editable), `test_hud_generator_panel.gd` (when the card shows and its stepped timing),
 `test_hud_grid.gd` (the grid, measured at every canvas: shared edges, gaps, text lines, no label leaving its part),
