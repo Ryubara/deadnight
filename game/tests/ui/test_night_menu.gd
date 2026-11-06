@@ -383,9 +383,11 @@ func test_the_volume_and_the_touch_layout_change_in_the_menu_too() -> void:
 	volume.grab_focus()
 	await _key(KEY_LEFT)
 	assert_int(Settings.get_value(SettingsService.VOLUME_MASTER)).is_less(100)
-	page.select_tab(4, false)
+	# The Touch tab is the last one: on a touch device the Controls tab before it is left out (#1290).
+	var touch_tab := page._pages.size() - 1
+	page.select_tab(touch_tab, false)
 	var hand: UIToggle = null
-	for row in page._pages[4].get_children():
+	for row in page._pages[touch_tab].get_children():
 		if (row as UIRow).title == "Left-handed layout":
 			hand = (row as UIRow).control
 	hand.grab_focus()

@@ -10,8 +10,17 @@ const PERIOD := 0.25
 ## arrow, in units.
 const ARROW_INSET := 24.0
 
-## Whether the page asked for the probes (see `asked`): -1 not yet read, 0 no, 1 yes.
-static var _asked := -1
+## What `_asked` holds: `UNREAD` until the page was asked, then `NO` or `YES`.
+const UNREAD := 0
+const NO := 1
+const YES := 2
+
+## Whether the page asked for the probes (see `asked`). It has no initialiser, so "not read yet" is
+## the type's own default: the engine runs a static variable's initialiser when its script is
+## loaded, and `NightScreen.arrival_enabled`'s initialiser calls `asked` while this script is still
+## loading (the two refer to each other), before `:= -1` would have run. `asked` then read 0 as "no"
+## and a page that asked for the probes played the helicopter drop (#1323).
+static var _asked: int
 
 var _object: JavaScriptObject
 var _since := 0.0
@@ -35,13 +44,13 @@ var _published := {}
 static func asked() -> bool:
 	if not OS.has_feature("web"):
 		return false
-	if _asked < 0:
+	if _asked == UNREAD:
 		var script := (
 			"(new URLSearchParams(location.search).has('probe') || !!window.deadnight_probe"
 			+ " || window.deadnight_bench != null) ? 1 : 0"
 		)
-		_asked = 1 if int(JavaScriptBridge.eval(script, true)) == 1 else 0
-	return _asked == 1
+		_asked = YES if int(JavaScriptBridge.eval(script, true)) == 1 else NO
+	return _asked == YES
 
 
 ## The entries of `data` whose value differs from `last` (or that `last` lacks).
@@ -210,6 +219,9 @@ static func snapshot(top: Control) -> Dictionary:
 		"stalls": 0,
 		"stall_longest_ms": 0.0,
 		"yaw": 0.0,
+		"crouching": false,
+		"shoulder_side": 0.0,
+		"touch_slop": 0.0,
 		"interpolated": false,
 		"room_code": "",
 		"room_status": "",
@@ -233,6 +245,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"night_rules": "",
 		"night_map": "",
 		"bots": 0,
+		"bot_order": "",
+		"bot_tag": "",
 		"notices": "",
 		"code_text": "",
 		"notice_log": "",
@@ -245,7 +259,21 @@ static func snapshot(top: Control) -> Dictionary:
 		"menu_buttons": "",
 		"menu_button_sizes": "",
 		"touch_hits": "",
+		"touch_zones": "",
+		"scoreboard": "",
+		"touch_buttons": "",
+		"hud_cards": "",
 		"touch_held": "",
+		"touch_strike": false,
+		"kills": 0,
+		"quick_melees": 0,
+		"dead_gap_m": -1.0,
+		"touch_stick": "",
+		"touch_hints": "",
+		"ground_speed": 0.0,
+		"sprinting": false,
+		"grenade_cooking": false,
+		"grenade_count": 0,
 		"tab": "",
 		"stage": "",
 		"browser": "",
@@ -398,6 +426,14 @@ static func snapshot(top: Control) -> Dictionary:
 	var player: Player = night_screen.night.player() if night_screen.night.server != null else null
 	if player != null:
 		data["yaw"] = player.camera_rig.yaw  # so a browser test can see the mouse turn the view
+		# So a browser test can measure the walk and the sprint the stick asks for (#1276).
+		data["ground_speed"] = player.ground_speed()
+		data["sprinting"] = player.is_sprinting()
+		data["crouching"] = player.state.crouching  # the touch layer's Crouch toggle (#1277)
+		# The shoulder the camera is on (+1 or -1), and the finger's slop in canvas units, so a
+		# browser test sees a double tap swap it (#1288).
+		data["shoulder_side"] = player.state.shoulder_side
+		data["touch_slop"] = TouchSlop.units(night_screen.get_window())
 		# So a browser test can see the view is the person's own soldier, not a bot's (#702).
 		data["view_is_players"] = (
 			player.get_viewport().get_camera_3d() == player.camera_rig.camera()
@@ -419,13 +455,31 @@ static func snapshot(top: Control) -> Dictionary:
 		data["weapon"] = String(hud_state.weapon_id)
 		data["weapon_slots"] = ",".join(PackedStringArray(hud_state.slot_ids))
 		data["weapon_slot_held"] = hud_state.slot_held
+		# The standing order the frames say, and the word on the bots' tag when it is shown.
+		data["bot_order"] = String(hud_state.bot_order)
+		var tag := night_screen.night.hud.slots.bot_tag
+		data["bot_tag"] = tag.word() if tag != null and tag.is_visible_in_tree() else ""
 	data["touch"] = night_screen.touch_active()
 	data["reticle"] = night_screen.reticle_shown()
 	data["settings_open"] = night_screen.settings_open()
 	data["menu_buttons"] = _button_spots(night_screen)
 	data["menu_button_sizes"] = _button_sizes(night_screen)
 	data["touch_hits"] = _touch_hits(night_screen)
+	data["touch_zones"] = _touch_zones(night_screen)
+	data["scoreboard"] = _scoreboard(night_screen)
+	data["touch_buttons"] = _touch_buttons(night_screen)
+	data["hud_cards"] = _hud_cards(night_screen)
+	var night := night_screen.night
+	if night != null and night.server != null and night.server.grenades != null:
+		data["grenade_cooking"] = night.server.grenades.is_cooking(night.state.player_id)
+		data["grenade_count"] = night.hud.state.grenades if night.hud != null else 0
 	data["touch_held"] = ",".join(night_screen.touch_held())
+	data["touch_strike"] = night_screen.touch_strike_up()  # a dead is in reach: Strike shows (#1285)
+	data["kills"] = state.kills
+	data["quick_melees"] = state.quick_melees
+	data["dead_gap_m"] = StrikeReach.nearest(state)
+	data["touch_stick"] = night_screen.touch_stick()
+	data["touch_hints"] = ",".join(night_screen.touch_hints())
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)
@@ -534,6 +588,80 @@ static func _touch_hits(screen: NightScreen) -> String:
 			(
 				"%s:%.5f,%.5f,%.5f,%.5f"
 				% [id, at.x, at.y, float(circle[&"hit"]) / size.y, float(circle[&"was"]) / size.y]
+			)
+		)
+	return "|".join(found)
+
+
+## The HUD's weapon places as `action:x,y,w,h`: the centre and the size as fractions of the window's
+## width and height, so a browser test reads CSS pixels (#1280).
+static func _touch_zones(screen: NightScreen) -> String:
+	if not screen.is_inside_tree() or not screen.touch_active():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var found: Array[String] = []
+	for zone in screen.touch_zones():
+		var rect: Rect2 = zone[&"rect"]
+		var at := rect.get_center() / size
+		var share := rect.size / size
+		found.append("%s:%.5f,%.5f,%.5f,%.5f" % [zone[&"action"], at.x, at.y, share.x, share.y])
+	return "|".join(found)
+
+
+## The touch layer's drawn buttons as `id:x,y,r`: the centre as fractions of the window's width and
+## height and the radius as a fraction of its height, so a browser test checks what is drawn under
+## what, not the larger areas a finger presses (#1287).
+static func _touch_buttons(screen: NightScreen) -> String:
+	if not screen.is_inside_tree() or not screen.touch_active():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var circles := screen.touch_circles()
+	var found: Array[String] = []
+	for id: StringName in circles:
+		var circle: Dictionary = circles[id]
+		var at: Vector2 = circle[&"centre"] / size
+		found.append("%s:%.5f,%.5f,%.5f" % [id, at.x, at.y, float(circle[&"radius"]) / size.y])
+	return "|".join(found)
+
+
+## The scoreboard's ticket while it is up, as `x,y,w,h`: its box as fractions of the window's width
+## and height, `""` while it is down (#1287).
+static func _scoreboard(screen: NightScreen) -> String:
+	if not screen.is_inside_tree() or screen.night == null or screen.night.hud == null:
+		return ""
+	var board := screen.night.hud.scoreboard
+	if not board.is_visible_in_tree():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var rect := board.card_rect()
+	var at := rect.position / size
+	var share := rect.size / size
+	return "%.5f,%.5f,%.5f,%.5f" % [at.x, at.y, share.x, share.y]
+
+
+## The HUD's round card, objective, players' column and health card as `name:x,y,w,h`: the top left
+## corner and the size as fractions of the window's width and height (the round card on a phone,
+## #1305).
+static func _hud_cards(screen: NightScreen) -> String:
+	var hud := screen.night.hud if screen.night != null else null
+	if hud == null or not screen.is_inside_tree():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var found: Array[String] = []
+	for card: Control in [hud.round_part, hud.objective, hud.points, hud.health]:
+		if not card.is_visible_in_tree():
+			continue
+		var rect := card.get_global_rect()
+		found.append(
+			(
+				"%s:%.5f,%.5f,%.5f,%.5f"
+				% [
+					card.name,
+					rect.position.x / size.x,
+					rect.position.y / size.y,
+					rect.size.x / size.x,
+					rect.size.y / size.y
+				]
 			)
 		)
 	return "|".join(found)

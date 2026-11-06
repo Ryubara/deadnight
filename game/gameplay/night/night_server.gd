@@ -159,6 +159,8 @@ var challenges: ChallengeAward
 ## at the same place; off, by where they stand now.
 var dead_tuning := DeadContactTuning.shipped()
 var dead_as_seen := true
+## Whether a body is near anything the use button could offer; settles the bodies in the open.
+var use_sites: UseSites
 ## The account level of each player the host knows (the local player's, from their profile; the
 ## ticket's XP for a seat with an account, `NightHost.register_account`). Their look is held to what
 ## that level may wear: a locked piece in a client's look is put back (`LookServer`, #1065). A
@@ -250,6 +252,7 @@ func _init(
 	sim.barricades = rules.barricades
 	sim.board_seconds = rules.tuning.barricades.seconds_per_board
 	_sight = UseSight.new(_probe.static_callable())
+	use_sites = UseSites.new(world)
 	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
 	_revive.sight = _sight
 	_guard = UseGuard.new(tuning)
@@ -450,7 +453,7 @@ func closed() -> bool:
 func _join(player_id: int, local: bool, bot := false) -> void:
 	if _bodies.has(player_id):
 		return
-	_slots[player_id] = _bodies.size()
+	_slots[player_id] = _free_slot()
 	_bodies[player_id] = world.add_body(
 		world.player_spawn(_slots[player_id]), local, drawn_bodies, bot or not drawn_bodies
 	)
@@ -470,6 +473,18 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 	# What the rules say the player starts with, the firearm last so it is the one in hand.
 	for shop_id in rules.players[player_id].weapons:
 		_combat(CombatAction.give_weapon(player_id, WeaponCatalog.catalog_id(shop_id)))
+
+
+## The lowest start marker no body holds: a seat that opened is taken before a marker is shared, and
+## a night of the most bodies (`NightHost.MAX_SEATS`, 15) has a marker for each (`MapLayout`).
+func _free_slot() -> int:
+	var taken := {}
+	for slot: int in _slots.values():
+		taken[slot] = true
+	var free := 0
+	while taken.has(free):
+		free += 1
+	return free
 
 
 func _leave(player_id: int) -> void:
@@ -907,6 +922,7 @@ func _act(player_id: int, delta: float) -> void:
 	if _bodies[player_id].state.melee_ready:
 		_repairing[player_id] = &""
 		_quick_melee(player_id, command, delta)
+	_reload_if_dry(player_id)
 	if command.swap or command.slot != WeaponSlots.NONE or command.fire or command.reload:
 		_repairing[player_id] = &""
 	if command.use:
@@ -918,6 +934,22 @@ func _act(player_id: int, delta: float) -> void:
 	_face_breach(player_id, delta)
 	# Edges are used once.
 	command.clear_edges()
+
+
+## The gun in hand is empty and has rounds in reserve: it reloads by itself, whoever holds it, on
+## any device and whether or not a button is down (#1278). The server decides, so a touch player on
+## auto-fire (whose trigger lets go at an empty magazine), a trigger let go after the last round and
+## a swap back to a dry gun all reload; the rounds go in when the reload ends, as for a pressed
+## reload, and a swap in between drops it. A bot keeps its own choice (`BotArsenal` swaps instead of
+## reloading when the dead are close and another gun is loaded), a gun with no reserve or a blade
+## does nothing, and no rejection is sent for a reload that is not asked for.
+func _reload_if_dry(player_id: int) -> void:
+	var state := combat.weapon_of(player_id)
+	if state == null or state.ammo > 0 or state.reload_block() != &"":
+		return
+	if (rules.players[player_id] as PlayerState).bot:
+		return
+	_combat(CombatAction.reload_weapon(player_id))
 
 
 func _shoot(player_id: int, command: NightCommand, delta: float) -> void:
@@ -1011,6 +1043,9 @@ func use_target(player_id: int) -> Dictionary:
 			"progress": _revive.progress(raise),
 			"bleed": rules.bleed_left_of(raise),
 		}
+	# A body in the open is offered nothing (`UseSites`: the answer for almost every body each tick).
+	if not use_sites.near(here, tuning):
+		return {}
 	# The maps keep the zones apart (`UseZones`); where two still meet, a held repair keeps its
 	# breach and otherwise the one the player looks at wins (#908).
 	var view := _view_of(player_id)

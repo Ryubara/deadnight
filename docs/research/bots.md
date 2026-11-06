@@ -1337,7 +1337,7 @@ count is the host's, and the server's own limits sit above it.
 | Difficulty | `MatchSettings.bot_skill` picks the `BotProfile` of every bot (`BotProfile.for_skill`); the rules never read it, a test holds the night's numbers equal across skills |
 | Names and looks | `BotRoster`: a cast of eight per skill, one per seat (Pip, Dale, Moe, ...; Ash, Fern, Moss, ...; Rex, Sarge, Hawk, ...; #690), each a name and a different catalogue preset look sent through the look server like a person's; the lobby shows the same names before the night begins |
 | Labels | `BOT` after the name in the HUD, the scoreboard, the lobby and the feed; `PlayerState.bot` rides every snapshot, so the roster API marks the seat; no bot flag exists in a command (the bots send the same plain actions through `apply`, and a person's seat is told apart only by the rules) |
-| Limits | `MAX_BOTS` caps one room (0 to 7 since #690; since #1179 on top of the eight people), `BOT_BUDGET` shares a number of bots among the open rooms, `BOTS_OFF` is the kill-switch; a limit that drops sends the highest seats' bots away at once and the night goes on (`BotLimits`, `GameServer.set_bot_limits`, `NightHost.set_bot_limit`) |
+| Limits | `MAX_BOTS` caps one room (0 to 7 since #690; since #1179 on top of the eight people), `BOT_BUDGET` shares a number of bots among the open rooms (default 3 since #1222, 2 in #1193: [why](crowd-budget.md#rooms-of-fifteen-bodies-1193)), `BOTS_OFF` is the kill-switch; a limit that drops sends the highest seats' bots away at once and the night goes on (`BotLimits`, `GameServer.set_bot_limits`, `NightHost.set_bot_limit`) |
 | Marked in the stats | the room's stats line carries `bots`; the rules mark every bot seat, so nothing that reads `player_added.bot` can pay a bot account progression (there is none yet) |
 
 **Proof.**
@@ -2221,3 +2221,85 @@ or its stand would remove this one, not the other ways a bot gets onto a piece.
 (`docs/research/map-review.md`), so a bot under any order walks off them (`test_bot_off_the_walking_mesh.gd`), and
 `test_bot_cut_off.gd` now reads that the spot is no longer cut off. `BotRoam`'s walk back stays as the guard for a piece
 a later map or bake leaves, and no check on the two maps finds one: it is tested in `test_bot_roam.gd` alone.
+
+## The first two nightly runs (#1319)
+
+`bots-nightly` ran on 2026-11-04 (code `935e84fe`, 1 170 nights: three soak jobs lost their checkout to an LFS 502)
+and on
+2026-11-05 (code `61a990df`, 1 200 nights) and both failed: the `leak` job (see
+[performance.md](performance.md#the-two-red-leak-nights-of-2026-11-04-and-2026-11-05-1319)) and the `report` job, which
+fails a cell with one broken night in a hundred. Both runs predate #1023 (weapon numbers) and #1292 (automatic
+reload), so neither is a cause of anything below; the nightly had never been green and nobody was told.
+
+**Nights that broke a gate, of 100** (2026-11-04 | 2026-11-05; veteran_1 and veteran_2 had 80 and 90 nights on the first):
+
+| Cell | Any gate | Idle with a zombie in view over 5 s | Idle under Roam over 8 s | Beyond 25 m of the person over 20 s | A round that would not end | Down to the last dead over 150 s | Off the Hold spot |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| rookie_1 | 0 / 0 | | | | | | |
+| rookie_2 | 3 / 1 | | 3 / 1 | | | | |
+| rookie_4 | 0 / 4 | | 0 / 4 | | | | |
+| regular_1 | 5 / 2 | 5 / 2 | | | | | |
+| regular_2 | 23 / 18 | 18 / 17 | 6 / 1 | | | | |
+| regular_4 | 20 / 21 | 14 / 14 | 6 / 3 | | 0 / 2 | n/a / 5 | |
+| veteran_1 | 1 / 3 | 0 / 3 | 1 / 0 | | | | |
+| veteran_2 | 12 / 4 | 9 / 4 | 3 / 0 | | | | |
+| veteran_4 | 20 / 16 | 3 / 5 | 16 / 8 | | 1 / 1 | n/a / 4 | |
+| regular_3_roam_person | 29 / 17 | 17 / 15 | 10 / 2 | | 5 / 0 | n/a / 1 | |
+| regular_3_follow_person | 6 / 31 | 1 / 3 | | **1 / 23** | 4 / 0 | n/a / 7 | |
+| regular_3_hold_person | 15 / 26 | 1 / 1 | | | 10 / 7 | n/a / **26** | 6 / 0 |
+
+A third reading, a dispatch of the same workflow on `main` at `d15d770f` on 2026-11-06 (it carries #1023, #1292, #1213
+and #1318, which the first two runs predate): eleven cells red (only rookie_1 green; rookie_2 2, rookie_4 2, regular_1 2,
+regular_2 15, regular_4 15, veteran_1 3, veteran_2 7, veteran_4 14, roam 18, follow 37, hold 32 of 100). The weapon and
+reload changes did not move the bots' night: hit rate 53 to 81%, kills a bot-minute 3.7 to 9.2, spend ratio and downs an
+hour are inside the two earlier runs' spread, and the same causes carry the failures (53 of 59 nights with the idle
+gate are the ray gun, 13 of the 16 Roam idles are the `(4.8, 21.4)` spot, 31 nights have a Follow bot far away).
+
+Ten of twelve cells were red on 2026-11-04, eleven on 2026-11-05 and nine in both: the gates are zero tolerance over
+100 nights, and each of the behaviours below has a rate of its own. Five causes, with what each is worth.
+
+1. **A loaded ray gun at a zombie closer than 3 m (a real bug, fixed here).** 58 of the 64 nights that broke
+   "idle with a zombie in view" on 2026-11-05 (62 of 68 on 2026-11-04) had every idle bot holding a loaded ray gun, the
+   zombie at 1.3 to 1.4 m (81 samples; the farthest 2.2 m), note `fight` or `choke`. `BotMotor._trigger` does not
+   fire a gun that hurts its shooter (`self_splash_share`, the ray gun's 25% of a 3 m splash) inside its splash, and the
+   quick melee was given only to a bot with nothing to fire. The ray gun came in with #823 on 2026-11-03. The fix
+   (`BotMotor._gun_held_back_by_its_splash`): the bot strikes with the quick melee, which the soak counts as something
+   done. Failing test first: `test_bot_motor.gd`, `test_a_loaded_ray_gun_inside_its_own_splash_is_not_fired_but_the_bot_strikes`.
+   Without these nights, only rookie_1, regular_1, veteran_1 and veteran_2 are green on 2026-11-05; the rest keep the
+   causes below. With the fix, 20 nights a cell on this branch (local, seeds 1 to 20): regular_2
+   0 nights with the gate (17 and 18 in 100 before; the chance of none in 20 at 17% is 2.4%) and one idle under Roam,
+   regular_4 0 (14 in 100 before; chance of none 4%) and no gate broken at all (21 in 100 before).
+   The nightly workflow dispatched on this branch (run 42174128469, 100 nights a cell) read, for the five cells that had
+   finished when this was written (nights that broke any gate, with 2026-11-05 and the `main` dispatch before): rookie_2
+   2 (1, 2), rookie_4 3 (4, 2), regular_1 0 (2, 2), regular_2 1 (18, 15), regular_4 4 (21, 15); no bot idle beside a
+   zombie with a ray gun in 500 nights, and one idle with a zombie in view of any kind (regular_4). The other seven
+   cells were still running; their result is that run's report.
+2. **The Follow cell: the person stand-in was given legs (#1011), not a bot fault.** Nights with a bot beyond 25 m for over
+   20 s: 1 in 100 on 2026-11-04, 23 on 2026-11-05 (the longest 20.2 to 42.7 s); the seconds a bot is far from the
+   person, a night: 40 and 119. #1011 made the stand-in shop (it walks the lot to the lockers, sprints from the dead,
+   and lives for more rounds: the median round 10 and 12), and the bots follow a person who now leaves. Local, 20
+   nights a
+   side, code `6fe11d53` (before) and `bfc77c2f` (#1011): far seconds a night 44.6 and 91.9, nights with a far bot
+   over 20 s 1 and 3 (the gate broke in 1 and 5 nights). The cause of a Follow bot at 32 to 60 m running with the note
+   `follow` was open in #770 already ("the cause is not found"). Whether it is the bots' fault (a catch-up speed, a
+   sprint when the person is farther than 25 m) or the gate's (a person who runs to a locker 40 m away is gone from
+   the order for 20 s by design) is a question of balance and is left to the maintainer, with these numbers.
+3. **A boss round that takes over 150 s to finish is a new gate (#1006), not a new fault.** `GATE_TAIL_SECONDS` came
+   in with #1006 between the two runs. 2026-11-05: 43 nights (hold 26, follow 7, regular_4 5, veteran_4 4, roam 1), of which
+   round 5 in 26 and round 15 in 5; the hold cell breaks it in 26 of its 100 nights because a bot under Hold never
+   hunts the last dead (`BotHunt` skips Hold) and the stand-in does the killing. Nothing was changed. The 150 s was set
+   from nights with a dry stand-in (120 s); the stand-in now shops (#1011) and the cell's median tail is 111 s.
+4. **Idle under Roam at one spot (open).** The long stands of 2026-11-04 (63 to 198 s at `(-14.9, 32.4)`, a Rookie's old
+   scrap, #1041 and #1051) are gone; of the 19 on 2026-11-05, 16 are the same bot at `(4.8, 21.4)` with the note `roam`,
+   a goal of `(12.5, 0.4, 31.6)` (the east midway's barricade stand), a path of four points and `stuck` false, for 8.7 to
+   46.6 s, in 4-bot rooms of every profile and in round 5 to 16. A lone Regular set down at that spot in the real lot
+   (doors as at the start, and with the yard and booth open) walks to the stand in 7 s, so the cause is something a
+   night adds (a body, a board, another bot) and was not found. A follow-up issue holds the samples.
+5. **A round that would not end** (regular_4 2, veteran_4 1, hold 7 on 2026-11-05, hold 10 and roam 5 on 2026-11-04): the
+   lost night of #770 and the Hold-and-a-boss item of #769, as before; nothing new.
+
+**What is the bots' fault and what is the gates'.** The tally above shows one bug (1), one change in the harness (2), one
+new gate (3), one unexplained spot (4) and the old stalled rounds (5). A gate that fails a cell for one night in a
+hundred cannot go green while any of these has a rate above 1%; a rate gate (a share of nights per gate, from the
+nights above) would say more than the cell's name, but the numbers it would hold are the maintainer's to set. Parity is
+not a gate yet (`--gate-parity` is off, #767 and #772 own it) and was not looked at.

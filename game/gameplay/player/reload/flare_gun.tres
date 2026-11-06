@@ -50,7 +50,7 @@ chest_lean = 6.0
 chest_turn = 25.0
 left = 1.0
 left_space = 1
-left_point = Vector3(-0.2, 0.05, -0.05)
+left_point = Vector3(-0.32, 0.18, -0.2)
 part = 1.0
 ammo = true
 

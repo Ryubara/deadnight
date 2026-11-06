@@ -42,16 +42,24 @@ DRAG_STEPS = 60
 # The bench starts the crosshair at least this far (metres) beyond where the drag stops, or there is nothing to drag.
 MIN_TO_DRAG_M = 0.2
 STEP_PERIOD_S = 0.1
+# The touch layer has the look finger this long after the touch at most (it reads the touch in the frame it lands).
+TAKEN_TIMEOUT_S = 1.0
 AIM_HOLD_S = 4.0
 # The runs: the page's query and what each must show.
 RUNS = {
     "off": "touch=1&assist=0&auto=0",
-    "assist": "touch=1&assist=0.5&auto=1",
+    "assist": "touch=1&assist=1&auto=1",
 }
 
 
-def export_bench(godot: str, work: Path, scene: str = BENCH_SCENE) -> Path:
-    """A copy of the project whose main scene is `scene` and whose export keeps `tests/`; returns the web folder."""
+def export_bench(godot: str, work: Path, scene: str | None = None) -> Path:
+    """A copy of the project whose main scene is `scene` and whose export keeps `tests/`; returns the web folder.
+
+    Without `scene` it is the module's `BENCH_SCENE` as it is when called, so a probe that sets `touch_assist.BENCH_SCENE`
+    (`bot_wheel.py`, `touch_melee.py`) gets its own bench. The default was once bound when the function was defined,
+    and those two probes exported this one's bench and waited for a page that was never published (#1320).
+    """
+    scene = scene or BENCH_SCENE
     project = work / "game"
     if project.exists():
         shutil.rmtree(project)
@@ -112,6 +120,14 @@ def thumb(page: Page, client: CDPSession, shot: Path | None = None) -> dict:
         )
     x, y = first["look_from"]
     touch(client, "touchStart", [(1, x, y)])
+    took = time.monotonic() + TAKEN_TIMEOUT_S
+    while time.monotonic() < took and not state(page).get("looking"):
+        time.sleep(0.05)
+    if not state(page).get("looking"):
+        raise RuntimeError(
+            f"the touch layer took no look finger within {TAKEN_TIMEOUT_S:.0f} s of the touch at ({x:.0f}, {y:.0f}) "
+            f"(layer active: {state(page).get('active')}): the drag would turn nothing"
+        )
     for _ in range(DRAG_STEPS):
         seen = state(page)
         if seen["lateral"] < seen["stop"]:

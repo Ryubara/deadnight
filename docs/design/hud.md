@@ -94,11 +94,16 @@ the card.
   needed; the part tints it. A new weapon model has its silhouette with its hold file. Sizes follow the weapons' lengths
   (never under 58 percent of the longest) so a pistol reads as a pistol; a club that stands on its end in the model is
   laid along the width, its long side from the grip pointing right like a barrel.
-- **On a phone the strip moves** under the health card (`Hud.touch_layout`, set when the touch layer comes up): the
-  bottom right corner is the right thumb's (Fire and Melee sit exactly where the strip would). A left hand flips the
-  column and the strip with it.
+- **On a phone the strip is the weapon control** (#1280; `Hud.touch_layout`, set when the touch layer comes up): it
+  leaves the bottom right corner, which is the right thumb's (Fire and Melee sit exactly where the strip would), for
+  a column of its own at the bottom of the stick's side, the players' column lifted by its height. Every place is a
+  fingertip (44 CSS px, `MenuScale.tap_units`) wide and high, the weapons a quarter wider, and a place for the grenades
+  (`HudGrenadeCell`: a grenade and `x3`, lit while the pin is out) follows them. The touch layer reads the boxes
+  (`HudSlots.touch_zones`) and presses the key's action or the throw ([touch controls](touch-controls.md)); the HUD's
+  nodes keep ignoring the pointer. A left hand flips the column and the strip with it. A desktop's or a pad's strip is
+  what it was: 64 high, one card wide, no grenade place.
 - **Keys:** `1` and `2` (and `3`) pick that slot's weapon; the slot in hand and an empty slot do nothing; the swap
-  button (F, the pad's d-pad up, the touch SWAP) goes on to the next one ([weapons](weapons.md#carrying-weapons)).
+  button (F, the pad's d-pad up; a phone has none, it taps the weapon) goes on to the next one ([weapons](weapons.md#carrying-weapons)).
 
 ## Players' points
 
@@ -115,6 +120,20 @@ the gaps is 296 units, and the left column still ends under the health card on t
 the challenge prompt between it and the round card. A downed player's portrait dims, their box darkens and the name
 says `DOWN`. There is no party ticket any more: the containers are the party list.
 
+**On a phone, in pairs when it must.** With the touch layout up the weapon strip is a fingertip high under the column and
+the round and the objective stand over it, so at the largest interface size (1.25: a 864 unit high canvas on every phone
+page) a room of eight people stood 38 units over the objective, and 106 with the bots' chips (#1301). `Hud._fit_players`
+gives the column its `room` (from a gap under the round and the objective at their tallest, so it does not move when the
+words change, to the health card), and a party whose boxes, one to a row, are taller than that puts its teammates two to
+a row (`HudPointsStack.mate_columns`; `HudPlayerBox.paired`, half the column wide, `PAIR_WIDTH`): the points alone in
+each box at the same type (24 units), `DOWN` or `DEAD` in the danger colour in their place while they are down, no name,
+level badge or emblem (the card and the frame stay). That takes eight people from 332 units high to 218. A room the boxes
+fit in keeps names and one box to a row as before; a desktop or a pad never sets a room. With the touch layout up the
+round card takes **one row** (`HudRound.compact`: the reels on the left, the caption and the detail stacked on the
+right, 90 units high instead of 160, the reel tiles a tenth smaller), which gives the column 70 units more room: at 1.25
+every party of 3 to 8 keeps its names, except 7 and 8 people with the bots' chips (#1305). What it leaves:
+[Players' column on a phone](../research/players-column-phone.md).
+
 The portrait is the Soldier as the player wears it, a head-and-shoulders render of the game's own model
 (`CharacterAssembler`, the assembler the wardrobe and the lot use) in a tiny 3D world of its own, drawn once and then left
 alone (`UPDATE_ONCE`), so it costs nothing after its first frame. The state holds each player's `seat` and `look` as plain
@@ -123,8 +142,8 @@ event (`player_id`, `seat`, `look`) replaces it. Until a client sends looks, the
 
 ## The scoreboard
 
-Hold **Tab** (the pad's **Back / Select** button; on a phone a small button under Pause) and a ticket comes up over the
-middle of the night; let go and it leaves. One row per player in the night, in seat order on every screen:
+Hold **Tab** (the pad's **Back / Select** button; on a phone a finger held on the players' column) and a ticket comes up
+over the middle of the night; let go and it leaves. One row per player in the night, in seat order on every screen:
 `[armband][name][kills][downs][revives][points][ping]`, with the round and the night's clock above (`TIME 12:34`, hours
 after the first). A downed player's name goes red and says `(DOWN)`, one who bled out `(DEAD)`; your own row has a faint
 wash. **Ping** is a column only when some player has one (a night over a link), and each ping reads good, fair or bad in
@@ -133,19 +152,34 @@ when a round ends is nobody's revive (see [Scoreboard](../research/scoreboard.md
 never counted on the client.
 
 It is `HudScoreboard`, a part like the others, drawn last and not part of any column; it takes no space while hidden. It
-is held by the `scoreboard` input action, which the key, the pad and the touch button all press, so the HUD polls the
+is held by the `scoreboard` input action, which the key, the pad and the held finger all press, so the HUD polls the
 action instead of listening for one kind of event. A pause menu or the result switches it off
 (`Hud.scoreboard_enabled`).
 
+On a phone the players' column is the place for the finger (#1287): `Hud.scoreboard_zone` is the points part's box grown
+upward to a fingertip (44 CSS px, `MenuScale.tap_units`) when it is smaller, one of `Hud.touch_zones` after the weapon
+places, so `TouchControls` presses the `scoreboard` action for as long as a finger that began there is down; that finger
+never looks, fires or starts the stick. The ticket is centred over the night, which at the smaller interface sizes is
+under the right thumb's buttons and, with a full room, as tall as the page. While the touch layout is up `BoardFit`
+moves it along the screen and then shrinks it, a step of 5 percent at a time and no further than half, until it is
+24 units clear of every button, weapon place and the column; `Hud.set_touch_boxes` gives it the boxes, and the holder
+the ticket stands in is moved and scaled (a container puts its child's scale back to one). A desktop's ticket is
+where it was, whole.
+
 ## The bot command wheel
 
-Holding Q (the pad's d-pad left, the touch BOTS button) opens `HudBotWheel` over the middle of the screen: three
+Holding Q (the pad's d-pad left) opens `HudBotWheel` over the middle of the screen: three
 tickets, **Follow** on top, **Roam** lower right and **Hold** lower left, a dial in the middle, a flat dim behind. The
-pointer (the mouse's motion, the right stick, a finger's drag) lights one ticket; letting go over it gives the team's bots
+pointer (the mouse's motion, the right stick) lights one ticket; letting go over it gives the team's bots
 that order, letting go over the dial or tapping the key gives none. The ticket of the order that stands is marked NOW,
-and the HUD's notice list says the new order for a moment after a change (`BOTS: HOLD HERE`). It is a screen-sized
+and the HUD's notice list says the bots' state for a moment once it has changed (`BOTS: FOLLOWING YOU`, `ROAMING`,
+`HOLDING POSITION`). It is a screen-sized
 overlay (`Hud.screen_overlays`), so it stays on the middle of the screen whatever the safe area is, takes no room while
 closed and is not in a column. The model, the driver and what was learned are in [Bot wheel](../research/bot-wheel.md).
+
+A phone has no wheel (#1286): `HudBotOrder`, a tag at the inner end of the weapon strip, says the standing order (a word
+in the order's colour under a small BOTS) while the room has a bot, and a tap on it gives the next order of the round
+([touch controls](touch-controls.md)). It is made with the touch layout, so a keyboard's HUD holds none of it.
 
 ## Revives
 
@@ -253,7 +287,9 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   dark card, on purpose: it is rare, so it may be the one light thing at the edge, and it matches the main menu's
   "The program". `HudChallenge` reads `challenge_advanced` events like every part; `ChallengeHudLink` makes them from the
   night's challenges. A layout test puts it on the busiest HUD at every canvas, mirrored or not, beside the crosshair's
-  clear box (`test_hud_challenge.gd`).
+  clear box (`test_hud_challenge.gd`). On a phone the strip lifts the players' column up to it, and a room of eight grows
+  it past the objective: there the card stands beside the column, in the nearest free place the boxes of the screen
+  leave (`ChallengeFit`, [the challenge card on a phone](../research/challenge-card-phone.md), #1299).
 - **Caps keep a 28-zombie round readable.** Three gain rows, eight damage numbers, six damage arcs, three events and one
   notice at a time; the oldest goes first.
 - **Notices on the right.** Joins and leaves sit under the event list, not at the left edge: with eight players, an
@@ -297,6 +333,9 @@ marquee, the banner, the reward line and a late joiner into a special round), `t
 against the HUD that saw every event), `test_hud_refresh.gd` (changes announced, nodes made and a time budget for
 the break and a kill batch), `test_hud_parts.gd` (every part, the prompt with simulated input and device switching),
 `test_hud_players.gd` (a container per player, one to eight: colours, local first, down, the portrait),
+`test_players_column_phone.gd` (the busiest column against the round and objective on both phone pages, every size and
+hand; the pairs, what a paired box shows, the room), `test_round_card_phone.gd` (the round card on one row on a phone,
+in three lines elsewhere, and the room it gives the column),
 `test_hud_reticle.gd` (the reticle: present, centred, small, scaled by the viewport stretch, hidden under a menu or
 while down, editable), `test_hud_generator_panel.gd` (when the card shows and its stepped timing),
 `test_hud_grid.gd` (the grid, measured at every canvas: shared edges, gaps, text lines, no label leaving its part),

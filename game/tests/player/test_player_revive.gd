@@ -55,12 +55,18 @@ func _clip_names() -> Array[StringName]:
 	var names: Array[StringName] = [DownedPose.DOWNED_CLIP, DownedPose.REVIVE_CLIP]
 	if _animation.has_crawl():
 		names.append(DownedPose.CRAWL_CLIP)
+		names.append(DownedPose.CRAWL_LEAD_CLIP)
 	return names
 
 
 func test_the_clips_are_in_the_library_loop_and_key_no_finger() -> void:
 	assert_bool(_animation.has_crawl()).is_true()  # the optional file is in this build
-	var lengths := {&"Downed_Idle": 2.0, &"Revive_Kneel": 1.0, &"Downed_Crawl": 32.0 / 24.0}
+	var lengths := {
+		&"Downed_Idle": 2.0,
+		&"Revive_Kneel": 1.0,
+		&"Downed_Crawl": 32.0 / 24.0,
+		&"Downed_Crawl_Arm": 1.0
+	}
 	for clip in _clip_names():
 		assert_bool(_clips.has_animation(clip)).override_failure_message(String(clip)).is_true()
 		var animation := _clips.get_animation(clip)
@@ -92,6 +98,7 @@ func test_the_tree_reaches_every_clip() -> void:
 	var nodes := {&"downed_clip": &"Downed_Idle", &"revive_clip": &"Revive_Kneel"}
 	if _animation.has_crawl():
 		nodes[&"crawl_clip"] = &"Downed_Crawl"
+		nodes[&"crawl_lead_clip"] = &"Downed_Crawl_Arm"
 	for node: StringName in nodes:
 		assert_bool(root.has_node(node)).is_true()
 		assert_str(String((root.get_node(node) as AnimationNodeAnimation).animation)).is_equal(
@@ -176,8 +183,16 @@ func test_moving_while_down_crawls_at_the_clips_pace() -> void:
 	_animation.set_downed(true)
 	_step(90)
 	assert_float(_animation.crawl_weight()).is_equal(0.0)
+	assert_float(float(_animation.get(DownedPose.CRAWL_LEAD_PARAMETER))).is_equal(0.0)
 	_player.state.velocity = Vector3(0.0, 0.0, -0.45)
-	_step(60)
+	# The right arm goes to the lead pose first (#1282): it is all the way there by a quarter of the
+	# crawl's weight, long before the crawl is in.
+	var lead_whole_at := -1.0
+	for _i in 60:
+		_step(1)
+		if lead_whole_at < 0.0 and float(_animation.get(DownedPose.CRAWL_LEAD_PARAMETER)) >= 1.0:
+			lead_whole_at = _animation.crawl_weight()
+	assert_float(lead_whole_at).is_between(0.2, 0.3)
 	assert_float(_animation.crawl_weight()).is_greater(0.99)
 	assert_float(float(_animation.get(DownedPose.CRAWL_RATE_PARAMETER))).is_equal_approx(1.0, 0.05)
 	# The heels move: the right foot is not where it was half a loop ago.

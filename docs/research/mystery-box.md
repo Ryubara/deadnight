@@ -163,6 +163,80 @@ the price with ammunition money to spare, waits at the glass through the dig and
 walk to the crane on the field, `crane_spin_started`, `crane_prize_ready`, `crane_prize_taken`, the weapon in its
 arms.
 
+### The hosted bots at the crane (#1322)
+
+The maintainer, playing: "the bots will use the prize pick (mystery box), but they'll never actually pick up the weapon.
+They'll just keep rolling it until eventually leaving." Counted in a real night (`bots_crane_soak.tscn`: four hosted bots
+alone in the lot, 15 game minutes, seeds 1 to 4, two at the shipped health and two at five times it, so 16 bot-nights),
+on `main` before the fix:
+
+| | Plays | Prizes held out | Taken | Left on the glass | Points into plays |
+| --- | --- | --- | --- | --- | --- |
+| Before, all bots | 51 | 46 | 12 (26%) | 34 | 28,050 |
+| Before, the Rookie (a pistol and a free hand) | 16 | 14 | 2 | 12 | 8,800 |
+| After, all bots | 21 | 19 | 14 (74%) | 5 | 11,550 |
+| After, the Rookie | 11 | 9 | 4 | 5 | 6,050 |
+
+Where it broke, in the order of how many offers it cost:
+
+- **The decision to take is not the decision to buy** (32 of the 34). The bot paid when *any one* of the seventeen
+  prizes was worth taking (`BotEconomy._crane`) and then took the one it was dealt only when that one beat what it
+  would give up by `WeaponWorth.REPLACE_GAIN` (1.5). A Rookie with the pistol only takes 7 of the 17 prizes against a
+  round-3 walker's health (half the draw by weight) and 3 against round 5's (a quarter). The draw is blind, so most
+  plays were dealt a prize the bot's own rule leaves on the glass, and nothing remembered a miss: it paid again at
+  once. The bot now pays only when the weighted share of the draw it would take (`BotEconomy.crane_odds`, the weights
+  `ShopItem.roll` draws by) is at least `BotProfile.crane_min_odds` (0.25), and lets the prize go at most once a round
+  with the weapons it carries (`BotBeliefs.pass_crane`, set by the `crane_prize_lost` event). The bot still weighs a
+  prize as before (`worth_taking`, `weighs_by_round`): what changed is that it no longer pays for a hand it expects to
+  refuse. Rolls: the number of plays a bot may make is not capped; it is the odds, one miss a round and the box's own
+  breakdown.
+- **The wait never walked back** (1 of the 34, and every shove). The old wait kept the bot "at the glass" by
+  setting a note, not a goal, so a bot a teammate's walk pushed 3 m off (the press reaches 1.5 m,
+  `NightTuning.spot_reach`) stood out of reach through the 12 seconds the prize floated, with an empty card. The wait
+  now sets the stand and the facing whenever the card is not the crane's (`BotCraneWait`).
+  `test_bot_crane.gd` puts the bot 3.5 m off during the dig and checks the card is down, then that it takes the prize.
+- **Left for something else** (1 of the 34, and 1 of the 5 after): a bot that is not clear of the dead
+  (`BotShop.clear_from`) runs no errand, and a bot that goes to a revive is 60 m away, while the prize floats for 12 s
+  whatever the fight is. That is the bot's own choice and is unchanged.
+
+Not the cause, checked: the use press and the guard (every offer a bot wants was taken within the second it showed;
+the `replace_settle` of #908 is 0.4 s and the bot presses each think); the bot's reach when it is at its stand (the
+card was up for the whole window in 22 of the 32 prizes it declined, and each of the 12 prizes it wanted while in
+reach of the glass was taken within two seconds of showing); the use-sites test of #1244 (a bound of the same reaches the
+spot offers use: with it merged the three tests of `test_bot_crane.gd` give the same results as without); and the
+retune of #1023 (it raised the odds a little: a pistol-only Rookie's share of takeable prizes at round 3 / 5 / 8 went
+from 0.43 / 0.17 / 0.39 to 0.50 / 0.24 / 0.54). The rule is older: the free hand weighed by the round is #827
+(2026-11-03), the 1.5 margin #566 (2026-11-02), the buy-on-any-prize rule #271 (2026-11-01), and the simulator's
+shoppers (`NightSim._crane_can_pay_off`) buy on any prize too, so the model wastes plays in the same way and was
+left as it was (`docs/research/balance-simulator.md`).
+
+The soak's medians (`tools/bots/soak_report.py`, one Godot process of five nights a chunk, roam, the simulator's
+numbers from 60 nights each; the first row of every pair is `main`, the second the fix):
+
+| Cell | Nights (seeds) | Median round | Sim median | Kolmogorov | Spend ratio (sim) | Nights that broke a gate |
+| --- | --- | ---: | ---: | ---: | --- | ---: |
+| rookie x2, `main` | 10 (1 to 10) | 6 | 5 | 0.38 | 0.67 (0.71) | 0 |
+| rookie x2, fix | 10 (1 to 10) | 9 | 5 | 0.68 | 0.68 (0.71) | 0 |
+| rookie x2, `main` | 20 (11 to 30) | 7 | 5 | 0.48 | 0.65 (0.71) | 0 |
+| rookie x2, fix | 20 (11 to 30) | 6 | 5 | 0.33 | 0.67 (0.71) | 0 |
+| regular x2, `main` | 10 (1 to 10) | 12 | 15 | 0.55 | 0.55 (0.75) | 3 |
+| regular x2, fix | 10 (1 to 10) | 11 | 15 | 0.35 | 0.66 (0.75) | 2 |
+| veteran x2, `main` | 10 (1 to 10) | 13 | 16 | 0.57 | 0.60 (0.71) | 0 |
+| veteran x2, fix | 10 (1 to 10) | 16 | 16 | 0.38 | 0.69 (0.71) | 1 |
+
+Ten nights do not rank the fix: the Rookie's median read 6 against 9 on the first ten seeds and 7 against 6 on the next
+twenty. What the fix changes for certain is the points a bot spends on the crane (about 1,000 less a bot-night in the
+crane soak, which go to the other things on its list: the spend ratio of the regular and veteran cells rose by about
+0.1). So the cells of `bots-nightly` that read bot strength (the median within 1.5 of the simulator, the Kolmogorov
+distance under 0.2, the spend ratio within 0.20 of the simulator's) can move by a round either way and the spend ratio
+by a tenth. The simulator's shoppers still buy on any prize (`NightSim._crane_can_pay_off`) and are not touched:
+mirroring the rule there moves its medians (the crane price was tuned against it, [the balance
+simulator](balance-simulator.md)) and is an issue of its own, not a retune made here. The gates that read the bots'
+behaviour (the engine error, stuck and idle gates, the far-from-the-person gate) are not moved: the walk back to the
+glass is a note of `crane`, which `SoakWatch.ERRAND_NOTES` counts as an errand.
+
+A person's crane is the rules' and is untouched: the change is in `gameplay/bots/` only.
+
 ## Open
 
 - Time the real thing in a capture to replace every **estimated** above (spin length, cycle speeds, the window).

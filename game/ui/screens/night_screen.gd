@@ -96,6 +96,7 @@ var _lobby_api: TogetherApi
 var _left := false
 var _loading: LoadingOverlay
 var _touch: TouchControls
+var _strike_reach := StrikeReach.new()
 var _overlay: Control
 var _title: UILabel
 var _note: UILabel
@@ -183,16 +184,25 @@ func _ready() -> void:
 	_touch.safe_insets_changed.connect(_on_safe_insets_changed)
 	_touch.mirrored_changed.connect(_on_mirrored_changed)
 	_touch.active_changed.connect(func(active: bool) -> void: _hud.touch_layout = active)
-	_touch.layout_changed.connect(func() -> void: _hud.markers.held = _touch.button_boxes())
+	_touch.layout_changed.connect(_keep_markers_off_the_buttons)
+	# The HUD's weapon places are the phone's weapon controls (#1280) and its players' column holds
+	# the scoreboard (#1287): the layer asks it where they are, and the world markers keep clear of
+	# them as of the buttons.
+	_touch.zones = _hud.touch_zones
+	_hud.slots_moved.connect(_keep_markers_off_the_buttons)
 	_touch.look_gain = _look_gain
+	# Strike shows while a dead is within the quick melee's reach, on this client's picture (#1285).
+	_touch.strike_ready = _strike_ready
 	# A hit area is never under a fingertip, at the interface size this night runs at (#1217).
 	_touch.finger_units = func() -> float: return MenuScale.tap_units(get_window(), true)
+	# The stick's ring and its sprint edge are CSS pixels of the page (#1276).
+	_touch.css_per_unit = func() -> float:
+		return MenuScale.css_per_unit(get_window().size, get_window().content_scale_factor)
 	add_child(_touch)
 	wheel = BotWheelDriver.new()
 	wheel.name = "BotWheelDriver"
 	wheel.night = night
 	wheel.hud_wheel = _hud.bot_wheel
-	wheel.touch = _touch
 	add_child(wheel)
 	_build_end()
 	_build_overlay()
@@ -217,6 +227,12 @@ func _start_if_run_alone() -> void:
 		screen_enter()
 
 
+## Hands the HUD every box a finger presses (the buttons, the weapon places, the players' column):
+## the world markers keep clear of them, and so does the scoreboard's ticket.
+func _keep_markers_off_the_buttons() -> void:
+	_hud.set_touch_boxes(_touch.button_boxes())
+
+
 ## True while the touch controls are on screen and taking touches.
 func touch_active() -> bool:
 	return _touch != null and _touch.is_active()
@@ -228,8 +244,47 @@ func touch_circles() -> Dictionary:
 	return _touch.circles() if _touch != null else {}
 
 
+## The HUD's places a finger presses (`Hud.touch_zones`: the weapons and the players' column): a
+## browser test reads them.
+func touch_zones() -> Array[Dictionary]:
+	return _hud.touch_zones() if _hud != null else []
+
+
+## True while the Strike button shows: a dead is within reach of the quick melee (a browser test
+## reads it).
+func touch_strike_up() -> bool:
+	return _touch != null and _touch.strike_up
+
+
 func touch_held() -> PackedStringArray:
 	return _touch.held_buttons() if _touch != null else PackedStringArray()
+
+
+## The move stick as `down,sprint,vx,vy,radius,margin` (a browser test reads it): a finger on it,
+## the sprint latch, the move it asks for, and the ring and the sprint margin in canvas units.
+func touch_stick() -> String:
+	if _touch == null:
+		return ""
+	return (
+		"%d,%d,%.3f,%.3f,%.1f,%.1f"
+		% [
+			int(_touch.is_stick_down()),
+			int(_touch.is_sprinting()),
+			_touch.stick_vector().x,
+			_touch.stick_vector().y,
+			_touch.stick_radius(),
+			_touch.sprint_margin(),
+		]
+	)
+
+
+## The first-run hints on screen now (a browser test reads them).
+func touch_hints() -> PackedStringArray:
+	var ids := PackedStringArray()
+	if _touch != null and _touch.hints != null:
+		for id in _touch.hints.showing():
+			ids.append(String(id))
+	return ids
 
 
 ## True while the settings page of the menu is open (a browser test reads it).
@@ -322,6 +377,12 @@ func _unhandled_input(event: InputEvent) -> void:
 ## The factor on a touch look drag: the aim assist slows it near a zombie.
 func _look_gain() -> float:
 	return night.assist.friction() if night != null and night.assist != null else 1.0
+
+
+## Whether a dead is within reach of the quick melee: the phone's Strike button shows (no traffic of
+## its own, only the picture of the night this client has).
+func _strike_ready() -> bool:
+	return night != null and _strike_reach.update(night.state)
 
 
 ## A left-handed layout swaps the HUD's corner columns with the buttons.

@@ -227,9 +227,11 @@ func _measure_floor(lot: Node3D) -> void:
 	shut.queue_free()
 
 
+## The middle of the players' start: the first eight markers, the places of the room's people. The
+## seven after them (#1193) are where a night's bots stand round them, and do not move the start.
 func _spawn_centre(lot: Node) -> Vector3:
 	var centre := Vector3.ZERO
-	var spawns := lot.get_node("PlayerSpawns").get_children()
+	var spawns := lot.get_node("PlayerSpawns").get_children().slice(0, NightHost.MAX_PLAYERS)
 	for spawn: Node3D in spawns:
 		centre += spawn.global_position
 	return centre / spawns.size()

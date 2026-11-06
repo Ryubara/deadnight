@@ -27,6 +27,18 @@ func _init() -> void:
 	visible = false
 
 
+## The height the card takes with its area and two lines of words, the most it ever takes: what a
+## column under it keeps clear (`Hud`), so the column does not move when the words change.
+func max_height() -> float:
+	var lines := _objective.max_lines_visible
+	return (
+		float(HudStyle.PAD * 2)
+		+ _area.get_line_height()
+		+ float(lines * _objective.get_line_height())
+		+ float((lines - 1) * _objective.get_theme_constant(&"line_spacing"))
+	)
+
+
 func topics() -> Array[StringName]:
 	return [HudState.OBJECTIVE]
 

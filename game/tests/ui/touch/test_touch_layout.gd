@@ -15,6 +15,29 @@ const HANDS: Array[bool] = [false, true]
 const KEPT_PARTS: Array[StringName] = [
 	&"ammo", &"prompt", &"health", &"perks", &"points", &"round_part", &"slots"
 ]
+## The five buttons of the right thumb (#1277): one ring round Fire.
+const RING: Array[StringName] = [
+	TouchLayout.RELOAD, TouchLayout.AIM, TouchLayout.JUMP, TouchLayout.CROUCH
+]
+## What Strike keeps the 30 units of air from: Interact, which can be up with it, the ring and Fire.
+const STRIKE_NEIGHBOURS: Array[StringName] = [
+	TouchLayout.INTERACT,
+	TouchLayout.FIRE,
+	TouchLayout.RELOAD,
+	TouchLayout.AIM,
+	TouchLayout.JUMP,
+	TouchLayout.CROUCH,
+]
+## A thumb needs 2 to 3 mm of air between neighbours: 2 mm is 12 CSS px, 33 units on a phone's night
+## (0.36 CSS px a unit).
+const LEAST_AIR := 30.0
+## CSS pixels in a millimetre on a phone (the 6 of a 460 ppi, 3x phone), and what is a comfortable
+## roll of the right thumb from where it rests on Fire, in millimetres.
+const CSS_PX_PER_MM := 6.0
+const RING_REACH_MM := 16.0
+const INTERACT_REACH_MM := 30.0
+## The CSS pixels of one unit on the two phone pages a night runs on (844 x 390 and 667 x 375).
+const PAGE_UNITS := [0.361, 0.347]
 
 
 func before_test() -> void:
@@ -51,6 +74,92 @@ func test_no_hit_area_is_smaller_than_a_thumb() -> void:
 			var circles := _circles(CANVASES[0], Vector4.ZERO, scale_value, mirrored)
 			for id: StringName in circles:
 				assert_float(circles[id][&"hit"]).is_greater_equal(TouchLayout.MIN_HIT)
+
+
+func _air(a: Dictionary, b: Dictionary) -> float:
+	var gap: float = (a[&"centre"] as Vector2).distance_to(b[&"centre"])
+	return gap - float(a[&"radius"]) - float(b[&"radius"])
+
+
+func test_the_right_thumbs_buttons_are_one_ring_round_fire_with_air_between_them() -> void:
+	for mirrored in HANDS:
+		for canvas in CANVASES:
+			var circles := _circles(canvas, Vector4.ZERO, 1.0, mirrored)
+			var fire: Dictionary = circles[TouchLayout.FIRE]
+			for id in RING:
+				# Round Fire at the same air (a few units for the whole numbers of the table).
+				assert_float(_air(fire, circles[id])).is_equal_approx(TouchLayout.RING_GAP, 2.0)
+			for i in RING.size():
+				for j in range(i + 1, RING.size()):
+					(
+						assert_float(_air(circles[RING[i]], circles[RING[j]]))
+						. override_failure_message("%s and %s are too close" % [RING[i], RING[j]])
+						. is_greater_equal(LEAST_AIR)
+					)
+			# Interact, which shows at something to use, has air from every one of them too.
+			for id in RING:
+				assert_float(_air(circles[TouchLayout.INTERACT], circles[id])).is_greater_equal(
+					LEAST_AIR
+				)
+
+
+func test_reload_is_right_next_to_fire_in_the_same_row() -> void:
+	for mirrored in HANDS:
+		var circles := _circles(CANVASES[1], Vector4.ZERO, 1.0, mirrored)
+		var fire: Dictionary = circles[TouchLayout.FIRE]
+		var reload: Dictionary = circles[TouchLayout.RELOAD]
+		# Next to Fire: the same air the ring has, a thumb's width and no more.
+		(
+			assert_float(_air(fire, reload))
+			. override_failure_message("Reload is not right next to Fire")
+			. is_less_equal(TouchLayout.RING_GAP + 2.0)
+		)
+		var row: float = absf((fire[&"centre"] as Vector2).y - (reload[&"centre"] as Vector2).y)
+		assert_float(row).is_less(float(reload[&"radius"]))
+		# Toward the middle of the screen from Fire, the way a thumb slides along the row.
+		var fire_x: float = (fire[&"centre"] as Vector2).x
+		var reload_x: float = (reload[&"centre"] as Vector2).x
+		assert_bool(reload_x > fire_x if mirrored else reload_x < fire_x).is_true()
+
+
+func test_every_button_of_the_right_thumb_is_in_a_comfortable_reach_of_where_it_rests() -> void:
+	# The thumb rests on Fire. On both phone pages, in millimetres of a phone (6 CSS px each).
+	var circles := _circles(CANVASES[0])
+	var fire: Vector2 = circles[TouchLayout.FIRE][&"centre"]
+	for unit in PAGE_UNITS:
+		for id in RING:
+			var mm: float = fire.distance_to(circles[id][&"centre"]) * float(unit) / CSS_PX_PER_MM
+			(
+				assert_float(mm)
+				. override_failure_message("%s is %.1f mm from Fire" % [id, mm])
+				. is_less_equal(RING_REACH_MM)
+			)
+		var out: float = (
+			fire.distance_to(circles[TouchLayout.INTERACT][&"centre"]) * float(unit) / CSS_PX_PER_MM
+		)
+		assert_float(out).is_less_equal(INTERACT_REACH_MM)
+
+
+func test_every_button_of_the_table_is_a_right_button_that_looks_while_it_drags() -> void:
+	for row in TouchLayout.BUTTONS:
+		var id: StringName = row[0]
+		(
+			assert_bool(TouchLayout.looks_when_dragged(id))
+			. override_failure_message("%s" % id)
+			. is_true()
+		)
+	# The wheel is gone from the glass (#1286): the bots' order is a tag on the HUD.
+	assert_bool(TouchLayout.buttons(Rect2(0, 0, 2337, 1080), 1.0).has(&"bot_wheel")).is_false()
+	for id in [TouchLayout.PAUSE, TouchLayout.PING, &"scoreboard", &"nothing"]:
+		assert_bool(TouchLayout.looks_when_dragged(id)).is_false()
+
+
+func test_the_five_buttons_of_the_right_thumb_are_there() -> void:
+	var circles := _circles(CANVASES[1])
+	for id in [
+		TouchLayout.FIRE, TouchLayout.AIM, TouchLayout.JUMP, TouchLayout.RELOAD, TouchLayout.CROUCH
+	]:
+		assert_bool(circles.has(id)).override_failure_message(str(id)).is_true()
 
 
 func test_the_buttons_do_not_overlap_each_other() -> void:
@@ -139,19 +248,51 @@ func test_the_left_hand_layout_is_the_right_hand_one_flipped_in_the_safe_area() 
 		assert_float(zone.position.x).is_equal_approx(safe.position.x, 0.01)
 
 
-func test_the_melee_button_is_on_screen_clear_of_fire_on_a_phones_540_unit_canvas() -> void:
+func test_strike_stands_where_swap_did_beside_reload_with_air_round_it() -> void:
+	# The audit's place (#1285): 575 left and 340 up of the corner, the same row as Reload.
+	for mirrored in HANDS:
+		for canvas in CANVASES:
+			var circles := _circles(canvas, Vector4.ZERO, 1.0, mirrored)
+			var strike: Dictionary = circles[TouchLayout.STRIKE]
+			var corner := Vector2(0.0 if mirrored else canvas.x, canvas.y)
+			var offset := (strike[&"centre"] as Vector2 - corner).abs()
+			assert_vector(offset).is_equal_approx(Vector2(575.0, 340.0), Vector2.ONE * 0.01)
+			for id: StringName in circles:
+				if id == TouchLayout.STRIKE:
+					continue
+				(
+					assert_float(_air(strike, circles[id]))
+					. override_failure_message("Strike is too close to %s" % id)
+					. is_greater_equal(LEAST_AIR if id in STRIKE_NEIGHBOURS else 0.0)
+				)
+
+
+func test_strike_is_a_roll_of_the_thumb_from_fire_along_the_reload_row() -> void:
+	var circles := _circles(CANVASES[0])
+	var fire: Vector2 = circles[TouchLayout.FIRE][&"centre"]
+	var strike: Vector2 = circles[TouchLayout.STRIKE][&"centre"]
+	for unit in PAGE_UNITS:
+		var mm := fire.distance_to(strike) * float(unit) / CSS_PX_PER_MM
+		assert_float(mm).override_failure_message("%.1f mm from Fire" % mm).is_between(20.0, 24.0)
+	# Beside Reload, in its row, farther out from Fire.
+	var reload: Vector2 = circles[TouchLayout.RELOAD][&"centre"]
+	assert_float(absf(reload.y - strike.y)).is_less(float(circles[TouchLayout.RELOAD][&"radius"]))
+	assert_float(strike.x).is_less(reload.x)
+
+
+func test_the_strike_button_is_on_screen_clear_of_fire_on_a_phones_540_unit_canvas() -> void:
 	# The menu's phone factor halves the canvas to 540 units high and stays on in the night.
 	var phone := Vector2(1168.5, 540.0)
 	for mirrored in HANDS:
 		var safe := TouchLayout.safe_rect(phone, Vector4.ZERO)
 		var circles := TouchLayout.buttons(safe, 1.0, mirrored)
-		var melee: Dictionary = circles[TouchLayout.MELEE]
+		var melee: Dictionary = circles[TouchLayout.STRIKE]
 		var fire: Dictionary = circles[TouchLayout.FIRE]
 		var box := Rect2(melee[&"centre"], Vector2.ZERO).grow(melee[&"radius"])
 		(
 			assert_bool(safe.encloses(box))
 			. override_failure_message(
-				"melee leaves %s (mirrored %s): %s" % [safe, mirrored, melee]
+				"strike leaves %s (mirrored %s): %s" % [safe, mirrored, melee]
 			)
 			. is_true()
 		)
@@ -159,13 +300,14 @@ func test_the_melee_button_is_on_screen_clear_of_fire_on_a_phones_540_unit_canva
 		assert_float(gap).is_greater(float(melee[&"radius"]) + float(fire[&"radius"]))
 
 
-func test_the_bots_and_ping_buttons_are_on_screen_clear_of_the_rest_on_a_phones_540_unit_canvas(
-) -> void:
-	var phone := Vector2(1168.5, 540.0)
+func test_the_ping_button_is_on_screen_clear_of_the_rest_on_the_smallest_phone_canvas() -> void:
+	# A night runs at the interface size alone (#1192): the least canvas is the 667 x 375 page at
+	# 1.25, 1536 x 864 units (it was the menu's 540 unit phone factor, which a night no longer has).
+	var phone := Vector2(1536.0, 864.0)
 	for mirrored in HANDS:
 		var safe := TouchLayout.safe_rect(phone, Vector4.ZERO)
 		var circles := TouchLayout.buttons(safe, 1.0, mirrored)
-		for id in [TouchLayout.BOT_WHEEL, TouchLayout.PING]:
+		for id in [TouchLayout.PING]:
 			var circle: Dictionary = circles[id]
 			var box := Rect2(circle[&"centre"], Vector2.ZERO).grow(circle[&"radius"])
 			(
@@ -186,24 +328,23 @@ func test_the_bots_and_ping_buttons_are_on_screen_clear_of_the_rest_on_a_phones_
 					. override_failure_message("%s touches %s on %s" % [id, other, phone])
 					. is_greater(0.0)
 				)
-			# Off the view: on the top edge band (the ping, beside Pause) or at the side (the wheel).
+			# Off the view: outside the middle 40 percent of the width that stays clear (the ping,
+			# under Pause, #1289: it was on the top band before).
 			var centre: Vector2 = circle[&"centre"]
+			var clear := phone.x * (0.2 if id == TouchLayout.PING else 0.4)
 			(
-				assert_bool(
-					centre.y < phone.y * 0.25 or absf(centre.x - phone.x * 0.5) > phone.x * 0.4
-				)
+				assert_bool(absf(centre.x - phone.x * 0.5) > clear)
 				. override_failure_message("%s is over the view on %s" % [id, phone])
 				. is_true()
 			)
 
 
-func test_the_shoulder_button_sits_clear_of_the_thumb_arc_and_the_look_area_stays_free() -> void:
+func test_the_side_button_is_gone_and_its_ground_is_free_for_the_double_tap() -> void:
 	for mirrored in HANDS:
 		var circles := _circles(CANVASES[1], Vector4.ZERO, 1.0, mirrored)
-		var side: Dictionary = circles[TouchLayout.SHOULDER]
-		var centre: Vector2 = side[&"centre"]
-		# Not in the middle 40 percent of the width, which is the view.
-		assert_float(absf(centre.x - CANVASES[1].x * 0.5)).is_greater(CANVASES[1].x * 0.2)
+		assert_bool(circles.has(TouchDoubleTap.ACTION)).is_false()
+	for row in TouchLayout.BUTTONS:
+		assert_str(String(row[0])).is_not_equal(String(TouchDoubleTap.ACTION))
 
 
 func test_a_notch_moves_the_buttons_in_with_the_safe_area() -> void:

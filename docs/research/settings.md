@@ -37,7 +37,7 @@ other `user://` files are the captures' own `*_capture.cfg` and PNGs, which are 
 | `accessibility/challenge_prompts` | 0 | nothing: `ChallengeHudLink` reads it and sets `HudChallenge.mode` (0 all, 1 finished challenges and milestone steps only, 2 off); [the prompt](../design/progression.md#the-progress-prompt-in-the-night) |
 | `controls/mouse_sensitivity`, `invert_y` | 1.0, off | nothing: gameplay reads them and listens to `changed` |
 | `controls/touch_controls` (0 auto, 1 on, 2 off), `touch_scale`, `touch_opacity`, `haptics` | 0, 1.0, 0.7, on | nothing: `TouchControls` reads them and listens to `changed` (the Touch tab) |
-| `controls/touch_aim_assist` (0 to 1), `controls/touch_auto_fire` (0 off, 1 on: fires while aiming; Aim is a toggle when 0) | 0.5, 1 | nothing: `TouchAimAssist` reads them and listens to `changed` (the Touch tab); [Touch aim assist](aim-assist.md) |
+| `controls/touch_aim_assist` (a toggle; a file saved as a number loads 0 as off, any other as on), `controls/touch_auto_fire` (0 off, 1 on: fires while aiming; Aim is a toggle when 0) | on, 1 | nothing: `TouchAimAssist` reads them and listens to `changed` (the Touch tab); [Touch aim assist](aim-assist.md) |
 | `controls/left_handed` | off | nothing: `TouchControls` flips the layout and the night screen flips the HUD's corner columns (the Touch tab) |
 | `controls/touch_hints_seen` | 0 | nothing: a bit per first-run hint that was used (`TouchHints`); no row on the screen, the defaults button clears it |
 
@@ -181,3 +181,31 @@ applied and saved by the service as it is made, and the player, the touch layer 
 pad buttons, fingers and clicks; a game server over loopback for the online night); browser:
 `tools/web_smoke/ingame_menu.py` (desktop and a phone in landscape; the page reads the card's buttons from
 `window.deadnight.menu_buttons`).
+
+## On a phone (#1290)
+
+The same screen, measured on the real page (844 x 390 and 667 x 375 CSS px at the ratio of 2, touch mode):
+
+- **Tabs and words.** On a touch device (`TouchMode.detect()` or the `--touch` flag; `SettingsScreen.touch_device` is
+  injectable) the Controls tab is left out and the Touch tab starts with "Touch controls", "Look sensitivity" and
+  "Invert vertical look" (the hint says "Drag up to look down"). They are the same keys as the Controls tab's
+  `controls/mouse_sensitivity` and `controls/invert_y` (the touch layer sends its look as mouse motion, so the one
+  setting is read by both), with the same range, and the reset button restores them. A desktop keeps its five tabs, the
+  mouse words and a Touch tab without the two rows (specs: `touch_only` rows, a `no_touch` tab).
+- **Hints.** A row's words get what the control leaves: the tokens give the control 440 units, and on a 960 unit canvas
+  that left a hint 368 units (about 40 characters of the caption face), so "How faint the buttons are when your thumb
+  i..." was cut at both sizes. A phone's rows give the control 260 (`PHONE_CONTROL_WIDTH`, 180 CSS px at the narrowest
+  page, a slider and a switch are still 64 units high) and use the gaps one step smaller (`UIRow.set_tight`), and
+  twelve hints have a shorter `phone_hint` (35 to 41 characters). The desktop's copy is unchanged and comes back when
+  the window grows (`_fit_rows`). `UIRow.hint_cut()` is what `test_settings_phone` asks of every row of every tab on
+  every page of `UiFitRun.PAGES`; a hint that needs a second line is not allowed to wrap there (a wrapping label
+  reports a tall minimum while a container sizes it, see `UIRow`).
+- **A value and the bar.** `ScrollContainer` puts its bar right after the content (a value ended 0.0 units from it, the
+  number touched the bar). The page holder is a `MarginContainer` whose right margin is 16 units while the bar shows
+  and 0 while it does not (`_keep_off_the_bar`, on the bar's `visibility_changed`); no tab is narrower without a bar.
+- **A drag from a row still scrolls the card.** Measured with real touches (`Input.dispatchTouchEvent`) on the export:
+  a drag up from the Reduced motion toggle and a drag down from the Player levels toggle move the card by the same
+  amount before and after the change, and so does a drag from a toggle in the middle of the Touch tab. A drag that
+  begins on an option selector's arrow steps the selector and does not scroll, on main too (not changed here).
+  A drag from a toggle that sits at the bottom edge of the view moved the card 5 units only: a press gives the toggle
+  focus and the card follows it (`follow_focus`). Not measured on main at that spot, and not changed.

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WeaponClassTargets" format=3]
+
+[ext_resource type="Script" path="res://gameplay/weapons/weapon_class_targets.gd" id="1_targets"]
+
+[resource]
+script = ExtResource("1_targets")
+weapon_class = 6
+job = "The line breaker: one pull kills a walker for ten rounds, then two; a small magazine, a slow cycle, and a shot that passes two to four bodies for most of its damage, so lined-up dead are the target."
+body_pulls = PackedInt32Array(1, 1, 1, 2, 1, 2, 1, 2, 2, 4)
+body_seconds = PackedFloat32Array(0, 0.1, 0, 0.6, 0, 0.6, 0, 0.6, 0.5, 1.6)
+head_multiplier = Vector2(2, 2.5)
+limb_multiplier = Vector2(0.6, 0.8)
+bodies = Vector2i(2, 4)
+kept = Vector2(0.6, 0.8)
+magazine = Vector2i(5, 10)
