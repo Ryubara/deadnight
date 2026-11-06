@@ -64,6 +64,30 @@ a bot in the night (`--late --godot <the pinned Godot>`); it counts the WebGL ca
 asks for the probes does not play the show unless it has `?arrival` (`--unasked` checks that it does not). Numbers:
 [the arrival](arrival.md).
 
+## The melee and assist benches (#1320)
+
+`touch_melee.py` and `touch_assist.py` export a copy of the project that starts on a bench scene of
+`game/tests/captures/` and read the page it publishes (`window.__melee`, `window.__assist`). Both failed on main after the
+phone rework and neither was the game's fault:
+
+- **`touch_melee.py` waited 240 s for a page that was never published** (`the bench never got ready: {}`). It set
+  `touch_assist.BENCH_SCENE` and called `touch_assist.export_bench`, whose `scene` default had been bound when the function
+  was defined (#611), so it exported the assist bench. `export_bench` now reads the variable when called (`bot_wheel.py`
+  had the same call), and the timeout names the keys the page did publish (`window.__*`).
+- **The Strike button shows only with a living dead in reach** (#1285), and one blow kills a round-one dead: the bench now
+  keeps the held zombie alive (the rules own its health) so the taps inside and after the cooldown have a button, the run
+  is ready only when `TouchControls.strike_up`, and the probe records the button's state at every tap (a tap on a hidden
+  button presses free ground, where two taps are a double tap).
+- **`touch_assist.py` began its drag while the helicopter drop played** (see `aim-assist.md`): the touch layer is down for
+  the show and never reads a finger that landed before it came up. Benches turn the drop off
+  (`NightScreen.arrival_enabled = false`) and wait for `TouchControls.is_active()`; a page that asks for the probes
+  should skip the show on its own (`WebProbe.asked`) and played it anyway (#1323). The probe now fails with
+  its reason when the layer takes no look finger (`looking`).
+
+Run each on its own export: `uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python
+tools/web_smoke/touch_melee.py <godot> <work folder>` (and `touch_assist.py`, `--runs 5`), and delete the work folder,
+which holds a copy of the project and its 77 MB export.
+
 ## Which scale a page runs at, and the ruler (#1197)
 
 `phone_layout.py` walks the menu screens in Chromium as a phone (or `--desktop`, or `--iframe` for the Activity's frame)
@@ -108,7 +132,7 @@ that moves the touch layer, the HUD's places or the menu's scale. All take `<web
 | `touch_sprint.py` | both sizes in one run | |
 | `players_column_phone.py`, `challenge_card_phone.py` | `--pages 844,667` | take a Godot and a work folder, export their own copy (delete it after) |
 | `touch_look.py`, `touch_look_smooth.py`, `touch_grenade_look.py` | older sizes | not in the rework's list; they pass on main |
-| `touch_melee.py`, `touch_assist.py` | 844 x 390 | bench scenes that export their own copy (delete it after); both fail on main, not yet read to the end (#1320) |
+| `touch_melee.py`, `touch_assist.py` | 844 x 390 | bench scenes that export their own copy (delete it after); both pass since #1320, each wants a Godot and a work folder (the section above) |
 
 Two traps found by that run. `touch_hits` and `touch_buttons` list every circle of the layout, the contextual Interact
 and Strike too, drawn or not: a probe that presses "every button" must skip them unless they are up (`touch_strike` for
