@@ -150,7 +150,7 @@ func test_every_button_of_the_table_is_a_right_button_that_looks_while_it_drags(
 		)
 	# The wheel is gone from the glass (#1286): the bots' order is a tag on the HUD.
 	assert_bool(TouchLayout.buttons(Rect2(0, 0, 2337, 1080), 1.0).has(&"bot_wheel")).is_false()
-	for id in [TouchLayout.PAUSE, TouchLayout.PING, TouchLayout.SCOREBOARD, &"nothing"]:
+	for id in [TouchLayout.PAUSE, TouchLayout.PING, &"scoreboard", &"nothing"]:
 		assert_bool(TouchLayout.looks_when_dragged(id)).is_false()
 
 

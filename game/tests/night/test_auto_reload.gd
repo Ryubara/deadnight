@@ -215,12 +215,15 @@ func test_the_rounds_go_in_only_when_the_reload_has_finished() -> void:
 	assert_int(_count(&"reload_started")).is_equal(1)
 	# A person mashing Reload meanwhile gets refusals, never rounds.
 	var reload_key := _bound(&"reload", false)[0]
-	for _i in 30:
+	var mashes := 0
+	while _state().is_reloading() and mashes < RELOAD_TICKS:
+		assert_int(_state().ammo).is_equal(0)
 		_send(reload_key, true)
 		await _play(1)
 		_send(reload_key, false)
 		await _play(1)
-		assert_int(_state().ammo).is_equal(0)
+		mashes += 1
+	assert_int(mashes).is_greater(1)
 	await _play(RELOAD_TICKS)
 	assert_int(_state().ammo).is_equal(10)
 	assert_int(_state().reserve).is_equal(30)

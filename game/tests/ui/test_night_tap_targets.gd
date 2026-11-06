@@ -195,7 +195,7 @@ func test_every_touch_hit_area_is_a_tap_target_on_a_phone() -> void:
 	for ui_scale in SCALES:
 		var screen := await _night(page, ui_scale)
 		assert_bool(screen.touch_active()).is_true()
-		var ids: Array[StringName] = [TouchLayout.PAUSE, TouchLayout.PING, TouchLayout.SCOREBOARD]
+		var ids: Array[StringName] = [TouchLayout.PAUSE, TouchLayout.PING]
 		for row in TouchLayout.BUTTONS:
 			ids.append(row[0])
 		for id in ids:

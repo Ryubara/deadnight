@@ -102,6 +102,7 @@ var touch_layout := false:
 			if is_node_ready():
 				_home_slots()
 				_fit_markers()
+				_fit_board()
 var round_part := HudRound.new()
 var objective := HudObjective.new()
 var fuel := HudFuel.new()
@@ -140,6 +141,8 @@ var scoreboard_enabled := true:
 
 var _tokens := UITokens.active()
 var _slots_queued := false
+## The boxes the scoreboard's ticket keeps off while it is held (`set_touch_boxes`).
+var _board_avoid: Array[Rect2] = []
 ## The columns the slots move between and the one they push up: `_stack`'s entries.
 var _ammo_column: Dictionary = {}
 var _players_column: Dictionary = {}
@@ -187,6 +190,8 @@ func _ready() -> void:
 	markers.keep_clear = corner_cards() + centre_cards()
 	# Last, so it draws over every other part.
 	_centre(scoreboard)
+	scoreboard.visibility_changed.connect(_fit_board)
+	scoreboard.minimum_size_changed.connect(_fit_board)
 	for part in all_parts():
 		part.bind(state)
 	resized.connect(_fit_gains)
@@ -195,7 +200,7 @@ func _ready() -> void:
 	resized.connect(_fit_slots)
 	# The round card is the shorter for a phone (one row), and the column under it has the room.
 	round_part.minimum_size_changed.connect(_fit_players)
-	for moving: Control in [slots, _ammo_column[&"node"], _slots_column[&"node"]]:
+	for moving: Control in [slots, _ammo_column[&"node"], _slots_column[&"node"], points]:
 		moving.item_rect_changed.connect(_queue_slots_moved)
 	resized.connect(_queue_slots_moved)
 	_fit_gains()
@@ -333,6 +338,88 @@ func _fit_players() -> void:
 func _finger_units() -> float:
 	var wanted := minf(MenuScale.tap_units(get_window(), true), FINGER_UNITS_MAX)
 	return minf(wanted, size.y * FINGER_SHARE_MAX) if size.y > 0.0 else wanted
+
+
+## What a finger presses on the HUD, in the screen's units: `{action, rect}`, the weapon places
+## first, then the players' column, whose held finger is the `scoreboard` action (#1287). The first
+## zone under a finger wins, so a part added to the column later (a tag, #1286) goes before it.
+func touch_zones() -> Array[Dictionary]:
+	var found := slots.touch_zones()
+	var board := scoreboard_zone()
+	if not board.is_empty():
+		found.append(board)
+	return found
+
+
+## The players' column as a place for a finger: the points part's box, grown to a fingertip wide and
+## high (`_finger_units`) up from its bottom edge (the health card is under it, and nothing above),
+## `{}` while there is none (no touch layout, no player yet, the HUD hidden). A solo night's column
+## is one box, a third of a fingertip high at the smallest interface size.
+func scoreboard_zone() -> Dictionary:
+	if not touch_layout or not points.is_visible_in_tree():
+		return {}
+	var box := points.get_global_rect()
+	if box.size.x <= 0.0 or box.size.y <= 0.0:
+		return {}
+	var finger := _finger_units()
+	var grown := box.grow_individual(
+		maxf(finger - box.size.x, 0.0) * 0.5,
+		maxf(finger - box.size.y, 0.0),
+		maxf(finger - box.size.x, 0.0) * 0.5,
+		0.0
+	)
+	# `beside`: the perk badges, which stand beside the column and grow up it (a hint keeps off them).
+	var badges := perks.get_global_rect() if perks.is_visible_in_tree() else Rect2()
+	# `cards`: the cards a label beside the column keeps off (the prompt stands low in the middle, and
+	# the popup lane's stack comes and goes).
+	var cards: Array[Rect2] = []
+	for card: Control in [prompt, ammo, health, round_part]:
+		if card.is_visible_in_tree():
+			cards.append(card.get_global_rect())
+	for card in popups.cards():
+		cards.append(card.get_global_rect())
+	return {
+		&"action": SCOREBOARD_ACTION,
+		&"rect": grown.intersection(get_global_rect()),
+		&"beside": badges,
+		&"cards": cards,
+	}
+
+
+## Hands the world markers and the scoreboard's ticket every box a finger presses (the touch
+## layer's `button_boxes`): the buttons, the weapon places and the players' column, whose finger
+## the ticket keeps clear of too.
+func set_touch_boxes(boxes: Array[Rect2]) -> void:
+	markers.held = boxes
+	_board_avoid = boxes
+	_fit_board()
+
+
+## Puts the scoreboard's ticket where `BoardFit` says while the touch layout is up and it is shown,
+## and in the middle of the night, whole, otherwise: the holder it sits in is moved along the
+## screen and the ticket is shrunk about its middle.
+func _fit_board() -> void:
+	var holder := scoreboard.get_parent() as Control
+	if holder == null or not is_inside_tree():
+		return
+	var room := get_global_rect()
+	var share := 1.0
+	var shift := 0.0
+	var drop := 0.0
+	if touch_layout and scoreboard.visible and not _board_avoid.is_empty():
+		var size := scoreboard.get_combined_minimum_size()
+		var found := BoardFit.fit(room, size, _board_avoid)
+		share = found[&"scale"]
+		shift = found[&"shift"]
+		drop = found[&"drop"]
+	# The holder is scaled, not the ticket: a container puts its child's scale back to one. The
+	# ticket is in the middle of the holder, so the holder's middle is the pivot.
+	holder.offset_left = shift
+	holder.offset_right = shift
+	holder.offset_top = drop
+	holder.offset_bottom = drop
+	holder.pivot_offset = holder.size * 0.5
+	holder.scale = Vector2.ONE * share
 
 
 func _queue_slots_moved() -> void:
