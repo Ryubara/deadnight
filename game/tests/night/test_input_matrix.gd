@@ -24,10 +24,13 @@ const INTRO_SECONDS := 1.0
 const FAR_OFF := 600.0
 ## Where a thumb lands in the stick's zone (canvas units) and how far each push goes.
 const STICK_START := Vector2(300.0, 800.0)
-const STICK_WALK := 70.0
-const STICK_RIM := 150.0
+const STICK_WALK := 80.0
+## Past the ring and the margin beyond it (111 + 50 units on this canvas): the sprint (#1276).
+const STICK_RIM := 200.0
 ## The actions a keyboard has and a gamepad does not: the pad and the phone swap with one button.
 const KEYBOARD_ONLY: Array[StringName] = [&"weapon_slot_1", &"weapon_slot_2", &"weapon_slot_3"]
+## The actions only a phone's HUD presses (a tap on the bots' tag, #1286): no key and no pad button.
+const TOUCH_ONLY: Array[StringName] = [&"bot_order_next"]
 ## Input actions of the map that belong to menus, not to the night.
 const MENU_PREFIX := "ui_"
 
@@ -42,20 +45,23 @@ const ROWS: Array = [
 	[&"look_up", &""],
 	[&"look_down", &""],
 	[&"sprint", &"stick"],
-	[&"crouch", &""],
+	[&"crouch", &"crouch"],
 	[&"jump", &"jump"],
 	[&"aim", &"aim"],
 	[&"swap_shoulder", &"swap_shoulder"],
 	[&"fire", &"fire"],
 	[&"reload", &"reload"],
 	[&"interact", &"interact"],
-	[&"swap_weapon", &"swap_weapon"],
+	# The swap button is the pad's and the key's: a phone taps the weapon on the HUD instead.
+	[&"swap_weapon", &""],
 	# The numbered weapon slots (#682): the keys 1, 2 and 3 take that slot's weapon in hand. A pad
-	# and a phone go on swapping with the swap button, so these have no pad binding and no touch
-	# control (`KEYBOARD_ONLY`). The third slot is for the perk that carries three (#687): with two
-	# weapons carried its key picks nothing, which is what the row proves.
-	[&"weapon_slot_1", &""],
-	[&"weapon_slot_2", &""],
+	# goes on swapping with the swap button, so these have no pad binding (`KEYBOARD_ONLY`); a phone
+	# taps the weapon's place on the HUD (#1280), which presses the slot's action: the row's control
+	# is the place's action. The third slot is for the perk that carries three (#687): with two
+	# weapons carried its key picks nothing, which is what the row proves, and there is no third
+	# place to tap.
+	[&"weapon_slot_1", &"weapon_slot_1"],
+	[&"weapon_slot_2", &"weapon_slot_2"],
 	[&"weapon_slot_3", &""],
 	# The quick melee (#411, #588): V, the mouse's back button, the d-pad's down and the touch
 	# button. Before the grenades: the arm that is throwing one is busy, and a blow asked for then is
@@ -68,7 +74,11 @@ const ROWS: Array = [
 	# The bot command wheel (#642): it opens on a hold and gives an order at the release, which is
 	# `test_bot_wheel_input.gd`'s business; here its key, button and touch control must reach the
 	# action, as for every row.
-	[&"bot_wheel", &"bot_wheel"],
+	[&"bot_wheel", &""],
+	# The wheel is a keyboard and a pad idea: a phone has the HUD's tag, a tap on which gives the
+	# next order of the round (`test_bot_wheel_input.gd` proves the order, here the action must
+	# reach the controller's side of the night).
+	[&"bot_order_next", &"bot_order_next"],
 	[&"pause", &""],
 	[&"scoreboard", &""],
 ]
@@ -151,6 +161,8 @@ func _read(action: StringName, c: NightCommand) -> bool:
 			return c.fire
 		&"reload":
 			return c.reload
+		&"crouch":
+			return c.motion.crouch
 		&"interact":
 			return c.use and c.use_held
 		&"swap_weapon":
@@ -165,8 +177,8 @@ func _read(action: StringName, c: NightCommand) -> bool:
 			return c.motion.melee
 		&"ping":
 			return _ping_edge
-		&"bot_wheel":
-			return Input.is_action_pressed(&"bot_wheel")
+		&"bot_wheel", &"bot_order_next":
+			return Input.is_action_pressed(action)
 	# The look stick turns the camera rig and not the command: `_shown` checks the view turned.
 	return true
 
@@ -183,6 +195,8 @@ func _shown(action: StringName, before: Dictionary) -> bool:
 			return player.camera_rig.yaw != before[&"yaw"]
 		&"look_up", &"look_down":
 			return player.camera_rig.pitch != before[&"pitch"]
+		&"crouch":
+			return player.state.crouching
 		&"jump":
 			return _jumps > before[&"jumps"]
 		&"aim":
@@ -349,7 +363,7 @@ func test_every_action_has_a_row() -> void:
 func test_every_action_but_the_look_stick_has_a_key_or_mouse_binding() -> void:
 	for row in ROWS:
 		var action: StringName = row[0]
-		if String(action).begins_with("look_"):
+		if String(action).begins_with("look_") or TOUCH_ONLY.has(action):
 			continue
 		(
 			assert_array(_bound(action, false))
@@ -361,7 +375,7 @@ func test_every_action_but_the_look_stick_has_a_key_or_mouse_binding() -> void:
 func test_every_action_has_a_gamepad_binding() -> void:
 	for row in ROWS:
 		var action: StringName = row[0]
-		if KEYBOARD_ONLY.has(action):
+		if KEYBOARD_ONLY.has(action) or TOUCH_ONLY.has(action):
 			continue
 		(
 			assert_array(_bound(action, true))
@@ -389,6 +403,8 @@ func test_a_gamepad_that_is_not_device_zero_does_every_action() -> void:
 	for row in ROWS:
 		if row[0] == &"pause" or row[0] == &"scoreboard" or KEYBOARD_ONLY.has(row[0]):
 			continue
+		if TOUCH_ONLY.has(row[0]):
+			continue
 		for event in _bound(row[0], true):
 			_send(event, true)
 			await _hold("gamepad %d" % PAD, row[0])
@@ -397,10 +413,13 @@ func test_a_gamepad_that_is_not_device_zero_does_every_action() -> void:
 
 
 func test_the_touch_layer_does_every_action_it_offers() -> void:
-	var hud_state := HudState.new()
-	_fixture = TouchFixture.make(self, TouchFixture.PHONE, hud_state)
-	# The interact button shows only where there is something to use.
+	_fixture = TouchFixture.make(self, TouchFixture.PHONE, null, false, true)
+	var hud_state := _fixture.hud.state
+	# The interact button shows only where there is something to use, the bots' tag only with a bot.
 	hud_state.set_prompt(&"repair", "Broken fence", 0)
+	hud_state.apply_event({"type": &"player_added", "player_id": 99, "bot": true})
+	# So does Strike, where a dead is within reach of the blow (#1285).
+	_fixture.strike_up = true
 	await get_tree().process_frame
 	await get_tree().process_frame
 	for row in ROWS:
@@ -409,14 +428,30 @@ func test_the_touch_layer_does_every_action_it_offers() -> void:
 			continue
 		if how == &"stick":
 			await _push_stick(row[0])
+		elif how == TouchDoubleTap.ACTION:
+			# No button: two quick taps on free ground, and the press is still down when they end.
+			var free := Vector2(1700.0, 300.0)
+			for tap in 2:
+				await _fixture.touch(0, free)
+				_fixture.pass_time(0.05)
+				await _fixture.lift(0)
+				_fixture.pass_time(0.1)
+			await _hold("touch", row[0])
+			_let_go()
 		else:
-			await _fixture.touch(0, _fixture.at(how))
+			# A weapon's or the grenades' place on the HUD, or one of the layer's buttons.
+			var spot := _fixture.zone_centre(how)
+			await _fixture.touch(0, spot if spot.is_finite() else _fixture.at(how))
 			await _hold("touch", row[0])
 			await _fixture.lift(0)
+			if how == TouchLayout.CROUCH:
+				# A toggle: a second tap stands, or every row after it would be a crouch.
+				await _fixture.tap(_fixture.at(how))
+				await await_millis(250)
 			_let_go()
 
 
-## A thumb in the stick's zone pushed the way the action goes (to the rim for a sprint).
+## A thumb in the stick's zone pushed the way the action goes (past the ring's edge for a sprint).
 func _push_stick(action: StringName) -> void:
 	var push := (
 		{

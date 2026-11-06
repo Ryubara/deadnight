@@ -11,16 +11,22 @@ extends Node
 ## than its tolerance). One `NIGHT` line per weapon, beat and check with a fault, a `NIGHT_SUMMARY`:
 ##
 ##     godot --headless --path game --fixed-fps 60 res://tests/captures/clip_arms_tour.tscn \
-##         -- --measure [--look=10] [--weapons=dual_pistols,rifle] [--write=<file.json>]
+##         -- --measure [--look=10] [--weapons=dual_pistols,rifle] [--write=<file.json>] [--trace]
+##         [--every=1] [--reload-only]
+##
+## `--trace` adds one `TRACE` line per kept pose with a fault: the tick, the check, how deep, the
+## group and its place in the skeleton's frame. `--every=N` keeps a pose every N ticks, and
+## `--reload-only` plays each weapon's equip and reload and nothing else (a few seconds a weapon).
 ##
 ## Film (windowed, off the person's desktop): the player's shoulder camera, or `--view=side` a close
-## view from his right, `--view=front` from ahead and to his right:
+## view from his right, `--view=front` from ahead and to his right, `--view=left` from his left:
 ##
 ##     gds godot -- --path game res://tests/captures/clip_arms_tour.tscn --write-movie <abs>/f.png \
 ##         --fixed-fps 30 -- [--look=10] [--weapons=dual_pistols] [--view=side]
 ##
 ## `--shots=<dir>` (windowed) saves one still of each beat at the tick that shows its arms
-## (`SHOT_AT`) as `<dir>/<look>_<view>_<weapon>_<beat>.png`, with no movie.
+## (`SHOT_AT`; `--reload-shot=<tick>` for the reload's) as
+## `<dir>/<look>_<view>_<weapon>_<beat><tick>.png`, with no movie.
 ##
 ## Prints one `BEAT <weapon> <beat> frame <n>` line as each beat starts (frames at the fixed fps).
 
@@ -46,6 +52,7 @@ const REVIVE_TICKS := 100
 const VIEWS := {
 	"side": Vector3(2.2, 1.0, -0.2),
 	"front": Vector3(1.0, 1.1, -2.4),
+	"left": Vector3(-1.9, 0.9, -0.8),
 }
 const LOOK := Vector3(0.0, 0.85, 0.0)
 ## The tick of each beat a still is taken at (`--shots`): the deepest pose the measure found on
@@ -70,6 +77,10 @@ var _view := ""
 var _measure := false
 var _look := 10
 var _write := ""
+var _trace := false
+var _every := SAMPLE_EVERY
+var _reload_only := false
+var _reload_shot := -1
 var _shots := ""
 var _weapons: Array[StringName] = []
 var _latest: Array[Transform3D] = []
@@ -84,6 +95,14 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg == "--measure":
 			_measure = true
+		elif arg.begins_with("--reload-shot="):
+			_reload_shot = int(arg.trim_prefix("--reload-shot="))
+		elif arg.begins_with("--every="):
+			_every = int(arg.trim_prefix("--every="))
+		elif arg == "--reload-only":
+			_reload_only = true
+		elif arg == "--trace":
+			_trace = true
 		elif arg.begins_with("--look="):
 			_look = int(arg.trim_prefix("--look="))
 		elif arg.begins_with("--weapons="):
@@ -149,12 +168,15 @@ func _beat(weapon: StringName, beat: String, ticks: int, each := Callable()) -> 
 		await get_tree().physics_frame
 		await get_tree().process_frame
 		_ticks += 1
-		if _measure and beat != "" and t % SAMPLE_EVERY == 0 and not _latest.is_empty():
+		if _measure and beat != "" and t % _every == 0 and not _latest.is_empty():
 			_samples.append([weapon, beat, String(_animation.action_clip), t, _latest.duplicate()])
-		if _shots != "" and SHOT_AT.get(beat, -1) == t:
+		var shoot: int = SHOT_AT.get(beat, -1)
+		if beat == "reload" and _reload_shot >= 0:
+			shoot = _reload_shot
+		if _shots != "" and shoot == t:
 			await RenderingServer.frame_post_draw
 			var view := _view if _view != "" else "shoulder"
-			var path := "%s/%d_%s_%s_%s.png" % [_shots, _look, view, weapon, beat]
+			var path := "%s/%d_%s_%s_%s%d.png" % [_shots, _look, view, weapon, beat, t]
 			get_viewport().get_texture().get_image().save_png(path)
 
 
@@ -163,6 +185,11 @@ func _run() -> void:
 	for id in _weapons:
 		_animation.equip(id)
 		await _beat(id, "equip", EQUIP_TICKS)
+		if _reload_only:
+			_animation.reload(RELOAD_SECONDS)
+			await _beat(id, "reload", RELOAD_TICKS)
+			await _beat(id, "", SETTLE_TICKS)
+			continue
 		await _beat(id, "hold", HOLD_TICKS)
 		_command.aim = true
 		await _beat(id, "aim", AIM_TICKS)
@@ -184,10 +211,13 @@ func _run() -> void:
 		_command.sprint = false
 		await _beat(id, "", SETTLE_TICKS)
 		_player.teleport(START)
+		await _beat(id, "", SETTLE_TICKS)
 		if not def.is_melee():
 			_animation.reload(RELOAD_SECONDS)
 			await _beat(id, "reload", RELOAD_TICKS)
 		await _beat(id, "", SETTLE_TICKS)
+	if _reload_only:
+		return
 	await _beat(
 		&"-",
 		"repair",
@@ -231,6 +261,12 @@ func _measure_all() -> void:
 		for check: String in found:
 			var deepest: Dictionary = found[check][0]
 			var key := "%s %s %s" % [s[0], s[1], check]
+			if _trace:
+				var at: Vector3 = _skeleton.global_transform.affine_inverse() * deepest.position
+				var fault := [check, deepest.depth, found[check].size(), deepest.group, at]
+				print(
+					"TRACE %s %s tick %d " % [s[0], s[1], s[3]], "%s: %.3f (%d, %s) at %s" % fault
+				)
 			if deepest.depth > worst.get(key, {"depth": 0.0}).depth:
 				worst[key] = {
 					"depth": deepest.depth,

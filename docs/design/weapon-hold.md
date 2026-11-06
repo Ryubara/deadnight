@@ -71,6 +71,9 @@ the clip's and switching off moves nothing:
    the chest when firing the long guns, so the stances stayed and step 4's slide does the rest.
 2. The weapon's world pose comes from the aim: the grip sits `grip_offset` from the right shoulder joint (right,
    up, forward is negative), the muzzle along the aim, up stays up. The stock's butt, `butt`, lands against the shoulder.
+   A two-handed gun's grip sits 5 cm out to the right of the joint (the pump 8 cm, #987): straight ahead of the joint
+   a shot's kick put the right forearm 30-53 mm into the chest, and further-out elbows alone (1.6 of the shoulder width)
+   still left 43-50 mm.
 3. The weapon's grip (`HandGrip.hold`, the kit's for a model with none) turns that pose into the right hand's
    pose, and a two-bone IK (law of cosines, the elbow out and down) reaches it.
 4. The left arm reaches the weapon's grip (`HandGrip.left_hand`: the hand bone's place and turn on the fore-end,

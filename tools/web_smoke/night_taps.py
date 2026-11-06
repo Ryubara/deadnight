@@ -5,7 +5,7 @@ window is 1688 x 780. A night runs at the interface size alone, where one unit i
 interface size, `--ui 0.8`):
 
 - every hit area of the touch layer (the probe's `touch_hits`, fractions of the window) is at least 44 CSS px across;
-  a real touch just inside the edge of Ping, Scoreboard, Melee, the Bot wheel and Pause presses that button (the
+  a real touch just inside the edge of Ping, Scoreboard, Melee and Pause presses that button (the
   probe's `touch_held`), and one just outside the edge presses none;
 - the pause card's buttons (Resume, Settings, Leave night) are at least 44 CSS px high, and a finger that lands just
   inside the top edge of one presses it (the probe's `menu_button_sizes`).
@@ -44,7 +44,7 @@ EDGE_CSS_PX = 4.0
 INSIDE_HIT_CSS_PX = 1.0
 OUTSIDE_HIT_CSS_PX = 1.5
 # The buttons tried at the edge of their hit areas. Pause opens the menu, so the caller taps it last.
-EDGE_BUTTONS = ("ping", "scoreboard", "quick_melee", "bot_wheel")
+EDGE_BUTTONS = ("ping", "scoreboard", "quick_melee")
 SETTINGS_FILE = "/userfs/godot/app_userdata/Deadnight/settings.cfg"
 # Godot's web build mirrors `user://` into IndexedDB `/userfs`, store `FILE_DATA`, one record a file.
 WRITE_FILE_JS = """([path, text]) => new Promise((resolve) => {

@@ -493,7 +493,7 @@ the crowd of 120 is the desktop decision of #453 and is not touched here.
 | Setting | Value now | Was | Why |
 | --- | --- | --- | --- |
 | `ROOM_CAPACITY` | 3 | 3 | three rooms of people are what the tick holds (the control), and the bots now give way to them |
-| `BOT_BUDGET` | **2** here, **3 since #1222** ([why](#decision-bot_budget-3-it-was-2); `GameServer.DEFAULT_BOT_BUDGET`, read when the variable is not a number; 0 is no budget) | none | a lone room seats 2, two rooms 1 each, three rooms none: the worst loads are 1 x 8 + 2 (0.97 of the control), 2 x 8 + 1 (0.90) and 3 x 8 + 0 (the control) |
+| `BOT_BUDGET` | **2** since #1193, **3** since #1222 ([why](#decision-bot_budget-3-it-was-2); `GameServer.DEFAULT_BOT_BUDGET`, read when the variable is not a number; 0 is no budget) | none | a lone room seats 2, two rooms 1 each, three rooms none: the worst loads are 1 x 8 + 2 (0.97 of the control), 2 x 8 + 1 (0.90) and 3 x 8 + 0 (the control) |
 | `MAX_BOTS` | 7 | 7 | the host's Bots setting still asks for up to 7; the server seats what the budget gives the room |
 | `ALIVE_BUDGET` | 120 | 120 | unchanged |
 

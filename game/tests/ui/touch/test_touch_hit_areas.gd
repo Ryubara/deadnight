@@ -1,7 +1,7 @@
 # The touch layer's hit areas are a fingertip, and which button wins a touch where they overlap is
 # decided on purpose (Deadnight #1217). A phone's page is 844 x 390 CSS px at a pixel ratio of 2,
 # a 1688 x 780 window; a night runs at the interface size alone, so at 0.8 one unit is 0.29 CSS px
-# and the 66 unit hit areas of Pause, Ping, Scoreboard, Bot wheel and Melee were 38 to 39 CSS px.
+# and the 66 unit hit areas of Pause, Ping, Scoreboard and Melee were 38 to 39 CSS px.
 # The rule these tests hold (`TouchLayout.button_at`):
 #   1. Where two buttons' old areas overlap, the first in order wins, as it always did.
 #   2. The margin added to reach a fingertip belongs to the nearest centre and takes nothing from
@@ -20,8 +20,6 @@ const SMALL: Array[StringName] = [
 	TouchLayout.PAUSE,
 	TouchLayout.PING,
 	TouchLayout.SCOREBOARD,
-	TouchLayout.BOT_WHEEL,
-	TouchLayout.MELEE
 ]
 ## Where a point's step is checked on the grid sweep, in canvas units.
 const GRID_STEP := 7.0
@@ -59,6 +57,18 @@ func _finger(ui_scale: float) -> float:
 ## CSS pixels in one canvas unit of the phone's page at this interface size.
 func _css(ui_scale: float) -> float:
 	return MenuScale.pixels_per_unit(PHONE_WINDOW, ui_scale) / PHONE_RATIO
+
+
+## The same buttons with the areas they had before the fingertip rule (`was`), in the same places:
+## Ping and the Scoreboard stand where the fingertip puts them (#1289), so a layout built with no
+## rule is not the one to compare with.
+func _old_areas(circles: Dictionary) -> Dictionary:
+	var found := {}
+	for id: StringName in circles:
+		var circle: Dictionary = (circles[id] as Dictionary).duplicate()
+		circle[&"hit"] = circle[&"was"]
+		found[id] = circle
+	return found
 
 
 func _canvas(ui_scale: float) -> Vector2:
@@ -129,7 +139,7 @@ func test_a_hit_area_is_a_fingertip_at_every_interface_and_touch_size_and_hand()
 
 
 func test_the_interface_size_that_was_short_is_short_without_the_rule() -> void:
-	# The reproduction on main: with no fingertip rule the five small buttons are 38 to 39 CSS px.
+	# The reproduction on main: with no fingertip rule the four small buttons are 38 to 39 CSS px.
 	var circles := _circles(0.8, 1.0, false, false)
 	for id in SMALL:
 		var css: float = float(circles[id][&"hit"]) * 2.0 * _css(0.8)
@@ -141,7 +151,10 @@ func test_the_drawn_buttons_are_the_size_they_were() -> void:
 	var without := _circles(0.8, 1.0, false, false)
 	for id: StringName in with_rule:
 		assert_float(with_rule[id][&"radius"]).is_equal(without[id][&"radius"])
-		assert_vector(with_rule[id][&"centre"]).is_equal(without[id][&"centre"])
+		# Ping and the Scoreboard stand a fingertip-sized length from Pause (#1289): they move
+		# with the rule, along the top edge or down the column, and no other button does.
+		if id != TouchLayout.PING and id != TouchLayout.SCOREBOARD:
+			assert_vector(with_rule[id][&"centre"]).is_equal(without[id][&"centre"])
 		assert_float(with_rule[id][&"was"]).is_equal(without[id][&"hit"])
 
 
@@ -154,9 +167,7 @@ func test_fire_aim_and_the_big_buttons_keep_their_hit_areas_at_the_default_touch
 			TouchLayout.AIM,
 			TouchLayout.INTERACT,
 			TouchLayout.JUMP,
-			TouchLayout.GRENADE,
 			TouchLayout.RELOAD,
-			TouchLayout.SWAP,
 		]:
 			assert_float(with_rule[id][&"hit"]).is_equal(without[id][&"hit"])
 
@@ -169,7 +180,7 @@ func test_a_touch_that_pressed_a_button_presses_the_same_button_and_the_rest_is_
 	for ui_scale in INTERFACE_SIZES:
 		for mirrored in HANDS:
 			var after := _circles(ui_scale, 1.0, mirrored)
-			var before := _circles(ui_scale, 1.0, mirrored, false)
+			var before := _old_areas(after)
 			var canvas := _canvas(ui_scale)
 			var y := 0.0
 			while y < canvas.y:
@@ -190,53 +201,52 @@ func test_a_touch_that_pressed_a_button_presses_the_same_button_and_the_rest_is_
 					x += GRID_STEP
 				y += GRID_STEP
 	assert_array(faults.slice(0, 5)).is_empty()
-	# And the margin is real: at 0.8 a ring is gained round each of the five.
+	# And the margin is real: at 0.8 a ring is gained round each of the four.
 	assert_int(gained).is_greater(200)
 
 
-## Ping and Scoreboard: no old overlap, a new one in the margin. The nearest centre wins there.
-func test_in_the_new_margin_between_ping_and_scoreboard_the_nearest_centre_wins() -> void:
+## Pause, Ping and the Scoreboard share no margin: Ping stands under Pause and the Scoreboard beside
+## it, a fingertip and more apart (#1289), so a touch near one is never the other's.
+func test_pause_ping_and_the_scoreboard_share_no_margin() -> void:
+	for ui_scale in INTERFACE_SIZES:
+		_controls(ui_scale)
+		var ids: Array[StringName] = [TouchLayout.PAUSE, TouchLayout.PING, TouchLayout.SCOREBOARD]
+		for i in ids.size():
+			for j in range(i + 1, ids.size()):
+				var apart := _centre(ids[i]).distance_to(_centre(ids[j]))
+				assert_float(apart - _hit(ids[i]) - _hit(ids[j])).is_greater(0.0)
 	_controls(0.8)
-	var ping := _centre(TouchLayout.PING)
-	var board := _centre(TouchLayout.SCOREBOARD)
-	var middle := ping.lerp(board, 0.5)
-	# Both hit areas reach the middle, neither old one did.
-	assert_float(middle.distance_to(ping)).is_less(_hit(TouchLayout.PING))
-	assert_float(middle.distance_to(ping)).is_greater(_was(TouchLayout.PING))
-	assert_object(await _press(ping.lerp(board, 0.45))).is_equal(TouchLayout.PING)
-	assert_object(await _press(ping.lerp(board, 0.55))).is_equal(TouchLayout.SCOREBOARD)
+	# The centres themselves are their own.
+	assert_object(await _press(_centre(TouchLayout.PING))).is_equal(TouchLayout.PING)
+	assert_object(await _press(_centre(TouchLayout.SCOREBOARD))).is_equal(TouchLayout.SCOREBOARD)
 
 
-## Where old areas overlapped, the first in the order wins, as before: Pause over Ping over
-## Scoreboard, and Melee over the Bot wheel, whatever the nearest centre.
+## Where old areas overlapped, the first in the order wins, as before: Interact over Strike, the two
+## contextual buttons, whatever the nearest centre. (Pause, Ping and the Scoreboard no longer
+## overlap: #1289.)
 func test_where_old_areas_overlap_the_first_in_order_still_wins() -> void:
 	_controls(0.8)
-	var pause := _centre(TouchLayout.PAUSE)
-	var ping := _centre(TouchLayout.PING)
-	var board := _centre(TouchLayout.SCOREBOARD)
-	# Inside Pause's old area and nearer to Ping's centre: Pause.
-	var toward_ping := pause + (ping - pause).normalized() * (_was(TouchLayout.PAUSE) - 4.0)
-	assert_float(toward_ping.distance_to(ping)).is_less(toward_ping.distance_to(pause))
-	assert_object(await _press(toward_ping)).is_equal(TouchLayout.PAUSE)
-	# Pause and Scoreboard: the middle of the two is Pause's.
-	assert_object(await _press(pause.lerp(board, 0.5))).is_equal(TouchLayout.PAUSE)
-	# The centres themselves are their own.
-	assert_object(await _press(ping)).is_equal(TouchLayout.PING)
-	assert_object(await _press(board)).is_equal(TouchLayout.SCOREBOARD)
-	var melee := _centre(TouchLayout.MELEE)
-	var wheel := _centre(TouchLayout.BOT_WHEEL)
-	var toward_wheel := melee + (wheel - melee).normalized() * (_was(TouchLayout.MELEE) - 4.0)
-	assert_float(toward_wheel.distance_to(wheel)).is_less(toward_wheel.distance_to(melee))
-	assert_object(await _press(toward_wheel)).is_equal(TouchLayout.MELEE)
-	assert_object(await _press(wheel)).is_equal(TouchLayout.BOT_WHEEL)
+	# A point inside both old areas and nearer Strike's centre is Interact's while it is up, and
+	# Strike's when it is not.
+	var circles := _fixture.controls.circles()
+	var interact := _centre(TouchLayout.INTERACT)
+	var strike := _centre(TouchLayout.STRIKE)
+	var toward_strike := (
+		interact + (strike - interact).normalized() * (_was(TouchLayout.INTERACT) - 4.0)
+	)
+	assert_float(toward_strike.distance_to(strike)).is_less(toward_strike.distance_to(interact))
+	assert_float(toward_strike.distance_to(strike)).is_less(_was(TouchLayout.STRIKE))
+	assert_object(TouchLayout.button_at(toward_strike, circles)).is_equal(TouchLayout.INTERACT)
+	var without_interact := TouchLayout.button_at(toward_strike, circles, [TouchLayout.INTERACT])
+	assert_object(without_interact).is_equal(TouchLayout.STRIKE)
 
 
-## A finger on the new margin of each of the five presses it; with no rule the same touch was the
+## A finger on the new margin of each of the three presses it; with no rule the same touch was the
 ## look or the stick.
 func test_a_finger_in_the_margin_of_a_small_button_presses_it() -> void:
 	for mirrored in HANDS:
 		_controls(0.8, mirrored)
-		var before := _circles(0.8, 1.0, mirrored, false)
+		var before := _old_areas(_circles(0.8, 1.0, mirrored))
 		for id in SMALL:
 			var spot := _free_direction_spot(id)
 			(

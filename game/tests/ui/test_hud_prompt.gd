@@ -46,6 +46,27 @@ func test_the_prompt_names_the_thing_and_its_price() -> void:
 	assert_bool(prompt.visible).is_false()
 
 
+func test_on_a_phone_the_prompt_has_no_key_and_gives_its_words_the_room() -> void:
+	# The interact button is the control and names the verb: a keycap or a tap mark on the card
+	# points at nothing and held 64 units (48 for the mark, 16 for the gap) of the words' room.
+	_start()
+	var prompt := _hud.prompt
+	_hud.state.set_prompt(&"buy_door", "Concession door", 350)
+	var with_key := prompt._room()
+	assert_bool(prompt._glyph.visible).is_true()
+	_hud.touch_layout = true
+	assert_bool(prompt._glyph.visible).is_false()
+	assert_float(prompt._room() - with_key).is_equal(HudGlyph.SIZE.x + float(HudStyle.MD))
+	assert_float(prompt._room()).is_equal(HudPrompt.WIDTH - float(HudStyle.PAD + HudStyle.PAD_LEFT))
+	assert_str(prompt.title_text).is_equal("CONCESSION DOOR")
+	# The health card drops its grenade count while the strip has the grenades' place.
+	assert_bool(_hud.health._grenades.visible).is_false()
+	_hud.touch_layout = false
+	assert_bool(prompt._glyph.visible).is_true()
+	assert_float(prompt._room()).is_equal(with_key)
+	assert_bool(_hud.health._grenades.visible).is_true()
+
+
 func test_a_prompt_for_each_kind_has_words() -> void:
 	_start()
 	for kind in HudPrompt.DETAILS:

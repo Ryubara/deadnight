@@ -108,6 +108,9 @@ func seat(
 ) -> BotClient:
 	var state := ClientState.new()
 	state.player_id = id
+	# The night joins its bots flagged (`NightBots`); the server leaves a flagged seat's reloads to
+	# the bot (`NightServer._reload_if_dry`).
+	server.rules.players[id].bot = true
 	if stand_still:
 		profile.follows = false
 	var bot := BotClient.new(state, profile, bot_seed, Callable(self, &"_send").bind(id), level)

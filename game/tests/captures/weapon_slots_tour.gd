@@ -5,8 +5,8 @@ extends Node
 ## the first slot's pick puts the crowbar in hand, the second's puts the pistol back, and a bought
 ## rifle takes the slot of the weapon it replaces. `--touch` adds the phone's touch controls, to see
 ## the strip beside the buttons; `--solo` keeps a night's own start (the pistol alone) and shows the
-## empty second place. Each stage writes `<out>/<tag>_<stage>.png` and prints what the
-## server says is in hand.
+## empty second place; `--left` the left hand's mirror (it implies `--touch`). Each stage writes
+## `<out>/<tag>_<stage>.png` and prints what the server says is in hand.
 ##
 ## `--mode=pairs`: a contact sheet of the strip for every pair of catalogue weapons, once with the
 ## first lit and once with the second, on real `HudSlots` parts, labelled with the weapons.
@@ -26,6 +26,8 @@ var _tag := "tour"
 var _night: Night
 var _seq := 0
 var _pending_slot := 0
+## The player's hand setting before a `--left` run, put back at the end.
+var _hand_before: Variant = null
 
 
 func _ready() -> void:
@@ -38,7 +40,10 @@ func _ready() -> void:
 		"pairs":
 			await _pairs()
 		_:
-			await _night_tour(args.has("touch"), args.has("solo"))
+			var left := args.has("left")
+			await _night_tour(args.has("touch") or left, args.has("solo"), left)
+	if _hand_before != null:
+		Settings.set_value(SettingsService.LEFT_HANDED, _hand_before)
 	get_tree().quit()
 
 
@@ -54,14 +59,24 @@ func _args() -> Dictionary:
 # --- The night ---
 
 
-func _night_tour(with_touch: bool, solo: bool) -> void:
+func _night_tour(with_touch: bool, solo: bool, left_handed := false) -> void:
 	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
 	var layer := CanvasLayer.new()
 	layer.add_child(hud)
 	if with_touch:
 		TouchMode.device_is_touch = true
+		# A phone's page has a pixel ratio of 2 or 3 (a fingertip is more units there).
+		MenuScale.pixel_ratio = float(_args().get("ratio", 2.0))
 		var controls := TouchControls.new()
 		controls.state = hud.state
+		controls.persist_hints = false
+		# The HUD's weapon places are the touch controls of the weapons (#1280).
+		controls.zones = hud.slots.touch_zones
+		controls.finger_units = func() -> float: return MenuScale.tap_units(get_window(), true)
+		controls.mirrored_changed.connect(func(on: bool) -> void: hud.mirrored = on)
+		if left_handed:
+			_hand_before = Settings.get_value(SettingsService.LEFT_HANDED)
+			Settings.set_value(SettingsService.LEFT_HANDED, true)
 		controls.active_changed.connect(func(active: bool) -> void: hud.touch_layout = active)
 		controls.safe_insets_changed.connect(
 			func(insets: Vector4) -> void: hud.set_safe_insets(insets)

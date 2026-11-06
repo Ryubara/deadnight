@@ -17,8 +17,9 @@ const SPAWN_DISTANCE := 20.0
 const WALK_SPEED := 1.5
 const SHOTS_TO_KILL := 3
 ## Moved by phase 3 (reviewed): the regular profile's new numbers (wider tracking and trigger, a
-## retreat margin of 1.25 m), the lull top-up reload and the target utility.
-const GOLDEN_HASH := 277854534
+## retreat margin of 1.25 m), the lull top-up reload and the target utility. Moved again by the
+## weapon audit (#972, reviewed): the retuned weapons change what the bots' weapon worth picks.
+const GOLDEN_HASH := 1333160724
 
 
 ## The hash of a night of four bots, and the shots they fired.

@@ -17,7 +17,7 @@ func test_an_environment_with_no_budget_lets_a_room_seat_what_its_host_asked_for
 		assert_int(limits.for_room(rooms)).is_equal(MatchSettings.MAX_BOTS)
 
 
-## #1193, #1222: a room with bots costs more tick, and the build before #1222 took 27 ms of the
+## #1193, #1222: a room with bots costs more tick, and the build before #1193 took 27 ms of the
 ## 16.7 ms for 3 rooms of 8 people and 7 bots. Unset, the server shares three bots among its rooms,
 ## what the measurement on Railway allows: a lone room seats three, two rooms and three rooms one
 ## each, four rooms none.

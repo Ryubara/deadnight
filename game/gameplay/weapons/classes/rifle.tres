@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WeaponClassTargets" format=3]
+
+[ext_resource type="Script" path="res://gameplay/weapons/weapon_class_targets.gd" id="1_targets"]
+
+[resource]
+script = ExtResource("1_targets")
+weapon_class = 4
+job = "The assault rifle: steady hits in a small group, a full magazine, a line of dead it can pass a shot through once or twice for half its damage."
+body_pulls = PackedInt32Array(2, 4, 4, 7, 7, 10, 8, 13, 15, 24)
+body_seconds = PackedFloat32Array(0.1, 0.4, 0.3, 0.7, 0.6, 1, 0.7, 1.2, 1.5, 2.5)
+head_multiplier = Vector2(1.5, 2.25)
+limb_multiplier = Vector2(0.5, 0.75)
+bodies = Vector2i(1, 2)
+kept = Vector2(0.5, 0.7)
+magazine = Vector2i(20, 40)

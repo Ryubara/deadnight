@@ -46,7 +46,7 @@ AIM_HOLD_S = 4.0
 # The runs: the page's query and what each must show.
 RUNS = {
     "off": "touch=1&assist=0&auto=0",
-    "assist": "touch=1&assist=0.5&auto=1",
+    "assist": "touch=1&assist=1&auto=1",
 }
 
 
