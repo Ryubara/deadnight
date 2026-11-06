@@ -210,6 +210,31 @@ from 0.43 / 0.17 / 0.39 to 0.50 / 0.24 / 0.54). The rule is older: the free hand
 shoppers (`NightSim._crane_can_pay_off`) buy on any prize too, so the model wastes plays in the same way and was
 left as it was (`docs/research/balance-simulator.md`).
 
+The soak's medians (`tools/bots/soak_report.py`, one Godot process of five nights a chunk, roam, the simulator's
+numbers from 60 nights each; the first row of every pair is `main`, the second the fix):
+
+| Cell | Nights (seeds) | Median round | Sim median | Kolmogorov | Spend ratio (sim) | Nights that broke a gate |
+| --- | --- | ---: | ---: | ---: | --- | ---: |
+| rookie x2, `main` | 10 (1 to 10) | 6 | 5 | 0.38 | 0.67 (0.71) | 0 |
+| rookie x2, fix | 10 (1 to 10) | 9 | 5 | 0.68 | 0.68 (0.71) | 0 |
+| rookie x2, `main` | 20 (11 to 30) | 7 | 5 | 0.48 | 0.65 (0.71) | 0 |
+| rookie x2, fix | 20 (11 to 30) | 6 | 5 | 0.33 | 0.67 (0.71) | 0 |
+| regular x2, `main` | 10 (1 to 10) | 12 | 15 | 0.55 | 0.55 (0.75) | 3 |
+| regular x2, fix | 10 (1 to 10) | 11 | 15 | 0.35 | 0.66 (0.75) | 2 |
+| veteran x2, `main` | 10 (1 to 10) | 13 | 16 | 0.57 | 0.60 (0.71) | 0 |
+| veteran x2, fix | 10 (1 to 10) | 16 | 16 | 0.38 | 0.69 (0.71) | 1 |
+
+Ten nights do not rank the fix: the Rookie's median read 6 against 9 on the first ten seeds and 7 against 6 on the next
+twenty. What the fix changes for certain is the points a bot spends on the crane (about 1,000 less a bot-night in the
+crane soak, which go to the other things on its list: the spend ratio of the regular and veteran cells rose by about
+0.1). So the cells of `bots-nightly` that read bot strength (the median within 1.5 of the simulator, the Kolmogorov
+distance under 0.2, the spend ratio within 0.20 of the simulator's) can move by a round either way and the spend ratio
+by a tenth. The simulator's shoppers still buy on any prize (`NightSim._crane_can_pay_off`) and are not touched:
+mirroring the rule there moves its medians (the crane price was tuned against it, [the balance
+simulator](balance-simulator.md)) and is an issue of its own, not a retune made here. The gates that read the bots'
+behaviour (the engine error, stuck and idle gates, the far-from-the-person gate) are not moved: the walk back to the
+glass is a note of `crane`, which `SoakWatch.ERRAND_NOTES` counts as an errand.
+
 A person's crane is the rules' and is untouched: the change is in `gameplay/bots/` only.
 
 ## Open
