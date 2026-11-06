@@ -304,6 +304,24 @@ at this size, and a round is about 2 minutes of the night. The nights that diffe
 noisier than a fixed night would be, in the same way for every commit, so the comparisons stand and the single seeds do
 not.
 
+### The person's stall, found and fixed (#1351)
+
+The autopilot's stall (the second row of the table above) is the autopilot's own: its flight from the nearest zombie is
+a straight line that ends against a wall, and with a dry gun it kept fleeing until the dead closed a ring round it. The
+cause, the two rules that fix it and the tests are in [bots.md](bots.md#the-autopilot-pinned-by-the-dead-1351). Ten
+seeds of the same night (`--seed=1` to `10`), `main` at `865b61fd` against the change, the stall counted as above:
+
+| | Round, mean | Kills, mean | Seconds standing unchanged (20 s or more), mean | Nights with 300 s or more | Lowest round |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `main` | 17.5 | 242 | 190 | 2 | 14 |
+| With the change | **18.2** | **286** | **83** | **0** | 17 |
+
+The paired round difference is +0.7 (sd 1.9 over the seeds): not a result alone, as this page says of anything under
+about 2 rounds. The stall and the kills are what moved, and the probe of the ten nights with the change printed 3 rows
+(none past 100 s) where `main`'s night of seed 8 printed a stall of 640 s. What is left is not looked at: the 83 s a
+night, and the one to three dead nobody has in view ([#1352](https://github.com/Ryubara/deadnight/issues/1352)). Whether
+the nightly's person should be able to die is still the maintainer's (`AutopilotRun.PLAYER_HEALTH`, untouched).
+
 ## What the two biggest cheap costs are worth
 
 [#930](https://github.com/Ryubara/deadnight/issues/930) (one decode of a tick's zombie list for every client) and
