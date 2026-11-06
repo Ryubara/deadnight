@@ -2248,6 +2248,13 @@ reload), so neither is a cause of anything below; the nightly had never been gre
 | regular_3_follow_person | 6 / 31 | 1 / 3 | | **1 / 23** | 4 / 0 | n/a / 7 | |
 | regular_3_hold_person | 15 / 26 | 1 / 1 | | | 10 / 7 | n/a / **26** | 6 / 0 |
 
+A third reading, a dispatch of the same workflow on `main` at `d15d770f` on 2026-11-06 (it carries #1023, #1292, #1213
+and #1318, which the first two runs predate): eleven cells red (only rookie_1 green; rookie_2 2, rookie_4 2, regular_1 2,
+regular_2 15, regular_4 15, veteran_1 3, veteran_2 7, veteran_4 14, roam 18, follow 37, hold 32 of 100). The weapon and
+reload changes did not move the bots' night: hit rate 53 to 81%, kills a bot-minute 3.7 to 9.2, spend ratio and downs an
+hour are inside the two earlier runs' spread, and the same causes carry the failures (53 of 59 nights with the idle
+gate are the ray gun, 13 of the 16 Roam idles are the `(4.8, 21.4)` spot, 31 nights have a Follow bot far away).
+
 Ten of twelve cells were red on 2026-11-04, eleven on 2026-11-05 and nine in both: the gates are zero tolerance over
 100 nights, and each of the behaviours below has a rate of its own. Five causes, with what each is worth.
 
@@ -2259,7 +2266,9 @@ Ten of twelve cells were red on 2026-11-04, eleven on 2026-11-05 and nine in bot
    (`BotMotor._gun_held_back_by_its_splash`): the bot strikes with the quick melee, which the soak counts as something
    done. Failing test first: `test_bot_motor.gd`, `test_a_loaded_ray_gun_inside_its_own_splash_is_not_fired_but_the_bot_strikes`.
    Without these nights, only rookie_1, regular_1, veteran_1 and veteran_2 are green on 2026-11-05; the rest keep the
-   causes below. SAMPLE-RESULT-PLACEHOLDER
+   causes below. With the fix, 20 nights a cell on this branch (local, seeds 1 to 20): regular_2
+   0 nights with the gate (17 and 18 in 100 before; the chance of none in 20 at 17% is 2.4%) and one idle under Roam,
+   regular_4 0 (14 in 100 before; chance of none 4%) and no gate broken at all (21 in 100 before).
 2. **The Follow cell: the person stand-in was given legs (#1011), not a bot fault.** Nights with a bot beyond 25 m for over
    20 s: 1 in 100 on 2026-11-04, 23 on 2026-11-05 (the longest 20.2 to 42.7 s); the seconds a bot is far from the
    person, a night: 40 and 119. #1011 made the stand-in shop (it walks the lot to the lockers, sprints from the dead,
