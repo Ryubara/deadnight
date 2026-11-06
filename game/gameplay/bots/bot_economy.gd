@@ -160,10 +160,18 @@ func candidates(view: View) -> Array[Buy]:
 	var marked := _ammo_ping(view)
 	if marked != null:
 		found.append(marked)
+	var urgent_count := found.size()
+	# With every gun dry the points left after these rounds must still pay for the cheapest rounds
+	# there are: a bot with nothing to fire and less than that earns nothing again (#1346).
+	var keep_back := _cheapest_rounds(view) if _every_gun_is_dry(view) else 0
 	for weapon in useful(view.arms):
-		var urgent := _ammo(view, weapon, 1, URGENT, 0)
+		var urgent := _ammo(view, weapon, 1, URGENT, keep_back)
 		if urgent != null:
 			found.append(urgent)
+	if found.size() == urgent_count:
+		var any := _any_rounds(view)
+		if any != null:
+			found.append(any)
 	for weapon in useful(view.arms):
 		var floor_buy := _ammo(view, weapon, _floor_mags(view), FLOOR, 0)
 		if floor_buy != null:
@@ -415,6 +423,54 @@ func _grenades(view: View, keep: int) -> Buy:
 # --- Rounds ---
 
 
+## A bot with no round in any gun whose points cannot pay for the rounds of the gun worth them (or
+## whose locker is out of reach): the cheapest rounds it can pay for, for a gun not worth rounds
+## (#1346: the freeze gun's three rounds cost 150 and the start pistol's thirty cost 40, and a bot
+## with 100 points and nothing to fire bought neither, earned nothing and stood the boss round out).
+## Null when a gun has a round, or none can be paid for.
+func _any_rounds(view: View) -> Buy:
+	if not _every_gun_is_dry(view):
+		return null
+	var cheapest: Buy = null
+	for id in _firearms(view):
+		var buy := _ammo(view, id, 1, URGENT, 0)
+		if buy != null and (cheapest == null or buy.price < cheapest.price):
+			cheapest = buy
+	return cheapest
+
+
+## Whether the bot carries a firearm and none of them has a round, in the magazine or in reserve.
+func _every_gun_is_dry(view: View) -> bool:
+	var guns := _firearms(view)
+	for id in guns:
+		if not _has_no_rounds(view.arms[id]):
+			return false
+	return not guns.is_empty()
+
+
+## What the cheapest rounds a carried firearm has cost (0 when there is none or nothing sells them).
+func _cheapest_rounds(view: View) -> int:
+	var cheapest := 0
+	for id in _firearms(view):
+		var item := _shop.economy.ammo_item_for(id)
+		if item == null:
+			continue
+		var room := WeaponCatalog.get_def(id).reserve_max - int(view.arms[id][1])
+		var price := item.ammo_price(view.round_number, mini(room, int(item.amount)))
+		cheapest = price if cheapest == 0 else mini(cheapest, price)
+	return cheapest
+
+
+## The carried guns that fire rounds (no blade, no flare gun).
+func _firearms(view: View) -> Array[StringName]:
+	var found: Array[StringName] = []
+	for id: StringName in view.arms:
+		var def := WeaponCatalog.get_def(id)
+		if not def.is_melee() and not def.is_lure():
+			found.append(id)
+	return found
+
+
 ## Rounds for `weapon` when its reserve is under `mags` magazines (0: whenever there is room) and
 ## the purchase leaves `keep` points. Null when the weapon is not worth rounds, the refill would
 ## fill under a tenth of the cap, nothing sells them or the bot cannot pay.
@@ -523,10 +579,22 @@ static func nearest_by_walk(view: View, spots: Array[Dictionary]) -> Vector3:
 
 
 ## Whether a locker sells rounds for `weapon`: it sells for the weapon in hand, and a blade in hand
-## is put away at the locker (`BotErrands`) for the gun in the pack.
+## or a gun with nothing left in it is put away at the locker (`BotErrands`) for the gun in the
+## pack. A gun with rounds is not: the bot would swap to a dry gun in the middle of a fight, and
+## back.
+## (#1346: a wall sells for a crane prize nowhere, the start pistol is not worth feeding next to
+## it, and a bot that held the dry pistol could not feed the dry prize and stood the round out.)
 func _locker_sells(view: View, weapon: StringName) -> bool:
-	var held_is_blade := view.arms.has(view.held) and WeaponCatalog.get_def(view.held).is_melee()
-	return view.held == weapon or held_is_blade
+	if view.held == weapon:
+		return true
+	if not view.arms.has(view.held) or not view.arms.has(weapon):
+		return false
+	return WeaponCatalog.get_def(view.held).is_melee() or _has_no_rounds(view.arms[view.held])
+
+
+## Whether a carried weapon's counts (`[magazine, reserve, tier]`) leave nothing to fire.
+static func _has_no_rounds(counts: Array) -> bool:
+	return int(counts[0]) + int(counts[1]) <= 0
 
 
 ## The carried firearms worth rounds, best first: at least `USEFUL_SHARE` of the best one's
