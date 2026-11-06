@@ -281,7 +281,8 @@ func test_the_list_shows_a_waiting_lobby_and_a_match_in_progress_and_a_row_joins
 	var seen := await _until_listed(
 		str(match_lobby["code"]),
 		looker,
-		func(row: Dictionary) -> bool: return int(row.get("round", 0)) == round_before
+		# A night with no round yet is listed with a null round: `get` hands back the null.
+		func(row: Dictionary) -> bool: return row.get("round") == round_before
 	)
 	assert_bool(seen).is_true()
 	var match_row := await _row(looker, str(match_lobby["code"]))
