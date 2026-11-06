@@ -358,3 +358,48 @@ func test_the_slop_is_in_css_pixels_so_each_phone_moves_the_same_finger() -> voi
 		var units := TouchSlop.units_for(phone, 1.0)
 		var css := units * MenuScale.css_per_unit(phone, 1.0)
 		assert_float(css).is_equal_approx(TouchSlop.CSS_PIXELS, 0.01)
+
+
+# --- The players' column (#1287) ---
+
+
+func test_the_players_column_is_never_free_ground_for_a_hold_or_two_taps() -> void:
+	# The HUD's column is a place a finger holds for the scoreboard: a hold on it or two taps on it
+	# never swap the shoulder, a tap on it between two free taps ends the pair, and the double tap
+	# still starts from free ground.
+	_fixture.free_all()
+	_fixture = TouchFixture.make(self, TouchFixture.PHONE, null, false, true)
+	_fixture.controls.clock = func() -> float: return _fixture.now
+	_fixture.controls.shoulder_swapped.connect(func() -> void: _swaps += 1)
+	_fixture.controls.looked.connect(func(look: Vector2) -> void: _looks += look)
+	var rules := GameRules.new((load(HudFixture.TUNING) as RulesTuning).duplicate(true), 1958)
+	_fixture.hud.state.set_player_name(1, "Player 1")
+	_fixture.hud.feed(rules.apply(RulesAction.add_player(1)))
+	for _i in 5:
+		await get_tree().process_frame
+	var column := Vector2.INF
+	for zone in _fixture.hud.touch_zones():
+		if zone[&"action"] == &"scoreboard":
+			column = (zone[&"rect"] as Rect2).get_center()
+	assert_bool(column.is_finite()).is_true()
+	# Two taps on the column.
+	await _tap(column)
+	await _tap(column)
+	assert_int(_swaps).is_equal(0)
+	# A hold on it, however long, and a hold with a free tap after it.
+	await _fixture.touch(0, column)
+	_fixture.pass_time(1.5)
+	await _fixture.lift(0, column)
+	_fixture.pass_time(QUICK)
+	await _tap()
+	assert_int(_swaps).is_equal(0)
+	# A tap on the column between two free taps ends the pair.
+	_fixture.pass_time(1.0)
+	await _tap()
+	await _tap(column)
+	await _tap()
+	assert_int(_swaps).is_equal(0)
+	assert_vector(_looks).is_equal(Vector2.ZERO)
+	# Free ground still swaps.
+	await _tap()
+	assert_int(_swaps).is_equal(1)

@@ -539,6 +539,8 @@ func _hint_problems(canvas: Vector2, mirrored: bool, boss: bool) -> Array[String
 			)
 		)
 	var touch := TouchFixture.make(self, canvas, _hud.state)
+	# The players' column is the last hint's place (#1287), as the night screen wires it.
+	touch.controls.zones = _hud.touch_zones
 	touch.strike_up = true  # every hint is up: Interact's prompt and a dead in reach
 	if mirrored:
 		touch.left_handed()
@@ -555,7 +557,11 @@ func _hint_problems(canvas: Vector2, mirrored: bool, boss: bool) -> Array[String
 	# Every hint but the shoulder's, which waits for the first look, and the bots', which waits
 	# for the HUD's tag (this HUD has no bot in the room: `test_touch_bot_tag.gd`).
 	var first_run: Array[StringName] = [
-		TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT, TouchHints.STRIKE
+		TouchHints.MOVE,
+		TouchHints.LOOK,
+		TouchHints.INTERACT,
+		TouchHints.STRIKE,
+		TouchHints.SCOREBOARD
 	]
 	if hints.showing() != first_run:
 		found.append("%s: the hints showing are %s" % [label, hints.showing()])
