@@ -361,17 +361,6 @@ func test_a_finger_on_any_right_button_also_looks_while_it_drags() -> void:
 		await await_millis(250)
 
 
-func test_a_drag_from_the_bot_wheel_picks_an_order_and_does_not_look() -> void:
-	var looks: Array[Vector2] = []
-	_fixture.controls.looked.connect(func(relative: Vector2) -> void: looks.append(relative))
-	var point := _fixture.at(TouchLayout.BOT_WHEEL)
-	await _fixture.touch(0, point)
-	await _fixture.drag(0, point + Vector2(-40.0, 0.0), Vector2(-40.0, 0.0))
-	assert_int(looks.size()).is_equal(0)
-	assert_bool(_fixture.controls.has_wheel_finger()).is_true()
-	await _fixture.lift(0)
-
-
 func test_interact_looks_while_it_drags_too() -> void:
 	var state := HudState.new()
 	_fixture.free_all()

@@ -4,8 +4,8 @@ extends Control
 ## The touch controls of a night: a floating move stick on the left, a look area on the right,
 ## and buttons under the right thumb. They press the game's own input actions (`move_*`, `fire`,
 ## `aim`, `jump`, `reload`, `quick_melee`, `interact`, `sprint`, `pause`, `scoreboard`, `ping`,
-## `bot_wheel`, and from the HUD's weapon places `weapon_slot_*` and `throw_grenade`), so
-## the player and the night read them like a key or a pad and nothing else forks.
+## and from the HUD's places `weapon_slot_*`, `throw_grenade` and the bots' tag `bot_order_next`),
+## so the player and the night read them like a key or a pad and nothing else forks.
 ##
 ## Aim is held while the thumb is on it when auto-fire is on (`controls/touch_auto_fire`, the
 ## default: the weapon fires by itself with the crosshair on a zombie while aiming), and a toggle
@@ -35,6 +35,9 @@ extends Control
 ## only picks it: it never fires or looks; one that starts on the grenades' place also looks, as
 ## every button of the right thumb. One that starts on the players' column holds the `scoreboard`
 ## action for as long as it is down, and never fires, looks or starts the stick.
+## The bots' tag (`HudBotOrder`, #1286) is such a place too, and a finger on it only taps it: it
+## never starts the stick or a look. The zones are tried in the order the HUD lists them and the
+## first that holds the point wins (the tag is first), after the buttons and before the stick.
 ## The interact button shows only while the HUD has a prompt: what it does is its word. The Strike
 ## button shows only while a dead is within reach of the quick melee (`strike_ready`, #1285), and
 ## shows the blade. Every other button shows an icon and no words (`TouchIcons`).
@@ -262,22 +265,6 @@ func _hidden() -> Array:
 	return hidden
 
 
-## Where the finger on the bot wheel's button is from where it landed (canvas units), and whether
-## there is one: the drag that picks the order (`BotWheelDriver`).
-func wheel_offset() -> Vector2:
-	for touch: Dictionary in _touches.values():
-		if touch.get(&"button", &"") == TouchLayout.BOT_WHEEL:
-			return touch[&"last"] - touch[&"start"]
-	return Vector2.ZERO
-
-
-func has_wheel_finger() -> bool:
-	for touch: Dictionary in _touches.values():
-		if touch.get(&"button", &"") == TouchLayout.BOT_WHEEL:
-			return true
-	return false
-
-
 func is_stick_down() -> bool:
 	return _stick_index >= 0
 
@@ -445,6 +432,8 @@ func _touch_down(index: int, point: Vector2) -> void:
 		_press_button(button)
 		if button == TouchLayout.INTERACT:
 			hints.mark_used(TouchHints.INTERACT)
+		elif button == HudBotOrder.ACTION:
+			hints.mark_used(TouchHints.BOTS)
 		elif button == TouchLayout.STRIKE:
 			hints.mark_used(TouchHints.STRIKE)
 		elif button == BOARD:
@@ -476,6 +465,15 @@ func zone_at(point: Vector2) -> StringName:
 
 func _zones() -> Array:
 	return zones.call() if zones.is_valid() else []
+
+
+## The box of the HUD's place that presses `action` (the bots' tag), or an empty rectangle when it
+## is not there now: what a first-run hint points at.
+func zone_rect(action: StringName) -> Rect2:
+	for zone in _zones():
+		if zone[&"action"] == action:
+			return zone[&"rect"]
+	return Rect2()
 
 
 func _touch_up(index: int) -> void:

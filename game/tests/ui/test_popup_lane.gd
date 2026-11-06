@@ -554,7 +554,8 @@ func _hint_problems(canvas: Vector2, mirrored: bool, boss: bool) -> Array[String
 	var found: Array[String] = []
 	var hints := touch.controls.hints
 	var safe := touch.controls.safe_rect()
-	# Every hint but the shoulder's, which waits for the first look (the column's hint is the last).
+	# Every hint but the shoulder's, which waits for the first look, and the bots', which waits
+	# for the HUD's tag (this HUD has no bot in the room: `test_touch_bot_tag.gd`).
 	var first_run: Array[StringName] = [
 		TouchHints.MOVE,
 		TouchHints.LOOK,

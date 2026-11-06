@@ -15,7 +15,8 @@ const KEPT_PARTS: Array[StringName] = [
 	&"ammo", &"prompt", &"health", &"perks", &"points", &"round_part", &"slots"
 ]
 ## What a new player is shown with a prompt up and a dead in reach: every hint but the shoulder's,
-## which waits for the first look (the column's hint is the last).
+## which waits for the first look, and the bots', which waits for the HUD's tag (these fixtures
+## have none: `test_touch_bot_tag.gd`).
 const FIRST_RUN: Array[StringName] = [
 	TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT, TouchHints.STRIKE, TouchHints.SCOREBOARD
 ]
@@ -405,7 +406,7 @@ func test_only_a_real_mouse_click_ends_touch_mode_not_motion_or_the_engine_copy_
 
 func test_the_columns_hint_takes_the_last_bit_after_every_hint_already_saved() -> void:
 	# A saved mask means the same hints it always did: each bit is its hint's place in ORDER, so a
-	# new hint goes at the end (the shoulder's bit is 4 and the column's 5).
+	# new hint goes at the end (the shoulder's bit is 4, the bots' 5 and the column's 6).
 	assert_array(TouchHints.ORDER).is_equal(
 		[
 			TouchHints.MOVE,
@@ -413,6 +414,7 @@ func test_the_columns_hint_takes_the_last_bit_after_every_hint_already_saved() -
 			TouchHints.INTERACT,
 			TouchHints.STRIKE,
 			TouchHints.SWAP,
+			TouchHints.BOTS,
 			TouchHints.SCOREBOARD
 		]
 	)

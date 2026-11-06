@@ -9,9 +9,9 @@ extends RefCounted
 ## An icon is drawn in a box of [-1, 1] on both axes, scaled to `ICON_SHARE` of the button's radius.
 ## It is a plain, heavy shape in the button's ink, read at a glance with a thumb over it:
 ## Fire a bullet, Aim a scope, Jump two chevrons up, Crouch a chevron down onto the floor, Reload a
-## circle of arrow, Swap two arrows across, the Grenade a grenade, Melee a blade, Bots a wheel of
-## orders, Ping a pin, Pause two bars. The shoulder has no icon: it is a double tap
-## (`TouchDoubleTap`), and the scoreboard none: it is a finger held on the players' column.
+## circle of arrow, Swap two arrows across, the Grenade a grenade, Melee a blade, Ping a pin,
+## Pause two bars. The shoulder has no icon: it is a double tap (`TouchDoubleTap`), and the
+## scoreboard none: it is a finger held on the players' column.
 ## Interact is the one that keeps a word (`TouchControls`); it has a tap mark above it.
 
 ## How much of the button's radius the icon's box takes: a little over half, so the rim and the
@@ -30,7 +30,6 @@ const IDS: Array[StringName] = [
 	TouchLayout.CROUCH,
 	TouchLayout.RELOAD,
 	TouchLayout.STRIKE,
-	TouchLayout.BOT_WHEEL,
 	TouchLayout.PING,
 	TouchLayout.PAUSE,
 	TouchLayout.INTERACT,
@@ -61,8 +60,6 @@ static func add(
 			_reload(box)
 		TouchLayout.STRIKE:
 			_melee(box)
-		TouchLayout.BOT_WHEEL:
-			_wheel(box)
 		TouchLayout.PING:
 			_ping(box)
 		TouchLayout.PAUSE:
@@ -142,14 +139,6 @@ static func _melee(box: _Box) -> void:
 		[Vector2(-0.1, 0.24), Vector2(0.1, 0.24), Vector2(0.1, 0.72), Vector2(-0.1, 0.72)], turn
 	)
 	box.dot(Vector2(0.0, 0.84).rotated(turn), 0.14)
-
-
-static func _wheel(box: _Box) -> void:
-	# The orders' wheel: a ring cut in three, a hub.
-	box.ring(Vector2.ZERO, 0.8, STROKE)
-	for angle in [-90.0, 30.0, 150.0]:
-		box.line(Vector2.ZERO, Vector2.RIGHT.rotated(deg_to_rad(angle)) * 0.8, THIN)
-	box.dot(Vector2.ZERO, 0.22)
 
 
 static func _ping(box: _Box) -> void:

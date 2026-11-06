@@ -16,6 +16,7 @@ const ACTIONS: Array[StringName] = [
 	&"crouch",
 	&"swap_shoulder",
 	&"bot_wheel",
+	&"bot_order_next",
 	&"ping"
 ]
 
@@ -150,10 +151,10 @@ func at(id: StringName) -> Vector2:
 	return controls.button_circle(id)[&"centre"]
 
 
-## The centre of the HUD's weapon place that presses `action` (a slot's key or the grenade), in
-## canvas units; `Vector2.INF` where there is none.
+## The centre of the HUD's place that presses `action` (a weapon's slot, the grenade or the bots'
+## tag), in canvas units; `Vector2.INF` where there is none.
 func zone_centre(action: StringName) -> Vector2:
-	for zone in hud.slots.touch_zones():
+	for zone in controls.zones.call() if controls.zones.is_valid() else []:
 		if zone[&"action"] == action:
 			return (zone[&"rect"] as Rect2).get_center()
 	return Vector2.INF

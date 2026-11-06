@@ -140,14 +140,16 @@ func test_every_button_of_the_right_thumb_is_in_a_comfortable_reach_of_where_it_
 		assert_float(out).is_less_equal(INTERACT_REACH_MM)
 
 
-func test_every_button_but_the_wheel_is_a_right_button_that_looks_while_it_drags() -> void:
+func test_every_button_of_the_table_is_a_right_button_that_looks_while_it_drags() -> void:
 	for row in TouchLayout.BUTTONS:
 		var id: StringName = row[0]
 		(
 			assert_bool(TouchLayout.looks_when_dragged(id))
 			. override_failure_message("%s" % id)
-			. is_equal(id != TouchLayout.BOT_WHEEL)
+			. is_true()
 		)
+	# The wheel is gone from the glass (#1286): the bots' order is a tag on the HUD.
+	assert_bool(TouchLayout.buttons(Rect2(0, 0, 2337, 1080), 1.0).has(&"bot_wheel")).is_false()
 	for id in [TouchLayout.PAUSE, TouchLayout.PING, &"scoreboard", &"nothing"]:
 		assert_bool(TouchLayout.looks_when_dragged(id)).is_false()
 
@@ -298,15 +300,14 @@ func test_the_strike_button_is_on_screen_clear_of_fire_on_a_phones_540_unit_canv
 		assert_float(gap).is_greater(float(melee[&"radius"]) + float(fire[&"radius"]))
 
 
-func test_the_bots_and_ping_buttons_are_on_screen_clear_of_the_rest_on_the_smallest_phone_canvas(
-) -> void:
+func test_the_ping_button_is_on_screen_clear_of_the_rest_on_the_smallest_phone_canvas() -> void:
 	# A night runs at the interface size alone (#1192): the least canvas is the 667 x 375 page at
 	# 1.25, 1536 x 864 units (it was the menu's 540 unit phone factor, which a night no longer has).
 	var phone := Vector2(1536.0, 864.0)
 	for mirrored in HANDS:
 		var safe := TouchLayout.safe_rect(phone, Vector4.ZERO)
 		var circles := TouchLayout.buttons(safe, 1.0, mirrored)
-		for id in [TouchLayout.BOT_WHEEL, TouchLayout.PING]:
+		for id in [TouchLayout.PING]:
 			var circle: Dictionary = circles[id]
 			var box := Rect2(circle[&"centre"], Vector2.ZERO).grow(circle[&"radius"])
 			(
@@ -327,8 +328,8 @@ func test_the_bots_and_ping_buttons_are_on_screen_clear_of_the_rest_on_the_small
 					. override_failure_message("%s touches %s on %s" % [id, other, phone])
 					. is_greater(0.0)
 				)
-			# Off the view: at the side (the wheel), or outside the middle 40 percent of the width
-			# that stays clear (the ping, under Pause, #1289: it was on the top band before).
+			# Off the view: outside the middle 40 percent of the width that stays clear (the ping,
+			# under Pause, #1289: it was on the top band before).
 			var centre: Vector2 = circle[&"centre"]
 			var clear := phone.x * (0.2 if id == TouchLayout.PING else 0.4)
 			(

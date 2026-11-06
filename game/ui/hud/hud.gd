@@ -83,6 +83,7 @@ var mirrored := false:
 			for column in _columns:
 				if column[&"ax"] != 0.5:
 					_place(column)
+			slots.set_mirrored(value)
 			if is_node_ready():
 				_fit_gains()
 				_queue_perks()

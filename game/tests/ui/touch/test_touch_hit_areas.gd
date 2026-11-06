@@ -1,7 +1,7 @@
 # The touch layer's hit areas are a fingertip, and which button wins a touch where they overlap is
 # decided on purpose (Deadnight #1217). A phone's page is 844 x 390 CSS px at a pixel ratio of 2,
 # a 1688 x 780 window; a night runs at the interface size alone, so at 0.8 one unit is 0.29 CSS px
-# and the 66 unit hit areas of Pause, Ping, Scoreboard, Bot wheel and Melee were 38 to 39 CSS px.
+# and the 66 unit hit areas of Pause, Ping, Scoreboard and Melee were 38 to 39 CSS px.
 # The rule these tests hold (`TouchLayout.button_at`):
 #   1. Where two buttons' old areas overlap, the first in order wins, as it always did.
 #   2. The margin added to reach a fingertip belongs to the nearest centre and takes nothing from
@@ -19,7 +19,6 @@ const SLACK := 0.5
 const SMALL: Array[StringName] = [
 	TouchLayout.PAUSE,
 	TouchLayout.PING,
-	TouchLayout.BOT_WHEEL,
 ]
 ## Where a point's step is checked on the grid sweep, in canvas units.
 const GRID_STEP := 7.0
@@ -237,7 +236,7 @@ func test_where_old_areas_overlap_the_first_in_order_still_wins() -> void:
 	assert_object(without_interact).is_equal(TouchLayout.STRIKE)
 
 
-## A finger on the new margin of each of the four presses it; with no rule the same touch was the
+## A finger on the new margin of each of the three presses it; with no rule the same touch was the
 ## look or the stick.
 func test_a_finger_in_the_margin_of_a_small_button_presses_it() -> void:
 	for mirrored in HANDS:
