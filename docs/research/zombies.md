@@ -526,8 +526,21 @@ night's places; they are put outside, the bot has a line to them and kills them;
 landing, "1.6 m to a wall" from the bot, both dead alive after 30 s of fire), `test_zombie_solid.gd`. Capture:
 `tests/captures/bots_crane_cabinet.tscn` (from the bot's eye, with a map of the footprint).
 
-Not fixed: a player or bot standing where the box lands (a kinematic body, the engine's depenetration moves it), and a
-walking dead's path through a standing cabinet (the mesh is baked without it).
+Bodies under the box: a player's body or a bot's under the landing box is pushed out by the engine's depenetration in
+the tick after the landing, measured on the real lot and server (`test_bodies_under_the_crane.gd`, the box at its
+third spot, bodies at its middle, 0.1 m inside the face on the shop side and 0.1 m inside a corner, both a bot and a
+person). From a face or a corner the body moves 0.45 m, to 0.35 m (its radius) outside that face, along the face's
+normal; from the middle (0.7 m from the nearest face, the worst case) it moves 1.05 m, out of the face on the shop
+side. All of it is one tick, with no other solid crossed (rays at 0.3, 1.0 and 1.7 m from start to end meet nothing
+but the box), on the floor (y 0.001), inside the play bounds and on the walking mesh (0 m off). It then walks as
+before (a person's walk to a point 3 m out arrives within 3 s; a bot's own brain walks 24 m away in 6 s), a ray at it
+from the open side meets the body and from the box's side meets the box. The client's own body (a real socket, the
+client predicting its body) is put out by its own copy of the box a tick after the server's: it ends 0.00 m from the
+server's body with one correction of 1.03 m (from the middle) or 0.44 m (a corner), at most 0.77 m apart while they
+differ; it then moves at 4.5 m/s away from the box. The test also fails with the box's shape off, so it does hold the
+push-out. Not measured: a body that sprints into the landing, and several bodies under one box at once.
+
+Not fixed: a walking dead's path through a standing cabinet (the mesh is baked without it).
 
 ## Left open
 
