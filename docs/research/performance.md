@@ -185,15 +185,16 @@ dead) and **3x with the desktop's crowd** (round 1 to 12, 25 minutes, up to 106 
   first 200 steady rows to 24 in the last, and at the quiet moments (2 dead or fewer) the night held 4 932 nodes in the
   first quarter of its steady rows and 5 107 in the last (+175 from round 9 to 18: the parked bodies' pools filling,
   12 a look); the 60-minute night then read 1.2 and 0.7 nodes a night minute (minutes 30 to 45 and 45 to 59).
-- **The limits.** Resources 2 500 became **2 750**: the most any night read is 2 641 in 30 minutes (2 638 at 60), so it
-  is 4% over the 30-minute peak and 4% over the 60-minute plateau, where the old limit was 7.6% over its one
-  measure; a feature that adds scripts spends that room and frees some first or shows what its number is. The
-  memory growth limit **stays 1.5** (an earlier version of this page moved it to 2.5 on the wall-clock reads; that was
-  wrong and is undone), as do nodes (40), objects (200), resources' growth (25) and the peaks of memory (300 MB, 266 on
-  CI, 289 after 60 minutes), nodes and objects. Teeth: `tools/perf/test_check_budget.py` runs the real
-  `leak_budget.json` on a flat night and on a night with each count rising at 1.2 times its limit, on a fast and a slow
-  runner: each fails and names its count, and half the limit passes (and the old wall-clock read fails the half-limit
-  case, which is how it was caught).
+- **The limits.** Resources 2 500 became **2 850**: the same code read 2 641 and 2 679 on two CI nights (a night hears
+  a different set of sounds), 2 593 and 2 638 locally at 30 and 60 minutes, so the limit is 6% over the highest night
+  read, where the old limit was 7.6% over its one measure (2 750 was the first choice, 2.6% over the 2 679, and was
+  moved on that reading); a feature that adds scripts spends that room and frees some first or shows what its number
+  is. The memory growth limit **stays 1.5** (an earlier version of this page moved it to 2.5 on the wall-clock reads;
+  that was wrong and is undone), as do nodes (40), objects (200), resources' growth (25) and the peaks of memory (300
+  MB, 266 on CI, 289 after 60 minutes), nodes and objects. Teeth: `tools/perf/test_check_budget.py` runs the real
+  `leak_budget.json` on a flat night and on a night with each count rising at 1.2 times its limit, on a fast and a
+  slow runner: each fails and names its count, and half the limit passes (and the old wall-clock read fails the
+  half-limit case, which is how it was caught).
 - **The night itself changed.** The dispatch on `main` reached round 13 in the 30 minutes (169 kills) against round 17
   to 18 (268 to 270 kills) on 2026-11-04 and 2026-11-05, with a peak of 2 569 all the same. Whether #1023 (the
   weapon numbers) or #1292 (the automatic reload) slows the autopilot's night was not looked at; it is not a leak
@@ -430,7 +431,7 @@ The nightly job `leak` in `bots-nightly.yml` plays 30 minutes at 1x and holds `t
 the first
 12 minutes nodes may grow 40 a night minute, objects 200, resources 25 and static memory 1.5 MB (measured: 6, 34, 6
 and 0.4; read in the night's own minutes, not the wall clock's, since #1319), and
-orphans stay at 2 or fewer. Peaks: nodes 6 500, objects 19 500, resources 2 750 (2 500 until #1319), memory 300 MB.
+orphans stay at 2 or fewer. Peaks: nodes 6 500, objects 19 500, resources 2 850 (2 500 until #1319), memory 300 MB.
 
 ## What past a limit does
 
