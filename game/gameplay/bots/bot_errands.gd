@@ -108,6 +108,7 @@ var glut_by_round: Dictionary = {}
 var _shop: BotShop
 var _profile: BotProfile
 var _economy: BotEconomy
+var _crane: BotCraneWait
 ## Item id (or a job's key) to the clock when it may be tried again.
 var _denied: Dictionary = {}
 ## Door id to the clock when the bot first held its price; ping to when it was first seen.
@@ -165,6 +166,7 @@ func _init(shop: BotShop, profile: BotProfile) -> void:
 	_shop = shop
 	_profile = profile
 	_economy = BotEconomy.new(shop, profile)
+	_crane = BotCraneWait.new(shop, _economy)
 
 
 ## The items the last look found the bot wants and can pay for, and the price of the next thing on
@@ -222,8 +224,7 @@ func run(
 		_heading = Vector3.INF
 		_arrived_at = -1.0
 		return false
-	var crane := _crane_wait(intent, me, frame, state.player_id)
-	if crane:
+	if _crane.run(intent, me, frame, state.player_id):
 		return true
 	# A bot that holds a spot leaves it for no link.
 	if not needs_only and _link(intent, beliefs, state, me):
@@ -275,31 +276,6 @@ func dash(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: fl
 		return false
 	intent.run = true
 	counts["dash"] = int(counts.get("dash", 0)) + 1
-	return true
-
-
-# --- The crane ---
-
-
-## The bot's own crane play is running: it stays at the glass and takes the prize when it is held
-## out (a prize it would not take is left to fade).
-func _crane_wait(intent: BotIntent, me: Dictionary, frame: Dictionary, me_id: int) -> bool:
-	var crane: Dictionary = frame.get("crane", {})
-	if crane.get("buyer", -1) != me_id:
-		return false
-	var stage: int = crane.get("stage", CraneState.Stage.READY)
-	if stage != CraneState.Stage.SPIN and stage != CraneState.Stage.GRAB:
-		return false
-	var prompt: Dictionary = me.get("prompt", {})
-	intent.note = "crane"
-	intent.keep_weapon = true
-	if prompt.get("kind", &"") == &"crane_take":
-		var view := BotEconomy.View.new()
-		view.arms = me.get("arms", {})
-		view.held = me.get("weapon", &"")
-		view.zombie_health = _economy.zombie_health(int(frame.get("round", 1)))
-		if BotEconomy.worth_taking(view, WeaponCatalog.catalog_id(prompt.get("weapon", &""))):
-			intent.use = true
 	return true
 
 
@@ -611,6 +587,7 @@ func _view(
 	var crane: Dictionary = frame.get("crane", {})
 	view.crane_spot = int(crane.get("spot", 0))
 	view.crane_ready = int(crane.get("stage", CraneState.Stage.READY)) == CraneState.Stage.READY
+	view.crane_passed = beliefs.passed_crane(view.round_number, view.arms)
 	view.denied = _denied
 	view.now = beliefs.now
 	view.avoid = Callable(self, &"_avoided")
