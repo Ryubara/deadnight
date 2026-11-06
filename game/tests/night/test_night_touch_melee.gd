@@ -11,6 +11,8 @@ const REACH_AHEAD := 1.1
 const COOLDOWN_TICKS := 40
 ## Ticks a finger rests on the button: shorter than the cooldown, longer than a press needs.
 const HOLD_TICKS := 6
+## Frames, and ticks, the button is given to come or go.
+const BUTTON_WAIT := 30
 
 var _night: Night
 var _controller: HumanController
@@ -74,12 +76,27 @@ func _hold_the_button_up() -> void:
 	await get_tree().process_frame
 
 
+## Runs the night a tick a frame until the button is `up`, inside `BUTTON_WAIT`. A fixed count of
+## frames loses the race: the client's frame and the layer's read of it each land a frame or so
+## after a tick, so the button had not gone after two frames in about half the runs (#1302). The
+## caller asserts the button afterwards, so one that never comes or goes still fails. `body`, when
+## given, is held in reach as the night runs.
+func _until_the_button_is(up: bool, body: ZombieBody = null) -> void:
+	for _i in BUTTON_WAIT:
+		await get_tree().process_frame
+		if _fixture.controls.strike_up == up:
+			return
+		if body != null:
+			_run(body, 1)
+		else:
+			NightFixture.run(_night, 1)
+
+
 ## A real tap on the button: the finger goes down, rests, lifts. The button is up first, as the
 ## player sees it: the night has run with the dead in reach and the layer has had its frames.
 func _tap(body: ZombieBody) -> void:
 	_run(body, 2)
-	await get_tree().process_frame
-	await get_tree().process_frame
+	await _until_the_button_is(true, body)
 	await _fixture.touch(0, _fixture.at(TouchLayout.STRIKE))
 	_run(body, HOLD_TICKS)
 	await _fixture.lift(0)
@@ -105,16 +122,13 @@ func test_the_button_comes_with_a_dead_in_reach_and_goes_when_it_is_gone() -> vo
 	var boxes_without := _fixture.controls.button_boxes().size()
 	var zombie := _zombie_in_reach()
 	_run(zombie, 2)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	await get_tree().process_frame
+	await _until_the_button_is(true, zombie)
 	assert_bool(_fixture.controls.strike_up).is_true()
 	# Up, it is a box the world markers keep clear of; hidden, it is none.
 	assert_int(_fixture.controls.button_boxes().size()).is_equal(boxes_without + 1)
 	zombie.position += Vector3(40.0, 0.0, 0.0)
 	NightFixture.run(_night, 2)
-	await get_tree().process_frame
-	await get_tree().process_frame
+	await _until_the_button_is(false)
 	assert_bool(_fixture.controls.strike_up).is_false()
 	assert_int(_fixture.controls.button_boxes().size()).is_equal(boxes_without)
 
@@ -122,8 +136,7 @@ func test_the_button_comes_with_a_dead_in_reach_and_goes_when_it_is_gone() -> vo
 func test_a_tap_on_the_button_strikes_the_zombie_in_reach() -> void:
 	var zombie := _zombie_in_reach()
 	_run(zombie, 2)
-	await get_tree().process_frame
-	await get_tree().process_frame
+	await _until_the_button_is(true, zombie)
 	assert_bool(_fixture.controls.strike_up).is_true()
 	await _tap(zombie)
 	assert_int(_count(&"quick_melee")).is_equal(1)
