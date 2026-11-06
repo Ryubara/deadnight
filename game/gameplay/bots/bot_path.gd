@@ -39,6 +39,14 @@ const SNAP_LIMIT := 3.0
 const WALK_HEIGHT := 0.15
 const WALLED_SLACK := 1.0
 const BODY_STANDOFF := 0.45
+## Metres a bot may stand from the mesh point nearest it and still start its path there. Farther,
+## the point may be on ground it cannot walk to (`_start`).
+const START_NEAR := 0.3
+## Where `_start` looks for walking ground the bot can walk to: rings of this many metres round
+## it, this many headings on each, and the metres a place may lie from the mesh.
+const START_RINGS: Array[float] = [0.8, 1.6, 2.4, 3.2]
+const START_HEADINGS := 12
+const START_ON_MESH := 0.35
 ## Seconds a goal the mesh does not reach is not tried again.
 const UNREACHABLE_SECONDS := 5.0
 ## Seconds, at the least and at the most, the bot waits after a door for the map to take the mesh
@@ -242,6 +250,51 @@ func snap(at: Vector3) -> Vector3:
 	return on_mesh if _flat(on_mesh, at) <= SNAP_LIMIT else Vector3.INF
 
 
+## Where a path for the bot at `here` starts: the mesh point nearest it, unless the bot cannot walk
+## to that point. The server starts a walking path on the nearest walking ground to the point it is
+## given, and a bot beside a wall can be nearer to ground on the wall's far side, or to a piece of
+## the mesh only the dead walk (`NavLayers.GAP`). The path then begins behind a wall, the bot is
+## walked into the wall, the stuck ladder only drops its goals, and the next goal starts the same
+## way: a Roam bot stood for good in the corner the west midway's fence makes with the pocket's wall
+## (#1339). The nearest walking ground that is open to the bot (nothing it cannot walk through on
+## the line) is the start then; with none within reach, the nearest point as before.
+func _start(here: Vector3) -> Vector3:
+	var near := NavigationServer3D.map_get_closest_point(map, here)
+	if _level == null:
+		return near
+	var on_ground := _level.on_walking_ground(near)
+	if on_ground and (_flat(near, here) <= START_NEAR or _open_from(here, near)):
+		return near
+	var best := Vector3.INF
+	var best_apart := INF
+	for ring in START_RINGS:
+		for i in START_HEADINGS:
+			var heading := Vector3(0.0, 0.0, -1.0).rotated(
+				Vector3.UP, TAU * float(i) / START_HEADINGS
+			)
+			var place := here + heading * ring
+			var ground := NavigationServer3D.map_get_closest_point(map, place)
+			var apart := _flat(here, ground)
+			if (
+				apart >= best_apart
+				or _flat(place, ground) > START_ON_MESH
+				or not _level.on_walking_ground(ground)
+				or not _open_from(here, ground)
+			):
+				continue
+			best = ground
+			best_apart = apart
+		if best != Vector3.INF:
+			return best
+	return near
+
+
+## Whether nothing a body cannot walk through stands on the line from `here` to `to`.
+func _open_from(here: Vector3, to: Vector3) -> bool:
+	var low := Vector3(0.0, WALK_HEIGHT, 0.0)
+	return _level.walk_hit(here + low, Vector3(to.x, here.y, to.z) + low) < 0.0
+
+
 func _query(here: Vector3, to: Vector3, now: float) -> Status:
 	var target := snap(to)
 	if target == Vector3.INF:
@@ -251,7 +304,7 @@ func _query(here: Vector3, to: Vector3, now: float) -> Status:
 	_last_query = now
 	_made_at = now
 	queries += 1
-	var start := NavigationServer3D.map_get_closest_point(map, here)
+	var start := _start(here)
 	var found := NavigationServer3D.map_get_path(map, start, target, true, NavLayers.WALK)
 	if found.is_empty():
 		empty_answers += 1
@@ -338,7 +391,7 @@ func probe(here: Vector3, to: Vector3, now: float, short := REACHED_SHORT) -> bo
 	if target == Vector3.INF:
 		return false
 	queries += 1
-	var start := NavigationServer3D.map_get_closest_point(map, here)
+	var start := _start(here)
 	var found := walkable(NavigationServer3D.map_get_path(map, start, target, true, NavLayers.WALK))
 	return not found.is_empty() and _flat(found[found.size() - 1], target) <= short
 
@@ -353,7 +406,7 @@ func walk_length(here: Vector3, to: Vector3, now: float) -> float:
 	if target == Vector3.INF:
 		return INF
 	queries += 1
-	var start := NavigationServer3D.map_get_closest_point(map, here)
+	var start := _start(here)
 	var found := NavigationServer3D.map_get_path(map, start, target, true, NavLayers.WALK)
 	if found.is_empty() or _flat(found[found.size() - 1], target) > REACHED_SHORT:
 		return INF

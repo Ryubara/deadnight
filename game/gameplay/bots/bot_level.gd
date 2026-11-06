@@ -102,6 +102,22 @@ func project(point: Vector3) -> Vector3:
 	return NavigationServer3D.map_get_closest_point(map, point)
 
 
+## Whether the mesh point nearest to `point` is walking ground: in a region a person's path may use
+## (`NavLayers.WALK`), not one of the dead's alone (the gaps across a barricade, the scraps and
+## tops no body walks, `NavmeshSplit`). `project` finds the nearest point of the whole mesh, which
+## is the dead's too, so a bot that steps onto such a piece is told it is on the mesh and then asks
+## for a path that starts on the walking ground nearest to it, which can lie across a wall (#1339).
+## True with no mesh to ask.
+func on_walking_ground(point: Vector3) -> bool:
+	if not map.is_valid() or NavigationServer3D.map_get_iteration_id(map) < 1:
+		return true
+	var owner := NavigationServer3D.map_get_closest_point_owner(map, point)
+	return (
+		not owner.is_valid()
+		or NavigationServer3D.region_get_navigation_layers(owner) & NavLayers.WALK != 0
+	)
+
+
 ## Metres of open way from `from` along the flat unit `heading`, at most `limit`: how far a bot
 ## could walk before something solid stops it.
 func room(from: Vector3, heading: Vector3, limit: float) -> float:

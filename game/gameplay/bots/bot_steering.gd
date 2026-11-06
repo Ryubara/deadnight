@@ -122,12 +122,17 @@ func _toward_keep_out(here: Vector3, aimed: Vector3) -> bool:
 	return false
 
 
-## Whether the end of a rated heading is on the mesh; its `end` becomes the projected point.
+## Whether the end of a rated heading is on the walking mesh; its `end` becomes the projected point.
+## A piece only the dead walk is not (#1339): a bot stepping onto one is told by its path to start
+## on the nearest walking ground, which can be across a wall.
 func _on_mesh(entry: Dictionary) -> bool:
 	var aimed: Vector3 = entry["aimed"]
 	var end := _level.project(aimed)
 	entry["end"] = end
-	return Vector2(end.x - aimed.x, end.z - aimed.z).length() <= OFF_MESH
+	return (
+		Vector2(end.x - aimed.x, end.z - aimed.z).length() <= OFF_MESH
+		and _level.on_walking_ground(end)
+	)
 
 
 ## The threats that are felt, the nearest `THREATS_KEPT` of them.
