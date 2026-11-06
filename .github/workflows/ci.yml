@@ -455,9 +455,21 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
+      - name: Tap a text field with a finger on a phone-sized page
+        # The phone's keyboard: the field's input takes the focus inside the tap, the field is kept above the keyboard,
+        # the room code goes in on the keypad and the name on the keyboard's path, and the page is as it was after
+        # (#1183). Also in an iframe of another origin, as Discord shows an Activity.
+        run: |
+          for embed in none plain sandbox; do
+            uv run --with playwright=="$PLAYWRIGHT_VERSION" python repos/deadnight/tools/web_smoke/phone_keyboard.py repos/deadnight/build/web "smoke/phone-keyboard-$embed" --embed "$embed"
+          done
       - name: Install the platform backend's packages
         # The Discord probe below runs the backend (spikes/backend) with the stub sign-in.
         run: npm ci --prefix repos/deadnight/spikes/backend
+      - name: Join a friend's night by its code, typed with a finger
+        # A phone-sized page against the local platform backend: the keypad types the host's code, the name prompt takes a
+        # name, and Join seats the phone beside the host (#1183).
+        run: uv run --with playwright=="$PLAYWRIGHT_VERSION" python repos/deadnight/tools/web_smoke/phone_join.py repos/deadnight/build/web smoke/phone-join
       - name: Share in Discord, through the real SDK and a client that wants authenticate first
         # The bridge as the web image bundles it, the real Embedded App SDK, and a page that answers as Discord's client
         # does: 4006 for every command until the Activity authenticated (#627). The sign-in must reach the lobby's

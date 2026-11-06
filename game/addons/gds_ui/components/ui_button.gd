@@ -172,7 +172,9 @@ func ui_sound_role() -> StringName:
 
 func _on_mouse_entered() -> void:
 	UIAudio.play(&"hover", self)
-	if not disabled:
+	# A button that never takes the focus (a key of the code keypad) leaves it where it is: asking
+	# would only warn.
+	if not disabled and focus_mode != Control.FOCUS_NONE:
 		grab_focus()
 
 
