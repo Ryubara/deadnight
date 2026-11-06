@@ -39,6 +39,8 @@ extends Node
 ##                signed-in solo night: its XP is kept in the profile and sent to the account
 ##   `map=ID`     the map of the night (`MapRegistry`: `drive_in`, `small_indoor`; default the lot)
 ##   `seconds=S`  stop after S seconds of night whatever round it is (default 600)
+##   `seed=N`     the seed of the night (`Night.SEED` otherwise)
+##   `trace=PATH` a line of hashes a tick (`NightTrace`): the first tick two runs differ (#1350)
 ##   `out=PATH`   on a desktop: write the report there and quit
 ## The report is `window.deadnightRounds` (JSON text) in a browser, and a `AUTOPILOT_RUN` line on a
 ## desktop: for each round the frames, the frame's mean, median, 95th and 99th percentile and
@@ -72,6 +74,7 @@ var _done := false
 var _ablated := false
 var _sampler: PerfSampler
 var _jumped := false
+var _traced := false
 var _hud_probed := false
 var _accounts: Dictionary[int, bool] = {}
 var _stand_ins: StandInPeople
@@ -99,7 +102,7 @@ func _ready() -> void:
 	LotBatcher.small_range = _args.get_float("smallrange", 0.0)
 	NightScreen.match_settings = settings_from(_args)
 	NightScreen.start_mode = Night.Mode.AUTOPILOT
-	NightScreen.start_seed = Night.SEED
+	NightScreen.start_seed = _args.get_int("seed", Night.SEED)
 	NightScreen.start_tuning = tuning(_args)
 	NightScreen.shoulder_camera = true
 	if _args.get_int("signin") == 1:
@@ -123,6 +126,11 @@ func _process(delta: float) -> void:
 			add_child(_sampler)
 	if not _jumped:
 		_jumped = true
+		if not _traced and _args.has("trace"):
+			_traced = true
+			add_child(
+				NightTrace.new(night, _args.get_string("trace"), _args.get_int("traceevery", 1))
+			)
 		_start_at_round(night)
 	if _args.get_int("hudprobe") == 1 and not _hud_probed and night.state.zombies.size() >= 60:
 		_hud_probed = true
