@@ -204,8 +204,9 @@ dead) and **3x with the desktop's crowd** (round 1 to 12, 25 minutes, up to 106 
 The dispatch on `main` `d15d770f` (run 42168150408) reached round 13 with 169 kills in the leak job's 30 minutes; the
 runs of 2026-11-04 and 2026-11-05 reached 18 and 17 (270 and 268 kills), and the two dispatches after it, `1d702805` and
 `fe481043`, 18 (261 and 219 kills). The guess was #1023 (the weapon numbers) or #1292 (the automatic reload).
-**Neither moved the night. The 13 is an ordinary draw of a night whose round runs from 9 to 19 with the seed, and the
-fault it carried, bots holding a loaded ray gun beside the dead, was fixed by #1324 (first built at `1d702805`).**
+**Neither is seen to move the night, within the intervals below. The 13 is an ordinary draw of a night whose round runs
+from 9 to 19 with the seed, and the fault it carried, bots holding a loaded ray gun beside the dead, was fixed by #1324
+(first built at `1d702805`).**
 
 **The five CI runs are comparable.** The command of the `leak` job (`--autopilot --rounds=999 --hold=9999
 --seconds=1800 --count=1 --bots=3 --frames=0 --labels=0 --sample=1` at `--fixed-fps 60`) is the same line in
@@ -257,9 +258,10 @@ resamples):
 | `2ace7a81` to `9de6fab9` (#1023) | 8 | +0.9 (-2.1 to +3.3) | +13 (-75 to +97) | 5 / 2 / 1 |
 | `d15d770f` to `1d702805` (the ray gun fix) | 20 | **+1.7 (+0.7 to +2.9)**, sign test p 0.06 | +22 (+2 to +46) | 11 / 3 / 6 |
 
-- **No commit between `61a990df` and `main` lowered the night, #1023 and #1292 included.** A loss of 2 rounds or more
-  from `61a990df` to `d15d770f` is outside the interval (the paired spread of a seed is 4.4 rounds, so 20 nights show a
-  change of about 2 and not one of 1); #1292 and #1023 read +0.5 and +0.9 on 8 nights each. Nights at round 13 or less
+- **No commit between `61a990df` and `main` is seen to lower the night, #1023 and #1292 included.** A loss of more than
+  2.3 rounds from `61a990df` to `d15d770f` is outside the interval, and a smaller one cannot be told from none (the
+  paired spread of a seed is 4.4 rounds, so 20 nights show a change of about 2 and not one of 1). #1292 and #1023 read
+  +0.5 and +0.9 on 8 nights each, with intervals that reach down to -1.4 and -2.1. Nights at round 13 or less
   are 5, 4 and 6 of 20 on the commit before both, at #1023 and at the red night: the dispatch's 13 is one of the six on
   its own commit.
 - **The one step in the data is the ray gun fix, and it goes up.** `d15d770f` to `1d702805` is +1.7 rounds and +22
@@ -291,7 +293,7 @@ player and bot alike, and the nights did not move. The person's stall is the aut
 die: a person out of rounds with seven dead on them goes down and is revived by the bots. So the 30-minute night's round
 count measures how often the stand-in stalls, not how hard the game is.
 
-**For the maintainer.** Nothing to retune. #1023 and #1292 are cleared to the interval above. The leak job prints
+**For the maintainer.** Nothing to retune. #1023 and #1292 are cleared only to the intervals above. The leak job prints
 `round_reached` and `kills`, which are one draw: read them as a mean over at least ten seeds (`--seed=1` to `10` is about
 20 minutes on this machine, six at once), or not at all. A player would feel nothing from the ray gun fix: the bots now
 strike where they stood.
