@@ -1,10 +1,11 @@
 class_name TouchHints
 extends Control
 ## First-run labels on the touch controls: "DRAG TO MOVE" over the stick's place, "DRAG TO LOOK" in
-## the look area, "TAP TO USE" beside the Interact button the first time it shows and "HOLD FOR
-## SCORES" beside the players' column (#1287). Each is short, appears once, and goes the moment its
-## control is used; what was used is remembered in the setting `controls/touch_hints_seen` (one bit
-## per hint), so a player sees each hint once, ever.
+## the look area, "TAP TO USE" beside the Interact button and "STRIKE" beside the Strike
+## button the first time each shows, and "HOLD FOR SCORES" beside the players' column (#1287). Each
+## is short, appears once, and goes the moment its control is used; what was used is remembered in
+## the setting `controls/touch_hints_seen` (one bit per hint), so a player sees each hint once,
+## ever.
 ## Resetting the settings to their defaults brings them back.
 ##
 ## It draws over `TouchControls` and only reads its geometry; the controls tell it what was used
@@ -20,16 +21,19 @@ extends Control
 const MOVE := &"move"
 const LOOK := &"look"
 const INTERACT := &"interact"
+const STRIKE := &"strike"
 const SCOREBOARD := &"scoreboard"
-## The order is the bit each hint owns in the saved mask.
-const ORDER: Array[StringName] = [MOVE, LOOK, INTERACT, SCOREBOARD]
+## The order is the bit each hint owns in the saved mask (the scoreboard's is the last, so the bits
+## already saved keep their hint).
+const ORDER: Array[StringName] = [MOVE, LOOK, INTERACT, STRIKE, SCOREBOARD]
 ## The hints of a tap or a hold: a ring that swells, where the others' dot slides along a track.
-const TAPS: Array[StringName] = [INTERACT, SCOREBOARD]
+const TAPS: Array[StringName] = [INTERACT, STRIKE, SCOREBOARD]
 
 const TEXT := {
 	MOVE: "DRAG TO MOVE",
 	LOOK: "DRAG TO LOOK",
 	INTERACT: "TAP TO USE",
+	STRIKE: "STRIKE",
 	SCOREBOARD: "HOLD FOR SCORES",
 }
 ## The interact button's caption for a prompt that is held, not tapped (the fence).
@@ -42,6 +46,8 @@ const ICON_WIDTH := 64.0
 const ICON_GAP := 14.0
 ## Distance from the stick ring, and from the interact button, to the label.
 const GAP := 26.0
+## How far above its button's row the Strike label stands, canvas units.
+const STRIKE_LIFT := 22.0
 ## Where the look hint sits down the safe rectangle (share of its height, its middle).
 const LOOK_AT_Y := 0.24
 ## The look hint stands beside the column of the HUD's popup lane (cards in the middle of the
@@ -51,6 +57,11 @@ const LANE_HALF := PopupCard.WIDTH * 0.5
 ## The look hint goes down by this much at a time, and keeps this far from a button, canvas units.
 const SEARCH_STEP := 8.0
 const BUTTON_CLEAR := 8.0
+## The scoreboard hint's search away from the column: how many sideways steps (of `SIDE_STEP_UNITS`
+## search steps each) and what a sideways unit costs against a vertical one.
+const SIDE_STEPS := 16
+const SIDE_STEP_UNITS := 3.0
+const SIDE_COST := 2.0
 const FADE_IN := 0.35
 const FADE_OUT := 0.25
 const PULSE_PERIOD := 1.6
@@ -88,8 +99,8 @@ func _ready() -> void:
 			_seen = int(service.call(&"get_value", SettingsService.TOUCH_HINTS_SEEN))
 
 
-## The hints on screen now, in order: controls up, not used yet, and for Interact only while the
-## button shows.
+## The hints on screen now, in order: controls up, not used yet, and for Interact and Strike only
+## while their button shows.
 func showing() -> Array[StringName]:
 	var found: Array[StringName] = []
 	if controls == null or not controls.is_active():
@@ -98,6 +109,8 @@ func showing() -> Array[StringName]:
 		if is_seen(id):
 			continue
 		if id == INTERACT and controls.interact_verb() == "":
+			continue
+		if id == STRIKE and not controls.strike_up:
 			continue
 		if id == SCOREBOARD and _zone().is_empty():
 			continue
@@ -189,18 +202,25 @@ func rect_of(id: StringName) -> Rect2:
 			if badges.has_area() and found.grow(BUTTON_CLEAR).intersects(badges):
 				found.position.y = badges.position.y - BUTTON_CLEAR - size.y
 			return _off_the_places(found, safe, size)
-		INTERACT:
-			var circle := controls.button_circle(TouchLayout.INTERACT)
+		INTERACT, STRIKE:
+			var button := TouchLayout.INTERACT if id == INTERACT else TouchLayout.STRIKE
+			var circle := controls.button_circle(button)
 			var centre: Vector2 = circle[&"centre"]
 			var beside := float(circle[&"radius"]) + GAP * 0.6
 			var left: float = centre.x + beside if mirrored else centre.x - beside - size.x
-			return Rect2(Vector2(left, centre.y - size.y * 0.5), size)
+			# Strike's hint rides a little above its row: on the smallest canvas the perks column
+			# of the stick's side stands where the row's line runs out (#1285).
+			var lift := STRIKE_LIFT if id == STRIKE else 0.0
+			return Rect2(Vector2(left, centre.y - size.y * 0.5 - lift), size)
 	return Rect2()
 
 
-## `rect` moved, a step at a time, up or down to the nearest place that is not over a place a finger
-## presses (the weapon strip, the column and the perk badges beside it), the stick's resting ring
-## (#1276, #1294), the move hint above it or a button; `rect` itself when there is none.
+## `rect` moved to the nearest place that is not over a place a finger presses (the weapon
+## strip, the column and the perk badges beside it), a HUD card, the stick's resting ring (#1276,
+## #1294), the move hint above it or a button: up or down first, and away from the column along
+## the screen when no height beside it is free (the smallest canvas with a full room has none);
+## `rect` itself when there is no place at all. A place's cost is how far it is from `rect`, a
+## sideways step counting `SIDE_COST` times a vertical one.
 func _off_the_places(rect: Rect2, safe: Rect2, size: Vector2) -> Rect2:
 	var keep: Array[Rect2] = []
 	for zone: Dictionary in controls.zones.call():
@@ -208,24 +228,47 @@ func _off_the_places(rect: Rect2, safe: Rect2, size: Vector2) -> Rect2:
 		var beside: Rect2 = zone.get(&"beside", Rect2())
 		if beside.has_area():
 			keep.append(beside)
+		for card: Rect2 in zone.get(&"cards", []):
+			keep.append(card)
 	var scale := controls.touch_scale
 	var ring := TouchLayout.stick_rest(safe, scale, controls.left_handed)
 	var reach := TouchLayout.STICK_RADIUS * scale
 	keep.append(Rect2(ring - Vector2.ONE * reach, Vector2.ONE * reach * 2.0))
 	keep.append(rect_of(MOVE))
 	var circles := controls.circles()
-	var steps := int(safe.size.y / SEARCH_STEP)
-	for step in steps:
-		for way in [-1.0, 1.0]:
-			var moved := Rect2(rect.position + Vector2(0.0, way * float(step) * SEARCH_STEP), size)
-			if moved.position.y < safe.position.y or moved.end.y > safe.end.y:
-				continue
-			var clear := _clear_of(moved, circles)
-			for box in keep:
-				clear = clear and not moved.grow(BUTTON_CLEAR).intersects(box)
-			if clear:
-				return moved
-	return rect
+	var rows := int(safe.size.y / SEARCH_STEP)
+	var away := -1.0 if controls.left_handed else 1.0
+	var best := rect
+	var best_cost := INF
+	for across in SIDE_STEPS + 1:
+		var side := float(across) * SEARCH_STEP * SIDE_STEP_UNITS * away
+		if float(across) * SEARCH_STEP * SIDE_STEP_UNITS * SIDE_COST >= best_cost:
+			break
+		for step in rows:
+			var cost := float(step) * SEARCH_STEP + absf(side) * SIDE_COST
+			if cost >= best_cost:
+				break
+			for way in [-1.0, 1.0]:
+				var moved := Rect2(
+					rect.position + Vector2(side, way * float(step) * SEARCH_STEP), size
+				)
+				if not safe.encloses(moved) or not _free(moved, keep, circles):
+					continue
+				best = moved
+				best_cost = cost
+				break
+	return best
+
+
+## Whether no box of `keep` is within `BUTTON_CLEAR` of `rect` and no button of `circles` is under
+## it.
+func _free(rect: Rect2, keep: Array[Rect2], circles: Dictionary) -> bool:
+	if not _clear_of(rect, circles):
+		return false
+	for box in keep:
+		if rect.grow(BUTTON_CLEAR).intersects(box):
+			return false
+	return true
 
 
 ## The HUD's players' column, the place a finger holds for the scoreboard: its zone (`rect`, and

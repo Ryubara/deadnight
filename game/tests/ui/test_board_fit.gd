@@ -150,3 +150,35 @@ func test_the_full_room_on_the_smallest_page_is_readable_with_ping_under_pause()
 	assert_bool(room.encloses(card)).is_true()
 	for box in avoid:
 		assert_bool(card.grow(BoardFit.GAP - 0.01).intersects(box)).is_false()
+
+
+func test_a_button_in_the_middle_of_its_rows_leaves_the_least_step_and_is_still_cleared() -> void:
+	# The same room with Strike up (a box 910 to 1014 across and 472 to 576 down): the strip
+	# between the column and Strike is 510 wide, Ping and the weapon strip take the rest of the
+	# page's height, so the ticket is at the least step, and clear of every box.
+	var room := Rect2(0.0, 0.0, 1536.768, 864.0)
+	var ticket := Vector2(896.0, 838.0)
+	var avoid: Array[Rect2] = [
+		Rect2(909.768, 472.0, 104.0, 104.0),
+		Rect2(1231.768, 414.0, 200.0, 200.0),
+		Rect2(1059.768, 419.0, 132.0, 132.0),
+		Rect2(1139.768, 265.0, 144.0, 144.0),
+		Rect2(1312.768, 238.0, 140.0, 140.0),
+		Rect2(1113.768, 583.0, 124.0, 124.0),
+		Rect2(943.768, 144.0, 96.0, 96.0),
+		Rect2(1436.768, 419.0, 80.0, 80.0),
+		Rect2(406.0, 44.0, 72.0, 72.0),
+		Rect2(406.0, 194.0, 72.0, 72.0),
+		Rect2(36.0, 726.0, 128.0, 102.0),
+		Rect2(170.0, 726.0, 128.0, 102.0),
+		Rect2(304.0, 726.0, 102.0, 102.0),
+		Rect2(36.0, 242.0, 316.0, 397.0),
+	]
+	var found := BoardFit.fit(room, ticket, avoid)
+	assert_float(found[&"scale"]).is_equal_approx(BoardFit.SMALLEST, 0.001)
+	var shown := ticket * float(found[&"scale"])
+	var middle := room.get_center() + Vector2(float(found[&"shift"]), float(found[&"drop"]))
+	var card := Rect2(middle - shown * 0.5, shown)
+	assert_bool(room.encloses(card)).is_true()
+	for box in avoid:
+		assert_bool(card.grow(BoardFit.GAP - 0.01).intersects(box)).is_false()

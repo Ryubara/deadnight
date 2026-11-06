@@ -335,10 +335,16 @@ func scoreboard_zone() -> Dictionary:
 	)
 	# `beside`: the perk badges, which stand beside the column and grow up it (a hint keeps off them).
 	var badges := perks.get_global_rect() if perks.is_visible_in_tree() else Rect2()
+	# `cards`: the cards a label beside the column keeps off (the prompt stands low in the middle).
+	var cards: Array[Rect2] = []
+	for card: Control in [prompt, ammo, health, round_part]:
+		if card.is_visible_in_tree():
+			cards.append(card.get_global_rect())
 	return {
 		&"action": SCOREBOARD_ACTION,
 		&"rect": grown.intersection(get_global_rect()),
 		&"beside": badges,
+		&"cards": cards,
 	}
 
 

@@ -63,6 +63,34 @@ func test_a_new_player_sees_move_and_look_and_interact_waits_for_a_prompt() -> v
 	assert_array(_hints().showing()).is_equal([TouchHints.MOVE, TouchHints.LOOK])
 
 
+func test_the_strike_hint_waits_for_the_button_goes_when_it_is_pressed_and_comes_back_unused(
+) -> void:
+	await _start(HudState.new())
+	assert_array(_hints().showing()).is_equal([TouchHints.MOVE, TouchHints.LOOK])
+	_fixture.strike_up = true
+	await _frames()
+	assert_array(_hints().showing()).is_equal([TouchHints.MOVE, TouchHints.LOOK, TouchHints.STRIKE])
+	assert_str(_hints().text_for(TouchHints.STRIKE)).is_equal("STRIKE")
+	# No dead in reach: the hint is not used, and is there again with the next one.
+	_fixture.strike_up = false
+	await _frames()
+	assert_bool(_hints().is_seen(TouchHints.STRIKE)).is_false()
+	assert_array(_hints().showing()).is_equal([TouchHints.MOVE, TouchHints.LOOK])
+	_fixture.strike_up = true
+	await _frames()
+	assert_array(_hints().showing()).contains([TouchHints.STRIKE])
+	# A real press on the button ends it for good, even after the button has gone.
+	await _fixture.touch(0, _fixture.at(TouchLayout.STRIKE))
+	assert_bool(_hints().is_seen(TouchHints.STRIKE)).is_true()
+	assert_array(_hints().showing()).is_equal([TouchHints.MOVE, TouchHints.LOOK])
+	await _fixture.lift(0)
+	_fixture.strike_up = false
+	await _frames()
+	_fixture.strike_up = true
+	await _frames()
+	assert_array(_hints().showing()).is_equal([TouchHints.MOVE, TouchHints.LOOK])
+
+
 func test_the_move_hint_goes_when_the_stick_is_used_and_the_others_stay() -> void:
 	await _start()
 	await _fixture.touch(0, ON_THE_STICK)
@@ -270,6 +298,7 @@ func test_the_labels_keep_clear_of_the_buttons_and_the_hud_for_either_hand() -> 
 			state.set_prompt(&"buy_door", "Projection booth door", 750)
 			hud_fixture.give_perks(4)
 			var fixture := TouchFixture.make(self, canvas, state)
+			fixture.strike_up = true
 			if mirrored:
 				fixture.left_handed()
 			fixture.controls.zones = hud_fixture.hud.touch_zones

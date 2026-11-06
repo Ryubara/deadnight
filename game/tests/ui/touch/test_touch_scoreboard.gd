@@ -21,6 +21,9 @@ const SLACK_CSS := 0.05
 ## at the biggest interface size with a full room is the worst, at 0.65 when this was written (the
 ## ticket stands lower there, clear of Ping, which a ticket in the middle would be 0.50 beside).
 const LEAST_SHARE := 0.60
+## The same with Strike up (a dead in reach): the smallest page at the biggest interface size with a
+## full room is at the least step there (0.50), clear of Strike's circle in the middle of its rows.
+const LEAST_SHARE_WITH_STRIKE := 0.50
 
 var _window_size := Vector2i.ZERO
 var _window_factor := 1.0
@@ -52,7 +55,9 @@ func after_test() -> void:
 ## The page a player has and the room in it: the window, the interface size and the ratio, the
 ## touch layer and the HUD on the canvas it makes, in the hand asked for, `party.x` people and
 ## `party.y` bots.
-func _page(page: Vector3, ui_scale: float, left := false, party := Vector2i(1, 0)) -> void:
+func _page(
+	page: Vector3, ui_scale: float, left := false, party := Vector2i(1, 0), strike := false
+) -> void:
 	var window := Vector2i(int(page.x), int(page.y))
 	get_window().size = window
 	get_window().content_scale_factor = ui_scale
@@ -61,6 +66,7 @@ func _page(page: Vector3, ui_scale: float, left := false, party := Vector2i(1, 0
 	_fixture = TouchFixture.make(self, canvas, null, false, true)
 	if left:
 		_fixture.left_handed(true)
+	_fixture.strike_up = strike
 	_fixture.controls.looked.connect(func(_motion: Vector2) -> void: _looks += 1)
 	_rules = GameRules.new((load(HudFixture.TUNING) as RulesTuning).duplicate(true), 1958)
 	var hud := _fixture.hud
@@ -110,12 +116,12 @@ func _clearance(rect: Rect2, circle: Dictionary) -> float:
 
 
 ## Every page, interface size, hand and party, with a fresh fixture each time.
-func _every_room(check: Callable) -> void:
+func _every_room(check: Callable, strike := false) -> void:
 	for page in PAGES:
 		for ui_scale in UI_SCALES:
 			for left in HANDS:
 				for party in PARTIES:
-					await _page(page, ui_scale, left, party)
+					await _page(page, ui_scale, left, party, strike)
 					await check.call(page, ui_scale, left, party)
 					_fixture.free_all()
 					_fixture = null
@@ -292,45 +298,73 @@ func test_the_weapon_places_beside_the_column_keep_their_own_taps() -> void:
 	assert_str(String(_fixture.controls.zone_at(strip))).is_equal("weapon_slot_1")
 
 
+## Whether the button `id` is drawn now (Interact only with a prompt, Strike only with a dead in
+## reach).
+func _drawn(id: StringName) -> bool:
+	if id == TouchLayout.INTERACT:
+		return _fixture.controls.interact_verb() != ""
+	if id == TouchLayout.STRIKE:
+		return _fixture.strike_up
+	return true
+
+
+## A finger held on the column in the room made: the ticket is up, on the page, no smaller than
+## `least`, and under no drawn button, place or the column.
+func _hold_and_check(
+	page: Vector3, ui_scale: float, left: bool, party: Vector2i, least: float
+) -> void:
+	var controls := _fixture.controls
+	var board := _fixture.hud.scoreboard
+	var column := _column()
+	await _fixture.touch(0, column.get_center())
+	await _settle()
+	var what := _label(page, ui_scale, left, party, "the ticket")
+	if _fixture.strike_up:
+		what += " with Strike up"
+	assert_bool(board.visible).override_failure_message(what + " is up").is_true()
+	var card := board.card_rect()
+	var room := _fixture.hud.get_global_rect()
+	(
+		assert_bool(room.grow(0.5).encloses(card))
+		. override_failure_message("%s is %s, off the page %s" % [what, card, room])
+		. is_true()
+	)
+	var share: float = board.get_parent().scale.x
+	(
+		assert_float(share)
+		. override_failure_message("%s is shrunk to %.2f" % [what, share])
+		. is_greater_equal(least)
+	)
+	for id: StringName in controls.circles():
+		if not _drawn(id):
+			continue
+		(
+			assert_float(_clearance(card, controls.circles()[id]))
+			. override_failure_message("%s is under the %s button" % [what, id])
+			. is_greater(0.0)
+		)
+	for zone in _fixture.hud.touch_zones():
+		(
+			assert_bool(card.intersects(zone[&"rect"]))
+			. override_failure_message("%s is over %s" % [what, zone[&"action"]])
+			. is_false()
+		)
+	await _fixture.lift(0, column.get_center())
+	await await_millis(250)
+
+
 func test_the_ticket_fits_the_page_and_is_under_no_button_or_place() -> void:
 	await _every_room(
 		func(page: Vector3, ui_scale: float, left: bool, party: Vector2i) -> void:
-			var controls := _fixture.controls
-			var board := _fixture.hud.scoreboard
-			var column := _column()
-			await _fixture.touch(0, column.get_center())
-			await _settle()
-			var what := _label(page, ui_scale, left, party, "the ticket")
-			assert_bool(board.visible).override_failure_message(what + " is up").is_true()
-			var card := board.card_rect()
-			var room := _fixture.hud.get_global_rect()
-			(
-				assert_bool(room.grow(0.5).encloses(card))
-				. override_failure_message("%s is %s, off the page %s" % [what, card, room])
-				. is_true()
-			)
-			var share: float = board.get_parent().scale.x
-			(
-				assert_float(share)
-				. override_failure_message("%s is shrunk to %.2f" % [what, share])
-				. is_greater_equal(LEAST_SHARE)
-			)
-			for id: StringName in controls.circles():
-				if id == TouchLayout.INTERACT and controls.interact_verb() == "":
-					continue
-				(
-					assert_float(_clearance(card, controls.circles()[id]))
-					. override_failure_message("%s is under the %s button" % [what, id])
-					. is_greater(0.0)
-				)
-			for zone in _fixture.hud.touch_zones():
-				(
-					assert_bool(card.intersects(zone[&"rect"]))
-					. override_failure_message("%s is over %s" % [what, zone[&"action"]])
-					. is_false()
-				)
-			await _fixture.lift(0, column.get_center())
-			await await_millis(250)
+			await _hold_and_check(page, ui_scale, left, party, LEAST_SHARE)
+	)
+	# Strike comes and goes with a dead in reach, so the ticket is fitted again with it up
+	# (`layout_changed` hands the HUD the boxes again): its circle is one more to keep clear of.
+	await _every_room(
+		func(page: Vector3, ui_scale: float, left: bool, party: Vector2i) -> void:
+			assert_bool(_fixture.controls.circles().has(TouchLayout.STRIKE)).is_true()
+			await _hold_and_check(page, ui_scale, left, party, LEAST_SHARE_WITH_STRIKE),
+		true
 	)
 
 
@@ -386,6 +420,8 @@ func test_the_hints_say_it_once_beside_the_column_and_a_hold_ends_it() -> void:
 			)
 			assert_bool(rect.get_center().x > column.get_center().x).is_equal(not left)
 			for id: StringName in _fixture.controls.circles():
+				if not _drawn(id):
+					continue
 				(
 					assert_float(_clearance(rect, _fixture.controls.circles()[id]))
 					. override_failure_message("%s is over the %s button" % [what, id])

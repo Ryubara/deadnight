@@ -559,17 +559,55 @@ column already shows the points and names: the scoreboard's short form. A finger
   keeps clear of the column too, so the thumb that holds it does not cover it). Without the vertical move, the same
   matrix on main after #1293 had the full room at 0.50 there (Ping's right edge took the column's place as the strip's
   left bound: 502 units where the column had made it 376, and the strip was 417 wide for a ticket 448 wide at the
-  least step). The text is then 8 to 10 CSS px, as the ticket's already is at the usual size on that page; the test
-  holds the least at 0.60.
+  least step). **With Strike up** (#1285; its circle stands in the middle of the right thumb's column, so the ticket keeps
+  clear of it too: the layer's `layout_changed` hands the HUD the boxes again when it comes or goes) the matrix is
+  smaller where it is tight: on 844 x 390 at 1.25 four people are 0.90, eight 0.85 and a full room 0.75 (at 1.0 eight
+  0.95 and a full room 0.85); on 667 x 375 at 1.25 four are 0.70, eight 0.55 and a full room 0.50, the least step
+  (`BoardFit.SMALLEST`, not lowered), where the strip between the column and Strike's box is 510 units for a ticket 448
+  wide at that step and no height of the page is clear of Ping, Strike and the weapon strip at once for a larger one.
+  `test_the_ticket_fits_the_page_and_is_under_no_button_or_place` holds both clear; the usual matrix keeps its 0.60.
+  The text is then 8 to 10 CSS px, as the ticket's already is at the usual size on that page; the test holds the
+  least at 0.60.
 - **The hint.** "HOLD FOR SCORES" stands beside the column, moved up or down to the nearest place clear of the
   weapon strip, the column and the badges, the stick's resting ring (#1294: the ring's left edge is right of the
   badges, so a hint level with the column's middle was over it in all 48 rooms of the matrix, found when the check
-  was added), the "DRAG TO MOVE" hint above the ring and every button; it goes with
-  the first hold, and takes the next bit of `controls/touch_hints_seen`, so nobody who has seen the others sees
-  anything else new except this one.
+  was added), the "DRAG TO MOVE" hint above the ring, the HUD cards (the prompt) and every button, and away from the
+  column along the screen when no height beside it is free (the 667 x 375 page with a full room has none: it stands
+  right of the badges, under the ring); it goes with the first hold, and takes the next bit of
+  `controls/touch_hints_seen`, so nobody who has seen the others sees anything else new except this one.
 - **Proof.** `test_touch_scoreboard` (every page, interface size, hand and party), `test_board_fit`, and the browser
   check `tools/web_smoke/touch_scoreboard.py` with real touches on both pages. The marker capacity did not move
   (audit page, "Markers after the Scoreboard circle goes").
+
+## Strike: a button that shows only while a dead is in reach (#1285)
+
+The audit (`docs/design/touch-audit.md`) made the Melee circle a contextual button: a sixth permanent circle is the
+bloat the maintainer named, and Call of Duty: Mobile shows its knife only when an enemy is within striking distance
+([Activision](https://blog.activision.com/call-of-duty/2019-10/Getting-a-Grip-on-the-Call-of-Duty-Mobile-Controls),
+design only).
+
+- **The rule** is `StrikeReach` (`game/gameplay/night/`), the rule the bots strike by (`BotMotor`): a living dead
+  (not `DYING`) within the quick melee's `melee_range` (1.6 m) on the ground from the player, read from the client's
+  own picture of the night (`ClientState`), so it costs no traffic and runs the same on a game server. It goes at 0.3 m
+  past the reach, so a dead that shuffles on the edge does not flicker it and a thumb on the button is not dropped by
+  a step back; a downed player has no blow. The night screen hands it to the layer as `TouchControls.strike_ready`.
+- **Facing is not part of it.** The blow goes along the view, from the head (`NightServer._quick_melee`), so a dead at
+  the player's side or back brings the button and a tap swings at air: a real run (below) made seven blows for no
+  kill with the dead beside the crosshair. The issue's rule is reach, as the audit's, and a facing gate would copy the
+  server's hit shapes into the client; left as a decision (a follow-up issue).
+- **It is a hidden state in every suite that lists the buttons.** The first blow kills a round-one dead in a test
+  night and the button goes with it, so a cooldown test holds the button up by hand
+  (`test_night_touch_melee.gd`); the fixture has a switch (`TouchFixture.strike_up`) and the marker, hint, box-count,
+  hit-area and input-matrix suites each had an assumption (kit lesson
+  `2026-11-05-a-button-that-shows-only-sometimes-broke-seven-suites-that-listed-it.md`).
+- **The hint is one word.** "TAP TO STRIKE" is 407 units wide and met the Perks card of the 667 x 375 page at 1.25
+  with the notch's insets (`test_popup_lane` caught it); "STRIKE" is 268 and stands 22 units above its button's row
+  (`TouchHints.STRIKE_LIFT`) to clear the Perks column, which starts 3 units under the row's line there.
+- **`TouchControls` is at gdlint's limit of 20 public methods,** so the layer says whether Strike shows with a property
+  (`strike_up`), not a method.
+- **Markers.** Strike stands in the one column the markers use: with it up the 667 x 375 page at 1.25 holds two
+  markers before two meet (four with Interact up); the table is in the audit page. Every marker is still off every
+  card and button.
 
 ## The stick's sprint latch (#1276)
 
