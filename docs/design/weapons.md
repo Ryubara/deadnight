@@ -59,7 +59,7 @@ the real command, its own model drawn).
 | Model (`assets/weapons/`) | Definition | How it is obtained | Per hit / interval |
 | --- | --- | --- | --- |
 | `house_pistol` ([#898](https://github.com/Ryubara/deadnight/issues/898)) | `house_pistol`, the House Pistol | **Start** (in hand), every player | 8 / 0.2 s |
-| `revolver` | `pistol`, the Revolver | The **crane** (1), and on the second map a **wall** (270); no longer the start | 24 / 0.28 s, head x1.75 |
+| `revolver` | `pistol`, the Revolver | The **crane** (1), and on the second map a **wall** (270); no longer the start | 28 / 0.22 s, head x1.75 |
 | `crowbar` | `crowbar` | The **crane** only (1); no longer a start weapon, the quick melee replaced it | 55 / 0.55 s, every zone |
 | `double_shotgun` | `shotgun`, the Double-barrel | **Wall** 900, and the **crane** (weight 4) | 21 x 8 / 0.3 s |
 | `lever_rifle` | `rifle`, the Hunting rifle | **Wall** 1,200, and the **crane** (3) | 95 / 0.5 s |
@@ -75,7 +75,7 @@ the real command, its own model drawn).
 | `m249` | `m249`, the Double-Feature Gun | **Crane** only (1.5) | 15 / 0.09 s, pierces 1 |
 | `fifty_cal` | `fifty_cal`, the .50 calibre rifle | **Crane** only (1.5) | 220 / 0.9 s, pierces 4 |
 | `pump_870` | `pump_870`, the Popper | **Crane** only (2) | 22 x 6 / 0.65 s |
-| `service_pistol` twice (#797) | `dual_pistols`, the Dual Pistols | **Crane** only (2.5), on both maps | 17 / 0.15 s, a hand each shot |
+| `service_pistol` twice (#797) | `dual_pistols`, the Dual Pistols | **Crane** only (2.5), on both maps | 20 / 0.15 s, a hand each shot |
 | none: not a weapon | `quick_melee` (`QUICK_MELEE`, not in `IDS`) | Every player, on `V`; never carried, bought or won | 50 / 0.6 s, 1.6 m, every zone |
 | `hammer` | none | A tool: the repair clip's prop, not a weapon (see below) | |
 | `grenade` | none (`frag.tres` is its own system) | Thrown, not a crane prize: the start (2) and the shop's grenades | 150 blast |
@@ -223,8 +223,8 @@ weapon: it is not in the catalogue's `IDS`, nobody buys, carries or wins it, and
   (50 health) *and* round 2 (58) in one blow, and the tables and the simulator, which read the body, said 40. The
   blow is now the number it shows, and the head bonus is not hidden in the sweep. The bat, the axe and the crowbar
   had the same fault (#924): their tables said 60, 150 and 45 on the body, and the real blow was the head's, 90, 375 and
-  68 (the axe killed every walker to round 16 in one blow, not 10). They are flat too now (crowbar 55, bat 60, axe 150
-  in every zone). See [hits to kill](#hits-to-kill-by-round).
+  68 (the axe killed every walker to round 16 in one blow, not 10). They are flat too now (crowbar 55, bat 55, axe 132
+  in every zone, the numbers of the class audit, #972). See [hits to kill](#hits-to-kill-by-round).
 - **Server:** `CombatAction.quick_melee` (a bit in the command's flags, `NetWire.F_MELEE`, protocol 11) is swept from
   the head along the view with `defs/quick_melee.tres` exactly as a melee weapon's blow is, through the same rewind,
   and hurts as a `melee` hit: the zombie takes the damage, the kill pays the melee price (130). A fixed cooldown of
@@ -260,8 +260,8 @@ table since #924. A walker has `health_for_round` health (50 + 8 a round to roun
 | Walker health | 50 | 58 | 66 | 74 | 82 | 90 | 98 | 106 | 123 | 143 |
 | **Quick melee (V), 50** | **1** | **2** | **2** | **2** | **2** | **2** | **2** | **3** | **3** | **3** |
 | **Crowbar, 55** | **1** | **2** | **2** | **2** | **2** | **2** | **2** | **2** | **3** | **3** |
-| **Baseball bat, 60** | **1** | **1** | **2** | **2** | **2** | **2** | **2** | **2** | **3** | **3** |
-| **Fire axe, 150** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** |
+| **Baseball bat, 55** | **1** | **2** | **2** | **2** | **2** | **2** | **2** | **2** | **3** | **3** |
+| **Fire axe, 132** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **2** |
 | Before #897: quick melee (60) | 1 | 1 | 2 | 2 | 2 | 2 | 2 | 2 | 3 | 3 |
 | Before #924: crowbar (68) | 1 | 1 | 1 | 2 | 2 | 2 | 2 | 2 | 2 | 3 |
 | Before #924: bat (90) | 1 | 1 | 1 | 1 | 1 | 1 | 2 | 2 | 2 | 2 |
@@ -278,9 +278,9 @@ and striking: every blow was in the head zone, so the blow was the table's numbe
   than the free blow on round 1, and 45 would have left a round-1 walker at 5 health after a crowbar blow that V
   finishes. 55 is in the same bracket as V (50 to 57), so the crowbar is the same count with a faster swing, a longer
   reach and two targets (100 a second against 83). A test holds each carried melee weapon at V's blow or more.
-- **The bat and the axe keep the numbers their tables always showed** (60, 150): the bat kills round 2 (58) in one blow
-  and then needs two, 150 a second with four targets; the axe kills a walker of any round to 10 (143) in one, as the
-  design said (the real blow of 375 killed to round 16).
+- **The bat and the axe take the numbers of the class audit** (55, 132; they were 60 and 150, #972): the bat needs two
+  blows from round 2 (58), 138 a second with four targets; the axe kills a walker of any round to 9 (123) in one and
+  needs two on round 10 (143), 147 a second (the real blow of 375 killed to round 16).
 - **Why flat.** A person swinging from the eye cannot choose the zone (the sweep leaves the eye at 1.55 m with a 0.4
   m thickness and the head sphere is at 1.62 m, so it is the head at every reach and every aim, whatever the
   crosshair is on), so a head bonus is a hidden multiplier; a flat blow gives the same count on the head, the chest
@@ -466,43 +466,161 @@ distance down to the floor and holds there to the range.
 | Weapon | Kind | Per hit | Interval | Magazine / reserve | Reload | Falloff start to end (floor) | Range |
 | --- | --- | ---: | ---: | --- | ---: | --- | ---: |
 | House Pistol | hitscan, semi | 8 | 0.2 s | 15 / 90 (max 150) | 1.5 s | 12 to 32 m (50%) | 50 m |
-| Revolver | hitscan, semi | 24 | 0.28 s | 10 / 40 (max 80) | 1.3 s | 12 to 35 m (55%) | 60 m |
+| Revolver | hitscan, semi | 28 | 0.22 s | 10 / 40 (max 80) | 1.0 s | 12 to 35 m (55%) | 60 m |
 | Tommy gun | hitscan, auto | 14 | 0.075 s | 30 / 120 (max 180) | 1.9 s | 10 to 30 m (50%) | 50 m |
 | Double-barrel | 8 pellets, 6 degrees | 22 x 8 | 0.3 s | 2 / 16 (max 32) | 1.8 s | 8 to 22 m (35%) | 30 m |
 | Hunting rifle | hitscan, pierces 2 | 95 | 0.5 s | 8 / 40 (max 80) | 2.2 s | 40 to 90 m (80%) | 120 m |
 | Flare gun | projectile, lobbed | none: calls the dead (25 m, 8 s) | 0.8 s | 1 / 6 (max 12) | 2.0 s | none | 40 m |
 | Crowbar | melee sweep, 2 targets | 55 | 0.55 s | none | none | none | 1.9 m |
-| Baseball bat | melee sweep, 4 targets | 60 | 0.4 s | none | none | none | 1.8 m |
-| Fire axe | melee sweep, 2 targets | 150 | 0.9 s | none | none | none | 1.8 m |
-| MP5 | hitscan, auto | 15 | 0.10 s | 30 / 120 (max 180) | 1.9 s | 12 to 34 m (55%) | 55 m |
-| PPSh | hitscan, auto | 10 | 0.055 s | 50 / 100 (max 200) | 2.8 s | 8 to 24 m (45%) | 40 m |
-| M4A1 | hitscan, auto | 20 | 0.11 s | 30 / 90 (max 150) | 2.1 s | 22 to 55 m (65%) | 90 m |
-| M249 | hitscan, auto, pierces 1 | 15 | 0.09 s | 100 / 150 (max 250) | 5.0 s | 14 to 40 m (55%) | 70 m |
+| Baseball bat | melee sweep, 4 targets | 55 | 0.4 s | none | none | none | 1.8 m |
+| Fire axe | melee sweep, 2 targets | 132 | 0.9 s | none | none | none | 1.8 m |
+| MP5 | hitscan, auto | 17 | 0.10 s | 30 / 120 (max 180) | 1.9 s | 12 to 34 m (55%) | 55 m |
+| PPSh | hitscan, auto | 12 | 0.055 s | 50 / 100 (max 200) | 2.8 s | 8 to 24 m (45%) | 40 m |
+| M4A1 | hitscan, auto, pierces 1 | 20 | 0.11 s | 30 / 90 (max 150) | 2.1 s | 22 to 55 m (65%) | 90 m |
+| M249 | hitscan, auto, pierces 1 | 16 | 0.09 s | 100 / 150 (max 250) | 5.0 s | 14 to 40 m (55%) | 70 m |
 | Fifty cal | hitscan, semi, pierces 4 | 220 | 0.9 s | 5 / 20 (max 40) | 3.4 s | none | 150 m |
-| Pump 870 | 6 pellets, 5 degrees, loads by the round | 22 x 6 | 0.65 s | 6 / 42 (max 66) | 2.8 s | 10 to 26 m (45%) | 35 m |
+| Pump 870 | 6 pellets, 5 degrees, loads by the round | 22 x 6 | 0.5 s | 6 / 42 (max 66) | 2.0 s | 10 to 26 m (45%) | 35 m |
 
 Shots to kill at close range (head / body), against the health in [the rounds table](rounds.md#the-tuning-table):
 
 | Weapon | Round 1 (50) | Round 5 (82) | Round 10 (140) | Damage a second (body) | With reloads |
 | --- | --- | --- | --- | ---: | ---: |
-| Revolver | 1 / 3 | 2 / 4 | 3 / 6 | 86 | 59 |
+| Revolver | 2 / 2 | 2 / 3 | 3 / 6 | 127 | 88 |
 | Tommy gun | 2 / 4 | 3 / 6 | 5 / 10 | 187 | 101 |
 | Double-barrel | 1 / 1 | 1 / 1 | 1 / 1 | 587 | 147 |
 | Hunting rifle | 1 / 1 | 1 / 1 | 1 / 2 | 190 | 123 |
 | Flare gun | none | none | none | 0 | 0 |
 | Crowbar | 1 / 1 | 2 / 2 | 3 / 3 | 100 | 100 |
-| Baseball bat | 1 / 1 | 2 / 2 | 3 / 3 | 150 | 150 |
-| Fire axe | 1 / 1 | 1 / 1 | 1 / 1 | 167 | 167 |
-| MP5 | 2 / 4 | 3 / 6 | 5 / 10 | 150 | 92 |
-| PPSh | 4 / 5 | 6 / 9 | 10 / 14 | 182 | 90 |
+| Baseball bat | 1 / 1 | 2 / 2 | 3 / 3 | 138 | 138 |
+| Fire axe | 1 / 1 | 1 / 1 | 2 / 2 | 147 | 147 |
+| MP5 | 2 / 3 | 3 / 5 | 5 / 9 | 170 | 104 |
+| PPSh | 3 / 5 | 5 / 7 | 8 / 12 | 218 | 108 |
 | M4A1 | 2 / 3 | 3 / 5 | 4 / 7 | 182 | 111 |
-| M249 | 2 / 4 | 4 / 6 | 6 / 10 | 167 | 107 |
+| M249 | 2 / 4 | 3 / 6 | 6 / 9 | 178 | 114 |
 | Fifty cal | 1 / 1 | 1 / 1 | 1 / 1 | 244 | 139 |
-| Pump 870 (all six pellets) | 1 / 1 | 1 / 1 | 1 / 2 | 203 | 118 |
+| Pump 870 (all six pellets) | 1 / 1 | 1 / 1 | 1 / 2 | 264 | 158 |
 
 The shots are the health of the zombie (the table in the page above; `rounds.md` is the source) over the weapon's
 damage, rounded up. "With reloads" is the sustained rate over a whole magazine and its reload, the number the
 [balance simulator](rounds.md#the-balance-simulator) picks weapons by.
+
+## The audit (#972)
+
+Every weapon is one resource ([above](#one-resource-per-weapon-972)), has a **class**, and every class has written
+targets in `gameplay/weapons/classes/<class>.tres` (`WeaponClassTargets`, one inspector resource per class). A test
+fails when a weapon leaves its class band, so a new weapon, a retuned one or a changed health curve cannot quietly
+make a gun too strong or too weak for what it is.
+
+### Measured through the real damage path
+
+The numbers below are not the table's: `tests/weapons/weapon_audit.gd` puts the weapon in the shooter's hands in a
+real night (the rules' own walker of the round, the combat server, the shooter's eye at the real eye height, the fitted
+hit zones), aims at the head, the chest and the legs, and counts the trigger pulls and the seconds, reloads included.
+Rounds 1, 5 and 10 are the weapon as shipped; rounds 15 and 20 are the weapon **re-cut once** at the projector, because
+the health curve (50 at round 1, 143 at 10, 299 at 15, 629 at 20) outgrows a shipped weapon by design and the re-cut is
+what the late rounds ask for. A walker's health is the rules' (`RoundTuning.health_for_round`), so a change to the
+curve moves every row.
+
+| Weapon | Class | Head pulls (rounds 1 / 5 / 10 / 15 / 20) | **Body pulls** | Leg pulls | **Body seconds to kill** |
+| --- | --- | --- | --- | --- | --- |
+| House Pistol | Starter | 3 / 5 / 8 / 9 / 18 | 7 / 11 / 18 / 22 / 45 | 8 / 13 / 21 / 26 / 53 | 1.2 / 2 / 4.9 / 4.2 / 10.3 |
+| Revolver | Pistol | 2 / 2 / 3 / 4 / 8 | 2 / 3 / 6 / 7 / 13 | 3 / 5 / 9 / 11 / 22 | 0.23 / 0.45 / 1.1 / 2.4 / 4.8 |
+| Tommy gun | SMG | 2 / 3 / 6 / 7 / 13 | 4 / 6 / 11 / 13 / 26 | 6 / 10 / 17 / 21 / 43 | 0.23 / 0.38 / 0.75 / 0.9 / 1.88 |
+| Double-barrel | Shotgun | 1 / 1 / 2 / 2 / 3 | 1 / 1 / 2 / 2 / 3 | 1 / 1 / 2 / 3 / 5 | 0 / 0 / 0.3 / 0.3 / 0.6 |
+| Hunting rifle | Sniper | 1 / 1 / 1 / 1 / 2 | 1 / 1 / 2 / 2 / 4 | 1 / 2 / 3 / 3 / 6 | 0 / 0 / 0.5 / 0.5 / 1.5 |
+| Flare gun | Special | none / none / none / 4 / 6 | none / none / none / 4 / 6 | none / none / none / 4 / 6 | none / none / none / 5.5 / 8.6 |
+| Crowbar | Melee | 1 / 2 / 3 / 5 / 10 | 2 / 2 / 4 / 7 / 14 | 2 / 2 / 4 / 7 / 14 | 0.55 / 0.55 / 1.65 / 3.3 / 7.15 |
+| Baseball bat | Melee | 1 / 1 / 2 / 4 / 8 | 1 / 2 / 3 / 6 / 12 | 1 / 2 / 3 / 6 / 12 | 0 / 0.4 / 0.8 / 2 / 4.4 |
+| Fire axe | Melee | 1 / 1 / 1 / 1 / 2 | 1 / 1 / 2 / 3 / 5 | 1 / 1 / 2 / 3 / 5 | 0 / 0 / 0.95 / 1.9 / 3.8 |
+| MP5 | SMG | 2 / 3 / 5 / 6 / 11 | 3 / 5 / 9 / 11 / 22 | 5 / 9 / 14 / 17 / 36 | 0.2 / 0.4 / 0.8 / 1 / 2.1 |
+| PPSh | SMG | 4 / 6 / 9 / 11 / 21 | 5 / 7 / 12 / 15 / 30 | 7 / 12 / 20 / 24 / 49 | 0.23 / 0.33 / 0.62 / 0.78 / 1.6 |
+| M4A1 | Rifle | 2 / 3 / 5 / 5 / 11 | 3 / 5 / 8 / 9 / 18 | 5 / 7 / 12 / 15 / 30 | 0.23 / 0.45 / 0.78 / 0.88 / 1.88 |
+| M249 | LMG | 3 / 4 / 6 / 7 / 14 | 4 / 6 / 9 / 11 / 23 | 6 / 9 / 15 / 18 / 38 | 0.28 / 0.45 / 0.73 / 0.9 / 1.98 |
+| Fifty cal | Sniper | 1 / 1 / 1 / 1 / 1 | 1 / 1 / 1 / 1 / 2 | 1 / 1 / 1 / 1 / 3 | 0 / 0 / 0 / 0 / 0.9 |
+| Pump 870 | Shotgun | 1 / 1 / 2 / 2 / 4 | 1 / 1 / 2 / 2 / 3 | 1 / 2 / 2 / 3 / 6 | 0 / 0 / 0.5 / 0.5 / 1 |
+| Dual pistols | Pistol | 2 / 2 / 4 / 5 / 9 | 3 / 5 / 8 / 9 / 18 | 5 / 7 / 12 / 15 / 30 | 0.3 / 0.6 / 1.05 / 1.2 / 2.55 |
+| Ray gun | Special | 1 / 1 / 1 / 1 / 1 | 1 / 1 / 1 / 1 / 2 | 1 / 1 / 1 / 1 / 2 | 0.07 / 0.07 / 0.07 / 0.07 / 0.52 |
+| Freeze gun | Special | 2 / 3 / 5 / 6 / 12 | 2 / 3 / 5 / 6 / 12 | 2 / 3 / 5 / 6 / 12 | 0.88 / 1.68 / 3.28 / 4.08 / 11.88 |
+
+Rounds 15 and 20 are re-cut weapons; the melee weapons have no re-cut, so their rows there are the shipped blow. The
+flare gun does no damage until it is re-cut (its burst then burns the dead): "none" is not a miss. The scatter weapons
+are the median of three seeds.
+
+### The classes and their targets
+
+| Class | Members | The job | Body pulls, round 1 / 10 | Passes | Magazine |
+| --- | --- | --- | --- | --- | --- |
+| Starter pistol | House Pistol | the lightest gun, at least 3 head and 7 body shots to a round-1 walker | 6 to 8 / 15 to 21 | 0 | 8 to 15 |
+| Pistols | Revolver, Dual pistols | the sidearm: a few hits, a head that rewards aim | 2 to 4 / 5 to 10 | 0 to 1 | 6 to 24 |
+| SMGs | Tommy gun, MP5, PPSh | volume at short range, a small hit, a wall may sell an older one | 3 to 6 / 9 to 16 | 0 | 25 to 50 |
+| Shotguns | Double-barrel, Pump 870 | a close wall: one pull early, two in the middle | 1 / 2 to 3 | 0 (pellets never pierce) | 2 to 8 |
+| Rifles | M4A1 | steady hits, a full magazine, a line passed once or twice | 2 to 4 / 7 to 10 | 1 to 2 | 20 to 40 |
+| LMG | M249 | the heavy: biggest magazine, the most sustained damage of the carried guns | 3 to 5 / 8 to 12 | 1 to 2 | 60 to 150 |
+| Snipers | Hunting rifle, Fifty cal | one pull for ten rounds, then two, a line of bodies | 1 / 1 to 2 | 2 to 4 | 5 to 10 |
+| Specials | Flare gun, Ray gun, Freeze gun | what no gun does: a blast, a freeze, a call; a wide band | 1 to 2 / 1 to 5 | 0 to 3 | 1 to 30 |
+| Melee | Crowbar, Bat, Axe (and the free blow) | never dry, in reach, a sweep | 1 to 2 / 2 to 4 | 0 to 3 more bodies | none |
+
+The files hold the same for rounds 5, 15 and 20, the seconds to kill, the head and limb multipliers and the share of
+damage kept at each body passed; the test reads them. A band is changed only with the reason written here.
+
+### The ladder: what a band cannot say
+
+`tests/weapons/test_weapon_ladder.gd` holds four orderings, on the weapon's **worth** (`WeaponWorth.of`: damage a
+second on the body at point blank, reloads included, the number the bots and the balance simulator choose by):
+
+- **A wall's gun is never worth more than the box's gun of its class** (the wall tier's rule, #858: a wall sells the
+  weaker guns): the double-barrel against the pump, the Tommy gun against the MP5 and PPSh, the hunting rifle against
+  the .50.
+- **A melee weapon is never worth more than the best gun the box gives** (a melee weapon never runs dry and needs no
+  reload, so it is strong on the axes this number cannot see; #910: "too overpowered").
+- **A carried gun is worth at least the free blow on V** (83 a second): a gun that does less than the knife is not
+  worth a slot. The House Pistol, the weakest gun by design (#898), is the one exception.
+- **The LMG sustains more than any rifle or SMG.**
+
+### What the audit found
+
+Worth is damage a second with reloads. The gate's medians before and after are in
+[the audit research page](../research/weapon-audit.md).
+
+| Weapon | Found | Changed | Worth |
+| --- | --- | --- | --- |
+| Revolver | **too weak**: under the free blow (59 against 83), so no reason to carry it over V | 24 to 28 a hit, 0.28 to 0.22 s, reload 1.3 to 1.0 s; the head is still x1.75 = 49, under a round-1 walker's 50 | 59 to 88 |
+| Dual pistols | **too weak**: under the free blow (78) though a box prize | 17 to 20 a hit | 78 to 92 |
+| M249 | **too weak** for the heavy gun: under the M4A1 (107 against 111) | 15 to 16 a hit | 107 to 114 |
+| M4A1 | **too weak** for a rifle: the class passes one or two bodies, it passed none | pierces 1, keeps 60% | |
+| MP5, PPSh | **too weak** for the box: the wall's older Tommy gun was worth more (101 against 92 and 90) | MP5 15 to 17, PPSh 10 to 12 a hit | 92 to 104, 90 to 108 |
+| Pump 870 | **too weak** for the box: the wall's double-barrel was worth 147 against its 118 | 0.65 to 0.5 s, reload 2.8 to 2.0 s | 118 to 158 |
+| Fire axe | **too strong** for melee: one blow to round 10 (143), worth 158 against the best gun of the box's 139 | 150 to 132 a blow (two from round 10) | 158 to 139 |
+| Baseball bat | **too strong** for melee: worth 150 | 60 to 55 a blow (still one on round 1) | 150 to 138 |
+| Hunting rifle | **mis-classed**: it kills in one pull to round 10 and passes two bodies, a sniper | class Sniper (no number) | |
+| Ray gun | **watch**: one pull kills a round-15 walker; inside the wide special band, box only, 10 rounds a load | none, for the maintainer | |
+| Tommy gun, double-barrel, crowbar, flare gun, freeze gun, fifty cal | inside their bands | none | |
+
+The wall's Tommy gun and double-barrel were left alone and the box's guns raised, because the rule is that the box is
+the better gun and the simulator's players buy the wall's.
+
+### Penetration
+
+Every weapon states how many bodies it passes after the first and the share of its damage it keeps at each
+(`penetration`, `penetration_falloff`); a melee blow hits `melee_max_targets`, each after the first weaker the same way.
+`tests/weapons/test_penetration_line.gd` fires every weapon down a line of eight of the rules' walkers through the
+combat server and checks the bodies hit and the damage each took.
+
+| Weapon | Bodies hit | Damage kept, 1st / 2nd / 3rd / 4th / 5th |
+| --- | --- | --- |
+| House Pistol, Revolver, Dual pistols, Tommy gun, MP5, PPSh, Freeze gun | 1 | 100% |
+| Double-barrel, Pump 870 | 1 (every pellet stops in the first body) | 100% |
+| M4A1, M249 | 2 | 100 / 60% |
+| Hunting rifle | 3 | 100 / 60 / 36% |
+| Fifty cal | 5 | 100 / 70 / 49 / 34 / 24% |
+| Flare gun, Ray gun | a blast, not a shot: they pass no body | |
+| Crowbar, Fire axe | 2 | 100 / 60% |
+| Baseball bat | 4 | 100 / 60 / 36 / 22% |
+| Quick melee (V) | 1 | 100% |
+
+A shot is stopped by a wall; only bodies are passed. The balance simulator does not model a line of dead (it has no
+geometry): it reads the same definitions for damage, rate, magazine and reload, and the passing is left to the real
+night.
 
 ## Why these numbers
 
@@ -557,13 +675,13 @@ shop id suffix (`weapon_<id>`); the display name is a tuning string ([names](#di
 
 | Weapon (working id) | Kind | Per hit | Interval | Magazine / reserve (max) | Reload | Spread | Head | Falloff start to end (floor) | Range |
 | --- | --- | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: |
-| MP5 (`mp5`) | hitscan, auto | 15 | 0.10 s | 30 / 120 (180) | 1.9 s | 1.4 deg | x2.0 | 12 to 34 m (55%) | 55 m |
-| PPSh (`ppsh`) | hitscan, auto | 10 | 0.055 s | 50 / 100 (200) | 2.8 s | 3.2 deg | x1.5 | 8 to 24 m (45%) | 40 m |
-| M4A1 (`m4a1`) | hitscan, auto | 20 | 0.11 s | 30 / 90 (150) | 2.1 s | 1.0 deg | x1.75 | 22 to 55 m (65%) | 90 m |
-| M249 (`m249`) | hitscan, auto, pierces 1 | 15 | 0.09 s | 100 / 150 (250) | 5.0 s | 2.6 deg | x1.75 | 14 to 40 m (55%) | 70 m |
+| MP5 (`mp5`) | hitscan, auto | 17 | 0.10 s | 30 / 120 (180) | 1.9 s | 1.4 deg | x2.0 | 12 to 34 m (55%) | 55 m |
+| PPSh (`ppsh`) | hitscan, auto | 12 | 0.055 s | 50 / 100 (200) | 2.8 s | 3.2 deg | x1.5 | 8 to 24 m (45%) | 40 m |
+| M4A1 (`m4a1`) | hitscan, auto, pierces 1 | 20 | 0.11 s | 30 / 90 (150) | 2.1 s | 1.0 deg | x1.75 | 22 to 55 m (65%) | 90 m |
+| M249 (`m249`) | hitscan, auto, pierces 1 | 16 | 0.09 s | 100 / 150 (250) | 5.0 s | 2.6 deg | x1.75 | 14 to 40 m (55%) | 70 m |
 | Fifty cal (`fifty_cal`) | hitscan, semi, pierces 4 (x0.7 each) | 220 | 0.9 s | 5 / 20 (40) | 3.4 s | 0.15 deg | x2.0 (limb x0.8) | none (100%) | 150 m |
-| Pump 870 (`pump_870`) | hitscan, semi, 6 pellets | 22 x 6 | 0.65 s | 6 / 42 (66) | 2.8 s | 5.0 deg | x1.5 | 10 to 26 m (45%) | 35 m |
-| Dual pistols (`dual_pistols`) | hitscan, auto, alternating hands | 17 | 0.15 s (0.30 s a gun) | 24 / 72 (120) | 1.6 s | 2.4 deg | x2.25 | 10 to 28 m (50%) | 45 m |
+| Pump 870 (`pump_870`) | hitscan, semi, 6 pellets | 22 x 6 | 0.5 s | 6 / 42 (66) | 2.0 s | 5.0 deg | x1.5 | 10 to 26 m (45%) | 35 m |
+| Dual pistols (`dual_pistols`) | hitscan, auto, alternating hands | 20 | 0.15 s (0.30 s a gun) | 24 / 72 (120) | 1.6 s | 2.4 deg | x2.25 | 10 to 28 m (50%) | 45 m |
 | Ray gun (`ray_gun`) | `PROJECTILE`, 55 m/s, flat, 1.3 s of flight | 300 direct (head x1.5, limb x0.7) + blast 160 | 0.45 s | 10 / 40 (60) | 2.6 s | 0 | x1.5 | none | 70 m |
 | Freeze gun (`freeze_gun`) | `PROJECTILE`, 45 m/s, flat, 1.3 s of flight | 30 direct, no blast, freezes | 0.8 s | 6 / 24 (36) | 3.0 s | 0 | x1.0 | none | 60 m |
 

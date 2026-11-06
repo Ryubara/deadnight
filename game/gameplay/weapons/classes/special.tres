@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WeaponClassTargets" format=3]
+
+[ext_resource type="Script" path="res://gameplay/weapons/weapon_class_targets.gd" id="1_targets"]
+
+[resource]
+script = ExtResource("1_targets")
+weapon_class = 7
+job = "The wonder weapons and the lure: they do what no gun does (a blast, a freeze, a call), so their time to kill is a wide band; none may be a plain gun with a different name."
+body_pulls = PackedInt32Array(1, 2, 1, 3, 1, 5, 1, 6, 2, 12)
+body_seconds = PackedFloat32Array(0, 1, 0, 1.8, 0, 3.5, 0, 4.5, 0.1, 12.5)
+head_multiplier = Vector2(1, 2)
+limb_multiplier = Vector2(0.5, 1)
+bodies = Vector2i(0, 3)
+kept = Vector2(0.5, 0.8)
+magazine = Vector2i(1, 30)

@@ -12,8 +12,8 @@ extends GdUnitTestSuite
 const HITS := {
 	&"quick_melee": [1, 2, 2, 2, 2, 2, 2, 3, 3, 3],
 	&"crowbar": [1, 2, 2, 2, 2, 2, 2, 2, 3, 3],
-	&"baseball_bat": [1, 1, 2, 2, 2, 2, 2, 2, 3, 3],
-	&"fire_axe": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+	&"baseball_bat": [1, 2, 2, 2, 2, 2, 2, 2, 3, 3],
+	&"fire_axe": [1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
 }
 ## Where the crosshair is put on the walker: head, chest and legs, as a height above its feet.
 const AIMED_AT: Array[float] = [1.62, 1.1, 0.5]
