@@ -141,6 +141,48 @@ dead) and **3x with the desktop's crowd** (round 1 to 12, 25 minutes, up to 106 
   ([#950](https://github.com/Ryubara/deadnight/issues/950));
   the other run did not.
 
+### The two red leak nights of 2026-11-04 and 2026-11-05 (#1319)
+
+`bots-nightly`'s `leak` job failed twice, for two different limits, and neither was a leak.
+
+| Night (30 minutes, 1x, CI) | Code | Resources at start | Resources peak | Rise to the peak | Resources a minute | Memory a minute | Failed on |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| 2026-11-04 | `935e84fe` | 1 410 | 2 380 | 970 | 14.4 | **1.8** (limit 1.5) | memory growth |
+| 2026-11-05 | `61a990df` | 1 582 | **2 576** (limit 2 500) | 994 | 10.0 | 0.9 | resources peak |
+| 2026-11-06 (a dispatch on `main`) | `d15d770f` | 1 602 | **2 569** | 967 | 14.6 | 1.0 | resources peak |
+
+- **The peak rose because the start rose, not the night.** The resources a headless run holds at its first second:
+  1 414 at `935e84fe`, 1 586 at `61a990df` (the same two commits, run here), 1 601 on today's `main`. Between the two
+  commits the cache holds 94 more files by path (85 of them GDScript: 37 in `gameplay`, 34 in `ui`, 12 in `net`, 2 in
+  `core`, the XP, levels, profile, challenges, popups and wardrobe) and 86 more unnamed resources they make. The
+  start moved in steps (sampled at fourteen commits, 1 to 37 a step: `bea7a89b` 1 411, `40365bce` 1 434,
+  `b504d699` 1 464, `d75d1c2a` 1 502,
+  `e2f2e8f2` 1 546, `9455fecd` 1 568, `eb4c9cd8` 1 580), none of them a leak and none a fault: each is a feature. The
+  rise from the start to the peak did not move (970, 994, 967).
+- **What the rise is: the sounds a night plays.** A dump of the resource cache by path (`ResourceLoader.has_cached` over
+  every file, at 1 s, 30 s, 6, 12, 25 and 30 minutes) shows the Ogg streams going from 14 to 74, 265, 349, 396 and 401
+  of the 840 in `assets/audio`; the other paths grow by only 10 in all (734 by path at 1 s, 1 131 at
+  30 minutes). A new sound costs 2.0 to 2.8 resources (the stream and its packet sequence) and about 0.2 MB of static
+  memory (resources against sounds: 1 779 / 74, 2 262 / 265, 2 496 / 349, 2 588 / 396). Of the 14 MB of memory the
+  steady window rises by, about 11 are the 52 sounds first heard in it. A later round plays new sounds more slowly:
+  60, 191, 84, 47 and then 5 new streams in the successive windows.
+- **It is flat.** One 60-minute night on `main` (local, same command, 3 599 rows, round 24): resources a minute 15.6 in
+  minutes 12 to 30, **3.3** in 30 to 45 and **0.0** in 45 to 60, peak 2 638, reached by minute 48 and held; memory
+  1.75, 1.03 and 0.61 MB a minute, peak 287.5 MB; nodes 28, 3 and 1 a minute. The 60-minute night passes the new
+  budget.
+- **The limits.** Resources 2 500 became **2 750**: the most any night read is 2 593 in 30 minutes (2 638 at 60), so
+  it is 6% over the 30-minute peak and 4% over the 60-minute plateau, where the old limit was 7.6% over its one
+  measure; a feature that adds scripts spends that room and, as with the node limit above, frees some first or shows
+  what its number is. Memory growth 1.5 became **2.5** MB a minute: the three CI nights read 1.8, 0.9 and 1.0 and the
+  local ones 1.7 to 2.4, all of it the first hearing of sounds as above; the peak limit (300 MB, 266 on CI, 287.5
+  after 60 minutes) is unchanged. Nodes (40 a minute) and objects (200) are unchanged and do not fail on CI (22, 11 and
+  2 a minute; 48 to 138 for objects), though a local night read 37 to 64 nodes a minute when its last window was
+  a large crowd: the window is the crowd's, so read nodes' growth against the round before calling it a leak.
+- **The night itself changed.** The dispatch on `main` reached round 13 in the 30 minutes (169 kills) against round 17
+  to 18 (268 to 270 kills) on 2026-11-04 and 2026-11-05, with a peak of 2 569 all the same. Whether #1023 (the
+  weapon numbers) or #1292 (the automatic reload) slows the autopilot's night was not looked at; it is not a leak
+  and it is where a reader of the next red `leak` job should look first.
+
 ## What the two biggest cheap costs are worth
 
 [#930](https://github.com/Ryubara/deadnight/issues/930) (one decode of a tick's zombie list for every client) and
@@ -370,9 +412,9 @@ Teeth: the report of a run with the node limit set under the peak fails and name
 use.
 The nightly job `leak` in `bots-nightly.yml` plays 30 minutes at 1x and holds `tools/perf/leak_budget.json`: after
 the first
-12 minutes nodes may grow 40 a minute, objects 200, resources 25 and static memory 1.5 MB (measured: 6, 34, 6 and
-0.4), and
-orphans stay at 2 or fewer.
+12 minutes nodes may grow 40 a minute, objects 200, resources 25 and static memory 2.5 MB (measured: 6, 34, 6 and
+0.4; the memory limit was 1.5 until #1319), and
+orphans stay at 2 or fewer. Peaks: nodes 6 500, objects 19 500, resources 2 750 (2 500 until #1319), memory 300 MB.
 
 ## What past a limit does
 
