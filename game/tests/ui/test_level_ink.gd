@@ -385,6 +385,7 @@ func _check(
 		hook.call(true)
 	await _picture(reading)
 	var ground := reading.image
+	_save(ground, "%s_%s_ground" % [shot, reading.name])
 	_clear(badges, false)
 	if hook.is_valid():
 		hook.call(false)
@@ -438,7 +439,9 @@ func _report_crop(reading: Reading, badges: Array[Badge], shot: String) -> void:
 func _save(image: Image, name: String) -> void:
 	var folder := OS.get_environment("LEVEL_INK_SHOTS")
 	if not folder.is_empty():
-		image.save_png("%s/%s.png" % [folder, name])
+		image.save_png(
+			"%s/%s_%d_%d.png" % [folder, name, OS.get_process_id(), Time.get_ticks_msec()]
+		)
 
 
 # --- The places ---
