@@ -96,6 +96,7 @@ var touch_layout := false:
 		if value != touch_layout:
 			touch_layout = value
 			prompt.touch_layout = value
+			round_part.compact = value
 			health.grenades_shown = not value
 			if is_node_ready():
 				_home_slots()
@@ -188,6 +189,8 @@ func _ready() -> void:
 	resized.connect(_fit_popups)
 	resized.connect(_fit_markers)
 	resized.connect(_fit_slots)
+	# The round card is the shorter for a phone (one row), and the column under it has the room.
+	round_part.minimum_size_changed.connect(_fit_players)
 	for moving: Control in [slots, _ammo_column[&"node"], _slots_column[&"node"]]:
 		moving.item_rect_changed.connect(_queue_slots_moved)
 	resized.connect(_queue_slots_moved)
