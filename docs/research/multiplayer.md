@@ -189,7 +189,7 @@ budget (`PeerLimits`, `TokenBucket`; `test_peer_limits.gd`, and a hostile client
 
 | Limit | Value | Why |
 | --- | --- | --- |
-| Packet size | 64 bytes at most, and each message type has its exact size (command 23, hello 2, ping 7, look 13); the socket's own buffer is 4 KB, so a frame of 200 KB is refused by the engine and the peer is gone | no client message is longer |
+| Packet size | 64 bytes at most, and each message type has its exact size (command 23, hello 2, ping 7, look 13); a hello holds the backend's ticket and may reach 32 KB (`NetWire.MAX_HELLO`, past it the server refuses it out loud), the socket's own buffer is 64 KB, so a frame of 200 KB is refused by the engine and the peer is gone | no client message is longer |
 | Commands | 90 a second sustained, 240 at once | a client sends 60 a second; a 3 s stall of the connection delivers 180 together and is forgiven |
 | Pings, looks, hellos | 4/s (burst 6), 1/s (burst 3), 1/s (burst 2) | a client pings twice a second and sends one look and one hello |
 | Strikes | a packet over its rate costs 0.5, one the server cannot read (empty, too long, unknown type, wrong size, before hello, hello twice) costs 5; they wear off at 5 a second; at 100 the server hangs up | a flood of commands is cut off after about 450 packets, an honest client never gets one |

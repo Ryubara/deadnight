@@ -103,7 +103,10 @@ const HELLO_HEADER := 3
 ## The shortest hello there has been (version 3 and before had no token length): enough to read the
 ## version of an old client.
 const HELLO_MIN := 2
-const MAX_HELLO := 1024
+## A hello holds the backend's ticket, which a player's progress makes long: 256 finished challenges
+## of 64 characters are 23 KB of base64 (`TICKET_DONE` in the backend's `progression.ts`, and its
+## test reads this line).
+const MAX_HELLO := 1 << 15
 const TICK_HEADER := 5
 ## What a packed variable may be once unpacked, so a hostile length cannot ask for gigabytes.
 const MAX_UNPACKED := 4 * 1024 * 1024
