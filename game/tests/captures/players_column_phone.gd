@@ -12,6 +12,9 @@ extends Node
 ## `--nofit` (`?nofit=1`) takes the column's room away once the layout has settled: the column is
 ## as it was before the change (one box to a row), for the Before picture.
 ##
+## `--oldcard` (`?oldcard=1`) puts the round card back in its three lines once the layout has
+## settled (#1305): the column's room as it was before the card took one row.
+##
 ## It prints one line with the rectangles of the parts and quits.
 ##
 ## In a browser (`tools/web_smoke/players_column_phone.py`, which exports a copy that starts on
@@ -127,6 +130,10 @@ func _case(scale: float, label: String) -> void:
 	_fixture.advance(0.8)
 	for _i in SETTLE_FRAMES:
 		await get_tree().process_frame
+	if _args().has("oldcard"):
+		_hud.round_part.compact = false
+		for _i in SETTLE_FRAMES:
+			await get_tree().process_frame
 	if _args().has("nofit"):
 		_hud.points.room = INF
 		for _i in SETTLE_FRAMES:

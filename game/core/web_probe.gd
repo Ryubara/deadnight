@@ -253,6 +253,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"touch_zones": "",
 		"scoreboard": "",
 		"touch_buttons": "",
+		"hud_cards": "",
 		"touch_held": "",
 		"touch_strike": false,
 		"kills": 0,
@@ -454,6 +455,7 @@ static func snapshot(top: Control) -> Dictionary:
 	data["touch_zones"] = _touch_zones(night_screen)
 	data["scoreboard"] = _scoreboard(night_screen)
 	data["touch_buttons"] = _touch_buttons(night_screen)
+	data["hud_cards"] = _hud_cards(night_screen)
 	var night := night_screen.night
 	if night != null and night.server != null and night.server.grenades != null:
 		data["grenade_cooking"] = night.server.grenades.is_cooking(night.state.player_id)
@@ -603,6 +605,34 @@ static func _scoreboard(screen: NightScreen) -> String:
 	var at := rect.position / size
 	var share := rect.size / size
 	return "%.5f,%.5f,%.5f,%.5f" % [at.x, at.y, share.x, share.y]
+
+
+## The HUD's round card, objective, players' column and health card as `name:x,y,w,h`: the top left
+## corner and the size as fractions of the window's width and height (the round card on a phone,
+## #1305).
+static func _hud_cards(screen: NightScreen) -> String:
+	var hud := screen.night.hud if screen.night != null else null
+	if hud == null or not screen.is_inside_tree():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var found: Array[String] = []
+	for card: Control in [hud.round_part, hud.objective, hud.points, hud.health]:
+		if not card.is_visible_in_tree():
+			continue
+		var rect := card.get_global_rect()
+		found.append(
+			(
+				"%s:%.5f,%.5f,%.5f,%.5f"
+				% [
+					card.name,
+					rect.position.x / size.x,
+					rect.position.y / size.y,
+					rect.size.x / size.x,
+					rect.size.y / size.y
+				]
+			)
+		)
+	return "|".join(found)
 
 
 ## The screen's shown buttons as `text:x,y` (the centre, as fractions of the window): the

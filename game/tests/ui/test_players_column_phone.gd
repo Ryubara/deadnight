@@ -134,7 +134,8 @@ func test_the_busiest_column_never_overlaps_the_round_or_the_objective_on_a_phon
 
 ## The figures of the issue, before the change: 8 people at 1.25 over the objective by 38 to 106
 ## units. A column that fits keeps its names and its one box to a row: only the pages and sizes
-## that were over it come in pairs.
+## that were over it come in pairs. The round card on one row (#1305) took 70 units off the
+## figures, so at 1.25 only the eight people with the seven bots (the strip of chips) are over it.
 func test_only_the_largest_interface_size_takes_the_pairs() -> void:
 	for page in PHONES:
 		for ui_scale in UI_SCALES:
@@ -144,7 +145,7 @@ func test_only_the_largest_interface_size_takes_the_pairs() -> void:
 				await _settle()
 				var label := "%s at %s, %d bots" % [Vector2i(page.x, page.y), ui_scale, bots]
 				assert_bool(_hud.points.pairs).override_failure_message(label).is_equal(
-					ui_scale > 1.2
+					ui_scale > 1.2 and bots > 0
 				)
 				_host.queue_free()
 
@@ -196,7 +197,7 @@ func test_a_column_in_pairs_keeps_its_type_and_stays_a_place_to_hold() -> void:
 ## with no name, level badge or emblem (a half row has not the room), keeping the card and frame.
 func test_a_paired_box_shows_the_points_or_down_and_nothing_a_half_row_cannot_hold() -> void:
 	var canvas := _page(PHONES[1], 1.25)
-	_night(canvas, NightHost.MAX_PLAYERS, 0)
+	_night(canvas, NightHost.MAX_PLAYERS, NightHost.MAX_PLAYERS - 1)
 	_hud.state.apply_event({"type": &"points_changed", "player_id": 3, "total": 12500, "delta": 0})
 	_hud.state.set_player_level(3, 14, 2)
 	_hud.state.set_player_plate(3, &"cartoon", &"walk_in", &"chrome")
@@ -242,7 +243,7 @@ func test_a_desktop_and_a_pad_keep_one_box_to_a_row_at_every_canvas() -> void:
 ## Putting the touch layout away puts the names back, and a smaller room takes them again.
 func test_the_pairs_follow_the_touch_layout() -> void:
 	var canvas := _page(PHONES[1], 1.25)
-	_night(canvas, NightHost.MAX_PLAYERS, 0)
+	_night(canvas, NightHost.MAX_PLAYERS, NightHost.MAX_PLAYERS - 1)
 	await _settle()
 	assert_bool(_hud.points.pairs).is_true()
 	_hud.touch_layout = false
@@ -259,7 +260,7 @@ func test_the_pairs_follow_the_touch_layout() -> void:
 ## shape when the words do: one line, two lines and none leave the column where it is.
 func test_the_column_does_not_move_when_the_objective_words_change() -> void:
 	var canvas := _page(PHONES[1], 1.25)
-	_night(canvas, NightHost.MAX_PLAYERS, 0)
+	_night(canvas, NightHost.MAX_PLAYERS, NightHost.MAX_PLAYERS - 1)
 	await _settle()
 	var room := _hud.points.room
 	var top := _rect(_hud.points).position.y
