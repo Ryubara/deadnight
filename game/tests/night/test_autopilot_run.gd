@@ -8,6 +8,16 @@ func test_the_run_is_asked_for_by_one_word() -> void:
 	assert_bool(AutopilotRun.requested(NetArgs.new(PackedStringArray()))).is_false()
 
 
+func test_the_night_plays_the_fixed_seed_unless_one_is_asked_for() -> void:
+	var plain := NetArgs.new(PackedStringArray(["--autopilot"]))
+	var asked := NetArgs.new(PackedStringArray(["--autopilot", "--seed=7"]))
+	# A negative seed would be a fresh one at the night screen: a measured run must repeat.
+	var negative := NetArgs.new(PackedStringArray(["--seed=-1"]))
+	assert_int(AutopilotRun.seed_from(plain)).is_equal(Night.SEED)
+	assert_int(AutopilotRun.seed_from(asked)).is_equal(7)
+	assert_int(AutopilotRun.seed_from(negative)).is_equal(Night.SEED)
+
+
 func test_the_arguments_become_match_settings_inside_their_bounds() -> void:
 	var asked := NetArgs.new(
 		PackedStringArray(["--autopilot", "--count=3", "--alive=24", "--break=5"])
