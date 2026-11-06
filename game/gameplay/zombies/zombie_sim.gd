@@ -96,10 +96,15 @@ var zombies: Dictionary[int, ZombieBody] = {}
 var revision: int = 0
 ## The lures burning now (`add_lure`, `ZombieLure`).
 var lures: Array[ZombieLure] = []
+## The solid boxes that move in a night (the prize crane's cabinet): no dead stands to swing inside
+## one (`_keep_out_of_the_solids`), nor any when one lands on them.
+var solids: Array[ZombieSolid] = []
 
 var _rng := RandomNumberGenerator.new()
 ## The separation pass's grid: built again every step in arrays it keeps (it makes nothing).
 var _grid := SeparationGrid.new()
+## The `ZombieSolid.generation` each of `solids` had when the dead were last put out of it.
+var _solid_seen := PackedInt32Array()
 ## The ids `_clear_the_dead` removes after it has read them all, kept between steps.
 var _cleared := PackedInt64Array()
 ## Time handed to `tick` that has not made a whole step yet.
@@ -370,6 +375,7 @@ func _step(targets: Dictionary) -> Array[Dictionary]:
 	began = PerfProbe.begin()
 	_keep_outside_the_boards()
 	_keep_in_the_openings()
+	_keep_out_of_the_solids(targets)
 	_clear_the_dead(events)
 	PerfProbe.end(&"sim.boards_and_clear", began)
 	return events
@@ -716,6 +722,32 @@ func _keep_in_the_openings() -> void:
 		for zombie: ZombieBody in zombies.values():
 			if zombie.is_alive():
 				zombie.position = gate.keep_in_opening(zombie.position)
+
+
+## A dead that stands to swing (or rises, or is staggered) inside a solid box is put outside its
+## face on the side of its target (the nearest face when it has none), and so is every dead inside
+## it on the step after the box landed there: shots and sight lines end on the box's face, so one
+## that stayed inside could not be hit by anybody while it swung at the one beside the box (#1352).
+## A walking dead passes through a box it did not land on, as it always did (the walking mesh knows
+## nothing of a cabinet that moves).
+func _keep_out_of_the_solids(targets: Dictionary) -> void:
+	for index in solids.size():
+		var solid := solids[index]
+		if _solid_seen.size() <= index:
+			_solid_seen.resize(index + 1)
+		var landed := solid.generation != _solid_seen[index]
+		_solid_seen[index] = solid.generation
+		if not solid.enabled:
+			continue
+		for zombie: ZombieBody in zombies.values():
+			if not zombie.is_alive() or (zombie.mode == ZombieBody.Mode.CHASE and not landed):
+				continue
+			if solid.contains(zombie.position):
+				zombie.position = solid.outside(
+					zombie.position, targets.get(zombie.target_id, Vector3.INF)
+				)
+				zombie.repath_left = 0.0
+				zombie.velocity = Vector3.ZERO
 
 
 func _ground_speed(zombie: ZombieBody) -> float:

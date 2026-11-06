@@ -276,7 +276,7 @@ resamples):
 | --- | --- | --- |
 | A bot holds a loaded ray gun with a dead inside the 3 m splash | 3 660 s in 10 nights (183 s a night) | **0** |
 | The person (the autopilot) has no rounds and no reserve, with a dead at its feet ([#1351](https://github.com/Ryubara/deadnight/issues/1351)) | 1 220 s in 4 nights | 1 320 s in 3 nights |
-| One to three dead stand and nobody has them in view (seed 13: 1 040 s; the rest 40 to 100 s; [#1352](https://github.com/Ryubara/deadnight/issues/1352)) | 1 620 s in 12 nights | 120 s in 3 nights |
+| One to three dead stand and nobody has them in view (seed 13: 1 040 s, two dead inside the crane's cabinet, [fixed](zombies.md#dead-inside-the-prize-cranes-cabinet-1352); the rest 40 to 100 s; [#1352](https://github.com/Ryubara/deadnight/issues/1352)) | 1 620 s in 12 nights | 120 s in 3 nights |
 | More than three dead stand, neither of the above | 80 s in 2 nights | 40 s in 1 night |
 
   On `main` the ray gun stall is gone and the person's is what is left. At seed 2 (round 10, 71 kills) the autopilot
