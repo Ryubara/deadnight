@@ -69,7 +69,9 @@ var _touch: Variant
 
 
 func before_test() -> void:
-	UIMotion.reduced = false
+	# Reduced motion holds a marquee panel's chase of bulbs still: it is lit in other bulbs in each of
+	# a place's three pictures, and a bulb under the digits is read as ink (#1348).
+	UIMotion.reduced = true
 	LevelIcons.release()
 	LevelTag.release()
 	HudPortrait.live = false
@@ -79,6 +81,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	UIMotion.reduced = false
 	HudPortrait.live = true
 	Input.action_release(Hud.SCOREBOARD_ACTION)
 	LobbyScreen.opener = Callable()
@@ -761,6 +764,31 @@ func test_the_lobby_seats_with_a_plate(_do_skip := _skip(), _skip_reason := SKIP
 		false,
 		true
 	)
+
+
+## Nothing in a place moves while it is read (#1348). A marquee panel runs a chase of bulbs in real
+## time (`UIPanel`: the lit set walks a place every 0.15 s) and the readings take the place's
+## picture three times (as it is, with the badges clear, in flat colour), so the bulbs are lit in
+## other places in each and a bulb under the digits is read as ink: the schedule's windowed run
+## failed `test_the_lobby_seats` that way, on a runner whose frames are not a GPU's. The suite
+## holds the chase still (reduced motion, which it keeps) and this checks no panel is running one.
+func test_no_panel_chases_its_bulbs_while_a_place_is_read() -> void:
+	var reading := _exact()
+	await _lobby(reading, false, [3])
+	await get_tree().process_frame
+	var panels := reading.host.find_children("*", "UIPanel", true, false).filter(
+		func(node: Node) -> bool: return (node as UIPanel).variant == UIPanel.Variant.MARQUEE
+	)
+	assert_int(panels.size()).is_greater(0)  # the lobby has the marquee this is about
+	for panel: UIPanel in panels:
+		(
+			assert_bool(panel.is_processing())
+			. override_failure_message(
+				"%s chases its bulbs while the pictures are taken" % panel.get_path()
+			)
+			. is_false()
+		)
+	_dispose(reading)
 
 
 func test_the_compact_player_boxes(_do_skip := _skip(), _skip_reason := SKIP_WHY) -> void:
