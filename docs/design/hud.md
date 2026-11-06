@@ -128,8 +128,11 @@ words change, to the health card), and a party whose boxes, one to a row, are ta
 a row (`HudPointsStack.mate_columns`; `HudPlayerBox.paired`, half the column wide, `PAIR_WIDTH`): the points alone in
 each box at the same type (24 units), `DOWN` or `DEAD` in the danger colour in their place while they are down, no name,
 level badge or emblem (the card and the frame stay). That takes eight people from 332 units high to 218. A room the boxes
-fit in (every interface size up to about 1.1 with the bots' chips, 1.18 without; a desktop or a pad never sets a room)
-keeps names and one box to a row as before. What it leaves: [Players' column on a phone](../research/players-column-phone.md).
+fit in keeps names and one box to a row as before; a desktop or a pad never sets a room. With the touch layout up the
+round card takes **one row** (`HudRound.compact`: the reels on the left, the caption and the detail stacked on the
+right, 90 units high instead of 160, the reel tiles a tenth smaller), which gives the column 70 units more room: at 1.25
+every party of 3 to 8 keeps its names, except 7 and 8 people with the bots' chips (#1305). What it leaves:
+[Players' column on a phone](../research/players-column-phone.md).
 
 The portrait is the Soldier as the player wears it, a head-and-shoulders render of the game's own model
 (`CharacterAssembler`, the assembler the wardrobe and the lot use) in a tiny 3D world of its own, drawn once and then left
@@ -321,7 +324,8 @@ against the HUD that saw every event), `test_hud_refresh.gd` (changes announced,
 the break and a kill batch), `test_hud_parts.gd` (every part, the prompt with simulated input and device switching),
 `test_hud_players.gd` (a container per player, one to eight: colours, local first, down, the portrait),
 `test_players_column_phone.gd` (the busiest column against the round and objective on both phone pages, every size and
-hand; the pairs, what a paired box shows, the room),
+hand; the pairs, what a paired box shows, the room), `test_round_card_phone.gd` (the round card on one row on a phone,
+in three lines elsewhere, and the room it gives the column),
 `test_hud_reticle.gd` (the reticle: present, centred, small, scaled by the viewport stretch, hidden under a menu or
 while down, editable), `test_hud_generator_panel.gd` (when the card shows and its stepped timing),
 `test_hud_grid.gd` (the grid, measured at every canvas: shared edges, gaps, text lines, no label leaving its part),
