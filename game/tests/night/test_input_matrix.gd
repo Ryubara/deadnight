@@ -23,7 +23,10 @@ const COOLDOWN_TICKS := 40
 const INTRO_SECONDS := 1.0
 const FAR_OFF := 600.0
 ## Where a thumb lands in the stick's zone (canvas units) and how far each push goes.
-const STICK_START := Vector2(300.0, 800.0)
+## Free ground on the stick's side: right of the players' column, above the weapon strip. A
+## finger on the column holds the scoreboard and never starts the stick (#1287), and a room with
+## a bot has the column down past y 800 at x 300.
+const STICK_START := Vector2(500.0, 800.0)
 const STICK_WALK := 80.0
 ## Past the ring and the margin beyond it (111 + 50 units on this canvas): the sprint (#1276).
 const STICK_RIM := 200.0

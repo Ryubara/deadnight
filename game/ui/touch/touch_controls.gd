@@ -29,10 +29,12 @@ extends Control
 ## While it is up the engine's touch-to-mouse emulation is off, or every touch would also click
 ## Fire, and the player turns only for the layer's own look (`TouchLook.is_stray`): in a browser a
 ## finger is also a pointer move, which the web runtime reads as a mouse motion (#470).
-## The weapons are the HUD's own places (`HudSlots`, #1280): the layer does not draw them, it asks
-## the HUD where they are (`zones`) and presses the action of the one a finger lands on, like a
-## button of its own. A finger that starts on a weapon's place only picks it: it never fires or
-## looks; one that starts on the grenades' place also looks, as every button of the right thumb.
+## The weapons are the HUD's own places (`HudSlots`, #1280), and so is the players' column (#1287):
+## the layer does not draw them, it asks the HUD where they are (`zones`) and presses the action of
+## the one a finger lands on, like a button of its own. A finger that starts on a weapon's place
+## only picks it: it never fires or looks; one that starts on the grenades' place also looks, as
+## every button of the right thumb. One that starts on the players' column holds the `scoreboard`
+## action for as long as it is down, and never fires, looks or starts the stick.
 ## The bots' tag (`HudBotOrder`, #1286) is such a place too, and a finger on it only taps it: it
 ## never starts the stick or a look. The zones are tried in the order the HUD lists them and the
 ## first that holds the point wins (the tag is first), after the buttons and before the stick.
@@ -89,6 +91,8 @@ const VERBS := {
 const DEFAULT_VERB := "USE"
 ## The grenades' place on the HUD's strip presses this action (held while the pin is out).
 const GRENADE := &"throw_grenade"
+## The players' column of the HUD holds this action while a finger is on it (#1287): the ticket.
+const BOARD := &"scoreboard"
 const AUTO_FIRE_SETTING := &"controls/touch_auto_fire"
 ## The feel numbers (dead zone, sprint, hold, look): `touch_tuning_default.tres`.
 var tuning: TouchTuning = TouchLook.tuning
@@ -432,6 +436,8 @@ func _touch_down(index: int, point: Vector2) -> void:
 			hints.mark_used(TouchHints.BOTS)
 		elif button == TouchLayout.STRIKE:
 			hints.mark_used(TouchHints.STRIKE)
+		elif button == BOARD:
+			hints.mark_used(TouchHints.SCOREBOARD)
 	elif _stick_index < 0 and _stick_zone().has_point(point):
 		hints.mark_used(TouchHints.MOVE)
 		double_tap.interrupt()

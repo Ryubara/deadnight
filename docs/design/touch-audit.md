@@ -172,6 +172,26 @@ the difference was not found (it is that table's measure), and the tag changes n
 in the column's cards (above the points) also gives these numbers, so the marker capacity is not why the tag is in
 the strip's row; the challenge card is.
 
+### Markers after the Scoreboard circle goes (#1287)
+
+The same page, HUD and helpers, main with #1284's strip, measured in one run with three sets of held boxes: the
+buttons without the Scoreboard circle (the layout now), the same with the weapon strip and the players' column added
+(what a night hands the markers, `Hud.set_touch_boxes`), and the buttons with the old circle put back (442 in, 178
+down, radius 34). Up to 10 tried.
+
+| Interface size | Diamonds | Without the circle (now) | With strip and column | With the old circle | With Interact up (now) |
+| --- | --- | --- | --- | --- | --- |
+| 0.8 | 3 | 10+ | 10+ | 10+ | 10+ |
+| 1.0 | 3 | **6** | 6 | 6 | 6 |
+| 1.0 | 1 | 10+ | 10+ | 10+ | 10+ |
+| 1.25 | 3 | **3** | 3 | 3 | 3 |
+| 1.25 | 1 | **5** | 5 | 5 | 4 |
+
+Nothing moved: the circle sat at the top left beside Pause, where the markers' free columns never needed it, so
+`CROWDED_HOLDS` (6) and `SMALLEST_HOLDS` (4) stay. The strip's places and the column are cards or beside them, so
+holding them as boxes changes no number either. The tables above are the room the rest of the right side still takes; the
+issues that remove it (#1285 to #1289) repeat the table.
+
 ### Markers with Ping under Pause (#1289)
 
 The same measure (one marker on each card, the most of 1 to 10 that none meet another or a card or a button, both

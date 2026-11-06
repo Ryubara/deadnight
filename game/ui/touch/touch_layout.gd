@@ -26,7 +26,6 @@ const RELOAD := &"reload"
 const CROUCH := &"crouch"
 const INTERACT := &"interact"
 const PAUSE := &"pause"
-const SCOREBOARD := &"scoreboard"
 ## Strike (#411, #588, #1285): the quick melee, a blow with whatever is in hand; the button presses
 ## its action. Like Interact it shows only while it applies, here a dead within reach of the blow
 ## (`TouchControls.strike_ready`), so it costs the glass nothing the rest of the time. It stands
@@ -77,10 +76,6 @@ const PING_DROP := 150.0
 const PING_CENTRES_CSS := 56.0
 ## The air kept between Pause's hit area and Ping's, as a share of a fingertip (6 of 44 CSS px).
 const PING_HIT_GAP := 6.0 / MenuScale.TAP_PIXELS
-## The scoreboard button is held to show the board (it presses the `scoreboard` action while a
-## finger is on it). It sits right of Pause, a `ping_drop` away, until the players' column holds the
-## board (#1287) and takes the button away: Ping owns the place under Pause.
-const SCOREBOARD_RADIUS := 34.0
 ## The floating stick has no ring on the screen until a finger is down (#1276); its resting place is
 ## where the first-run "DRAG TO MOVE" hint stands and the ring a finger would make there. The ring
 ## is kept clear of the HUD by its edges, not by a corner offset: its left edge is
@@ -133,10 +128,6 @@ static func buttons(
 	found[PING] = _circle(
 		Vector2(pause_x, safe.position.y + PAUSE_OFFSET.y + drop), PING_RADIUS * touch_scale, finger
 	)
-	var board_x := pause_x - drop if mirrored else pause_x + drop
-	found[SCOREBOARD] = _circle(
-		Vector2(board_x, safe.position.y + PAUSE_OFFSET.y), SCOREBOARD_RADIUS * touch_scale, finger
-	)
 	return found
 
 
@@ -188,7 +179,7 @@ static func stick_rest(safe: Rect2, touch_scale: float, mirrored := false) -> Ve
 ## The button under `point`, or "" (`skip` lists hidden ones). Who wins a touch where hit areas
 ## overlap is decided in two steps (#1217):
 ## 1. The area a button had before `finger` (`was`): the first in `BUTTONS` order wins (Pause, Ping,
-##    Scoreboard, then the table's order, the contextual Interact first), exactly as it always did.
+##    then the table's order, the contextual Interact first), exactly as it always did.
 ##    A touch that pressed a button before presses the same button now.
 ## 2. The margin `finger` added, which no button owned: the nearest centre wins (a tie goes to the
 ##    first in order). Growing a button never takes a touch from its neighbour.
@@ -223,7 +214,7 @@ static func looks_when_dragged(id: StringName) -> bool:
 
 
 static func _order() -> Array:
-	var order: Array = [PAUSE, PING, SCOREBOARD]
+	var order: Array = [PAUSE, PING]
 	for row in BUTTONS:
 		order.append(row[0])
 	return order

@@ -6,7 +6,7 @@ the options ask for, and reads the probe's `touch_hits` (every button's centre a
 
 - Ping is straight under Pause, at least 54 CSS px (9 mm at 6 CSS px a millimetre) from its centre, with 12 CSS px (2 mm)
   of air between the rims of the two drawn buttons and none of the two hit areas touching;
-- Pause and the Scoreboard are the only other controls on the top edge (the Scoreboard goes with #1287);
+- Pause is the only other control on the top edge;
 - a finger walked down the line from Pause to Ping and past it, every `STEP_CSS_PX`, holds Ping while it is inside Ping's
   hit area and nothing in the gap (`touch_held`), and never Pause or the night's pause: nothing near one presses the other;
 - a finger on Pause's edge that faces Ping pauses the night, and nothing else was held.
@@ -134,11 +134,9 @@ def run(
     if result["hit_gap_css_px"] <= 0:
         problems.append(f"[check] the hit areas of Pause and Ping meet ({result['hit_gap_css_px']} CSS px apart)")
     top_edge = [
-        name
-        for name, circle in found.items()
-        if abs(circle["y"] - pause["y"]) < pause["hit"] and name not in ("pause", "scoreboard")
+        name for name, circle in found.items() if abs(circle["y"] - pause["y"]) < pause["hit"] and name != "pause"
     ]
-    result["on_the_top_edge_besides_pause_and_scoreboard"] = top_edge
+    result["on_the_top_edge_besides_pause"] = top_edge
     if top_edge:
         problems.append(f"[check] {top_edge} stand on the top edge with Pause")
 

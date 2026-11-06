@@ -4,8 +4,7 @@
 # three interface sizes and with either hand:
 #   - Ping is straight under Pause, 54 CSS px (9 mm) or more from its centre, with 2 mm or more of
 #     air between the rims of the drawn buttons and between the hit areas;
-#   - Pause is the only other control on the top edge (the Scoreboard button, which the players'
-#     column takes over in #1287, stands right of Pause until it goes);
+#   - Pause is the only other control on the top edge;
 #   - Ping is clear of the HUD's cards (the round card, the objective, the popup lane) and the
 #     stick's zone starts below its hit area;
 #   - a finger on either never presses the other, edge to edge.
@@ -138,18 +137,13 @@ func test_pause_is_the_only_other_control_on_the_top_edge() -> void:
 					var on_the_edge := (
 						absf(circle[&"centre"].y - pause[&"centre"].y) < float(pause[&"hit"])
 					)
-					# Scoreboard is the one that goes with #1287; it keeps the top edge until then.
-					if on_the_edge and id != TouchLayout.PAUSE and id != TouchLayout.SCOREBOARD:
+					if on_the_edge and id != TouchLayout.PAUSE:
 						faults.append("%s is on the top edge at %s, %s" % [id, window, ui_scale])
 				if (
 					circles[TouchLayout.PING][&"centre"].y
 					< pause[&"centre"].y + float(pause[&"hit"])
 				):
 					faults.append("Ping is not under Pause at %s, %s" % [window, ui_scale])
-				# The scoreboard that stays for now never sits on Ping or Pause.
-				for other in [TouchLayout.PAUSE, TouchLayout.PING]:
-					if _gap(circles[TouchLayout.SCOREBOARD], circles[other], &"hit") <= 0.0:
-						faults.append("Scoreboard meets %s at %s, %s" % [other, window, ui_scale])
 	assert_array(faults).is_empty()
 
 

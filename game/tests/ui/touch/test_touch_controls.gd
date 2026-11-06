@@ -486,7 +486,7 @@ func test_hiding_the_layer_lets_go_of_a_crouch() -> void:
 func test_every_control_shows_an_icon_and_no_caption_table_is_left() -> void:
 	for row in TouchLayout.BUTTONS:
 		assert_bool(TouchIcons.has_icon(row[0])).override_failure_message(str(row[0])).is_true()
-	for id in [TouchLayout.PAUSE, TouchLayout.PING, TouchLayout.SCOREBOARD]:
+	for id in [TouchLayout.PAUSE, TouchLayout.PING]:
 		assert_bool(TouchIcons.has_icon(id)).override_failure_message(str(id)).is_true()
 	# The words are gone: the only one left is the interact button's verb.
 	assert_bool(_fixture.controls.get_script().get_script_constant_map().has("LABELS")).is_false()
@@ -568,18 +568,6 @@ class PauseSpy:
 	func _input(event: InputEvent) -> void:
 		if event is InputEventAction and event.is_action_pressed(&"pause"):
 			pressed += 1
-
-
-func test_the_scoreboard_button_is_held_while_the_thumb_is_on_it() -> void:
-	var point := _fixture.at(TouchLayout.SCOREBOARD)
-	await _fixture.touch(0, point)
-	assert_bool(Input.is_action_pressed(&"scoreboard")).is_true()
-	# Held, not toggled: it stays down as long as the finger does.
-	await await_millis(250)
-	assert_bool(Input.is_action_pressed(&"scoreboard")).is_true()
-	await _fixture.lift(0, point)
-	await await_millis(250)
-	assert_bool(Input.is_action_pressed(&"scoreboard")).is_false()
 
 
 ## Counts how often the controls were drawn over `frames` frames, from now.
