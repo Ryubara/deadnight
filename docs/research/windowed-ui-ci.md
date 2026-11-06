@@ -72,9 +72,31 @@ Compared suite by suite with the real window (on the `main` of that morning):
   rewrites its text on every run, comments only when the kind changes, closes it on the first clean or known-only run, and
   fails the run, so the run list is red as well. The workflow is the actor; no agent posts. A *could-not-run* shown by
   trial (a suite name that does not exist) and a *failing* one (a real suite) both opened their issue and failed the job.
-- **The known list** (`tools/ui_windowed_known.json`): a suite that fails in the window on purpose-for-now, with the issue
-  that fixes it, or with `llvmpipe:` and why the runner cannot judge it. The first kind goes stale when it passes and then
-  fails the report, so the list only shrinks.
+- **The known list** (`tools/ui_windowed_known.json`): a suite that fails in the window on purpose-for-now, with the
+  issue that fixes it, or with `llvmpipe:` or `xvfb:` and why the runner cannot judge it. The first kind goes stale
+  when it passes and then fails the report, so the list only shrinks.
+
+## The first scheduled run (2026-11-06, #1348)
+
+It ran 135 suites in 58 min 28 s and failed four of them, each passing headless: three were tests and one is a limit of
+the runner. What each was, with the evidence, is in
+[windowed against headless](windowed-vs-headless-tests.md#the-first-scheduled-run-1348); what it says about the runner:
+
+- **A virtual display with no window manager** (`xvfb-run` starts none) ignores a request to minimize, move or focus
+  the window: `window_get_mode` stays windowed and the window keeps drawing. `test_window_fixture` is in the known list
+  with an `xvfb:` reason (the same list and the same handling as `llvmpipe:`: left out of the whole-folder run, run
+  and shown when asked for by name, passing is not stale). Measured by a probe suite on the runner (run 42228307964):
+  windows of 1688 x 780 up to 2880 x 1620 open as asked on the 1920 x 1080 screen, so a canvas bigger than the screen
+  is not what fails.
+- **Slow frames show a clock that runs in real time.** A suite that lets N frames pass and then reads something with
+  its own clock (the challenge card, a marquee's chase) reads it at a time that depends on the renderer. A test of
+  such a thing sets the clock by hand, and a case that runs at 5 frames a second (`Engine.max_fps`) fails it in any
+  run. `Engine.time_scale` is not for this: GdUnit's own timeout runs on it, and a test with a scale of 1000 "timed out
+  after 5 min" in 259 ms.
+- **A failure that depends on the frame time shows only some runs.** `test_level_ink` failed on the schedule, passed
+  on one trial, and failed on the next three; a run that saves the pictures (`LEVEL_INK_SHOTS`) is slower and failed
+  every time, so the pictures were there to be read. For a suite that does not fail twice the same way, make the run
+  slower and keep what it saw.
 
 ## The headless guard
 
@@ -83,12 +105,17 @@ Compared suite by suite with the real window (on the `main` of that morning):
 `NightScreen.arrival_enabled = false` (or `true`, for a suite about the drop): restoring the old value does not count.
 Its allowlist (`NOT_YET`) named #1195's three suites when this was written; they have landed, so it is empty, and an entry
 that sets the switch fails the scan. `main.tscn` is not scanned: it opens the menu, and a night starts only where a suite
-pushes the night. Four suites set the switch in this change (`test_night_mouse_grip`, `test_night_pad_pause`,
+pushes the night. It also reads `play.start()`, the Play screen's Start (#1348: `test_night_tap_targets`,
+`test_night_screen_credits` and `test_night_screen_report` opened nights that way and never said). Four suites set the
+switch in this change (`test_night_mouse_grip`, `test_night_pad_pause`,
 `test_night_scale`, `test_menu_ambience`); they passed both ways before and after.
 
 ## Not proved
 
 - A schedule that never starts (GitHub disables scheduled workflows of a repository with no activity for 60 days) raises
   nothing; the run list is where it shows.
-- The runner's four unjudged suites, and any suite whose answer depends on a GPU's frame time.
-- The first scheduled run: every trial ran by push on the branch, not by the schedule.
+- The runner's five unjudged suites (four by the software GL, `test_window_fixture` by the missing window manager),
+  and any suite whose answer depends on a GPU's frame time.
+- That the next scheduled run is clean: the four failures of the first one were fixed and proved by runs of those
+  suites by hand on the branch (the whole folder is not run by hand, which would close the issue), so the schedule is
+  the proof.
