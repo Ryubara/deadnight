@@ -40,6 +40,11 @@ extends Control
 ## Crouch is a toggle: a tap crouches and stays crouched, a second tap (or a Jump, which cannot be
 ## made crouching) stands, so the right thumb is free for Fire and the look.
 ##
+## Two quick taps on free ground press `swap_shoulder` (`TouchDoubleTap`, #1288): the shoulder is a
+## fight verb but a rare one, so it has no button. A touch on free ground is held back from the look
+## only while it can still be a tap (under 250 ms, under a finger's slop), and all of it is let out
+## at once the moment it is not, so no look is lost and none is late.
+##
 ## While it is up the HUD shows no key hints (`UIInputMode.touch`), and `TouchHints` labels the
 ## controls the first time each is met, until it is used.
 
@@ -51,6 +56,8 @@ signal safe_insets_changed(insets: Vector4)
 signal mirrored_changed(mirrored: bool)
 ## The controls came up or went away (a phone shows them, a keyboard hides them).
 signal active_changed(active: bool)
+## A double tap on free ground pressed `swap_shoulder`.
+signal shoulder_swapped
 ## The buttons are somewhere else now, or are there or not (`button_boxes`).
 signal layout_changed
 ## The stick finger crossed the edge: the sprint is on until it lifts (the phone buzzes once).
@@ -82,6 +89,12 @@ const GRENADE := &"throw_grenade"
 const AUTO_FIRE_SETTING := &"controls/touch_auto_fire"
 ## The feel numbers (dead zone, sprint, hold, look): `touch_tuning_default.tres`.
 var tuning: TouchTuning = TouchLook.tuning
+## The double tap on free ground (`TouchDoubleTap`).
+var double_tap := TouchDoubleTap.new()
+## () -> float, seconds of real time; without it `Time`'s. A test steps its own.
+var clock := Callable()
+## The finger's slop in canvas units; below 0 it is `TouchSlop` of the window now.
+var tap_slop := -1.0
 ## The HUD state, for the interact button.
 var state: HudState
 ## False while a menu or the result is up: the layer hides and lets go of everything.
@@ -423,6 +436,7 @@ func _touch_down(index: int, point: Vector2) -> void:
 	if button == &"":
 		button = zone_at(point)
 	if button != &"":
+		double_tap.interrupt()
 		_touches[index] = _own(&"button", point, {&"button": button, &"start": point})
 		_press_button(button)
 		if button == TouchLayout.INTERACT:
@@ -431,11 +445,19 @@ func _touch_down(index: int, point: Vector2) -> void:
 			hints.mark_used(TouchHints.STRIKE)
 	elif _stick_index < 0 and _stick_zone().has_point(point):
 		hints.mark_used(TouchHints.MOVE)
+		double_tap.interrupt()
 		_stick_index = index
 		_touches[index] = _own(&"stick", point, {&"pad": TouchStick.new(point)})
 		_set_stick(Vector2.ZERO)
 	elif not _has_role(&"look"):
-		_touches[index] = _own(&"look", point)
+		# Free ground. A finger the stick's side holds (the stick finger is down already) looks and
+		# never counts as a tap.
+		var taps := not _stick_zone().has_point(point)
+		_touches[index] = _own(&"look", point, {&"tap": taps, &"held": Vector2.ZERO, &"at": _now()})
+		if taps:
+			double_tap.press(index, point, _now())
+		else:
+			double_tap.interrupt()
 
 
 ## The action of the HUD's place under `point`, or "" (a weapon's slot, or the grenade).
@@ -459,6 +481,23 @@ func _touch_up(index: int) -> void:
 			_set_stick(Vector2.ZERO)
 		&"button":
 			_release_button(touch[&"button"])
+		&"look":
+			_lift_look(index, touch)
+
+
+## A look finger lifted: a tap that completes a double tap swaps the shoulder; a touch held back as
+## a possible tap that was none lets out the look it kept.
+func _lift_look(index: int, touch: Dictionary) -> void:
+	if not touch.get(&"tap", false):
+		return
+	var now := _now()
+	if double_tap.release(index, now):
+		_press_button(TouchDoubleTap.ACTION)
+		_release_button(TouchDoubleTap.ACTION)
+		hints.mark_used(TouchHints.SWAP)
+		shoulder_swapped.emit()
+	elif now - float(touch[&"at"]) >= TouchDoubleTap.TAP_SECONDS and touch[&"held"] != Vector2.ZERO:
+		_look(touch[&"held"], Vector2.ZERO)
 
 
 ## What a finger owns from its press to its lift: one job (`role`), where it last was (`last`), and
@@ -484,11 +523,28 @@ func _touch_drag(index: int, point: Vector2, velocity: Vector2) -> void:
 		&"stick":
 			_follow_stick(touch[&"pad"], point)
 		&"look":
-			_look(relative, _trusted_velocity(touch, velocity))
+			var speed := _trusted_velocity(touch, velocity)
+			if touch.get(&"tap", false):
+				touch[&"held"] += relative
+				if double_tap.is_tap(index, point, _now(), _slop()):
+					return  # still a tap, perhaps: its look waits
+				# It is a look: all of what it made so far goes out now, none lost.
+				touch[&"tap"] = false
+				double_tap.drop(index)
+				relative = touch[&"held"]
+			_look(relative, speed)
 		&"button":
 			# The grenades' place on the HUD looks too: the thumb is on it for the whole cook (#599).
 			if touch[&"button"] == GRENADE or TouchLayout.looks_when_dragged(touch[&"button"]):
 				_look(relative, _trusted_velocity(touch, velocity))
+
+
+func _now() -> float:
+	return float(clock.call()) if clock.is_valid() else Time.get_ticks_usec() * 0.000001
+
+
+func _slop() -> float:
+	return tap_slop if tap_slop >= 0.0 else TouchSlop.units(get_window())
 
 
 func _trusted_velocity(touch: Dictionary, velocity: Vector2) -> Vector2:
@@ -703,6 +759,7 @@ func _refresh_active() -> void:
 
 
 func _release_everything() -> void:
+	double_tap.reset()
 	look_smoother.take_all()
 	_touches.clear()
 	_stick_index = -1

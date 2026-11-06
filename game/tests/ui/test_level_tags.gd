@@ -150,7 +150,7 @@ func test_the_settings_screen_has_the_toggle_in_accessibility() -> void:
 	var found := false
 	for section: Dictionary in SettingsScreen.TABS:
 		for row: Dictionary in section["rows"]:
-			if row["key"] == SettingsService.SHOW_LEVELS:
+			if row.get("key") == SettingsService.SHOW_LEVELS:  # a note row has none
 				found = true
 				assert_str(section["title"]).is_equal("Accessibility")
 				assert_str(row["kind"]).is_equal("toggle")

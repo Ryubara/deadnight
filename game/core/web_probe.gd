@@ -211,6 +211,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"stall_longest_ms": 0.0,
 		"yaw": 0.0,
 		"crouching": false,
+		"shoulder_side": 0.0,
+		"touch_slop": 0.0,
 		"interpolated": false,
 		"room_code": "",
 		"room_status": "",
@@ -409,6 +411,10 @@ static func snapshot(top: Control) -> Dictionary:
 		data["ground_speed"] = player.ground_speed()
 		data["sprinting"] = player.is_sprinting()
 		data["crouching"] = player.state.crouching  # the touch layer's Crouch toggle (#1277)
+		# The shoulder the camera is on (+1 or -1), and the finger's slop in canvas units, so a
+		# browser test sees a double tap swap it (#1288).
+		data["shoulder_side"] = player.state.shoulder_side
+		data["touch_slop"] = TouchSlop.units(night_screen.get_window())
 		# So a browser test can see the view is the person's own soldier, not a bot's (#702).
 		data["view_is_players"] = (
 			player.get_viewport().get_camera_3d() == player.camera_rig.camera()
