@@ -155,7 +155,7 @@ How a zombie is held at a breach, and what we learned making it (#155):
   does. What opens and shuts at run time (boards, the window frames' sill, jambs, header and blocker) stays out of it:
   baking a frame would shut the breach the dead come through. `test_lot_walks_between_spots.gd` finds the props with
   only the world's layer on (`props_outside_the_bake`) and fails on one that is not in the group, so a later solid
-  prop needs the group (or a saved note in that test's `STILL_OUT`, which holds the second map's four lockers, #1340).
+  prop needs the group (the second map's four lockers joined in #1340, so that test's `STILL_OUT` is empty).
   Baking the posts changed the nine saved meshes by +16 polygons each (3031 to 3047 for no doors, 3078 to 3094 for the
   last set) and nothing else: of the 76 roam spots, spawn markers and player markers, every ordered pair that had a
   path still has one in every set (1 606 to 5 700 pairs a set, 0 lost, 0 gained), the longest detour is 6.6 m

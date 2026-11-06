@@ -316,11 +316,13 @@ def box_resources(size: tuple[float, float, float], mat: str | None) -> tuple[st
     return shape, mesh
 
 
-def body(parent: str, name: str, size, pos, layer: int, mat: str | None) -> None:
-    """A StaticBody3D box the navigation baker never reads: drawn in `mat` (None: not drawn)."""
+def body(parent: str, name: str, size, pos, layer: int, mat: str | None, obstacle: bool = False) -> None:
+    """A StaticBody3D box: drawn in `mat` (None: not drawn). The baker never reads it unless it is an `obstacle` (the
+    group `navmesh_obstacle`, `NavmeshBaker.OBSTACLE_GROUP`: a solid prop the dead and the bots must walk round)."""
     shape, mesh = box_resources(size, mat)
+    extra = ' groups=["navmesh_obstacle"]' if obstacle else ""
     key = bg.node(name, "StaticBody3D", parent, {"transform": bg.xform(pos), "collision_layer": str(layer),
-                                                  "collision_mask": "0"})  # fmt: skip
+                                                  "collision_mask": "0"}, extra)  # fmt: skip
     bg.node("Shape", "CollisionShape3D", key, {"shape": f'SubResource("{shape}")'})
     if mesh is not None:
         bg.node("Mesh", "MeshInstance3D", key, {"mesh": f'SubResource("{mesh}")'})
@@ -606,7 +608,7 @@ def locker(name, room, face, into, floor) -> None:
     yaw = _yaw_of(into)
     depth = 0.4
     centre = (x + dx * depth / 2, floor + 0.5, z + dz * depth / 2)
-    body("ShopProps", name, (1.2, 1.0, depth), centre, bg.GROUND_LAYER, MATS["crate"])
+    body("ShopProps", name, (1.2, 1.0, depth), centre, bg.GROUND_LAYER, MATS["crate"], obstacle=True)
     bg.box("ShopProps", f"{name}Band", (1.24, 0.18, depth + 0.04), (centre[0], floor + 0.82, centre[2]), MATS["band"],
            yaw, collide=False)  # fmt: skip
     bg.sign(

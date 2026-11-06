@@ -356,12 +356,12 @@ person's.
 | `Windows/Window_<id>` | a window or the breach: on the wall's centre line at floor height, +Z into the room; `barricade_id`, `room`, `kind` (`window` or `breach`), `gap` (the wall's gap the walking mesh sees: 1.5 m wide so the dead's way, 0.5 m a side less, stays inside the 1.2 m opening, 2.2 m tall, the breach's too). Its frame, sill and the players-only blocker (layer 2, as the boards) are StaticBody3D children the bake never reads. Its `Boards` child is the `Barricade` (five `window_board` slots, `board_half` 0.75; `sill`, `thickness`, `gap_half` and `clear_half` for the dead's climb) |
 | `ZombieSpawns/Spawn_<id>` | where the dead of each window rise, on the yard: 7 m outside a ground window, in the alley by the outside stair's foot for an upper one, outside the shed's open door for the breach; `barricade_id` and `room` |
 | `Doors` (`LotDoors`) | `Door_Side`, `Stairs_Start`, `Stairs_Side`: `shop_id` (`door_side`, `door_stairs_start`, `door_stairs_side`), `requires` (none), `cost` (read from the map's tuning when the scene is written), `opens` (the rooms whose dead may rise once it is open); one slab each and a stand on each side |
-| `ShopSpots`, `ShopProps` | the markers a player buys from (`kind` `wall`, `crane` or `ammo`, `shop_id`, `room`; the cabinet also `cabinet`, the box `crane_spot` 0) and their plaques, signs, crates and cabinet: none of it is CSG, so the walking mesh does not change |
+| `ShopSpots`, `ShopProps` | the markers a player buys from (`kind` `wall`, `crane` or `ammo`, `shop_id`, `room`; the cabinet also `cabinet`, the box `crane_spot` 0) and their plaques, signs, crates and cabinet: none of it is CSG, so the walking mesh does not read it, but for the four ammunition lockers (`StaticBody3D`s in the group `navmesh_obstacle`, `NavmeshBaker.OBSTACLE_GROUP`: baked in as boxes, so the dead and the bots walk round them, #1340) |
 | `PlayerSpawns` (fifteen places, one for each body of a full night: the first eight in two rows south of the counter, 1.3 to 2 m apart, the other seven in the start room round them, 1.8 m or more from each other), `CameraProbes`, `Measure` | the players' start; the camera's narrow places; the ring's and loops' markers and each room's middle |
 | `Ceilings`, `Roof`, `Outside` | the slabs (the terrace is `Ceilings/Terrace`), the roof, the alcoves' bays, and outside the yard, its walls (`Alley*`, `YardWallE`), the shed, the outside stair (`OutStair*`) and the gallery (`Gallery*`): #638 dresses `Outside` |
 
 The zombies' meshes for the eight sets are saved in `game/world/smallmap/smallmap_navmeshes.res` (`LotNavmeshes`);
-bake them again after the geometry changes:
+bake them again after the geometry changes (and after a body joins or leaves the group `navmesh_obstacle`):
 
 ```text
 godot --headless --path game -s res://tools/world/bake_lot_navmeshes.gd -- \

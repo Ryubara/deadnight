@@ -2119,7 +2119,7 @@ metadata/shop_id = "crane_play"
 metadata/crane_spot = 0
 metadata/room = "side"
 
-[node name="LockerStart" type="StaticBody3D" parent="ShopProps"]
+[node name="LockerStart" type="StaticBody3D" parent="ShopProps" groups=["navmesh_obstacle"]]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.500, 0.500, 14.300)
 collision_layer = 1
 collision_mask = 0
@@ -2150,7 +2150,7 @@ metadata/kind = "ammo"
 metadata/shop_id = ""
 metadata/room = "start"
 
-[node name="LockerSide" type="StaticBody3D" parent="ShopProps"]
+[node name="LockerSide" type="StaticBody3D" parent="ShopProps" groups=["navmesh_obstacle"]]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.000, 0.500, -0.500)
 collision_layer = 1
 collision_mask = 0
@@ -2181,7 +2181,7 @@ metadata/kind = "ammo"
 metadata/shop_id = ""
 metadata/room = "side"
 
-[node name="LockerUpstairs" type="StaticBody3D" parent="ShopProps"]
+[node name="LockerUpstairs" type="StaticBody3D" parent="ShopProps" groups=["navmesh_obstacle"]]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.000, 3.900, -0.450)
 collision_layer = 1
 collision_mask = 0
@@ -2212,7 +2212,7 @@ metadata/kind = "ammo"
 metadata/shop_id = ""
 metadata/room = "upstairs"
 
-[node name="LockerUpstairsA" type="StaticBody3D" parent="ShopProps"]
+[node name="LockerUpstairsA" type="StaticBody3D" parent="ShopProps" groups=["navmesh_obstacle"]]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.200, 3.900, 4.300)
 collision_layer = 1
 collision_mask = 0
