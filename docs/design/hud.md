@@ -158,13 +158,18 @@ action instead of listening for one kind of event. A pause menu or the result sw
 
 ## The bot command wheel
 
-Holding Q (the pad's d-pad left, the touch BOTS button) opens `HudBotWheel` over the middle of the screen: three
+Holding Q (the pad's d-pad left) opens `HudBotWheel` over the middle of the screen: three
 tickets, **Follow** on top, **Roam** lower right and **Hold** lower left, a dial in the middle, a flat dim behind. The
-pointer (the mouse's motion, the right stick, a finger's drag) lights one ticket; letting go over it gives the team's bots
+pointer (the mouse's motion, the right stick) lights one ticket; letting go over it gives the team's bots
 that order, letting go over the dial or tapping the key gives none. The ticket of the order that stands is marked NOW,
-and the HUD's notice list says the new order for a moment after a change (`BOTS: HOLDING POSITION`). It is a screen-sized
+and the HUD's notice list says the bots' state for a moment once it has changed (`BOTS: FOLLOWING YOU`, `ROAMING`,
+`HOLDING POSITION`). It is a screen-sized
 overlay (`Hud.screen_overlays`), so it stays on the middle of the screen whatever the safe area is, takes no room while
 closed and is not in a column. The model, the driver and what was learned are in [Bot wheel](../research/bot-wheel.md).
+
+A phone has no wheel (#1286): `HudBotOrder`, a tag at the inner end of the weapon strip, says the standing order (a word
+in the order's colour under a small BOTS) while the room has a bot, and a tap on it gives the next order of the round
+([touch controls](touch-controls.md)). It is made with the touch layout, so a keyboard's HUD holds none of it.
 
 ## Revives
 

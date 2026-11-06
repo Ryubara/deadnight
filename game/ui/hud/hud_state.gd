@@ -41,6 +41,8 @@ const STATS := &"stats"
 const REVIVE := &"revive"
 ## The perks the local player has (`HudPerks`).
 const PERKS := &"perks"
+## The standing order of the team's bots (`HudBotOrder`).
+const BOT_ORDER := &"bot_order"
 
 ## A ping the server has not reported: a night alone, or before the first answer.
 const NO_PING := -1
@@ -92,6 +94,9 @@ var slot_count := WeaponSlots.count()
 ## the perks empties it.
 var perks: Array[StringName] = []
 var points := 0
+## The standing order of the team's bots as the server's frame says it (`BotWheel.FOLLOW`, `ROAM`
+## or `HOLD`): the default order until a frame says another.
+var bot_order: StringName = BotWheel.DEFAULT_ORDER
 ## The local player's grenades.
 var grenades := 0
 var round_number := 0
@@ -353,6 +358,21 @@ func set_perks(ids: Array[StringName]) -> void:
 		perks = ids.duplicate()
 		_mark(PERKS)
 	_flush()
+
+
+## The order the team's bots stand on now; the parts hear of a change only.
+func set_bot_order(order: StringName) -> void:
+	if BotWheel.ORDERS.has(order):
+		_assign(&"bot_order", order, BOT_ORDER)
+	_flush()
+
+
+## Whether the room has a bot in it (the order of the bots is worth showing).
+func has_bots() -> bool:
+	for member: Dictionary in team.values():
+		if bool(member.get("bot", false)):
+			return true
+	return false
 
 
 ## Whether the revive perk is getting the local player up alone now.

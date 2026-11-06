@@ -4,14 +4,13 @@ extends Node
 ## itself, a browser run sends it from outside and reads `window.__wheel`.
 ##
 ##     gds godot -- --path game res://tests/captures/bot_wheel_bench.tscn --resolution 1920x1080
-##         -- --mode=desktop|pad|touch --out=<abs>/wheel.png [--pick=hold]
+##         -- --mode=desktop|pad --out=<abs>/wheel.png [--pick=hold]
 ##
 ## `--mode` says which device opens the wheel: `desktop` holds Q and moves the mouse, `pad` holds
-## the d-pad left on a pad that is not device 0 and pushes the right stick, `touch` shows the touch
-## layer and holds the BOTS button with a drag. The picture is the window's, taken with the wheel
-## open over the entry `--pick` (follow, roam or hold).
-## In a browser the page's query is `?touch=1`, and nothing is sent: the page is driven from
-## outside.
+## the d-pad left on a pad that is not device 0 and pushes the right stick. A phone has no wheel
+## (a tap on the HUD's tag gives the next order, #1286), but `?touch=1` still shows the touch layer
+## in a browser, driven from outside, to prove the buttons are where a thumb is. The picture is the
+## window's, taken with the wheel open over the entry `--pick` (follow, roam or hold).
 
 const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
@@ -42,7 +41,7 @@ func _process(delta: float) -> void:
 func _run() -> void:
 	var args := NetArgs.new()
 	var query := _query()
-	var touch: bool = args.get_string("mode") == "touch" or query.get("touch", "0") == "1"
+	var touch: bool = query.get("touch", "0") == "1"
 	TouchMode.device_is_touch = touch
 	await get_tree().process_frame
 	UIRouter.reset(MENU, UITransition.Kind.CUT)
@@ -93,15 +92,6 @@ func _drive(args: NetArgs) -> void:
 			_pad_button(true)
 			await _wait(OPEN_SECONDS)
 			_stick(toward)
-		"touch":
-			var start := _button_at_window()
-			_touch(start, true)
-			await _wait(OPEN_SECONDS)
-			var drag := InputEventScreenDrag.new()
-			var window := get_viewport().get_final_transform()
-			drag.position = start + window.basis_xform(toward * BotWheel.TOUCH_REACH)
-			drag.relative = window.basis_xform(toward * BotWheel.TOUCH_REACH)
-			Input.parse_input_event(drag)
 	await _wait(SETTLE_SECONDS)
 	if out != "":
 		await RenderingServer.frame_post_draw
@@ -114,8 +104,6 @@ func _drive(args: NetArgs) -> void:
 		"pad":
 			_pad_button(false)
 			_stick(Vector2.ZERO)
-		"touch":
-			_touch(_button_at_window(), false)
 	await _wait(SETTLE_SECONDS)
 	print("HEARD ", heard)
 
@@ -158,19 +146,6 @@ func _stick(push: Vector2) -> void:
 		motion.axis_value = axis[1]
 		Input.parse_input_event(motion)
 	Input.flush_buffered_events()
-
-
-func _touch(at: Vector2, pressed: bool) -> void:
-	var event := InputEventScreenTouch.new()
-	event.index = 0
-	event.position = at
-	event.pressed = pressed
-	Input.parse_input_event(event)
-
-
-func _button_at_window() -> Vector2:
-	var centre: Vector2 = _controls.button_circle(TouchLayout.BOT_WHEEL)[&"centre"]
-	return get_viewport().get_final_transform() * centre
 
 
 ## What a browser run reads: where the buttons are in page pixels, whether the wheel is open and

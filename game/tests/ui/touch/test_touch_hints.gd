@@ -15,7 +15,8 @@ const KEPT_PARTS: Array[StringName] = [
 	&"ammo", &"prompt", &"health", &"perks", &"points", &"round_part"
 ]
 ## What a new player is shown with a prompt up and a dead in reach: every hint but the shoulder's,
-## which waits for the first look.
+## which waits for the first look, and the bots', which waits for the HUD's tag (these fixtures
+## have none: `test_touch_bot_tag.gd`).
 const FIRST_RUN: Array[StringName] = [
 	TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT, TouchHints.STRIKE
 ]
