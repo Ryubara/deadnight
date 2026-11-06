@@ -24,9 +24,9 @@ have crossed it at 0.8 too. There is no room in a column of the left edge: at 1.
 
 `ChallengeFit.place` (pure geometry, `ui/hud/challenge_fit.gd`) and `Hud._fit_challenge`: the card stands where it always
 did when nothing is in the way, and otherwise in the nearest free place beside the column (x from the column's right
-edge), as wide as the ground allows (316 units, 253, or 190 at the least, the words wrapping onto another line:
-`HudChallengeCard.set_width`). What it keeps off is read from the boxes on the screen, so no number says how tall the
-column may get:
+edge), as wide as the ground allows (316 units, 253, or 190 at the least, the words wrapping onto another line, the
+count typed at the words' size under 260 so the caption is not cut: `HudChallengeCard.set_width`). What it keeps off
+is read from the boxes on the screen, so no number says how tall the column may get:
 
 - **hard** boxes, which it never stands over: the round, objective, points, health, perks, weapon strip and ammo cards,
   the three corner columns whole (so a tag put in one later is in its box), the box round the middle of the screen
@@ -56,7 +56,10 @@ At 1.25 on both pages the players' column of 8 people stands over the objective 
 The search first took the card's height from `get_combined_minimum_size()` straight after setting its width, which
 answers for the width the card had until the layout runs, and the card was 12 units taller than it measured: it stood
 over a button. `HudChallengeCard.size_at` now measures from the parts (the lines the words break into at the width times
-`get_line_height()`), and a test lays the card out at each width and compares the two
+`get_line_height()`); the search takes the height the layout gave (`HudChallenge.laid_size`) for the width the card has
+and `size_at` for the others, looks again each frame, and the card keeps its size at its least. On the real page the
+same words took a third line at 0.8 (the first web run found the card 175 high where the headless run said 147), so
+the busiest case is run in Chrome as well
 ([lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-05-a-card-measured-its-height-before-the-layout-gave-it-its-width.md)).
 
 ## Tests
