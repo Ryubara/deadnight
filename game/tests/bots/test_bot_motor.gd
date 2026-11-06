@@ -320,3 +320,55 @@ func test_the_quick_melee_strikes_a_zombie_inside_its_reach_and_reads_the_catalo
 	assert_int(struck).is_equal(30)
 	assert_int(struck_far).is_equal(0)
 	assert_float(motor._quick_reach).is_equal_approx(reach, 0.0001)
+
+
+func test_a_loaded_ray_gun_inside_its_own_splash_is_not_fired_but_the_bot_strikes() -> void:
+	# The nightly soak (#1319) found 58 of 64 nights with a bot standing over 5 s beside a zombie
+	# at 1.3 to 1.4 m holding a loaded ray gun: the gun is not fired inside its own splash (3 m, a
+	# quarter of it hurts the shooter), and the quick melee was asked only of a bot with no round
+	# to fire. The bot stood.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var motor := BotMotor.new(BotProfile.regular(), rng)
+	var intent := BotIntent.new()
+	intent.target_id = 1
+	var close := _beliefs_with_a_zombie()
+	close.contacts[1]["position"] = Vector3(0.0, 0.0, -1.3)
+	var struck := 0
+	var fired := 0
+	for _i in 60:
+		var command := motor.command(STEP, _holding(&"ray_gun", 5), intent, close, 0)
+		if command.motion.melee:
+			struck += 1
+		if command.fire:
+			fired += 1
+	assert_int(fired).is_equal(0)
+	assert_int(struck).is_equal(60)
+
+
+func test_a_gun_that_can_fire_does_not_strike_and_the_ray_gun_fires_beyond_its_splash() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var intent := BotIntent.new()
+	intent.target_id = 1
+	var close := _beliefs_with_a_zombie()
+	close.contacts[1]["position"] = Vector3(0.0, 0.0, -1.3)
+	var pistol := BotMotor.new(BotProfile.regular(), rng)
+	var struck := 0
+	for _i in 60:
+		if pistol.command(STEP, _holding(&"house_pistol", 5), intent, close, 0).motion.melee:
+			struck += 1
+	assert_int(struck).is_equal(0)
+	var far := _beliefs_with_a_zombie()
+	far.contacts[1]["position"] = Vector3(0.0, 0.0, -6.0)
+	var ray := BotMotor.new(BotProfile.regular(), rng)
+	var fired := 0
+	var ray_struck := 0
+	for _i in 120:
+		var command := ray.command(STEP, _holding(&"ray_gun", 5), intent, far, 0)
+		if command.fire:
+			fired += 1
+		if command.motion.melee:
+			ray_struck += 1
+	assert_int(ray_struck).is_equal(0)
+	assert_int(fired).is_greater(0)
