@@ -42,6 +42,16 @@ const TAKE_DENIED_TEXT := {
 const WIDTH := HudStyle.CARD
 
 @export var action := &"interact"
+## The touch controls are up: the interact button is the control and names the verb, so the card
+## drops its key (a keycap or a tap mark that points at nothing) and gives the words its room
+## (#1275). Set by the HUD from the touch layer.
+var touch_layout := false:
+	set(value):
+		if value != touch_layout:
+			touch_layout = value
+			_glyph.visible = not value
+			if is_node_ready():
+				refresh()
 var denied_left := 0.0
 var title_text: String:
 	get:
@@ -150,9 +160,11 @@ func on_event(event: Dictionary) -> void:
 	UIMotion.shake(self)
 
 
-## The width of the lines beside the button: the card less its padding, the button and the gap.
+## The width of the lines beside the button: the card less its padding, the button and the gap
+## (the whole card less its padding when there is no key).
 func _room() -> float:
-	return WIDTH - float(HudStyle.PAD + HudStyle.PAD_LEFT + HudStyle.MD) - HudGlyph.SIZE.x
+	var key := 0.0 if touch_layout else float(HudStyle.MD) + HudGlyph.SIZE.x
+	return WIDTH - float(HudStyle.PAD + HudStyle.PAD_LEFT) - key
 
 
 func _say_price(text: String) -> void:

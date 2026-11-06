@@ -4,6 +4,9 @@
 extends GdUnitTestSuite
 
 const OPTIONS := ["Low", "Medium", "High"]
+## The most frame time a spring gets to settle in: it needs about a second, so this is slack, not
+## a tolerance.
+const SETTLE_SECONDS := 5.0
 
 var _selector: UIOptionSelector
 var _changes: Array[int] = []
@@ -26,6 +29,22 @@ func before_test() -> void:
 
 func after_test() -> void:
 	UIMotion.reduced = _was_reduced
+
+
+## Waits for frames until `spring` has settled, at most `SETTLE_SECONDS` of frame time.
+func _settle(spring: UISpring) -> void:
+	var elapsed := 0.0
+	while not spring.is_settled() and elapsed < SETTLE_SECONDS:
+		await await_idle_frame()
+		elapsed += get_process_delta_time()
+
+
+## Waits for frames until `spring` has moved off `from`, at most `SETTLE_SECONDS` of frame time.
+func _leave(spring: UISpring, from: float) -> void:
+	var elapsed := 0.0
+	while spring.value == from and elapsed < SETTLE_SECONDS:
+		await await_idle_frame()
+		elapsed += get_process_delta_time()
 
 
 func test_right_steps_forward_and_wraps_to_the_first() -> void:
@@ -97,8 +116,14 @@ func test_reduced_motion_snaps_the_slide() -> void:
 func test_the_slide_runs_on_a_spring_without_reduced_motion() -> void:
 	UIMotion.reduced = false
 	_selector.step(1)
+	# One frame is not a length of time: `UISpring` takes a step only for each 1/240 s it is given, so
+	# a frame shorter than that (a window with no frame cap, a headless run) leaves the value where it
+	# was. What one frame does settle is the target; the value is read once it has left its start.
 	await await_idle_frame()
+	assert_float(_selector._change.target).is_equal(1.0)
+	await _leave(_selector._change, 0.0)
+	assert_float(_selector._change.value).is_greater(0.0)
 	assert_float(_selector._change.value).is_less(1.0)
-	for _i in 120:
-		await await_idle_frame()
-	assert_float(_selector._change.value).is_equal_approx(1.0, 0.02)
+	await _settle(_selector._change)
+	assert_bool(_selector._change.is_settled()).is_true()
+	assert_float(_selector._change.value).is_equal(1.0)

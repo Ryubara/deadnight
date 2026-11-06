@@ -4,6 +4,9 @@
 extends GdUnitTestSuite
 
 const WIDTH := 400.0
+## The most frame time a spring gets to settle in: it needs about a second, so this is slack, not
+## a tolerance.
+const SETTLE_SECONDS := 5.0
 
 var _slider: UISlider
 var _was_reduced := false
@@ -27,6 +30,22 @@ func before_test() -> void:
 
 func after_test() -> void:
 	UIMotion.reduced = _was_reduced
+
+
+## Waits for frames until `spring` has settled, at most `SETTLE_SECONDS` of frame time.
+func _settle(spring: UISpring) -> void:
+	var elapsed := 0.0
+	while not spring.is_settled() and elapsed < SETTLE_SECONDS:
+		await await_idle_frame()
+		elapsed += get_process_delta_time()
+
+
+## Waits for frames until `spring` has moved off `from`, at most `SETTLE_SECONDS` of frame time.
+func _leave(spring: UISpring, from: float) -> void:
+	var elapsed := 0.0
+	while spring.value == from and elapsed < SETTLE_SECONDS:
+		await await_idle_frame()
+		elapsed += get_process_delta_time()
 
 
 func test_left_and_right_step_the_value() -> void:
@@ -94,11 +113,17 @@ func test_a_slider_that_is_not_editable_ignores_keys_and_clicks() -> void:
 func test_the_fill_follows_the_value_on_a_spring() -> void:
 	UIMotion.reduced = false
 	_slider.value = 100.0
+	# One frame is not a length of time: `UISpring` takes a step only for each 1/240 s it is given, so
+	# a frame shorter than that (a window with no frame cap, a headless run) leaves the value where it
+	# was. What one frame does settle is the target; the value is read once it has left its start.
 	await await_idle_frame()
+	assert_float(_slider._shown.target).is_equal(1.0)
+	await _leave(_slider._shown, 0.5)
+	assert_float(_slider._shown.value).is_greater(0.5)
 	assert_float(_slider._shown.value).is_less(1.0)
-	for _i in 120:
-		await await_idle_frame()
-	assert_float(_slider._shown.value).is_equal_approx(1.0, 0.02)
+	await _settle(_slider._shown)
+	assert_bool(_slider._shown.is_settled()).is_true()
+	assert_float(_slider._shown.value).is_equal(1.0)
 
 
 func test_reduced_motion_snaps_the_fill() -> void:

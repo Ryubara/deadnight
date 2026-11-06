@@ -11,6 +11,12 @@ var _nights: Array[Night] = []
 var _commands: Dictionary = {}
 
 
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
+
+
 func after_test() -> void:
 	for night in _nights:
 		if is_instance_valid(night):

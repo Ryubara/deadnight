@@ -19,6 +19,12 @@ var _fixture: TouchFixture
 var _arrival := false
 
 
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
+
+
 func before_test() -> void:
 	# The helicopter drop a window plays at the start of a night (#1057) holds the look, the
 	# touch layer and the HUD until it ends; a headless run has none. This suite is about
@@ -32,6 +38,9 @@ func before_test() -> void:
 	_saved_path = Settings.path
 	Settings.path = SETTINGS_PATH
 	Settings.reset_defaults()
+	# A server chosen by an earlier suite (a lobby's Start with the opener stubbed) would send
+	# this solo night to it and the first test would wait for a night that never starts (#1220).
+	RouterFixture.forget_join()
 	await RouterFixture.clear(get_tree())
 
 
@@ -198,6 +207,20 @@ func test_escape_opens_and_closes_the_menu() -> void:
 	assert_bool(screen.night.is_paused()).is_false()
 
 
+func test_a_server_left_by_an_earlier_suite_is_forgotten_before_a_solo_night() -> void:
+	NightScreen.join_url = "ws://127.0.0.1:1"
+	NightScreen.join_ticket = "ticket"
+	NightScreen.join_map = "back_rooms"
+	NightScreen.join_as_bot = true
+	RouterFixture.forget_join()
+	assert_str(NightScreen.join_url).is_empty()
+	assert_str(NightScreen.join_ticket).is_empty()
+	assert_str(NightScreen.join_map).is_empty()
+	assert_bool(NightScreen.join_as_bot).is_false()
+	var screen := await _enter_night()
+	assert_bool(screen.night.running).is_true()
+
+
 func test_start_on_a_pad_opens_and_closes_the_menu() -> void:
 	var screen := await _enter_night()
 	await _pad(JOY_BUTTON_START)
@@ -360,9 +383,11 @@ func test_the_volume_and_the_touch_layout_change_in_the_menu_too() -> void:
 	volume.grab_focus()
 	await _key(KEY_LEFT)
 	assert_int(Settings.get_value(SettingsService.VOLUME_MASTER)).is_less(100)
-	page.select_tab(4, false)
+	# The Touch tab is the last one: on a touch device the Controls tab before it is left out (#1290).
+	var touch_tab := page._pages.size() - 1
+	page.select_tab(touch_tab, false)
 	var hand: UIToggle = null
-	for row in page._pages[4].get_children():
+	for row in page._pages[touch_tab].get_children():
 		if (row as UIRow).title == "Left-handed layout":
 			hand = (row as UIRow).control
 	hand.grab_focus()

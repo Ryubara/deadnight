@@ -15,6 +15,7 @@ sha=0123456789abcdef0123456789abcdef01234567
 repo=$work/repo
 mkdir -p "$repo/deploy/web"
 cp "$here/deploy.sh" "$repo/deploy/web/deploy.sh"
+cp "$here/../railway_up.sh" "$repo/deploy/railway_up.sh"
 git -C "$repo" init -q -b main
 git -C "$repo" -c user.name=t -c user.email=t@example.com commit -q --allow-empty -m first
 

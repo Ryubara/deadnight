@@ -1,8 +1,9 @@
 extends GdUnitTestSuite
 ## A poster set is playable by one person (#1073): it never lists a stat that needs a crowd. The
 ## stats of #1074 added three to `revives` (`nights:together`, `rounds:whole_crew`,
-## `boards:shared`); `ChallengeStats.CROWD` names all four, a set that lists one is reported, and
-## a night played by one person (with a bot beside them) moves none of them.
+## `boards:shared`) and #1172 one more (`nights:full_lot`, four people on the lot);
+## `ChallengeStats.CROWD` names all five, a set that lists one is reported, and a night played by
+## one person (with a bot beside them) moves none of them.
 
 const SET_TEXT := (
 	'{"sets": [{"id": "small", "title": "Small", "lines": ["A"], "palette": "teal", '
@@ -36,12 +37,13 @@ func _problems_when_the_second_counts(stat: String) -> String:
 	return "\n".join(sets.problems(catalog, _weapon_ids(), _type_ids()))
 
 
-func test_the_four_stats_a_person_cannot_make_alone_are_named() -> void:
+func test_the_five_stats_a_person_cannot_make_alone_are_named() -> void:
 	var crowd: Array[StringName] = [
 		ChallengeStats.REVIVES,
 		ChallengeStats.NIGHTS_TOGETHER,
 		ChallengeStats.ROUNDS_WHOLE,
 		ChallengeStats.BOARDS_SHARED,
+		ChallengeStats.NIGHTS_FULL_LOT,
 	]
 	assert_array(ChallengeStats.CROWD).contains_exactly_in_any_order(crowd)
 	for stat in crowd:

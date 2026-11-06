@@ -17,9 +17,19 @@ var _mode := Input.MOUSE_MODE_VISIBLE
 ## True while the stand-in platform refuses to capture (a browser outside a click or a key).
 var _refuses := false
 var _quiet := ""
+var _arrival := false
+
+
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
 
 
 func before_test() -> void:
+	_arrival = NightScreen.arrival_enabled
+	# No drop due, as headless always has it (`--noarrival`): this suite is not about the drop.
+	NightScreen.arrival_enabled = false
 	_mode = Input.MOUSE_MODE_VISIBLE
 	_refuses = false
 	_quiet = OS.get_environment("GDS_QUIET")
@@ -27,6 +37,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	NightScreen.arrival_enabled = _arrival
 	if _quiet != "":
 		OS.set_environment("GDS_QUIET", _quiet)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

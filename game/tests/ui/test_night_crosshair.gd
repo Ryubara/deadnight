@@ -17,6 +17,12 @@ var _warm_up := false
 var _arrival := false
 
 
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
+
+
 func before_test() -> void:
 	_warm_up = NightScreen.warm_up_enabled
 	_arrival = NightScreen.arrival_enabled
@@ -28,6 +34,8 @@ func before_test() -> void:
 func after_test() -> void:
 	NightScreen.warm_up_enabled = _warm_up
 	NightScreen.arrival_enabled = _arrival
+	# The drop's night leaves it seen for the next suite's night (#1254).
+	NightArrival.reset()
 	NightScreen.join_url = ""
 	NightScreen.join_ticket = ""
 	await RouterFixture.clear(get_tree())

@@ -23,21 +23,25 @@ one, which includes its `before()` and `after()`; sorting those gaps gives the l
 After the speed-ups below the same job took 15 min 10 s (suites 853 s, down about 420 s on the suites both runs had; `main`
 had grown by 26 suites and 150 s meanwhile). The rest is compute and real time, so the job is also split.
 
-## Jobs by test folder (three), six (#775), eight by script seconds (#1015), nine (#1151)
+## Jobs by test folder (three), six (#775), eight by script seconds (#1015), nine (#1151), ten (#1265)
 
-`godot` is a matrix of parallel shards (`godot (1)` to `godot (9)`), each running its own test scripts. The history:
+`godot` is a matrix of parallel shards (`godot (1)` to `godot (10)`), each running its own test scripts. The history:
 three shards by folder (#524, then single scripts moved by hand, #676), six (#775), and each time the heaviest shard was
 back at the 15-minute limit within a day or two, because the suite grows with every merge (28 new scripts in one
 afternoon, #1015) and the shards were balanced by hand from a table that went stale. A shard that is over its limit is
 cancelled with no failing test.
 
-**Dealt by measured seconds (#1015; eight shards then, nine since #1151).** `tools/ci_test_shards.py` no longer names
-folders. Every `tests/**/test_*.gd` is one item, weighed by its seconds in `tools/ci_test_times.json`, and the items
-are dealt out heaviest first to the shard with the least so far; a script that is not in the file counts
+**Dealt by measured seconds (#1015; eight shards then, nine since #1151, ten since #1265).** `tools/ci_test_shards.py`
+no longer names folders. Every `tests/**/test_*.gd` is one item, weighed by its seconds in `tools/ci_test_times.json`,
+and the items are dealt out heaviest first to the shard with the least so far; a script that is not in the file counts
 `default_seconds` (10), so a new script lands in the lightest shard and is never left out. The self-test (run in every
 shard) fails when a script is in no shard or two, or when the workflow's matrix is not the same shards or the job's
-limit is not the one the check assumes. Shard 1 starts with 60 s already counted, for the main scene, the night run
-and the late-round budget run it alone does (about 120 s of its job, 50 of them the budget run).
+limit is not the one the check assumes. Shard 1 starts with 240 s already counted (60 until #1265, 100 since), for the
+main scene, the night run and the two budget runs it alone does: the four-player late-round case (54 to 112 s on the CI
+runner, the main scene and the night about 25 more) and, since #1193, the worst room of 8 people and 7 bots (85 s of
+night, 137 s on the runner: the crowd takes a minute to reach 90 percent of its cap, and 15 bodies run at a third of the
+speed of 4). With 240 s the ten shards are expected at 449 s each, a little over the 440 s of `--report` (advisory: the
+job's own check annotates at 9 minutes and fails at 12); an eleventh shard brings them to about 410 s.
 
 Measured on six complete CI runs (five of `main`, one of the late-round budget pull request, #968). The seconds of a
 suite are the duration on its `Statistics:` line (`tools/ci_shard_time.py`, `suite_times`; the same as the gap between
@@ -91,6 +95,23 @@ or 6; shard 1 was cancelled at the limit on one `main` run, and #968 had shard 6
   in a day: the ladder's clip suites, the challenge and menu suites). Nine shards deal 437 s each, 8.1 total / 480
   rounded up. The real shard suites in those four runs, under the stale split, were 356 to 574 s and the jobs 405 to 647
   s (6.8 to 10.8 minutes); under the refreshed split the expected job is 437 s plus about 50 s of setup.
+- **Refreshed again on 2026-11-05 (#1265), a tenth shard, and shard 1's head start raised.** `godot (1)` failed the time
+  check on a green suite (12.4 minutes against the 12-minute line; 643 cases, 0 failures) in run 42037762096. Drift or a
+  slow runner? Both, and a constant that was too small. Shard 1 ran the same 74 scripts in four `main` runs: the tests
+  step took 375, 441, 476 and 546 s (jobs 8.3, 9.8, 10.8 and 12.4 minutes), a 1.46 spread on identical suites. The
+  failing job was the slow end: its suites took 1.18 times their mean in the other runs (shards 2, 3 and 8 of the same
+  run: 0.92, 1.04 and 1.14), `Hold the late-round worst case` took 112 s (54 s in the run before it, 73 to 108
+  elsewhere), `test_soldier_ladder_clips` 97 s (54 and 60 s on two faster runners, 96 to 99 s on three others). The
+  times file was also stale: 29 scripts counted at the 10 s default (`rules/test_crane` was 4.2 s in the file and took
+  49 to 79 s; `ui/test_end_board_fit` 3.1 against 10 to 18), so shard 1's suites were expected at 417 s and took 460 s
+  on average. And shard 1's head start was 60 s while its once-per-run steps took 100 s (the budget run averaged 91 s in
+  six runs, plus the night and the main scene), so shard 1's job ran 619 s on average against the other shards' 535: 100
+  s under the fail line before any slow runner. The mean of four green `main` runs (42023432725, 42026421751,
+  42036953273 and 42040292920: 36 logs, reduced to the times file and deleted) gave 4,200 s of suites (4,117 to 4,341 a
+  run, 3,880 in #1151) and, on nine shards, 473 s a shard against the 440 budget with no script at the default: the
+  suite grew 8 % in a day (the server browser, the hidden challenges, the phone-page suites). Ten shards deal 430 s each
+  with shard 1 at 100 s of head start. The limits are as they were. A slow runner can still add 30 % to a shard; the
+  fail line is for that.
 - **Do not hand-edit** a shard's list; there is none. A script that is slow on purpose gets its time from the file.
 
 The slowest suites on the runner (mean seconds of four runs, 2026-11-04): `world/test_midway_fence_reach` 128,

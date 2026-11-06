@@ -16,29 +16,70 @@ Each finger has one job until it lifts, tracked by its touch index, so move, loo
 
 | Control | Where | Does |
 | --- | --- | --- |
-| Move | anywhere on the left, below the top fifth | a stick that floats under the thumb and follows it past the rim; the rim is a sprint |
+| Move | anywhere on the left, below the top fifth | a ring that appears where the finger lands and goes when it lifts (nothing is drawn without a finger); a drag to its edge walks at full speed, a drag 18 CSS px past the edge sprints with one buzz and the sprint stays on until the finger lifts (#1276) |
 | Look | the rest of the screen | a drag turns the view; one swipe across the screen's height turns about 92 degrees at sensitivity 1 (100 px on a 390 px tall phone is 23 degrees), a fast flick gains up to 1.6 times; the view follows the finger a few frames behind, evenly (`LookSmoother`, 40 ms, [why](../research/touch-look-smoothness.md)) |
-| Fire | big, right thumb | `fire` held, wherever the player aims (hip, aimed, auto-fire on or off); a drag that starts on it also looks, at the look sensitivity (#497) |
-| Aim | an arc round Fire | `aim`, **held** with auto-fire on (the default), a **toggle** with auto-fire off: a tap aims, the next tap leaves the aim, so the player can aim and shoot by hand. The button stays lit while the toggle is on. A drag that starts on it also looks, held or toggled (#497), so one thumb can aim and turn |
-| Jump, Reload, Swap, Grenade | an arc round Fire | `jump`, `reload`, `swap_weapon`, `throw_grenade`. Grenade is held while the pin is out and lets go to throw; a drag that starts on it also looks (#599), because the right thumb is on it for the whole hold and the left has the stick, so the throw can be aimed |
-| Shoulder swap ("SIDE") | small, above Swap, outside the middle of the screen | `swap_shoulder`: the camera moves to the other shoulder, to see round a corner |
-| Melee | small, on the far right edge below Fire and above the ammo card (60 left, 310 up) | `quick_melee` (#588): a tap is one blow with whatever is in hand, at once; the server's 0.6 s cooldown holds a thumb that taps again and a finger that stays down is still one blow ([quick melee](weapons.md#quick-melee)) |
-| Bots ("BOTS") | small, on the far right edge above Melee (60 left, 405 up) | `bot_wheel` (#642): **hold** it and the bot command wheel opens over the middle of the screen; **drag** from where the thumb landed toward Follow (up), Roam (down right) or Hold (down left) and let go to give that order; letting go in the middle, or a tap, gives none. The view does not turn while it is held ([bot wheel](../research/bot-wheel.md)) |
-| Ping | small, top edge, right of Pause (538 right of the safe edge, 80 down) | `ping` (#642): a tap marks what the crosshair is on for the team, as Z, the middle mouse button and the pad's d-pad right do; the server's one mark a second per player holds a thumb that taps again |
-| Interact | left of Fire, only with a HUD prompt | `interact`; its caption says what it does (OPEN, BUY, HOLD for a broken fence, which keeps nailing boards while held, FUEL, SWITCH, TAKE, REVIVE) ([hold at a broken fence](rounds.md#the-fences-boards)) |
-| Pause | top, beside the round card | `pause` |
-| Scoreboard | under Pause | `scoreboard` while a finger is on it |
+| Fire | big, right thumb (a bullet) | `fire` held, wherever the player aims (hip, aimed, auto-fire on or off); a drag that starts on it also looks, at the look sensitivity (#497) |
+| Aim | a scope, up and to the left of Fire | `aim`, **held** with auto-fire on (the default), a **toggle** with auto-fire off: a tap aims, the next tap leaves the aim, so the player can aim and shoot by hand. The button stays lit while the toggle is on. A drag that starts on it also looks, held or toggled (#497), so one thumb can aim and turn |
+| Reload | a circle of arrow, right next to Fire on its left, in Fire's row | `reload` (#1277) |
+| Jump | two chevrons up, above Fire | `jump`. A press while crouched stands the body up first, and the jump goes on |
+| Crouch | a chevron down onto a floor line, below and left of Fire | `crouch`, a **toggle** (#1277): a tap crouches and stays, the next tap or a Jump stands. The button stays lit while it is on |
+| Weapons and grenades | the HUD's own strip in the bottom corner of the stick's side, under the players' column (a left hand flips it); not buttons of the layer | #1280. There is no Swap button and no Grenade button: a tap on a weapon's place takes that weapon (`weapon_slot_1`..`3`, the key's action), and the grenades' place after the weapons, with their count, is held while the pin is out (`throw_grenade`) and lets go to throw; a drag that starts on it also looks (#599), because the right thumb is on it for the whole hold and the left has the stick, so the throw can be aimed. Every place is at least 44 CSS px wide and high (`MenuScale.tap_units`). The layer asks the HUD where the places are (`TouchControls.zones`, `HudSlots.touch_zones`) and presses the action of the one a finger lands on; a finger that starts on a weapon's place only picks it, it never fires or looks |
+| Shoulder swap (no button) | two quick taps on free ground (#1288) | `swap_shoulder`, pressed 90 ms at least: the camera moves to the other shoulder, to see round a corner. See [the double tap](#the-double-tap-that-changes-shoulder) |
+| Strike (a blade), **only while a dead is within reach** | beside Reload, a thumb's roll farther along its row (575 left and 340 up of the corner, about 21 mm from Fire), clear of Interact's place | `quick_melee` (#588, #1285): a tap is one blow with whatever is in hand, at once; the server's 0.6 s cooldown holds a thumb that taps again and a finger that stays down is still one blow ([quick melee](weapons.md#quick-melee)). It shows while a living dead is within the blow's 1.6 m on the ground (`StrikeReach`, this client's picture of the night: no network traffic of its own), stays until the dead is 0.3 m past that, and goes with the last one; a finger on it when it goes lets go. A drag that starts on it also looks, and the world markers keep clear of its place only while it is up. It is the way Call of Duty: Mobile shows its knife (design only), so the sixth circle costs the glass nothing the rest of the time |
+| Bots' order (a tag) | the HUD's own tag at the inner end of the weapon strip, only while the room has a bot (a left hand flips it); not a button of the layer | #1286. The tag says the standing order in a word and the order's colour (FOLLOW amber, ROAM cream, HOLD a lighter red-orange: three that differ in light as well as hue) under a small BOTS, the word 1.35 times the caption's size, and a tap gives the next order of Follow, Roam, Hold (`bot_order_next`, through the same command the wheel uses, `BotWheelDriver`). The feed says the bots' state once the server's frame shows it (`BOTS: FOLLOWING YOU`, `ROAMING`, `HOLDING POSITION`), so an order the server refused (a second tap inside its half second) changes nothing and says nothing. At least 44 CSS px wide and high; a finger that starts on it only taps it: it never starts the stick or a look. The layer tries the tag's place before the weapons' (`HudSlots.touch_zones`: the first zone that holds the point wins), so a place laid over the same ground (a hold on the players' column, #1287) never takes its taps. The first time bots are in the room a first-run label says "TAP TO ORDER BOTS" beside it, until it is used. The hold-and-drag wheel is the keyboard's and the pad's (`bot_wheel`); there is no wheel button on the glass ([bot wheel](../research/bot-wheel.md)) |
+| Ping (a pin) | small, straight under Pause, 56 CSS px (9 mm and a little) from its centre or more, with 2 mm of air between the rims (`TouchLayout.ping_drop`, #1289; it was beside Pause, 27 CSS px away) | `ping` (#642): a tap marks what the crosshair is on for the team, as Z, the middle mouse button and the pad's d-pad right do; the server's one mark a second per player holds a thumb that taps again |
+| Interact | one thumb-length left of Fire, only with a HUD prompt | `interact`; a tap mark over its word, which says what it does (OPEN, BUY, HOLD for a broken fence, which keeps nailing boards while held, FUEL, SWITCH, TAKE, REVIVE) ([hold at a broken fence](rounds.md#the-fences-boards)) |
+| Pause | top, beside the round card (two bars) | `pause` |
+| Scoreboard | right of Pause, the same length from it as Ping is (rows of a table); the players' column takes it over in #1287 | `scoreboard` while a finger is on it |
+
+**Every control shows an icon and no words** (`TouchIcons`, drawn in code, no file). The one word left is the interact
+button's verb: it is a different thing nine ways (OPEN, BUY, AMMO, PLAY, TAKE, FUEL, HOLD, SWITCH, REVIVE) at a different
+price, the card above it names the object, and a word is read faster than nine new pictures to learn.
+
+**Every button of the right thumb is a right button** (`TouchLayout.looks_when_dragged`): a finger that starts on any of
+them presses it and also turns the view for the rest of its drag, so Reload and Jump fire on the press and hand the drag
+to the look, as Fire and Aim always did. A finger that
+starts on free ground beside a button looks, and does not press the button it later drags across.
 
 Everything presses the game's own input actions, so the player and the night read touch like a key. Look goes out as mouse
 motion in mouse pixels, so the sensitivity setting, the ADS slow-down and invert Y apply. A press lasts at least 90 ms so
 a quick tap is still seen by the next physics tick. Sizes and places are in `TouchLayout`; a test checks every button
 against the safe area, a thumb-sized hit area, each other and the HUD cards that stay (ammo, prompt, health, points, round).
 
+## The double tap that changes shoulder
+
+`swap_shoulder` is a fight verb but a rare one (a corner, a wall), so it has no circle on the glass
+(`TouchDoubleTap`, #1288). Two taps on free ground (not on a button, a HUD place, the pause card or the stick's side of
+the screen) press it. The numbers are real time and the finger's own size, so the gesture is the same on every phone:
+
+- **A tap** lifts in under 250 ms and never moved 10 CSS px (`TouchSlop`: 28 units on a phone's night) from where it
+  landed. A flick, a drag and a rest are not taps.
+- **The second tap lands** at most 350 ms after the first lifts (Android's double tap is first up to second down too).
+- Any other touch between them (a button, the stick, a HUD place) and any look drag ends the pair: it means two taps
+  in a row. A third tap is the first of a new pair.
+- Other fingers may be down: a double tap works while the other thumb walks or holds Fire. A second finger on the
+  stick's side of the screen is the stick's, and never counts.
+
+**What a phone player sees.** The camera glides to the other shoulder (the player's `shoulder_side` flips, the view
+slides sideways over about a fifth of a second, `SHOULDER_RATE`), the character moves to the other side of the view,
+and the Side circle is gone from the right-hand column. Nothing flashes: the haptic buzz of a press is the only other
+sign.
+
+**The look is not lost.** A touch on free ground turns nothing while it can still be a tap, and what it made so far
+goes out at once the moment it is not: when it leaves the slop, when it has lasted 250 ms, or when it lifts after
+250 ms. So a drag turns exactly what it made, as before; only the first 10 CSS px of a fresh drag arrive as one piece
+(the look smoother spreads it over its 40 ms), and a shake inside a tap turns nothing. A finger that starts on a
+button (Fire, Jump...) or on the stick is never held back.
+
+The first-run hint says it once ("DOUBLE TAP / SWAP SIDE" on two lines, where the look hint was): it waits for the
+first look, stays 8 seconds and is then seen, used or not. The Settings Touch tab has a "Switch shoulder" row that
+says the same in words. On a keyboard the key `C` and the pad's button are unchanged.
+
 ## Left-handed layout
 
 The setting `controls/left_handed` (Settings, Touch tab, off by default) flips the layout left to right. It is a mirror,
 not a second layout: `TouchLayout.buttons(safe, scale, mirrored)` measures every offset from the bottom left corner
-instead of the bottom right, the stick zone is the right 45 percent and its resting ring is bottom right, and Pause moves
+instead of the bottom right, the stick zone is the right 45 percent and its resting place is bottom right, and Pause moves
 to the right of the HUD's round card. The look area is still the rest of the screen. The HUD flips with it
 (`Hud.mirrored`): the corner columns swap sides (round and objective, the fuel, event and notice lists, points and health,
 ammo), so the cards that stay clear of the buttons still do; the banner, the prompt and the gains stay in the middle. The
@@ -49,23 +90,30 @@ the kept HUD cards, the mirror equal to the flipped original, and the busiest an
 mirrored without overlap.
 
 The HUD's weapon slot strip (#682) is over the ammo card on a keyboard, where the right thumb's corner is empty. With the
-touch controls up (`TouchControls.active_changed`, which the night screen hands to `Hud.touch_layout`) it moves under the
-health card, as wide as it, because Fire and Melee sit where it would; `slots` is one of the kept cards the buttons are
-tested against. The stick's resting ring is 60 units higher so it clears the players' column and the strip under it.
+touch controls up (`TouchControls.active_changed`, which the night screen hands to `Hud.touch_layout`) it moves under
+the health card, as wide as it, because Fire and the buttons sit where it would; `slots` is one of the kept cards the
+buttons are tested against. The stick's resting place (where its hint stands, and the ring a finger would make there)
+is beside the players' column, the perk badges and the strip, not above them: `TouchLayout.STICK_REST_CLEAR`, tested
+for either hand on the two phone pages at every interface size and touch scale (`test_touch_stick_rest`).
 
 ## First run and key hints
 
 - **No keycap on a phone.** `UIInputMode.touch` is true while a finger was the last input (and when the layer comes up
-  with nothing else used yet); the prompt card's glyph then draws a round tap mark (rings round a dot) and no letter
-  ([HUD prompt](hud.md)). A key or a gamepad button brings the keycap back, and so does a real mouse click; mouse
-  *motion* does not, because the layer sends its look as motion, and the engine's touch copies are marked as emulated.
-- **Hints once per control** (`TouchHints`, a child of the layer): "DRAG TO MOVE" over the stick's resting ring, "DRAG TO
-  LOOK" in the look area and "TAP TO USE" ("HOLD TO REPAIR" at a fence) beside the Interact button while it shows. Each
-  goes the moment its control is used: a finger on the stick, the first look drag (also one that started on Fire), a
-  press of Interact. The Interact hint waits for the first prompt, and a prompt that goes unused brings it back with the
-  next one. What was used is a bit in the setting `controls/touch_hints_seen`, so a player sees each hint once ever;
-  restoring the defaults in Settings shows them again. A test checks the labels against the safe area, the buttons and
-  the HUD cards on every phone canvas.
+  with nothing else used yet); wherever a glyph is drawn then it is a round tap mark (rings round a dot) and no letter.
+  The night's prompt card has no glyph at all while the touch layer is up (`HudPrompt.touch_layout`, #1275): the Interact
+  button is the control and says the verb, so a key or a mark on the card pointed at nothing and held 64 units of the
+  words' room. A key or a gamepad button brings the keycap back where there is no touch layer, and so does a real mouse
+  click; mouse *motion* does not, because the layer sends its look as motion, and the engine's touch copies are marked
+  as emulated. The health card likewise drops `GRENADES xN` (the strip's grenade place counts them). What each other
+  control does and why is [the phone audit](touch-audit.md).
+- **Hints once per control** (`TouchHints`, a child of the layer): "DRAG TO MOVE" over the stick's resting place,
+  "DRAG TO LOOK" in the look area and "TAP TO USE" ("HOLD TO REPAIR" at a fence) beside the Interact button while it
+  shows and "STRIKE" (with the tap mark) beside the Strike button while it shows. Each goes the moment its control is
+  used: a finger on the stick, the first look drag (also one that started on Fire), a press of Interact or Strike. The
+  Interact and Strike hints wait for their button, and one that goes unused is back with the next prompt or the next
+  dead in reach. What was used is a bit in the setting `controls/touch_hints_seen`, so a player sees each hint once
+  ever; restoring the defaults in Settings shows them again. A test checks the labels against the safe area, the
+  buttons and the HUD cards on every phone canvas.
 - **The look hint stands beside the popup lane**, not over it ([popup lane](../research/popup-lane.md)): the cards
   stand in the middle of the screen under the round banner, so the hint takes the look area's side of their column. It
   steps down past any button that climbs up to it on a short screen, and on a small canvas the stick's hint steps aside
@@ -76,16 +124,16 @@ tested against. The stick's resting ring is 60 units higher so it clears the pla
 ## Settings
 
 Touch controls (Auto, On, Off), button size (0.8 to 1.4), opacity at rest (0.3 to 1.0), left-handed layout, vibration
-on touch, **aim assist** (0 to 1, default 0.5) and **auto-fire** (Off, On; default On, the maintainer's decision, see
-issue 470). The assist slows the look drag near a zombie, pulls the view a little toward its chest while Aim or Fire
-is held, and auto-fire holds the trigger with the crosshair on a zombie while the player aims (with it off, Aim is a
-toggle and nothing fires by itself); all of it only while a finger was the last input
-([Touch aim assist](../research/aim-assist.md)).
+on touch, **aim assist** (Off, On; default On at strength 1.0, issue 1279) and **auto-fire** (Off, On; default
+On, the maintainer's decision, see issue 470). The assist slows the look drag near a zombie, pulls the view a little
+toward its chest while Aim or Fire is held, and auto-fire holds the trigger with the crosshair on a zombie while the
+player aims (with it off, Aim is a toggle and nothing fires by itself); all of it only while a finger was the last
+input ([Touch aim assist](../research/aim-assist.md)).
 
 ## Not done yet
 
-Crouch (the simulation does not act on `crouch` yet, issue #73, so there is no button), gyro, a layout
-editor and asking Discord for landscape. Each is an open question on the research page.
+Gyro, a layout editor
+and asking Discord for landscape. Each is an open question on the research page.
 
 ## Gotchas found while building it
 

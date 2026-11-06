@@ -54,7 +54,7 @@ local player) into the direction on screen.
 | `HudReticle` | centre | the reticle (see Decisions): four short ticks round a gap and a dot, cream with a dark edge, static and small; hidden under the pause card and while you are down |
 | `HudCrosshair` | centre, over the reticle | hit marker (ticks: cream hit, amber headshot, larger red kill) and floating damage numbers, small, nudged apart, at most eight |
 | `HudDamage` | full screen | a red arc toward the attacker per blow; a red frame under a third health (pulses; held while down) |
-| `HudMarkers` | full screen | objective diamonds with distance, smaller as they get farther; teammates' names at constant size; the important marker pins to the edge with an arrow when off-screen |
+| `HudMarkers` | full screen | objective diamonds with distance, smaller as they get farther; teammates' names at constant size; the important marker pins to the edge with an arrow when off-screen; a marker that would be under a card (those of the corners and, while they are up, the banner, the prompt and the popup cards) or a touch button is moved to the nearest clear place with an arrow back to where it points; a teammate's tag at the top edge goes under its pointer; on a phone's page the words and the shapes grow to read at 14 CSS px (the desktop's scale does not change) |
 
 The interaction prompt takes its key from the `interact` action in the InputMap (E, gamepad Y), so a rebound key shows
 the new key. The glyph follows the **last device used**: a square keycap, a round gamepad button
@@ -94,11 +94,16 @@ the card.
   needed; the part tints it. A new weapon model has its silhouette with its hold file. Sizes follow the weapons' lengths
   (never under 58 percent of the longest) so a pistol reads as a pistol; a club that stands on its end in the model is
   laid along the width, its long side from the grip pointing right like a barrel.
-- **On a phone the strip moves** under the health card (`Hud.touch_layout`, set when the touch layer comes up): the
-  bottom right corner is the right thumb's (Fire and Melee sit exactly where the strip would). A left hand flips the
-  column and the strip with it.
+- **On a phone the strip is the weapon control** (#1280; `Hud.touch_layout`, set when the touch layer comes up): it
+  leaves the bottom right corner, which is the right thumb's (Fire and Melee sit exactly where the strip would), for
+  a column of its own at the bottom of the stick's side, the players' column lifted by its height. Every place is a
+  fingertip (44 CSS px, `MenuScale.tap_units`) wide and high, the weapons a quarter wider, and a place for the grenades
+  (`HudGrenadeCell`: a grenade and `x3`, lit while the pin is out) follows them. The touch layer reads the boxes
+  (`HudSlots.touch_zones`) and presses the key's action or the throw ([touch controls](touch-controls.md)); the HUD's
+  nodes keep ignoring the pointer. A left hand flips the column and the strip with it. A desktop's or a pad's strip is
+  what it was: 64 high, one card wide, no grenade place.
 - **Keys:** `1` and `2` (and `3`) pick that slot's weapon; the slot in hand and an empty slot do nothing; the swap
-  button (F, the pad's d-pad up, the touch SWAP) goes on to the next one ([weapons](weapons.md#carrying-weapons)).
+  button (F, the pad's d-pad up; a phone has none, it taps the weapon) goes on to the next one ([weapons](weapons.md#carrying-weapons)).
 
 ## Players' points
 
@@ -114,6 +119,20 @@ a row made when a player joins and freed when they leave. With more than four pl
 the gaps is 296 units, and the left column still ends under the health card on the smallest canvas (1536 x 864) with
 the challenge prompt between it and the round card. A downed player's portrait dims, their box darkens and the name
 says `DOWN`. There is no party ticket any more: the containers are the party list.
+
+**On a phone, in pairs when it must.** With the touch layout up the weapon strip is a fingertip high under the column and
+the round and the objective stand over it, so at the largest interface size (1.25: a 864 unit high canvas on every phone
+page) a room of eight people stood 38 units over the objective, and 106 with the bots' chips (#1301). `Hud._fit_players`
+gives the column its `room` (from a gap under the round and the objective at their tallest, so it does not move when the
+words change, to the health card), and a party whose boxes, one to a row, are taller than that puts its teammates two to
+a row (`HudPointsStack.mate_columns`; `HudPlayerBox.paired`, half the column wide, `PAIR_WIDTH`): the points alone in
+each box at the same type (24 units), `DOWN` or `DEAD` in the danger colour in their place while they are down, no name,
+level badge or emblem (the card and the frame stay). That takes eight people from 332 units high to 218. A room the boxes
+fit in keeps names and one box to a row as before; a desktop or a pad never sets a room. With the touch layout up the
+round card takes **one row** (`HudRound.compact`: the reels on the left, the caption and the detail stacked on the
+right, 90 units high instead of 160, the reel tiles a tenth smaller), which gives the column 70 units more room: at 1.25
+every party of 3 to 8 keeps its names, except 7 and 8 people with the bots' chips (#1305). What it leaves:
+[Players' column on a phone](../research/players-column-phone.md).
 
 The portrait is the Soldier as the player wears it, a head-and-shoulders render of the game's own model
 (`CharacterAssembler`, the assembler the wardrobe and the lot use) in a tiny 3D world of its own, drawn once and then left
@@ -139,13 +158,18 @@ action instead of listening for one kind of event. A pause menu or the result sw
 
 ## The bot command wheel
 
-Holding Q (the pad's d-pad left, the touch BOTS button) opens `HudBotWheel` over the middle of the screen: three
+Holding Q (the pad's d-pad left) opens `HudBotWheel` over the middle of the screen: three
 tickets, **Follow** on top, **Roam** lower right and **Hold** lower left, a dial in the middle, a flat dim behind. The
-pointer (the mouse's motion, the right stick, a finger's drag) lights one ticket; letting go over it gives the team's bots
+pointer (the mouse's motion, the right stick) lights one ticket; letting go over it gives the team's bots
 that order, letting go over the dial or tapping the key gives none. The ticket of the order that stands is marked NOW,
-and the HUD's notice list says the new order for a moment after a change (`BOTS: HOLD HERE`). It is a screen-sized
+and the HUD's notice list says the bots' state for a moment once it has changed (`BOTS: FOLLOWING YOU`, `ROAMING`,
+`HOLDING POSITION`). It is a screen-sized
 overlay (`Hud.screen_overlays`), so it stays on the middle of the screen whatever the safe area is, takes no room while
 closed and is not in a column. The model, the driver and what was learned are in [Bot wheel](../research/bot-wheel.md).
+
+A phone has no wheel (#1286): `HudBotOrder`, a tag at the inner end of the weapon strip, says the standing order (a word
+in the order's colour under a small BOTS) while the room has a bot, and a tap on it gives the next order of the round
+([touch controls](touch-controls.md)). It is made with the touch layout, so a keyboard's HUD holds none of it.
 
 ## Revives
 
@@ -253,7 +277,9 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   dark card, on purpose: it is rare, so it may be the one light thing at the edge, and it matches the main menu's
   "The program". `HudChallenge` reads `challenge_advanced` events like every part; `ChallengeHudLink` makes them from the
   night's challenges. A layout test puts it on the busiest HUD at every canvas, mirrored or not, beside the crosshair's
-  clear box (`test_hud_challenge.gd`).
+  clear box (`test_hud_challenge.gd`). On a phone the strip lifts the players' column up to it, and a room of eight grows
+  it past the objective: there the card stands beside the column, in the nearest free place the boxes of the screen
+  leave (`ChallengeFit`, [the challenge card on a phone](../research/challenge-card-phone.md), #1299).
 - **Caps keep a 28-zombie round readable.** Three gain rows, eight damage numbers, six damage arcs, three events and one
   notice at a time; the oldest goes first.
 - **Notices on the right.** Joins and leaves sit under the event list, not at the left edge: with eight players, an
@@ -297,6 +323,9 @@ marquee, the banner, the reward line and a late joiner into a special round), `t
 against the HUD that saw every event), `test_hud_refresh.gd` (changes announced, nodes made and a time budget for
 the break and a kill batch), `test_hud_parts.gd` (every part, the prompt with simulated input and device switching),
 `test_hud_players.gd` (a container per player, one to eight: colours, local first, down, the portrait),
+`test_players_column_phone.gd` (the busiest column against the round and objective on both phone pages, every size and
+hand; the pairs, what a paired box shows, the room), `test_round_card_phone.gd` (the round card on one row on a phone,
+in three lines elsewhere, and the room it gives the column),
 `test_hud_reticle.gd` (the reticle: present, centred, small, scaled by the viewport stretch, hidden under a menu or
 while down, editable), `test_hud_generator_panel.gd` (when the card shows and its stepped timing),
 `test_hud_grid.gd` (the grid, measured at every canvas: shared edges, gaps, text lines, no label leaving its part),

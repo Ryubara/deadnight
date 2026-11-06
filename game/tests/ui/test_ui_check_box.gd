@@ -2,6 +2,10 @@
 # disabled. Driven with real events (#9).
 extends GdUnitTestSuite
 
+## The most frame time a spring gets to settle in: it needs about a second, so this is slack, not
+## a tolerance.
+const SETTLE_SECONDS := 5.0
+
 var _box: UICheckBox
 var _was_reduced := false
 
@@ -45,6 +49,22 @@ func _click() -> void:
 		await await_idle_frame()
 
 
+## Waits for frames until `spring` has settled, at most `SETTLE_SECONDS` of frame time.
+func _settle(spring: UISpring) -> void:
+	var elapsed := 0.0
+	while not spring.is_settled() and elapsed < SETTLE_SECONDS:
+		await await_idle_frame()
+		elapsed += get_process_delta_time()
+
+
+## Waits for frames until `spring` has moved off `from`, at most `SETTLE_SECONDS` of frame time.
+func _leave(spring: UISpring, from: float) -> void:
+	var elapsed := 0.0
+	while spring.value == from and elapsed < SETTLE_SECONDS:
+		await await_idle_frame()
+		elapsed += get_process_delta_time()
+
+
 func test_a_click_toggles_it_and_emits_toggled() -> void:
 	var seen: Array[bool] = []
 	_box.toggled.connect(func(on: bool) -> void: seen.append(on))
@@ -82,14 +102,25 @@ func test_the_fill_follows_the_state_on_a_spring() -> void:
 	UIMotion.reduced = false
 	_box.button_pressed = true
 	await await_idle_frame()
+	# One frame is not a length of time: `UISpring` takes a step only for each 1/240 s it is given, so
+	# a frame shorter than that (a window with no frame cap, a headless run) leaves the value where it
+	# was. What one frame does settle is the target; the value is read once it has left its start.
+	assert_float(_box._on.target).is_equal(1.0)
+	await _leave(_box._on, 0.0)
+	assert_float(_box._on.value).is_greater(0.0)
 	assert_float(_box._on.value).is_less(1.0)
-	for _i in 90:
-		await await_idle_frame()
-	assert_float(_box._on.value).is_between(0.99, 1.2)
+	await _settle(_box._on)
+	assert_bool(_box._on.is_settled()).is_true()
+	assert_float(_box._on.value).is_equal(1.0)
 	_box.button_pressed = false
-	for _i in 120:
-		await await_idle_frame()
-	assert_float(_box._on.value).is_between(-0.05, 0.01)
+	await await_idle_frame()
+	assert_float(_box._on.target).is_equal(0.0)
+	await _leave(_box._on, 1.0)
+	assert_float(_box._on.value).is_greater(0.0)
+	assert_float(_box._on.value).is_less(1.0)
+	await _settle(_box._on)
+	assert_bool(_box._on.is_settled()).is_true()
+	assert_float(_box._on.value).is_equal(0.0)
 
 
 func test_reduced_motion_snaps_the_fill() -> void:

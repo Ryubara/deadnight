@@ -206,6 +206,8 @@ func _show_stats(state: HudState) -> void:
 			float(player.get("self_revive", 0.0))
 		)
 	state.set_night_clock(int(_state.frame.get("clock", 0)))
+	# The team's bots' standing order, whoever gave it: the touch tag shows it.
+	state.set_bot_order(StringName(BotOrders.current(_state.frame).get("order", &"")))
 	state.release()
 
 

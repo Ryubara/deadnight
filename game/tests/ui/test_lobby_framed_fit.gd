@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## A lobby of eight seats, every one with a calling card, an emblem and a frame, still fits (#1161).
-## A frame is drawn inside the seat's row, over its top and bottom edge (`LobbyScreen._show_plate`
+## A frame is drawn inside the seat's row, over its top and bottom edge (`LobbySeatRow.show_plate`
 ## keeps its room clear at the two ends only: the level's icon, 24 units in a 45 unit row, is clear
 ## of the border's 7), so a framed seat is as tall as a plain one. This holds that: the panel
 ## stays inside the window, nothing is cut or put under another control (`UiFit`, the check of
@@ -15,11 +15,14 @@ extends GdUnitTestSuite
 
 const TEST_PATH := "user://lobby_framed_fit.cfg"
 const SEATS := 8
-## [window, interface size]: the windows to read.
+## [window, interface size, pixel ratio]: the windows to read. The last is the phone as a web page
+## has it (#1197): an 844 x 390 CSS pixel page at the ratio of 2 is a 1688 x 780 window, which gets
+## the same 1169 x 540 canvas as the 844 x 390 window does.
 const CASES: Array = [
-	[Vector2i(1920, 1080), 1.0],
-	[Vector2i(1920, 1080), 1.25],
-	[Vector2i(844, 390), 1.0],
+	[Vector2i(1920, 1080), 1.0, 1.0],
+	[Vector2i(1920, 1080), 1.25, 1.0],
+	[Vector2i(844, 390), 1.0, 1.0],
+	[Vector2i(1688, 780), 1.0, 2.0],
 ]
 
 var _run: UiFitRun
@@ -112,7 +115,7 @@ func _numbers(lobby: LobbyScreen) -> Array[float]:
 
 ## One window's reading of the lobby, as the host or a guest, with plates or without.
 func _read(host: bool, framed: bool, window: Array) -> Dictionary:
-	await _run.set_window(window[0], window[1])
+	await _run.set_window(window[0], window[1], window[2])
 	var subject := await _open(host, framed)
 	var numbers := _numbers(subject["root"] as LobbyScreen)
 	var canvas: Rect2 = subject["canvas"]

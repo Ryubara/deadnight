@@ -28,6 +28,13 @@ const DEFAULT_CAPACITY := 3
 ## processor (`docs/research/crowd-budget.md`). One room may stand all of it; with three each
 ## stands 40.
 const DEFAULT_ALIVE_BUDGET := 120
+## Bots in all the rooms of a process together, unless told otherwise (`ServerConfig.bot_budget`,
+## shared by the open rooms: `BotLimits.for_room`). A room with any bot builds its frame on every
+## step and a bot costs about 0.3 ms more; eight people and seven bots in each of three rooms took
+## 27 ms of the 16.7 ms tick on Railway, and three rooms of eight people (no bots) are what the
+## tick holds (`docs/research/crowd-budget.md`, "Rooms of fifteen bodies"). Two bots: a lone room
+## seats both, two rooms one each, three none.
+const DEFAULT_BOT_BUDGET := 2
 ## Seconds between heartbeats (the default of `heartbeat_every`).
 const HEARTBEAT_EVERY := 5.0
 ## The least a room is cut to by the budget (rooms beyond the budget over this stand this many).
@@ -172,11 +179,11 @@ func room_of_match(match_id: String) -> NightHost:
 	return _rooms.get(match_id)
 
 
-## Players in each room, as a `{match id: count}` for the heartbeat.
+## People in each room (bots not counted), as a `{match id: count}` for the heartbeat.
 func players_by_match() -> Dictionary:
 	var out := {}
 	for match_id: String in _rooms:
-		out[match_id] = _rooms[match_id].player_count()
+		out[match_id] = _rooms[match_id].people_count()
 	return out
 
 

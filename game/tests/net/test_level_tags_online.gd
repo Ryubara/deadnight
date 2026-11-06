@@ -14,6 +14,9 @@ var _layers: Array[CanvasLayer] = []
 
 
 func after_test() -> void:
+	# The scoreboard key some tests hold stays held for the rest of the shard's process otherwise,
+	# and the next HUD suite would show a scoreboard (#1220).
+	Input.action_release(Hud.SCOREBOARD_ACTION)
 	for night in _nights:
 		if is_instance_valid(night):
 			night.get_parent().queue_free()

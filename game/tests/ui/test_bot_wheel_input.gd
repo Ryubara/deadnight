@@ -1,9 +1,11 @@
+# gdlint: disable=max-public-methods
 # The bot command wheel through the real input paths (#642): a key, a mouse, a pad that is not
 # device 0 and a finger go in as events, the night screen's driver reads them, and the order reaches
 # `BotOrderLink` (a stub here: `BotOrders` is #641's). Holding opens the wheel, the pointer picks,
 # letting go over an entry gives the order, a tap or the middle gives none, and the view stays still
-# while the wheel is held. The shoulder swap on C and the pings (middle mouse, Z, the pad, a touch
-# button) are proved the same way.
+# while the wheel is held. A phone has no wheel: a tap on the HUD's tag gives the next order of the
+# round through the same link (#1286). The shoulder swap on C and the pings (middle mouse, Z, the
+# pad, a touch button) are proved the same way.
 extends GdUnitTestSuite
 
 const MENU := "res://ui/screens/main_menu.tscn"
@@ -23,6 +25,15 @@ var _heard: Array[Dictionary] = []
 var _held: Array[InputEvent] = []
 var _fixture: TouchFixture
 var _arrival := false
+## The standing order the night's frame says: what the stub plays for the server, set by the stub
+## issuer (`_serve`) and read back by the driver like a frame.
+var _standing: StringName = BotWheel.DEFAULT_ORDER
+
+
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
 
 
 func before_test() -> void:
@@ -120,9 +131,9 @@ func _frames(count: int) -> void:
 
 ## The touch layer lets a short press go on frames (its minimum hold): waits, bounded, until the
 ## action is up, as the frames of a real night do.
-func _wait_for_release() -> void:
+func _wait_for_release(action := &"bot_wheel") -> void:
 	for _i in 120:
-		if not Input.is_action_pressed(&"bot_wheel"):
+		if not Input.is_action_pressed(action):
 			return
 		await get_tree().process_frame
 
@@ -248,13 +259,14 @@ func test_pausing_under_an_open_wheel_cancels_it() -> void:
 
 
 func test_the_hud_says_the_new_order_for_a_moment() -> void:
+	_serve()
 	var key := _bound(&"bot_wheel", false)
 	_send(key, true)
 	_frames(OPEN_FRAMES)
 	_point_mouse_at(BotWheel.HOLD)
 	_frames(1)
 	_send(key, false)
-	_frames(1)
+	_frames(2)
 	var said := false
 	for line in _screen.night.hud.notices.history:
 		said = said or line == BotWheel.NOTICES[BotWheel.HOLD]
@@ -363,60 +375,130 @@ func _touch_layer() -> TouchControls:
 	return controls
 
 
-func test_a_finger_holds_the_bots_button_and_drags_to_each_entry() -> void:
-	var controls := await _touch_layer()
-	for order in BotWheel.ORDERS:
+## A bot in the HUD's roster, so the tag shows (the night here has none of its own).
+func _room_with_bots() -> void:
+	_screen.night.hud.state.apply_event(
+		{"type": &"player_added", "player_id": NightBots.id_at(0), "bot": true}
+	)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
+## Stubs a server that keeps the order it is given, unless `refuse`: the issuer answers a command
+## either way (as a server's refusal travels back later), the standing order changes only when
+## it was taken.
+func _serve(refuse := false) -> void:
+	_standing = BotWheel.DEFAULT_ORDER
+	# The night here has not ticked, so it has no frame: the link reads none without something in it.
+	if _screen.night.state.frame.is_empty():
+		_screen.night.state.frame = {"stub": true}
+	_wheel().link.reader = func(_frame: Dictionary) -> StringName: return _standing
+	_wheel().link.issuer = func(order: StringName, issuer_id: int, at: Vector3) -> Dictionary:
+		_heard.append({&"order": order, &"issuer": issuer_id, &"at": at})
+		if not refuse:
+			_standing = order
+		return {&"type": &"order", &"order": order, &"at": at}
+
+
+## One tap on the tag, with the driver stepped by hand until the layer has let the action go.
+func _tap_the_tag() -> void:
+	await _fixture.touch(0, _fixture.zone_centre(HudBotOrder.ACTION))
+	_frames(2)
+	await _fixture.lift(0)
+	await _wait_for_release(HudBotOrder.ACTION)
+	_frames(3)
+
+
+func test_a_tap_on_the_tag_gives_the_next_order_of_the_round() -> void:
+	await _touch_layer()
+	await _room_with_bots()
+	_serve()
+	# Roam stands: Hold, then Follow, then Roam again.
+	for expected in [BotWheel.HOLD, BotWheel.FOLLOW, BotWheel.ROAM]:
 		_heard.clear()
-		var start := _fixture.at(TouchLayout.BOT_WHEEL)
-		# The left thumb is on the stick the whole time: two fingers, as a phone has.
-		var stick_at := Vector2(300.0, 800.0)
-		await _fixture.touch(1, stick_at)
-		await _fixture.touch(0, start)
-		_frames(OPEN_FRAMES)
-		assert_bool(controls.has_wheel_finger()).is_true()
-		var drag := BotWheel.direction_of(order) * BotWheel.TOUCH_REACH
-		await _fixture.drag(0, start + drag, drag)
-		_frames(2)
-		assert_str(_wheel().model.hovered()).is_equal(order)
-		await _fixture.lift(0)
-		await _wait_for_release()
-		_frames(GROW_FRAMES)
+		await _tap_the_tag()
 		(
 			assert_array(_heard)
-			. override_failure_message("a drag to %s gave %s" % [order, _heard])
+			. override_failure_message("a tap gave %s, expected %s" % [_heard, expected])
 			. has_size(1)
 		)
-		assert_str(_heard[0][&"order"]).is_equal(order)
-		await _fixture.lift(1)
+		assert_str(_heard[0][&"order"]).is_equal(expected)
+		assert_str(_wheel().model.current).is_equal(expected)
 
 
-func test_a_tap_on_the_bots_button_and_a_lift_in_the_middle_give_nothing() -> void:
+func test_the_feed_says_the_bots_state_once_the_order_stands() -> void:
 	await _touch_layer()
-	await _fixture.touch(0, _fixture.at(TouchLayout.BOT_WHEEL))
+	await _room_with_bots()
+	_serve()
+	await _tap_the_tag()
+	var said: Array[String] = []
+	said.assign(_screen.night.hud.notices.history)
+	assert_array(said).contains([BotWheel.NOTICES[BotWheel.HOLD]])
+	assert_str(BotWheel.NOTICES[BotWheel.HOLD]).is_equal("BOTS: HOLDING POSITION")
+
+
+func test_a_refused_order_changes_nothing_and_says_nothing() -> void:
+	await _touch_layer()
+	await _room_with_bots()
+	_serve(true)
+	# The server answers but keeps the order it had (too soon after another, say).
+	await _tap_the_tag()
+	assert_array(_heard).has_size(1)
+	assert_str(_wheel().model.current).is_equal(BotWheel.ROAM)
+	for line in _screen.night.hud.notices.history:
+		assert_str(line).not_contains("BOTS")
+	# The link refused it before it left (an order that cannot be sent): nothing at all.
+	_wheel().link.issuer = func(_o: StringName, _i: int, _a: Vector3) -> Dictionary: return {}
+	_heard.clear()
+	await _tap_the_tag()
+	assert_array(_heard).is_empty()
+	assert_str(_wheel().model.current).is_equal(BotWheel.ROAM)
+
+
+func test_a_tap_on_the_tag_while_the_night_is_paused_gives_nothing_then_or_after() -> void:
+	await _touch_layer()
+	await _room_with_bots()
+	_serve()
+	_screen.night.set_paused(true)
+	await _tap_the_tag()
+	assert_array(_heard).is_empty()
+	_screen.night.set_paused(false)
 	_frames(3)
-	await _fixture.lift(0)
-	await _wait_for_release()
-	_frames(GROW_FRAMES)
-	assert_array(_heard).is_empty()
-	await _fixture.touch(0, _fixture.at(TouchLayout.BOT_WHEEL))
-	_frames(OPEN_FRAMES)
-	await _fixture.lift(0)
-	await _wait_for_release()
-	_frames(GROW_FRAMES)
 	assert_array(_heard).is_empty()
 
 
-func test_a_drag_from_the_bots_button_does_not_turn_the_view() -> void:
-	await _touch_layer()
-	var start := _fixture.at(TouchLayout.BOT_WHEEL)
+func test_a_finger_on_the_tag_never_starts_the_stick_or_turns_the_view() -> void:
+	var controls := await _touch_layer()
+	await _room_with_bots()
+	_serve()
+	var looks: Array[Vector2] = []
+	controls.looked.connect(func(relative: Vector2) -> void: looks.append(relative))
 	var before := _yaw()
+	var start := _fixture.zone_centre(HudBotOrder.ACTION)
 	await _fixture.touch(0, start)
-	_frames(OPEN_FRAMES)
-	await _fixture.drag(0, start + Vector2(-80.0, 0.0), Vector2(-80.0, 0.0), 400.0)
+	for step in 6:
+		var at := start + Vector2(30.0, -20.0) * float(step + 1)
+		await _fixture.drag(0, at, Vector2(30.0, -20.0), 500.0)
 	await _fixture.settle_look()
+	assert_bool(controls.is_stick_down()).is_false()
+	assert_int(looks.size()).is_equal(0)
 	assert_float(_yaw()).is_equal(before)
 	await _fixture.lift(0)
-	_frames(GROW_FRAMES)
+	_frames(3)
+
+
+func test_the_tag_is_there_only_with_bots_and_only_under_a_finger() -> void:
+	var controls := await _touch_layer()
+	var hud := _screen.night.hud
+	assert_float(_fixture.zone_centre(HudBotOrder.ACTION).x).is_equal(INF)
+	await _room_with_bots()
+	assert_float(_fixture.zone_centre(HudBotOrder.ACTION).x).is_not_equal(INF)
+	assert_bool(hud.slots.bot_tag.is_visible_in_tree()).is_true()
+	controls.live = false
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_float(_fixture.zone_centre(HudBotOrder.ACTION).x).is_equal(INF)
+	controls.live = true
 
 
 # --- C swaps the shoulder, and Q no longer does ---

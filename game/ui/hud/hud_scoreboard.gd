@@ -21,8 +21,8 @@ const PING_CELL := 5
 ## Size of the armband chip before the name, and of a row's height.
 const CHIP := Vector2(10.0, 34.0)
 const ROW_HEIGHT := 46.0
-## The most players a night holds (the rows kept).
-const MAX_ROWS := NightHost.MAX_PLAYERS
+## The most bodies a night holds, people and bots (the rows kept).
+const MAX_ROWS := NightHost.MAX_SEATS
 ## A row of the local player is laid on a faint wash of the accent.
 const LOCAL_WASH := 0.14
 
@@ -40,10 +40,12 @@ var row_ids: Array[int] = []
 var row_levels: Array[int] = []
 
 var _t := HudTuning.current()
-var _grid := VBoxContainer.new()
-var _title_row := HBoxContainer.new()
-var _round := HudStyle.label("", HudStyle.MEDIUM, tokens.hot, true)
-var _clock := HudStyle.label("", HudStyle.MEDIUM, tokens.accent, true)
+## The card's rows and its title line are made the first time it is shown (a night's scoreboard is
+## held open now and then): built and hidden they would be eight canvas items of every night.
+var _grid: VBoxContainer
+var _title_row: HBoxContainer
+var _round: Label
+var _clock: Label
 var _stale := true
 
 
@@ -51,6 +53,16 @@ func _init() -> void:
 	super()
 	accent = tokens.hot
 	visible = false
+
+
+## Makes the title line and the list of rows the first time the card is shown.
+func _build() -> void:
+	if _grid != null:
+		return
+	_round = HudStyle.label("", HudStyle.MEDIUM, tokens.hot, true)
+	_clock = HudStyle.label("", HudStyle.MEDIUM, tokens.accent, true)
+	_title_row = HBoxContainer.new()
+	_grid = VBoxContainer.new()
 	_round.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_title_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -108,6 +120,7 @@ func refresh() -> void:
 		_stale = true
 		return
 	_stale = false
+	_build()
 	var ids := order()
 	has_ping = ids.any(func(id: int) -> bool: return int(state.team[id]["ping"]) >= 0)
 	HudStyle.set_text(_round, "ROUND %02d" % state.round_number)

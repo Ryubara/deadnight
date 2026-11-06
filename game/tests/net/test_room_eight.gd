@@ -1,6 +1,7 @@
 # A full room, eight seats over real WebSockets on this machine (#690): the server and its clients
 # each live in their own SubViewport world, the clients are hand-driven `Night`s that joined with
-# `start_remote`. Eight people, and five people with three bots, join one night and see each other;
+# `start_remote`. Eight people, five people with three bots, and eight people with seven bots
+# (#1179) join one night and see each other;
 # the round runs with a crowd of the dead for a while with everyone walking and shooting, and what
 # the server sent and received is counted in bytes per player per second of game time (the 60 Hz
 # step counts the time, so a loaded machine does not change the number).
@@ -17,6 +18,9 @@ const MEASURE_SECONDS := 10.0
 ## the most a person sends (a command is 25 bytes, 60 times a second at most).
 const DOWN_BUDGET := 30000.0
 const UP_BUDGET := 2000.0
+## The same with eight people and seven bots (15 bodies in every frame; 21 KB/s measured, with more
+## dead alive than 8 people alone), `docs/research/multiplayer.md#eight-people-and-bots-1179`.
+const BOTS_DOWN_BUDGET := 30000.0
 
 var _host: NightHost
 var _nights: Array[Night] = []
@@ -175,7 +179,27 @@ func test_five_people_and_three_bots_share_one_night_and_the_bytes_per_person_st
 	await _fill(people, 5, NightHost.MAX_PLAYERS)
 	assert_int(_host.player_count()).is_equal(5)
 	assert_int(_host.bots.count()).is_equal(3)
-	assert_array(_host.bots.seats()).is_equal([6, 7, 8])
+	assert_array(_host.bots.seats()).is_equal([101, 102, 103])
 	var seen := await _measure("people+bots", people)
 	assert_float(seen["down"]).is_less(DOWN_BUDGET)
 	assert_float(seen["up"]).is_less(UP_BUDGET)
+
+
+func test_eight_people_and_seven_bots_share_one_night_and_every_client_sees_all_fifteen() -> void:
+	# The cap of 8 is people alone (#1179): the bots come on top, 15 bodies in one night.
+	await _server(MatchSettings.MAX_BOTS)
+	var people: Array[Night] = []
+	await _fill(people, NightHost.MAX_PLAYERS, NightHost.MAX_SEATS)
+	assert_int(_host.player_count()).is_equal(NightHost.MAX_PLAYERS)
+	assert_int(_host.people_count()).is_equal(NightHost.MAX_PLAYERS)
+	assert_int(_host.bots.count()).is_equal(MatchSettings.MAX_BOTS)
+	for i in people.size():
+		assert_int(people[i].state.player_id).is_equal(i + 1)
+	var seen := await _measure("8 people+7 bots", people)
+	assert_float(seen["down"]).is_less(BOTS_DOWN_BUDGET)
+	assert_float(seen["up"]).is_less(UP_BUDGET)
+	assert_int(seen["alive"]).is_greater(0)
+	for night in people:
+		assert_int((night.state.frame["players"] as Dictionary).size()).is_equal(
+			NightHost.MAX_SEATS
+		)

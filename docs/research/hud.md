@@ -211,7 +211,8 @@ What building `HudChallenge` (the paper ticket that says a challenge moved) taug
   with four players, and then the objective's two lines at its top. The layout test (the busiest HUD at every canvas,
   with the longest challenge words) found both; the fix is structural, not a nudge: the card starts a third of the way
   down and `Hud._fit_challenge` moves it down to a gap under the last card above it (`item_rect_changed`), so a taller
-  objective pushes it instead of being overlapped.
+  objective pushes it instead of being overlapped. On a phone that is not enough (the column is lifted by a fingertip
+  strip): [the challenge card on a phone](challenge-card-phone.md).
 - **The prompt is a part like the others: events in, nothing out.** `HudChallenge` hears `challenge_advanced` through
   `state.event_applied` and holds no game object; the link that makes those events (`ChallengeHudLink`) lives with the
   challenges. Its queue (`ChallengePromptQueue`) is plain data and a clock the caller moves, so a test steps 50 ms at a
@@ -247,3 +248,18 @@ no less than 48 when the card is at its floor. At 1536 x 864 Leave ends at y 828
 the fullest report and the credits. `tests/ui/test_end_board_fit.gd` (with `EndBoardFixtures`) checks every part
 of the column, and `tests/captures/end_board_fullest_capture.tscn` draws it (`--scale=1.25` is the 1536 x 864
 canvas in a 1920 x 1080 window).
+
+**Eight people and seven bots (#1179).** The cap of eight is people; the bots come on top, so the HUD, the scoreboard and
+the end board hold up to 15 bodies (`NightHost.MAX_SEATS`). What that did, found by the layout tests and read in captures
+(`players8_hud.tscn --people=8 --bots=7`, `end_board_fullest_capture.tscn --players=8 --bots=7`, desktop and 844 x 390 at
+the night's own UI scale, which `NightScreen` sets on a phone too, not the menu's phone factor):
+
+- The points column: fifteen boxes are 598 units high and overlapped the round and objective cards at 864 high (by 31 to
+  123 units). Past eight bodies the bots are chips (`HudBotChips`: the name in the seat's colour, outlined on the HUD's
+  dark,
+  four to a row, dim and red while down), 397 units for the whole column; under that every bot has a box.
+- The scoreboard takes 15 rows of 46 on every canvas of its test (`test_hud_scoreboard.gd`).
+- The end board: the credits are the people's only past eight bodies, they are left off when the screen cannot give every
+  row its floor (they need 948 units, so not at 864), the extra rows' gaps come off the room, and a row's type steps down
+  when the row is shorter than the font (the label was growing the ticket past the screen).
+- The armband colours repeat for the bots (8 colours, 15 bodies).

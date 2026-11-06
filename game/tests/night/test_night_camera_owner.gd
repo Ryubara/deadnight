@@ -12,6 +12,12 @@ const BOTS := 3
 const TICKS := 90
 
 
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
+
+
 func after_test() -> void:
 	await RouterFixture.clear(get_tree())
 
@@ -86,7 +92,7 @@ func test_the_view_stays_when_a_bot_seat_is_freed_and_filled_again() -> void:
 	night.server.apply({"type": NightServer.LEAVE, "player_id": leaver})
 	NightFixture.run(night, 2)
 	_assert_the_view_is_the_persons(night)
-	night.bots.fill(BOTS, [Night.PLAYER_ID])
+	night.bots.fill(BOTS)
 	NightFixture.run(night, TICKS)
 	assert_int(night.bots.count()).is_equal(BOTS)
 	_assert_the_view_is_the_persons(night)

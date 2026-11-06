@@ -210,6 +210,9 @@ static func snapshot(top: Control) -> Dictionary:
 		"stalls": 0,
 		"stall_longest_ms": 0.0,
 		"yaw": 0.0,
+		"crouching": false,
+		"shoulder_side": 0.0,
+		"touch_slop": 0.0,
 		"interpolated": false,
 		"room_code": "",
 		"room_status": "",
@@ -224,6 +227,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"lobby_buttons": "",
 		"lobby_rules": "",
 		"lobby_rules_editable": false,
+		# The Private night switch: "" when the lobby has none, else "on" (private) or "off".
+		"lobby_private": "",
 		"play_rules": "",
 		"play_map": "",
 		"lobby_map": "",
@@ -231,6 +236,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"night_rules": "",
 		"night_map": "",
 		"bots": 0,
+		"bot_order": "",
+		"bot_tag": "",
 		"notices": "",
 		"code_text": "",
 		"notice_log": "",
@@ -241,18 +248,55 @@ static func snapshot(top: Control) -> Dictionary:
 		"weapon_slot_held": 0,
 		"settings_open": false,
 		"menu_buttons": "",
+		"menu_button_sizes": "",
+		"touch_hits": "",
+		"touch_zones": "",
+		"hud_cards": "",
+		"touch_held": "",
+		"touch_strike": false,
+		"kills": 0,
+		"quick_melees": 0,
+		"dead_gap_m": -1.0,
+		"touch_stick": "",
+		"touch_hints": "",
+		"ground_speed": 0.0,
+		"sprinting": false,
+		"grenade_cooking": false,
+		"grenade_count": 0,
 		"tab": "",
 		"stage": "",
-		"quick_join": "",
+		"browser": "",
+		"browser_status": "",
+		"browser_note": "",
 		"gamepad": "",
 		"signed_in": TogetherApi.signed_in(),
 		"controller_hint": false,
 		"clipboard": "",
 		"clipboard_detail": "",
-		"focus": ""
+		"focus": "",
+		# Which scale the page runs at (#1197): its CSS size, the canvas, the content scale factor
+		# and the canvas in units, as `page_w,page_h|canvas_w,canvas_h|factor|units_w,units_h`.
+		"layout": "",
+		"phone": false,
+		"ui_audit": "",
+		# The menu's header and the Loadout card (#1271): the units of a tab the plate covers, and
+		# how many wardrobe items are whole in the card's view (-1 off the Loadout tab).
+		"header_overlap": 0.0,
+		"loadout_items": -1
 	}
 	if top == null:
 		return data
+	if top.is_inside_tree():
+		var window_size := top.get_window().size
+		data["layout"] = _layout(top)
+		data["phone"] = MenuScale.is_phone(window_size)
+		if _audit_asked():
+			# A night's card is measured alone: the night's HUD behind it is another page's (#1192).
+			var seen: Node = top
+			var night := top as NightScreen
+			if night != null and night.card_root() != null:
+				seen = night.card_root()
+			data["ui_audit"] = UiAudit.scan(seen, PageSize.css_per_pixel(window_size)).summary()
 	data["screen"] = top.scene_file_path.get_file().get_basename()
 	if top.is_inside_tree():
 		# The control that has the keyboard, so a browser test walks to a button by its name (a
@@ -272,16 +316,23 @@ static func snapshot(top: Control) -> Dictionary:
 		else null
 	)
 	data["controller_hint"] = hint != null and hint.label.is_visible_in_tree()
-	if top is MainMenu or top is PlayScreen or top is LobbyScreen:
+	if (
+		top is MainMenu
+		or top is PlayScreen
+		or top is LobbyScreen
+		or top is ServerBrowserScreen
+		or top is TogetherScreen
+	):
 		# Where a finger taps each start and button, as fractions of the window.
 		data["spots"] = _spots(top)
 	var menu := top as MainMenu
 	if menu != null and menu.shell != null:
 		data["tab"] = MenuTab.label(menu.shell.tab)
+		data["header_overlap"] = menu.shell.header_overlap()
+		if menu.shell.tab == MenuTab.Id.LOADOUT:
+			var loadout := menu.shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
+			data["loadout_items"] = loadout.wardrobe.whole_cells_in_view()
 		data["stage"] = ["live", "half", "still"][menu.shell.view.level]
-		# Quick join's card over the menu: what it says while it searches or after it failed.
-		var card := menu.find_child("QuickJoin", false, false) as QuickJoinOverlay
-		data["quick_join"] = card.text() if card != null and card.visible else ""
 	var together := top as TogetherScreen
 	if together != null:
 		# What the screen says (a browser test reads it); the code is the lobby screen's.
@@ -289,6 +340,13 @@ static func snapshot(top: Control) -> Dictionary:
 		# The name prompt is up (a browser test types a name into it).
 		data["naming"] = together.name_field.is_visible_in_tree()
 		data["code_text"] = together.code_field.text  # what a paste put into the code field
+	var browser := top as ServerBrowserScreen
+	if browser != null:
+		# The Server Browser: what it says, the note under it, and the rows as `CODE kind
+		# people/seats map host`.
+		data["browser_status"] = browser.status.text
+		data["browser_note"] = browser.note.text
+		data["browser"] = browser.rows_text()
 	var lobby := top as LobbyScreen
 	if lobby != null:
 		# The lobby: its code, the seats as `1 Ann HOST|2  Bo|...`, the standing line, the last
@@ -306,6 +364,9 @@ static func snapshot(top: Control) -> Dictionary:
 		data["lobby_buttons"] = "|".join(buttons)
 		data["lobby_rules"] = lobby.rules_text() if lobby.rules.is_visible_in_tree() else ""
 		data["lobby_rules_editable"] = lobby.rules_editable()
+		var private_row := lobby.private_switch
+		if private_row != null and private_row.toggle.is_visible_in_tree():
+			data["lobby_private"] = "on" if private_row.is_private() else "off"
 		# The map the lobby shows: the picker's choice in a lobby, the ticket of a code looked at.
 		data["lobby_map"] = (
 			lobby.rules.map_picker.selected_id
@@ -350,6 +411,14 @@ static func snapshot(top: Control) -> Dictionary:
 	var player: Player = night_screen.night.player() if night_screen.night.server != null else null
 	if player != null:
 		data["yaw"] = player.camera_rig.yaw  # so a browser test can see the mouse turn the view
+		# So a browser test can measure the walk and the sprint the stick asks for (#1276).
+		data["ground_speed"] = player.ground_speed()
+		data["sprinting"] = player.is_sprinting()
+		data["crouching"] = player.state.crouching  # the touch layer's Crouch toggle (#1277)
+		# The shoulder the camera is on (+1 or -1), and the finger's slop in canvas units, so a
+		# browser test sees a double tap swap it (#1288).
+		data["shoulder_side"] = player.state.shoulder_side
+		data["touch_slop"] = TouchSlop.units(night_screen.get_window())
 		# So a browser test can see the view is the person's own soldier, not a bot's (#702).
 		data["view_is_players"] = (
 			player.get_viewport().get_camera_3d() == player.camera_rig.camera()
@@ -371,10 +440,29 @@ static func snapshot(top: Control) -> Dictionary:
 		data["weapon"] = String(hud_state.weapon_id)
 		data["weapon_slots"] = ",".join(PackedStringArray(hud_state.slot_ids))
 		data["weapon_slot_held"] = hud_state.slot_held
+		# The standing order the frames say, and the word on the bots' tag when it is shown.
+		data["bot_order"] = String(hud_state.bot_order)
+		var tag := night_screen.night.hud.slots.bot_tag
+		data["bot_tag"] = tag.word() if tag != null and tag.is_visible_in_tree() else ""
 	data["touch"] = night_screen.touch_active()
 	data["reticle"] = night_screen.reticle_shown()
 	data["settings_open"] = night_screen.settings_open()
 	data["menu_buttons"] = _button_spots(night_screen)
+	data["menu_button_sizes"] = _button_sizes(night_screen)
+	data["touch_hits"] = _touch_hits(night_screen)
+	data["touch_zones"] = _touch_zones(night_screen)
+	data["hud_cards"] = _hud_cards(night_screen)
+	var night := night_screen.night
+	if night != null and night.server != null and night.server.grenades != null:
+		data["grenade_cooking"] = night.server.grenades.is_cooking(night.state.player_id)
+		data["grenade_count"] = night.hud.state.grenades if night.hud != null else 0
+	data["touch_held"] = ",".join(night_screen.touch_held())
+	data["touch_strike"] = night_screen.touch_strike_up()  # a dead is in reach: Strike shows (#1285)
+	data["kills"] = state.kills
+	data["quick_melees"] = state.quick_melees
+	data["dead_gap_m"] = StrikeReach.nearest(state)
+	data["touch_stick"] = night_screen.touch_stick()
+	data["touch_hints"] = ",".join(night_screen.touch_hints())
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)
@@ -406,6 +494,112 @@ static func _button_spots(screen: NightScreen) -> String:
 	return _spots(screen)
 
 
+## `page_w,page_h|canvas_w,canvas_h|factor|units_w,units_h|css_per_unit` of the screen's window.
+static func _layout(top: Control) -> String:
+	var window := top.get_window()
+	var units := top.get_viewport().get_visible_rect().size
+	var page := PageSize.css(window.size)
+	return (
+		"%.1f,%.1f|%d,%d|%.3f|%.1f,%.1f|%.4f"
+		% [
+			page.x,
+			page.y,
+			window.size.x,
+			window.size.y,
+			window.content_scale_factor,
+			units.x,
+			units.y,
+			MenuScale.css_per_unit(window.size, window.content_scale_factor)
+		]
+	)
+
+
+## Whether the page wants the ruler's numbers of each screen (`window.deadnight_audit`).
+static func _audit_asked() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	return int(JavaScriptBridge.eval("window.deadnight_audit ? 1 : 0", true)) == 1
+
+
+## The night's shown buttons as `text:w,h`: the size as fractions of the window, so a browser test
+## reads the size a finger meets in CSS pixels (#1192).
+static func _button_sizes(screen: NightScreen) -> String:
+	if not screen.is_inside_tree():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var found: Array[String] = []
+	for node in screen.find_children("*", "UIButton", true, false):
+		var button := node as UIButton
+		if button.is_visible_in_tree():
+			var share := button.get_global_rect().size / size
+			found.append("%s:%.5f,%.5f" % [button.text, share.x, share.y])
+	return "|".join(found)
+
+
+## The touch layer's hit areas as `id:x,y,hit,was`: the centre as fractions of the window's width
+## and height, the two radii as fractions of its height, so a browser test reads CSS pixels and taps
+## inside a hit area (#1217).
+static func _touch_hits(screen: NightScreen) -> String:
+	if not screen.is_inside_tree() or not screen.touch_active():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var circles := screen.touch_circles()
+	var found: Array[String] = []
+	for id: StringName in circles:
+		var circle: Dictionary = circles[id]
+		var at: Vector2 = circle[&"centre"] / size
+		found.append(
+			(
+				"%s:%.5f,%.5f,%.5f,%.5f"
+				% [id, at.x, at.y, float(circle[&"hit"]) / size.y, float(circle[&"was"]) / size.y]
+			)
+		)
+	return "|".join(found)
+
+
+## The HUD's weapon places as `action:x,y,w,h`: the centre and the size as fractions of the window's
+## width and height, so a browser test reads CSS pixels (#1280).
+static func _touch_zones(screen: NightScreen) -> String:
+	if not screen.is_inside_tree() or not screen.touch_active():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var found: Array[String] = []
+	for zone in screen.touch_zones():
+		var rect: Rect2 = zone[&"rect"]
+		var at := rect.get_center() / size
+		var share := rect.size / size
+		found.append("%s:%.5f,%.5f,%.5f,%.5f" % [zone[&"action"], at.x, at.y, share.x, share.y])
+	return "|".join(found)
+
+
+## The HUD's round card, objective, players' column and health card as `name:x,y,w,h`: the top left
+## corner and the size as fractions of the window's width and height (the round card on a phone,
+## #1305).
+static func _hud_cards(screen: NightScreen) -> String:
+	var hud := screen.night.hud if screen.night != null else null
+	if hud == null or not screen.is_inside_tree():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var found: Array[String] = []
+	for card: Control in [hud.round_part, hud.objective, hud.points, hud.health]:
+		if not card.is_visible_in_tree():
+			continue
+		var rect := card.get_global_rect()
+		found.append(
+			(
+				"%s:%.5f,%.5f,%.5f,%.5f"
+				% [
+					card.name,
+					rect.position.x / size.x,
+					rect.position.y / size.y,
+					rect.size.x / size.x,
+					rect.size.y / size.y
+				]
+			)
+		)
+	return "|".join(found)
+
+
 ## The screen's shown buttons as `text:x,y` (the centre, as fractions of the window): the
 ## `UIButton`s and the menu's `MenuItemButton`s (by their title).
 static func _spots(screen: Control) -> String:
@@ -424,6 +618,13 @@ static func _spots(screen: Control) -> String:
 			continue
 		var at := button.get_global_rect().get_center() / size
 		spots.append("%s:%.4f,%.4f" % [text, at.x, at.y])
+	var browser := screen as ServerBrowserScreen
+	if browser != null:
+		# Each night's row, to tap it: `night_<CODE>`.
+		for row in browser.rows():
+			if row.is_visible_in_tree():
+				var middle := row.get_global_rect().get_center() / size
+				spots.append("night_%s:%.4f,%.4f" % [row.entry.code, middle.x, middle.y])
 	var play := screen as PlayScreen
 	var lobby := screen as LobbyScreen
 	var panel: MatchSettingsPanel = (
@@ -446,4 +647,10 @@ static func _spots(screen: Control) -> String:
 		for card in panel.map_picker.cards:
 			var middle := card.get_global_rect().get_center() / size
 			spots.append("map_%s:%.4f,%.4f" % [card.info.id, middle.x, middle.y])
+	if lobby != null and lobby.private_switch != null:
+		# The host's Private night switch, to tap it: `private`.
+		var toggle := lobby.private_switch.toggle
+		if toggle != null and lobby.private_switch.editable and toggle.is_visible_in_tree():
+			var at := toggle.get_global_rect().get_center() / size
+			spots.append("private:%.4f,%.4f" % [at.x, at.y])
 	return "|".join(spots)

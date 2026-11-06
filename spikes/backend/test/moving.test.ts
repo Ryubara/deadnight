@@ -123,18 +123,18 @@ test("a sole member who closed the tab of a waiting lobby is not refused for it"
   assert.equal(failure(() => lobbies.get(abandoned.id)), "not_found");
 });
 
-test("quick join moves a player to a night, and never hands back the one the game server says they left", () => {
+test("joining a night from the list moves a player to it, and never hands back the one the game server says they left", () => {
   const { lobbies, running } = service();
-  const night = lobbies.quick(alice, 1); // public, started
-  lobbies.quick(bob, 1);
+  const night = lobbies.start(lobbies.create(alice, 8).id, "alice", 1); // public, started
+  lobbies.join(night.id, bob);
   const matchId = night.match!.id;
-  assert.equal(lobbies.quick(alice, 1).id, night.id); // asking again while in it is the same night
+  assert.equal(lobbies.join(night.id, alice).id, night.id); // asking again while in it is the same night
   // alice's seat on the game server is empty (she went to the menu): she is no longer a member.
   lobbies.memberLeft(matchId, "alice");
   assert.deepEqual(lobbies.get(night.id).members.map((m) => m.userId), ["bob"]);
-  // She creates a lobby of her own: not refused. Quick join from there leaves it.
+  // She creates a lobby of her own: not refused. Joining the night from there leaves it.
   const mine = lobbies.create(alice, 8);
-  const again = lobbies.quick(alice, 1);
+  const again = lobbies.join(night.id, alice);
   assert.equal(failure(() => lobbies.get(mine.id)), "not_found");
   assert.ok(again.members.some((m) => m.userId === "alice"));
   assert.ok(running.size >= 1);
@@ -154,7 +154,7 @@ test("the game server saying a seat is empty takes the member out, and the last 
   lobbies.memberLeft(matchId, "bob"); // idempotent
 });
 
-test("over HTTP: create, join and quick never answer 409, and the game server's left call frees the member", async () => {
+test("over HTTP: create and join never answer 409, and the game server's left call frees the member", async () => {
   const env = {
     SESSION_SECRET: "s".repeat(32),
     TICKET_SECRET: "t".repeat(32),
@@ -182,12 +182,17 @@ test("over HTTP: create, join and quick never answer 409, and the game server's 
   const [ann, bo] = [await guest("Ann"), await guest("Bo")];
 
   const first = (await call("POST", "/lobbies", ann, {})).json();
-  assert.equal((await call("POST", "/lobbies", ann, {})).statusCode, 201); // her old lobby is gone, not a 409
+  // Her old lobby is gone, not a 409.
+  assert.equal((await call("POST", "/lobbies", ann, { visibility: "private" })).statusCode, 201);
   assert.equal((await call("GET", `/lobbies/${first.id}`, ann)).statusCode, 404);
-  const night = (await call("POST", "/lobbies/quick", bo)).json();
+  // Bo's night is a public one in progress, and shows in the list.
+  const bos = (await call("POST", "/lobbies", bo, {})).json();
+  const night = (await call("POST", `/lobbies/${bos.id}/start`, bo, {})).json();
+  const listed = (await call("GET", "/lobbies", ann)).json();
+  assert.deepEqual(listed.nights.map((row: { id: string }) => row.id), [night.id]);
   const joined = await call("POST", "/lobbies/join-by-code", ann, { code: night.code });
   assert.equal(joined.statusCode, 200); // a public night joined from her waiting lobby
-  assert.equal((await call("POST", "/lobbies/quick", ann)).json().id, night.id);
+  assert.equal((await call("POST", "/lobbies/join-by-code", ann, { code: night.code })).json().id, night.id);
 
   // The game server says Bo's seat is empty: he is out of the night and free to make another.
   const bound = await call("POST", `/internal/matches/${night.matchId}/left`, auth, { userId: night.members[0].userId });

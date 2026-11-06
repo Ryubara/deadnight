@@ -13,9 +13,19 @@ const FADE_OUT_S := 2.1
 const FADE_IN_S := 3.1
 
 var _saved_path: String
+var _arrival := false
+
+
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
 
 
 func before_test() -> void:
+	_arrival = NightScreen.arrival_enabled
+	# No drop due, as headless always has it (`--noarrival`): this suite is not about the drop.
+	NightScreen.arrival_enabled = false
 	await RouterFixture.clear(get_tree())
 	Audio.stop_beds(true)
 	_saved_path = Settings.path
@@ -25,6 +35,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	NightScreen.arrival_enabled = _arrival
 	await RouterFixture.clear(get_tree())
 	Audio.stop_beds(true)
 	MainMenu.board_factory = Callable()

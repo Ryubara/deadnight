@@ -45,9 +45,13 @@ the inner detail disappears and the ink rim stays. No texture is loaded, so noth
 lesson of `LevelIcons`) and the same code is sharp at any size. The free choices (a face, a hair style, a mouth) are
 their names on a plate: eight mouths are told apart by name.
 
-**Phone.** The cells are 104 by 114 units (colours 84 by 100), 62 units being the least a finger gets, the ten tabs fit
-one row (7 units of padding, 22-unit type), and the grid scrolls under the detail line. The weapon row of the Loadout
-tab sits on the Body tab there, so the other tabs have the whole panel.
+**Phone.** The cells are 104 by 114 units (colours 84 by 100), 64 units being the least a finger gets, the ten tabs
+fit one row of the narrowest card (5 units of padding, 21-unit type: 14.6 CSS px on the 667 x 375 page), and the card
+opens on a full row of items (#1271). Its chrome is cut to make room, since a phone leaves the tab 372 units: the
+card's own margins are 8 and 6 units (the theme's are 32 and 24), and the Randomize button and the detail line share
+the card's last row (the "saved" line is kept up to date and not shown). The weapon row of the Loadout tab sits at the
+end of the Body tab's page there, so the grid is what shows first, and the focus starts on the wardrobe's tab, not on
+the weapon row below the fold.
 
 Input: a cell is one focus stop. Left, right, up and down walk the grid (the engine's nearest-control walk); up from the
 first row goes to the tab on show; down from a tab goes to the page's first cell; accept wears.

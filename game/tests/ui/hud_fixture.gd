@@ -14,15 +14,26 @@ var hud: Hud
 ## A HUD inside `host` (any Control the test owns) over a fresh night with `players` players, named
 ## Ruby, Moe, Dee, Cal, Ned, Ivy, Sal and Pat, the first being the local one. Not started. The
 ## portraits and the weapon silhouettes build no 3D world unless `portraits` (a suite about them
-## says so): the picture does not change a layout.
-static func make(host: Control, players := 1, seed_value := 1958, portraits := false) -> HudFixture:
+## says so): the picture does not change a layout. `bots` more players are the room's bots (ids
+## from `NightBots.FIRST_ID`, the cast's names, flagged as bots): the people are 8 at most and the
+## bots come on top.
+static func make(
+	host: Control, players := 1, seed_value := 1958, portraits := false, bots := 0
+) -> HudFixture:
 	HudPortrait.live = portraits
 	WeaponSilhouettes.live = portraits
+	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
+	host.add_child(hud)
+	return over(hud, players, seed_value, bots)
+
+
+## The same night over a HUD that already stands (a touch fixture's, wired to its controls), with
+## the portraits and silhouettes as they are.
+static func over(hud: Hud, players := 1, seed_value := 1958, bots := 0) -> HudFixture:
 	var fixture := HudFixture.new()
 	var tuning := (load(TUNING) as RulesTuning).duplicate(true)
 	fixture.rules = GameRules.new(tuning, seed_value)
-	fixture.hud = (load(Hud.SCENE) as PackedScene).instantiate()
-	host.add_child(fixture.hud)
+	fixture.hud = hud
 	var state := fixture.hud.state
 	state.special_schedule = HudSpecials.schedule_of(tuning.specials)
 	state.configure(
@@ -32,6 +43,10 @@ static func make(host: Control, players := 1, seed_value := 1958, portraits := f
 	for i in players:
 		state.set_player_name(i + 1, names[i])
 		fixture.act(RulesAction.add_player(i + 1))
+	for i in bots:
+		var id := NightBots.id_at(i)
+		state.set_player_name(id, NightBots.name_for(id))
+		fixture.act(RulesAction.add_player(id, true))
 	return fixture
 
 

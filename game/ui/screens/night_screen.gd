@@ -66,7 +66,7 @@ static var own_look: CharacterLook
 static var challenge_path := ""
 ## The profile file a person's night adds its XP to ('' for tests and captures: no file is touched).
 static var profile_path := ""
-## The lobby the night was entered from (a lobby screen, the Together screen, Quick join set them:
+## The lobby the night was entered from (a lobby screen, the Server Browser set them:
 ## `remember_lobby`) and the way to ask the backend about it; taken once, as `join_url` is. At the
 ## end of the night the player goes back to this lobby, which the backend opens again for them.
 static var return_api: TogetherApi
@@ -96,10 +96,13 @@ var _lobby_api: TogetherApi
 var _left := false
 var _loading: LoadingOverlay
 var _touch: TouchControls
+var _strike_reach := StrikeReach.new()
 var _overlay: Control
 var _title: UILabel
 var _note: UILabel
 var _card: Control
+## The card and the settings, laid out at the menu's phone factor on a phone (`PhoneScale`, #1205).
+var _scaled: PhoneScale
 var _resume: UIButton
 var _settings_button: UIButton
 var _quit: UIButton
@@ -124,6 +127,14 @@ static func look_from_flag(text: String) -> CharacterLook:
 
 func _exit_tree() -> void:
 	MenuPopups.set_night(false)
+	# The screen under a night (the Play screen Leave night returns to) is the menu's and runs on
+	# the menu's factor: the shell is hidden under it and cannot put the factor back (#1197). A
+	# frame later: the factor emits `size_changed`, and this screen's parts have left the tree.
+	var window := get_window()
+	if window != null and is_inside_tree():
+		get_tree().process_frame.connect(
+			MenuShell.restore_scale_of.bind(get_tree()), CONNECT_ONE_SHOT
+		)
 
 
 func _ready() -> void:
@@ -173,13 +184,24 @@ func _ready() -> void:
 	_touch.safe_insets_changed.connect(_on_safe_insets_changed)
 	_touch.mirrored_changed.connect(_on_mirrored_changed)
 	_touch.active_changed.connect(func(active: bool) -> void: _hud.touch_layout = active)
+	_touch.layout_changed.connect(_keep_markers_off_the_buttons)
+	# The HUD's weapon places are the phone's weapon controls (#1280): the layer asks it where they
+	# are, and the world markers keep clear of them as of the buttons.
+	_touch.zones = _hud.slots.touch_zones
+	_hud.slots_moved.connect(_keep_markers_off_the_buttons)
 	_touch.look_gain = _look_gain
+	# Strike shows while a dead is within the quick melee's reach, on this client's picture (#1285).
+	_touch.strike_ready = _strike_ready
+	# A hit area is never under a fingertip, at the interface size this night runs at (#1217).
+	_touch.finger_units = func() -> float: return MenuScale.tap_units(get_window(), true)
+	# The stick's ring and its sprint edge are CSS pixels of the page (#1276).
+	_touch.css_per_unit = func() -> float:
+		return MenuScale.css_per_unit(get_window().size, get_window().content_scale_factor)
 	add_child(_touch)
 	wheel = BotWheelDriver.new()
 	wheel.name = "BotWheelDriver"
 	wheel.night = night
 	wheel.hud_wheel = _hud.bot_wheel
-	wheel.touch = _touch
 	add_child(wheel)
 	_build_end()
 	_build_overlay()
@@ -204,14 +226,73 @@ func _start_if_run_alone() -> void:
 		screen_enter()
 
 
+## Hands the world markers every box a finger presses: the buttons and the weapon places.
+func _keep_markers_off_the_buttons() -> void:
+	_hud.markers.held = _touch.button_boxes()
+
+
 ## True while the touch controls are on screen and taking touches.
 func touch_active() -> bool:
 	return _touch != null and _touch.is_active()
 
 
+## The touch layer's circles (`TouchLayout.buttons`) and the buttons a finger is on (a browser test
+## reads them).
+func touch_circles() -> Dictionary:
+	return _touch.circles() if _touch != null else {}
+
+
+## The HUD's weapon places a finger presses (`HudSlots.touch_zones`): a browser test reads them.
+func touch_zones() -> Array[Dictionary]:
+	return _hud.slots.touch_zones() if _hud != null else []
+
+
+## True while the Strike button shows: a dead is within reach of the quick melee (a browser test
+## reads it).
+func touch_strike_up() -> bool:
+	return _touch != null and _touch.strike_up
+
+
+func touch_held() -> PackedStringArray:
+	return _touch.held_buttons() if _touch != null else PackedStringArray()
+
+
+## The move stick as `down,sprint,vx,vy,radius,margin` (a browser test reads it): a finger on it,
+## the sprint latch, the move it asks for, and the ring and the sprint margin in canvas units.
+func touch_stick() -> String:
+	if _touch == null:
+		return ""
+	return (
+		"%d,%d,%.3f,%.3f,%.1f,%.1f"
+		% [
+			int(_touch.is_stick_down()),
+			int(_touch.is_sprinting()),
+			_touch.stick_vector().x,
+			_touch.stick_vector().y,
+			_touch.stick_radius(),
+			_touch.sprint_margin(),
+		]
+	)
+
+
+## The first-run hints on screen now (a browser test reads them).
+func touch_hints() -> PackedStringArray:
+	var ids := PackedStringArray()
+	if _touch != null and _touch.hints != null:
+		for id in _touch.hints.showing():
+			ids.append(String(id))
+	return ids
+
+
 ## True while the settings page of the menu is open (a browser test reads it).
 func settings_open() -> bool:
 	return _settings != null
+
+
+## The pause card with its Settings while it is on screen, else null: what a person's finger meets
+## over the night, which a probe measures alone (#1205).
+func card_root() -> Control:
+	return _overlay if _overlay != null and _overlay.visible else null
 
 
 ## True while the HUD is on screen (the arrival's show hides it, #1057).
@@ -295,6 +376,12 @@ func _look_gain() -> float:
 	return night.assist.friction() if night != null and night.assist != null else 1.0
 
 
+## Whether a dead is within reach of the quick melee: the phone's Strike button shows (no traffic of
+## its own, only the picture of the night this client has).
+func _strike_ready() -> bool:
+	return night != null and _strike_reach.update(night.state)
+
+
 ## A left-handed layout swaps the HUD's corner columns with the buttons.
 func _on_mirrored_changed(mirrored: bool) -> void:
 	_hud.mirrored = mirrored
@@ -353,8 +440,12 @@ func _on_arrival_started() -> void:
 	_touch.live = false
 
 
-## The drop is over and the night is the player's.
+## The drop is over and the night is the player's. A night that ended under it (`Night._on_over`
+## closes the show when the end arrives, after this screen has put the board up) is not: the board
+## stays alone over the end camera.
 func _on_arrival_ended() -> void:
+	if _end.visible:
+		return
 	_hud.show()
 	if not _overlay.visible:
 		_hud.reticle.set_shown(true)
@@ -468,6 +559,7 @@ func _show_overlay(title: String, note: String, can_resume: bool) -> void:
 	_touch.live = false
 	_title.text = title
 	_note.text = note
+	_fit_taps()
 	_resume.visible = can_resume
 	_settings_button.visible = can_resume
 	_overlay.show()
@@ -489,7 +581,7 @@ func _open_settings() -> void:
 	_settings = (load(SETTINGS_SCENE) as PackedScene).instantiate() as SettingsScreen
 	_settings.embedded = true
 	_settings.closed.connect(_close_settings)
-	_overlay.add_child(_settings)
+	_scaled.add_child(_settings)
 	_settings.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_card.hide()
 	_settings.focus_initial()
@@ -508,7 +600,7 @@ func _drop_settings() -> void:
 		return
 	var page := _settings
 	_settings = null
-	_overlay.remove_child(page)
+	_scaled.remove_child(page)
 	page.queue_free()
 	_card.show()
 
@@ -535,9 +627,14 @@ func _build_overlay() -> void:
 	dim.color = DIM
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.add_child(dim)
+	# The night itself stays at the interface size (the HUD and the touch layer are made for it); the
+	# card and the settings are the menu's, at the factor of a phone's menu.
+	_scaled = PhoneScale.new()
+	_scaled.name = "PhoneScale"
+	_overlay.add_child(_scaled)
 	_card = CenterContainer.new()
 	_card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_overlay.add_child(_card)
+	_scaled.add_child(_card)
 	var panel := UIPanel.new()
 	panel.variant = UIPanel.Variant.MARQUEE
 	_card.add_child(panel)
@@ -558,6 +655,21 @@ func _build_overlay() -> void:
 	box.add_child(_resume)
 	box.add_child(_settings_button)
 	box.add_child(_quit)
+	_scaled.resized.connect(_fit_taps)
+
+
+## The card's buttons are tap targets on a phone: the night runs at the interface size alone, where
+## the theme's 79 unit button is 28 px at 844 x 390 (#1192). The card is at the phone factor
+## (`_scaled`), so a unit there is bigger.
+func _fit_taps() -> void:
+	var least := MenuScale.tap_units(get_window(), TouchMode.wanted(get_tree()), _scaled.factor)
+	for button: UIButton in [_resume, _settings_button, _quit]:
+		button.custom_minimum_size = Vector2(0.0, least)
+	# The title's own size (60 units) would take a third of a phone's 540 unit canvas.
+	if _scaled.factor > 1.0:
+		_title.add_theme_font_size_override(&"font_size", _tokens.size_heading)
+	else:
+		_title.remove_theme_font_size_override(&"font_size")
 
 
 func _label(style: UILabel.Style) -> UILabel:

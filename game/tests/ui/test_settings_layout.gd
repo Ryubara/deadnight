@@ -34,6 +34,8 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	# The key events of the paging test stay held in the next suite's process (#1254).
+	InputFixture.release_all()
 	# The router is an autoload shared by every suite: leave it holding nothing.
 	await RouterFixture.clear(get_tree())
 	var window := get_tree().root

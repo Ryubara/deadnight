@@ -194,7 +194,8 @@ PROBE_JS = """
   const d = window.deadnight;
   return d ? {screen: d.screen, night: d.night, running: d.running, over: d.over,
               round: d.round, remaining: d.remaining, alive: d.alive, yaw: d.yaw,
-              interpolated: d.interpolated, tab: d.tab, stage: d.stage, quick_join: d.quick_join} : null;
+              interpolated: d.interpolated, tab: d.tab, stage: d.stage, browser: d.browser,
+              browser_status: d.browser_status, browser_note: d.browser_note} : null;
 }
 """
 
@@ -391,7 +392,7 @@ def wait_for(page: Page, what: str, test, seconds: float) -> dict:
 def menu_item(page: Page, tab: str, steps: int = 0) -> None:
     """Puts the keyboard on an item of the main menu: the tab bar's Q and E walk (and wrap) to `tab`, and the focus lands
     on the tab's first control whatever it was before, so `steps` presses of Down reach the item. It works from
-    any focus, which the old menu needed six Up presses for. Play's items are Play together, Quick join and Solo;
+    any focus, which the old menu needed six Up presses for. Play's items are Play together, Server browser and Solo;
     More's are Settings, Credits and Quit."""
     for _ in range(MENU_TABS):
         page.wait_for_timeout(400)  # longer than the probe's period, so `before` is the tab on show

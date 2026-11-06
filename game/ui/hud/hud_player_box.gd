@@ -32,6 +32,11 @@ const OTHER_HEIGHT := 48.0
 ## A teammate's box once the party is bigger than `HudPoints.COMPACT_FROM`: eight players still
 ## fit the column on the smallest canvas, with the name and the points set a size smaller.
 const COMPACT_HEIGHT := 32.0
+## A teammate's box when the column is short of room (`HudPoints.room`): two to a row, each half
+## the column's width, with the points alone in it (a name, a badge and an emblem need room a
+## half row has not), and "DOWN" or "DEAD" in the danger colour in the points' place while they are
+## down. Their names are on the scoreboard, and the seat's colour and portrait say who it is.
+const PAIR_WIDTH := (HudStyle.COLUMN - float(HudStyle.GAP)) / 2.0
 ## Space between the portrait and the points box, and the box's padding.
 const SPLIT := float(HudStyle.SM)
 const PADDING := float(HudStyle.MD)
@@ -67,6 +72,8 @@ var downed := false
 var is_local := false
 ## The smaller teammate box of a big party (`HudPoints.COMPACT_FROM`).
 var compact := false
+## Half a row wide, the points alone (`PAIR_WIDTH`); only a teammate's box can be.
+var paired := false
 var portrait := HudPortrait.new()
 var name_text: String:
 	get:
@@ -192,11 +199,22 @@ static func height_for(local: bool, small := false) -> float:
 ## `level` is `Vector2i(level, icon)` as the viewer is to see it (`HudState.level_of`); `plate` is
 ## the calling card, emblem and frame (`HudState.plate_of`).
 func show_player(
-	id: int, member: Dictionary, local: bool, small := false, level := Vector2i.ZERO, plate := {}
+	id: int,
+	member: Dictionary,
+	local: bool,
+	small := false,
+	level := Vector2i.ZERO,
+	plate := {},
+	pair := false
 ) -> void:
 	player_id = id
 	is_local = local
 	compact = small and not local
+	paired = pair and not local
+	if paired:
+		level = Vector2i.ZERO
+		plate = plate.duplicate()
+		plate.erase("emblem")
 	shown_level = level if level.x > 0 else Vector2i.ZERO
 	shown_card = StringName(plate.get("card", &""))
 	shown_emblem = StringName(plate.get("emblem", &""))
@@ -205,7 +223,9 @@ func show_player(
 	var seat := int(member.get("seat", 0))
 	colour = LookCatalog.armband_colour(seat)
 	ink = ink_for(fill())
-	custom_minimum_size = Vector2(HudStyle.COLUMN, height_for(local, compact))
+	custom_minimum_size = Vector2(
+		PAIR_WIDTH if paired else HudStyle.COLUMN, height_for(local, compact)
+	)
 	# A points change comes here every kill: what did not change is left alone (a portrait builds
 	# a look and its key, a colour override tells the label to lay itself out again).
 	var look_data: Dictionary = member.get("look", {})
@@ -215,8 +235,10 @@ func show_player(
 		portrait.show_look(look_data, seat)
 	portrait.downed = downed
 	_sync_weight()
-	_set_colour(_name, legible(_tokens.danger, fill(), DOWN_CONTRAST) if downed else ink)
-	_set_colour(_number, ink)
+	var down_ink := legible(_tokens.danger, fill(), DOWN_CONTRAST)
+	_set_colour(_name, down_ink if downed else ink)
+	_name.visible = not paired
+	_set_colour(_number, down_ink if paired and downed else ink)
 	_set_colour(_level, ink)
 	_icon.visible = shown_level.x > 0
 	_level.visible = shown_level.x > 0
@@ -229,9 +251,9 @@ func show_player(
 	HudStyle.set_text(_name, tag if downed else HudState.name_of(member))
 	HudStyle.set_fitted(
 		_number,
-		str(member["points"]),
+		tag if paired and downed else str(member["points"]),
 		HudStyle.POINTS if local else (HudStyle.TEXT if compact else HudStyle.MEDIUM),
-		_box().size.x - 2.0 * PADDING - NAME_ROOM - _taken(),
+		_box().size.x - 2.0 * PADDING - _name_room() - _taken(),
 		HudStyle.MIN_TEXT
 	)
 	_layout()
@@ -254,6 +276,11 @@ func _box() -> Rect2:
 	var h := height_for(is_local, compact)
 	var left := h + SPLIT
 	return Rect2(left, 0.0, maxf(size.x, custom_minimum_size.x) - left, h)
+
+
+## The room the name keeps before the number may take the rest: none in a half row's box.
+func _name_room() -> float:
+	return 0.0 if paired else NAME_ROOM
 
 
 ## What the badge and the gap before the name take from the box's line; nothing without a level.
@@ -362,7 +389,7 @@ func _layout() -> void:
 	)
 	var wide := HudStyle.text_width(number_font, _number.text, number_px) + 2.0
 	_number.size = Vector2(
-		minf(wide, box.size.x - 2.0 * PADDING - NAME_ROOM - _taken()), _line(_number)
+		minf(wide, box.size.x - 2.0 * PADDING - _name_room() - _taken()), _line(_number)
 	)
 	_number.position = Vector2(
 		box.end.x - PADDING - _number.size.x, baseline - number_font.get_ascent(number_px)

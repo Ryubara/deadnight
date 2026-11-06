@@ -11,8 +11,11 @@ MultiplayerSynchronizer) and not netfox.
 - **Why:** about 8 times less download per player than the MultiplayerAPI set up server-authoritative (2.4-2.9 KB/s
   against 20-23 KB/s for 4 players and 24 zombies at 30 Hz), at the same server CPU and the same feel. Bandwidth is
   what browser and Discord players and hosting costs feel; netfox cost about ten times the server CPU.
-- **Eight seats (#690):** a room holds eight people and bots together. The wire did not change; a person is sent about
-  14 KB/s and sends 1.5 KB/s at eight players with a crowd ([measured](../research/multiplayer.md#eight-players-690)).
+- **Eight seats (#690):** a room held eight people and bots together; a person is sent about 14 KB/s and sends 1.5 KB/s
+  at eight players with a crowd ([measured](../research/multiplayer.md#eight-players-690)). Since #1179 the eight are
+  **people**: the bots take no seat and have ids of their own (101 and up), so a night holds up to 15 bodies. Protocol
+  version 16 (no layout changed; a client of 15 would keep eight rows and eight seats and draw it wrongly)
+  ([measured](../research/multiplayer.md#eight-people-and-bots-1179)).
 - **The shape:** one authoritative headless Godot server on a fixed 30 Hz tick; clients send inputs, the server sends
   delta snapshots against the last one each client acknowledged; clients predict and reconcile their own player and
   interpolate everything else. Single-player runs the same server in the game process over a loopback transport.

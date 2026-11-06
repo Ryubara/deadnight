@@ -20,6 +20,11 @@ no other client sees it.
 | He stands; the camera has come in to the landing | 0.4 s | 0.4 s |
 | Picture to black, then the black comes away on the player's own body | 0.7 s, then 0.45 s | the same |
 
+The picture is **letterboxed on purpose**: two black bars, each `ArrivalCutscene.BAR_SHARE` (7.5%) of the screen's
+height (58 of 780 px on a phone page's 1688 x 780 canvas), over the whole show and the 0.45 s after it (the skip hint
+sits in the lower bar). They come away with the show; a night in play has no bands. A capture taken in that 0.45 s, or
+of a page that plays the show, shows them (Deadnight #1261: `night_phone_capture` now waits for the show to be gone).
+
 The sound: a synthesised piston-engine rotor loop (ten beats a second, an engine under it, the tail rotor's whine)
 that starts in the dark far away and closes in with the helicopter, as a 3D loop on the helicopter under the show's
 camera, so distance does the rest; the rope's run through gloved hands; the boots on the lot. All three come from the

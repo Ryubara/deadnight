@@ -24,6 +24,8 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	# The back test's cancel event stays held in the next suite's process (#1254).
+	InputFixture.release_all()
 	get_window().size = _window_before
 	Settings.reset_defaults()
 	Settings.save()
@@ -246,9 +248,9 @@ func test_the_play_panel_shows_todays_dailies_and_asks_for_the_three_routes() ->
 		assert_str(rows[index].count_text()).is_equal(
 			MenuNav.fraction_text(dailies[index]["progress"], dailies[index]["target"])
 		)
-	for id in [&"together", &"quick_join", &"solo"]:
+	for id in [&"together", &"browser", &"solo"]:
 		panel.button(id).pressed.emit()
-	assert_array(_actions).is_equal([&"together", &"quick_join", &"solo"])
+	assert_array(_actions).is_equal([&"together", &"browser", &"solo"])
 
 
 ## A profile at the top of the ladder, for the tests that put a preset on the soldier whole.

@@ -41,6 +41,8 @@ const STATS := &"stats"
 const REVIVE := &"revive"
 ## The perks the local player has (`HudPerks`).
 const PERKS := &"perks"
+## The standing order of the team's bots (`HudBotOrder`).
+const BOT_ORDER := &"bot_order"
 
 ## A ping the server has not reported: a night alone, or before the first answer.
 const NO_PING := -1
@@ -92,6 +94,9 @@ var slot_count := WeaponSlots.count()
 ## the perks empties it.
 var perks: Array[StringName] = []
 var points := 0
+## The standing order of the team's bots as the server's frame says it (`BotWheel.FOLLOW`, `ROAM`
+## or `HOLD`): the default order until a frame says another.
+var bot_order: StringName = BotWheel.DEFAULT_ORDER
 ## The local player's grenades.
 var grenades := 0
 var round_number := 0
@@ -353,6 +358,21 @@ func set_perks(ids: Array[StringName]) -> void:
 		perks = ids.duplicate()
 		_mark(PERKS)
 	_flush()
+
+
+## The order the team's bots stand on now; the parts hear of a change only.
+func set_bot_order(order: StringName) -> void:
+	if BotWheel.ORDERS.has(order):
+		_assign(&"bot_order", order, BOT_ORDER)
+	_flush()
+
+
+## Whether the room has a bot in it (the order of the bots is worth showing).
+func has_bots() -> bool:
+	for member: Dictionary in team.values():
+		if bool(member.get("bot", false)):
+			return true
+	return false
 
 
 ## Whether the revive perk is getting the local player up alone now.
@@ -617,10 +637,6 @@ func _handler(type: StringName) -> Callable:
 			handler = _on_zombie_removed
 		&"player_added":
 			handler = _on_player_added
-		&"bot_replaced":
-			handler = _on_bot_replaced
-		&"bot_seated":
-			handler = _on_bot_seated
 		&"grenade_count_changed":
 			handler = _on_grenade_count_changed
 		&"player_removed":
@@ -939,23 +955,6 @@ func _on_account_event(event: Dictionary) -> void:
 		)
 
 
-## A person took the seat of a bot.
-func _on_bot_replaced(event: Dictionary) -> void:
-	var member := _member(int(event["player_id"]))
-	if member["bot"]:
-		member["bot"] = false
-		_mark(TEAM)
-
-
-## A bot took the seat of a person who left: the person is gone from the roster (their name is kept
-## for the notice) and the seat is a bot's; the bot's own name arrives as a `player_named`.
-func _on_bot_seated(event: Dictionary) -> void:
-	var member := _member(int(event["player_id"]))
-	left_name = str(member.get("name", "PLAYER %d" % int(event["player_id"])))
-	member["bot"] = true
-	_mark(TEAM)
-
-
 ## The name a roster shows for a team member (an entry of `team`): the name, then BOT for a bot, so
 ## a bot is never taken for a person. Every part of the HUD that writes a name calls this.
 static func name_of(member: Dictionary) -> String:
@@ -968,7 +967,7 @@ func _free_seat() -> int:
 	var taken: Array = []
 	for member: Dictionary in team.values():
 		taken.append(member["seat"])
-	for seat in NightHost.MAX_PLAYERS:
+	for seat in NightHost.MAX_SEATS:
 		if not taken.has(seat):
 			return seat
 	return 0

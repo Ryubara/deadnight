@@ -88,15 +88,18 @@ test("every ticket of a match carries the host's level, a guest's own level chan
   await app.close();
 });
 
-test("a host with no profile is level 1, and a quick-join night signs the host's level too", async () => {
+test("a host with no profile is level 1, and a night joined from the list signs the host's level too", async () => {
   const { app, player, lobbyOf, start, claims, call } = await platform();
   const fresh = await player("fresh");
   const lobby = await lobbyOf(fresh);
   await start(lobby.id, fresh);
   assert.equal((await claims(lobby.id, fresh)).hostLevel, 1);
   const veteran = await player("veteran", 12);
-  const quick = (await call("POST", "/lobbies/quick", veteran.headers, {})).json();
-  assert.equal((await claims(quick.id, veteran)).hostLevel, 12);
+  const listed = (await call("GET", "/lobbies", veteran.headers)).json();
+  assert.equal(listed.nights[0].code, lobby.code);
+  const joined = (await call("POST", "/lobbies/join-by-code", veteran.headers, { code: listed.nights[0].code })).json();
+  assert.equal(joined.id, lobby.id);
+  assert.equal((await claims(lobby.id, veteran)).hostLevel, 1);
   await app.close();
 });
 

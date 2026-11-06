@@ -19,8 +19,6 @@ extends RefCounted
 const LISTENS: Dictionary[StringName, bool] = {
 	&"frame": true,
 	&"player_added": true,
-	&"bot_replaced": true,
-	&"bot_seated": true,
 	&"settings_changed": true,
 	&"shot_fired": true,
 	&"zombie_removed": true,
@@ -32,6 +30,10 @@ const LISTENS: Dictionary[StringName, bool] = {
 	&"round_started": true,
 	&"round_ended": true,
 	&"game_over": true,
+	# The hidden challenges' (`HiddenMoments`, called from the arms below).
+	&"door_opened": true,
+	&"break_started": true,
+	&"player_died": true,
 }
 ## A server step (`Night.STEP`; a test keeps the two equal).
 const TICK_SECONDS := 1.0 / 60.0
@@ -55,12 +57,10 @@ const RUN_WEAPON := &"crowbar"
 const TOGETHER := 2
 ## Whole crew: players in the round, at least.
 const CREW := 2
-## The areas of the maps (`data/areas.json`): map id -> area id -> `[x0, z0, x1, z1]` in metres.
-const AREAS_PATH := "res://gameplay/challenges/data/areas.json"
-const BOOTH := &"booth"
 
-static var _areas: Dictionary = {}
-
+## The hidden challenges' stats: called from the arms for the rare events it needs, with no lookup
+## of its own per event and nothing per frame outside a break (the late-round budget).
+var _hidden := HiddenMoments.new()
 var _now := 0.0
 var _map := ""
 var _door_ids: Array[StringName] = []
@@ -91,6 +91,11 @@ var _mends: Dictionary[StringName, Dictionary] = {}
 var _last_mend: Dictionary[StringName, Dictionary] = {}
 
 
+func _init() -> void:
+	_hidden.bots = _bots
+	_hidden.doors_open = _doors_open
+
+
 ## What the night is played on: the shop's doors (`ShopItem.Kind.DOOR`) of `tuning` and the map's
 ## id ("" is the default map). The tally calls it before the night's events.
 func know(tuning: RulesTuning, map_id: String = "") -> void:
@@ -115,6 +120,7 @@ func reset() -> void:
 	_dark = false
 	_doors_done = false
 	_doors_open.clear()
+	_hidden.reset()
 	for each: Dictionary in [
 		_in_round,
 		_from_start,
@@ -135,6 +141,7 @@ func reset() -> void:
 
 ## A person takes a seat that was another's: what the earlier player did is not theirs.
 func forget(player_id: int) -> void:
+	_hidden.forget(player_id)
 	for each: Dictionary in [
 		_in_round,
 		_from_start,
@@ -156,10 +163,6 @@ func observe(event: Dictionary, tally: NightTally) -> void:
 			_on_frame(event)
 		&"player_added":
 			_bots[int(event["player_id"])] = event.get("bot", false)
-		&"bot_replaced":
-			_bots[int(event["player_id"])] = false
-		&"bot_seated":
-			_bots[int(event["player_id"])] = true
 		&"settings_changed":
 			var settings: Dictionary = event.get("settings", {})
 			_set_map(String(settings.get("map", "")))
@@ -185,29 +188,26 @@ func observe(event: Dictionary, tally: NightTally) -> void:
 		&"round_ended":
 			_on_round_ended(event, tally)
 		&"game_over":
-			_on_game_over(tally)
+			_on_game_over(event, tally)
+		&"door_opened":
+			_hidden.door_opened(event["door_id"])
+		&"break_started":
+			_hidden.break_started(int(event["next_round"]))
+		&"player_died":
+			_hidden.died(int(event["player_id"]), tally)
 
 
 func _set_map(map_id: String) -> void:
 	if map_id == "" and _map != "":
 		return
 	_map = map_id if map_id != "" else MapRegistry.DEFAULT
-	_booth = PackedFloat32Array()
-	var rect: Array = _area_of(_map, BOOTH)
-	if rect.size() == 4:
-		_booth = PackedFloat32Array(rect)
-
-
-static func _area_of(map_id: String, area: StringName) -> Array:
-	if _areas.is_empty():
-		var file := FileAccess.open(AREAS_PATH, FileAccess.READ)
-		var parsed: Variant = JSON.parse_string(file.get_as_text()) if file != null else null
-		_areas = parsed if parsed is Dictionary else {"": {}}
-	var rooms: Dictionary = _areas.get(map_id, {})
-	return rooms.get(String(area), [])
+	_booth = ChallengeAreas.rect(_map, ChallengeAreas.BOOTH)
+	_hidden.set_map(_map)
 
 
 func _on_frame(event: Dictionary) -> void:
+	if _hidden.in_break:
+		_hidden.on_break_frame(event)
 	if event.has("tick"):
 		_now = float(event["tick"]) * TICK_SECONDS
 	if event.has("round"):
@@ -237,9 +237,7 @@ func _read_circuits(circuits: Dictionary) -> void:
 
 
 func _read_position(id: int, at: Vector3) -> void:
-	var in_booth := (
-		at.x >= _booth[0] and at.z >= _booth[1] and at.x <= _booth[2] and at.z <= _booth[3]
-	)
+	var in_booth := ChallengeAreas.contains(_booth, at)
 	_inside[id] = in_booth
 	if not in_booth:
 		_booth_whole.erase(id)
@@ -340,6 +338,7 @@ func _on_round_started(round_number: int, tally: NightTally) -> void:
 			_booth_whole[id] = true
 		if _from_start.has(id) and not _spent.has(id):
 			tally.reach(id, ChallengeStats.ROUND_UNSPENT, round_number)
+	_hidden.round_started(round_number, tally)
 
 
 func _on_round_ended(event: Dictionary, tally: NightTally) -> void:
@@ -369,7 +368,7 @@ func _on_round_ended(event: Dictionary, tally: NightTally) -> void:
 			tally.credit(id, ChallengeStats.ROUNDS_WHOLE)
 
 
-func _on_game_over(tally: NightTally) -> void:
+func _on_game_over(event: Dictionary, tally: NightTally) -> void:
 	var people: Array[int] = []
 	for id in tally.present_ids():
 		tally.credit(id, ChallengeStats.map_nights(StringName(_map_id())))
@@ -378,6 +377,7 @@ func _on_game_over(tally: NightTally) -> void:
 	if people.size() >= TOGETHER:
 		for id in people:
 			tally.credit(id, ChallengeStats.NIGHTS_TOGETHER)
+	_hidden.game_over(event, tally)
 
 
 func _map_id() -> String:

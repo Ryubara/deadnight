@@ -202,12 +202,16 @@ func test_arrow_keys_lead_from_the_tab_strip_through_the_rows_to_the_footer() ->
 		await await_idle_frame()
 		var page: VBoxContainer = _screen._pages[tab]
 		var here: Control = _screen._tab_buttons[tab]
-		for row in page.get_children():
+		# A note row (a line of words, no control) is passed over by the focus.
+		var rows := page.get_children().filter(
+			func(row: Node) -> bool: return (row as UIRow).control != null
+		)
+		for row in rows:
 			here = here.find_valid_focus_neighbor(SIDE_BOTTOM)
 			assert_object(here).is_same((row as UIRow).control)
 		here = here.find_valid_focus_neighbor(SIDE_BOTTOM)
 		assert_object(here).is_same(_screen._footer_buttons[0])
-		for i in page.get_child_count() + 1:
+		for i in rows.size() + 1:
 			here = here.find_valid_focus_neighbor(SIDE_TOP)
 		assert_object(here).is_same(_screen._tab_buttons[tab])
 
@@ -264,6 +268,16 @@ func _toggle(tab: int, row: int) -> UIToggle:
 
 func _selector(tab: int, row: int) -> UIOptionSelector:
 	return _row(tab, row).control as UIOptionSelector
+
+
+func test_touch_aim_assist_is_a_toggle_that_is_on_and_has_no_slider() -> void:
+	var control := _row(4, 5).control
+	assert_object(control).is_instanceof(UIToggle)
+	assert_bool(_toggle(4, 5).button_pressed).is_true()
+	_toggle(4, 5).toggled.emit(false)
+	assert_bool(Settings.get_value(SettingsService.TOUCH_AIM_ASSIST)).is_false()
+	_toggle(4, 5).toggled.emit(true)
+	assert_bool(Settings.get_value(SettingsService.TOUCH_AIM_ASSIST)).is_true()
 
 
 func test_the_touch_tab_sets_the_touch_mode_and_size() -> void:

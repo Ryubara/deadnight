@@ -1,4 +1,4 @@
-// Rooms for friends on the web: guest sign-in, a night in progress that takes newcomers, quick join, and the
+// Rooms for friends on the web: guest sign-in, a night in progress that takes newcomers, the list of nights, and the
 // Activity players, who meet by code like everyone (#1178).
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -105,38 +105,35 @@ test("a friend with the code joins a night that has started, and a full night tu
   await app.close();
 });
 
-test("quick join puts strangers in one public night, then starts another when it is full", async () => {
+test("the list shows public nights, and a code from a row joins a stranger, even into a night in progress", async () => {
   const { app, guest, call, beat } = await platform({}, 3);
-  const [a, b, c, d, e] = [await guest("a"), await guest("b"), await guest("c"), await guest("d"), await guest("e")];
-  const first = (await call("POST", "/lobbies/quick", a.headers)).json();
-  assert.equal(first.state, "started");
-  assert.equal(first.visibility, "public");
-  const second = (await call("POST", "/lobbies/quick", b.headers)).json();
-  assert.equal(second.id, first.id);
-  assert.equal((await call("POST", `/lobbies/${first.id}/ticket`, b.headers)).statusCode, 200);
-  // The same player asking again gets the same night.
-  assert.equal((await call("POST", "/lobbies/quick", a.headers)).json().id, first.id);
+  const [a, b, c, d] = [await guest("a"), await guest("b"), await guest("c"), await guest("d")];
+  const waiting = (await call("POST", "/lobbies", a.headers, {})).json();
+  const running = (await call("POST", "/lobbies", b.headers, {})).json();
+  const started = (await call("POST", `/lobbies/${running.id}/start`, b.headers, {})).json();
+  assert.equal(started.visibility, "public");
+  const listed = (await call("GET", "/lobbies", c.headers)).json();
+  assert.equal(listed.total, 2);
+  const byKind = Object.fromEntries(listed.nights.map((row: { kind: string; code: string }) => [row.kind, row.code]));
+  assert.equal(byKind.lobby, waiting.code);
+  assert.equal(byKind.match, running.code);
+  // The row's code is the join, for a waiting room and for a night in progress, and a ticket follows.
+  const joined = (await call("POST", "/lobbies/join-by-code", c.headers, { code: byKind.match })).json();
+  assert.equal(joined.id, running.id);
+  assert.equal((await call("POST", `/lobbies/${running.id}/ticket`, c.headers)).statusCode, 200);
 
-  await beat([first.matchId], { [first.matchId]: MAX_PLAYERS });
-  const next = (await call("POST", "/lobbies/quick", c.headers)).json();
-  assert.notEqual(next.id, first.id); // the first is full: a new night
-  assert.equal((await call("POST", "/lobbies/quick", d.headers)).json().id, next.id);
+  // A night the game server says is full is listed last and refuses the join.
+  await beat([started.matchId], { [started.matchId]: MAX_PLAYERS });
+  const full = (await call("GET", "/lobbies", d.headers)).json();
+  assert.equal(full.nights[full.nights.length - 1].code, running.code);
+  assert.equal(full.nights[full.nights.length - 1].full, true);
+  assert.equal((await call("POST", "/lobbies/join-by-code", d.headers, { code: running.code })).statusCode, 409);
 
-  // A private night is never handed to a stranger.
-  const mine = (await call("POST", "/lobbies", e.headers, {})).json();
-  await call("POST", `/lobbies/${mine.id}/start`, e.headers);
-  const stranger = await guest("stranger");
-  const picked = (await call("POST", "/lobbies/quick", stranger.headers)).json();
-  assert.notEqual(picked.id, mine.id);
-  await app.close();
-});
-
-test("quick join with no game server up is a 503, not a lobby left behind", async () => {
-  const { app, guest, call, registry } = await platform({}, 0);
-  const a = await guest("a");
-  assert.equal((await call("POST", "/lobbies/quick", a.headers)).statusCode, 503);
-  // And the player is free to try again once a server has room.
-  assert.equal(registry.alive().length, 1);
+  // A private night is in no list.
+  const mine = (await call("POST", "/lobbies", d.headers, { visibility: "private" })).json();
+  assert.equal(mine.visibility, "private");
+  const after = (await call("GET", "/lobbies", c.headers)).json();
+  assert.equal(after.nights.some((row: { code: string }) => row.code === mine.code), false);
   await app.close();
 });
 
@@ -314,10 +311,10 @@ test("the host's map is checked, kept on the lobby, shown in its view and previe
   const answer = (await call("POST", `/lobbies/${lobby.id}/ticket`, host.headers)).json();
   assert.deepEqual(verifyToken(config.ticketSecret, "ticket", answer.ticket)?.settings, { ...rules, map: "drive_in" });
 
-  // Quick join shows the map of the night it finds.
+  // The list shows the map of the night, for the row's picture.
   const friend = await guest("friend", "10.0.0.2");
-  const quick = (await call("POST", "/lobbies/quick", friend.headers)).json();
-  assert.equal(quick.map, "drive_in");
+  const row = (await call("GET", "/lobbies", friend.headers)).json().nights.find((night: { id: string }) => night.id === lobby.id);
+  assert.equal(row.map, "drive_in");
   await app.close();
 });
 
@@ -409,6 +406,20 @@ test("a setting the backend does not know is refused by name, on the change and 
   const bad = await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, { ...good, bots: 9 });
   assert.equal(bad.json().detail, "bad bots");
   await app.close();
+});
+
+test("the health answer names this run of the backend, so a client can tell a deploy wiped its lobbies (#1240)", async () => {
+  const first = await platform();
+  const again = (await first.app.inject({ method: "GET", url: "/health" })).json();
+  const once = (await first.app.inject({ method: "GET", url: "/health" })).json();
+  assert.equal(typeof once.boot, "string");
+  assert.ok(once.boot.length >= 16);
+  assert.equal(again.boot, once.boot, "the same run says the same boot every time");
+  const other = await platform();
+  const restarted = (await other.app.inject({ method: "GET", url: "/health" })).json();
+  assert.notEqual(restarted.boot, once.boot, "a new run (a deploy) says another boot");
+  await first.app.close();
+  await other.app.close();
 });
 
 test("the health answer lists the settings this backend takes, so the deploy can compare them with the game's", async () => {

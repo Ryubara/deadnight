@@ -1333,11 +1333,11 @@ count is the host's, and the server's own limits sit above it.
 
 | Part | How it is built |
 | --- | --- |
-| Slot filling | `NightBots` seats bots in the highest free seats up to `target(setting, people, limit)`; a person with no free seat takes the lowest bot's seat as it stands (`hand_over`, `bot_replaced`), and **a person who leaves hands the seat to a bot as it stands** (`adopt`, `bot_seated`: the same body, points, weapons and health), so decision 7 holds both ways |
+| Slot filling | `NightBots` seats `target(setting, limit)` bots, each in the lowest free id from 101 (`NightBots.FIRST_ID`), **beside** the people and never in a seat of the eight (#1179, the maintainer: bots are no longer in the 8 player cap). Until #1179 a bot held one of the eight seats, a person with no free seat took the lowest bot's seat as it stood (`hand_over`) and a leaving person's seat went to a bot (`adopt`), each with an event of its own, since removed (#1185), which was decision 7 both ways; with ids of their own neither exists, and a person who leaves takes only their own body away |
 | Difficulty | `MatchSettings.bot_skill` picks the `BotProfile` of every bot (`BotProfile.for_skill`); the rules never read it, a test holds the night's numbers equal across skills |
 | Names and looks | `BotRoster`: a cast of eight per skill, one per seat (Pip, Dale, Moe, ...; Ash, Fern, Moss, ...; Rex, Sarge, Hawk, ...; #690), each a name and a different catalogue preset look sent through the look server like a person's; the lobby shows the same names before the night begins |
 | Labels | `BOT` after the name in the HUD, the scoreboard, the lobby and the feed; `PlayerState.bot` rides every snapshot, so the roster API marks the seat; no bot flag exists in a command (the bots send the same plain actions through `apply`, and a person's seat is told apart only by the rules) |
-| Limits | `MAX_BOTS` caps one room (0 to 7 since #690, with eight seats), `BOT_BUDGET` shares a number of bots among the open rooms, `BOTS_OFF` is the kill-switch; a limit that drops sends the highest seats' bots away at once and the night goes on (`BotLimits`, `GameServer.set_bot_limits`, `NightHost.set_bot_limit`) |
+| Limits | `MAX_BOTS` caps one room (0 to 7 since #690; since #1179 on top of the eight people), `BOT_BUDGET` shares a number of bots among the open rooms (default 2 since #1193: [why](crowd-budget.md#rooms-of-fifteen-bodies-1193)), `BOTS_OFF` is the kill-switch; a limit that drops sends the highest seats' bots away at once and the night goes on (`BotLimits`, `GameServer.set_bot_limits`, `NightHost.set_bot_limit`) |
 | Marked in the stats | the room's stats line carries `bots`; the rules mark every bot seat, so nothing that reads `player_added.bot` can pay a bot account progression (there is none yet) |
 
 **Proof.**
@@ -1349,6 +1349,8 @@ count is the host's, and the server's own limits sit above it.
   engine error in the verbose log. `churn`: a setting of 3, people join at 0, 10, 30 and 50% of the run and leave at
   70, 80 and 90%; the bots were 3, 2, 1, 0 and then 1, 2, 3 after each change as the rule says, the night was never
   rebuilt, the round never went back, and the three people who took a bot's seat kept its body and its kills.
+  (That was before #1179; since then the bots hold no seat, so the churn keeps all three bots through every change
+  and checks each is the body it was: `bot_bodies_kept` in the soak's line.)
   The server's step (the server, two clients and two or three bots in one process) averaged 1.4 to 1.5 ms of the 16.7 ms
   tick and its worst step outside a client joining was 9.9 ms.
 - **The bots' own cost** (`test_bot_server_cost.gd`, a test): three bots with 40 zombies on the lot, 900 ticks, the
@@ -1793,7 +1795,7 @@ They are decisions now, not options; the phases build to them.
 | 4 | Player scaling | **Bots count for zombie scaling.** | The boss health, the alive cap and the spawn rate scale with the number of seated players, bots included (a bot is a player to the rules: `add_player`). Phase 7 may weight a bot below one; the default is one. |
 | 5 | Can people give bots orders? | **Orders by pings only.** *Superseded 2026-11-02 (#641): pings stay, and a command wheel adds three standing orders.* | The five pings of Phase 0 (`PingBoard.KINDS`: here, door, ammo, enemy, downed) pull a bot whatever its order. The standing orders are **Follow**, **Roam** and **Hold** ([Orders](#orders-follow-roam-and-hold-641)); there is still no text. |
 | 6 | Voice | **No bot voice for now.** | Callouts are `bot_say` lines in the feed only; no audio assets are made for them until the maintainer asks. |
-| 7 | A human takes a bot's slot | **A joining human inherits the bot's slot.** | The human gets the bot's seat, body, points, weapons, ammunition, grenades and health as they stand, and the bot is removed in the same tick. No reason to leave and rejoin. A human who leaves leaves the slot to a bot again, as it stands (Phase 6, built: `NightBots.adopt`). |
+| 7 (superseded by #1179) | A human takes a bot's slot | **A joining human inherits the bot's slot.** | The human gets the bot's seat, body, points, weapons, ammunition, grenades and health as they stand, and the bot is removed in the same tick. No reason to leave and rejoin. A human who leaves leaves the slot to a bot again, as it stands (Phase 6, built: `NightBots.adopt`). **Superseded by #1179:** bots hold no seat of the room, so nobody inherits one. |
 
 ## Sources
 

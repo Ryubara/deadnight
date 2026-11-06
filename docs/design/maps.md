@@ -114,9 +114,9 @@ A guest's lobby shows the host's choice and cannot move it (`set_editable(false)
 
 - **A code looked at** (`LobbyScreen` in preview mode) shows the room's map as a ticket nobody can press, under the
   seats.
-- **Quick join** (`QuickJoinOverlay`) shows the map of the night it found as a card under "Finding a night...", from the
-  moment the backend answers until the night opens. There is no room list in the game: Quick join takes the first open
-  night, and a code is looked at with its preview.
+- **The Server Browser** (`ServerBrowserScreen`) shows each night's map as the faded picture behind its row and its name
+  on it (`NightRow`, from the row's `map` id; an id the game does not know is the lot). A code is looked at with its
+  preview.
 - **The lobby of a member** has the picker in its rules: the host's moves, a guest's is read only.
 
 Proof: `tests/world/test_map_registry.gd`, `test_map_night.gd` (a stub map and the second map built by the world, the

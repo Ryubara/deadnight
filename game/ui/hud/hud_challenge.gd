@@ -11,6 +11,8 @@ extends HudPart
 ## A card appeared and asks for its sound: a tick for a quarter mark, a pair (`finished`) for a
 ## finish or a milestone step.
 signal cue(finished: bool)
+## The card was filled with new words: its height may have changed, so the HUD places it again.
+signal card_filled
 
 enum Mode { ALL, FINISHED_ONLY, OFF }
 
@@ -26,8 +28,18 @@ var mode: Mode = Mode.ALL
 ## the steps, so the finish is not told twice.
 var finish_in_lane := false
 var queue := ChallengePromptQueue.new()
-var card := HudChallengeCard.new()
+## The prompt's card, made the first time a challenge moves (the part is hidden the rest of the
+## night, and the late-round budget counts every canvas item of the tree, shown or not).
+var card: HudChallengeCard:
+	get:
+		if _card == null:
+			_card = HudChallengeCard.new()
+			add_child(_card)
+			_card.modulate.a = 0.0
+			update_minimum_size()
+		return _card
 
+var _card: HudChallengeCard
 var _clock := 0.0
 var _stamp := -1.0
 var _shown_id: StringName = &""
@@ -35,13 +47,32 @@ var _shown_id: StringName = &""
 
 func _init() -> void:
 	super()
-	add_child(card)
 	visible = false
-	card.modulate.a = 0.0
 
 
 func _get_minimum_size() -> Vector2:
-	return card.get_combined_minimum_size()
+	return _card.get_combined_minimum_size() if _card != null else Vector2.ZERO
+
+
+## Whether the card was made: the part is hidden the rest of the night until a challenge moves, and
+## the card is not made for a layout.
+func has_card() -> bool:
+	return _card != null
+
+
+## The card's width and the height the last layout gave it (zero while no card was made): what
+## `fit_width` estimates, as the page really draws it.
+func laid_size() -> Vector2:
+	if _card == null:
+		return Vector2.ZERO
+	return Vector2(_card.custom_minimum_size.x, _card.get_combined_minimum_size().y)
+
+
+## Makes the card `width` wide and gives its size, `Vector2.ZERO` while no card was made.
+func fit_width(width: float) -> Vector2:
+	if _card == null:
+		return Vector2.ZERO
+	return _card.size_at(width)
 
 
 func on_event(event: Dictionary) -> void:
@@ -73,6 +104,7 @@ func advance(delta: float) -> void:
 	elif float(current["_at"]) != _stamp:
 		_stamp = float(current["_at"])
 		card.show_advance(current)
+		card_filled.emit()
 		if current["id"] != _shown_id:
 			cue.emit(ChallengePromptQueue.is_milestone_or_completion(current))
 		_shown_id = current["id"]

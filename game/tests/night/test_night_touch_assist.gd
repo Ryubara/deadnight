@@ -49,7 +49,7 @@ func test_a_human_night_builds_the_assist_and_the_settings_reach_it() -> void:
 	var night := await _human_night()
 	assert_object(night.assist).is_not_null()
 	assert_int(night.assist.auto_fire).is_equal(TouchAimAssist.AutoFire.WHILE_AIMING)
-	assert_float(night.assist.strength).is_equal_approx(0.5, 0.001)
+	assert_float(night.assist.strength).is_equal_approx(TouchAimAssist.ON_STRENGTH, 0.001)
 	night.queue_free()
 
 

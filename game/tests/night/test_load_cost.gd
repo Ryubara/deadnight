@@ -20,6 +20,12 @@ const WARM_DECODE_BUDGET_S := 170.0
 const WARM_FRAME_BUDGET := 100
 
 
+func before() -> void:
+	# GdUnit minimizes the window after every suite and a minimized window draws no frame,
+	# which the warm-up waits for (#1207).
+	await WindowFixture.make_drawable(get_tree())
+
+
 func _warmed_night() -> Night:
 	var night := Night.new()
 	night.warm_up = true

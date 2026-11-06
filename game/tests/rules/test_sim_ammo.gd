@@ -152,18 +152,21 @@ func test_a_night_with_ammunition_is_repeatable() -> void:
 func test_ammunition_is_bought_for_the_weapons_worth_shooting_only() -> void:
 	var sim := NightSim.new(RulesFixture.tuning(), SimSkill.named(SimSkill.AVERAGE), 1, 1, 0.25)
 	var player: NightSim.SimPlayer = sim._players[1]
-	for id in [&"smg", &"flare_gun", &"pistol"]:
+	for id in [&"smg", &"flare_gun", &"pistol", &"house_pistol"]:
 		player.arms[id] = NightSim.SimArm.of(id)
-	# Worth is sized against the round's walker. Against round 1's 50 health the revolver (24, three
-	# shots) falls under half of the submachine gun's rate, so it is no longer worth the rounds.
+	# Worth is sized against the round's walker. Against round 1's 50 health the House Pistol (8, seven
+	# shots) falls under half of the submachine gun's rate, so it is not worth the rounds; the
+	# revolver (28, two shots) is.
 	sim.rules.round_number = 1
 	var early := sim._useful(player)
-	assert_array(early).contains([&"smg"])
-	assert_bool(early.has(&"pistol")).is_false()
-	# By round 10 (117 health) the submachine gun needs nine hits too and the revolver is back in.
+	assert_array(early).contains([&"smg", &"pistol"])
+	assert_bool(early.has(&"house_pistol")).is_false()
+	# By round 10 (143 health) the submachine gun needs twelve hits and the revolver six: still in,
+	# and the House Pistol (eighteen) still out.
 	sim.rules.round_number = 10
 	var useful := sim._useful(player)
 	assert_array(useful).contains([&"smg", &"pistol"])
+	assert_bool(useful.has(&"house_pistol")).is_false()
 	assert_bool(useful.has(&"flare_gun")).is_false()
 	assert_bool(useful.has(&"crowbar")).is_false()
 	assert_str(useful[0]).is_equal("smg")

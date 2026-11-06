@@ -15,7 +15,7 @@ challenges (`Profile.done`), so nothing is stored twice and a retune needs no mi
 | --- | --- |
 | `gameplay/progression/plate_pieces.json` | every card, emblem and frame: title, palette, and a card's motif and `side`, an emblem's motif and `shape`, a frame's `style` |
 | `gameplay/progression/unlocks.json` | the ladder's rows (`tier_card`, `tier_emblem`, `emblem`, `plate_frame`) with the level of each |
-| `gameplay/challenges/data/feats.json` | the 24 lasting goals the night counts today, each with `grants` (`card:<id>`, `emblem:<id>`, `frame:<id>`) |
+| `gameplay/challenges/data/feats.json` | the lasting goals the night counts (48 with the hidden five), each with `grants` (`card:<id>`, `emblem:<id>`, `frame:<id>`) |
 
 A **feat** is a new challenge family (`ChallengeDef.Family.FEAT`): done once, says nothing on the way (only the finish
 reaches the prompt), counted in total or in one night, and over several stats when it asks for "every weapon" (the lowest
@@ -140,9 +140,9 @@ the voice catalog (`plate_frame` already cheers like an emblem) and `LookCatalog
 - A live popup for a card or emblem earned (see above) and the client marking an online finish at once on its file.
 - A local night (solo) never tells the HUD its player's level (no event seats the local account), so the player's own box
   shows no level and no card there; that needs `night.gd`, which is at the line limit.
-- The hidden challenges (#1172) and the frames for beating a map (#1072) are their own issues. The odd, easy and
-  together challenges' stats were built in #1074 ([the stats](../design/progression.md#the-odd-and-together-stats)).
-  Poster sets are [below](#poster-sets-1073).
+- The frames for beating a map (#1072) are their own issue. The odd, easy and together challenges' stats were built in
+  #1074 ([the stats](../design/progression.md#the-odd-and-together-stats)), the hidden ones in #1172
+  ([hidden pieces](#hidden-pieces)). Poster sets are [below](#poster-sets-1073).
 
 ## Poster sets (#1073)
 
@@ -217,3 +217,22 @@ its poster, all six win a calling card and an emblem. The data is one file, `gam
 What is not here: a poster for the 31 feats outside the sets, the poster's panels animating as they uncover (the
 covers change on the next read of the board), and feats in the menu's news (a finished feat on its own is
 not told by the menu; the set it completes is).
+
+## Hidden pieces
+
+A hidden challenge's card and emblem (#1172, [the challenges](../design/progression.md#the-hidden-challenges)) are
+veiled until it is done. `PlateCatalog` answers for every screen: `is_hidden(kind, id)`, `shown_title(kind, id, owned)`
+(`???` while hidden and not owned) and `how_to_get` (the riddle, `ChallengeDef.hint()`); a screen that names a piece asks
+those, never `title` and the challenge's `text`. `CardArt` and `EmblemArt` take `silhouette`: every shape in the one flat
+colour of a locked piece (`ItemIcons.SILHOUETTE`, the wardrobe's) and a `?` (`PlateDraw.question_mark`), so the outline
+is all that is told. *Final cut* is `derived` (`PlateCatalog.is_done`). `ChallengeAreas` reads the map lines of
+`data/areas.json` (the booth and the stand rectangles, the second door) for `HiddenMoments` and `NightMoments`.
+
+**The captions.** A locked piece's caption was room for two lines and a way to earn it that wrapped (an emblem's tile is
+narrow) ran under the art of the row below; the room is four (`PlateTile.CAPTION_LINES`), so a riddle reads whole. The
+riddles are kept under 30 characters for the same reason: an emblem's tile fits about 14 to a line.
+
+**Proof.** The stats are one event at a time (`test_hidden_moments`, 19 cases) and on a real game server with real
+clients (`test_hidden_challenges_online`: a break held at the stand by the player's body, eight rounds with a door
+shut, a bleed-out and a night's end in round one, four people who stay and a fourth who leaves). No count is said: the
+rare ones are reached by the rules' own actions and the clients' own commands.

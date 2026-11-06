@@ -1,8 +1,8 @@
 class_name TogetherApi
 extends RefCounted
 ## What the game says to the platform backend to play with other people: sign in as a guest (a
-## visitor with no Discord), make a night and its invite code, join by code, Quick join, and trade
-## a lobby for the game server's address and a ticket (docs/research/platform-backend.md).
+## visitor with no Discord), make a night and its invite code, list the public nights, join by code,
+## and trade a lobby for the game server's address and a ticket (docs/research/platform-backend.md).
 ##
 ## Every call is awaited and answers `{"ok": true, ...}` or `{"ok": false, "error": <the backend's
 ## reason, or "network">, "text": <what to show a player>}`; none throws. The session is kept for
@@ -22,6 +22,11 @@ const DISCORD_STATE_JS := (
 const SIGN_IN_TRIES := 3
 ## Seconds to wait for Discord's answer to the Activity's sign-in.
 const DISCORD_WAIT_SECONDS := 30.0
+## Whether a night made from the game is public (listed in the Server Browser, open to Quick join)
+## until its host switches Private on. THE ONE PLACE this is decided: `create` and `create_lobby`
+## send it, and the lobby's Private switch starts from what the lobby says (this, for a backend that
+## says nothing). The maintainer has not yet confirmed that public is the right default (#1186).
+const PUBLIC_BY_DEFAULT := true
 ## What a player reads for each reason the backend gives.
 const TEXTS := {
 	"not_found": "There is no night with that code. Check it and try again.",
@@ -35,6 +40,8 @@ const TEXTS := {
 	"already_started": "The night has started already.",
 	"too_many_guests": "Too many people signed in from here. Try again later.",
 	"unauthorized": "Your sign-in ran out. Try again.",
+	"too_many_requests":
+	"That was too many refreshes in a row. The list updates again in a moment.",
 	"network": "Could not reach the game's servers. Check your connection.",
 }
 
@@ -186,7 +193,7 @@ func _sign_in_call(path: String, body: Dictionary) -> Dictionary:
 ## lobby and signs them into every ticket, and the game server's room starts with them. Null is
 ## the usual rules.
 func create(settings: MatchSettings = null) -> Dictionary:
-	var made := await _call("POST", "/lobbies", {"maxPlayers": NightHost.MAX_PLAYERS})
+	var made := await _call("POST", "/lobbies", new_lobby_body())
 	if not made["ok"]:
 		return made
 	if made["state"] != "started":
@@ -201,10 +208,24 @@ func create(settings: MatchSettings = null) -> Dictionary:
 	return {"ok": true, "lobby": made}
 
 
+## What a new night is made with: the seats for people and whether it is listed
+## (`PUBLIC_BY_DEFAULT`).
+static func new_lobby_body() -> Dictionary:
+	return {
+		"maxPlayers": NightHost.MAX_PLAYERS,
+		"visibility": visibility_word(PUBLIC_BY_DEFAULT),
+	}
+
+
+## The word the backend uses for a night that is listed (`public`) or not (`private`).
+static func visibility_word(public_night: bool) -> String:
+	return "public" if public_night else "private"
+
+
 ## A lobby of your own, still waiting: the player is its host and seat 1, and nobody has a night
 ## until `start`. Always a new lobby, in the Activity as on the website. `{"ok", "lobby"}`.
 func create_lobby() -> Dictionary:
-	var made := await _call("POST", "/lobbies", {"maxPlayers": NightHost.MAX_PLAYERS})
+	var made := await _call("POST", "/lobbies", new_lobby_body())
 	return {"ok": true, "lobby": made} if made["ok"] else made
 
 
@@ -251,6 +272,20 @@ func leave(lobby: Dictionary) -> Dictionary:
 	return await _call("POST", "/lobbies/%s/leave" % lobby["id"])
 
 
+## The request a closing page sends for this lobby (`PageClosing`, Deadnight #1188):
+## `{"url", "body"}`. The browser sends it from `pagehide` as a beacon, which cannot set an
+## `Authorization` header, so the session token is in the body; an API with no session gives an
+## empty request.
+func page_closing_request(lobby: Dictionary) -> Dictionary:
+	var token := _own_token if isolated else _token
+	if token == "" or str(lobby.get("id", "")) == "":
+		return {}
+	return {
+		"url": base_url + "/lobbies/%s/page-closed" % lobby["id"],
+		"body": JSON.stringify({"token": token}),
+	}
+
+
 ## What a code says before its holder joins: `{"ok", "preview": {code, state, round, players,
 ## maxPlayers, full, hostName, names}}`. Joins nobody.
 func preview(code: String) -> Dictionary:
@@ -259,6 +294,27 @@ func preview(code: String) -> Dictionary:
 		return _failed("not_found")
 	var seen := await _call("POST", "/lobbies/preview", {"code": clean})
 	return {"ok": true, "preview": seen} if seen["ok"] else seen
+
+
+## The Server Browser's rows (#1179; the screen is `ServerBrowserScreen`, #1180): the public nights
+## a player can join,
+## waiting or in progress, with room first. `{"ok", "nights", "total", "maxPlayers"}`, a row being
+## `{id, code, map, hostName, players, maxPlayers, bots, kind, state, round, full}`: `players` is
+## people only (a bot holds no seat, it is in `bots`), `kind` is `lobby` (waiting) or `match` (in
+## progress, with its `round`; `state` says the same as `open` or `started`). Joins nobody:
+## `join_code(row["code"])` does. Meant to be polled every few seconds; the backend answers
+## `too_many_requests` (429) past 20 asks in 10 seconds.
+func list_nights() -> Dictionary:
+	return await _call("GET", "/lobbies")
+
+
+## The host makes the night private (not in the Server Browser, not handed to a stranger; its code
+## still joins) or public again. A new night is public. `{"ok", "lobby"}`.
+func set_visibility(lobby: Dictionary, public_night: bool) -> Dictionary:
+	var answer := await _call(
+		"PUT", "/lobbies/%s/visibility" % lobby["id"], {"visibility": visibility_word(public_night)}
+	)
+	return {"ok": true, "lobby": answer} if answer["ok"] else answer
 
 
 ## The node the requests of this API are made under (they stop when it stops processing).
@@ -284,12 +340,6 @@ func join_code(code: String) -> Dictionary:
 	if clean.is_empty():
 		return _failed("not_found")
 	var joined := await _call("POST", "/lobbies/join-by-code", {"code": clean})
-	return {"ok": true, "lobby": joined} if joined["ok"] else joined
-
-
-## A public night with room, or a new one.
-func quick() -> Dictionary:
-	var joined := await _call("POST", "/lobbies/quick")
 	return {"ok": true, "lobby": joined} if joined["ok"] else joined
 
 
@@ -421,6 +471,7 @@ func _call(
 			detail = str((json as Dictionary).get("detail", ""))
 	var failed := _failed(reason, detail)
 	failed["status"] = status
+	failed["retry_after"] = float(answer.get("retry_after", 0.0))
 	return failed
 
 

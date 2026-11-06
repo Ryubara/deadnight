@@ -21,7 +21,8 @@ main.tscn                          entry; core/main.gd
   UIRouter (an autoload) holds the stack of screens
   ui/screens/main_menu.tscn        the first screen: the soldier on a live lot, a tab shell over it
     Play tab    "Solo"          -> ui/screens/night_screen.tscn       the night, HUD over it
-                "Play together" -> ui/screens/together_screen.tscn    quick join, create, join by code
+                "Server browser" -> ui/screens/server_browser_screen.tscn  the list of nights; a row goes in
+                "Play together" -> ui/screens/together_screen.tscn    server browser, create, join by code
                                       -> ui/screens/lobby_screen.tscn the lobby: code, seats, Start
                                       -> night_screen.tscn            (or join_screen.tscn with --dev)
     Loadout tab                 -> ui/screens/customize_screen.tscn   the wardrobe
@@ -45,7 +46,7 @@ straight to the night of a server, `--room CODE` opens Play together on that cod
 | `world/smallmap/smallmap_greybox.tscn` | The second map's greybox (#631), written by `tools/world/build_smallmap_greybox.py`: rooms, links (`Doors`), window sockets, spawns, camera probes ([the second map](smallmap.md)). Its zombie meshes are `world/smallmap/smallmap_navmeshes.res` | `NightWorld`, as the map `small_indoor.tres` names (`scene_path`), chosen in the map picker and the lobby ([maps](maps.md)) |
 | `gameplay/player/player.tscn` | The player's body: camera rig, collision, the soldier model. One per player, local and remote | `NightWorld`, `world/test_room.tscn` |
 | `ui/hud/hud.tscn` | The HUD: health, ammo, round, points, markers, feed, prompts | `NightScreen` |
-| `ui/screens/together_screen.tscn`, `lobby_screen.tscn`, `join_screen.tscn` | Play with others: quick join, create a night or join by code; the lobby (code, seats, the host's Start) before the night; type a server address (`--dev`) | the menu, `main.gd` flags |
+| `ui/screens/together_screen.tscn`, `lobby_screen.tscn`, `join_screen.tscn` | Play with others: the server browser, create a night or join by code; the lobby (code, seats, the host's Start) before the night; type a server address (`--dev`) | the menu, `main.gd` flags |
 | `ui/screens/customize_screen.tscn` | The wardrobe: pick a look, saved to the profile | the Loadout tab |
 | `ui/screens/settings_screen.tscn`, `credits_screen.tscn` | Settings (the player's options) and the credits | the More tab |
 | `ui/screens/menu_stage_screen.tscn` | The menu's stage alone, for frame-time runs | `main.gd --stage` |
