@@ -12,6 +12,14 @@ const PLAYER_SCENE := preload("res://gameplay/player/player.tscn")
 const SETTLE_FRAMES := 4
 ## Frames given to the first mesh before the lot is used anyway.
 const NAV_WAIT_FRAMES := 600
+## Physics frames the lot has stood when its build returns, at the least. A body's ground contacts
+## depend on the lot's age at the first tick until it is about 17 frames old (on a seam between
+## two ground tiles a still body stood 0.9 mm up or on the floor, and which tile it touched
+## changed), and the wait for the navigation map ends 3 to 9 frames after its regions are set, a
+## frame early or late from one run to the next: two nights of one seed, started the same way, went
+## their own ways from the first second (#1350). Past this age every night is the same one
+## (`docs/research/performance.md`).
+const LOT_MIN_FRAMES := 24
 ## Metres a path may end from its goal and still reach it.
 const NAV_REACHED := 1.0
 ## Metres into the field, from the boards, that a player puts them back from.
@@ -61,6 +69,7 @@ func build(info: MapInfo = null) -> void:
 	WebProbe.mark("lot: instantiate")
 	greybox = (scene if scene != null else map_info.load_scene()).instantiate()
 	add_child(greybox)
+	var born := Engine.get_physics_frames()
 	layout = MapLayout.new(greybox)
 	WebProbe.mark("lot: in the tree")
 	doors = greybox.get_node("Doors") as LotDoors
@@ -99,6 +108,8 @@ func build(info: MapInfo = null) -> void:
 	crane_block = CraneBlock.new()
 	add_child(crane_block)
 	crane_block.setup(shop_spots())
+	while Engine.get_physics_frames() - born < LOT_MIN_FRAMES:
+		await get_tree().physics_frame
 
 
 func map() -> RID:

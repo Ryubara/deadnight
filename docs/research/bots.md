@@ -662,6 +662,10 @@ the nearest by walk and answers to the order. A ping to a bot that is not short 
   (`retreat_margin = 0`) on the open field, compares the rules' state (the round, the dead left, each player's place in
   quarter metres, health, ammunition, points, kills) and leaves the dead's places out, and checks that a fight
   happened; it passed twelve runs in twelve ([lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-02-a-walking-body-makes-two-runs-of-the-same-commands-differ.md)).
+  *Update (#1350):* the hair and the tied routes seen here may be the lot's age at the first tick (see
+  [performance](performance.md), "Why two runs of one night differ"): with the lot kept to 24 physics frames three
+  walking bots and the crowd kept every place to the last bit over 900 ticks in nights built 0 and 3 frames apart, and
+  a 30 000 tick night repeated across processes. The replay test here was not changed.
 - **Firewall.** The source scan above, plus: the bot class takes a `ClientState`, a profile, a seed, an `apply`
   callable, a sight callable, a lit callable and the static level data, and has no other constructor argument.
 - **Balance simulator.** The model simulator stays the fast tuning tool (a night in 0.05 to 0.15 s). Bots run in the
@@ -2169,9 +2173,9 @@ concession wall (0 kills; now killed), the mob of seed 3 with both guns emptied 
 `tests/captures/autopilot_night.tscn --pinned --shoulder` sets the corner up for a capture (the PR's before and after).
 
 **Ten seeds of the nightly's 30 minute night** (`autopilot_run.gd --seed=N --count=1 --bots=3`, the leak job's other
-arguments, `main` at 865b61fd against the same code with this change; seed 7, where no stall happened, came out the
-same in both arms to the kill; the stall is the seconds the dead alive count and
-the round did not change for 20 s or more, as in the #1341 data):
+arguments, `main` at 865b61fd against the same code with this change; both arms ran on the code before #1357, where a
+seed was a draw and not one night (seed 7, where no stall happened, came out the same in both); the stall is the seconds
+the dead alive count and the round did not change for 20 s or more, as in the #1341 data):
 
 | Seed | `main`: round, kills, stall s | Pin rule only | This change |
 | --- | --- | --- | --- |

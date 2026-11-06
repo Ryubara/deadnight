@@ -309,7 +309,9 @@ not.
 The autopilot's stall (the second row of the table above) is the autopilot's own: its flight from the nearest zombie is
 a straight line that ends against a wall, and with a dry gun it kept fleeing until the dead closed a ring round it. The
 cause, the two rules that fix it and the tests are in [bots.md](bots.md#the-autopilot-pinned-by-the-dead-1351). Ten
-seeds of the same night (`--seed=1` to `10`), `main` at `865b61fd` against the change, the stall counted as above:
+seeds of the same night (`--seed=1` to `10`), `main` at `865b61fd` against the change, the stall counted as above (both
+arms ran before the lot's age was fixed, [below](#why-two-runs-of-one-night-differ-1350): a seed was a draw, not one
+night, and the arms' same-seed nights were not the same night but for seed 7):
 
 | | Round, mean | Kills, mean | Seconds standing unchanged (20 s or more), mean | Nights with 300 s or more | Lowest round |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -321,6 +323,65 @@ about 2 rounds. The stall and the kills are what moved, and the probe of the ten
 (none past 100 s) where `main`'s night of seed 8 printed a stall of 640 s. What is left is not looked at: the 83 s a
 night, and the one to three dead nobody has in view ([#1352](https://github.com/Ryubara/deadnight/issues/1352)). Whether
 the nightly's person should be able to die is still the maintainer's (`AutopilotRun.PLAYER_HEALTH`, untouched).
+
+## Why two runs of one night differ (#1350)
+
+The same commit, seed and command gave different nights (`d15d770f`, seed 1958, `--fixed-fps 60`, headless, two at
+once: round 17 with 296 kills and round 11 with 116). The first thing that differs is **not** a number of the night, it
+is the age of the lot at the night's first tick.
+
+- **How it was found.** `autopilot_run` takes `seed=N` and `trace=PATH` (`NightTrace`): a line a tick of six hashes (the
+  dead, the bodies, the rules' dice, the dead's paths, the points, and how many stand) and, for each body, its place,
+  velocity, floor flag, health and the colliders it touched. Two or three runs at once are compared line by line, and
+  the first column to differ names the part of the night.
+- **The chain, from the first difference.** Three runs of the same night before the fix (`startround=16`, 500 s,
+  30 000 ticks): the bodies' hash differs at tick 25 490, 25 492 and 25 493 (one bot's `y` is 0.00094 or -0.00002 m:
+  standing a millimetre up or on the floor, and the tick it settles is one of three), the dead's places at 25 839 (the
+  bot is what they chase), their paths at 25 853, the points at 26 205, the number standing at 26 799 and the rules'
+  dice at 28 821 (the spawn stream drew a different number of times). Nothing before tick 25 490 differs in any of the
+  six columns. A night from round 1 (1 800 s, three at once, seed 1958) kept the dead the same to the end in two of
+  three pairs and differed in the bodies alone from tick 100 917 in the third (a hair that did not grow into a
+  different night that time).
+- **Why the bodies differ: the lot's age.** The lot waited for its navigation map until the map answered a path, and
+  that was 3 to 9 physics frames after its regions were set, a frame early or late from one run to the next (sixty
+  builds in a test process: 3 frames 38 times, 6 frames 9, 8 frames 6, 4 frames 4, and 5, 7, 9 once each; in a night
+  process, 3 to 5). So the first tick ran on physics frame 10, 11 or 12 with the lot added on frame 2: a lot 8, 9 or
+  10 frames old. The physics engine plays the bodies' contacts with the ground differently in a lot that young. With
+  the same build, bots and commands, a night seated 0 to 2 frames after the build returned and one seated 3 or more
+  frames after gave two different hashes of the bodies' places over 240 ticks, **identical inside each group**; run
+  again with the lot kept to 24 frames, delays of 0, 1, 2, 3, 5 and 9 frames gave one hash. At the first ticks the
+  same body at the same place (6, 0, -43) was reported touching `GroundC1_0` in one run and `GroundC2_0` in another
+  (two ground tiles meeting under it), and three ticks in a walking bot was 0.8 mm up in `y` (0.00082687) in one
+  run and on the floor in another. It is the lot's age, not the frame number: starting the whole night 1 to 5 frames
+  later (the lot added on frame 3 to 7) gave one hash.
+- **Ruled out, each by a run that does not differ.**
+    - *Audio* (time-sliced decodes, `audio_started`, `sounds_playing`, `WindSounds` seeded from the clock): three
+      600 s nights at once were identical for 36 000 ticks in the dead, bodies, dice, paths and points while
+      `objects`, `resources`, `sounds_playing` and `audio_started` differed from the first seconds (11 778 against
+      11 781 objects at second 1). The load-time counts differ and the night does not.
+    - *Wall clock in `gameplay/`:* the only reads are the bots' own timing for telemetry (`BotClient`), the perf
+      probes, the net layer and the warm-up's sound budget, which headless does not run.
+    - *The physics server as a function:* asked 20 times for the same motion of a body standing where it was, it
+      gave the same answer 1 440 times of 1 440. The difference is in the state it is in, not a race inside a call.
+    - *Navigation paths:* the dead's paths hash differs only after the dead's places do.
+- **Fix.** `NightWorld.build` returns when the lot has stood `LOT_MIN_FRAMES` (24) physics frames, whatever the
+  navigation map did meanwhile (14 to 16 frames, about 0.25 s at 60 a second, longer in a night's load than
+  before; the web is the same count). `tests/night/test_night_repeats.gd`: the build is at least that old every
+  time; three nights of one seed, seated 0, 3 and 0 frames after their lot, keep every body's and every dead's
+  place to the last bit over 900 ticks (both fail without the fix).
+- **After.** Eighteen runs of the night's first 400 ticks at six moments of the machine's load: one hash and one
+  first physics frame (27) in all (before: three frame counts, 10, 11, 12, and two hashes in 24 runs); three runs of
+  the round-16 night for 30 000 ticks: identical in all six columns and in every body's contacts (before: all three
+  differed). **Ten nights from round 1** (seed 1958, 1 800 s, the nightly's command with `--bots=3`, six at once and
+  then four, commit `533b68a4`): 317 kills and round 19 in each, and their traces (every sixth tick: the six hashes
+  and every body's place, velocity, health and contacts) are byte for byte the same file. Nights from round 1 rarely
+  parted within 30 minutes before the fix (two sets of three at once: one set the same, the other the same in the dead
+  with one night's bodies apart for its last 7 000 ticks), which is why the round-16 start was the sharp test.
+- **Not found.** Why the engine plays a young lot's contacts differently (the ground tiles are CSG boxes whose
+  collision shapes are made over the first frames; this was not isolated), and whether 24 frames is the least: the
+  outcome stopped changing at 17 frames in a process that seats bots after the build, and nothing tried between 17
+  and 32 changed. The lot is a `Field` of ground tiles that meet; a map with one big floor may not show it. The
+  project sets no physics engine (the engine's default), and nothing here was run on another.
 
 ## What the two biggest cheap costs are worth
 
@@ -584,6 +645,10 @@ godot --headless --path game --fixed-fps 60 -- --autopilot --rounds=999 --hold=9
 godot --headless --path game --fixed-fps 60 -- --autopilot --rounds=999 --hold=9999 --seconds=1800 \
     --count=1 --bots=3 --frames=0 --labels=0 --sample=1 --seed=3 --out=<abs>/leak-s3.json
 # The HUD's draw calls part by part (add --hudprobe=1; prints HUDPROBE {json} once 60 dead stand)
+# Two runs of one night compared tick by tick (a line of hashes a tick; seed=N picks the night; '.meta' beside
+# the trace says the physics frame of the first tick); run it three times at once and diff the traces:
+godot --headless --path game --fixed-fps 60 -- --autopilot --rounds=999 --hold=9999 --seconds=500 \
+    --startround=16 --bots=3 --frames=0 --labels=0 --seed=1958 --trace=<abs>/a.trace --out=<abs>/a.json
 ```
 
 Ablations (`BenchAblation`): `lights=0`, `ui=0`, `hide=Field`, `cull=D`, `fog=0`, `scale=N`, `msaa=0`. Record the
