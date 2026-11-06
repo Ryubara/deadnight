@@ -33,7 +33,6 @@ from ci_shard_time import JOB_LIMIT_SECONDS, WEB_JOB_LIMIT_SECONDS
 # (#1091). The workflow's matrix must list them.
 SHARDS = 10
 # Seconds the once-per-run steps of shard 1 take beyond the setup every shard does (main scene, a night, the late-round
-# Seconds the once-per-run steps of shard 1 take beyond the setup every shard does (main scene, a night, the late-round
 # budget run: 54 to 112 s for the budget run alone, 91 s on average in six `main` runs, 100 s with the rest, #1265, and
 # the worst-room budget run of 8 people and 7 bots, 137 s on the first CI run, #1193), so shard 1 is dealt that much less
 # test time.

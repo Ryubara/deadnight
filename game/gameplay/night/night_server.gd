@@ -159,6 +159,8 @@ var challenges: ChallengeAward
 ## at the same place; off, by where they stand now.
 var dead_tuning := DeadContactTuning.shipped()
 var dead_as_seen := true
+## Whether a body is near anything the use button could offer; settles the bodies in the open.
+var use_sites: UseSites
 ## The account level of each player the host knows (the local player's, from their profile; the
 ## ticket's XP for a seat with an account, `NightHost.register_account`). Their look is held to what
 ## that level may wear: a locked piece in a client's look is put back (`LookServer`, #1065). A
@@ -250,6 +252,7 @@ func _init(
 	sim.barricades = rules.barricades
 	sim.board_seconds = rules.tuning.barricades.seconds_per_board
 	_sight = UseSight.new(_probe.static_callable())
+	use_sites = UseSites.new(world)
 	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
 	_revive.sight = _sight
 	_guard = UseGuard.new(tuning)
@@ -1040,6 +1043,9 @@ func use_target(player_id: int) -> Dictionary:
 			"progress": _revive.progress(raise),
 			"bleed": rules.bleed_left_of(raise),
 		}
+	# A body in the open is offered nothing (`UseSites`: the answer for almost every body each tick).
+	if not use_sites.near(here, tuning):
+		return {}
 	# The maps keep the zones apart (`UseZones`); where two still meet, a held repair keeps its
 	# breach and otherwise the one the player looks at wins (#908).
 	var view := _view_of(player_id)
