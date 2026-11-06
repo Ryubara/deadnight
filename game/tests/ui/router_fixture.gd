@@ -9,7 +9,14 @@ extends RefCounted
 
 
 ## Frees every screen on the router, top first, and waits until the router has settled.
+##
+## A caller can be a signal's handler: a test that waits on `Night.ready_to_play` resumes inside the
+## signal's emit, and a screen freed there is freed while its own night is still emitting ("Object
+## was freed or unreferenced while a signal is being emitted from it", #1355). So it yields one
+## frame first, which leaves every emit the caller was in; nothing in the game frees a screen like
+## that (the router frees its screens between its own jobs).
 static func clear(tree: SceneTree) -> void:
+	await tree.process_frame
 	if UIRouter.busy:
 		await UIRouter.idle
 	var screens := UIRouter.screens()
