@@ -1,3 +1,4 @@
+# gdlint:disable=max-public-methods
 # The first-run touch hints and the key hints on a phone, driven by real touch events: a hint shows
 # until its control is used, then goes for good; the prompt card shows a tap mark, never a keycap;
 # and the labels keep clear of the buttons and the HUD cards at every phone canvas.
@@ -12,6 +13,11 @@ const CANVASES: Array[Vector2] = [
 ]
 const KEPT_PARTS: Array[StringName] = [
 	&"ammo", &"prompt", &"health", &"perks", &"points", &"round_part", &"slots"
+]
+## What a new player is shown with a prompt up and a dead in reach: every hint but the shoulder's,
+## which waits for the first look (the column's hint is the last).
+const FIRST_RUN: Array[StringName] = [
+	TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT, TouchHints.STRIKE, TouchHints.SCOREBOARD
 ]
 const ON_THE_STICK := Vector2(300.0, 760.0)
 const ON_THE_LOOK_AREA := Vector2(1700.0, 330.0)
@@ -53,7 +59,8 @@ func test_a_new_player_sees_move_and_look_and_interact_waits_for_a_prompt() -> v
 	assert_array(_hints().showing()).is_equal([TouchHints.MOVE, TouchHints.LOOK])
 	state.set_prompt(&"buy_door", "Concession door", 350)
 	await _frames()
-	# The column's hint waits for a HUD with a column (`test_touch_scoreboard`).
+	# No dead in reach, so no Strike, and the column's hint waits for a HUD with a column
+	# (`test_touch_scoreboard`): the other three.
 	assert_array(_hints().showing()).is_equal(
 		[TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT]
 	)
@@ -106,7 +113,7 @@ func test_the_look_hint_goes_on_the_first_look_drag_not_on_a_touch_alone() -> vo
 	assert_bool(_hints().is_seen(TouchHints.LOOK)).is_false()
 	await _fixture.drag(0, ON_THE_LOOK_AREA + Vector2(40.0, 0.0), Vector2(40.0, 0.0))
 	assert_bool(_hints().is_seen(TouchHints.LOOK)).is_true()
-	assert_array(_hints().showing()).is_equal([TouchHints.MOVE])
+	assert_array(_hints().showing()).is_equal([TouchHints.MOVE, TouchHints.SWAP])
 	await _fixture.lift(0)
 
 
@@ -230,6 +237,37 @@ func test_using_a_control_does_not_lay_the_buttons_out_again() -> void:
 	settings.set_value(SettingsService.TOUCH_HINTS_SEEN, before)
 
 
+func test_the_shoulder_hint_waits_for_the_first_look_says_itself_once_and_goes_when_used() -> void:
+	await _start()
+	assert_array(_hints().showing()).is_equal([TouchHints.MOVE, TouchHints.LOOK])
+	_hints().mark_used(TouchHints.LOOK)
+	assert_array(_hints().showing()).is_equal([TouchHints.MOVE, TouchHints.SWAP])
+	assert_str(_hints().text_for(TouchHints.SWAP)).contains("DOUBLE TAP\nSWAP")
+	# Two taps on free ground are the use.
+	for tap in 2:
+		await _fixture.touch(0, ON_THE_LOOK_AREA)
+		_fixture.pass_time(0.08)
+		await _fixture.lift(0)
+		_fixture.pass_time(0.1)
+	assert_bool(_hints().is_seen(TouchHints.SWAP)).is_true()
+	assert_array(_hints().showing()).is_equal([TouchHints.MOVE])
+
+
+func test_the_shoulder_hint_goes_by_itself_after_a_while_and_does_not_come_back() -> void:
+	await _start()
+	_hints().mark_used(TouchHints.LOOK)
+	_hints().mark_used(TouchHints.MOVE)
+	assert_array(_hints().showing()).is_equal([TouchHints.SWAP])
+	# Eight seconds of showing, in frames the test keeps.
+	var seconds := 0.0
+	while seconds < TouchHints.SWAP_SECONDS + 0.5 and not _hints().is_seen(TouchHints.SWAP):
+		_hints()._process(0.25)
+		seconds += 0.25
+	assert_bool(_hints().is_seen(TouchHints.SWAP)).is_true()
+	assert_float(seconds).is_between(TouchHints.SWAP_SECONDS, TouchHints.SWAP_SECONDS + 0.3)
+	assert_array(_hints().showing()).is_empty()
+
+
 # --- The prompt card on a phone ---
 
 
@@ -312,12 +350,17 @@ func test_the_labels_keep_clear_of_the_buttons_and_the_hud_for_either_hand() -> 
 			await _frames()
 			var hints := fixture.controls.hints
 			var safe := fixture.controls.safe_rect()
-			assert_array(hints.showing()).is_equal(TouchHints.ORDER)
+			assert_array(hints.showing()).is_equal(FIRST_RUN)
 			var circles := TouchLayout.buttons(safe, 1.0, mirrored)
 			var rects := {}
-			for id in hints.showing():
+			# The shoulder hint stands where the look hint did, once the player has looked: it is
+			# checked in the same place, though it never shows beside the others.
+			var checked: Array[StringName] = hints.showing()
+			checked.append(TouchHints.SWAP)
+			for id in checked:
 				var rect := hints.rect_of(id)
-				rects[id] = rect
+				if id != TouchHints.SWAP:
+					rects[id] = rect
 				var message := "%s on %s (mirrored %s)" % [id, canvas, mirrored]
 				(
 					assert_bool(safe.encloses(rect))
@@ -358,3 +401,18 @@ func test_only_a_real_mouse_click_ends_touch_mode_not_motion_or_the_engine_copy_
 	UIInputMode.track(InputEventMouseButton.new())
 	assert_bool(UIInputMode.touch).is_false()
 	assert_bool(UIInputMode.pointer).is_true()
+
+
+func test_the_columns_hint_takes_the_last_bit_after_every_hint_already_saved() -> void:
+	# A saved mask means the same hints it always did: each bit is its hint's place in ORDER, so a
+	# new hint goes at the end (the shoulder's bit is 4 and the column's 5).
+	assert_array(TouchHints.ORDER).is_equal(
+		[
+			TouchHints.MOVE,
+			TouchHints.LOOK,
+			TouchHints.INTERACT,
+			TouchHints.STRIKE,
+			TouchHints.SWAP,
+			TouchHints.SCOREBOARD
+		]
+	)

@@ -112,6 +112,12 @@ def overlap(a: dict, b: dict) -> bool:
     return a["left"] < b["right"] and b["left"] < a["right"] and a["top"] < b["bottom"] and b["top"] < a["bottom"]
 
 
+def hidden(state: dict, name: str) -> bool:
+    """Whether the button is not drawn now: Interact only with a prompt (the probe's own check skips it
+    by name), Strike only with a dead in reach."""
+    return name == "interact" or (name == "quick_melee" and not state.get("touch_strike"))
+
+
 def gap_to(box: dict, button: tuple[float, float, float]) -> float:
     """How far the button's rim is from the box, CSS px (negative when they overlap)."""
     cx = min(max(button[0], box["left"]), box["right"])
@@ -267,7 +273,7 @@ def run(
         problems.append(f"[check] the column is on the wrong side for left_handed={left}")
     box = box_of(column)
     for name, button in drawn.items():
-        if name != "interact" and gap_to(box, button) <= 0:
+        if not hidden(state, name) and gap_to(box, button) <= 0:
             problems.append(f"[check] the column is under the {name} button")
     if not (0 <= box["left"] and box["right"] <= size["width"] and 0 <= box["top"] and box["bottom"] <= size["height"]):
         problems.append("[check] the column leaves the page")
@@ -297,7 +303,7 @@ def run(
         ):
             problems.append(f"[check] the ticket leaves the page: {card}")
         for name, button in buttons(held_state, size).items():
-            if name != "interact" and gap_to(card, button) <= 0:
+            if not hidden(held_state, name) and gap_to(card, button) <= 0:
                 problems.append(f"[check] the ticket is under the {name} button")
         for name, zone in zones(held_state, size).items():
             if overlap(card, box_of(zone)):

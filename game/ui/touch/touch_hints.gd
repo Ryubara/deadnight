@@ -22,17 +22,22 @@ const MOVE := &"move"
 const LOOK := &"look"
 const INTERACT := &"interact"
 const STRIKE := &"strike"
+## The double tap on free ground that changes shoulder (#1288). It has no button to point at, so it
+## waits until the player has looked, shows for `SWAP_SECONDS` and is then seen, used or not.
+const SWAP := &"swap"
+## "HOLD FOR SCORES" beside the players' column (#1287), after every hint that was already saved.
 const SCOREBOARD := &"scoreboard"
 ## The order is the bit each hint owns in the saved mask (the scoreboard's is the last, so the bits
 ## already saved keep their hint).
-const ORDER: Array[StringName] = [MOVE, LOOK, INTERACT, STRIKE, SCOREBOARD]
-## The hints of a tap or a hold: a ring that swells, where the others' dot slides along a track.
-const TAPS: Array[StringName] = [INTERACT, STRIKE, SCOREBOARD]
+const ORDER: Array[StringName] = [MOVE, LOOK, INTERACT, STRIKE, SWAP, SCOREBOARD]
+## The hints that sit beside a button or a place and show a tap, not a drag.
+const TAPS: Array[StringName] = [INTERACT, STRIKE, SWAP, SCOREBOARD]
 
 const TEXT := {
 	MOVE: "DRAG TO MOVE",
 	LOOK: "DRAG TO LOOK",
 	INTERACT: "TAP TO USE",
+	SWAP: "DOUBLE TAP\nSWAP SIDE",
 	STRIKE: "STRIKE",
 	SCOREBOARD: "HOLD FOR SCORES",
 }
@@ -40,7 +45,14 @@ const TEXT := {
 const HOLD_VERB := "HOLD"
 const HOLD_TEXT := "HOLD TO REPAIR"
 
+## How long the shoulder hint stays, seconds: long enough to read it twice, short enough that a
+## player who never needs the other shoulder is not shown it all night.
+const SWAP_SECONDS := 8.0
+
 const TEXT_SIZE := 36
+## A hint of two lines (the shoulder's: a line break in its text) steps down this far between
+## baselines: the smallest canvas has 436 units between the popup lane and the edge for a label.
+const LINE_STEP := 44.0
 const PAD := Vector2(22.0, 14.0)
 const ICON_WIDTH := 64.0
 const ICON_GAP := 14.0
@@ -112,6 +124,8 @@ func showing() -> Array[StringName]:
 			continue
 		if id == STRIKE and not controls.strike_up:
 			continue
+		if id == SWAP and not is_seen(LOOK):
+			continue  # first the look, then the other shoulder
 		if id == SCOREBOARD and _zone().is_empty():
 			continue
 		found.append(id)
@@ -186,7 +200,7 @@ func rect_of(id: StringName) -> Rect2:
 				left = maxf(left, safe.position.x + clear)
 			var rect := Rect2(Vector2(_off_the_lane(left, size.x, safe), top - size.y), size)
 			return _below_the_buttons(rect, safe)
-		LOOK:
+		LOOK, SWAP:
 			var middle := safe.get_center().x
 			var left := middle - LANE_HALF - GAP - size.x if mirrored else middle + LANE_HALF + GAP
 			var top := safe.position.y + safe.size.y * LOOK_AT_Y - size.y * 0.5
@@ -337,6 +351,8 @@ func _process(delta: float) -> void:
 		_leaving[id] = float(_leaving[id]) - delta
 		if float(_leaving[id]) <= 0.0:
 			_leaving.erase(id)
+	if float(_age.get(SWAP, 0.0)) >= SWAP_SECONDS:
+		mark_used(SWAP)  # said once: it is seen now, used or not
 	var painting := not now.is_empty() or not _leaving.is_empty()
 	var key := _look_key(now) if painting else 0
 	# One more redraw after the last label goes, or its last, faint frame stays on the screen.
@@ -398,12 +414,19 @@ func _draw_hint(id: StringName, alpha: float, tokens: UITokens) -> void:
 	draw_rect(rect, fill)
 	draw_rect(rect, Color(tokens.accent, alpha), false, 3.0)
 	_draw_icon(id, tokens, _icon_box(rect), alpha)
+	var lines := text_for(id).split("\n")
 	var at := (
-		rect.position + Vector2(PAD.x + ICON_WIDTH + ICON_GAP, rect.size.y * 0.5 + TEXT_SIZE * 0.35)
+		rect.position
+		+ Vector2(
+			PAD.x + ICON_WIDTH + ICON_GAP,
+			rect.size.y * 0.5 + TEXT_SIZE * 0.35 - LINE_STEP * 0.5 * (lines.size() - 1)
+		)
 	)
-	draw_string(
-		font, at, text_for(id), HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE, Color(tokens.ink, alpha)
-	)
+	for line in lines:
+		draw_string(
+			font, at, line, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE, Color(tokens.ink, alpha)
+		)
+		at.y += LINE_STEP
 
 
 func _icon_box(rect: Rect2) -> Rect2:
@@ -468,10 +491,21 @@ func _move_marks(now: Array[StringName]) -> void:
 
 
 func _pill_size(text: String) -> Vector2:
-	var width := (
-		_font(UITokens.active()).get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE).x
+	var width := 0.0
+	var lines := text.split("\n")
+	for line in lines:
+		width = maxf(
+			width,
+			(
+				_font(UITokens.active())
+				. get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE)
+				. x
+			)
+		)
+	return Vector2(
+		PAD.x * 2.0 + ICON_WIDTH + ICON_GAP + width,
+		PAD.y * 2.0 + TEXT_SIZE + LINE_STEP * (lines.size() - 1)
 	)
-	return Vector2(PAD.x * 2.0 + ICON_WIDTH + ICON_GAP + width, PAD.y * 2.0 + TEXT_SIZE)
 
 
 func _font(tokens: UITokens) -> Font:

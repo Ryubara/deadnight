@@ -9,8 +9,9 @@ extends RefCounted
 ## An icon is drawn in a box of [-1, 1] on both axes, scaled to `ICON_SHARE` of the button's radius.
 ## It is a plain, heavy shape in the button's ink, read at a glance with a thumb over it:
 ## Fire a bullet, Aim a scope, Jump two chevrons up, Crouch a chevron down onto the floor, Reload a
-## circle of arrow, Swap two arrows across, the Grenade a grenade, Side a person with an arrow each
-## way, Melee a blade, Bots a wheel of orders, Ping a pin, Pause two bars.
+## circle of arrow, Swap two arrows across, the Grenade a grenade, Melee a blade, Bots a wheel of
+## orders, Ping a pin, Pause two bars. The shoulder has no icon: it is a double tap
+## (`TouchDoubleTap`), and the scoreboard none: it is a finger held on the players' column.
 ## Interact is the one that keeps a word (`TouchControls`); it has a tap mark above it.
 
 ## How much of the button's radius the icon's box takes: a little over half, so the rim and the
@@ -28,7 +29,6 @@ const IDS: Array[StringName] = [
 	TouchLayout.JUMP,
 	TouchLayout.CROUCH,
 	TouchLayout.RELOAD,
-	TouchLayout.SHOULDER,
 	TouchLayout.STRIKE,
 	TouchLayout.BOT_WHEEL,
 	TouchLayout.PING,
@@ -59,8 +59,6 @@ static func add(
 			_crouch(box)
 		TouchLayout.RELOAD:
 			_reload(box)
-		TouchLayout.SHOULDER:
-			_shoulder(box)
 		TouchLayout.STRIKE:
 			_melee(box)
 		TouchLayout.BOT_WHEEL:
@@ -119,15 +117,6 @@ static func _reload(box: _Box) -> void:
 	var end := Vector2.RIGHT.rotated(deg_to_rad(to)) * 0.62
 	var along := Vector2.RIGHT.rotated(deg_to_rad(to + 90.0))
 	box.arrow_head(end + along * 0.16, along, 0.48)
-
-
-static func _shoulder(box: _Box) -> void:
-	# A person from behind, the camera's side moving either way over them.
-	box.dot(Vector2(0.0, -0.08), 0.28)
-	box.poly([Vector2(-0.52, 0.85), Vector2(-0.4, 0.32), Vector2(0.4, 0.32), Vector2(0.52, 0.85)])
-	box.line(Vector2(-0.45, -0.72), Vector2(0.45, -0.72), THIN)
-	box.arrow_head(Vector2(-0.95, -0.72), Vector2.LEFT, 0.4)
-	box.arrow_head(Vector2(0.95, -0.72), Vector2.RIGHT, 0.4)
 
 
 static func _melee(box: _Box) -> void:
