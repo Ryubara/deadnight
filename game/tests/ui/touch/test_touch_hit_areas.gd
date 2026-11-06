@@ -19,7 +19,6 @@ const SLACK := 0.5
 const SMALL: Array[StringName] = [
 	TouchLayout.PAUSE,
 	TouchLayout.PING,
-	TouchLayout.SCOREBOARD,
 ]
 ## Where a point's step is checked on the grid sweep, in canvas units.
 const GRID_STEP := 7.0
@@ -151,9 +150,9 @@ func test_the_drawn_buttons_are_the_size_they_were() -> void:
 	var without := _circles(0.8, 1.0, false, false)
 	for id: StringName in with_rule:
 		assert_float(with_rule[id][&"radius"]).is_equal(without[id][&"radius"])
-		# Ping and the Scoreboard stand a fingertip-sized length from Pause (#1289): they move
-		# with the rule, along the top edge or down the column, and no other button does.
-		if id != TouchLayout.PING and id != TouchLayout.SCOREBOARD:
+		# Ping stands a fingertip-sized length from Pause (#1289): it moves with the rule, down
+		# the column, and no other button does.
+		if id != TouchLayout.PING:
 			assert_vector(with_rule[id][&"centre"]).is_equal(without[id][&"centre"])
 		assert_float(with_rule[id][&"was"]).is_equal(without[id][&"hit"])
 
@@ -205,25 +204,21 @@ func test_a_touch_that_pressed_a_button_presses_the_same_button_and_the_rest_is_
 	assert_int(gained).is_greater(200)
 
 
-## Pause, Ping and the Scoreboard share no margin: Ping stands under Pause and the Scoreboard beside
-## it, a fingertip and more apart (#1289), so a touch near one is never the other's.
-func test_pause_ping_and_the_scoreboard_share_no_margin() -> void:
+## Pause and Ping share no margin: Ping stands under Pause, a fingertip and more apart (#1289), so a
+## touch near one is never the other.
+func test_pause_and_ping_share_no_margin() -> void:
 	for ui_scale in INTERFACE_SIZES:
 		_controls(ui_scale)
-		var ids: Array[StringName] = [TouchLayout.PAUSE, TouchLayout.PING, TouchLayout.SCOREBOARD]
-		for i in ids.size():
-			for j in range(i + 1, ids.size()):
-				var apart := _centre(ids[i]).distance_to(_centre(ids[j]))
-				assert_float(apart - _hit(ids[i]) - _hit(ids[j])).is_greater(0.0)
+		var apart := _centre(TouchLayout.PAUSE).distance_to(_centre(TouchLayout.PING))
+		assert_float(apart - _hit(TouchLayout.PAUSE) - _hit(TouchLayout.PING)).is_greater(0.0)
 	_controls(0.8)
 	# The centres themselves are their own.
 	assert_object(await _press(_centre(TouchLayout.PING))).is_equal(TouchLayout.PING)
-	assert_object(await _press(_centre(TouchLayout.SCOREBOARD))).is_equal(TouchLayout.SCOREBOARD)
 
 
 ## Where old areas overlapped, the first in the order wins, as before: Interact over Strike, the two
-## contextual buttons, whatever the nearest centre. (Pause, Ping and the Scoreboard no longer
-## overlap: #1289.)
+## contextual buttons, whatever the nearest centre. (Pause and Ping no longer overlap: #1289, and
+## the Scoreboard circle is gone: #1287.)
 func test_where_old_areas_overlap_the_first_in_order_still_wins() -> void:
 	_controls(0.8)
 	# A point inside both old areas and nearer Strike's centre is Interact's while it is up, and
