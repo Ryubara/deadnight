@@ -223,3 +223,74 @@ func test_the_lot_gives_its_loops_and_breaches_to_a_bots_level() -> void:
 	assert_float(cage[2].z).is_equal_approx(21.0 + LotBotData.LOOP_MARGIN, 0.5)
 	assert_array(night.level.links).is_empty()
 	night.dispose()
+
+
+## A level of the hall whose `walk` finds a row of boards across z = `board_z` (as a ray along the
+## way would: the metres to it, or -1.0 when the segment does not cross it).
+func _hall_with_boards(board_z: float) -> BotLevel:
+	var level := await _hall()
+	level.walk = func(from: Vector3, to: Vector3) -> float:
+		if (from.z - board_z) * (to.z - board_z) >= 0.0:
+			return -1.0
+		var share := (board_z - from.z) / (to.z - from.z)
+		return share * Vector2(to.x - from.x, to.z - from.z).length()
+	return level
+
+
+## A seed whose first jitter (two draws, x then z) moves a goal at least `south` metres toward
+## smaller z: the ladder's repath draws them in that order.
+func _seed_that_jitters_by(south: float) -> int:
+	var probe := RandomNumberGenerator.new()
+	for candidate in range(1, 400):
+		probe.seed = candidate
+		probe.randf_range(-BotLegs.JITTER, BotLegs.JITTER)
+		if probe.randf_range(-BotLegs.JITTER, BotLegs.JITTER) < -south:
+			return candidate
+	return -1
+
+
+func test_a_jitter_that_puts_the_goal_behind_boards_is_taken_back_not_walked_into() -> void:
+	# The ladder's second rung moves the goal a little to repath. A goal 0.2 m short of a row of
+	# boards, moved past it, is one nothing walks to (`BotPath.walkable`): the bot then stood where it
+	# was, the ladder saw a bot that was not commanded to walk, the roam kept the place that was
+	# never marked unreachable, and a Roam bot idled for minutes at the breaker post (#1325).
+	var board_z := 7.9
+	var level := await _hall_with_boards(board_z)
+	var picked := _seed_that_jitters_by(1.3)
+	assert_int(picked).is_greater(0)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = picked
+	var legs := BotLegs.new(level, rng)
+	legs.seat = ME
+	var intent := BotIntent.new()
+	intent.goal = Vector3(8.0, 0.0, board_z + 0.2)
+	intent.goal_radius = 0.5
+	var here := Vector3(8.0, 0.0, 13.0)
+	var crew: Array[Dictionary] = []
+	var now := 0.0
+	var second_rung := 0
+	# The bot is held where it stands (a wall that never gives), so the ladder climbs.
+	for _i in 600:
+		now += STEP
+		legs.step(STEP, now, _me(here), intent, crew, INF)
+		if legs.stuck.rung == 2:
+			second_rung += 1
+			if second_rung > 12:
+				break
+	(
+		assert_int(second_rung)
+		. override_failure_message("the ladder was lost on its second rung")
+		. is_greater(12)
+	)
+	(
+		assert_int(legs.path.walled_marks)
+		. override_failure_message("the jitter was never walled")
+		. is_greater(0)
+	)
+	(
+		assert_int(legs.path.last_status)
+		. override_failure_message("the goal it can walk to is called unreachable")
+		. is_not_equal(BotPath.Status.UNREACHABLE)
+	)
+	assert_bool(legs.path.is_blocked(intent.goal, now)).is_false()
+	assert_float(legs.wish.length()).is_greater(0.5)
