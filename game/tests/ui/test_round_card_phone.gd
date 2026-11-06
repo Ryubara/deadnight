@@ -214,10 +214,11 @@ func test_the_column_gets_the_room_the_card_gave_up() -> void:
 				_host.queue_free()
 
 
-## The room that is left in the busiest case, for the bots' tag of #1300 (a fingertip and a gap):
-## at 1.25 with eight people and seven bots the column, in pairs, ends 72 to 75 units short of its
-## room (it was 2 to 5 with the card in three lines). The tag needs more, so it still cannot move
-## into the column there; where the party is smaller or the bots are away the room is bigger.
+## The room that is left in the busiest case, against a fingertip and a gap (the bots' tag of
+## #1300, which landed in the weapon strip instead): at 1.25 with eight people and seven bots the
+## column, in pairs, ends 72 to 75 units short of its room (it was 2 to 5 with the card in three
+## lines). That is less than a fingertip, so nothing a fingertip high can move into the column
+## there; where the party is smaller or the bots are away the room is bigger.
 func test_the_room_left_for_the_bots_tag_at_the_busiest_case() -> void:
 	for page in PHONES:
 		var canvas := _page(page, 1.25)
