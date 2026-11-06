@@ -2255,9 +2255,9 @@ post (`Switch_booth`, a `StaticBody3D` of 0.8 by 0.5 m at `(5.6, 21.5)`, flush a
 **Fix** (`BotLegs._ask_path`): a nudge that makes the goal unreachable is taken back and the goal itself is asked, so the
 ladder goes on and, when the goal really is unreachable, the mark is on its own cell and the roam drops it. The wedge on
 the post is not removed: the bot loses about 2 s there, the ladder drops the goal (rung 4) and Roam chooses another
-place (the stand is left alone for ten minutes). The same hole was thought the likely cause of the other Roam stands in
-the samples, at the west midway (`(-15.4, 32.4)`, goal `(-24.3, 0.4, 32.1)` and `(-36.0, 0.4, 36.6)`, path 4, `stuck`
-false); it is not (#1334): that point is a body off the walking mesh, against the west pocket's window jamb (#1339).
+place (the stand is left alone for ten minutes). The other Roam stands in the samples, at the west midway
+(`(-15.4, 32.4)`, goal `(-24.3, 0.4, 32.1)` and `(-36.0, 0.4, 36.6)`, path 4, `stuck` false), were not this hole: see
+the next section (#1339).
 
 **Tests:** `test_bot_legs.gd` `test_a_jitter_that_puts_the_goal_behind_boards_is_taken_back_not_walked_into` (a hall with
 boards, a seed whose jitter lands behind them; fails on `main` three ways: the ladder is lost on its second rung, the
@@ -2276,6 +2276,55 @@ this spot, seeds 26, 29, 36 and 64, and the gate broken in 4 of the cell's night
 from the west walks the same line) that came round the booth's corner from the west still lost seconds on it. #1334 baked
 the four breaker posts into the lot's meshes (`docs/research/zombies.md`, "A solid prop that is not CSG is not in the
 mesh either"): the same walk has no stuck episode, with the ladder's fix and without it.
+
+## A Roam bot in the west midway's corner (#1339)
+
+The other samples of the nightly's `idle under Roam over 8 s`: veteran_4, seeds 63 and 88, a bot at `(-15.4, 32.4)`,
+goals `(-24.3, 0.4, 32.1)` and `(-36.0, 0.4, 36.6)`, `path: 4` (`UNREACHABLE`, see above), `stuck` false. The breaker post
+(#1325) was the guess; it is a different place and a different cause. (The long stands of 2026-11-04 at `(-14.9, 32.4)`
+were the same place: see #1041 and #1051 above.)
+
+**The place.** `(-15.4, 32.4)` is the corner the fence (`FenceW2`, face at x -15.8) makes with the wall of the west
+pocket (`PocketW0`, face at z 32.8), 0.4 m from each, by the jamb of the window of `mid_w`. The walking mesh is eroded by
+0.5 m, so the corner is in the margin, and the mesh near it is the 1.3 m2 scrap the cut of `mid_w`'s boards left
+(x -15.25 to -13.75, z 31.0 to 32.25), which #1051 put on the layer only the dead walk (`NavLayers.GAP`).
+
+**How a bot comes to stand there** (a night on `main`, `bots_soak.tscn`, veteran, 4 bots, round 8, with a probe that
+printed twelve seconds of the bot before it was 0.3 m off the mesh in the corner): it walks to the stand of `mid_w`,
+`(-12.5, 31.6)`, along the pocket's wall at a run, starts to look about (`roam_look`, no goal), and is walked west at
+4.8 m/s for about 0.6 s onto the scrap and into the corner. That is the step a bot makes out of the way of a person, or
+of a lower seat, who walks at it (`BotLegs._give_way`, `YIELD_HOLD` 0.6 s of a heading from `BotSteering.pick`). The
+heading with the most room away from the other is west along the wall, and `BotSteering._on_mesh` took its end, 2.5 m on
+at `(-14.8, 32.3)`, for mesh: `BotLevel.project` is the nearest point of the *whole* mesh, scraps and gaps included.
+Every other reflex (dodge, retreat, kite, a Hold or Follow bot's step) picks its heading the same way. Of 372 headings
+rated from `(-13.5..-11.5, 30.8..31.6)` with a threat at 2 to 8 m, 0 end in the corner now; on `main` many do.
+No push, jump or snapped goal was needed.
+
+**Why it stays.** A walking path starts on the walking ground nearest to the point it is asked from, and the server picks
+by distance to the polygon: the scrap is off the walking layer, so the nearest walking ground is across the wall, 1.5 m
+away (the first path point is `(-15.0, 0.35, 33.7)`; the corner is 1.95 m from the walking ground on its own side).
+
+- With the doors of the soak open, the path to any place is a path: the bot is walked into the wall, the ladder climbs
+  (sidestep, repath, jump on the sill at rung 3, drop the goal at rung 4), and the next goal starts the same way: five
+  episodes in 25 s, for as long as the night goes on.
+- With the goal beyond the west fence unreachable from the plaza side, the path comes back short (`REACHED_SHORT`) and
+  the status is `UNREACHABLE`, the bot is not commanded to walk and the stuck detector never sees it (as at the post).
+Both are the sample.
+
+**Fix, two parts:**
+
+1. `BotSteering._on_mesh` also asks `BotLevel.on_walking_ground(end)` (the region that owns the mesh point nearest to the
+   end has `NavLayers.WALK`): a reflex does not end on a piece only the dead walk.
+2. `BotPath._start` (all three questions: `_query`, `probe`, `walk_length`): the path of a bot that is not on the mesh
+   starts at the mesh point nearest to it as before, unless that point is not walking ground or a wall stands on the line
+   to it; then it starts at the nearest walking ground that is open to the bot (12 headings at 0.8, 1.6, 2.4 and 3.2 m,
+   on the mesh within 0.35 m, nothing a body cannot walk through on the line: `BotPath.walk_hit`). A bot with none within
+   reach (on a car's roof) is asked as before. Cost: one more server call per path question (the owner of the point), the
+   rays and the search only for a bot that is off the mesh.
+
+**Tests:** `test_bot_west_corner.gd`, on the real lot, all doors open: a bot set down in the corner walks 3 m out in under
+5 s for three places and three seeds (`main`: still 0.7 m up on the sill at 5 s, at `(-15.1, 32.4)`); a person walks
+at a bot looking about at the stand and the bot spends under 1 s in the corner in 20 s (`main`: 16.8 s).
 
 ## The first two nightly runs (#1319)
 
