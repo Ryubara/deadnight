@@ -166,3 +166,21 @@ the 844 page moves.
 The six at 1.0 on the 667 page is the weapon strip's, not Ping's (the table above was taken before #1284, when it was
 eight). The 844 row that moved still holds eight, the count `test_hud_marker_cards.gd` asks of every page that is not
 crowded.
+
+### After the Side circle went (#1288)
+
+The same page and helpers, re-run on main after #1284 (the weapon strip), with the Side circle and without it
+(`swap_shoulder` is a double tap now). Melee and the Bots circle are still on the glass; 10 is the most tried.
+
+| Interface size | Diamonds | With Side | Without Side | With Side, Interact up | Without Side, Interact up |
+| --- | --- | --- | --- | --- | --- |
+| 0.8 | 3 | 10+ | 10+ | 10+ | 10+ |
+| 1.0 | 3 | 6 | **10+** | 6 | **6** |
+| 1.0 | 1 | 10+ | 10+ | 10+ | 10+ |
+| 1.25 | 3 | 3 | 3 | 3 | 3 |
+| 1.25 | 1 | 5 | 5 | 4 | 4 |
+
+The Side circle was what held the 667 x 375 page at 1.0 to six markers (the table above says eight for "today", but
+the test's own `CROWDED_HOLDS` on main was six and six is what this re-run measured). Without it the page holds
+ten, so `CROWDED_HOLDS` is eight again (the usual count); with Interact up the page still holds six, Interact being the
+limit, and 1.25 is limited by the cards, not the buttons. Strike (#1285) repeats this table with its circle up.

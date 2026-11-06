@@ -202,12 +202,16 @@ func test_arrow_keys_lead_from_the_tab_strip_through_the_rows_to_the_footer() ->
 		await await_idle_frame()
 		var page: VBoxContainer = _screen._pages[tab]
 		var here: Control = _screen._tab_buttons[tab]
-		for row in page.get_children():
+		# A note row (a line of words, no control) is passed over by the focus.
+		var rows := page.get_children().filter(
+			func(row: Node) -> bool: return (row as UIRow).control != null
+		)
+		for row in rows:
 			here = here.find_valid_focus_neighbor(SIDE_BOTTOM)
 			assert_object(here).is_same((row as UIRow).control)
 		here = here.find_valid_focus_neighbor(SIDE_BOTTOM)
 		assert_object(here).is_same(_screen._footer_buttons[0])
-		for i in page.get_child_count() + 1:
+		for i in rows.size() + 1:
 			here = here.find_valid_focus_neighbor(SIDE_TOP)
 		assert_object(here).is_same(_screen._tab_buttons[tab])
 

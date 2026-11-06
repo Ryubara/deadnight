@@ -235,7 +235,7 @@ game does now:
 | Rest opacity 50 percent | 70 percent (setting 30 to 100), 100 percent while held | At 60 the Fire label was hard to read on a lit ground |
 | Grenade hidden at zero | Always shown | The HUD state has no grenade count for the local player in a shape the layer reads yet |
 | Reload also on the ammo card | Not built | The card is a read-out; a second target next to the Fire arc invites mis-taps |
-| Shoulder swap in settings, not on the screen | A small "SIDE" button above Swap, 565 units from the Fire side's edge | `swap_shoulder` is a fight verb (a corner, a wall), not a one-time choice: the camera changes shoulder in play, so it needs a button. Placed outside the middle 40 percent, clear of the arc, the look hint and the top-right feed |
+| Shoulder swap in settings, not on the screen | A double tap on free ground (#1288); it was a small "SIDE" button until then | `swap_shoulder` is a fight verb (a corner, a wall), not a one-time choice, but a rare one: it does not earn a circle on the right thumb's side. See "The double tap" below |
 | Crouch left out | Left out, no button, until #1277 (now a toggle on the ring round Fire) | The simulation did not act on `crouch` (#73); it does now |
 | Left-handed: mirror x | A setting, `controls/left_handed`; buttons, stick and the HUD's corner columns flip | Mirroring only the buttons put Fire over the points and health cards and the stick over the ammo card, so the HUD columns swap with them (a test checks every canvas, both hands) |
 | Pause at the top centre | Top, beside the round card | The banner takes the centre; the left column is narrow and the top left corner is not reachable by the right thumb, so it cannot be hit by accident |
@@ -671,6 +671,32 @@ one verb no element on screen already shows) and gets the room two controls need
   count there is eight (`EIGHT`), so it still passes. The numbers in the audit page's table
   (docs/design/touch-audit.md, #1291) are the 667 rows of this list; its "today" row for 1.0 with 3 diamonds, 8, was
   taken before the weapon strip (#1284), which made it 6.
+
+## The double tap that changes shoulder (#1288)
+
+- **Why a gesture.** A tap on free ground does nothing else, so two of them are free to mean something, and two taps in
+  a row are never a look: the first adds no delay to anything. The Side button was the one circle left on the right
+  that the phone audit (#1275) could fold into a gesture; without it the 667 x 375 page
+  at an interface size of 1.0 holds ten world markers (three of them diamonds) before two meet, it held six (re-run
+  with `test_hud_marker_cards.gd`'s helpers, 10 the most tried; with Interact up it is six either way, Interact being
+  the limit, and 1.25 is 3 and 5 with one diamond, as before).
+- **The numbers.** Android defines a double tap as the time "between the first tap's up event and the second tap's down
+  event" ([`ViewConfiguration.getDoubleTapTimeout`](https://developer.android.com/reference/android/view/ViewConfiguration#getDoubleTapTimeout()))
+  and a touch that does not move within the tap timeout as a tap (`getTapTimeout`); the page gives no values, so the
+  values here are the issue's: a touch under 250 ms that never moves `TouchSlop.CSS_PIXELS` (10), the second landing
+  within 350 ms of the first one's lift. The slop is the one the buttons inside a scrolling card use, so a thumb that
+  can press a button taps.
+- **Real time, CSS pixels.** The slop is asked of the window at each touch (`TouchSlop.units`, 28 units on a phone's
+  night, 13 or 14 on a menu), the times come from `Time.get_ticks_usec`, not from frames: a page that draws at 20
+  frames a second has the same gesture. A touch event carries no time stamp in Godot, so the time is the one the
+  event is read at.
+- **Holding the look back.** "The look never fires for a tap" needs the look to wait while a touch can still be a tap.
+  The wait ends the moment it cannot (10 CSS px moved, 250 ms passed, or the lift after 250 ms) and then everything the
+  finger made goes out in one piece, so nothing is lost; the cost is that the first 10 CSS px (about 2.4 degrees at
+  sensitivity 1) of a drag arrive together, spread by the look smoother's 40 ms, and a slow aiming drag starts at
+  most 250 ms late. A finger on a button or the stick is not held back.
+- **What a double tap needs not to fire by accident:** a flick (moved, so no tap), a look right after a tap (a drag, so
+  the pair ends), a tap on the stick's side (the stick's), a button between the taps (ends the pair).
 
 ## Sources
 

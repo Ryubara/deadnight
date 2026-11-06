@@ -295,6 +295,11 @@ const TABS := [
 				"labels": ["Off", "On"],
 				"values": [0, 1],
 			},
+			{
+				"title": "Switch shoulder",
+				"hint": "Double tap empty ground.",
+				"kind": "note",
+			},
 		],
 	},
 ]
@@ -538,7 +543,7 @@ func _build_row(spec: Dictionary) -> UIRow:
 	var row := UIRow.new()
 	row.title = spec["title"]
 	row.hint = spec.get("hint", "")
-	var key: StringName = spec["key"]
+	var key: StringName = spec.get("key", &"")
 	match spec["kind"]:
 		"slider":
 			var slider := UISlider.new()

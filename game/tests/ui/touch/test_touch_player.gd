@@ -69,7 +69,10 @@ func test_a_100_unit_drag_turns_about_8_degrees_in_small_steps_at_the_default_se
 	# 1.6 rad per full height at sensitivity 1: 100 of 1080 units is 0.148 rad, 8.5 degrees. The
 	# first design turned twice that and a phone flew round.
 	assert_float(rad_to_deg(absf(angle_difference(start, rig.yaw)))).is_equal_approx(8.5, 0.3)
-	assert_float(rad_to_deg(biggest)).is_less(1.0)
+	# The limit was 1.0 degree. The first 28 units of a drag wait in the double tap's gate (#1288) and
+	# come out together once the finger is past the slop, so the step after them measures 1.0 to 1.06
+	# degrees (the smoother spreads that piece over its 40 ms): 1.5 keeps a step small and not a jump.
+	assert_float(rad_to_deg(biggest)).is_less(1.5)
 
 
 ## A frame longer than the smoothing's window lets out what the finger made and the view has not
@@ -149,21 +152,43 @@ func test_the_look_gain_slows_a_drag_as_the_aim_assist_does_near_a_zombie() -> v
 	)
 
 
-func test_the_side_button_moves_the_camera_to_the_other_shoulder() -> void:
+func test_a_double_tap_on_free_ground_moves_the_camera_to_the_other_shoulder() -> void:
 	var runner := scene_runner(TEST_ROOM)
 	var player := runner.find_child("Player") as Player
 	player.capture_mouse = false
 	var before := player.state.shoulder_side
-	await _fixture.touch(0, _fixture.at(TouchLayout.SHOULDER))
-	await runner.simulate_frames(6)
-	await _fixture.lift(0)
+	await _double_tap(runner, Vector2(1700.0, 300.0))
 	assert_float(player.state.shoulder_side).is_equal(-before)
-	# A second tap swaps back (once the first press has been let go: a press lasts 90 ms at least).
+	# A second double tap swaps back (once the first press has been let go: it lasts 90 ms at least).
 	await await_millis(250)
-	await _fixture.touch(0, _fixture.at(TouchLayout.SHOULDER))
-	await runner.simulate_frames(6)
-	await _fixture.lift(0)
+	await _double_tap(runner, Vector2(1700.0, 300.0))
 	assert_float(player.state.shoulder_side).is_equal(before)
+
+
+func test_one_tap_and_a_look_drag_leave_the_shoulder_alone() -> void:
+	var runner := scene_runner(TEST_ROOM)
+	var player := runner.find_child("Player") as Player
+	player.capture_mouse = false
+	var before := player.state.shoulder_side
+	await _fixture.touch(0, Vector2(1700.0, 300.0))
+	_fixture.pass_time(0.1)
+	await _fixture.lift(0)
+	_fixture.pass_time(0.1)
+	await _fixture.touch(0, Vector2(1700.0, 300.0))
+	await _fixture.drag(0, Vector2(1800.0, 300.0), Vector2(100.0, 0.0))
+	_fixture.pass_time(0.1)
+	await _fixture.lift(0)
+	await runner.simulate_frames(6)
+	assert_float(player.state.shoulder_side).is_equal(before)
+
+
+func _double_tap(runner: GdUnitSceneRunner, at: Vector2) -> void:
+	for tap in 2:
+		await _fixture.touch(0, at)
+		_fixture.pass_time(0.08)
+		await _fixture.lift(0)
+		_fixture.pass_time(0.12)
+	await runner.simulate_frames(6)
 
 
 ## What a browser's web runtime reports for the first drag of each finger while another is down: its
