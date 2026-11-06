@@ -211,7 +211,8 @@ What building `HudChallenge` (the paper ticket that says a challenge moved) taug
   with four players, and then the objective's two lines at its top. The layout test (the busiest HUD at every canvas,
   with the longest challenge words) found both; the fix is structural, not a nudge: the card starts a third of the way
   down and `Hud._fit_challenge` moves it down to a gap under the last card above it (`item_rect_changed`), so a taller
-  objective pushes it instead of being overlapped.
+  objective pushes it instead of being overlapped. On a phone that is not enough (the column is lifted by a fingertip
+  strip): [the challenge card on a phone](challenge-card-phone.md).
 - **The prompt is a part like the others: events in, nothing out.** `HudChallenge` hears `challenge_advanced` through
   `state.event_applied` and holds no game object; the link that makes those events (`ChallengeHudLink`) lives with the
   challenges. Its queue (`ChallengePromptQueue`) is plain data and a clock the caller moves, so a test steps 50 ms at a

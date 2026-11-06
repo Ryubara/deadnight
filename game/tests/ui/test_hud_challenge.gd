@@ -467,6 +467,10 @@ func test_the_card_made_narrow_wraps_its_words_and_is_the_height_it_measured() -
 			await await_idle_frame()
 			await await_idle_frame()
 			assert_float(card.get_combined_minimum_size().x).is_equal(width)
+			# No container holds the card: its size is its least, whatever it was before.
+			assert_vector(card.size).is_equal_approx(
+				card.get_combined_minimum_size(), Vector2.ONE * 0.5
+			)
 			assert_float(card.get_combined_minimum_size().y).is_equal_approx(measured.y, 0.5)
 			var words := card.words
 			var size := words.get_theme_font_size(&"font_size")

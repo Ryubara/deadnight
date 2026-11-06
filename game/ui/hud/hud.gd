@@ -391,7 +391,10 @@ func _fit_challenge() -> void:
 	var top := maxf(usual, bottom + gap)
 	var margin := float(HudStyle.margin())
 	var avoid := _challenge_avoid(origin, gap)
-	var key: Array = [top, avoid[&"hard"], avoid[&"soft"], challenge.card.words.text, size]
+	# The height the layout gave the card at the width it has is what the page draws; the other
+	# widths are estimates (`size_at`) until the card is at them.
+	var laid := challenge.laid_size()
+	var key: Array = [top, avoid[&"hard"], avoid[&"soft"], challenge.card.words.text, size, laid]
 	if key == _challenge_key:
 		return
 	_challenge_key = key
@@ -406,7 +409,9 @@ func _fit_challenge() -> void:
 		top,
 		lefts,
 		widths,
-		func(width: float) -> float: return challenge.fit_width(width).y,
+		func(width: float) -> float:
+			var estimate := challenge.fit_width(width).y
+			return laid.y if is_equal_approx(laid.x, width) else estimate,
 		avoid[&"hard"],
 		avoid[&"soft"]
 	)

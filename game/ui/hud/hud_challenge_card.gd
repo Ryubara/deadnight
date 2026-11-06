@@ -37,6 +37,9 @@ var _flash := 0.0
 func _init() -> void:
 	super()
 	custom_minimum_size.x = WIDTH
+	# No container holds the card, so it keeps the size it had until it is asked for its least:
+	# when the words' lines change under a new width it is that size again, not the one before.
+	minimum_size_changed.connect(reset_size)
 	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	HudStyle.clip(caption)
 	caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -88,30 +91,30 @@ func set_width(width: float) -> void:
 	reset_size()
 
 
-## Sets the words and the height of their lines: the label's own line height for each line the
-## words break into at the box's width (what the label asks for once it is laid out).
 func _wrap_words(text: String) -> void:
-	var width := words.custom_minimum_size.x
-	HudStyle.set_wrapped(words, text, HudStyle.TEXT, width)
-	var paragraph := TextParagraph.new()
-	paragraph.add_string(
-		text, words.get_theme_font(&"font"), words.get_theme_font_size(&"font_size")
-	)
-	paragraph.width = width
-	paragraph.break_flags = (
-		TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
-	)
-	words.custom_minimum_size.y = float(paragraph.get_line_count() * words.get_line_height())
+	HudStyle.set_wrapped(words, text, HudStyle.TEXT, words.custom_minimum_size.x)
 
 
 ## What the card measures at `width`, worked out from its parts and not asked of the container
 ## (which answers for the width it had until the next layout): the padding, the row, the words'
-## lines and the holes.
+## lines (as many as the font breaks them into at the box's width, each the label's line high) and
+## the holes. An estimate: `HudChallenge.laid_size` is what the layout then gave.
 func size_at(width: float) -> Vector2:
 	set_width(width)
 	var wide := clampf(width, MIN_WIDTH, WIDTH)
+	var font := words.get_theme_font(&"font")
+	var size_px := words.get_theme_font_size(&"font_size")
+	var flags := (
+		TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+	)
+	var block := font.get_multiline_string_size(
+		words.text, HORIZONTAL_ALIGNMENT_LEFT, words.custom_minimum_size.x, size_px, -1, flags
+	)
+	var one := font.get_string_size(words.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px)
+	var lines := maxi(1, roundi(block.y / maxf(one.y, 1.0)))
+	var lines_high := maxf(words.custom_minimum_size.y, float(lines * words.get_line_height()))
 	var high := float(HudStyle.PAD * 2) + _row.get_combined_minimum_size().y
-	high += words.custom_minimum_size.y + _holes.custom_minimum_size.y
+	high += lines_high + _holes.custom_minimum_size.y
 	return Vector2(wide, high)
 
 

@@ -258,7 +258,9 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   dark card, on purpose: it is rare, so it may be the one light thing at the edge, and it matches the main menu's
   "The program". `HudChallenge` reads `challenge_advanced` events like every part; `ChallengeHudLink` makes them from the
   night's challenges. A layout test puts it on the busiest HUD at every canvas, mirrored or not, beside the crosshair's
-  clear box (`test_hud_challenge.gd`).
+  clear box (`test_hud_challenge.gd`). On a phone the strip lifts the players' column up to it, and a room of eight grows
+  it past the objective: there the card stands beside the column, in the nearest free place the boxes of the screen
+  leave (`ChallengeFit`, [the challenge card on a phone](../research/challenge-card-phone.md), #1299).
 - **Caps keep a 28-zombie round readable.** Three gain rows, eight damage numbers, six damage arcs, three events and one
   notice at a time; the oldest goes first.
 - **Notices on the right.** Joins and leaves sit under the event list, not at the left edge: with eight players, an

@@ -60,6 +60,14 @@ func has_card() -> bool:
 	return _card != null
 
 
+## The card's width and the height the last layout gave it (zero while no card was made): what
+## `fit_width` estimates, as the page really draws it.
+func laid_size() -> Vector2:
+	if _card == null:
+		return Vector2.ZERO
+	return Vector2(_card.custom_minimum_size.x, _card.get_combined_minimum_size().y)
+
+
 ## Makes the card `width` wide and gives its size, `Vector2.ZERO` while no card was made.
 func fit_width(width: float) -> Vector2:
 	if _card == null:
