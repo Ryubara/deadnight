@@ -17,7 +17,7 @@ func _ready() -> void:
 	_apply_motion(UIMotion.reduced)
 
 
-## Reduced motion keeps the vignette and a still grain, and stops flicker, scratches and
+## Reduced motion keeps the vignette and a still grain, and stops flicker and
 ## the changing grain: the shader's clock stands still.
 func _apply_motion(reduced: bool) -> void:
 	(material as ShaderMaterial).set_shader_parameter(&"motion", 0.0 if reduced else 1.0)
