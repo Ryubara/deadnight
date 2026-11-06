@@ -460,9 +460,10 @@ What it says:
 - **The first bot costs most.** A room with any bot builds its frame on every step, not on every second one
   (`NightHost._physics_process`: `framed = sending or bots.count() > 0`), so one bot in each of three rooms
   (3 x 8 + 1) is already 1.28 times the control; the bots' own thinking is about 0.3 ms each (`bots_ms`: 2.1 to 2.3 ms
-  for seven in one room) and the rest is the frame, its bigger snapshots (533 bytes against 303 a person) and the
-  zombies' targets over more bodies. Eight people at 120 dead alone are at the control's level and every bot added to
-  that room takes it over (3 to 4 bots: 1.12 to 1.16, 7: 1.26).
+  for seven in one room) and the rest is the frame (#1222 timed its pieces: the larger part was the use card asked
+  twice for every body, [below](#bots-in-a-room-what-the-frame-was-not-and-the-budget-1222)), its bigger snapshots
+  (533 bytes against 303 a person) and the zombies' targets over more bodies. Eight people at 120 dead alone are at
+  the control's level and every bot added to that room takes it over (3 to 4 bots: 1.12 to 1.16, 7: 1.26).
 - **The bodies the server draws change nothing.** `--drawn=0` (the shipped server: no soldier model) and the bench's
   default (the page's: drawn) read the same tick with bots and without; the memory is 45 MB lower.
 - **Memory is not the limit:** 318 to 320 MB for one room of 15, 386 to 388 MB for three, of 8 GB (the bots add
@@ -492,7 +493,7 @@ the crowd of 120 is the desktop decision of #453 and is not touched here.
 | Setting | Value now | Was | Why |
 | --- | --- | --- | --- |
 | `ROOM_CAPACITY` | 3 | 3 | three rooms of people are what the tick holds (the control), and the bots now give way to them |
-| `BOT_BUDGET` | **2** (`GameServer.DEFAULT_BOT_BUDGET`, read when the variable is not a number; 0 is no budget) | none | a lone room seats 2, two rooms 1 each, three rooms none: the worst loads are 1 x 8 + 2 (0.97 of the control), 2 x 8 + 1 (0.90) and 3 x 8 + 0 (the control) |
+| `BOT_BUDGET` | **2** since #1193, **3** since #1222 ([why](#decision-bot_budget-3-it-was-2); `GameServer.DEFAULT_BOT_BUDGET`, read when the variable is not a number; 0 is no budget) | none | a lone room seats 2, two rooms 1 each, three rooms none: the worst loads are 1 x 8 + 2 (0.97 of the control), 2 x 8 + 1 (0.90) and 3 x 8 + 0 (the control) |
 | `MAX_BOTS` | 7 | 7 | the host's Bots setting still asks for up to 7; the server seats what the budget gives the room |
 | `ALIVE_BUDGET` | 120 | 120 | unchanged |
 
@@ -539,3 +540,93 @@ What this does not say: three containers on one processor family and one region;
 crowd, no shots); the Icelake figure is a ratio from one room, not a measured multi-room run (Railway does not let us
 pick the processor); the Discord proxy and a lossy link were not measured; a room being built while others run is not
 timed.
+
+## Bots in a room: what the frame was not, and the budget (#1222)
+
+A room with any bot builds its frame on every step (`NightHost._physics_process`: the bots decide every step), and
+[the section above](#rooms-of-fifteen-bodies-1193) measured one bot in each of three rooms at 1.28 times the
+control. The issue read that as the frame's cost. Probes on the pieces (`PerfProbe`, the bench with 8 people, 7
+bots and 120 alive, local, ms a tick) said otherwise:
+
+| Piece | Before | After | What |
+| --- | ---: | ---: | --- |
+| `server.frame` (the frame, with 15 bodies) | 3.0 | 1.2 | the prompt of each body was 1.9 of it |
+| `server.act` (each body's commands) | 2.4 | 0.7 | the same prompt, asked again for every body on every tick |
+| The bots (hear, observe, think, walk, motor, crew) | 2.9 | 2.1 | code not changed (the gap is the machine's noise): about 0.3 each |
+| `server.move` (15 bodies) | 1.8 | 1.4 | code not changed (noise) |
+| Whole tick, mean | 14.6 to 15.3 | 9.7 to 10.6 | |
+
+`NightServer.use_target` (the card a body shows, and what the use guard times a press by) is asked for every body on
+every tick, and again for the frame; almost every answer is `{}` because the body stands in the open, but each ask
+walked every door, breach, spot and post. `UseSites` is a flat bound first: the points an offer can come from, each
+with its reach, and a body farther than all of them is offered nothing. It is exact, so the bots hear the same:
+`test_use_sites.gd` compares both answers at every half metre of both maps (and fails if a reach is cut short), and the
+bench prints a hash of every command every bot sent (`bot_commands`), the same with the bound on and off
+(`--sites=1|0`, one build in one container): locally with 7 bots, and in all three reps on Railway with 1 and 7 bots in
+one room and in three. The bots decide the same, step for step.
+
+### On Railway
+
+`crowd_server_bench.tscn --stagger=1 --players=8`, a service of the test project (deleted after) on the game server's
+own image; the container is 48 vCPUs shown, a limit of 8. Three reps of each setting one after the other in one
+container, so the processor is the same within a run, and Railway picked three different ones: Xeon 6975P-C (quiet),
+Xeon Gold 5520+ (twice as slow, so its milliseconds are no use, only its ratios) and AMD EPYC 9655P (the earlier
+decisions' processor, on a host at a load of 21 to 35 and so noisy: the same setting spread by 4 ms between reps).
+Process tick in ms, mean and p95 over the three reps, and the ticks over 16.7 ms of 1200:
+
+| Quiet Xeon 6975P-C | Mean | p95 (median) | Over 16.7 ms |
+| --- | --- | --- | --- |
+| 1 x 120, no bots, old (the control) | 6.8 to 7.4 | 14.1 to 15.6 (14.7) | 10 to 31 |
+| 1 x 120, no bots, new | 5.8 to 6.4 | 12.0 to 14.3 (13.2) | 1 to 12 |
+| 1 x 120, 1 bot, old / new | 7.9 to 8.5 / 6.8 to 7.2 | 14.8 / 14.1 median | 24 to 43 / 12 to 27 |
+| 1 x 120, 7 bots, old | 11.6 to 13.7 | 18.7 to 22.9 (22.9) | 194 to 545 |
+| 1 x 120, 7 bots, new | 9.8 to 11.8 | 16.7 to 21.8 (20.3) | 61 to 292 |
+| 3 x 40, no bots, old (the control) | 11.2 to 12.2 | 15.7 to 17.7 (16.6) | 36 to 103 |
+| 3 x 40, no bots, new | 8.9 to 9.7 | 13.0 to 14.7 (13.9) | 1 to 20 |
+| 3 x 40, 1 bot each, old | 15.3 to 15.6 | 19.7 to 21.9 (19.8) | 292 to 393 |
+| 3 x 40, 1 bot each, new | 11.4 to 13.0 | 15.9 to 18.6 (16.1) | 40 to 135 |
+| 3 x 40, 7 bots each, old / new | 26.6 to 30.1 / 22.7 to 23.2 | 36.6 / 29.2 median | 1200 / 1184 to 1199 |
+
+![The process tick before and after, by rooms and bots, on Railway](crowd-budget-bots.png)
+
+- **The saving is about 1 to 3 ms of the mean** with bots (and about 1 without: the prompts of 8 standing people are
+  asked every tick too), which is **the 1 bot in each of three rooms back at the control's p95** (16.1 against the
+  control's 16.6, from 19.8: 1.19 times).
+- **7 bots are not at the control**: 20.3 against 14.7 in a lone room (1.38 times; it was 1.55). The issue's target
+  is **not met**. What is left is not the frame: the bots' own work (about 0.3 ms each) and the bodies they are
+  (move, act, the dead's field and the shove, the zombies' targets, the bigger snapshots), about 0.6 to 0.9 ms a bot
+  in all. Seven bots in each of three rooms are 29 ms: far over the tick.
+- Spread: a setting's three reps differ by 1 to 2 ms (quiet container), up to 4 to 8 ms (the loud one), and p95 moves
+  with them. The mean and the ticks over 16.7 ms are steadier.
+
+### Decision: `BOT_BUDGET` 3 (it was 2)
+
+The measure is the bots' p95 against the control's in the same run (the old build, no bots: the load the maintainer
+accepted for the rooms), on the setting the budget allows:
+
+| Rooms x bots | Control p95 (old, no bots) | New, with the bots p95 | Ratio, by container: quiet Xeon / AMD / slow Xeon |
+| --- | --- | --- | --- |
+| 1 x 1 | 14.7 | 14.1 | 0.96 |
+| 3 x 1 each | 16.6 | 16.1 | 0.97 / 1.21 / 0.93 |
+| 2 x 1 each (AMD) | 15.3 | 17.1 | 1.12 |
+| 1 x 2 (AMD) | 19.7 | 20.5 | 1.04 |
+| 1 x 3 (AMD) | 19.7 | 21.9 | 1.11 |
+| 1 x 4 (AMD) | 19.7 | 22.5 | 1.14 |
+| 2 x 2 each (AMD) | 15.3 | 18.6 | 1.21 |
+
+A budget of 3 seats 3 bots in a lone room and 1 in each of two or three rooms: at or near the control's p95 in all of
+them (0.93 to 1.12, inside the spread), and three rooms now have a bot where the budget of 2 gave none. 4 puts 2 bots
+in each of two rooms (1.21) and 4 in a lone room (1.14), past the spread. `MAX_BOTS` stays 7 and `BOT_BUDGET=0`
+turns the budget off. `GameServer.DEFAULT_BOT_BUDGET` is the number; the host's setting (0 to 7) is still a request.
+
+### What this does not say
+
+- The frame is still built on every step with a bot in the room (1.2 ms with 15 bodies against 0.5 on the
+  control's half of the steps): a frame for the bots that holds only what they read, built on the steps between the
+  people's, would save about 0.3 ms, and was not done: every field a bot reads off `players` would need an audit, and
+  the exact-hash proof above would be needed for it too.
+- The bots' own work (`BotClient`: `_track_crew` builds a dictionary for every body, for every bot, every tick: 0.6 ms
+  for 7 bots; the events' filter and the frame's copy for each bot: 0.4 ms) is the next piece to measure.
+- Players stand still in the bench; the bots walk and shoot in it. A moving room (paths, shots, doors) is in the
+  soak, not here; the soak (`pair`, `churn`, ten game minutes each) passes.
+- One container each of three processors, three reps each: the ratios carry about 10 percent of spread.

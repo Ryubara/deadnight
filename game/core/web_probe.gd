@@ -10,8 +10,17 @@ const PERIOD := 0.25
 ## arrow, in units.
 const ARROW_INSET := 24.0
 
-## Whether the page asked for the probes (see `asked`): -1 not yet read, 0 no, 1 yes.
-static var _asked := -1
+## What `_asked` holds: `UNREAD` until the page was asked, then `NO` or `YES`.
+const UNREAD := 0
+const NO := 1
+const YES := 2
+
+## Whether the page asked for the probes (see `asked`). It has no initialiser, so "not read yet" is
+## the type's own default: the engine runs a static variable's initialiser when its script is
+## loaded, and `NightScreen.arrival_enabled`'s initialiser calls `asked` while this script is still
+## loading (the two refer to each other), before `:= -1` would have run. `asked` then read 0 as "no"
+## and a page that asked for the probes played the helicopter drop (#1323).
+static var _asked: int
 
 var _object: JavaScriptObject
 var _since := 0.0
@@ -35,13 +44,13 @@ var _published := {}
 static func asked() -> bool:
 	if not OS.has_feature("web"):
 		return false
-	if _asked < 0:
+	if _asked == UNREAD:
 		var script := (
 			"(new URLSearchParams(location.search).has('probe') || !!window.deadnight_probe"
 			+ " || window.deadnight_bench != null) ? 1 : 0"
 		)
-		_asked = 1 if int(JavaScriptBridge.eval(script, true)) == 1 else 0
-	return _asked == 1
+		_asked = YES if int(JavaScriptBridge.eval(script, true)) == 1 else NO
+	return _asked == YES
 
 
 ## The entries of `data` whose value differs from `last` (or that `last` lacks).

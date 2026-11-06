@@ -13,7 +13,11 @@ const SHOP_KINDS := {
 	"DOOR":
 	"rule: BotEconomy buys the doors in the profile's order; BotErrands holds a person's claim",
 	"WEAPON": "rule: BotEconomy buys a wall weapon worth more than the one it would replace",
-	"CRANE": "rule: BotEconomy plays the crane when a prize it lacks beats the weapon in hand",
+	"CRANE":
+	(
+		"rule: BotEconomy plays the crane when the prizes it would take are a fair share of the draw"
+		+ " (`crane_min_odds`), and not again in a round it left the prize on the glass"
+	),
 	"TONIC":
 	"rule: BotEconomy buys a tonic with an effect it lacks, up to the limit, again after a down",
 	"FUEL": "rule: BotErrands buys a can when the tank is under the low line; one bot at a time",
@@ -70,7 +74,11 @@ const PROMPTS := {
 	),
 	"grenades": "rule: BotErrands presses use at the rack BotEconomy chose",
 	"crane": "rule: BotErrands presses use when BotEconomy chose a play",
-	"crane_take": "rule: BotErrands takes the prize when it beats the weapon it would give up",
+	"crane_take":
+	(
+		"rule: BotErrands takes the prize when it beats the weapon it would give up, and walks back to"
+		+ " the glass first when a push took it out of reach"
+	),
 	"crane_busy":
 	"rule: BotErrands does not choose the crane while a play runs (it waits for the buyer)",
 	"recut": "rule: BotErrands presses use at the bench BotEconomy chose",

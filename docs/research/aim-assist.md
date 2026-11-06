@@ -125,6 +125,18 @@ pass that proved nothing). The bench now withdraws the request (`grip.want(false
 and places the zombie then; the probe fails on a paused night, on a start too near to need a drag, and on a yaw that
 does not change, and prints the yaw and distance at each drag step.
 
+**The run on the new layout (#1320).** On main after the phone rework (#1294 to #1297) the `off` run turned the view
+0.087 rad in three steps and then nothing while the finger kept moving, and the cause was the bench's, not the look's.
+The bench called the night ready while the helicopter drop still played (a page that asks for the probes should skip it,
+`WebProbe.asked`, and the bench's page played it: `NightScreen.arrival_enabled` was true at the start, #1323); the
+touch layer is down for the show, the finger landed on a layer that was not up, the browser's emulated mouse turned the
+view for two moves, and when the show ended 0.3 s later the layer owned no finger it had not seen land. The bench now
+turns the drop off and is ready only when `TouchControls.is_active()`; the probe fails with its own reason when the
+layer takes no look finger (`looking`). `test_touch_slow_drag.gd` drags at the run's pace (a move every 100 ms,
+shortening as the crosshair nears, the first ones inside the tap's slop and 250 ms) and no move is lost. Five runs on
+one export: the view turns 0.140 to 0.143 rad in three steps, from 1.17 m to 0.46 to 0.48 m off the chest, as before;
+the assist run lands 2 kills in 6 shots every time.
+
 Found while building the run:
 
 - **The shoulder camera's lens orbits the pivot**, so a world-fixed zombie changes its angle from the lens when the view

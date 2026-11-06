@@ -213,7 +213,9 @@ func test_a_paired_box_shows_the_points_or_down_and_nothing_a_half_row_cannot_ho
 	_fixture.act(RulesAction.set_downed(3, true))
 	await _settle()
 	assert_str(box.number_text).is_equal("DOWN")
-	assert_object(box._number.get_theme_color(&"font_color")).is_equal(UITokens.active().danger)
+	var danger := UITokens.active().danger
+	var down_ink := HudPlayerBox.legible(danger, box.fill(), HudPlayerBox.DOWN_CONTRAST)
+	assert_object(box._number.get_theme_color(&"font_color")).is_equal(down_ink)
 	_fixture.act(RulesAction.set_downed(3, false))
 	await _settle()
 	assert_str(box.number_text).is_equal("12500")

@@ -65,7 +65,7 @@ a keyboard.
 - **Ping.** The one verb with no element that already shows it. A tap on the reticle would be one gesture fewer, but a
   look surface fires it by accident (a player review of Apex Legends Mobile reports pings made by mistake on touch,
   from a search summary, not read on the page), so it stays a button: one small circle, under Pause with the room two
-  fingers need between them (the two are 27 CSS px apart today).
+  fingers need between them (the two were 27 CSS px apart before #1289; their centres are 56 CSS px apart now).
 - **Pause** stays: the one control every player looks for in the same place.
 
 ## Every element of a night, on a phone
@@ -103,10 +103,42 @@ a keyboard.
 | Key hints reserve 64 units on a phone | Fixed here: 48 for the mark and 16 for the gap go to the prompt's words |
 | "BOTS: HOLD HERE" at the top right | Fixed here: the notices say the state (`BOTS: FOLLOWING YOU`, `ROAMING`, `HOLDING POSITION`). A ping's own `HOLD HERE` stays: it is what a ping says |
 | Touch tab: descriptions cut with "...", `1.00x` against the scrollbar | Fixed in #1290: copy that fits, a gap for the bar, a test that no hint is cut on any tab (`test_settings_phone`), the look settings on the Touch tab |
-| Six markers before two meet at 667 x 375, 1.0 | Clearing the right side wins it all back: see below |
+| Six markers before two meet at 667 x 375, 1.0 | Gone: main holds 10 or more there (last section, #1317) |
 | Pause and Ping 27 CSS px apart | Fixed in #1289: Ping stands under Pause, 56 CSS px or more from it, hit areas apart |
 
+### A finger held through the drop (#1329)
+
+The question (from #1320): a thumb that lands while the touch layer is down (the helicopter drop, a pause card) is not
+read by the layer, so is it lost when the layer comes back? **Yes, measured** (`test_touch_held_through_drop`, run on
+main before the fix, Godot 4.7.2 headless):
+
+| A finger down under the drop, the layer up, then the finger moves | Main | Now |
+| --- | --- | --- |
+| On free ground, 10 moves of 20 units | no look at all (0.0 mouse pixels) | the first move turns (the 20 units' worth), all ten turn |
+| In the stick's zone, 90 units right | no walk (`move` 0.0) | walks (`move.x` above 0.6) |
+| Both thumbs (stick and look) | neither works | both work |
+| Resting on the Fire circle, then drags | nothing; no shot | no shot; the drag looks |
+| Down under a pause, still down when it closes | the stick is gone until it lifts | the stick is back where the finger is |
+
+The layer was deaf to the finger for good: `_touch_drag` finds no entry for its index and returns, and only a lift and a
+new press start a role. The player's first drag of the night did nothing, as the review guessed. The fix is
+`TouchResting`: the layer notes every finger it does not read while it is down (and the ones it was reading when it went
+down), and takes in those still there when it is up again: a finger in the stick's zone is the stick from where it is,
+any other looks, none presses a button (a thumb on Fire asked for no shot) and none counts as a tap (no shoulder swap
+from a lift). A finger that lifted in the dark is gone. A fresh tap, the column's zone and the 250 ms look hold read
+as before (the suites in `tests/ui/touch` pass). The capture `tests/captures/touch_held_finger.tscn` shows it: the
+same run on main has no ring and `move` 0.0, on this branch the ring and `move` (0.94, -0.34).
+
+Seen on the way and left alone: with the layer down the engine turns the finger into a left mouse button
+(`emulate_mouse_from_touch`), and the layer going up while it is down leaves that button pressed to the engine until a
+later finger lifts under emulation. `fire` does not follow it (the emulated button sets no action), and the mouse grip,
+the one reader that asks for the raw button, is a desktop thing, so no player feels it.
+
 ### Markers if the right side is cleared
+
+The tables of the sections from here to "After the Side circle went" are history: each was measured on the main of
+its own pull request, with the circles and cards of that day, and says so. The numbers for main as it stands (every
+pull request of the rework landed) are in the last section, "Markers on main after the rework (#1317)".
 
 The 667 x 375 page (1334 x 750 window, ratio 2), the busiest HUD, a banner, a prompt and a level card up: the most
 markers (one on each card, three of them diamonds, or one) that none meet another or a card or a button, measured with
@@ -121,19 +153,20 @@ Fire, Reload, Aim, Jump, Crouch and Pause only.
 | 1.25 | 3 | 3 | 3 | 5 | 5 |
 | 1.25 | 1 | 4 | 4 | 8 | 7 |
 
-The six is the Interact button being up (without it the page holds eight). The right side cleared gives all of it back
-at 1.0 and more than doubles the page at 1.25, whose limit then is the cards. One Strike circle is added back only
-while a dead is in reach (built in #1285, below).
+The six is the Interact button being up (without it the page held eight, before the weapon strip, #1284). The right side
+cleared gives all of it back at 1.0 and more than doubles the page at 1.25, whose limit then is the cards. One Strike
+circle is added back only while a dead is in reach (built in #1285, below).
 
 ### Markers with Strike up (#1285)
 
 Strike is a circle of radius 52 at 575 left and 340 up of the corner, in the one column the markers have, so it costs
 the page its room while it is up. The same page and the same helpers, run on the branch that builds it (Melee gone,
-Strike and Interact only when named): the most markers, counted up from one, before two meet or one is under a card or
-a button, for both hands. A count stops at its first failure, so a bigger one can still pass past it; the sizes that
-matter are pinned by `test_hud_marker_cards.gd`. The "Today" column above reads 8 at 1.0 with three diamonds where the
-suite's own constant on main (`CROWDED_HOLDS`) was 6, so compare the columns of this table with each other. It was
-taken with Ping beside Pause; Ping's move (#1289, next section) changes nothing on this page.
+Strike and Interact only when named): the most markers, counted up from one, before two meet or one is under a card or a
+button, for both hands. A count stops at its first failure, so a bigger one can still pass past it; the sizes that
+matter are pinned by `test_hud_marker_cards.gd`. The first table's "Today" column reads 8 at 1.0 with three diamonds (it
+was taken before the weapon strip, #1284) where the suite's own constant on main (`CROWDED_HOLDS`) was 6, so compare the
+columns of this table with each other. It was taken with Ping beside Pause; Ping's move (#1289, next section) changes
+nothing on this page.
 
 | Interface size | Diamonds | Neither up | Strike up | Interact up | Strike and Interact up |
 | --- | --- | --- | --- | --- | --- |
@@ -146,17 +179,18 @@ taken with Ping beside Pause; Ping's move (#1289, next section) changes nothing 
 Only the 667 x 375 page at 1.25 loses: two markers where Interact alone leaves four, the price of a button that stands
 in the markers' column in a fight. They stay off every card and every button all the same
 (`test_a_marker_is_never_under_strike_or_interact_while_they_are_up`).
-Nothing was lowered: the base pins (`CROWDED_HOLDS` 6, `SMALLEST_HOLDS` 4) hold with Strike hidden, and two new pins
-(`STRIKE_HOLDS_SMALLEST` 2, `STRIKE_AND_INTERACT_HOLDS_CROWDED` 8) cover it up.
+Nothing was lowered: the base pins (`CROWDED_HOLDS` 6 then, 8 since #1288; `SMALLEST_HOLDS` 4) hold with Strike
+hidden, and two new pins (`STRIKE_HOLDS_SMALLEST` 2, `STRIKE_AND_INTERACT_HOLDS_CROWDED` 8) cover it up.
 
 ### Markers with the bots' tag (#1286)
 
 The same page and the same measure, on the branch of #1286: main after #1284's strip (a place a fingertip high and
 the right thumb's ring), #1291 and #1293, with one body of the eight a bot, so the tag stands at the strip's end.
 "No bot" is the same HUD with no tag. The tag is in the strip's row, under the stick's ring, so it takes nothing
-from the cards: the numbers do not move, and `CROWDED_HOLDS` (6) and `SMALLEST_HOLDS` (4) stand. With the Interact
-button up the numbers are the same ones in this measure. The 8 of the table above is 6 here: `CROWDED_HOLDS` names
-the cause, the strip a fingertip high (#1280) with the right thumb's ring (#1277).
+from the cards: the numbers do not move, and `CROWDED_HOLDS` (6 then) and `SMALLEST_HOLDS` (4) stand. With the
+Interact button up the numbers are the same ones in this measure. The 8 of the first table ("Today", 1.0, three
+diamonds) is 6 here: `CROWDED_HOLDS` names the cause, the strip a fingertip high (#1280) with the right thumb's
+ring (#1277).
 
 | Interface size | Diamonds | No bot | With the tag |
 | --- | --- | --- | --- |
@@ -167,10 +201,11 @@ the cause, the strip a fingertip high (#1280) with the right thumb's ring (#1277
 | 1.25 | 1 | 5 | 5 |
 
 The 844 x 390 page holds 10+ at every size, with or without the tag. That sweep was run again after #1289 (Ping under
-Pause) landed and still gives 10+ for the 844 row where the #1289 table below has an 8 (1.25, 3 diamonds); the cause of
-the difference was not found (it is that table's measure), and the tag changes neither. The same sweep with the tag
-in the column's cards (above the points) also gives these numbers, so the marker capacity is not why the tag is in
-the strip's row; the challenge card is.
+Pause) landed and still gives 10+ for the 844 row where the #1289 table below has an 8 (1.25, 3 diamonds); the tag
+changes neither. The measure on main (last section) puts that 8 in the Interact-up column of the row and 10+ in the
+other, so the #1289 table's two columns were probably read the other way round; it was not rerun on that branch, so that
+is not proved. The same sweep with the tag in the column's cards (above the points) also gives these numbers, so the
+marker capacity is not why the tag is in the strip's row; the challenge card is.
 
 ### Markers after the Scoreboard circle goes (#1287)
 
@@ -188,9 +223,9 @@ down, radius 34). Up to 10 tried.
 | 1.25 | 1 | **5** | 5 | 5 | 4 |
 
 Nothing moved: the circle sat at the top left beside Pause, where the markers' free columns never needed it, so
-`CROWDED_HOLDS` (6) and `SMALLEST_HOLDS` (4) stay. The strip's places and the column are cards or beside them, so
-holding them as boxes changes no number either. The tables above are the room the rest of the right side still takes; the
-issues that remove it (#1285 to #1289) repeat the table.
+`CROWDED_HOLDS` (6 then) and `SMALLEST_HOLDS` (4) stay. The strip's places and the column are cards or beside them, so
+holding them as boxes changes no number either. The tables of the sections above are the room the rest of the right
+side still took; the issues that removed it (#1285 to #1289) repeated the table, each in its own section.
 
 ### Markers with Ping under Pause (#1289)
 
@@ -210,9 +245,10 @@ the 844 page moves.
 | 844 x 390 | 1.25 | 3 | 10+ | **8** | 10+ |
 | 844 x 390 | 1.25 | 1 | 10+ | 10+ | 10+ |
 
-The six at 1.0 on the 667 page is the weapon strip's, not Ping's (the table above was taken before #1284, when it was
-eight). The 844 row that moved still holds eight, the count `test_hud_marker_cards.gd` asks of every page that is not
-crowded.
+The six at 1.0 on the 667 page is the weapon strip's, not Ping's (the first table, "Markers if the right side is
+cleared", was taken before #1284, when it was eight). The 844 row that moved holds eight, the count
+`test_hud_marker_cards.gd` asks of every page that is not crowded; the measure on main (last section) finds that eight
+with Interact up and 10+ without.
 
 ### After the Side circle went (#1288)
 
@@ -227,7 +263,47 @@ The same page and helpers, re-run on main after #1284 (the weapon strip), with t
 | 1.25 | 3 | 3 | 3 | 3 | 3 |
 | 1.25 | 1 | 5 | 5 | 4 | 4 |
 
-The Side circle was what held the 667 x 375 page at 1.0 to six markers (the table above says eight for "today", but
+The Side circle was what held the 667 x 375 page at 1.0 to six markers (the first table says eight for "today", but
 the test's own `CROWDED_HOLDS` on main was six and six is what this re-run measured). Without it the page holds
-ten, so `CROWDED_HOLDS` is eight again (the usual count); with Interact up the page still holds six, Interact being the
-limit, and 1.25 is limited by the cards, not the buttons. Strike (#1285) repeats this table with its circle up.
+ten, so `CROWDED_HOLDS` is eight again (the usual count, the suite's constant now); with Interact up the page still held
+six, Interact being the limit, and 1.25 is limited by the cards, not the buttons. Strike (#1285) repeats this table
+with its circle up.
+
+### Markers on main after the rework (#1317)
+
+Measured on main at e753a7e, with the whole phone rework landed (#1275 to #1305), by the suite's own helpers
+(`_busy_hud`, `_buttons`, `_one_on_every_card`, `_faults`, `_touching` of `test_hud_marker_cards.gd`) run over counts of
+1 to 10 instead of one pinned count. One marker on each card of the busiest HUD (a bot among the eight, so the bots' tag
+is up), a banner, a prompt and a level card showing, both hands, a ratio of 2: the most markers, counted up from one,
+before two meet or one is under a card or a button. A count stops at its first failure; 10 is the most tried. The right
+thumb's five circles and Pause and Ping are always in; Interact and Strike are in only where named. Both hands gave the
+same number in every row.
+
+| Page | Interface size | Diamonds | Neither up | Interact up | Strike up | Both up |
+| --- | --- | --- | --- | --- | --- | --- |
+| 667 x 375 | 0.8 | 3 or 1 | 10+ | 10+ | 10+ | 10+ |
+| 667 x 375 | 1.0 | 3 or 1 | 10+ | 10+ | 10+ | 10+ |
+| 667 x 375 | 1.25 | 3 | 3 | 3 | 3 | 3 |
+| 667 x 375 | 1.25 | 1 | 5 | 5 | 4 | 4 |
+| 844 x 390 | 0.8, 1.0 | 3 or 1 | 10+ | 10+ | 10+ | 10+ |
+| 844 x 390 | 1.25 | 3 | 10+ | **8** | 10+ | 10+ |
+| 844 x 390 | 1.25 | 1 | 10+ | 10+ | 10+ | 10+ |
+
+What the suite pins against it (the pins are floors, the measure is what the page does):
+
+| Constant | Page | Pin | Measured on main |
+| --- | --- | --- | --- |
+| `CROWDED_HOLDS` | 667 x 375, 1.0, 3 diamonds | 8 | 10+ |
+| `SMALLEST_HOLDS` | 667 x 375, 1.25, 1 diamond | 4 | 5 |
+| `STRIKE_HOLDS_SMALLEST` | 667 x 375, 1.25, 1 diamond, Strike up | 2 | 4 |
+| `STRIKE_AND_INTERACT_HOLDS_CROWDED` | 667 x 375, 1.0, 3 diamonds, both up | 8 | 10+ |
+| `EIGHT` (every other page) | 844 x 390, 1.25, 3 diamonds, Interact up | 8 | 8 |
+
+Every pin holds and none was moved. What changed against the older tables is the 667 page at 1.0: it holds 10 or more
+in every column, where the sections above measured six (the strip and the right thumb's ring, then Interact up). The
+Melee and Bots circles and the Side circle, which those sections still had on the glass, are gone from it
+(#1285, #1286, #1288), which is the likeliest cause; the page was not measured between those pull requests, so that is
+not proved. At 1.25 the 667 page is limited by the cards, as before: Strike up costs the one-diamond row a marker (4,
+where it holds 5), where #1285's table had it at 2. The only row where a button decides the count on the 844 page is
+1.25 with three diamonds and Interact up (8): that is the row the #1289 table printed under "After" and the #1286
+section could not explain.

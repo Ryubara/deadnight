@@ -2,24 +2,26 @@ class_name HudPlayerBox
 extends Control
 ## One player's container: `[portrait][points]`. The portrait (`HudPortrait`) sits on the left, the
 ## points box on its right carries the player's colour (the colour of the seat's armband, the same
-## one the player wears in the lot), with the name small at its left and the points at its right.
-## A downed player's portrait is dimmed, their box darkened and the name says DOWN.
+## one the player wears in the lot), with the name small at its left and the points at its right. A
+## downed player's portrait is dimmed, their box darkened and the name says DOWN.
 ##
 ## A player with a level shows the badge of `LevelTag` before the name: icon, the level right beside
 ## it, a little padding, then the name (a bot, or a viewer who turned levels off, shows the name
 ## alone). In any of the three sizes the name gives way first, ending in an ellipsis; the badge and
-## the points are never cut. The badge is one block at the left of the points box, so whatever
-## comes to sit behind the box later has its place at the box's left edge.
+## the points are never cut. The badge is one block at the left of the points box, so whatever comes
+## to sit behind the box later has its place at the box's left edge.
 ##
 ## A calling card sits behind the whole points box (`CardArt`, cut to the box's ticket shape). The
 ## points stay on the colour of the seat's armband, on a tab that runs in from the right edge
-## (`HudPointsTab`), exactly as they are with no card; the name and the level are drawn over the
-## card with an outline in the seat's colour (`HALO`), so each glyph sits on the colour its ink was
-## chosen for and the words keep their contrast on any card. An emblem follows the name, like the
-## badge before it takes room from the points when those are long. A frame (#1071) is a border run
-## just inside the box's outline, over the card and the tab and under the words (`FrameArt`): it
-## changes no layout. A bot or a seat with no card, emblem or frame draws none of them, and the box
-## is what it was.
+## (`HudPointsTab`), exactly as they are with no card; the level and the name sit on a strip of the
+## same colour (`HudNameTab`) just as long as they are, so each glyph is on the colour its ink was
+## chosen for, whatever the card is and at whatever size the box is drawn: an outline of the seat's
+## colour (the first version, #1070) was a ring a pixel wide in a night on a phone and the words
+## blurred into the card (#1189). The card shows round the strip and under the icon. An emblem
+## follows the name, like the badge before it takes room from the points when those are long. A
+## frame (#1071) is a border run just inside the box's outline, over the card and the tabs and under
+## the words (`FrameArt`): it changes no layout. A bot or a seat with no card, emblem or frame draws
+## none of them, and the box is what it was.
 ##
 ## The two texts share one baseline (the bottom of the numerals' capitals), so a small name and a
 ## big number read as one line; the numbers of every box end on the same vertical line.
@@ -47,10 +49,18 @@ const NAME_ROOM := 72.0
 const DOWN_KEEP := 0.3
 ## Where the card's picture sits, as a share of the card's width: left of the points.
 const CARD_PICTURE_AT := 0.54
-## The width of the seat-coloured outline round the words over a card.
-const HALO := 3
+## How far the strip behind the words reaches past the first and the last of them.
+const NAME_TAB_PAD := 4.0
+## The words' strokes are a unit and a half to two units thick; where a unit is less than this many
+## pixels (a phone in a night: 0.36) they are under a pixel and no pixel is wholly ink, so the type
+## is made heavier by `THIN_BOLD` (the face's own embolden, on top of the HUD's) until it is not.
+const THIN_BELOW := 0.6
+const THIN_BOLD := 0.9
 ## The contrast the words keep with the seat's colour (WCAG AA for text), a card or none.
 const MIN_CONTRAST := 4.5
+## What the word DOWN keeps against the dark of a downed seat's box: a letter a pixel wide is never
+## wholly ink, so a word needs the headroom (the seat-coloured words have 5.6 to 14.9).
+const DOWN_CONTRAST := 7.5
 ## A downed player's card is darkened by this much.
 const CARD_DOWN := 0.55
 ## An emblem's side, as a share of the box's height (never more than the level icon).
@@ -82,6 +92,10 @@ var badge_parts: Dictionary = {}
 var shown_card: StringName = &""
 var shown_emblem: StringName = &""
 var shown_frame: StringName = &""
+## Whether the type is the heavier one (`THIN_BOLD`).
+var _thin := false
+## The pixels a unit was when the type was last chosen.
+var _unit := -1.0
 
 var _tokens := UITokens.active()
 var _shown_seat := -1
@@ -90,6 +104,7 @@ var _name := HudStyle.clip(HudStyle.label("", HudStyle.SMALL, Color.BLACK, false
 var _number := HudStyle.clip(HudStyle.label("0", HudStyle.MEDIUM, Color.BLACK, true))
 var _card := CardArt.new()
 var _tab := HudPointsTab.new()
+var _name_tab := HudNameTab.new()
 var _emblem := EmblemArt.new()
 var _frame := FrameArt.new()
 var _icon := LevelTag.icon_rect(1)
@@ -103,6 +118,8 @@ func _init() -> void:
 	_level.visible = false
 	_emblem.visible = false
 	_tab.visible = false
+	_name_tab.visible = false
+	_tab.strip = _name_tab
 	_card.motif_at = CARD_PICTURE_AT
 	_frame.visible = false
 	for node in [_card, _tab, _frame, portrait, _icon, _level, _name, _emblem, _number]:
@@ -121,6 +138,17 @@ static func ink_for(fill: Color) -> Color:
 	var dark := tokens.ink_on_accent
 	var light := tokens.ink
 	return dark if contrast(fill, dark) >= contrast(fill, light) else light
+
+
+## `colour` as it is when it reads on `ground` at `target` to one, else pulled toward white until it
+## does: the red of DOWN on the dark a downed seat's box is (2.1 to 1 before, #1189).
+static func legible(colour: Color, ground: Color, target: float) -> Color:
+	var pulled := colour
+	var step := 0.0
+	while step < 1.0 and contrast(pulled, ground) < target:
+		step += 0.05
+		pulled = colour.lerp(Color.WHITE, step)
+	return pulled
 
 
 ## WCAG contrast ratio of two colours.
@@ -206,9 +234,11 @@ func show_player(
 		_shown_look = look_data
 		portrait.show_look(look_data, seat)
 	portrait.downed = downed
-	_set_colour(_name, _tokens.danger if downed else ink)
+	_sync_weight()
+	var down_ink := legible(_tokens.danger, fill(), DOWN_CONTRAST)
+	_set_colour(_name, down_ink if downed else ink)
 	_name.visible = not paired
-	_set_colour(_number, _tokens.danger if paired and downed else ink)
+	_set_colour(_number, down_ink if paired and downed else ink)
 	_set_colour(_level, ink)
 	_icon.visible = shown_level.x > 0
 	_level.visible = shown_level.x > 0
@@ -288,9 +318,10 @@ func _show_plate() -> void:
 	var carded := shown_card != &""
 	_tab.visible = carded
 	_tab.colour = fill()
+	_name_tab.visible = carded
+	_name_tab.colour = fill()
 	for label in [_name, _level]:
-		(label as HudLabel).halo_size = HALO if carded else 0
-		(label as HudLabel).halo_colour = fill()
+		(label as HudLabel).halo_size = 0
 	_emblem.rim = fill() if carded else Color(0, 0, 0, 0)
 	var darkened := CARD_DOWN if downed else 0.0
 	if not is_equal_approx(_card.dim, darkened):
@@ -306,7 +337,32 @@ func _show_plate() -> void:
 	_frame.visible = shown_frame != &""
 
 
+## Makes the type heavier where a unit is under `THIN_BELOW` of a pixel, and as it was elsewhere.
+func _sync_weight() -> void:
+	if not is_inside_tree():
+		return
+	var unit := get_viewport().get_final_transform().get_scale().x
+	if not is_equal_approx(unit, _unit):
+		_unit = unit
+		set_thin(unit < THIN_BELOW)
+
+
+## The heavier type of a screen where a unit is a fraction of a pixel (`THIN_BOLD`), or the HUD's
+## own.
+func set_thin(thin: bool) -> void:
+	if thin == _thin:
+		return
+	_thin = thin
+	var extra := THIN_BOLD if thin else 0.0
+	var plain := _tokens.embolden_display
+	for label in [_name, _level]:
+		label.add_theme_font_override(&"font", _tokens.text_font(plain * 0.3 + extra, 1.0))
+	_number.add_theme_font_override(&"font", _tokens.display_font(plain * 0.5 + extra))
+	_layout()
+
+
 func _layout() -> void:
+	_sync_weight()
 	var box := _box()
 	_card.position = box.position
 	_frame.position = box.position
@@ -371,10 +427,27 @@ func _layout() -> void:
 	_emblem.position = Vector2(
 		name_left + text_end + float(HudStyle.SM), box.position.y + (box.size.y - side) * 0.5
 	)
+	_place_name_tab(box, name_left, text_end)
 	_tab.place(box, _number.position.x - float(HudStyle.SM) - HudPointsTab.SLANT)
 
 	if shown_level.x > 0:
 		badge_parts["name"] = Rect2(_name.position, _name.size)
+
+
+## The strip behind the level and the name: from just before the level (or the name without one) to
+## just after the name's text, the line's height and a little, in the box's middle.
+func _place_name_tab(box: Rect2, name_left: float, text_end: float) -> void:
+	if shown_card == &"":
+		return
+	var left := name_left
+	if badge_parts.has("level"):
+		left = (badge_parts["level"] as Rect2).position.x
+	left -= NAME_TAB_PAD
+	var right := name_left + text_end + NAME_TAB_PAD + HudNameTab.SLANT * 0.5
+	var height := minf(
+		_line(_name) + 2.0 * float(HudStyle.XS), box.size.y - 2.0 * float(HudStyle.XS)
+	)
+	_name_tab.place(Rect2(left, box.position.y + (box.size.y - height) * 0.5, right - left, height))
 
 
 ## A label's own line height.

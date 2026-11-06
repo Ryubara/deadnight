@@ -20,10 +20,10 @@ extends RefCounted
 ##                       can ask for fewer, never more
 ##   BOTS_OFF            1, true, yes or on: the kill-switch, no room seats a bot and the bots
 ##                       standing leave (default off)
-##   BOT_BUDGET          the most bots in all the rooms of this process together (default 2, 0 is
-##                       none); each room is cut to its share of it (2 rooms: 1 each, 3 rooms:
-##                       none). Sized from the cost of a room with bots
-##                       (docs/research/crowd-budget.md, "Rooms of fifteen bodies")
+##   BOT_BUDGET          the most bots in all the rooms of this process together (default 3, 0 is
+##                       none; 2 from #1193 to #1222); each room is cut to its share of it (a lone
+##                       room 3, 2 or 3 rooms: 1 each, 4 rooms: none). Sized from the cost of a
+##                       room with bots (docs/research/crowd-budget.md, #1193 and #1222)
 
 var backend_url := ""
 var game_server_secret := ""

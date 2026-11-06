@@ -53,6 +53,15 @@ was 3.8 s, no fly-in): HUD hidden for the show and back after, no console error.
 A page that asks for the probes skips the show unless it asks for it too (`WebProbe.asked`; `?arrival`): the 55 probes of
 `tools/web_smoke/` start a night and act from its first frame, and none needed an edit.
 
+That held for a night opened from the menu and not for the benches (#1323): a bench pushes the night screen itself,
+and one that typed its members (`var _night: Night`) loaded `NightScreen` before `WebProbe`. The night screen's
+`arrival_enabled := ... and not WebProbe.asked()` then ran while `WebProbe` was loading, and `asked()` read the int
+default 0 of its `static var _asked := -1` as "no": the drop played for 6.5 s on a page that had asked for the probes
+(`WebProbe.asked()` was true a moment later). The cache now has no initialiser (0 is unread), so the order no longer
+matters; `tools/web_smoke/arrival_bench.py` opens a night the way a bench does and fails if the show plays, and
+`test_static_caches_start_at_the_default.gd` fails for a static variable that starts on a number other than zero.
+Kit page: [Static variables and the order scripts load in](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/static-variables.md).
+
 ## The sound
 
 Synthesised (`tools/audio/arrival_recipes.py`): a 4 s seamless loop of ten rotor beats a second (a low thump from 105 to
