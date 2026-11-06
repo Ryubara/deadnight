@@ -1032,7 +1032,7 @@ func _build_tree(skeleton_path: String) -> AnimationNodeBlendTree:
 	tree.connect_node(&"repair", 0, &"action")
 	tree.connect_node(&"repair", 1, &"repair_scale")
 	tree.connect_node(&"split", 1, DrinkLayer.add_nodes(tree, &"repair"))
-	tree.connect_node(&"full", 0, _down.add_nodes(tree, &"split"))
+	tree.connect_node(&"full", 0, _down.add_nodes(tree, &"split", skeleton_path))
 	tree.connect_node(&"full", 1, &"full_clip")
 	tree.connect_node(&"output", 0, &"full")
 	return tree

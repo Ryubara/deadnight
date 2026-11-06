@@ -564,6 +564,11 @@ def problems(results: list[dict]) -> list[str]:
     for entry in results:
         if entry["what"].startswith(("in the night", "turned upright", "together name")):
             continue
+        # A tablet's page is over the phone limit and keeps the desktop's layout (`phone=False`; the suite's
+        # `test_a_tablet_keeps_the_desktop_layout`): the phone's floors are not its own. It is in the run to show that
+        # the factor follows the resize.
+        if "tablet" in entry["what"]:
+            continue
         low_text = entry.get("audit_text_min")
         low_tap = entry.get("audit_tap_min")
         if low_text is not None and low_text < MIN_TEXT_PX - 0.05:

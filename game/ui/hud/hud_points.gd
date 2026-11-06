@@ -7,6 +7,13 @@ extends HudPart
 ## crosshair (`HudGains`), where the eye already is. Past eight bodies (the people are eight at
 ## most, the bots come on top, #1179) the bots are a strip of chips under the boxes
 ## (`HudBotChips`): fifteen boxes would stand taller than the room the column has.
+##
+## On a phone the column has less room still (the weapon strip is a fingertip high under it, and the
+## round and the objective stand over it): `room` is the most height it may take (`Hud` sets it
+## while the touch layout is up), and a party whose boxes would stand taller than that puts the
+## teammates two to a row, the points alone in each (`HudPlayerBox.paired`), which takes a party of
+## eight from 332 units high to 218, the bots' strip still under them. A room the boxes fit in
+## keeps one to a row, with their names, as on every other screen.
 
 const WIDTH := HudStyle.COLUMN
 ## With more players than this the teammates' boxes are the compact size, so a party of eight
@@ -26,7 +33,20 @@ var name_text: String:
 		var box := _local_box()
 		return box.name_text if box != null else ""
 
-var _column := VBoxContainer.new()
+## The most height the column may take, canvas units; `INF` where nothing limits it (a desktop, a
+## pad). A party that does not fit it is shown in pairs (`HudPlayerBox.paired`).
+var room := INF:
+	set(value):
+		if value != room:
+			room = value
+			if state != null:
+				refresh()
+## Whether the teammates are in pairs now.
+var pairs: bool:
+	get:
+		return _column.mate_columns > 1
+
+var _column := HudPointsStack.new()
 ## The bots' strip, made when a night reaches more than eight bodies and freed when it falls back.
 var _chips: HudBotChips = null
 ## Player id -> the box on screen.
@@ -36,7 +56,6 @@ var _boxes: Dictionary[int, HudPlayerBox] = {}
 func _init() -> void:
 	super()
 	_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_column.add_theme_constant_override(&"separation", HudStyle.GAP)
 	_column.custom_minimum_size.x = WIDTH
 	add_child(_column)
 	_column.minimum_size_changed.connect(update_minimum_size)
@@ -96,14 +115,7 @@ func refresh() -> void:
 		var box := _boxes[player_id]
 		_column.move_child(box, i)
 		var local := player_id == state.local_player_id
-		box.show_player(
-			player_id,
-			member,
-			local,
-			ids.size() > COMPACT_FROM,
-			state.level_of(member),
-			state.plate_of(member)
-		)
+		_fill(box, player_id, member, ids.size())
 		(
 			shown
 			. append(
@@ -138,7 +150,28 @@ func refresh() -> void:
 			)
 		)
 	_show_chips(chipped)
+	# The boxes and the strip are measured as they stand, one to a row: a party that does not fit
+	# `room` is put in pairs, and the boxes are told.
+	var mates := maxi(ids.size() - 1, 0)
+	var short := mates >= 2 and not is_inf(room) and _column.height_at(1) > room
+	if short != pairs:
+		_column.mate_columns = 2 if short else 1
+		for player_id in ids:
+			_fill(_boxes[player_id], player_id, state.team[player_id], ids.size())
 	visible = not all.is_empty()
+
+
+## Fills a box from a member of the party; `people` boxes are on show.
+func _fill(box: HudPlayerBox, player_id: int, member: Dictionary, people: int) -> void:
+	box.show_player(
+		player_id,
+		member,
+		player_id == state.local_player_id,
+		people > COMPACT_FROM,
+		state.level_of(member),
+		state.plate_of(member),
+		pairs
+	)
 
 
 ## The strip of chips the bots are drawn as past eight bodies, for tests and tools; null while the

@@ -4,8 +4,14 @@ extends RefCounted
 ## (canvas units) and the player's touch scale and it answers a circle per button.
 ##
 ## Buttons are placed by their offset from the safe rectangle's bottom right corner, where the
-## right thumb rests, in an arc round Fire. A left-handed layout (`mirrored`) is the same layout
-## flipped left to right: offsets from the bottom left corner, the stick on the right.
+## right thumb rests. The right thumb does Fire, Aim, Jump, Reload and Crouch (#1277), so those five
+## are one ring round Fire (`RING_GAP` of air between the rims): the thumb that rests on Fire rolls
+## to a neighbour without leaving the screen's corner, and Reload is the one on Fire's left, in the
+## same row. Interact, which shows only at something to use, sits one thumb-length out, up and left
+## of Reload and no farther from the edge than the buttons that wait for a home: the world markers
+## need the column between the HUD's cards and the buttons (#1230). A left-handed layout
+## (`mirrored`) is the same layout flipped left to right: offsets from the bottom left corner, the
+## stick on the right.
 ## The HUD's ammo card (bottom right) and prompt card (bottom centre) are kept clear;
 ## `test_touch_layout` checks that against the busiest HUD.
 ## Sizes are in canvas units: about 8 to 9 mm on a phone (the canvas is 1080 units high on a screen
@@ -15,54 +21,80 @@ const FIRE := &"fire"
 const AIM := &"aim"
 const JUMP := &"jump"
 const RELOAD := &"reload"
-const SWAP := &"swap_weapon"
-const GRENADE := &"throw_grenade"
+## Crouch (#1277): the simulation acts on `crouch` held; on a phone a tap toggles it, so the right
+## thumb is free for Fire and the look again (`TouchControls`).
+const CROUCH := &"crouch"
 const INTERACT := &"interact"
 const PAUSE := &"pause"
-const SCOREBOARD := &"scoreboard"
-const SHOULDER := &"swap_shoulder"
-## The quick melee (#411, #588): a blow with whatever is in hand; the button presses its action. It
-## sits on the far right edge above the ammo card, close enough to the corner to be on screen on a
-## phone's 540 unit high canvas too (the menu's phone factor stays on while a night runs).
-const MELEE := &"quick_melee"
+## Strike (#411, #588, #1285): the quick melee, a blow with whatever is in hand; the button presses
+## its action. Like Interact it shows only while it applies, here a dead within reach of the blow
+## (`TouchControls.strike_ready`), so it costs the glass nothing the rest of the time. It stands
+## where Swap stood, beside Reload.
+const STRIKE := &"quick_melee"
 ## The ping (#642): marks what the crosshair is on for the team; the button presses `ping`. It sits
 ## on the top edge beside Pause, where the other thumb reaches it between fights; the right thumb's
-## corner is full (Reload takes the bottom of MELEE's column on a 1080 unit canvas).
+## corner is full.
 const PING := &"ping"
-## The bot command wheel (#642): held, it opens the wheel, and the thumb's drag picks an order; the
-## button presses `bot_wheel`. It sits in MELEE's column on the far right edge, above the ammo card
-## and clear of Reload, so it is on screen on a phone's 540 unit high canvas too.
-const BOT_WHEEL := &"bot_wheel"
+
+## The centre of Fire, from the bottom right corner (left, up): the thumb's resting place, and the
+## middle of the ring the other four buttons of the right thumb stand on.
+const FIRE_OFFSET := Vector2(205.0, 350.0)
+const FIRE_RADIUS := 100.0
+## Air between the rims of Fire and its neighbours: 2 to 3 mm on a phone, a thumb's own width of
+## room (`docs/research/mobile-controls.md`, "The right side").
+const RING_GAP := 42.0
 
 ## Offset from the bottom right corner (left, up) and radius, by button. The order is the order a
-## touch tests them in: the contextual button first, so it wins where it overlaps.
+## touch tests them in: the contextual button first, so it wins where it overlaps. The ring's
+## buttons stand `FIRE_RADIUS + radius + RING_GAP` from Fire's centre, Crouch at 40 degrees below
+## straight left, Reload at 8 above it (the same row), Aim at 56 and Jump at 104 (nearly straight
+## up); `test_touch_layout` checks the air. Strike stands beside Reload, a thumb's roll out along
+## the row from Fire, with the 30 units of air Interact's place needs. The shoulder has no
+## button: a double tap on free ground (`TouchDoubleTap`, #1288). The weapons and the grenades
+## are the HUD's own places, not buttons of this layer (#1280), and so is the tag of the bots'
+## order (`HudBotOrder`, #1286).
 const BUTTONS := [
-	[INTERACT, Vector2(415.0, 350.0), 86.0],
-	[FIRE, Vector2(205.0, 350.0), 100.0],
-	[AIM, Vector2(320.0, 520.0), 70.0],
-	[RELOAD, Vector2(115.0, 525.0), 62.0],
-	[SWAP, Vector2(515.0, 475.0), 56.0],
-	[JUMP, Vector2(360.0, 150.0), 70.0],
-	[GRENADE, Vector2(520.0, 165.0), 56.0],
-	[SHOULDER, Vector2(565.0, 640.0), 52.0],
-	[MELEE, Vector2(60.0, 310.0), 44.0],
-	[BOT_WHEEL, Vector2(60.0, 405.0), 40.0],
+	[INTERACT, Vector2(540.0, 500.0), 80.0],
+	[STRIKE, Vector2(575.0, 340.0), 52.0],
+	[FIRE, FIRE_OFFSET, FIRE_RADIUS],
+	[RELOAD, Vector2(411.0, 379.0), 66.0],
+	[AIM, Vector2(325.0, 527.0), 72.0],
+	[JUMP, Vector2(154.0, 556.0), 70.0],
+	[CROUCH, Vector2(361.0, 219.0), 62.0],
 ]
+## Every button of `BUTTONS` is a right button (#1277): a finger on it also turns the view.
 ## Pause sits on the top edge, right of the HUD's left column.
 const PAUSE_OFFSET := Vector2(442.0, 80.0)
 const PAUSE_RADIUS := 36.0
-## The ping button sits right of Pause on the top edge, clear of the HUD's left column and of the
-## middle of the screen.
-const PING_OFFSET := Vector2(538.0, 80.0)
+## The ping button stands under Pause (#1289), in the same column, so the one finger that
+## reaches the top edge has Pause above and Ping below with a thumb's room between them. How far
+## below is a length on the glass, not in units (`ping_drop`): at least `PING_CENTRES_CSS` CSS
+## pixels (9 mm and a little) from Pause's centre, and the hit areas never touch. `PING_DROP` is
+## the answer where no fingertip is known (a desktop, a test): 54 CSS px at 0.36 CSS px a unit.
 const PING_RADIUS := 36.0
-## The scoreboard button sits under Pause, held to show the board (it presses the `scoreboard`
-## action while a finger is on it).
-const SCOREBOARD_OFFSET := Vector2(442.0, 178.0)
-const SCOREBOARD_RADIUS := 34.0
-## The floating stick: its resting place (a faint ring, above the HUD's players column and the
-## weapon strip under it), its radius and where it may start.
-const STICK_REST := Vector2(330.0, 390.0)
-const STICK_RADIUS := 105.0
+const PING_DROP := 150.0
+const PING_CENTRES_CSS := 56.0
+## The air kept between Pause's hit area and Ping's, as a share of a fingertip (6 of 44 CSS px).
+const PING_HIT_GAP := 6.0 / MenuScale.TAP_PIXELS
+## The floating stick has no ring on the screen until a finger is down (#1276); its resting place is
+## where the first-run "DRAG TO MOVE" hint stands and the ring a finger would make there. The ring
+## is kept clear of the HUD by its edges, not by a corner offset: its left edge is
+## `STICK_REST_CLEAR.x` from the side of the stick, right of the players' column and the perk
+## badges beside it, and its bottom edge `STICK_REST_CLEAR.y` up from the bottom, above the tallest
+## weapon strip (196 units with the margin), whatever the touch scale, so the ring grows away from
+## the corner and the cards never meet it. The players' column grows upward with the party (eight
+## and the bots) and the badges with the perks, so the ring is beside them, not above;
+## `test_touch_stick_rest` holds it clear of every card and every place. The ring's top at a scale
+## of 1 is 495 units up, where the first ring's always was, so the hint above it stands where it
+## did.
+const STICK_REST_CLEAR := Vector2(
+	HudStyle.MARGIN + HudStyle.COLUMN + HudStyle.GAP + HudStyle.SHADOW.x + HudPerks.WIDTH + 24.0,
+	271.0
+)
+## The ring's radius in canvas units at a touch scale of 1 on a phone's page: 40 CSS pixels
+## (`TouchTuning.stick_radius_px`) are 111.1 units at every interface size; the drawn ring is
+## `TouchControls.stick_radius`.
+const STICK_RADIUS := 112.0
 const STICK_ZONE_WIDTH := 0.45
 const STICK_ZONE_TOP := 0.2
 ## A finger's hit area reaches this far past the drawn button, and is never smaller than MIN_HIT.
@@ -92,25 +124,35 @@ static func buttons(
 	var pause_radius := PAUSE_RADIUS * touch_scale
 	var pause_x := safe.end.x - PAUSE_OFFSET.x if mirrored else safe.position.x + PAUSE_OFFSET.x
 	found[PAUSE] = _circle(Vector2(pause_x, safe.position.y + PAUSE_OFFSET.y), pause_radius, finger)
-	var ping_x := safe.end.x - PING_OFFSET.x if mirrored else safe.position.x + PING_OFFSET.x
+	var drop := ping_drop(touch_scale, finger)
 	found[PING] = _circle(
-		Vector2(ping_x, safe.position.y + PING_OFFSET.y), PING_RADIUS * touch_scale, finger
-	)
-	var board_x := (
-		safe.end.x - SCOREBOARD_OFFSET.x if mirrored else safe.position.x + SCOREBOARD_OFFSET.x
-	)
-	found[SCOREBOARD] = _circle(
-		Vector2(board_x, safe.position.y + SCOREBOARD_OFFSET.y),
-		SCOREBOARD_RADIUS * touch_scale,
-		finger
+		Vector2(pause_x, safe.position.y + PAUSE_OFFSET.y + drop), PING_RADIUS * touch_scale, finger
 	)
 	return found
 
 
+## How far below Pause's centre Ping's centre stands, canvas units: the most of `PING_CENTRES_CSS`
+## CSS pixels (a fingertip is `finger` units for `MenuScale.TAP_PIXELS` of them), Pause's and
+## Ping's hit areas with `PING_HIT_GAP` of a fingertip between them, and `PING_DROP` where no
+## fingertip is known.
+static func ping_drop(touch_scale: float, finger := 0.0) -> float:
+	var pause_hit := _hit(PAUSE_RADIUS * touch_scale, finger)
+	var ping_hit := _hit(PING_RADIUS * touch_scale, finger)
+	return maxf(
+		PING_DROP,
+		maxf(
+			finger * PING_CENTRES_CSS / MenuScale.TAP_PIXELS,
+			pause_hit + ping_hit + finger * PING_HIT_GAP
+		)
+	)
+
+
 ## Where a finger may land to start the move stick, and the side it is on (the left for a right
-## hand, the right for a left hand).
-static func stick_zone(safe: Rect2, mirrored := false) -> Rect2:
-	var top := safe.size.y * STICK_ZONE_TOP
+## hand, the right for a left hand). It starts below `below` (a y of the canvas) when that is
+## lower than its own top: the touch layer gives the bottom of Ping's hit area, so a thumb that
+## starts the stick never lands on the button above it (#1289).
+static func stick_zone(safe: Rect2, mirrored := false, below := -INF) -> Rect2:
+	var top := maxf(safe.size.y * STICK_ZONE_TOP, below - safe.position.y)
 	var width := safe.size.x * STICK_ZONE_WIDTH
 	var left := safe.end.x - width if mirrored else safe.position.x
 	return Rect2(Vector2(left, safe.position.y + top), Vector2(width, safe.size.y - top))
@@ -118,18 +160,26 @@ static func stick_zone(safe: Rect2, mirrored := false) -> Rect2:
 
 static func _circle(centre: Vector2, radius: float, finger: float) -> Dictionary:
 	var was := maxf(radius + HIT_PAD, MIN_HIT)
-	return {&"centre": centre, &"radius": radius, &"hit": maxf(was, finger * 0.5), &"was": was}
+	return {&"centre": centre, &"radius": radius, &"hit": _hit(radius, finger), &"was": was}
 
 
+## The radius of a hit area: the drawn button and a pad round it, at least `MIN_HIT`, and a
+## fingertip's half when `finger` is known.
+static func _hit(radius: float, finger: float) -> float:
+	return maxf(maxf(radius + HIT_PAD, MIN_HIT), finger * 0.5)
+
+
+## The centre of the stick's resting ring (see `STICK_REST_CLEAR`).
 static func stick_rest(safe: Rect2, touch_scale: float, mirrored := false) -> Vector2:
 	var corner := Vector2(safe.end.x if mirrored else safe.position.x, safe.end.y)
-	return corner + Vector2(-1.0 if mirrored else 1.0, -1.0) * STICK_REST * touch_scale
+	var offset := STICK_REST_CLEAR + Vector2.ONE * STICK_RADIUS * touch_scale
+	return corner + Vector2(-1.0 if mirrored else 1.0, -1.0) * offset
 
 
 ## The button under `point`, or "" (`skip` lists hidden ones). Who wins a touch where hit areas
 ## overlap is decided in two steps (#1217):
 ## 1. The area a button had before `finger` (`was`): the first in `BUTTONS` order wins (Pause, Ping,
-##    Scoreboard, then the table's order, the contextual Interact first), exactly as it always did.
+##    then the table's order, the contextual Interact first), exactly as it always did.
 ##    A touch that pressed a button before presses the same button now.
 ## 2. The margin `finger` added, which no button owned: the nearest centre wins (a tie goes to the
 ##    first in order). Growing a button never takes a touch from its neighbour.
@@ -154,8 +204,17 @@ static func button_at(point: Vector2, circles: Dictionary, skip: Array = []) -> 
 	return nearest
 
 
+## Whether a finger that starts on `id` also looks while it drags: every button of the right thumb
+## does, so a thumb that has pressed Reload, Jump or Crouch turns the view for the rest of the drag.
+static func looks_when_dragged(id: StringName) -> bool:
+	for row in BUTTONS:
+		if row[0] == id:
+			return true
+	return false
+
+
 static func _order() -> Array:
-	var order: Array = [PAUSE, PING, SCOREBOARD]
+	var order: Array = [PAUSE, PING]
 	for row in BUTTONS:
 		order.append(row[0])
 	return order

@@ -24,10 +24,12 @@ tests. The same hole is open for any action.
   the d-pad's down; #411) refuses a press made inside its 0.6 s, so the matrix lets 40 ticks pass after each binding
   of it (`_after`), and the row sits before the grenades: an arm that is still throwing one refuses the blow.
 - **The weapon slot keys** (#682): rows `weapon_slot_1` to `_3` (keys 1, 2, 3), keyboard only (`KEYBOARD_ONLY` is exempt
-  from the pad-binding rule and the pad loop; the phone has the SWAP button). A slot key shows nothing when its weapon
+  from the pad-binding rule and the pad loop; the phone taps the weapon's place on the HUD, #1280, so the touch loop
+  presses the place's centre: the row's control is the place's action). A slot key shows nothing when its weapon
   is in hand, so `_prepare` puts the other weapon in hand first; the third slot has nobody to pick with two weapons
   carried, so its row proves only that the key reaches the command.
-- **The bot wheel and the ping** have rows too (#642): `bot_wheel` (Q, the d-pad left, the BOTS touch button) and `ping`
+- **The bot wheel and the ping** have rows too (#642): `bot_wheel` (Q, the d-pad left; a phone has no wheel button since
+  #1286, so its row has no touch control) and `ping`
   (Z, the middle mouse button, the d-pad right, the PING touch button). The night reads the ping key as its own edge
   (`HumanController.ping_pressed`, once a tick beside `command`), so the matrix reads both each tick the way
   `Night._human_command` does (`_tick_command`); a second binding of a ping would otherwise find the first one's edge

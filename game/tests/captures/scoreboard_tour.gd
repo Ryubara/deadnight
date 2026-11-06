@@ -40,6 +40,12 @@ func _ready() -> void:
 		if args.has("notch"):
 			_controls.insets_override = NOTCH
 		_controls.safe_insets_changed.connect(_fit_hud)
+		# The players' column is the scoreboard's place (#1287), as the night screen wires it.
+		_controls.zones = _hud.touch_zones
+		_controls.active_changed.connect(func(active: bool) -> void: _hud.touch_layout = active)
+		_controls.layout_changed.connect(
+			func() -> void: _hud.set_touch_boxes(_controls.button_boxes())
+		)
 		layer.add_child(_controls)
 	if _players == 1:
 		await _play_alone(play)
@@ -123,10 +129,12 @@ func _settle() -> void:
 
 func _show_the_board() -> void:
 	if _touch:
-		var circle := _controls.button_circle(TouchLayout.SCOREBOARD)
 		var touch := InputEventScreenTouch.new()
 		touch.index = 0
-		touch.position = get_viewport().get_final_transform() * (circle[&"centre"] as Vector2)
+		touch.position = (
+			get_viewport().get_final_transform()
+			* (_hud.scoreboard_zone()[&"rect"] as Rect2).get_center()
+		)
 		touch.pressed = true
 		Input.parse_input_event(touch)
 	else:

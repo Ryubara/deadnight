@@ -5,7 +5,7 @@ extends SceneTree
 ##     --skill=average --players=1 --nights=200 --seed=1 --out=cell.json [--step=0.25] [--rounds=30]
 ##     [--set=rounds.health_growth=1.05 ...] [--shopping=door_concession,weapon_rifle | none]
 ##     [--skill-set=head_rate=0.7 ...]  (a number of the skill level replaced, for a try)
-##     [--assist=0.5]  (a touch player with the aim assist at that strength)
+##     [--assist=1]  (a touch player with the aim assist at that strength; 1 is the setting on)
 ##     [--map=small_indoor]  (the second map's rules over the table, and its bots' shopping list)
 ##     [--perks=unlimited]  (the match setting that lifts the limit on the perks a player may carry)
 ##

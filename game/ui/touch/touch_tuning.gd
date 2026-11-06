@@ -32,10 +32,13 @@ const SHIPPED_PATH := "res://ui/touch/touch_tuning_default.tres"
 @export_group("Stick")
 ## The stick's dead zone, as a share of its radius.
 @export_range(0.0, 0.5, 0.01) var stick_deadzone := 0.1
-## Pushing the stick to this share of its radius starts a sprint ...
-@export_range(0.5, 1.0, 0.01) var sprint_on := 0.95
-## ... and easing under this share ends it.
-@export_range(0.3, 1.0, 0.01) var sprint_off := 0.75
+## The stick's ring, as a radius in CSS pixels of the page (times the touch scale setting): a drag
+## to this distance walks at full speed. In CSS pixels so it is the same movement of the thumb on a
+## 667 x 375 and an 844 x 390 phone; the canvas turns it into units (`TouchControls.stick_radius`).
+@export_range(20.0, 120.0, 1.0, "suffix:px") var stick_radius_px := 40.0
+## A drag this much past the ring's edge, in CSS pixels, starts a sprint that stays on until the
+## finger lifts. A thumb at full walk sits on the edge; this keeps a wobble there from sprinting.
+@export_range(4.0, 60.0, 1.0, "suffix:px") var sprint_margin_px := 18.0
 
 @export_group("Buttons")
 ## A press lasts at least this long, so a quick tap is still seen by the next physics tick.
@@ -45,6 +48,8 @@ const SHIPPED_PATH := "res://ui/touch/touch_tuning_default.tres"
 @export_range(0.05, 5.0, 0.05, "suffix:s") var inset_period := 0.5
 ## The buzz of a press on a phone.
 @export_range(0, 100, 1, "suffix:ms") var haptic_ms := 12
+## The one buzz when the sprint starts: longer than a press, so it reads as another thing.
+@export_range(0, 200, 1, "suffix:ms") var sprint_haptic_ms := 40
 
 
 ## A private copy of the shipped table (`touch_tuning_default.tres`).

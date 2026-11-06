@@ -1,0 +1,281 @@
+# Phone audit: every action, every element, a verdict
+
+The audit behind the phone's controls (#1275). The maintainer, 2026-11-05: "we're still treating the users as if
+they're playing the desktop version but just with touch controls", and "I don't like that every button acts like an
+individual keybind that has its own button, it bloats the screen and it's super confusing." The reasons and the sources
+are in [mobile controls](../research/mobile-controls.md#the-audit-1275); what the layer does today is
+[touch controls](touch-controls.md). Read on the real page (844 x 390 and 667 x 375 CSS px, ratio 2, touch mode)
+after the pull requests #1281, #1283 and #1284 had landed.
+
+**The rule behind every verdict.** The right thumb holds Fire and looks, so it gets what a fight needs and nothing
+else: Fire, Aim, Jump, Crouch, Reload (the maintainer's list), and one contextual button at a time. The left thumb
+walks and has the stick. What the screen already shows is made tappable before a control is added: the HUD's own
+places press the game's actions (`HudSlots.touch_zones`, `TouchControls.zones`). A control that is only there because a
+desktop key is, is dropped or folded into something already on screen. A verdict is **KEEP**, **TAP** (the element that
+already shows it takes the touch), **CONTEXT** (a button that shows only when it applies, as Interact does),
+**CONVERT** (a gesture or a state in place of the key) or **DROP** (a duplicate).
+
+## Every action of the input map
+
+| Action (desktop key) | Home on a phone | Verdict | Built by |
+| --- | --- | --- | --- |
+| `move_*` (WASD), `sprint` (Shift) | the floating stick, a sprint latched past its edge | KEEP | #1276 (done) |
+| `look_*`, the mouse | a drag on free ground, or from any right button | KEEP | #1283 |
+| `fire` (left button) | Fire, the ring's centre | KEEP | #1283 |
+| `aim` (right button) | Aim, held with auto-fire on, a toggle off | KEEP | #1283, #1281 |
+| `jump` (Space) | Jump | KEEP | #1283 |
+| `crouch` (Ctrl) | Crouch, a toggle | KEEP | #1283 |
+| `reload` (R) | Reload, next to Fire; auto reload at 0 makes it rare | KEEP | #1283, #1278 |
+| `interact` (E) | the Interact button, only at something to use | KEEP, CONTEXT | #1283 |
+| `swap_weapon` (F), `weapon_slot_1..3` | a tap on a weapon of the HUD's strip | TAP | #1284 |
+| `throw_grenade` (G), `toss_grenade` (H) | press and hold the strip's grenade place | TAP | #1284 |
+| `quick_melee` (V) | **Strike**: a button that shows only while a dead is within reach | CONTEXT | #1285 |
+| `bot_wheel` (Q, hold and drag) | a tag at the inner end of the weapon strip showing the order; a tap gives the next | TAP | #1286 (done) |
+| `scoreboard` (Tab, held) | a finger held on the players' column | TAP | #1287 |
+| `swap_shoulder` (C) | a double tap on free ground | CONVERT | #1288 |
+| `ping` (Z, middle button) | one small button under Pause, clear of it | KEEP | #1289 (spacing) |
+| `pause` (Esc) | the one control on the top edge, beside the round card | KEEP | here (nothing near it) |
+| `ui_accept`, `ui_cancel`, `ui_tab_*` | taps on buttons and tabs, which already work | KEEP | - |
+
+After this the phone has Fire, Aim, Jump, Crouch, Reload, Strike and Interact (the last two only when they apply),
+Pause and Ping, and the stick. Gone from the glass: Swap, Grenade (#1284), Side, Melee, Bots, Scoreboard. Nothing needs
+a keyboard.
+
+### Why each home
+
+- **Melee.** Quick melee is a real verb here (a blow with whatever is in hand, no weapon needed in a slot; bots use it
+  at arm's length). It cannot stay a permanent circle: the maintainer's list leaves it out and the ring round Fire is
+  full. Call of Duty: Mobile shows its knife only when an enemy is within striking distance
+  ([Activision](https://blog.activision.com/call-of-duty/2019-10/Getting-a-Grip-on-the-Call-of-Duty-Mobile-Controls)),
+  which costs no screen the rest of the time. Home: the place Swap left (575 left and 340 up of the corner, 21 mm from
+  Fire), beside Reload, clear of Interact's. Shown while a dead is within `quick_melee`'s reach on the client's view.
+  Not tested for comfort: a thumb has to leave Fire for it, as it does for Reload.
+- **Bot orders.** The standing order showed for two seconds in the feed after a change and nowhere else, so a player
+  could not read it. A tag (shown only when the room has bots) says it and takes the touch: a tap gives the next of
+  Follow, Roam, Hold. Three orders are a cycle, not a wheel; the wheel (hold and drag) stays for the keyboard and the
+  pad, and the touch layer's wheel finger goes. Built in #1286, at the inner end of the weapon strip and not in the
+  column's cards: on the stick's first ring a fingertip-high tag could not stand there clear of it (8 units into it
+  at 1.0, 54 at 0.8), and now that #1294 has moved the ring beside the column, a tag there makes the column a
+  fingertip taller and the challenge card lands over it on the phone pages (measured, `docs/research/bot-wheel.md`).
+  The strip's row costs the column no height.
+- **Scoreboard.** The players' column is the scoreboard's short form (points, names). A finger held on it shows the
+  ticket, as Tab does, and lifting hides it: the same `scoreboard` action, so nothing else forks.
+- **Shoulder.** A fight verb that is rare (a corner, a wall): a double tap on free ground. Two taps in a row are never a
+  look, so the first adds no delay to anything.
+- **Ping.** The one verb with no element that already shows it. A tap on the reticle would be one gesture fewer, but a
+  look surface fires it by accident (a player review of Apex Legends Mobile reports pings made by mistake on touch,
+  from a search summary, not read on the page), so it stays a button: one small circle, under Pause with the room two
+  fingers need between them (the two were 27 CSS px apart before #1289; their centres are 56 CSS px apart now).
+- **Pause** stays: the one control every player looks for in the same place.
+
+## Every element of a night, on a phone
+
+| Element | Verdict | Note |
+| --- | --- | --- |
+| Round card, objective, banner, marquee, boss bar, popup lane | KEEP | read-outs |
+| Generator card, feed, notices | KEEP | the bot order notice says the bots' state (`BOTS: HOLDING POSITION`) |
+| Players' column | TAP | holds the scoreboard |
+| Bot chips, perk badges, challenge ticket, gains, markers | KEEP | read-outs |
+| Standing order of the bots | new read-out, TAP | the tag (#1286, done: `HudBotOrder` in the strip's row) |
+| Health card | KEEP, grenade count dropped | done here: the strip shows `x3` beside the weapons; the card said it too |
+| Weapon strip | TAP | #1284 |
+| Ammo card | KEEP, read-out | not a Reload target: one job, one control |
+| Prompt card | KEEP, **no key** | done here: the keycap or tap mark held 64 units and pointed at nothing |
+| Bot wheel overlay | KEEP for keyboard and pad | |
+| Scoreboard ticket | KEEP | opened by the column |
+| First-run hints | KEEP, extend | add Strike, the tag (done, #1286: "TAP TO ORDER BOTS"), the double tap when each exists |
+| Rotate prompt, pause card, end board | KEEP | already tap targets |
+
+## Key hints a phone shows
+
+- The prompt card's key: gone on a phone (done here, `HudPrompt.touch_layout`). The card used to follow "a finger was
+  the last input", which a capture from a script never sets; it follows the touch layer now.
+- The menu hint bar (`MenuHints`): none on touch (`UIInputMode.touch`), already.
+- The settings' Controls tab named the mouse ("Mouse sensitivity", "Push the mouse forward to look down") and was the
+  only place the phone's look sensitivity and invert-Y lived. Converted (#1290): on a touch device the Touch tab holds
+  "Look sensitivity" and "Invert vertical look" with no mouse words, and the Controls tab shows on a desktop only
+  ([Settings on a phone](../research/settings.md#on-a-phone-1290)).
+
+## What the review found
+
+| Finding | Where it stands |
+| --- | --- |
+| Key hints reserve 64 units on a phone | Fixed here: 48 for the mark and 16 for the gap go to the prompt's words |
+| "BOTS: HOLD HERE" at the top right | Fixed here: the notices say the state (`BOTS: FOLLOWING YOU`, `ROAMING`, `HOLDING POSITION`). A ping's own `HOLD HERE` stays: it is what a ping says |
+| Touch tab: descriptions cut with "...", `1.00x` against the scrollbar | Fixed in #1290: copy that fits, a gap for the bar, a test that no hint is cut on any tab (`test_settings_phone`), the look settings on the Touch tab |
+| Six markers before two meet at 667 x 375, 1.0 | Gone: main holds 10 or more there (last section, #1317) |
+| Pause and Ping 27 CSS px apart | Fixed in #1289: Ping stands under Pause, 56 CSS px or more from it, hit areas apart |
+
+### Markers if the right side is cleared
+
+The tables of the sections from here to "After the Side circle went" are history: each was measured on the main of
+its own pull request, with the circles and cards of that day, and says so. The numbers for main as it stands (every
+pull request of the rework landed) are in the last section, "Markers on main after the rework (#1317)".
+
+The 667 x 375 page (1334 x 750 window, ratio 2), the busiest HUD, a banner, a prompt and a level card up: the most
+markers (one on each card, three of them diamonds, or one) that none meet another or a card or a button, measured with
+`test_hud_marker_cards.gd`'s helpers (10 is the most tried). "Today" is main after #1283, every circle; "cleared" keeps
+Fire, Reload, Aim, Jump, Crouch and Pause only.
+
+| Interface size | Diamonds | Today | Today with Interact up | Cleared | Cleared with Interact up |
+| --- | --- | --- | --- | --- | --- |
+| 0.8 | 3 | 10+ | 10+ | 10+ | 10+ |
+| 1.0 | 3 | 8 | **6** | 10+ | 10+ |
+| 1.0 | 1 | 10+ | 10+ | 10+ | 10+ |
+| 1.25 | 3 | 3 | 3 | 5 | 5 |
+| 1.25 | 1 | 4 | 4 | 8 | 7 |
+
+The six is the Interact button being up (without it the page held eight, before the weapon strip, #1284). The right side
+cleared gives all of it back at 1.0 and more than doubles the page at 1.25, whose limit then is the cards. One Strike
+circle is added back only while a dead is in reach (built in #1285, below).
+
+### Markers with Strike up (#1285)
+
+Strike is a circle of radius 52 at 575 left and 340 up of the corner, in the one column the markers have, so it costs
+the page its room while it is up. The same page and the same helpers, run on the branch that builds it (Melee gone,
+Strike and Interact only when named): the most markers, counted up from one, before two meet or one is under a card or a
+button, for both hands. A count stops at its first failure, so a bigger one can still pass past it; the sizes that
+matter are pinned by `test_hud_marker_cards.gd`. The first table's "Today" column reads 8 at 1.0 with three diamonds (it
+was taken before the weapon strip, #1284) where the suite's own constant on main (`CROWDED_HOLDS`) was 6, so compare the
+columns of this table with each other. It was taken with Ping beside Pause; Ping's move (#1289, next section) changes
+nothing on this page.
+
+| Interface size | Diamonds | Neither up | Strike up | Interact up | Strike and Interact up |
+| --- | --- | --- | --- | --- | --- |
+| 0.8 | 3 | 10+ | 10+ | 10+ | 10+ |
+| 1.0 | 3 | 6 | 10+ | 6 | 8 |
+| 1.0 | 1 | 10+ | 10+ | 10+ | 10+ |
+| 1.25 | 3 | 3 | **2** | 3 | **2** |
+| 1.25 | 1 | 5 | **2** | 4 | **2** |
+
+Only the 667 x 375 page at 1.25 loses: two markers where Interact alone leaves four, the price of a button that stands
+in the markers' column in a fight. They stay off every card and every button all the same
+(`test_a_marker_is_never_under_strike_or_interact_while_they_are_up`).
+Nothing was lowered: the base pins (`CROWDED_HOLDS` 6 then, 8 since #1288; `SMALLEST_HOLDS` 4) hold with Strike
+hidden, and two new pins (`STRIKE_HOLDS_SMALLEST` 2, `STRIKE_AND_INTERACT_HOLDS_CROWDED` 8) cover it up.
+
+### Markers with the bots' tag (#1286)
+
+The same page and the same measure, on the branch of #1286: main after #1284's strip (a place a fingertip high and
+the right thumb's ring), #1291 and #1293, with one body of the eight a bot, so the tag stands at the strip's end.
+"No bot" is the same HUD with no tag. The tag is in the strip's row, under the stick's ring, so it takes nothing
+from the cards: the numbers do not move, and `CROWDED_HOLDS` (6 then) and `SMALLEST_HOLDS` (4) stand. With the
+Interact button up the numbers are the same ones in this measure. The 8 of the first table ("Today", 1.0, three
+diamonds) is 6 here: `CROWDED_HOLDS` names the cause, the strip a fingertip high (#1280) with the right thumb's
+ring (#1277).
+
+| Interface size | Diamonds | No bot | With the tag |
+| --- | --- | --- | --- |
+| 0.8 | 3 | 10+ | 10+ |
+| 1.0 | 3 | 6 | **6** |
+| 1.0 | 1 | 10+ | 10+ |
+| 1.25 | 3 | 3 | 3 |
+| 1.25 | 1 | 5 | 5 |
+
+The 844 x 390 page holds 10+ at every size, with or without the tag. That sweep was run again after #1289 (Ping under
+Pause) landed and still gives 10+ for the 844 row where the #1289 table below has an 8 (1.25, 3 diamonds); the tag
+changes neither. The measure on main (last section) puts that 8 in the Interact-up column of the row and 10+ in the
+other, so the #1289 table's two columns were probably read the other way round; it was not rerun on that branch, so that
+is not proved. The same sweep with the tag in the column's cards (above the points) also gives these numbers, so the
+marker capacity is not why the tag is in the strip's row; the challenge card is.
+
+### Markers after the Scoreboard circle goes (#1287)
+
+The same page, HUD and helpers, main with #1284's strip, measured in one run with three sets of held boxes: the
+buttons without the Scoreboard circle (the layout now), the same with the weapon strip and the players' column added
+(what a night hands the markers, `Hud.set_touch_boxes`), and the buttons with the old circle put back (442 in, 178
+down, radius 34). Up to 10 tried.
+
+| Interface size | Diamonds | Without the circle (now) | With strip and column | With the old circle | With Interact up (now) |
+| --- | --- | --- | --- | --- | --- |
+| 0.8 | 3 | 10+ | 10+ | 10+ | 10+ |
+| 1.0 | 3 | **6** | 6 | 6 | 6 |
+| 1.0 | 1 | 10+ | 10+ | 10+ | 10+ |
+| 1.25 | 3 | **3** | 3 | 3 | 3 |
+| 1.25 | 1 | **5** | 5 | 5 | 4 |
+
+Nothing moved: the circle sat at the top left beside Pause, where the markers' free columns never needed it, so
+`CROWDED_HOLDS` (6 then) and `SMALLEST_HOLDS` (4) stay. The strip's places and the column are cards or beside them, so
+holding them as boxes changes no number either. The tables of the sections above are the room the rest of the right
+side still took; the issues that removed it (#1285 to #1289) repeated the table, each in its own section.
+
+### Markers with Ping under Pause (#1289)
+
+The same measure (one marker on each card, the most of 1 to 10 that none meet another or a card or a button, both
+hands), on main after the weapon strip (#1284) with Ping beside Pause, and with Ping under it; both the 667 x 375 and the
+844 x 390 page. Only the right side of the screen bounds the 667 page, so Ping's move changes nothing there; one row of
+the 844 page moves.
+
+| Page | Interface size | Diamonds | Before | After | After, Interact up |
+| --- | --- | --- | --- | --- | --- |
+| 667 x 375 | 0.8 | 3 | 10+ | 10+ | 10+ |
+| 667 x 375 | 1.0 | 3 | 6 | 6 | 6 |
+| 667 x 375 | 1.0 | 1 | 10+ | 10+ | 10+ |
+| 667 x 375 | 1.25 | 3 | 3 | 3 | 3 |
+| 667 x 375 | 1.25 | 1 | 5 | 5 | 4 |
+| 844 x 390 | 0.8, 1.0 | 3 or 1 | 10+ | 10+ | 10+ |
+| 844 x 390 | 1.25 | 3 | 10+ | **8** | 10+ |
+| 844 x 390 | 1.25 | 1 | 10+ | 10+ | 10+ |
+
+The six at 1.0 on the 667 page is the weapon strip's, not Ping's (the first table, "Markers if the right side is
+cleared", was taken before #1284, when it was eight). The 844 row that moved holds eight, the count
+`test_hud_marker_cards.gd` asks of every page that is not crowded; the measure on main (last section) finds that eight
+with Interact up and 10+ without.
+
+### After the Side circle went (#1288)
+
+The same page and helpers, re-run on main after #1284 (the weapon strip), with the Side circle and without it
+(`swap_shoulder` is a double tap now). Melee and the Bots circle are still on the glass; 10 is the most tried.
+
+| Interface size | Diamonds | With Side | Without Side | With Side, Interact up | Without Side, Interact up |
+| --- | --- | --- | --- | --- | --- |
+| 0.8 | 3 | 10+ | 10+ | 10+ | 10+ |
+| 1.0 | 3 | 6 | **10+** | 6 | **6** |
+| 1.0 | 1 | 10+ | 10+ | 10+ | 10+ |
+| 1.25 | 3 | 3 | 3 | 3 | 3 |
+| 1.25 | 1 | 5 | 5 | 4 | 4 |
+
+The Side circle was what held the 667 x 375 page at 1.0 to six markers (the first table says eight for "today", but
+the test's own `CROWDED_HOLDS` on main was six and six is what this re-run measured). Without it the page holds
+ten, so `CROWDED_HOLDS` is eight again (the usual count, the suite's constant now); with Interact up the page still held
+six, Interact being the limit, and 1.25 is limited by the cards, not the buttons. Strike (#1285) repeats this table
+with its circle up.
+
+### Markers on main after the rework (#1317)
+
+Measured on main at e753a7e, with the whole phone rework landed (#1275 to #1305), by the suite's own helpers
+(`_busy_hud`, `_buttons`, `_one_on_every_card`, `_faults`, `_touching` of `test_hud_marker_cards.gd`) run over counts of
+1 to 10 instead of one pinned count. One marker on each card of the busiest HUD (a bot among the eight, so the bots' tag
+is up), a banner, a prompt and a level card showing, both hands, a ratio of 2: the most markers, counted up from one,
+before two meet or one is under a card or a button. A count stops at its first failure; 10 is the most tried. The right
+thumb's five circles and Pause and Ping are always in; Interact and Strike are in only where named. Both hands gave the
+same number in every row.
+
+| Page | Interface size | Diamonds | Neither up | Interact up | Strike up | Both up |
+| --- | --- | --- | --- | --- | --- | --- |
+| 667 x 375 | 0.8 | 3 or 1 | 10+ | 10+ | 10+ | 10+ |
+| 667 x 375 | 1.0 | 3 or 1 | 10+ | 10+ | 10+ | 10+ |
+| 667 x 375 | 1.25 | 3 | 3 | 3 | 3 | 3 |
+| 667 x 375 | 1.25 | 1 | 5 | 5 | 4 | 4 |
+| 844 x 390 | 0.8, 1.0 | 3 or 1 | 10+ | 10+ | 10+ | 10+ |
+| 844 x 390 | 1.25 | 3 | 10+ | **8** | 10+ | 10+ |
+| 844 x 390 | 1.25 | 1 | 10+ | 10+ | 10+ | 10+ |
+
+What the suite pins against it (the pins are floors, the measure is what the page does):
+
+| Constant | Page | Pin | Measured on main |
+| --- | --- | --- | --- |
+| `CROWDED_HOLDS` | 667 x 375, 1.0, 3 diamonds | 8 | 10+ |
+| `SMALLEST_HOLDS` | 667 x 375, 1.25, 1 diamond | 4 | 5 |
+| `STRIKE_HOLDS_SMALLEST` | 667 x 375, 1.25, 1 diamond, Strike up | 2 | 4 |
+| `STRIKE_AND_INTERACT_HOLDS_CROWDED` | 667 x 375, 1.0, 3 diamonds, both up | 8 | 10+ |
+| `EIGHT` (every other page) | 844 x 390, 1.25, 3 diamonds, Interact up | 8 | 8 |
+
+Every pin holds and none was moved. What changed against the older tables is the 667 page at 1.0: it holds 10 or more
+in every column, where the sections above measured six (the strip and the right thumb's ring, then Interact up). The
+Melee and Bots circles and the Side circle, which those sections still had on the glass, are gone from it
+(#1285, #1286, #1288), which is the likeliest cause; the page was not measured between those pull requests, so that is
+not proved. At 1.25 the 667 page is limited by the cards, as before: Strike up costs the one-diamond row a marker (4,
+where it holds 5), where #1285's table had it at 2. The only row where a button decides the count on the 844 page is
+1.25 with three diamonds and Interact up (8): that is the row the #1289 table printed under "After" and the #1286
+section could not explain.

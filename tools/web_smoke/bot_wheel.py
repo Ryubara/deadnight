@@ -9,9 +9,9 @@ In headless Chrome it sends what a player would, through the browser, and reads 
      the view does not turn while Q is held;
   2. a virtual pad (`navigator.getGamepads`, the standard mapping): hold the d-pad's left (button 14), push the right
      stick toward each entry, let go: that order is heard; the stick does not turn the view meanwhile;
-  3. touch (a phone-sized page, `Input.dispatchTouchEvent`): a finger on the BOTS button held and dragged toward each
-     entry, a second finger on the stick the whole time, lifted: that order is heard; a tap gives none; then a tap on
-     the PING button marks a place; every button lies inside the page.
+  3. touch (a phone-sized page, `Input.dispatchTouchEvent`): there is no wheel button any more (a tap on the HUD's bots
+     tag gives the next order, `touch_bot_tag.py`); a finger on the stick never opens the wheel; a tap on the PING
+     button marks a place; every button lies inside the page.
 
     uv run --project <kit>/python gds quiet -- \\
         uv run --with playwright==1.64.1 python tools/web_smoke/bot_wheel.py <godot> <work folder> [--out <folder>]
@@ -45,9 +45,6 @@ ENTRIES = {"follow": (0.0, -1.0), "roam": (0.866, 0.5), "hold": (-0.866, 0.5)}
 # Moving the mouse this many page pixels toward an entry takes the pointer to the rim (the game's reach is 120 canvas
 # units; the page is 1280 wide for a canvas 1920 wide).
 MOUSE_PX = 100
-# A finger's drag toward an entry: 40 page pixels is about 55 canvas units, 0.6 of the game's reach of 90, which is well
-# past the middle and short enough for a thumb on the left edge (a left hand) to stay on the page.
-TOUCH_PX = 40
 RIGHT_STICK_X = 2
 RIGHT_STICK_Y = 3
 DPAD_LEFT = 14
@@ -208,41 +205,17 @@ def touch_run(url: str, query: str, out: Path | None, label: str) -> dict:
                 result["wrong"].append(
                     f"the {name} button ({bx:.0f}, {by:.0f}, r {radius:.0f}) leaves the {PHONE} page"
                 )
-        bx, by, _ = buttons["bot_wheel"]
         stick = (150.0, 260.0)
-        for name, (dx, dy) in ENTRIES.items():
-            before = len(heard(page))
-            touch_assist.touch(client, "touchStart", [(2, *stick), (1, bx, by)])
-            yaw_before = wait_for(page, "the wheel to open", lambda s: bool(s.get("open")))["yaw"]
-            finger = (bx, by)
-            for step in range(1, 7):
-                k = step / 6.0
-                finger = (bx + dx * TOUCH_PX * k, by + dy * TOUCH_PX * k)
-                touch_assist.touch(client, "touchMove", [(2, *stick), (1, *finger)])
-                time.sleep(0.03)
-            seen = wait_for(page, f"the wheel over {name}", lambda s, n=name: s.get("hovered") == n)
-            if name == "hold":
-                shot(page, out, f"touch_open_{label}.png")
-            result["turned_while_held"] = max(result.get("turned_while_held", 0.0), abs(seen["yaw"] - yaw_before))
-            # A touchEnd lists the points that were lifted: the wheel's finger first, the stick's after.
-            touch_assist.touch(client, "touchEnd", [(1, *finger)])
-            page.wait_for_timeout(400)
-            got = heard(page)[before:]
-            touch_assist.touch(client, "touchEnd", [(2, *stick)])
-            page.wait_for_timeout(100)
-            result["orders"][name] = got
-            if got != [name]:
-                result["wrong"].append(f"a finger dragged to {name} gave {got}")
-        before = len(heard(page))
-        touch_assist.touch(client, "touchStart", [(1, bx, by)])
-        time.sleep(0.07)
-        touch_assist.touch(client, "touchEnd", [])
-        page.wait_for_timeout(400)
-        result["tap"] = heard(page)[before:]
-        if result["tap"]:
-            result["wrong"].append(f"a tap on the BOTS button gave {result['tap']}")
-        if result["turned_while_held"] > 0.01:
-            result["wrong"].append(f"the view turned {result['turned_while_held']:.3f} rad under the wheel")
+        # A phone has no wheel (#1286): no button is named for it, and the stick and a ping work as before.
+        if "bot_wheel" in buttons:
+            result["wrong"].append("the touch layer still has a bot_wheel button")
+        touch_assist.touch(client, "touchStart", [(2, *stick)])
+        page.wait_for_timeout(300)
+        touch_assist.touch(client, "touchMove", [(2, stick[0] + 40.0, stick[1])])
+        page.wait_for_timeout(300)
+        if state(page).get("open"):
+            result["wrong"].append("the wheel opened for a finger on the stick")
+        touch_assist.touch(client, "touchEnd", [(2, stick[0] + 40.0, stick[1])])
         px, py, _ = buttons["ping"]
         pings = state(page).get("pings", 0)
         touch_assist.touch(client, "touchStart", [(1, px, py)])

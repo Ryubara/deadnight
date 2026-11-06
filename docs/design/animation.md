@@ -252,7 +252,8 @@ const HOLD_GRENADE := Transform3D(  # HOLD_GUN * Basis(Vector3.RIGHT, PI / 2)
 ```
 
 - **Left hand:** no IK in the grenade clips (weight 0): the left hand reaches for the ring in Cook and points ahead
-  in the throw by itself.
+  in the throw by itself. The elbow is bent 30 degrees (`LowerArm_L` z, was 16) at the ring so the back of the hand
+  stays 3 cm or more off the chest of the rolled-sleeve body: one vertex was 30-31 mm in it (#1282).
 - Checked headless (`game/tests/art/check_grenade.gd`): each clip plays, the hand moves, no leg bone turns, the hand
   moves forward at `release`, and with a stride under the throw through the filter the arm matches the clip to 0.00
   degrees. `game/tests/art/capture_grenade.gd` renders the clips in Godot with the grenade in the hand.
@@ -379,6 +380,14 @@ crawl is gone: the controller adds it only when its file is there.
   sweeps back at 0.45 m/s in the game (measured off the clip, `ground_speed` in its `clips.json`), and each elbow
   pushes with its own heel, 8 cm wider than the downed left hand (a hand kept on the belly was in the way of the left
   knee, 130 mm into the shin). The controller plays it at ground speed over 0.45 (0.5 to 1.6), fully in by 40 % of it.
+- **The crawl's blend-in goes through `Downed_Crawl_Arm`** (#1282). Blended bone by bone to the crawl, the right arm's way
+  from the forearm over the knee to the elbow on the ground crossed the belly and the thigh: 31-65 mm over the blend
+  with the clips alone, 81-87 mm in the night. `Downed_Crawl_Arm` is a still in the crawl's file, the sit with the right
+  hand out and up beside the hip (`DOWNED_CRAWL_LEAD`); `DownedPose` blends the right arm's three bones (`crawl_lead`,
+  filtered) from the sit to it by 4 times the crawl's weight, then on to the crawl with the rest of the body. The probe
+  that chose it blended the two clips at 40 weights over eight phases of the crawl on both looks (the sit to the lead
+  pose alone: none over 30 mm; through it: none). A downed player cannot move (`_is_still`), so the crawl shows when a
+  blast or a blow throws the body.
 - **Revive_Kneel** is down on the right knee, the toes curled under, the left foot flat ahead. The back is upright and
   the arms reach out and down: the hands press 0.53 m ahead of him and 0.29 m up, 0.42 m apart (0.14 apart, the big
   hands went through each other, #939), and 6 cm lower on each `press`.
@@ -423,13 +432,15 @@ the weapon and counting the pixels that change (`tests/captures/reload_sheet.tsc
 
 | Weapon | Before (#383 tilt), mid-reload | After, mid-reload | After, most |
 | --- | --- | --- | --- |
-| Tommy gun | 0 | 6,684 | 6,808 |
-| Lever rifle | 284 | 8,676 | 9,352 |
+| Tommy gun | 0 | 7,840 | 8,630 |
+| Lever rifle | 284 | 6,630 | 8,280 |
 | Double-barrel | 336 | 7,332 | 9,076 |
 | Revolver | 740 | 3,688 | 4,280 |
 | Flare gun | 888 | 2,680 | 5,124 |
 
-(the median of the frames from 20 to 70 % of the reload, in pixels of the 2.07 million on screen.) So every reload
+(the median of the frames from 20 to 70 % of the reload, in pixels of the 2.07 million on screen; the Tommy gun and
+lever rifle rows were measured again after #987, which turned the rifle's gun muzzle up and moved its left hand to the
+fore-end, so it reads smaller than it did; runs differ by about 30 pixels.) So every reload
 carries the weapon **out to the right of the head and up**, turns its working side to the camera, and turns the chest
 the left shoulder forward so the short left arm still reaches it.
 
@@ -445,7 +456,13 @@ the left shoulder forward so the short left arm still reaches it.
 - **The arms** (`WeaponHandsIK`): the move and turn are added to the hold's target, the right hand follows the weapon
   through its solved grip, and the left hand reaches the key's point, blended bone by bone from where the hold left it
   (the fore-end, or the clip's arm for a one-handed gun), so it leaves and comes back without a jump. Its fingers half
-  open off the fore-end grip.
+  open off the fore-end grip. It goes round the body, not through it (#987): a straight line from a gun out to the
+  right to the belt on the left runs through the belly, so the hand's place is moved out of an ellipse round the hips
+  (`TRUNK_CLEAR`, in the belt's frame). The pouch is forward and out on the left hip (0.32 m left, 0.18 up, 0.2 ahead of
+  the hips: the arm no longer reaches any further with the chest turned). While the arm hangs the elbow goes out to the
+  left and a little back (`HANGING_ELBOW`, not the hold's pole, which then lies along the arm and turns the elbow into
+  the belly), and the hand hangs in line with the forearm. Its points on the weapon keep the big fists apart: on the
+  fore-end or the end of the magazine, ahead of the right hand, so the left forearm does not lie across it.
 - **The part and the ammunition** (`ReloadView`, owned by `PlayerAnimation`): the weapon's moving part is a node of its
   model, made in Blender at its pivot (`tools/blender/build_weapons.py`, `NODES`), turned and slid by the key's
   `part`; the ammunition is its own small model beside the gun's (`<gun>_ammo.glb`), on a `BoneAttachment3D` on the left
@@ -493,9 +510,11 @@ more than 0.35 m from the grip (the belt) and within 0.3 m of the weapon, the pa
 ammunition shows and is gone, and the weapon is back on its hold by the end of the reload time with the aim weight
 unchanged; a swap ends it, the sprint carry waits for it, and every motion's file starts and ends on the hold and names
 a part its model has. `test_hand_grips.gd` measures the right hand on its grip twice through each reload,
-`test_night_reload.gd` plays each one through the real night, and `test_remote_weapons.gd` checks that a second client
-sees the reload and the revolver's cylinder open. Captures: `tests/captures/reload_sheet.tscn` (each gun's reload
-from the shoulder camera and a teammate's from the player's screen, `--measure` for the numbers above).
+`test_night_reload.gd` plays each one through the real night, `test_remote_weapons.gd` checks that a second client
+sees the reload and the revolver's cylinder open, and `test_reload_arm_fit.gd` holds every reload and every two-handed
+hold within 3 cm of the body and the other arm on both looks (`ClipFit`, on the pose after the IK). Captures:
+`tests/captures/reload_sheet.tscn` (each gun's reload from the shoulder camera and a teammate's from the player's
+screen, `--measure` for the numbers above).
 
 ## Moving while aiming
 
@@ -541,6 +560,8 @@ them to the library and `strike()` plays the class's (`play_action(&"Strike")`).
   at 13. The same offsets for every class; `STRIKE` says how much of it the right arm does on its own, the rest being the
   spine, which carries both hands and the weapon: a gun in two hands is mostly spine (0.45), a pistol, a bat and an axe
   in one hand swing the whole arm (0.9, 1.0).
+- **The pistol's wind-up swings out further** (`STRIKE_WINDUP_OUT_CLASS`: 38 degrees times its 0.9, the others' 25 times
+  theirs): the hand over the shoulder lay 31-32 mm in the chest of the rolled-sleeve body (#1282).
 - **The shouldered pose is let go at once.** A gun's arms are the IK pose (`WeaponHandsIK`), which fades out over a
   fifth of a second when a clip takes the arms: the wind-up of a blow was flattened by it (the gun's hand moved 0.26 m
   instead of 0.5) and the arms popped when it reached zero. `strike()` drops the IK weight to 0 on the first frame.
@@ -569,7 +590,7 @@ Soldier's library when the tree is built.
 | Sprint_Rifle | upper | loop | 17 (0.71 s) | both hands on, low across the chest, muzzle up past his left shoulder |
 | Sprint_Shotgun | upper | loop | 17 (0.71 s) | the same, a little lower and with more swing (the heavier gun) |
 | Sprint_tommy_gun | upper | loop | 17 (0.71 s) | the rifle's carry through the Tommy gun's own grip (see below) |
-| Sprint_Pistol | upper | loop | 17 (0.71 s) | one hand at the side, the forearm pumping (the kit's `Run_Gun` arm) |
+| Sprint_Pistol | upper | loop | 17 (0.71 s) | one hand at the side, the forearm pumping (the kit's `Run_Gun` arm), held 6 degrees out |
 | Sprint_Melee | upper | loop | 17 (0.71 s) | a runner's arm out from the side, the weapon upright and leaning back |
 
 - **On Run's own frames.** Each clip is the kit `Run`, frame for frame: its spine, shoulders and left arm (the chest
@@ -594,8 +615,10 @@ Soldier's library when the tree is built.
   `Sprint_<model>` (`SPRINT_CARRY` entries with a `class`), the same pose through its own grip;
   `SprintCarry.clip_for` picks it for that model and the class's carry for every other.
 - **Pistol.** `Run_Gun`'s right arm (the forearm pumps 46 degrees a stride), the upper arm swinging a third of the left
-  arm's swing half a stride later.
-- **Melee.** The upper arm hangs out from the side (`(-0.5, 0.1, -1)`) and swings 24 degrees fore and aft against the
+  arm's swing half a stride later, and held 6 degrees out from the side (`SPRINT_PISTOL_OUT`): the fingers of the house
+  pistol's and the ray gun's grips lay 33-37 mm in the jacket at the hip (#1282; the revolver's did not).
+- **Melee.** The upper arm hangs out from the side (`(-0.75, 0.1, -1)`; `(-0.5, 0.1, -1)` put the seat's armband 43-45 mm
+  into the chest, #1282) and swings 24 degrees fore and aft against the
   left arm; the forearm points ahead and pumps 1.2 times the arm's swing; the forearm is turned about its axis so the
   shaft leans up, back and out (`(-0.25, 0.45, 1)`): it stays up and clears the head from the camera. Hanging, the
   weapon pointed at the legs (first try).
@@ -684,6 +707,28 @@ gds godot -- --path game res://tests/captures/dual_pistols_tour.tscn --write-mov
 
 The Strike and Sprint files are built with their clips by name: `--clips Strike_` or `Sprint_` would write
 `Strike_Dual` or `Sprint_Dual` into them too.
+
+## Arms and the body
+
+The night's poses, after the hand IK, are measured by `tests/captures/clip_arms_tour.tscn -- --measure --every=1` (the
+real player, every weapon and beat, every tick; `ClipFit`, 3 cm, rolled sleeves `--look=10` and jacket `--look=0`), and
+`test_pose_arm_fit.gd` holds the ones #1037 left over the tolerance. Measured again on the main that had #1037 (deepest
+vertex, mm, rolled sleeves / jacket), and after #1282:
+
+| Pose | Before | After | What was done |
+| --- | --- | --- | --- |
+| Crawl, blend-in, right hand and forearm | 81 / 87 | none | the arm passes through `Downed_Crawl_Arm` ([Downed and revive](#downed-and-revive)) |
+| Melee swing, the seat's armband | 41 / none | none | the blow's and the follow-through's right upper arm out 8 and 16 degrees (`SWING_OUT`) |
+| Melee sprint, the seat's armband | 43-45 / 37-42 | none | the carry's upper arm out (`SPRINT_MELEE`, [Sprint carry](#sprint-carry)) |
+| Sprint with the house pistol, ray gun, right hand | 37 and 33 / 36 and 33 | none | `Sprint_Pistol` 6 degrees out (`SPRINT_PISTOL_OUT`) |
+| Pistol and flare gun strike, right hand | 31-32 / none | none | the wind-up out 38 degrees (`STRIKE_WINDUP_OUT_CLASS`, [Quick melee](#quick-melee)) |
+| Grenade cook, left hand | 30 / 31 | none | the elbow bent 30 degrees at the ring ([Grenade](#grenade)) |
+
+The figures of #1037's report all held on main (its ranges are the two looks and the guns); the pistol's strike was her
+look only. Nothing is accepted over the tolerance. Margins: with
+the tolerance at 2 cm in the same tour the deepest are the pistol's strike (27 mm), the crawl's first tick (24) and the
+swing's armband (20); nothing else shows. The melee swing and the grenade's cook are in `soldier_parts.glb` as well as
+their own files (`FILE_CLIPS` of `build_soldier_parts.py`): rebuild both.
 
 ## How the clips are made
 

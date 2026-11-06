@@ -22,6 +22,8 @@ var doors_bought := 0
 ## What the local player has bought, by shop item id: how many times.
 var bought: Dictionary = {}
 var shots := 0
+## The quick melee blows this player has made (the Strike button's, #1285).
+var quick_melees := 0
 var rounds_started := 0
 var damage_taken := 0.0
 var last_event: Dictionary = {}
@@ -114,6 +116,9 @@ func _apply(event: Dictionary) -> void:
 		&"shot_fired":
 			if event["shooter_id"] == player_id:
 				shots += 1
+		&"quick_melee":
+			if event["shooter_id"] == player_id:
+				quick_melees += 1
 		&"player_damaged":
 			if event["player_id"] == player_id:
 				damage_taken += event["damage"]

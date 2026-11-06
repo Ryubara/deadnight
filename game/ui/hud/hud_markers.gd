@@ -35,6 +35,11 @@ const ARROW_GAP := 6.0
 const PLACE_STEPS := 4.0
 ## The most columns a draw tries for all the markers it moves.
 const MAX_TRIES := 800
+## How far past the edge of a card a place that rests against it is put, so that the float noise of
+## measuring the marker again where it stands (its box is a hair taller than the model's, 1e-4)
+## never counts it as touching the card. A crowded page (the weapon strip's fingertip-sized places,
+## #1280) leaves only such places.
+const EDGE_EPSILON := 0.05
 ## How far an objective's words keep from a card of the HUD (the outline of the letters is 3.5).
 const CLEAR_GAP := 8.0
 ## How far a marker that was moved keeps from the others that were, at `LABEL_SIZE`.
@@ -583,8 +588,8 @@ func _clear_y(x: float, want: float, extent: Vector2, obstacles: Array[Rect2]) -
 	for rect in obstacles:
 		if rect.position.x < x + extent.x and rect.end.x > x:
 			blocks.append(Vector2(rect.position.y - extent.y, rect.end.y))
-			tries.append(clampf(rect.end.y, low, high))
-			tries.append(clampf(rect.position.y - extent.y, low, high))
+			tries.append(clampf(rect.end.y + EDGE_EPSILON, low, high))
+			tries.append(clampf(rect.position.y - extent.y - EDGE_EPSILON, low, high))
 	var found := INF
 	for y in tries:
 		if absf(y - want) >= absf(found - want):
@@ -619,9 +624,9 @@ func _lines(
 	for rect in obstacles:
 		var edges: Array[float] = []
 		if along_x:
-			edges = [rect.end.x, rect.position.x - length]
+			edges = [rect.end.x + EDGE_EPSILON, rect.position.x - length - EDGE_EPSILON]
 		else:
-			edges = [rect.end.y, rect.position.y - length]
+			edges = [rect.end.y + EDGE_EPSILON, rect.position.y - length - EDGE_EPSILON]
 		for edge in edges:
 			var line := clampf(edge, margin, high)
 			if not found.has(line):

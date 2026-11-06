@@ -8,21 +8,54 @@ extends HudPart
 ##
 ## It lives in the bottom right column beside the ammo card, one card's width, so the places share
 ## it: two places of about 120 units, three of about 78.
+##
+## Under a finger (`fit_touch`, #1280) it is the phone's weapon control and the HUD's mirror at
+## once: each place is at least a fingertip wide and high, and a place for the grenades stands after
+## the weapons. The touch layer reads the places' boxes (`touch_zones`) and presses the action of
+## the one a finger lands on: the key of that slot, or the grenade button (held to cook).
+##
+## The bots' order tag (`HudBotOrder`, #1286) stands at the strip's inner end under a finger, only
+## while the room has a bot: it is the phone's bot control, a place like the others, and the first
+## the touch layer tries. It is here, not in the column's cards above: a fingertip-high tag there
+## makes the column a fingertip taller, and the challenge card, which stands at a share of the
+## screen's height, lands over it on the phone pages (`docs/research/bot-wheel.md`). The row costs
+## no height.
 
 const WIDTH := HudAmmo.WIDTH
 const HEIGHT := 64.0
 const GAP := float(HudStyle.SM)
+## Under a finger a weapon's place is this much wider than the fingertip it is at least as high as:
+## the silhouette is a long shape.
+const TOUCH_WIDE := 1.25
+## The action a press on the grenades' place sends, held while the pin is out.
+const GRENADE_ACTION := &"throw_grenade"
 
 ## The silhouettes, drawn from the weapon models the first time each is needed.
 var silhouettes := WeaponSilhouettes.new()
 
+## True while a finger holds the screen: the places are fingertip-sized and the grenades have one.
+var touch := false
+## The grenades' place, there only while `touch` (a desktop's strip is what it was).
+var grenade_cell: HudGrenadeCell
+## The bots' order tag, there only while `touch`; shown while the room has a bot.
+var bot_tag: HudBotOrder
+
+## Whether the cells were made from the state once.
+var _built := false
 var _row := HBoxContainer.new()
 var _cells: Array[HudSlotCell] = []
+## The least width and height of a place, canvas units (`MenuScale.tap_units`), and the type of the
+## number in it.
+var _finger := 0.0
+var _number_px := HudStyle.SMALL
+## The layout is flipped for a left hand: the tag then stands before the places, at the inner end.
+var _mirrored := false
 
 
 func _init() -> void:
 	super()
 	custom_minimum_size = Vector2(WIDTH, HEIGHT)
+	set_process(false)
 	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_row.add_theme_constant_override(&"separation", int(GAP))
 	_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -31,15 +64,95 @@ func _init() -> void:
 
 
 func topics() -> Array[StringName]:
-	return [HudState.SLOTS]
+	return [HudState.SLOTS, HudState.HEALTH]
 
 
 func refresh() -> void:
+	# A keyboard's strip has no grenades' place: a change of the health (which carries the count)
+	# is nothing to it, as it never was.
+	if _built and not touch and not state.is_dirty(HudState.SLOTS):
+		return
+	_rebuild()
+
+
+func _rebuild() -> void:
+	_built = true
 	var places := maxi(state.slot_count, state.slot_ids.size())
 	_fit_cells(places)
 	for i in places:
 		var id: StringName = state.slot_ids[i] if i < state.slot_ids.size() else &""
 		_cells[i].show_slot(i + 1, id, state.slot_held == i + 1, silhouettes.texture_of(id))
+	_show_grenades()
+	if bot_tag != null and bot_tag.state == null:
+		bot_tag.bind(state)
+
+
+## Puts the strip under a finger, or back for a keyboard or a pad: a place is `finger` canvas units
+## wide at least (weapons a little more) and as high, and its number is typed at `number_px`.
+func fit_touch(on: bool, finger: float, number_px := HudStyle.SMALL) -> void:
+	if on == touch and is_equal_approx(finger, _finger) and number_px == _number_px:
+		return
+	touch = on
+	_finger = finger if on else 0.0
+	_number_px = number_px if on else HudStyle.SMALL
+	set_process(on)
+	if not on and grenade_cell != null:
+		grenade_cell.queue_free()
+		grenade_cell = null
+	if not on and bot_tag != null:
+		bot_tag.queue_free()
+		bot_tag = null
+	if is_node_ready() and state != null:
+		_rebuild()
+	else:
+		_fit_cells(maxi(WeaponSlots.count(), _cells.size()))
+
+
+## The layout is flipped for a left hand (`Hud.mirrored`): the bots' tag moves to the other end of
+## the row, so it stays on the side of the screen's middle.
+func set_mirrored(on: bool) -> void:
+	_mirrored = on
+	_order_tag()
+
+
+## What a finger can press, in the screen's units: the action each place sends and its box. The
+## bots' tag comes first, so it keeps its taps wherever another place is laid over the same ground
+## (`TouchControls.zone_at` takes the first that holds a point); then the weapons' places send
+## their slot's key, the grenades' the throw. None while the strip is not under a finger or is not
+## shown (the arrival's show, a pause).
+func touch_zones() -> Array[Dictionary]:
+	var found: Array[Dictionary] = []
+	if not touch or not is_visible_in_tree():
+		return found
+	if bot_tag != null:
+		found.append_array(bot_tag.touch_zones())
+	for i in _cells.size():
+		found.append({&"action": WeaponSlots.ACTIONS[i], &"rect": _cells[i].get_global_rect()})
+	if grenade_cell != null:
+		found.append({&"action": GRENADE_ACTION, &"rect": grenade_cell.get_global_rect()})
+	return found
+
+
+func _process(_delta: float) -> void:
+	# Redrawn only when the pin goes in or comes out (a redraw a frame is a cost, #834).
+	if grenade_cell != null and state != null and _cooking() != grenade_cell.held:
+		_show_grenades()
+
+
+## Whether the pin is out: the throw's action is held (by the finger on the place, or by anything
+## else that presses it).
+func _cooking() -> bool:
+	return Input.is_action_pressed(GRENADE_ACTION)
+
+
+func _show_grenades() -> void:
+	if grenade_cell != null:
+		grenade_cell.show_grenades(state.grenades, _cooking())
+
+
+## The width and height of a weapon's place under a finger, `fit_touch`.
+func touch_cell_size() -> Vector2:
+	return Vector2(maxf(roundf(_finger * TOUCH_WIDE), HEIGHT), ceilf(maxf(_finger, HEIGHT)))
 
 
 ## The cells shown, one per place.
@@ -60,6 +173,50 @@ func _fit_cells(places: int) -> void:
 		var cell := HudSlotCell.new()
 		_cells.append(cell)
 		_row.add_child(cell)
+	if touch:
+		_fit_touch_cells()
+		return
+	custom_minimum_size = Vector2(WIDTH, HEIGHT)
 	for cell in _cells:
 		cell.custom_minimum_size = Vector2(cell_width(places), HEIGHT)
 		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cell.set_number_size(HudStyle.SMALL)
+
+
+## The places a finger presses: fingertip-sized, side by side, the grenades' after the weapons.
+func _fit_touch_cells() -> void:
+	if grenade_cell == null:
+		grenade_cell = HudGrenadeCell.new()
+		_row.add_child(grenade_cell)
+	var weapon := touch_cell_size()
+	var grenade := Vector2(ceilf(maxf(_finger, HEIGHT)), weapon.y)
+	for cell in _cells:
+		cell.custom_minimum_size = weapon
+		cell.size_flags_horizontal = Control.SIZE_FILL
+		cell.set_number_size(_number_px)
+	grenade_cell.custom_minimum_size = grenade
+	grenade_cell.size_flags_horizontal = Control.SIZE_FILL
+	grenade_cell.set_number_size(_number_px)
+	if bot_tag == null:
+		bot_tag = HudBotOrder.new()
+		bot_tag.visibility_changed.connect(_fit_touch_cells)
+		_row.add_child(bot_tag)
+		if state != null:
+			bot_tag.bind(state)
+	bot_tag.size_flags_horizontal = Control.SIZE_FILL
+	bot_tag.fit_touch(true, _finger, _number_px)
+	_order_tag()
+	var width := weapon.x * _cells.size() + grenade.x + GAP * float(_cells.size())
+	if bot_tag.visible:
+		width += bot_tag.custom_minimum_size.x + GAP
+	custom_minimum_size = Vector2(width, weapon.y)
+
+
+## The tag stands last in the row, first for a left hand.
+func _order_tag() -> void:
+	if bot_tag == null or bot_tag.get_parent() != _row:
+		return
+	var at := 0 if _mirrored else _row.get_child_count() - 1
+	if bot_tag.get_index() != at:
+		# Deferred: a row that is setting up its children (a layout pass) refuses a move.
+		_row.move_child.call_deferred(bot_tag, 0 if _mirrored else -1)

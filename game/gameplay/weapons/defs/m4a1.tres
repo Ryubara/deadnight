@@ -17,7 +17,7 @@ falloff_start = 22
 falloff_end = 55
 min_damage_fraction = 0.65
 max_range = 90
-penetration = 0
+penetration = 1
 penetration_falloff = 0.6
 zone_multipliers = Dictionary[StringName, float]({
 &"body": 1.0,

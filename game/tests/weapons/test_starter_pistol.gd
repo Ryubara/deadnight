@@ -104,7 +104,9 @@ func test_the_revolver_takes_two_head_shots_on_rounds_one_and_two() -> void:
 	var def := WeaponCatalog.get_def(&"pistol")
 	for round_number in [1, 2]:
 		assert_int(shots_to_kill(def, &"head", RulesFixture.round_health(round_number))).is_equal(2)
-	assert_int(shots_to_kill(def, &"body", RulesFixture.round_health(1))).is_equal(3)
+	# 28 a hit since the audit of #972 (the revolver was worth less than the free blow): two body shots
+	# on round 1, and the head's x1.75 = 49 is still under round 1's 50.
+	assert_int(shots_to_kill(def, &"body", RulesFixture.round_health(1))).is_equal(2)
 
 
 ## A round-one walker (health of `round_number`), one pistol shot a fire interval until it dies;

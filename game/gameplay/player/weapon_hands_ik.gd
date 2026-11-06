@@ -44,6 +44,13 @@ const CONVERGE_DISTANCE := 12.0
 const HIP_CONVERGE_FULL := deg_to_rad(30.0)
 const HIP_CONVERGE_NONE := deg_to_rad(90.0)
 
+## The body the reload's left hand goes round, in metres at the Soldier's size: half its width and
+## half its depth at the hips, in the belt's frame, with the hand's own size added.
+const TRUNK_CLEAR := Vector2(0.42, 0.36)
+## Where the reload's left elbow goes while the arm hangs (the hand at the belt), in the belt's
+## frame: out to the left and a little back.
+const HANGING_ELBOW := Vector3(-1.0, 0.0, 0.4)
+
 ## The reflection that makes a left-hand thing from a right-hand one: the rig is an exact mirror
 ## (each left bone is its right one with x turned about), so a weapon held mirrored in the left hand
 ## sits there as its right-hand place with this applied, and the model itself is flipped across its
@@ -290,11 +297,16 @@ func _reach_reload(skeleton: Skeleton3D, weapon: Transform3D, pole: Vector3) -> 
 		held[bone] = skeleton.get_bone_pose_rotation(bone)
 	var a := reload_point(skeleton, weapon, reload.left_from)
 	var b := reload_point(skeleton, weapon, reload.left_to)
-	var goal := a.origin.lerp(b.origin, reload.left_mix)
+	var goal := _clear_of_body(skeleton, a.origin.lerp(b.origin, reload.left_mix))
+	# An arm that hangs runs nearly along the hold's pole, which then says little and turned the
+	# elbow into the belly.
+	var shoulder := _world(skeleton, skeleton.find_bone(LEFT[0])).origin
+	var hanging := clampf(-(goal - shoulder).normalized().y, 0.0, 1.0)
+	pole = pole.lerp(_belt(skeleton).basis * HANGING_ELBOW, hanging)
 	_reach(skeleton, LEFT, goal, pole, Basis(), false)
-	# The hand turned as on the fore-end at a point on the weapon, as the arm leaves it at the belt.
+	# The hand turned as on the fore-end at a point on the weapon, in line with the arm at the belt.
 	var hand := skeleton.find_bone(LEFT[2])
-	var natural := _world(skeleton, hand).basis
+	var natural := _in_line(skeleton, hand)
 	var turn_a := natural if a.basis == Basis() else a.basis
 	var turn_b := natural if b.basis == Basis() else b.basis
 	var turned := Basis(
@@ -318,15 +330,8 @@ func _reach_reload(skeleton: Skeleton3D, weapon: Transform3D, pole: Vector3) -> 
 ## a weapon with no left grip).
 func reload_point(skeleton: Skeleton3D, weapon: Transform3D, key: ReloadKey) -> Transform3D:
 	if key.left_space == ReloadKey.Space.BELT:
-		var hips := _world(skeleton, skeleton.find_bone(HIPS)).origin
-		var legs := (
-			_world(skeleton, skeleton.find_bone(LEGS[1])).origin
-			- _world(skeleton, skeleton.find_bone(LEGS[0])).origin
-		)
-		var right := Vector3(legs.x, 0.0, legs.z).normalized()
-		var back := right.cross(Vector3.UP)
-		var p := key.left_point
-		return Transform3D(Basis(), hips + right * p.x + Vector3.UP * p.y + back * p.z)
+		var belt := _belt(skeleton)
+		return Transform3D(Basis(), belt * key.left_point)
 	var point := key.left_point
 	var turn := Basis()
 	if key.left_on_part and reload.motion != null:
@@ -337,6 +342,39 @@ func reload_point(skeleton: Skeleton3D, weapon: Transform3D, key: ReloadKey) -> 
 	if grip != null and grip.has_left:
 		basis = (weapon.basis.orthonormalized() * turn * grip.left_hand.basis).orthonormalized()
 	return Transform3D(basis, weapon * point)
+
+
+## The hand's world turn straightened onto its forearm (a bone's +Y runs along it): a hand left
+## as the hold bent it puts its fingers into the hip at the belt.
+func _in_line(skeleton: Skeleton3D, hand: int) -> Basis:
+	var pose := _world(skeleton, hand)
+	var forearm := pose.origin - _world(skeleton, skeleton.get_bone_parent(hand)).origin
+	return Basis(Quaternion(pose.basis.y.normalized(), forearm.normalized())) * pose.basis
+
+
+## The body's frame at the belt: origin the hips, x to the right, y up, z back, level whatever the
+## chest does.
+func _belt(skeleton: Skeleton3D) -> Transform3D:
+	var hips := _world(skeleton, skeleton.find_bone(HIPS)).origin
+	var legs := (
+		_world(skeleton, skeleton.find_bone(LEGS[1])).origin
+		- _world(skeleton, skeleton.find_bone(LEGS[0])).origin
+	)
+	var right := Vector3(legs.x, 0.0, legs.z).normalized()
+	return Transform3D(Basis(right, Vector3.UP, right.cross(Vector3.UP)), hips)
+
+
+## `goal` moved out of the hips and the belly, an ellipse round them in the belt's frame: the hand
+## travels in a straight line between two points, and the line from a weapon out to the right to the
+## belt on the left runs through the body (#987).
+func _clear_of_body(skeleton: Skeleton3D, goal: Vector3) -> Vector3:
+	var belt := _belt(skeleton)
+	var local := belt.affine_inverse() * goal
+	var at := Vector2(local.x, local.z) / TRUNK_CLEAR
+	if at.length_squared() < 1.0:
+		var out := at.normalized() * TRUNK_CLEAR
+		goal = belt * Vector3(out.x, local.y, out.y)
+	return goal
 
 
 ## How far the weapon at `target` must slide back along its barrel (its +X, toward the butt) for

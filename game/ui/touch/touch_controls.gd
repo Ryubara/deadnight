@@ -1,10 +1,11 @@
+# gdlint:disable=max-public-methods
 class_name TouchControls
 extends Control
 ## The touch controls of a night: a floating move stick on the left, a look area on the right,
 ## and buttons under the right thumb. They press the game's own input actions (`move_*`, `fire`,
-## `aim`, `jump`, `reload`, `swap_weapon`, `throw_grenade`, `quick_melee`, `interact`, `sprint`,
-## `pause`, `scoreboard`, `ping`, `bot_wheel`), so
-## the player and the night read them like a key or a pad and nothing else forks.
+## `aim`, `jump`, `reload`, `quick_melee`, `interact`, `sprint`, `pause`, `scoreboard`, `ping`,
+## and from the HUD's places `weapon_slot_*`, `throw_grenade` and the bots' tag `bot_order_next`),
+## so the player and the night read them like a key or a pad and nothing else forks.
 ##
 ## Aim is held while the thumb is on it when auto-fire is on (`controls/touch_auto_fire`, the
 ## default: the weapon fires by itself with the crosshair on a zombie while aiming), and a toggle
@@ -12,16 +13,42 @@ extends Control
 ## by hand. Fire shoots wherever the player aims, in both.
 ##
 ## Every finger is tracked by its touch index and has one job until it lifts: the stick, the look,
-## or one button. A finger that starts on Fire, Aim or Grenade also looks while it drags, so one
-## thumb can aim and shoot, or turn while the grenade is held. Look goes out as mouse motion in
+## or one button. A finger that starts on any button of the right thumb also looks while it drags
+## (#1277, `TouchLayout.looks_when_dragged`): one thumb can aim and shoot, turn while the grenade
+## is held, or press Reload or Jump and carry on turning. Look goes out as mouse motion in
 ## mouse pixels (`TouchLook`), so the sensitivity setting,
 ## the ADS slow-down and invert Y apply as they do for a mouse.
+##
+## The move stick is drawn only while a finger is on it: a ring where the finger landed. A drag to
+## the ring's edge walks at full speed; a drag past the edge by `TouchTuning.sprint_margin_px`
+## starts a sprint, with one buzz, that stays on until that finger lifts (`TouchStick`, #1276).
+## What cancels a sprint, and what a cancel does to the latch, is in
+## `docs/research/mobile-controls.md`.
 ##
 ## The layer shows when `TouchMode.wanted`, in landscape, and while the night is live (`live`).
 ## While it is up the engine's touch-to-mouse emulation is off, or every touch would also click
 ## Fire, and the player turns only for the layer's own look (`TouchLook.is_stray`): in a browser a
 ## finger is also a pointer move, which the web runtime reads as a mouse motion (#470).
-## The interact button shows only while the HUD has a prompt: what it does is its label.
+## The weapons are the HUD's own places (`HudSlots`, #1280), and so is the players' column (#1287):
+## the layer does not draw them, it asks the HUD where they are (`zones`) and presses the action of
+## the one a finger lands on, like a button of its own. A finger that starts on a weapon's place
+## only picks it: it never fires or looks; one that starts on the grenades' place also looks, as
+## every button of the right thumb. One that starts on the players' column holds the `scoreboard`
+## action for as long as it is down, and never fires, looks or starts the stick.
+## The bots' tag (`HudBotOrder`, #1286) is such a place too, and a finger on it only taps it: it
+## never starts the stick or a look. The zones are tried in the order the HUD lists them and the
+## first that holds the point wins (the tag is first), after the buttons and before the stick.
+## The interact button shows only while the HUD has a prompt: what it does is its word. The Strike
+## button shows only while a dead is within reach of the quick melee (`strike_ready`, #1285), and
+## shows the blade. Every other button shows an icon and no words (`TouchIcons`).
+##
+## Crouch is a toggle: a tap crouches and stays crouched, a second tap (or a Jump, which cannot be
+## made crouching) stands, so the right thumb is free for Fire and the look.
+##
+## Two quick taps on free ground press `swap_shoulder` (`TouchDoubleTap`, #1288): the shoulder is a
+## fight verb but a rare one, so it has no button. A touch on free ground is held back from the look
+## only while it can still be a tap (under 250 ms, under a finger's slop), and all of it is let out
+## at once the moment it is not, so no look is lost and none is late.
 ##
 ## While it is up the HUD shows no key hints (`UIInputMode.touch`), and `TouchHints` labels the
 ## controls the first time each is met, until it is used.
@@ -34,27 +61,22 @@ signal safe_insets_changed(insets: Vector4)
 signal mirrored_changed(mirrored: bool)
 ## The controls came up or went away (a phone shows them, a keyboard hides them).
 signal active_changed(active: bool)
+## A double tap on free ground pressed `swap_shoulder`.
+signal shoulder_swapped
 ## The buttons are somewhere else now, or are there or not (`button_boxes`).
 signal layout_changed
+## The stick finger crossed the edge: the sprint is on until it lifts (the phone buzzes once).
+signal sprint_started
 
 const MOVE_LEFT := &"move_left"
 const MOVE_RIGHT := &"move_right"
 const MOVE_FORWARD := &"move_forward"
 const MOVE_BACK := &"move_back"
 const SPRINT := &"sprint"
-## Captions on the buttons, and what the interact button says for each kind of prompt.
-const LABELS := {
-	TouchLayout.FIRE: "FIRE",
-	TouchLayout.AIM: "AIM",
-	TouchLayout.JUMP: "JUMP",
-	TouchLayout.RELOAD: "RELOAD",
-	TouchLayout.SWAP: "SWAP",
-	TouchLayout.GRENADE: "GRENADE",
-	TouchLayout.SHOULDER: "SIDE",
-	TouchLayout.MELEE: "MELEE",
-	TouchLayout.BOT_WHEEL: "BOTS",
-	TouchLayout.PING: "PING",
-}
+## CSS pixels in a canvas unit on a phone's night (844 x 390 CSS px over 1080 units), when no one
+## says otherwise (`css_per_unit`): a test's canvas.
+const DEFAULT_CSS_PER_UNIT := 0.36
+## What the interact button says for each kind of prompt.
 const VERBS := {
 	&"buy_door": "OPEN",
 	&"buy_weapon": "BUY",
@@ -67,14 +89,19 @@ const VERBS := {
 	&"revive": "REVIVE",
 }
 const DEFAULT_VERB := "USE"
+## The grenades' place on the HUD's strip presses this action (held while the pin is out).
+const GRENADE := &"throw_grenade"
+## The players' column of the HUD holds this action while a finger is on it (#1287): the ticket.
+const BOARD := &"scoreboard"
 const AUTO_FIRE_SETTING := &"controls/touch_auto_fire"
-## A finger that starts on one of these also looks while it drags, so one thumb can aim and shoot,
-## and a grenade can be aimed while the pin is out: the right thumb is on the button for the whole
-## cook and the left has the stick (#599).
-const LOOKING_BUTTONS: Array[StringName] = [TouchLayout.FIRE, TouchLayout.AIM, TouchLayout.GRENADE]
-
 ## The feel numbers (dead zone, sprint, hold, look): `touch_tuning_default.tres`.
 var tuning: TouchTuning = TouchLook.tuning
+## The double tap on free ground (`TouchDoubleTap`).
+var double_tap := TouchDoubleTap.new()
+## () -> float, seconds of real time; without it `Time`'s. A test steps its own.
+var clock := Callable()
+## The finger's slop in canvas units; below 0 it is `TouchSlop` of the window now.
+var tap_slop := -1.0
 ## The HUD state, for the interact button.
 var state: HudState
 ## False while a menu or the result is up: the layer hides and lets go of everything.
@@ -101,10 +128,27 @@ var look_smoother := LookSmoother.new()
 ## (`MenuScale.tap_units`), which depends on the window and the interface size and so is asked
 ## again at every layout. Without it the hit areas are the layout's own (#1217).
 var finger_units := Callable()
+## () -> float, CSS pixels in one canvas unit (`MenuScale.css_per_unit`), so the stick's ring and
+## the margin past it are the same movement of the thumb on every phone (#1276). Without it the
+## unit of a phone's night (`DEFAULT_CSS_PER_UNIT`).
+var css_per_unit := Callable()
+## () -> Array[Dictionary], the HUD's places a finger presses: `{action, rect}` in the screen's
+## canvas units (`HudSlots.touch_zones`). Without it the layer has none.
+var zones := Callable()
+## () -> bool, whether a dead is within reach of the quick melee now (`StrikeReach`): the Strike
+## button shows while it says yes. Without it the button never shows.
+var strike_ready := Callable()
+
+## True while the Strike button shows: a dead is within reach of the quick melee. A property, not
+## a method: the class is at the linter's limit of public methods.
+var strike_up: bool:
+	get:
+		return _strike_up
 
 ## Auto-fire on: Aim is held. Off: Aim is a toggle (`_aim_latched`).
 var _aim_is_hold := true
 var _aim_latched := false
+var _crouch_latched := false
 var _enabled := false
 var _active := false
 var _circles := {}
@@ -115,11 +159,9 @@ var _release_at := {}
 var _clock := 0.0
 var _inset_clock := INF
 var _stick_index := -1
-var _stick_origin := Vector2.ZERO
-var _stick_pos := Vector2.ZERO
 var _stick_vector := Vector2.ZERO
-var _sprinting := false
 var _interact_verb := ""
+var _strike_up := false
 var _last_insets := Vector4.ZERO
 var _was_mirrored := false
 ## `_look_key()` at the last draw.
@@ -196,10 +238,15 @@ func button_boxes() -> Array[Rect2]:
 	if not _active:
 		return found
 	var origin := get_global_rect().position
+	var hidden := _hidden()
 	for id: StringName in _circles:
+		if id in hidden:
+			continue  # not drawn, so nothing to keep clear of
 		var circle: Dictionary = _circles[id]
 		var reach := Vector2.ONE * float(circle[&"radius"])
 		found.append(Rect2(origin + Vector2(circle[&"centre"]) - reach, reach * 2.0))
+	for zone in _zones():
+		found.append(zone[&"rect"])
 	return found
 
 
@@ -208,37 +255,60 @@ func interact_verb() -> String:
 	return _interact_verb
 
 
-## Where the finger on the bot wheel's button is from where it landed (canvas units), and whether
-## there is one: the drag that picks the order (`BotWheelDriver`).
-func wheel_offset() -> Vector2:
-	for touch: Dictionary in _touches.values():
-		if touch.get(&"button", &"") == TouchLayout.BOT_WHEEL:
-			return touch[&"last"] - touch[&"start"]
-	return Vector2.ZERO
-
-
-func has_wheel_finger() -> bool:
-	for touch: Dictionary in _touches.values():
-		if touch.get(&"button", &"") == TouchLayout.BOT_WHEEL:
-			return true
-	return false
+## The contextual buttons that are not up: not drawn, not touched, nothing to keep clear of.
+func _hidden() -> Array:
+	var hidden := []
+	if _interact_verb == "":
+		hidden.append(TouchLayout.INTERACT)
+	if not _strike_up:
+		hidden.append(TouchLayout.STRIKE)
+	return hidden
 
 
 func is_stick_down() -> bool:
 	return _stick_index >= 0
 
 
+## The ring of the finger on the stick, none when there is no finger. The sprint latch is its own.
+func stick_pad() -> TouchStick:
+	if _stick_index < 0:
+		return null
+	return _touches.get(_stick_index, {}).get(&"pad") as TouchStick
+
+
+## The ring's radius in canvas units: `TouchTuning.stick_radius_px` CSS pixels at the touch scale.
+func stick_radius() -> float:
+	return tuning.stick_radius_px * touch_scale * _units_per_css_px()
+
+
+## How far past the ring's edge the sprint starts, in canvas units: `sprint_margin_px` CSS pixels.
+func sprint_margin() -> float:
+	return tuning.sprint_margin_px * _units_per_css_px()
+
+
+func _units_per_css_px() -> float:
+	var per_unit := float(css_per_unit.call()) if css_per_unit.is_valid() else DEFAULT_CSS_PER_UNIT
+	return 1.0 / maxf(per_unit, 0.01)
+
+
 func stick_vector() -> Vector2:
 	return _stick_vector
 
 
+## True while the finger on the stick has gone past the edge and not lifted (the latch).
 func is_sprinting() -> bool:
-	return _sprinting
+	var pad := stick_pad()
+	return pad != null and pad.latched
 
 
 ## True while the aim is toggled on (auto-fire off, Aim tapped once).
 func is_aim_latched() -> bool:
 	return _aim_latched
+
+
+## True while Crouch is toggled on (tapped once, not yet tapped again or jumped from).
+func is_crouch_latched() -> bool:
+	return _crouch_latched
 
 
 func is_pressed(id: StringName) -> bool:
@@ -281,6 +351,13 @@ func _process(delta: float) -> void:
 		_interact_verb = verb
 		if verb == "":
 			_drop_button(TouchLayout.INTERACT)
+		layout_changed.emit()  # the button came or went: the world markers make room (#1218)
+	var strike := _active and strike_ready.is_valid() and bool(strike_ready.call())
+	if strike != _strike_up:
+		_strike_up = strike
+		if not strike:
+			_drop_button(TouchLayout.STRIKE)
+		layout_changed.emit()
 	if _active:
 		_redraw_if_changed()
 
@@ -303,15 +380,18 @@ func _look_key() -> int:
 	for touch: Dictionary in _touches.values():
 		held.append(String(touch.get(&"button", &"")))
 	held.sort()
-	var stick: Variant = [_stick_origin, _stick_pos] if _stick_index >= 0 else null
+	var pad := stick_pad()
+	var stick: Variant = [pad.origin, pad.pos] if pad != null else null
 	return hash(
 		[
 			held,
 			_aim_latched,
+			_crouch_latched,
 			_stick_index,
 			stick,
-			_sprinting,
+			is_sprinting(),
 			_interact_verb,
+			_strike_up,
 			opacity,
 			touch_scale,
 			left_handed,
@@ -343,22 +423,57 @@ func _input(event: InputEvent) -> void:
 func _touch_down(index: int, point: Vector2) -> void:
 	if _touches.has(index):
 		_touch_up(index)
-	var hidden: Array = [] if _interact_verb != "" else [TouchLayout.INTERACT]
-	var button := TouchLayout.button_at(point, _circles, hidden)
+	var button := TouchLayout.button_at(point, _circles, _hidden())
+	if button == &"":
+		button = zone_at(point)
 	if button != &"":
+		double_tap.interrupt()
 		_touches[index] = _own(&"button", point, {&"button": button, &"start": point})
 		_press_button(button)
 		if button == TouchLayout.INTERACT:
 			hints.mark_used(TouchHints.INTERACT)
-	elif _stick_index < 0 and TouchLayout.stick_zone(_safe, left_handed).has_point(point):
+		elif button == HudBotOrder.ACTION:
+			hints.mark_used(TouchHints.BOTS)
+		elif button == TouchLayout.STRIKE:
+			hints.mark_used(TouchHints.STRIKE)
+		elif button == BOARD:
+			hints.mark_used(TouchHints.SCOREBOARD)
+	elif _stick_index < 0 and _stick_zone().has_point(point):
 		hints.mark_used(TouchHints.MOVE)
+		double_tap.interrupt()
 		_stick_index = index
-		_stick_origin = point
-		_stick_pos = point
-		_touches[index] = _own(&"stick", point)
+		_touches[index] = _own(&"stick", point, {&"pad": TouchStick.new(point)})
 		_set_stick(Vector2.ZERO)
 	elif not _has_role(&"look"):
-		_touches[index] = _own(&"look", point)
+		# Free ground. A finger the stick's side holds (the stick finger is down already) looks and
+		# never counts as a tap.
+		var taps := not _stick_zone().has_point(point)
+		_touches[index] = _own(&"look", point, {&"tap": taps, &"held": Vector2.ZERO, &"at": _now()})
+		if taps:
+			double_tap.press(index, point, _now())
+		else:
+			double_tap.interrupt()
+
+
+## The action of the HUD's place under `point`, or "" (a weapon's slot, or the grenade).
+func zone_at(point: Vector2) -> StringName:
+	for zone in _zones():
+		if (zone[&"rect"] as Rect2).has_point(point):
+			return zone[&"action"]
+	return &""
+
+
+func _zones() -> Array:
+	return zones.call() if zones.is_valid() else []
+
+
+## The box of the HUD's place that presses `action` (the bots' tag), or an empty rectangle when it
+## is not there now: what a first-run hint points at.
+func zone_rect(action: StringName) -> Rect2:
+	for zone in _zones():
+		if zone[&"action"] == action:
+			return zone[&"rect"]
+	return Rect2()
 
 
 func _touch_up(index: int) -> void:
@@ -370,6 +485,23 @@ func _touch_up(index: int) -> void:
 			_set_stick(Vector2.ZERO)
 		&"button":
 			_release_button(touch[&"button"])
+		&"look":
+			_lift_look(index, touch)
+
+
+## A look finger lifted: a tap that completes a double tap swaps the shoulder; a touch held back as
+## a possible tap that was none lets out the look it kept.
+func _lift_look(index: int, touch: Dictionary) -> void:
+	if not touch.get(&"tap", false):
+		return
+	var now := _now()
+	if double_tap.release(index, now):
+		_press_button(TouchDoubleTap.ACTION)
+		_release_button(TouchDoubleTap.ACTION)
+		hints.mark_used(TouchHints.SWAP)
+		shoulder_swapped.emit()
+	elif now - float(touch[&"at"]) >= TouchDoubleTap.TAP_SECONDS and touch[&"held"] != Vector2.ZERO:
+		_look(touch[&"held"], Vector2.ZERO)
 
 
 ## What a finger owns from its press to its lift: one job (`role`), where it last was (`last`), and
@@ -393,13 +525,30 @@ func _touch_drag(index: int, point: Vector2, velocity: Vector2) -> void:
 	touch[&"drags"] += 1
 	match touch[&"role"]:
 		&"stick":
-			_stick_pos = point
-			_follow_stick()
+			_follow_stick(touch[&"pad"], point)
 		&"look":
-			_look(relative, _trusted_velocity(touch, velocity))
+			var speed := _trusted_velocity(touch, velocity)
+			if touch.get(&"tap", false):
+				touch[&"held"] += relative
+				if double_tap.is_tap(index, point, _now(), _slop()):
+					return  # still a tap, perhaps: its look waits
+				# It is a look: all of what it made so far goes out now, none lost.
+				touch[&"tap"] = false
+				double_tap.drop(index)
+				relative = touch[&"held"]
+			_look(relative, speed)
 		&"button":
-			if LOOKING_BUTTONS.has(touch[&"button"]):
+			# The grenades' place on the HUD looks too: the thumb is on it for the whole cook (#599).
+			if touch[&"button"] == GRENADE or TouchLayout.looks_when_dragged(touch[&"button"]):
 				_look(relative, _trusted_velocity(touch, velocity))
+
+
+func _now() -> float:
+	return float(clock.call()) if clock.is_valid() else Time.get_ticks_usec() * 0.000001
+
+
+func _slop() -> float:
+	return tap_slop if tap_slop >= 0.0 else TouchSlop.units(get_window())
 
 
 func _trusted_velocity(touch: Dictionary, velocity: Vector2) -> Vector2:
@@ -448,20 +597,15 @@ func _turn_view(look: Vector2) -> void:
 	Input.flush_buffered_events()
 
 
-## The stick follows the finger: a finger past the rim drags the base along, so the thumb never
-## runs out of travel and the stick centre is always one thumb-length behind it.
-func _follow_stick() -> void:
-	var radius := TouchLayout.STICK_RADIUS * touch_scale
-	var offset := _stick_pos - _stick_origin
-	if offset.length() > radius:
-		_stick_origin += offset.normalized() * (offset.length() - radius)
-		offset = _stick_pos - _stick_origin
-	var raw := offset / radius
-	var length := raw.length()
-	var vector := Vector2.ZERO
-	if length > tuning.stick_deadzone:
-		vector = raw.normalized() * inverse_lerp(tuning.stick_deadzone, 1.0, minf(length, 1.0))
-	_set_stick(vector)
+## The finger moved: the pad reads it, and the first time it is past the edge the sprint starts
+## with one buzz. Up to the edge the stick is fixed where the finger landed, so the edge is the
+## same place for the whole drag; once the sprint is on, the ring follows the finger.
+func _follow_stick(pad: TouchStick, point: Vector2) -> void:
+	var started := pad.drag(point, stick_radius(), sprint_margin())
+	_set_stick(pad.vector(stick_radius(), tuning.stick_deadzone))
+	if started:
+		_buzz(tuning.sprint_haptic_ms)
+		sprint_started.emit()
 
 
 func _set_stick(vector: Vector2) -> void:
@@ -470,12 +614,8 @@ func _set_stick(vector: Vector2) -> void:
 	_axis(MOVE_LEFT, maxf(-vector.x, 0.0))
 	_axis(MOVE_BACK, maxf(vector.y, 0.0))
 	_axis(MOVE_FORWARD, maxf(-vector.y, 0.0))
-	var length := vector.length()
-	if length >= tuning.sprint_on:
-		_sprinting = true
-	elif length < tuning.sprint_off:
-		_sprinting = false
-	if _sprinting:
+	# The latch is the finger's: with no finger on the stick the sprint is let go.
+	if is_sprinting():
 		Input.action_press(SPRINT)
 	else:
 		Input.action_release(SPRINT)
@@ -501,6 +641,16 @@ func _press_button(id: StringName) -> void:
 		else:
 			Input.action_release(id)
 		return
+	if id == TouchLayout.CROUCH:
+		_crouch_latched = not _crouch_latched
+		if _crouch_latched:
+			Input.action_press(id)
+		else:
+			Input.action_release(id)
+		return
+	if id == TouchLayout.JUMP:
+		# A crouching body cannot jump: the press stands it up and the jump goes on, in one tick.
+		_unlatch_crouch()
 	_release_at.erase(id)
 	_pressed_at[id] = _clock
 	Input.action_press(id)
@@ -521,6 +671,12 @@ func _unlatch_aim() -> void:
 	if _aim_latched:
 		_aim_latched = false
 		Input.action_release(TouchLayout.AIM)
+
+
+func _unlatch_crouch() -> void:
+	if _crouch_latched:
+		_crouch_latched = false
+		Input.action_release(TouchLayout.CROUCH)
 
 
 func _send_action(action: StringName, pressed: bool) -> void:
@@ -544,12 +700,12 @@ func _has_role(role: StringName) -> bool:
 	return false
 
 
-func _buzz() -> void:
+func _buzz(duration_ms := -1) -> void:
 	var service := get_tree().root.get_node_or_null(TouchMode.SETTING_PATH)
 	if service != null and service.has_method(&"get_value"):
 		if service.call(&"get_value", &"controls/haptics") == false:
 			return
-	Input.vibrate_handheld(tuning.haptic_ms)
+	Input.vibrate_handheld(tuning.haptic_ms if duration_ms < 0 else duration_ms)
 
 
 func _verb_now() -> String:
@@ -607,15 +763,26 @@ func _refresh_active() -> void:
 
 
 func _release_everything() -> void:
+	double_tap.reset()
 	look_smoother.take_all()
 	_touches.clear()
 	_stick_index = -1
 	_set_stick(Vector2.ZERO)
 	_unlatch_aim()
+	_unlatch_crouch()
 	for action: StringName in _pressed_at.keys():
 		Input.action_release(action)
 	_pressed_at.clear()
 	_release_at.clear()
+
+
+## Where a finger may start the stick: below the bottom of Ping's hit area (#1289).
+func _stick_zone() -> Rect2:
+	var ping: Dictionary = _circles.get(TouchLayout.PING, {})
+	var below := -INF
+	if not ping.is_empty():
+		below = (ping[&"centre"] as Vector2).y + float(ping[&"hit"])
+	return TouchLayout.stick_zone(_safe, left_handed, below)
 
 
 func _relayout() -> void:
@@ -667,12 +834,15 @@ func _draw() -> void:
 		return
 	var tokens := UITokens.active()
 	var font := tokens.display_font(tokens.embolden_display * 0.3)
-	_draw_stick(tokens)
+	_draw_stick(tokens, font)
+	# Every icon is one canvas command, flushed after the discs: no two buttons overlap.
+	var icons := HudShapes.new()
+	var hidden := _hidden()
 	for id: StringName in _circles:
-		if id == TouchLayout.INTERACT and _interact_verb == "":
+		if id in hidden:
 			continue
-		var label: String = _interact_verb if id == TouchLayout.INTERACT else LABELS.get(id, "")
-		_draw_button(tokens, font, id, _circles[id], label)
+		_draw_button(tokens, font, icons, id, _circles[id])
+	icons.flush(self)
 
 
 ## Colour at the resting opacity, or full while its control is held.
@@ -681,7 +851,7 @@ func _alpha(colour: Color, held: bool) -> Color:
 
 
 func _is_held(id: StringName) -> bool:
-	if id == TouchLayout.AIM and _aim_latched:
+	if (id == TouchLayout.AIM and _aim_latched) or (id == TouchLayout.CROUCH and _crouch_latched):
 		return true
 	for touch: Dictionary in _touches.values():
 		if touch.get(&"button", &"") == id:
@@ -690,7 +860,7 @@ func _is_held(id: StringName) -> bool:
 
 
 func _draw_button(
-	tokens: UITokens, font: Font, id: StringName, circle: Dictionary, label: String
+	tokens: UITokens, font: Font, icons: HudShapes, id: StringName, circle: Dictionary
 ) -> void:
 	var centre: Vector2 = circle[&"centre"]
 	var radius: float = circle[&"radius"]
@@ -705,34 +875,39 @@ func _draw_button(
 	draw_circle(centre + Vector2(3.0, 4.0), radius, _alpha(tokens.shadow, held))
 	draw_circle(centre, radius, _alpha(fill, held))
 	draw_arc(centre, radius, 0.0, TAU, 48, _alpha(tokens.outline.lightened(0.5), held), 3.0, true)
-	if id == TouchLayout.PAUSE:
-		var bar := Vector2(7.0, radius * 0.9)
-		draw_rect(Rect2(centre + Vector2(-13.0, -bar.y * 0.5), bar), _alpha(ink, held))
-		draw_rect(Rect2(centre + Vector2(6.0, -bar.y * 0.5), bar), _alpha(ink, held))
-		return
-	if id == TouchLayout.SCOREBOARD:
-		# Three rows of a table: a dot and a line each.
-		for row in 3:
-			var y := (float(row) - 1.0) * radius * 0.4
-			draw_circle(centre + Vector2(-radius * 0.45, y), 3.5, _alpha(ink, held))
-			draw_rect(
-				Rect2(centre + Vector2(-radius * 0.2, y - 2.5), Vector2(radius * 0.7, 5.0)),
-				_alpha(ink, held)
-			)
-		return
-	var px := int(radius * (0.34 if label.length() <= 4 else 0.27))
-	var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
-	var at := centre + Vector2(-width * 0.5, px * 0.35)
-	draw_string(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, px, _alpha(ink, held))
+	TouchIcons.add(icons, id, centre, radius, _alpha(ink, held), _alpha(fill, held))
+	if id == TouchLayout.INTERACT:
+		# The one control that keeps a word: what the thing in front of the player lets it do.
+		var px := int(radius * (0.34 if _interact_verb.length() <= 4 else 0.27))
+		var width := font.get_string_size(_interact_verb, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+		var at := centre + Vector2(-width * 0.5, radius * 0.5)
+		draw_string(font, at, _interact_verb, HORIZONTAL_ALIGNMENT_LEFT, -1, px, _alpha(ink, held))
 
 
-func _draw_stick(tokens: UITokens) -> void:
-	var radius := TouchLayout.STICK_RADIUS * touch_scale
-	var held := _stick_index >= 0
-	var origin := _stick_origin if held else TouchLayout.stick_rest(_safe, touch_scale, left_handed)
-	var ring := tokens.accent_bright if _sprinting else tokens.ink
-	draw_circle(origin, radius, _alpha(Color(tokens.shadow, 0.35), held))
-	draw_arc(origin, radius, 0.0, TAU, 64, _alpha(ring, held), 4.0 if held else 3.0, true)
-	if held:
-		var knob := origin + (_stick_pos - origin).limit_length(radius)
-		draw_circle(knob, radius * 0.45, _alpha(tokens.accent if _sprinting else tokens.ink, true))
+## The ring, only while a finger is on the stick. It is dark ink at the edge to walk to and has a
+## faint outer line where the sprint starts; with the sprint on it turns to the accent colour,
+## thick, with SPRINT above it: the cue where the phone cannot buzz.
+func _draw_stick(tokens: UITokens, font: Font) -> void:
+	var pad := stick_pad()
+	if pad == null:
+		return
+	var radius := stick_radius()
+	var sprint := pad.latched
+	var ring := tokens.accent_bright if sprint else tokens.ink
+	var fill := Color(tokens.accent, 0.3) if sprint else Color(tokens.shadow, 0.35)
+	draw_circle(pad.origin, radius, _alpha(fill, true))
+	draw_arc(pad.origin, radius, 0.0, TAU, 64, _alpha(ring, true), 6.0 if sprint else 4.0, true)
+	if not sprint:
+		var edge := Color(tokens.ink, 0.35)
+		draw_arc(pad.origin, radius + sprint_margin(), 0.0, TAU, 64, edge, 2.0, true)
+	draw_circle(
+		pad.knob(radius), radius * 0.45, _alpha(tokens.accent if sprint else tokens.ink, true)
+	)
+	if sprint:
+		var px := int(radius * 0.28)
+		var width := font.get_string_size("SPRINT", HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+		# Above the knob, which the finger holds at the ring's far edge.
+		var at := pad.knob(radius) + Vector2(-width * 0.5, -radius * 0.45 - px * 0.5)
+		var outline := Color(tokens.shadow, 0.9)
+		draw_string_outline(font, at, "SPRINT", HORIZONTAL_ALIGNMENT_LEFT, -1, px, 6, outline)
+		draw_string(font, at, "SPRINT", HORIZONTAL_ALIGNMENT_LEFT, -1, px, tokens.accent_bright)

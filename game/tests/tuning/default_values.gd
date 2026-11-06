@@ -256,11 +256,12 @@ const TOUCH_TUNING := {
 	"look_smoothing": 0.04,
 	"look_smoothing_frames": 2.5,
 	"stick_deadzone": 0.1,
-	"sprint_on": 0.95,
-	"sprint_off": 0.75,
+	"stick_radius_px": 40.0,
+	"sprint_margin_px": 18.0,
 	"min_hold": 0.09,
 	"inset_period": 0.5,
 	"haptic_ms": 12,
+	"sprint_haptic_ms": 40,
 }
 
 ## The constants of `ImpactFx`, `ProjectileView` and `LureView`.

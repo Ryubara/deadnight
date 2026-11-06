@@ -1,12 +1,12 @@
 """Browser check that a night is pressable on a phone (#1192, #1217), in the units a finger meets.
 
 A phone's page is 844 x 390 CSS px with a pixel ratio of 2 (the page caps the ratio, `PhoneRender`), so the engine's
-window is 1688 x 780. A night runs at the interface size alone, where one unit is 0.36 CSS px (0.29 at the smallest
-interface size, `--ui 0.8`):
+window is 1688 x 780 (`--page 667` is the 667 x 375 phone). A night runs at the interface size alone, where one unit
+is 0.36 CSS px (0.29 at the smallest interface size, `--ui 0.8`):
 
 - every hit area of the touch layer (the probe's `touch_hits`, fractions of the window) is at least 44 CSS px across;
-  a real touch just inside the edge of Ping, Scoreboard, Melee, the Bot wheel and Pause presses that button (the
-  probe's `touch_held`), and one just outside the edge presses none;
+  a real touch just inside the edge of Ping, Reload and Pause presses that button (the probe's `touch_held`), and one
+  just outside the edge presses none;
 - the pause card's buttons (Resume, Settings, Leave night) are at least 44 CSS px high, and a finger that lands just
   inside the top edge of one presses it (the probe's `menu_button_sizes`).
 
@@ -14,7 +14,7 @@ The finger is a real touch event through the DevTools protocol. `--ui` writes th
 settings and reloads, as the Settings screen's "Interface size" would.
 
     uv run --project <kit>/python gds quiet -- \
-        uv run --with playwright==1.64.1 python tools/web_smoke/night_taps.py build/web build/night-taps [--ui 0.8]
+        uv run --with playwright==1.64.1 python tools/web_smoke/night_taps.py build/web out [--ui 0.8] [--page 667]
 
 Screenshots and `result.json` go to the second argument. Exits 1 on any check that fails.
 """
@@ -36,15 +36,20 @@ sys.path.insert(0, str(Path(__file__).parent))
 import ingame_menu as menu
 import smoke
 
-PHONE = {"width": 844, "height": 390}
+PAGES = {"844": {"width": 844, "height": 390}, "667": {"width": 667, "height": 375}}
+# The page the run is on (`--page`), in CSS px; the 844 x 390 phone unless told.
+PHONE = dict(PAGES["844"])
 TAP_CSS_PX = 44.0
 # A finger this far inside the top edge of a button presses it.
 EDGE_CSS_PX = 4.0
 # A finger this far inside a hit area's edge presses it, and this far outside it presses nothing (#1217).
 INSIDE_HIT_CSS_PX = 1.0
 OUTSIDE_HIT_CSS_PX = 1.5
-# The buttons tried at the edge of their hit areas. Pause opens the menu, so the caller taps it last.
-EDGE_BUTTONS = ("ping", "scoreboard", "quick_melee", "bot_wheel")
+# The buttons tried at the edge of their hit areas. Pause opens the menu, so the caller taps it last. Melee is gone
+# (#1285: Strike shows only with a dead in reach, so a night with none has no button to press, and `touch_strike.py`
+# presses it), and so are the Scoreboard and Bots circles (#1286, #1287: the HUD's tag and column, places that
+# `touch_bot_tag.py` and `touch_scoreboard.py` press), so Reload, the thumb's neighbour to Fire, stands in the row.
+EDGE_BUTTONS = ("ping", "reload")
 SETTINGS_FILE = "/userfs/godot/app_userdata/Deadnight/settings.cfg"
 # Godot's web build mirrors `user://` into IndexedDB `/userfs`, store `FILE_DATA`, one record a file.
 WRITE_FILE_JS = """([path, text]) => new Promise((resolve) => {
@@ -214,7 +219,9 @@ def main() -> int:
     parser.add_argument("build", help="the exported web folder, or a URL")
     parser.add_argument("out", type=Path)
     parser.add_argument("--ui", type=float, default=1.0, help="the interface size to run at (0.8, 1.0 or 1.25)")
+    parser.add_argument("--page", choices=sorted(PAGES), default="844", help="the phone's page, 844 x 390 or 667 x 375")
     args = parser.parse_args()
+    PHONE.update(PAGES[args.page])
     quiet = os.environ.get("GDS_QUIET") == "1" or os.environ.get("GDS_ALLOW_POINTER_LOCK") == "1"
     if sys.platform == "win32" and not quiet:
         print("refusing to run outside `gds quiet` (it takes pointer lock)", file=sys.stderr)

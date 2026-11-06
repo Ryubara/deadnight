@@ -198,10 +198,23 @@ jobs:
           "$godot" --headless --path repos/deadnight/game --fixed-fps 60 -- --autopilot --rounds=12 --startround=12 --hold=110 --seconds=140 --count=3 --bots=3 --ceiling=desktop --xp=1 --sample=1 --out="$PWD/perf.json" 2>&1 | tee perf.log
           if grep -E "^(SCRIPT )?ERROR" perf.log; then exit 1; fi
           python3 repos/deadnight/tools/perf/check_budget.py perf.json repos/deadnight/tools/perf/budget.json --markdown perf-summary.md
+      - name: Hold the worst room a server can hold to its budget
+        if: matrix.shard == 1
+        # 8 people and 7 bots (15 bodies, `NightHost.MAX_SEATS`) at the same round and count, the desktop's 120 dead (#1193).
+        # One process holds one client, so the other seven people are seats played by bots' brains (`--people=8`). The
+        # crowd takes about a minute to reach 90 % of its cap, so the night runs 85 s. Its own limits are in
+        # tools/perf/budget_worst_room.json; the four-player case above keeps its tighter ones.
+        run: |
+          set -o pipefail
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          "$godot" --headless --path repos/deadnight/game --fixed-fps 60 -- --autopilot --rounds=12 --startround=12 --hold=85 --seconds=85 --count=3 --bots=7 --people=8 --ceiling=desktop --xp=1 --sample=1 --out="$PWD/perf-worst.json" 2>&1 | tee perf-worst.log
+          if grep -E "^(SCRIPT )?ERROR" perf-worst.log; then exit 1; fi
+          python3 repos/deadnight/tools/perf/check_budget.py perf-worst.json repos/deadnight/tools/perf/budget_worst_room.json --title "Worst room (15 bodies)" --markdown perf-summary-worst.md
       - name: Show the budget in the job summary
         if: always() && matrix.shard == 1
         run: |
           if [ -f perf-summary.md ]; then cat perf-summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f perf-summary-worst.md ]; then cat perf-summary-worst.md >> "$GITHUB_STEP_SUMMARY"; fi
 
       - name: Run the tests (GdUnit4), this shard's scripts
         id: tests
