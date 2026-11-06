@@ -369,6 +369,13 @@ func _paths_stay(scene: String, saved: LotNavmeshes) -> void:
 		var to := vertices[mesh.get_polygon((i * 31 + 11) % starts)[0]]
 		var before := NavigationServer3D.map_get_path(cut, from, to, true, NavLayers.DEAD)
 		var after := NavigationServer3D.map_get_path(kept, from, to, true, NavLayers.DEAD)
+		# A start on a scrap (an island the bake leaves between props: 207 pieces on the lot, the
+		# small ones 0.2 to 25 m2) has no way in the cut alone, which is what the split fixes by giving
+		# scraps to the gaps' mesh: the dead's way from there is new, not kept. Which polygons the
+		# every-seventh sample lands on moves with the mesh (#1334 added 16), so the sample leaves
+		# such starts out.
+		if _length(before) <= 0.0:
+			continue
 		(
 			assert_float(_length(after))
 			. override_failure_message(

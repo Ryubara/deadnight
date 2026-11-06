@@ -145,6 +145,21 @@ How a zombie is held at a breach, and what we learned making it (#155):
   in the navigation mesh and the dead outside would have no path. They are `StaticBody3D`s on layer 2 (players' bodies
   get that bit in their mask in `NightWorld.add_body`); shots and grenades only look at layer 1, so they pass through
   the boards and a zombie at them can be shot.
+- **A solid prop that is not CSG is not in the mesh either, unless it says so (#1334).** The baker reads CSG boxes,
+  so the four breaker posts (`CircuitSwitch`'s `Post`, a `StaticBody3D` of 0.8 by 0.5 m) were solid to a body and not
+  to the walk: the booth's post stands 0.05 m off the booth's north wall, whose mesh edge is 0.5 m off the wall, so
+  the path round the booth's north-east corner from the west ran through the post and a body walked into its west
+  face and stood (a `HumanWalker` from `(-4.5, 20.4)` to the east midway's stand stood 2.03 s there; the same walk
+  from the east, `(12.5, 31.6)` to `(-4.5, 20.4)`, did too). A body joins the baker's input by being in the group
+  `navmesh_obstacle` (`NavmeshBaker.OBSTACLE_GROUP`; its box shapes are baked like a CSG box), which the post's scene
+  does. What opens and shuts at run time (boards, the window frames' sill, jambs, header and blocker) stays out of it:
+  baking a frame would shut the breach the dead come through. `test_lot_walks_between_spots.gd` finds the props with
+  only the world's layer on (`props_outside_the_bake`) and fails on one that is not in the group, so a later solid
+  prop needs the group (or a saved note in that test's `STILL_OUT`, which holds the second map's four lockers, #1340).
+  Baking the posts changed the nine saved meshes by +16 polygons each (3031 to 3047 for no doors, 3078 to 3094 for the
+  last set) and nothing else: of the 76 roam spots, spawn markers and player markers, every ordered pair that had a
+  path still has one in every set (1 606 to 5 700 pairs a set, 0 lost, 0 gained), the longest detour is 6.6 m
+  (round a post that stood in the way) and the mean change is under 0.1 m.
 - **The apron is ground the mesh needs.** The field's ground ends at the fence line; the dead's spawns outside it
   needed floor of their own, walled in on three sides.
 - **`Transform3D` in a `.tscn` is written row by row**, so the third axis of a yawed node is the third *column*:
@@ -264,7 +279,8 @@ nothing is baked while the game runs:
   worker, `is_busy` stays false). A lot that changed finds nothing and is baked at run time as before, with a warning.
 - Doors need no obstacles or links: the saved meshes are the very meshes a rebake makes, so the path the dead walk
   after a purchase is the one they walked (`test_lot_navmeshes.gd` compares every vertex and polygon).
-- **After any change to the lot's collision boxes (a prop, a wall, a door) run the tool and commit the .res.**
+- **After any change to the lot's collision boxes (a prop, a wall, a door, a body in `navmesh_obstacle`) run the tool
+  and commit the .res.**
   `tests/zombies/test_lot_navmeshes.gd` fails until you do (it names the tool). Changing the baker's sizes
   (`CELL_SIZE`, `AGENT_*`) does the same.
 
