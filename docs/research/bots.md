@@ -2169,7 +2169,8 @@ brain (the goal behind the post) and passes now.
 
 **Not changed, and seen:** the walking mesh runs straight through the breaker post of the screen lot (a 1.75 m stop at
 (-0.13, 0.5, -45.95) on the way north): a path that must pass it is called walled and the goal given up, which is the
-right answer for a bot. Whether the dead's paths meet the same post was not looked at.
+right answer for a bot. Whether the dead's paths meet the same post was not looked at. *Since #1334:* the four posts
+are in the walking mesh (`navmesh_obstacle`, `docs/research/zombies.md`), so the mesh no longer runs through this one.
 
 ## A Rookie idle for 26 s on a piece of mesh joined to nothing (#1041)
 
@@ -2271,9 +2272,10 @@ this spot, seeds 26, 29, 36 and 64, and the gate broken in 4 of the cell's night
 2.2 s, none over the gate (seeds 56 and 63 of veteran_4 break other gates: a tail of 167 s and a zombie in view for
 9.4 s). No gate, limit or number was changed.
 
-**Not changed, and seen:** the post stays out of the walking mesh, so a bot (or an errand: `boards mid_e` from the west
-walks the same line) that comes round the booth's corner from the west still loses seconds on it. Baking the four
-breaker posts into the mesh changes the saved meshes of the lot and the dead's walk; it is its own issue.
+**Not changed here, done in #1334:** the post stayed out of the walking mesh, so a bot (or an errand: `boards mid_e`
+from the west walks the same line) that came round the booth's corner from the west still lost seconds on it. #1334 baked
+the four breaker posts into the lot's meshes (`docs/research/zombies.md`, "A solid prop that is not CSG is not in the
+mesh either"): the same walk has no stuck episode, with the ladder's fix and without it.
 
 ## A Roam bot in the west midway's corner (#1339)
 

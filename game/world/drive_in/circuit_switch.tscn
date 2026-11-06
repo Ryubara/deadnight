@@ -53,7 +53,7 @@ size = Vector3(0.16, 0.16, 0.05)
 [node name="CircuitSwitch" type="Node3D"]
 script = ExtResource("1_switch")
 
-[node name="Post" type="StaticBody3D" parent="."]
+[node name="Post" type="StaticBody3D" parent="." groups=["navmesh_obstacle"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
 
 [node name="Shape" type="CollisionShape3D" parent="Post"]
