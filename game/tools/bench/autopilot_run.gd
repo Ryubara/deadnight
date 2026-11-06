@@ -39,7 +39,8 @@ extends Node
 ##                signed-in solo night: its XP is kept in the profile and sent to the account
 ##   `map=ID`     the map of the night (`MapRegistry`: `drive_in`, `small_indoor`; default the lot)
 ##   `seconds=S`  stop after S seconds of night whatever round it is (default 600)
-##   `seed=N`     the seed of the night (`Night.SEED` otherwise)
+##   `seed=N`     the night's dice (`Night.SEED` by default). A seed is a different night: its round
+##                in 30 minutes runs from 9 to 19, so compare means over seeds (#1341)
 ##   `trace=PATH` a line of hashes a tick (`NightTrace`): the first tick two runs differ (#1350)
 ##   `out=PATH`   on a desktop: write the report there and quit
 ## The report is `window.deadnightRounds` (JSON text) in a browser, and a `AUTOPILOT_RUN` line on a
@@ -102,7 +103,7 @@ func _ready() -> void:
 	LotBatcher.small_range = _args.get_float("smallrange", 0.0)
 	NightScreen.match_settings = settings_from(_args)
 	NightScreen.start_mode = Night.Mode.AUTOPILOT
-	NightScreen.start_seed = _args.get_int("seed", Night.SEED)
+	NightScreen.start_seed = seed_from(_args)
 	NightScreen.start_tuning = tuning(_args)
 	NightScreen.shoulder_camera = true
 	if _args.get_int("signin") == 1:
@@ -149,6 +150,13 @@ func _process(delta: float) -> void:
 	):
 		_done = true
 		_publish(night)
+
+
+## The night's seed: `seed=N`, `Night.SEED` when it is not given or is negative (a negative seed
+## would ask `NightScreen` for a fresh one, and a run that is measured must repeat).
+static func seed_from(args: NetArgs) -> int:
+	var asked := args.get_int("seed", Night.SEED)
+	return asked if asked >= 0 else Night.SEED
 
 
 ## The shipped rules with a player who does not die, so the night outlasts the crowd's growth.

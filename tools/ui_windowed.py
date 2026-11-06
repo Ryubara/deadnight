@@ -43,9 +43,11 @@ UI_FOLDER = "tests/ui"
 # skips there or runs no test case is reported as `not-run`, not as a pass.
 PIXEL_SUITES = ("test_level_ink", "test_poster_art_pixels")
 
-# A known-file entry that starts with this is a suite the runner's software GL cannot judge (too slow, or it counts
-# frames in real time): it is run and shown, never a reason to open an issue, and passing is not stale.
-SOFTWARE_GL = "llvmpipe:"
+# A known-file entry that starts with one of these is a suite the runner cannot judge: `llvmpipe:` (its software GL is too
+# slow, or the suite counts frames in real time) or `xvfb:` (the virtual display has no window manager, so a window
+# cannot be minimized, moved or focused by the engine). It is run when asked for and shown, never a reason to open an
+# issue, and passing is not stale.
+SOFTWARE_GL = ("llvmpipe:", "xvfb:")
 
 # One suite's own limit. The longest suite takes about a minute on a developer's GPU; a hang costs this much, once.
 SUITE_TIMEOUT_SECONDS = 300
@@ -149,7 +151,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     requested = [s.strip() for s in args.suites.split(",") if s.strip()]
     names = suites_in(project, requested)
     if not requested:
-        # The whole folder leaves out the suites the runner's software GL cannot judge (they cost 18 minutes of the
+        # The whole folder leaves out the suites the runner cannot judge (they cost 18 minutes of the
         # 45 and prove nothing); the report names them. Asking for them by name runs them.
         known = load_known(Path(args.known))
         names = [n for n in names if not known.get(n, "").startswith(SOFTWARE_GL)]
@@ -298,7 +300,10 @@ def render(
             ("not_run", "Pixel suites that did not run in the window"),
             ("stale", "Listed as known failures but pass now: remove them from `tools/ui_windowed_known.json`"),
             ("known", "Known failures, each with the issue that fixes it"),
-            ("software_gl", "Not judged: the runner's software GL is too slow or too slow-framed for them"),
+            (
+                "software_gl",
+                "Not judged: the runner (its software GL or its virtual display) cannot tell, and they pass headless",
+            ),
         ]
         for key, title in sections:
             rows = groups[key]
@@ -312,7 +317,10 @@ def render(
         ran = {r["suite"] for r in suites}
         left_out = [n for n, why in known.items() if why.startswith(SOFTWARE_GL) and n not in ran]
         if left_out and not result.get("subset"):
-            lines += [f"### Not run here: the runner's software GL cannot judge them ({len(left_out)})", ""]
+            lines += [
+                f"### Not run here: the runner (its software GL or its virtual display) cannot judge them ({len(left_out)})",
+                "",
+            ]
             lines += [f"- `{n}` ({known[n]})" for n in left_out] + [""]
         slow = sorted(suites, key=lambda r: -r["seconds"])[:5]
         lines += ["Slowest: " + ", ".join(f"`{r['suite']}` {r['seconds']:.0f}s" for r in slow), ""]
@@ -401,6 +409,7 @@ def self_test() -> int:
         {"suite": "test_slow", "outcome": TIMEOUT, "seconds": 300.0, "headless": PASSED},
         {"suite": "test_slow_ok", "outcome": PASSED, "seconds": 90.0},
         {"suite": "test_slow_red", "outcome": TIMEOUT, "seconds": 300.0, "headless": FAILED},
+        {"suite": "test_nowm", "outcome": FAILED, "seconds": 2.0, "headless": PASSED},
     ]
     known = {
         "test_known": "#1",
@@ -408,6 +417,7 @@ def self_test() -> int:
         "test_slow": "llvmpipe: draws 60 frames",
         "test_slow_ok": "llvmpipe: draws 60 frames",
         "test_slow_red": "llvmpipe: draws 60 frames",
+        "test_nowm": "xvfb: no window manager to minimize a window",
     }
     groups = classify({"suites": rows, "complete": True}, known)
     assert [r["suite"] for r in groups["window_only"]] == ["test_win", "test_hang"]
@@ -416,7 +426,7 @@ def self_test() -> int:
     assert [r["suite"] for r in groups["stale"]] == ["test_fixed"]
     assert [r["suite"] for r in groups["not_run"]] == ["test_level_ink"]
     # A software-GL suite that times out is only shown; one that passes is not stale; one red headless too is red.
-    assert [r["suite"] for r in groups["software_gl"]] == ["test_slow"]
+    assert [r["suite"] for r in groups["software_gl"]] == ["test_slow", "test_nowm"]
     assert "test_slow_ok" not in [r["suite"] for r in groups["stale"]]
 
     assert state_of("success", {"suites": rows, "complete": True}, groups) == "failing"

@@ -2,5 +2,6 @@
   "test_hud_prompt_fit": "llvmpipe: no result in 900 s (39 s on a GPU); draws every prompt at every size",
   "test_menu_hero_arms": "llvmpipe: 9 min 40 s (17 s on a GPU); draws every weapon at every angle live",
   "test_menu_stage": "llvmpipe: counts frames drawn per tick, and a software renderer draws fewer (passes on a GPU)",
-  "test_reduced_motion_skin": "llvmpipe: reads the overlay's state inside a timed fade (passes on a GPU)"
+  "test_reduced_motion_skin": "llvmpipe: reads the overlay's state inside a timed fade (passes on a GPU)",
+  "test_window_fixture": "xvfb: minimizing needs a window manager and xvfb-run starts none: the window stays windowed and keeps drawing (30 frames in 30), so test_a_minimized_window_draws_no_frame cannot hold; it passes in a real window"
 }

@@ -195,10 +195,114 @@ dead) and **3x with the desktop's crowd** (round 1 to 12, 25 minutes, up to 106 
   `leak_budget.json` on a flat night and on a night with each count rising at 1.2 times its limit, on a fast and a
   slow runner: each fails and names its count, and half the limit passes (and the old wall-clock read fails the
   half-limit case, which is how it was caught).
-- **The night itself changed.** The dispatch on `main` reached round 13 in the 30 minutes (169 kills) against round 17
-  to 18 (268 to 270 kills) on 2026-11-04 and 2026-11-05, with a peak of 2 569 all the same. Whether #1023 (the
-  weapon numbers) or #1292 (the automatic reload) slows the autopilot's night was not looked at; it is not a leak
-  and it is where a reader of the next red `leak` job should look first.
+- **The night itself changed** (a dispatch reached round 13 with 169 kills, the days before 17 to 18 with 268 to 270):
+  it did not. It is the spread of the night, one draw of a seed on any commit from `61a990df` to `main`; see the next
+  section.
+
+### Why the autopilot night reached round 13 and not 17 (#1341)
+
+The dispatch on `main` `d15d770f` (run 42168150408) reached round 13 with 169 kills in the leak job's 30 minutes; the
+runs of 2026-11-04 and 2026-11-05 reached 18 and 17 (270 and 268 kills), and the two dispatches after it, `1d702805` and
+`fe481043`, 18 (261 and 219 kills). The guess was #1023 (the weapon numbers) or #1292 (the automatic reload).
+**Neither is seen to move the night, within the intervals below. The 13 is an ordinary draw of a night whose round runs
+from 9 to 19 with the seed, and the fault it carried, bots holding a loaded ray gun beside the dead, was fixed by #1324
+(first built at `1d702805`).**
+
+**The five CI runs are comparable.** The command of the `leak` job (`--autopilot --rounds=999 --hold=9999
+--seconds=1800 --count=1 --bots=3 --frames=0 --labels=0 --sample=1` at `--fixed-fps 60`) is the same line in
+`bots-nightly.yml` at all five commits, the seed is the constant `Night.SEED` (1958) in every one, and every run is
+1 799 one-second rows on 4 cores. What differs is the code, and in a night every code change is a new draw.
+
+| Run | Code | Round | Kills | Seconds the dead alive stood unchanged for 20 s or more |
+| --- | --- | ---: | ---: | ---: |
+| 41817408169 (2026-11-04) | `935e84fe` | 18 | 270 | 135 |
+| 42014815270 (2026-11-05) | `61a990df` | 17 | 268 | 239 |
+| 42168150408 (dispatch) | `d15d770f` | **13** | **169** | **667** |
+| 42174128469 (dispatch) | `1d702805` | 18 | 261 | 88 |
+| 42190556590 (dispatch) | `fe481043` | 18 | 219 | 100 |
+
+The five nights start round 10 within 15 s of each other (second 750 to 765), and the red night falls behind in rounds
+10 to 13: the dead alive stood at 18, 13, 10 and 4 for 25 to 63 s each in rounds 10 and 11, and at 11 for the last
+303 s. Rounds are lost to a night standing still, not to a slow kill rate.
+
+**The night is not reproducible, and the seed is the spread.** The same commit, seed and command, run twice at the same
+time, gave round 17 with 296 kills and round 11 with 116 (`d15d770f`, seed 1958; the two nights are the same for 430 s
+and then differ). On `main` six re-runs of a night: three differed in rounds (seed 2 gave 18 with 295 kills,
+then 10 with 71 twice; seed 8 gave 15 and then 17) and one more in kills. The first thing that differs between two such
+nights is a count of sounds started or culled in the first seconds; the dead alive follow between second 200 and 430.
+The source was not found ([#1350](https://github.com/Ryubara/deadnight/issues/1350)). So a night is a draw, and a
+commit is judged by many. `autopilot_run.gd` takes `--seed=N` for it (`Night.SEED` by default). All the nights below
+ran in the pinned Godot 4.7.2, headless, 5 or 6 at once on a 16-core machine.
+
+| Commit | What it is | Nights (seeds) | Round, mean (sd) | Median | Kills, mean (sd) | Nights at round 13 or less | Lowest round |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `61a990df` | the 2026-11-05 run, before #1292 and #1023 | 20 | **15.4** (3.3) | 16.5 | 226 (99) | 5 | 9 |
+| `d1387993` | just before #1292 | 8 | 16.1 (2.2) | 16.0 | 211 (85) | 1 | 12 |
+| `e485af6e` | #1292, the automatic reload | 8 | 16.6 (1.4) | 17.0 | 222 (73) | 0 | 14 |
+| `2ace7a81` | just before #1023 | 8 | 16.1 (2.0) | 16.5 | 220 (88) | 0 | 14 |
+| `9de6fab9` | #1023, the weapon numbers | 20 | **15.9** (2.9) | 17.0 | 216 (71) | 4 | 10 |
+| `d15d770f` | the red dispatch | 20 | **15.0** (3.1) | 16.0 | 205 (78) | 6 | 10 |
+| `1d702805` | #1324: a loaded ray gun in its own splash strikes | 20 | **16.6** (2.6) | 17.5 | 228 (65) | 2 | 10 |
+| `959b2f84` | `main` when this work began | 8 | 17.1 (1.9) | 18.0 | 238 (68) | 0 | 14 |
+
+![The rounds and kills of every night, by commit](autopilot-night-by-commit.png)
+
+Paired by seed (the same seed on both commits; the interval is a bootstrap of the mean difference over the seeds, 20 000
+resamples):
+
+| From to | Nights | Rounds | Kills | Nights up / down / equal (rounds) |
+| --- | ---: | --- | --- | --- |
+| `61a990df` to `9de6fab9` (before both, to #1023 which is after #1292) | 20 | +0.6 (-1.3 to +2.4) | -10 (-67 to +43) | 9 / 7 / 4 |
+| `61a990df` to `d15d770f` (before both, to the red night) | 20 | -0.4 (-2.3 to +1.5) | -21 (-74 to +32) | 7 / 9 / 4 |
+| `d1387993` to `e485af6e` (#1292) | 8 | +0.5 (-1.4 to +2.4) | +11 (-47 to +63) | 4 / 3 / 1 |
+| `2ace7a81` to `9de6fab9` (#1023) | 8 | +0.9 (-2.1 to +3.3) | +13 (-75 to +97) | 5 / 2 / 1 |
+| `d15d770f` to `1d702805` (the ray gun fix) | 20 | **+1.7 (+0.7 to +2.9)**, sign test p 0.06 | +22 (+2 to +46) | 11 / 3 / 6 |
+
+- **No commit between `61a990df` and `main` is seen to lower the night, #1023 and #1292 included.** A loss of more than
+  2.3 rounds from `61a990df` to `d15d770f` is outside the interval, and a smaller one cannot be told from none (the
+  paired spread of a seed is 4.4 rounds, so 20 nights show a change of about 2 and not one of 1). #1292 and #1023 read
+  +0.5 and +0.9 on 8 nights each, with intervals that reach down to -1.4 and -2.1. Nights at round 13 or less
+  are 5, 4 and 6 of 20 on the commit before both, at #1023 and at the red night: the dispatch's 13 is one of the six on
+  its own commit.
+- **The one step in the data is the ray gun fix, and it goes up.** `d15d770f` to `1d702805` is +1.7 rounds and +22
+  kills over 20 nights: 11 up, 3 down, 6 equal. That is the soak's 58 of 64 idle nights
+  ([bots.md](bots.md#the-first-two-nightly-runs-1319)): a bot with a loaded ray gun and a dead at 1 to 3 m does not
+  fire inside the gun's splash, and did nothing else.
+- **What the lost seconds are.** A throwaway probe printed, each minute of a stall (the dead alive unchanged for 40 s
+  or more), who stood where and what each bot's note was; it is not in the pull request. It ran in the 20 nights of
+  `d15d770f` and the 8 of `main` (a second set of `main`'s nights, so the rounds above are of the plain run).
+
+| Stall | `d15d770f`, 20 nights | `main`, 8 nights |
+| --- | --- | --- |
+| A bot holds a loaded ray gun with a dead inside the 3 m splash | 3 660 s in 10 nights (183 s a night) | **0** |
+| The person (the autopilot) has no rounds and no reserve, with a dead at its feet ([#1351](https://github.com/Ryubara/deadnight/issues/1351)) | 1 220 s in 4 nights | 1 320 s in 3 nights |
+| One to three dead stand and nobody has them in view (seed 13: 1 040 s; the rest 40 to 100 s; [#1352](https://github.com/Ryubara/deadnight/issues/1352)) | 1 620 s in 12 nights | 120 s in 3 nights |
+| More than three dead stand, neither of the above | 80 s in 2 nights | 40 s in 1 night |
+
+  On `main` the ray gun stall is gone and the person's is what is left. At seed 2 (round 10, 71 kills) the autopilot
+  stood at one spot from second 770 to the end of the night with a shotgun at 0 and 0 and 955 points, seven dead in
+  attack at 1 to 2 m (it cannot die: `AutopilotRun.PLAYER_HEALTH` is 1 000 000), and the three bots on `choke` and
+  `boards` errands 8 to 50 m away; the round never ended.
+
+![Round 10 never ends](autopilot-night-stall.png)
+
+**The autopilot or everyone?** Both, by two different faults, and neither is a balance change. The ray gun stall was
+every bot's, in the soak (no autopilot) as in this night; a person is not subject to it (they fire the ray gun inside
+the splash or strike). #1292 and #1023 changed nothing that could be measured for anyone: the weapon numbers move every
+player and bot alike, and the nights did not move. The person's stall is the autopilot's as a stand-in that cannot
+die: a person out of rounds with seven dead on them goes down and is revived by the bots. So the 30-minute night's round
+count measures how often the stand-in stalls, not how hard the game is.
+
+**For the maintainer.** Nothing to retune. #1023 and #1292 are cleared only to the intervals above. The leak job prints
+`round_reached` and `kills`, which are one draw: read them as a mean over at least ten seeds (`--seed=1` to `10` is about
+20 minutes on this machine, six at once), or not at all. A player would feel nothing from the ray gun fix: the bots now
+strike where they stood.
+
+Sample sizes, and what they cannot say: 20 nights a commit for the four commits the argument rests on and 8 for the
+rest; the seeds are 1 to 20 and 1 to 8 (never 1958, which the CI plays). An effect under about 2 rounds is not visible
+at this size, and a round is about 2 minutes of the night. The nights that differ on a second run make every number
+noisier than a fixed night would be, in the same way for every commit, so the comparisons stand and the single seeds do
+not.
 
 ## Why two runs of one night differ (#1350)
 
@@ -517,6 +621,9 @@ python tools/perf/check_budget.py <abs>/perf.json tools/perf/budget.json
 # A 30-minute leak soak (no per-frame rows, thin sampler rows):
 godot --headless --path game --fixed-fps 60 -- --autopilot --rounds=999 --hold=9999 --seconds=1800 \
     --count=1 --bots=3 --frames=0 --labels=0 --sample=1 --out=<abs>/leak.json
+# The same, a night of another seed (compare means over seeds 1 to 10, never one night; #1341):
+godot --headless --path game --fixed-fps 60 -- --autopilot --rounds=999 --hold=9999 --seconds=1800 \
+    --count=1 --bots=3 --frames=0 --labels=0 --sample=1 --seed=3 --out=<abs>/leak-s3.json
 # The HUD's draw calls part by part (add --hudprobe=1; prints HUDPROBE {json} once 60 dead stand)
 # Two runs of one night compared tick by tick (a line of hashes a tick; seed=N picks the night; '.meta' beside
 # the trace says the physics frame of the first tick); run it three times at once and diff the traces:
