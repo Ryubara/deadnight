@@ -7,13 +7,20 @@ extends GdUnitTestSuite
 const PLAY := "res://ui/screens/play_screen.tscn"
 const SECONDS := 2.0
 
+var _arrival := true
+
 
 func before_test() -> void:
+	# A window plays the drop that opens a night and a headless run has none (`--noarrival`); this
+	# suite is about the night after it (#1348), so the drop is off as in CI.
+	_arrival = NightScreen.arrival_enabled
+	NightScreen.arrival_enabled = false
 	PlayerLevel.use(10)
 	TogetherApi.forget()
 
 
 func after_test() -> void:
+	NightScreen.arrival_enabled = _arrival
 	TogetherApi.forget()
 	NightScreen.profile_path = ""
 	PlayerLevel.reset()

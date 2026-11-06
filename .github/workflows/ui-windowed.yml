@@ -81,8 +81,10 @@ jobs:
           SUITES: ${{ inputs.suites }}
           SUITE_TIMEOUT: ${{ inputs.timeout || '480' }}
           LIBGL_ALWAYS_SOFTWARE: "1"
+          LEVEL_INK_SHOTS: ${{ github.workspace }}/out/ink
         run: |
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          mkdir -p out/ink
           python3 repos/deadnight/tools/ui_windowed.py --self-test
           {
             echo "### Where it ran"
