@@ -132,7 +132,7 @@ that moves the touch layer, the HUD's places or the menu's scale. All take `<web
 | `touch_sprint.py` | both sizes in one run | |
 | `players_column_phone.py`, `challenge_card_phone.py` | `--pages 844,667` | take a Godot and a work folder, export their own copy (delete it after) |
 | `touch_look.py`, `touch_look_smooth.py`, `touch_grenade_look.py` | older sizes | not in the rework's list; they pass on main |
-| `touch_melee.py`, `touch_assist.py` | 844 x 390 | bench scenes that export their own copy (delete it after); both fail on main, not yet read to the end (#1320) |
+| `touch_melee.py`, `touch_assist.py` | 844 x 390 | bench scenes that export their own copy (delete it after); both pass since #1320, each wants a Godot and a work folder (the section above) |
 
 Two traps found by that run. `touch_hits` and `touch_buttons` list every circle of the layout, the contextual Interact
 and Strike too, drawn or not: a probe that presses "every button" must skip them unless they are up (`touch_strike` for
