@@ -60,12 +60,9 @@ var denials: Array[Dictionary] = []
 var moments: Array[Dictionary] = []
 ## The clock when the bot last bought something.
 var purchased_at := -INF
-## The round in which the crane's prize was last left on the glass (`crane_prize_lost`, expired),
-## and the weapons carried then (their names, sorted), or -1 and empty. The bot plays no more in
-## that round with those weapons: nothing it knows has changed, so another play would be dealt the
-## same kind of hand (#1322).
-var crane_passed_round := -1
-var crane_passed_arms := ""
+## The round in which the crane's prize was last left on the glass (`crane_prize_lost`, expired)
+## and the weapons carried then: the bot plays no more in that round with those weapons (#1322).
+var crane_pass := CranePass.new()
 ## Rays the last look cast: how busy this think already was.
 var rays := 0
 var now := 0.0
@@ -74,22 +71,12 @@ var now := 0.0
 ## Notes that the prize of the crane was left on the glass in `round_number` by a bot carrying
 ## `arms`.
 func pass_crane(round_number: int, arms: Dictionary) -> void:
-	crane_passed_round = round_number
-	crane_passed_arms = arms_key(arms)
+	crane_pass.note(round_number, arms)
 
 
 ## Whether the bot passed the crane's prize in `round_number` carrying `arms` (nothing has changed).
 func passed_crane(round_number: int, arms: Dictionary) -> bool:
-	return crane_passed_round == round_number and crane_passed_arms == arms_key(arms)
-
-
-## The weapons of `arms` as one string, in order of name.
-static func arms_key(arms: Dictionary) -> String:
-	var names: Array[String] = []
-	for id: StringName in arms:
-		names.append(String(id))
-	names.sort()
-	return ",".join(names)
+	return crane_pass.holds(round_number, arms)
 
 
 ## Believed and in sight, nearest first (ties by id): the zombies the bot may shoot at.

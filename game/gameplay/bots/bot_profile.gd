@@ -110,7 +110,7 @@ const REACTION_FLOOR := 0.20
 ## that the bot would take for it to pay for a play (#1322). Each play costs the same and the draw
 ## is blind: a bot that would take one prize in ten spends ten plays' points to get one, and stands
 ## at the glass nine times to leave what it was dealt. 0 plays whenever any prize would be taken.
-@export_range(0.0, 1.0, 0.05) var crane_min_odds: float = 0.25
+@export_range(0.0, 1.0, 0.05) var crane_min_odds: float = CraneOdds.MIN_SHARE
 ## Grenades under which the bot buys more at a rack when it has points to spare (0: never).
 @export_range(0, 5, 1) var grenades_wanted: int = 2
 ## How many weapons the bot re-cuts in a night.
