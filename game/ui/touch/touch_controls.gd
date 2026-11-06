@@ -98,6 +98,8 @@ const AUTO_FIRE_SETTING := &"controls/touch_auto_fire"
 var tuning: TouchTuning = TouchLook.tuning
 ## The double tap on free ground (`TouchDoubleTap`).
 var double_tap := TouchDoubleTap.new()
+## The fingers on the screen while the layer is down, for the layer to take in when it is up.
+var resting := TouchResting.new()
 ## () -> float, seconds of real time; without it `Time`'s. A test steps its own.
 var clock := Callable()
 ## The finger's slop in canvas units; below 0 it is `TouchSlop` of the window now.
@@ -403,6 +405,7 @@ func _look_key() -> int:
 
 func _input(event: InputEvent) -> void:
 	if not _active:
+		resting.note(event)
 		return
 	if event is InputEventScreenTouch or event is InputEventScreenDrag:
 		# This layer handles the touch before the HUD sees it: the input mode is told here.
@@ -750,6 +753,7 @@ func _refresh_active() -> void:
 			# Controls up and no other device used yet: the HUD shows a finger, not a keycap.
 			UIInputMode.touch = true
 			UIInputMode.gamepad = false
+			_adopt_resting()
 		if not now:
 			_release_everything()
 		queue_redraw()
@@ -762,7 +766,24 @@ func _refresh_active() -> void:
 	TouchLook.layer_up = _active
 
 
+## The fingers that were on the screen while the layer was down and are still there. None of them
+## presses a button (a thumb that happens to rest on Fire has not asked for a shot) and none is a
+## tap: one in the stick's zone is the stick from where it is, any other looks.
+func _adopt_resting() -> void:
+	var fingers := resting.take()
+	for index: int in fingers:
+		var point: Vector2 = fingers[index]
+		if _stick_index < 0 and _stick_zone().has_point(point):
+			_stick_index = index
+			_touches[index] = _own(&"stick", point, {&"pad": TouchStick.new(point)})
+		elif not _has_role(&"look"):
+			_touches[index] = _own(&"look", point, {&"tap": false, &"held": Vector2.ZERO})
+
+
 func _release_everything() -> void:
+	# What is still down when the layer goes (a pause opens under a finger) is there when it is back.
+	for index: int in _touches:
+		resting.rest(index, _touches[index][&"last"])
 	double_tap.reset()
 	look_smoother.take_all()
 	_touches.clear()
