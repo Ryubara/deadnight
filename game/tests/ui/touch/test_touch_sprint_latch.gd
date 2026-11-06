@@ -115,6 +115,11 @@ func test_losing_the_layer_clears_the_latch_and_the_next_press_walks() -> void:
 	assert_bool(_controls().is_sprinting()).is_false()
 	assert_bool(Input.is_action_pressed(&"sprint")).is_false()
 	_controls().live = true
+	# The thumb never left the glass: it is the stick again from where it rests (#1329), a walk
+	# and no sprint, because the latch went with the layer.
+	assert_bool(_controls().is_stick_down()).is_true()
+	assert_bool(_controls().is_sprinting()).is_false()
+	await _fixture.lift(0)
 	assert_bool(_controls().is_stick_down()).is_false()
 	await _fixture.touch(0, START)
 	assert_bool(_controls().is_sprinting()).is_false()
