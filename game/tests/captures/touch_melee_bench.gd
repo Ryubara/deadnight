@@ -5,12 +5,17 @@ extends Node
 ## made, the zombies it hurt, whether the night paused). Not part of the game:
 ## `tools/web_smoke/touch_melee.py` exports a copy of the project that starts on this scene and
 ## reads `window.__melee`. The page's query: `?touch=1` and `left=1` for a left hand.
+##
+## The Strike button this probe presses shows only while a dead is in reach (#1285), so the run is
+## ready when it is up: the zombie is held in reach and the bench waits for the button to appear.
 
 const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
 ## How far ahead of the player the zombie is held (metres): inside the blow's 1.6 m.
 const REACH_AHEAD := 1.1
 const BEHIND := 30.0
+## The health the held zombie is kept above, so no blow of the run kills it.
+const HELD_HEALTH := 100000.0
 const SETTLED_AT := 0.0005
 const SETTLED_FRAMES := 20
 const SETTLE_LIMIT := 900
@@ -40,6 +45,9 @@ func _process(delta: float) -> void:
 
 func _run() -> void:
 	var query := _query()
+	# The bench is about a thumb, not the arrival: the drop is turned off (a page that asks for the
+	# probes should skip it on its own, `WebProbe.asked`, and plays it: #1323).
+	NightScreen.arrival_enabled = false
 	await get_tree().process_frame
 	UIRouter.reset(MENU, UITransition.Kind.CUT)
 	await UIRouter.idle
@@ -63,6 +71,11 @@ func _run() -> void:
 			break
 	await _settle_view()
 	_night.ticked.connect(_hold)
+	# The layer comes up and the button after it: the dead is in reach once `_hold` has put it there.
+	for _i in SETTLE_LIMIT:
+		if _controls.is_active() and _controls.strike_up:
+			break
+		await get_tree().process_frame
 	_started = true
 
 
@@ -95,9 +108,19 @@ func _hold() -> void:
 		body.velocity = Vector3.ZERO
 		if first:
 			body.position = player.global_position + ahead * REACH_AHEAD
+			_keep_alive(body)
 			first = false
 		else:
 			body.position = player.global_position + Vector3(0.0, 0.0, BEHIND)
+
+
+## The held zombie takes the blows and stays: a dead one would take the Strike button away (it
+## shows only with a living dead in reach, #1285) and the taps after the first would press nothing.
+## The rules own the health (`GameRules`), so it is topped up there.
+func _keep_alive(body: ZombieBody) -> void:
+	var state := _night.server.rules._zombies.get(body.id) as ZombieState
+	if state != null:
+		state.health = maxf(state.health, HELD_HEALTH)
 
 
 ## Waits until the shoulder camera has stopped easing (the lens is still for a while).
@@ -130,6 +153,8 @@ func _publish() -> void:
 		"buttons": buttons,
 		"ready": _started,
 		"melee": [window.x / ratio, window.y / ratio],
+		"strike": _controls.strike_up,
+		"active": _controls.is_active(),
 		"blows": _blows,
 		"log": _log,
 		"hurt": _hurt,

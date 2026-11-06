@@ -29,12 +29,13 @@ const DEFAULT_CAPACITY := 3
 ## stands 40.
 const DEFAULT_ALIVE_BUDGET := 120
 ## Bots in all the rooms of a process together, unless told otherwise (`ServerConfig.bot_budget`,
-## shared by the open rooms: `BotLimits.for_room`). A room with any bot builds its frame on every
-## step and a bot costs about 0.3 ms more; eight people and seven bots in each of three rooms took
-## 27 ms of the 16.7 ms tick on Railway, and three rooms of eight people (no bots) are what the
-## tick holds (`docs/research/crowd-budget.md`, "Rooms of fifteen bodies"). Two bots: a lone room
-## seats both, two rooms one each, three none.
-const DEFAULT_BOT_BUDGET := 2
+## shared by the open rooms: `BotLimits.for_room`): a lone room seats 3, two rooms and three rooms
+## 1 each. 2 since #1193 (a room with any bot built its frame on every step: eight people and seven
+## bots in each of three rooms took 27 ms of the 16.7 ms tick on Railway), 3 since #1222 (a room
+## with bots asks the use card near sites only, so a bot costs 0.6 to 0.9 ms of the process's tick,
+## its own work and the body it is, and this many keep the room at about the p95 of the same rooms
+## without bots, measured on Railway beside the same build: `docs/research/crowd-budget.md`).
+const DEFAULT_BOT_BUDGET := 3
 ## Seconds between heartbeats (the default of `heartbeat_every`).
 const HEARTBEAT_EVERY := 5.0
 ## The least a room is cut to by the budget (rooms beyond the budget over this stand this many).

@@ -10,8 +10,9 @@ the night paused, and where every touch button is (#606): each circle must lie i
     uv run --project <kit>/python gds quiet -- \\
         uv run --with playwright==1.64.1 python tools/web_smoke/touch_melee.py <godot> <work folder> [--out <folder>]
 
-`<godot>` is the pinned Godot (`gds tool path godot`). It fails when the browser logs an error, when the night is
-paused, when a tap does not strike, when three taps inside 0.6 s make more than the one blow, or when a tap after the
+`<godot>` is the pinned Godot (`gds tool path godot`). The Strike button shows only while a dead is in reach, so the
+bench holds one 1.1 m ahead and the run starts when the button is up. It fails when the browser logs an error, when the
+night is paused, when a tap does not strike, when three taps inside 0.6 s make more than the one blow, or when a tap after the
 cooldown does not strike again.
 """
 
@@ -43,13 +44,16 @@ def state(page: Page) -> dict:
     return page.evaluate("window.__melee || {}") or {}
 
 
-def stamp(page: Page, taps: list[float]) -> None:
-    """Notes the page's clock at a touch start, to line the taps up with the game's answers."""
+def stamp(page: Page, taps: list[float], up: list[bool]) -> None:
+    """Notes the page's clock at a touch start, to line the taps up with the game's answers, and whether Strike is up."""
     taps.append(round(page.evaluate("performance.now()"), 1))
+    up.append(bool(state(page).get("strike")))
 
 
-def tap(page: Page, client: CDPSession, taps: list[float], x: float, y: float, hold_s: float = 0.12) -> None:
-    stamp(page, taps)
+def tap(
+    page: Page, client: CDPSession, taps: list[float], up: list[bool], x: float, y: float, hold_s: float = 0.12
+) -> None:
+    stamp(page, taps, up)
     touch_assist.touch(client, "touchStart", [(1, x, y)])
     time.sleep(hold_s)
     touch_assist.touch(client, "touchEnd", [])
@@ -59,6 +63,7 @@ def run_once(url: str, label: str, query: str, out: Path | None) -> dict:
     problems: list[str] = []
     steps: dict[str, int] = {}
     taps: list[float] = []
+    up: list[bool] = []
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome", headless=True)
         context = browser.new_context(viewport=VIEWPORT, has_touch=True, is_mobile=True)
@@ -70,26 +75,33 @@ def run_once(url: str, label: str, query: str, out: Path | None) -> dict:
         while time.monotonic() < deadline and not state(page).get("ready"):
             time.sleep(0.5)
         if not state(page).get("ready"):
-            raise TimeoutError(f"{label}: the bench never got ready: {state(page)}")
+            # An empty answer with another bench's page published is the wrong scene exported (#1320).
+            published = page.evaluate("Object.keys(window).filter(k => k.startsWith('__'))")
+            raise TimeoutError(
+                f"{label}: the bench never got ready in {READY_TIMEOUT_S} s: window.__melee {state(page)}, "
+                f"the page published {published}"
+            )
         client = context.new_cdp_session(page)
         time.sleep(1.0)
         x, y = state(page)["melee"]
+        if not state(page).get("strike"):
+            raise RuntimeError(f"{label}: the bench is ready but the Strike button is not up with a dead in reach")
         if out is not None:
             out.mkdir(parents=True, exist_ok=True)
             page.screenshot(path=str(out / f"touch_melee_{label}_before.png"))
         # The taps inside the cooldown start within INSIDE_S of the first (the page's own clock says so below):
         # each CDP call costs tens of milliseconds, so the gaps are short and checked, not trusted.
-        tap(page, client, taps, x, y, 0.1)
+        tap(page, client, taps, up, x, y, 0.1)
         time.sleep(0.1)
         steps["one_tap"] = state(page)["blows"]
         for _ in range(2):
-            tap(page, client, taps, x, y, 0.1)
+            tap(page, client, taps, up, x, y, 0.1)
             time.sleep(0.05)
         time.sleep(0.1)
         steps["three_taps"] = state(page)["blows"]
         time.sleep(COOLDOWN_S + 0.6)
         # The tap after the cooldown, with the button's capture while the finger is down.
-        stamp(page, taps)
+        stamp(page, taps, up)
         touch_assist.touch(client, "touchStart", [(1, x, y)])
         time.sleep(0.1)
         if out is not None:
@@ -97,7 +109,7 @@ def run_once(url: str, label: str, query: str, out: Path | None) -> dict:
         touch_assist.touch(client, "touchEnd", [])
         time.sleep(0.4)
         steps["after_cooldown"] = state(page)["blows"]
-        result = {"steps": steps, "end": state(page), "problems": problems, "taps": taps}
+        result = {"steps": steps, "end": state(page), "problems": problems, "taps": taps, "strike_up": up}
         browser.close()
     return result
 
@@ -115,6 +127,9 @@ def verdict(label: str, result: dict) -> list[str]:
     if not end.get("buttons"):
         wrong.append(f"{label}: the game reported no buttons")
     taps = result["taps"]
+    for number, shown in enumerate(result["strike_up"], start=1):
+        if not shown:
+            wrong.append(f"{label}: the Strike button was not up for tap {number}: the tap pressed free ground")
     if taps[2] - taps[0] > INSIDE_S * 1000:
         wrong.append(
             f"{label}: the probe's third tap came {taps[2] - taps[0]:.0f} ms after the first, wanted under {INSIDE_S * 1000:.0f}"
@@ -144,7 +159,17 @@ def main() -> int:
         for label, query in RUNS.items():
             try:
                 result = run_once(f"http://127.0.0.1:{port}/index.html", label, query, args.out)
-                print(label, json.dumps({"steps": result["steps"], "taps": result["taps"], "end": result["end"]}))
+                print(
+                    label,
+                    json.dumps(
+                        {
+                            "steps": result["steps"],
+                            "taps": result["taps"],
+                            "strike_up": result["strike_up"],
+                            "end": result["end"],
+                        }
+                    ),
+                )
                 failed += verdict(label, result)
             except (RuntimeError, TimeoutError) as error:
                 failed.append(str(error))

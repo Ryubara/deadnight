@@ -106,6 +106,34 @@ a keyboard.
 | Six markers before two meet at 667 x 375, 1.0 | Gone: main holds 10 or more there (last section, #1317) |
 | Pause and Ping 27 CSS px apart | Fixed in #1289: Ping stands under Pause, 56 CSS px or more from it, hit areas apart |
 
+### A finger held through the drop (#1329)
+
+The question (from #1320): a thumb that lands while the touch layer is down (the helicopter drop, a pause card) is not
+read by the layer, so is it lost when the layer comes back? **Yes, measured** (`test_touch_held_through_drop`, run on
+main before the fix, Godot 4.7.2 headless):
+
+| A finger down under the drop, the layer up, then the finger moves | Main | Now |
+| --- | --- | --- |
+| On free ground, 10 moves of 20 units | no look at all (0.0 mouse pixels) | the first move turns (the 20 units' worth), all ten turn |
+| In the stick's zone, 90 units right | no walk (`move` 0.0) | walks (`move.x` above 0.6) |
+| Both thumbs (stick and look) | neither works | both work |
+| Resting on the Fire circle, then drags | nothing; no shot | no shot; the drag looks |
+| Down under a pause, still down when it closes | the stick is gone until it lifts | the stick is back where the finger is |
+
+The layer was deaf to the finger for good: `_touch_drag` finds no entry for its index and returns, and only a lift and a
+new press start a role. The player's first drag of the night did nothing, as the review guessed. The fix is
+`TouchResting`: the layer notes every finger it does not read while it is down (and the ones it was reading when it went
+down), and takes in those still there when it is up again: a finger in the stick's zone is the stick from where it is,
+any other looks, none presses a button (a thumb on Fire asked for no shot) and none counts as a tap (no shoulder swap
+from a lift). A finger that lifted in the dark is gone. A fresh tap, the column's zone and the 250 ms look hold read
+as before (the suites in `tests/ui/touch` pass). The capture `tests/captures/touch_held_finger.tscn` shows it: the
+same run on main has no ring and `move` 0.0, on this branch the ring and `move` (0.94, -0.34).
+
+Seen on the way and left alone: with the layer down the engine turns the finger into a left mouse button
+(`emulate_mouse_from_touch`), and the layer going up while it is down leaves that button pressed to the engine until a
+later finger lifts under emulation. `fire` does not follow it (the emulated button sets no action), and the mouse grip,
+the one reader that asks for the raw button, is a desktop thing, so no player feels it.
+
 ### Markers if the right side is cleared
 
 The tables of the sections from here to "After the Side circle went" are history: each was measured on the main of

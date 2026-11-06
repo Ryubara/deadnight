@@ -108,6 +108,9 @@ class View:
 	## The health of the dead this round sends, when the bot weighs its weapons by it (0: not).
 	var zombie_health := 0.0
 	var crane_ready := true
+	## Whether the bot left the crane's prize on the glass in this round, with the weapons it carries
+	## now: it plays no more until something has changed (#1322).
+	var crane_passed := false
 	## Doors the etiquette holds the bot back from (a person's claim, a teammate down).
 	var blocked: Dictionary = {}
 	## A door a person pinged ("buy it"), or empty.
@@ -283,13 +286,10 @@ func _weapon(view: View, item: ShopItem) -> Buy:
 
 
 func _crane(view: View, item: ShopItem) -> Buy:
-	if not view.is_calm() or not view.crane_ready:
+	if not view.is_calm() or not view.crane_ready or view.crane_passed:
 		return null
-	var worth := false
-	for prize in item.pool:
-		var weapon := WeaponCatalog.catalog_id(prize)
-		worth = worth or (not view.arms.has(weapon) and worth_taking(view, weapon))
-	if not worth:
+	var odds := crane_odds(view, item)
+	if odds <= 0.0 or odds < _profile.crane_min_odds:
 		return null
 	var stands: Array[Dictionary] = []
 	for spot in _shop.spots_of(item.id):
@@ -299,6 +299,24 @@ func _crane(view: View, item: ShopItem) -> Buy:
 	if stand == Vector3.INF:
 		return null
 	return _buy(view, item, stand, &"crane", PLAN)
+
+
+## The share of the crane's draw the bot would take (#1322): the weight of the prizes it lacks that
+## `worth_taking` says yes to, over the weight of all it lacks. The server draws among the prizes
+## the buyer lacks by these weights (`ShopItem.roll`), so this is the chance one play gives a prize
+## the bot takes; 0 when it lacks none.
+static func crane_odds(view: View, item: ShopItem) -> float:
+	var total := 0.0
+	var wanted := 0.0
+	for prize in item.pool:
+		var weapon := WeaponCatalog.catalog_id(prize)
+		if view.arms.has(weapon):
+			continue
+		var weight := item.weight_of(prize)
+		total += weight
+		if worth_taking(view, weapon):
+			wanted += weight
+	return wanted / total if total > 0.0 else 0.0
 
 
 ## The re-cut: the weapon in hand is a firearm that has not been re-cut, and the bot has not

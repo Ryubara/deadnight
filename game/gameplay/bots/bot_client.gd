@@ -128,6 +128,15 @@ func hear(events: Array) -> void:
 				perception.beliefs.purchased_at = now
 				if String(event.get("item_id", &"")).begins_with("door_"):
 					perception.beliefs.moments.append({"kind": &"door_bought"})
+			&"crane_prize_lost":
+				# The prize it paid for went unclaimed: the bot let it go (or could not reach it).
+				if (
+					int(event.get("player_id", -1)) == state.player_id
+					and event.get("reason", &"") == &"expired"
+				):
+					perception.beliefs.pass_crane(
+						int(state.frame.get("round", 1)), state.me().get("arms", {})
+					)
 			&"fuel_low":
 				perception.beliefs.moments.append({"kind": &"fuel_low"})
 			&"board_torn":

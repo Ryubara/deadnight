@@ -1,5 +1,6 @@
 shader_type canvas_item;
-// Film over the whole game: grain, vignette, a projector's brightness flicker and the odd scratch.
+// Film over the whole game: grain, vignette, a projector's brightness flicker.
+// No scratch: a faint vertical line over a plate read as a seam in the interface (#1249).
 // Purely additive to what is below (black or white speckle with alpha), so it never reads the
 // screen: it works in the Compatibility renderer and in a web build.
 
@@ -9,7 +10,6 @@ uniform float grain : hint_range(0.0, 0.3) = 0.055;
 uniform float grain_px = 1.5;
 uniform float vignette : hint_range(0.0, 1.0) = 0.62;
 uniform float flicker : hint_range(0.0, 0.2) = 0.05;
-uniform float scratches : hint_range(0.0, 1.0) = 0.5;
 // 0 freezes the time-based parts (reduced motion).
 uniform float motion : hint_range(0.0, 1.0) = 1.0;
 
@@ -33,18 +33,9 @@ void fragment() {
 	float twitch = hash21(vec2(floor(t * 12.0), 3.0));
 	float dim = flicker * motion * (0.35 + 0.65 * step(0.8, twitch)) * (0.5 + 0.5 * sin(t * 5.1));
 
-	// A vertical scratch that appears for a few frames at a time.
-	float seed = floor(t * 3.0);
-	float where = hash21(vec2(seed, 9.0));
-	float live = step(0.62, hash21(vec2(seed, 5.0))) * scratches * motion;
-	float line = (1.0 - smoothstep(0.0, 1.6 / res.x, abs(UV.x - where))) * live;
-	line *= step(0.35, hash21(vec2(floor(UV.y * 40.0), seed)));
-
 	float dark = clamp(shade + dim, 0.0, 1.0);
 	// Grain over the dark layer (not mixed with it, or the vignette would be speckled too).
 	float alpha = dark + col.a * (1.0 - dark);
 	vec3 rgb = col.rgb * col.a * (1.0 - dark) / max(alpha, 0.0001);
-	rgb = mix(rgb, vec3(0.95, 0.9, 0.8), line * 0.5);
-	alpha = max(alpha, line * 0.16);
 	COLOR = vec4(rgb, alpha);
 }

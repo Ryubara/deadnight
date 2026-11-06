@@ -17,20 +17,22 @@ func test_an_environment_with_no_budget_lets_a_room_seat_what_its_host_asked_for
 		assert_int(limits.for_room(rooms)).is_equal(MatchSettings.MAX_BOTS)
 
 
-## #1193: a room with bots costs a frame on every step and 0.3 ms a bot; 3 rooms of 8 people and
-## 7 bots took 27 ms of the 16.7 ms tick. Unset, the server shares two bots among its rooms: a
-## lone room seats both, two rooms one each and three rooms none (three rooms of eight people are
-## what the tick holds).
+## #1193, #1222: a room with bots costs more tick, and the build before #1193 took 27 ms of the
+## 16.7 ms for 3 rooms of 8 people and 7 bots. Unset, the server shares three bots among its rooms,
+## what the measurement on Railway allows: a lone room seats three, two rooms and three rooms one
+## each, four rooms none.
 func test_an_unset_environment_shares_a_small_budget_of_bots_among_the_rooms() -> void:
 	var limits := BotLimits.from_config(_config({}))
 	assert_int(limits.budget).is_equal(GameServer.DEFAULT_BOT_BUDGET)
-	assert_int(limits.budget).is_equal(2)
-	assert_int(limits.for_room(1)).is_equal(2)
+	assert_int(limits.budget).is_equal(3)
+	assert_int(limits.for_room(1)).is_equal(3)
 	assert_int(limits.for_room(2)).is_equal(1)
-	assert_int(limits.for_room(GameServer.DEFAULT_CAPACITY)).is_equal(0)
+	assert_int(limits.for_room(GameServer.DEFAULT_CAPACITY)).is_equal(1)
+	assert_int(limits.for_room(GameServer.DEFAULT_CAPACITY + 1)).is_equal(0)
 	# Junk is the default, not a switch-off; a number is the operator's own.
-	assert_int(_config({"BOT_BUDGET": "lots"}).bot_budget).is_equal(2)
+	assert_int(_config({"BOT_BUDGET": "lots"}).bot_budget).is_equal(3)
 	assert_int(_config({"BOT_BUDGET": "7"}).bot_budget).is_equal(7)
+	assert_int(_config({"BOT_BUDGET": "-2"}).bot_budget).is_equal(0)
 
 
 func test_the_cap_per_room_is_read_and_held_to_zero_to_three() -> void:

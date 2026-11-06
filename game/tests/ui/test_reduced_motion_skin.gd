@@ -1,5 +1,5 @@
 # Reduced motion reaches the whole skin at once, while the main scene runs: the film overlay
-# (flicker, scratch, changing grain), the sky and the sign follow `UIMotion.reduced` live.
+# (flicker, changing grain), the sky and the sign follow `UIMotion.reduced` live.
 # A photosensitivity concern.
 extends GdUnitTestSuite
 
