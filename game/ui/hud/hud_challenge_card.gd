@@ -8,6 +8,12 @@ extends HudTicket
 ## `FINISHED`.
 
 const WIDTH := HudStyle.COLUMN
+## The narrowest the card is made when the HUD has less room beside the players' column: the caption
+## and the count share a row, and the words wrap to a fourth line.
+const MIN_WIDTH := 190.0
+## Under this width the count is typed at `HudStyle.TEXT` (a row of "TODAY" and "45 / 100" at the
+## large size needs 195 units, and a card 253 wide has 213 inside).
+const NARROW_BELOW := 260.0
 const HOLE_RADIUS := 6.0
 const HOLE_GAP := 26.0
 const ROW := 22.0
@@ -34,6 +40,9 @@ var _flash := 0.0
 func _init() -> void:
 	super()
 	custom_minimum_size.x = WIDTH
+	# No container holds the card, so it keeps the size it had until it is asked for its least:
+	# when the words' lines change under a new width it is that size again, not the one before.
+	minimum_size_changed.connect(reset_size)
 	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	HudStyle.clip(caption)
 	caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -68,9 +77,54 @@ func show_advance(advance: Dictionary) -> void:
 		if advance.get("completed", false):
 			_punched = _total
 		HudStyle.set_text(count, "%d / %d" % [int(advance["after"]), int(advance["target"])])
-	HudStyle.set_wrapped(words, String(advance["text"]), HudStyle.TEXT, words.custom_minimum_size.x)
+	_wrap_words(String(advance["text"]))
 	_holes.queue_redraw()
 	queue_redraw()
+
+
+## Makes the card `width` wide (the most `WIDTH`, the least `MIN_WIDTH`): where the HUD has no room
+## for the full card (`Hud._fit_challenge`) its words wrap onto more lines.
+func set_width(width: float) -> void:
+	var wide := clampf(width, MIN_WIDTH, WIDTH)
+	custom_minimum_size.x = wide
+	words.custom_minimum_size.x = wide - float(HudStyle.PAD + HudStyle.PAD_LEFT)
+	# The count shares a row with the caption: in a narrow card it is typed small enough that the
+	# caption (TODAY, ORDER) is not cut by it.
+	var count_px := HudStyle.TEXT if wide < NARROW_BELOW else COUNT_SIZE
+	if count.get_theme_font_size(&"font_size") != count_px:
+		count.add_theme_font_size_override(&"font_size", count_px)
+	if words.text != "":
+		_wrap_words(words.text)
+	# A control that no container holds keeps the size it had until it is asked for its least.
+	reset_size()
+
+
+func _wrap_words(text: String) -> void:
+	HudStyle.set_wrapped(words, text, HudStyle.TEXT, words.custom_minimum_size.x)
+
+
+## What the card measures at `width`, worked out from its parts and not asked of the container
+## (which answers for the width it had until the next layout): the padding, the row, the words'
+## lines (as many as the font breaks them into at the box's width, each the label's line high) and
+## the holes. An estimate: `HudChallenge.laid_size` is what the layout then gave.
+func size_at(width: float) -> Vector2:
+	set_width(width)
+	var wide := clampf(width, MIN_WIDTH, WIDTH)
+	var font := words.get_theme_font(&"font")
+	var size_px := words.get_theme_font_size(&"font_size")
+	var flags := (
+		TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+	)
+	var block := font.get_multiline_string_size(
+		words.text, HORIZONTAL_ALIGNMENT_LEFT, words.custom_minimum_size.x, size_px, -1, flags
+	)
+	var one := font.get_string_size(words.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px)
+	var lines := maxi(1, roundi(block.y / maxf(one.y, 1.0)))
+	var lines_high := maxf(words.custom_minimum_size.y, float(lines * words.get_line_height()))
+	var row_high := float(maxi(caption.get_line_height(), count.get_line_height()))
+	var high := float(HudStyle.PAD * 2) + row_high
+	high += lines_high + _holes.custom_minimum_size.y
+	return Vector2(wide, high)
 
 
 ## The finish flash, 0 to 1 and back.

@@ -6,10 +6,21 @@ extends Control
 
 const TILE := Vector2(52.0, 72.0)
 const FONT_SIZE := 60
+## The tile and the type of a card on one row (a phone's round card, #1305): a tenth smaller, so the
+## card stands about 90 units high, the number still the biggest type on it.
+const TILE_COMPACT := Vector2(48.0, 66.0)
+const FONT_SIZE_COMPACT := 55
 const ROLL_SECONDS := 0.35
 
 var digit := "0"
 var colour := Color("ff3d4d")
+## The smaller tile of a card on one row.
+var compact := false:
+	set(value):
+		if value != compact:
+			compact = value
+			custom_minimum_size = TILE_COMPACT if compact else TILE
+			queue_redraw()
 
 var _previous := "0"
 ## 0 at the start of a roll, 1 when settled.
@@ -55,14 +66,15 @@ func _draw() -> void:
 func _draw_digit(text: String, offset: float) -> void:
 	var tokens := UITokens.active()
 	var font := tokens.display_font(tokens.embolden_display * 0.5)
-	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
-	var baseline := (size.y + FONT_SIZE * 0.7) * 0.5 + offset
+	var font_size := FONT_SIZE_COMPACT if compact else FONT_SIZE
+	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var baseline := (size.y + font_size * 0.7) * 0.5 + offset
 	draw_string(
 		font,
 		Vector2((size.x - width) * 0.5, baseline),
 		text,
 		HORIZONTAL_ALIGNMENT_LEFT,
 		-1,
-		FONT_SIZE,
+		font_size,
 		colour
 	)
