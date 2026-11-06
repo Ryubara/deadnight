@@ -118,6 +118,8 @@ func equip(sim: ZombieSim, sight: Callable) -> void:
 	sim.lit_probe = is_lit
 	sim.gates = gates()
 	sim.set_floors(storey(), sight)
+	if crane_block != null:
+		sim.solids.assign([crane_block.solid])
 
 
 ## The height of one storey of the map, or 0 for a map of one floor (the lot).

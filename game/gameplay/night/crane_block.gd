@@ -9,6 +9,9 @@ extends StaticBody3D
 ## The cabinet's height (m); its width and depth are the drawing's.
 const HEIGHT := 2.6
 
+## The cabinet as the dead's sim sees it (`ZombieSim.solids`): the same box, where it stands now.
+var solid := ZombieSolid.new()
+
 var _places: Dictionary[int, Transform3D] = {}
 var _shape := CollisionShape3D.new()
 var _spot := -1
@@ -38,8 +41,11 @@ func place(spot: int) -> void:
 		return
 	_spot = spot
 	_shape.disabled = not _places.has(spot)
-	if not _shape.disabled:
+	if _shape.disabled:
+		solid.clear()
+	else:
 		global_transform = _places[spot]
+		solid.place(_places[spot], Vector3(PrizeCrane.WIDTH, HEIGHT, PrizeCrane.DEPTH))
 
 
 ## The spot the wall stands at, -1 when it stands nowhere.
