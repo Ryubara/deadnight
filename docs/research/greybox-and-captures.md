@@ -35,7 +35,9 @@ Where they stand and how they work is in [the lot](../design/map.md#the-breaker-
 - **Anything solid near a car-row gap fails the camera test.** The first post for the field's circuit stood at (8, -45),
   inside the first car row, and `test_the_arm_keeps_its_full_length_in_corridors` failed on `CarGap_R1c`: the arm runs
   2.8 m back from a probe toward the screen and the post was in it. The post moved to the avenue, away from every probe.
-- **A post is a `StaticBody3D`, not CSG**, so it does not need the navigation bake's care; the dead path round it. Its
+- **A post is a `StaticBody3D`, not CSG**, so it is not in the navigation bake (the baker reads CSG boxes only). The
+  dead path round it; a bot's walk along a wall's corner can run through it (the `booth` post is flush with the booth's
+  north wall: [bots](bots.md#a-roam-bot-held-at-the-breaker-post-1325)). Its
   lamp is an emissive mesh with its own material (shared sub-resources would light every post together) and is no
   `powered_light`, so it never lights ground for the dead.
 - **No two reaches meet** (#908): a post stands 5.5 m or more from every slab of its door, and

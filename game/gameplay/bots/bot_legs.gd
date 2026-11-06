@@ -330,7 +330,7 @@ func _base_direction(here: Vector3, intent: BotIntent, now: float) -> Vector3:
 	var radius := intent.goal_radius if intent.goal_radius > 0.0 else ARRIVED
 	if _flat(here, intent.goal) <= radius:
 		return Vector3.ZERO
-	var status := path.ask(here, intent.goal + _jitter, now, false, _may_query)
+	var status := _ask_path(here, intent, now, false, _may_query)
 	if status != BotPath.Status.OK:
 		return Vector3.ZERO
 	if path.arrived(here, radius):
@@ -470,7 +470,23 @@ func _repath(here: Vector3, intent: BotIntent, now: float) -> void:
 	# has the bot walk to the mesh's edge and stand against the posts.
 	_jitter = _level.project(intent.goal + _jitter) - intent.goal
 	_jitter.y = 0.0
-	path.ask(here, intent.goal + _jitter, now, true)
+	_ask_path(here, intent, now, true)
+
+
+## Asks the path for the intent's goal, moved by the ladder's jitter. A nudge must not turn a goal
+## that can be walked to into one that cannot: moved past a row of boards it is called unreachable
+## (`BotPath.walkable`), the bot is no longer commanded to walk, the ladder takes it for a bot that
+## stands on purpose and lets go of it, and the place the brain chose is never marked (the mark is
+## on the nudged goal's cell), so a Roam bot held against a breaker post idled for minutes (#1325).
+## The nudge is taken back and the goal itself asked.
+func _ask_path(
+	here: Vector3, intent: BotIntent, now: float, force: bool, may_query := true
+) -> BotPath.Status:
+	var status := path.ask(here, intent.goal + _jitter, now, force, may_query)
+	if status == BotPath.Status.UNREACHABLE and _jitter != Vector3.ZERO:
+		_jitter = Vector3.ZERO
+		status = path.ask(here, intent.goal, now, true, may_query)
+	return status
 
 
 ## Drops the goal: it is marked blocked for a while and the brain is told to take another.

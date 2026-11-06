@@ -2221,3 +2221,55 @@ or its stand would remove this one, not the other ways a bot gets onto a piece.
 (`docs/research/map-review.md`), so a bot under any order walks off them (`test_bot_off_the_walking_mesh.gd`), and
 `test_bot_cut_off.gd` now reads that the spot is no longer cut off. `BotRoam`'s walk back stays as the guard for a piece
 a later map or bake leaves, and no check on the two maps finds one: it is tested in `test_bot_roam.gd` alone.
+
+## A Roam bot held at the breaker post (#1325)
+
+The open item 4 of the first two nightly runs: 16 of the 19 `idle under Roam over 8 s` stands of 2026-11-05 were one bot
+at `(4.8, 21.4)`, note `roam`, goal `(12.5, 0.4, 31.6)` (the east midway's barricade stand), `stuck` false, 8.7 to
+46.6 s.
+The issue's lead (a lone Regular set down there walks to the stand in 7 s, so something a night adds is in the way) was
+wrong, and so was a reading of the sample: `"path": "4"` is `BotPath.Status.UNREACHABLE` (the enum's index), the path
+was empty, not four points.
+
+**What the watched night shows** (`bots_soak.tscn`, rookie, 4 bots, `--seed=35 --max-round=8 --watch=3 --from=15800`,
+the same tick on every run; `--max-round=6` does not reproduce it): the bot walks east along the booth's north wall at
+4.8 m/s, drifting from z 20.6 to 21.2 on its way to the wall's north-east corner, and at tick 16740 stops at
+`(4.85, 21.45)` and stays (tick 16826: `stuck` true, rung 1, a path of 15 points; tick 16946 on: path `UNREACHABLE`, no
+path, `stuck` false, a jitter of `(0.58, 0, 0.25)`). 0.35 m west of `(5.2, z)` is the west face of the `booth` breaker
+post (`Switch_booth`, a `StaticBody3D` of 0.8 by 0.5 m at `(5.6, 21.5)`, flush against the wall's face at z 21.8).
+
+**Cause, in two parts:**
+
+1. The post is solid and not in the walking mesh (the baker reads CSG boxes only, `NavmeshBaker.source_data`). The mesh's
+   edge along the wall is 0.5 m off it and a path hugs it, so the line to the corner runs through the post: z 21.24 at
+   x 5.2 on a line from `(-3.8, 20.6)`. A bot walking round the corner from the west walks into the post. A bot set
+   down at the spot, or one that comes from elsewhere, does not.
+2. The ladder lost it. The bot is stuck, rung 2 repaths to the goal moved by up to 1.5 m, and the moved goal
+   `(13.08, 31.85)` is behind the mid_e boards: `BotPath.walkable` calls it unreachable (`PATHDBG walled`, every 5 s).
+   An unreachable goal gives the legs no direction, the bot is no longer "commanded to walk", `BotStuck.feed` ends the
+   episode, the ladder never reaches the rung that drops the goal, and the mark of the unreachable goal is on the moved
+   goal's 2 m cell, not on the roam's place: `BotRoam` asks `is_blocked(spot)`, which is false, and keeps the place for
+   good.
+
+**Fix** (`BotLegs._ask_path`): a nudge that makes the goal unreachable is taken back and the goal itself is asked, so the
+ladder goes on and, when the goal really is unreachable, the mark is on its own cell and the roam drops it. The wedge on
+the post is not removed: the bot loses about 2 s there, the ladder drops the goal (rung 4) and Roam chooses another
+place (the stand is left alone for ten minutes). The same hole is the likely cause of the other Roam stands in the
+samples, at the west midway (`(-15.4, 32.4)`, goal `(-24.3, 0.4, 32.1)` and `(-36.0, 0.4, 36.6)`, path 4, `stuck` false).
+
+**Tests:** `test_bot_legs.gd` `test_a_jitter_that_puts_the_goal_behind_boards_is_taken_back_not_walked_into` (a hall with
+boards, a seed whose jitter lands behind them; fails on `main` three ways: the ladder is lost on its second rung, the
+goal is `UNREACHABLE`, the wish is zero) and `test_bot_breaker_post.gd` (the real lot, the bot set down at
+`(-3.8, 20.6)` with the stand as its place, watched 25 s: of 16 bot seeds, 13 stood 22.4 s at `(4.849, 21.45)` on `main`,
+none stands over 1.75 s with the fix; the test plays four of them).
+
+**Soak after the fix** (local, `main` at `ca6c0446` plus the fix, `--max-round=16`): rookie_4, seeds 1 to 100: no roam
+sample, no night with the Roam idle gate and no gate broken at all, the longest Roam stand 2.2 s (2026-11-05: 4 nights at
+this spot, seeds 26, 29, 36 and 64, and the gate broken in 4 of the cell's nights). The nights that had the spot, seeds
+25, 28, 35, 56, 58, 61, 74, 88 and 90 of veteran_4 and 33, 42, 60 and 98 of regular_4: the longest Roam stand 0.5 to
+2.2 s, none over the gate (seeds 56 and 63 of veteran_4 break other gates: a tail of 167 s and a zombie in view for
+9.4 s). No gate, limit or number was changed.
+
+**Not changed, and seen:** the post stays out of the walking mesh, so a bot (or an errand: `boards mid_e` from the west
+walks the same line) that comes round the booth's corner from the west still loses seconds on it. Baking the four
+breaker posts into the mesh changes the saved meshes of the lot and the dead's walk; it is its own issue.
