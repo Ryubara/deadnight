@@ -345,10 +345,10 @@ is the age of the lot at the night's first tick.
       gave the same answer 1 440 times of 1 440. The difference is in the state it is in, not a race inside a call.
     - *Navigation paths:* the dead's paths hash differs only after the dead's places do.
 - **Fix.** `NightWorld.build` returns when the lot has stood `LOT_MIN_FRAMES` (24) physics frames, whatever the
-  navigation map did meanwhile (about 12 frames, 0.2 s at 60 a second, longer in a night's load than before; the web
-  is the same count). `tests/night/test_night_repeats.gd`: the build is at least that old every time; three nights of
-  one seed, seated 0, 3 and 0 frames after their lot, keep every body's and every dead's place to the last bit over
-  900 ticks (both fail without the fix).
+  navigation map did meanwhile (14 to 16 frames, about 0.25 s at 60 a second, longer in a night's load than
+  before; the web is the same count). `tests/night/test_night_repeats.gd`: the build is at least that old every
+  time; three nights of one seed, seated 0, 3 and 0 frames after their lot, keep every body's and every dead's
+  place to the last bit over 900 ticks (both fail without the fix).
 - **After.** Eighteen runs of the night's first 400 ticks at six moments of the machine's load: one hash and one
   first physics frame (27) in all (before: three frame counts, 10, 11, 12, and two hashes in 24 runs); three runs of
   the round-16 night for 30 000 ticks: identical in all six columns and in every body's contacts (before: all three

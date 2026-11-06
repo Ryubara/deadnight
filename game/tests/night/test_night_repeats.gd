@@ -8,7 +8,7 @@ extends GdUnitTestSuite
 
 const SEED := 1958
 const STEPS := 900
-## The seconds of ticks between two hashes.
+## The ticks between two hashes (half a second).
 const EVERY := 30
 
 
