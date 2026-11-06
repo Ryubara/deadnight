@@ -20,7 +20,9 @@ the Server Browser shows each of its states without a network.
 Sections: `tour` (the screens), `browser` (the Server Browser's four states alone), `lobby` (a night of your own: the
 host's lobby, and the Private night switch tapped with a finger, on and off, until the stand-in backend has been told
 each time), `turn` (the page turned upright and back, and resized across the phone limit), `night`
-(a solo night entered and left: does the menu's factor come back). What it cannot show: a real phone, a real iOS
+(a solo night entered and left: does the menu's factor come back), `line` (Settings shot `--shots` times, each
+measured for a faint vertical line, `column_line.py`; needs `--with numpy --with pillow`). What it cannot show: a real
+phone, a real iOS
 Safari, Discord's own webview.
 """
 
@@ -522,6 +524,41 @@ def night(frame: Frame, out: Path, label: str, results: list[dict]) -> None:
         snap(frame, out, label, results, "menu after the night")
 
 
+def line_series(frame: Frame, out: Path, label: str, results: list[dict], shots: int) -> None:
+    """Settings, then `shots` screenshots in a row; each one's strongest column (`column_line`, issue #1249)."""
+    import column_line
+
+    go(frame, "More", 0, "settings_screen")
+    frame.page.wait_for_timeout(SETTLE_MS)
+    pictures = []
+    saved = []
+    for _ in range(shots):
+        data = frame.page.screenshot()
+        saved.append(data)
+        pictures.append(column_line.grey(data).astype("uint8"))
+    rows = column_line.series(pictures)
+    for index, found in enumerate(rows):
+        print(f"{label} shot {index:02d}: {found.text()}{'  LINE' if found.readable() else ''}")
+    # What the shots share, to compare a build with another one: the screen without the film that moves over it.
+    from PIL import Image
+
+    Image.fromarray(column_line.still(pictures).astype("uint8")).save(out / f"{label}_still.png")
+    # The screenshot that shows the line most (the first when none does), for a person to look at.
+    (out / f"{label}_shot.png").write_bytes(saved[max(range(shots), key=lambda i: rows[i].mean)])
+    seen = [r for r in rows if r.readable()]
+    xs = sorted({r.x for r in seen})
+    print(f"{label}: {len(seen)} of {shots} shots show a readable line, at x = {xs}")
+    results.append(
+        {
+            "what": "line",
+            "shots": shots,
+            "lines": len(seen),
+            "xs": xs,
+            "strongest": [{"x": r.x, "mean": r.mean, "share": r.share} for r in rows],
+        }
+    )
+
+
 def problems(results: list[dict]) -> list[str]:
     found = []
     for entry in results:
@@ -561,6 +598,7 @@ def main() -> int:
     parser.add_argument("--desktop", action="store_true", help="a desktop browser window: no touch, no mobile agent")
     parser.add_argument("--no-audit", action="store_true", help="leave the ruler off (the page does not ask for it)")
     parser.add_argument("--query", default="")
+    parser.add_argument("--shots", type=int, default=40, help="the `line` section: screenshots to measure")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     server, port = smoke.serve(args.web)
@@ -629,6 +667,8 @@ def main() -> int:
                 turn(game, args.out, args.label, results, size)
             if "night" in sections:
                 night(game, args.out, args.label, results)
+            if "line" in sections:
+                line_series(game, args.out, args.label, results, args.shots)
             browser.close()
     finally:
         server.shutdown()

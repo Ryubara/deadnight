@@ -72,6 +72,26 @@ factor, the canvas in units and the smallest text and tap target in CSS px. It f
 `turn` (upright and back, a tablet page, a covering screen), `night` (a night entered and left). Details and numbers:
 [phone-page-scale.md](phone-page-scale.md).
 
+## A faint vertical line over the plates (#1249)
+
+Cause: the film overlay's scratch (`film_grain.gdshader`): a line 1.6 px wide at a fresh random x three times a second,
+about a third of those times, over 65% of the rows, drawn over everything the router shows. Never in a layout, which is
+why it sat at one screen x over several controls and moved between captures. Seen with `phone_layout.py --section line`
+(Settings shot 40 times, 0.1 to 0.2 s apart; `--with numpy --with pillow`): `column_line.py` takes the median of the
+shots (the screen without the film), subtracts it from each shot and reads, for each column, how far it stands over
+columns x-3 and x+3 (the smaller of the two, so a panel's step edge reads 0). A panel's own hairline border is a ridge,
+so one shot alone reads it as a line (x = 36 in every shot): measure a series. Web export, Chrome 156 headless
+(SwiftShader), shots with a column of at least +3 levels on at least half the rows:
+
+| page | main | scratch removed |
+| --- | --- | --- |
+| phone, ratio 3 (1688 x 780 canvas, 2532 x 1170 shot) | 8 of 40, +10 to +14 | 0 of 40 |
+| phone, ratio 2 (1688 x 780 shot) | 9 of 40 | 0 of 40 |
+| desktop 1280 x 720 | 4 of 40 | 0 of 40 |
+
+The median screens of main and of the fix differ by 0.4 levels on average (99% of the pixels by 2 or less), so the
+plates look the same. The scratch is removed, not hidden on a phone: a desktop shows it too.
+
 ## The phone probes, run together on one export (#1317)
 
 CI runs no browser probe, so each pull request of the phone rework ran only the probes it knew of, on its own base, and
