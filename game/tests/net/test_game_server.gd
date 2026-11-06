@@ -6,6 +6,9 @@ extends GdUnitTestSuite
 
 const SECRET := "test-ticket-secret-of-32-characters!"
 const SERVER_ID := "gs-test"
+## What the backend signs at most: `TICKET_DONE` finished challenges, each as long as a save allows.
+const LONGEST_DONE := 256
+const LONGEST_ID := 64
 
 var _server: GameServer
 var _nights: Array[Night] = []
@@ -232,6 +235,29 @@ func test_the_server_takes_three_rooms_and_a_budget_of_120_unless_told() -> void
 	env["ALIVE_BUDGET"] = "lots"
 	var junk := ServerConfig.from_environment(func(key: String) -> String: return env.get(key, ""))
 	assert_int(junk.alive_budget).is_equal(120)
+
+
+func test_the_longest_ticket_the_backend_signs_gets_a_seat() -> void:
+	await _start()
+	var done: Array[String] = []
+	for index in LONGEST_DONE:
+		done.append(("challenge_%d_" % index).rpad(LONGEST_ID, "x"))
+	var account := {"xp": 18010, "card": "dead_eye", "emblem": "admit_one", "frame": "chrome"}
+	account["done"] = done
+	var ticket := TicketMaker.make(SECRET, SERVER_ID, "m", "ann", "Ann", 60, {}, 55, account)
+	assert_int(NetWire.hello(PackedByteArray(), ticket).size()).is_less_equal(NetWire.MAX_HELLO)
+	var answer := await _hello(ticket)
+	var packet: PackedByteArray = answer["packet"]
+	assert_array(Array(packet.slice(0, 1))).is_equal([NetWire.Type.WELCOME])
+
+
+func test_a_hello_past_the_limit_is_told_so_and_not_left_to_wait() -> void:
+	await _start()
+	var ticket := "x".repeat(NetWire.MAX_HELLO + 1)
+	var answer := await _hello(ticket)
+	var packet: PackedByteArray = answer["packet"]
+	assert_array(Array(packet.slice(0, 2))).is_equal([NetWire.Type.REFUSED, NetWire.Refusal.DENIED])
+	assert_array(_server.match_ids()).is_empty()
 
 
 func test_a_ticket_that_is_not_good_is_turned_away() -> void:

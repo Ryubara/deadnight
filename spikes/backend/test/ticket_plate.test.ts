@@ -3,6 +3,7 @@
 // server holds the two choices to. An id that is not a plain name is not signed, and a player who chose nothing
 // carries neither.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { buildApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
@@ -105,6 +106,18 @@ test("the lobby's member list shows each member's chosen card, emblem and frame 
   const members = view.members as { userId: string; card?: string; emblem?: string; frame?: string }[];
   assert.deepEqual([members[0]!.card, members[0]!.emblem, members[0]!.frame], ["cartoon", "admit_one", "chrome"]);
   assert.equal("card" in members[1]!, false, "a member who chose nothing has no card key");
+  await app.close();
+});
+
+test("the longest ticket fits the hello the game server reads", async () => {
+  const { app, player, claims } = await platform();
+  const wire = readFileSync(new URL("../../../game/net/net_wire.gd", import.meta.url), "utf8");
+  const maxHello = eval(/const MAX_HELLO := (.+)/.exec(wire)![1]!) as number;
+  const done = Array.from({ length: TICKET_DONE }, (_, i) => `${i}_`.padEnd(64, "x"));
+  const eve = await player("eve", { equipped: { card: "dead_eye", emblem: "admit_one", frame: "chrome" }, done });
+  // A ticket is its claims in base64 between a header and a signature, and a hello adds three bytes.
+  const body = Math.ceil((Buffer.byteLength(JSON.stringify(await claims(eve))) * 4) / 3);
+  assert.ok(body + 128 + 3 <= maxHello, `a hello of ${body + 131} bytes does not fit ${maxHello}`);
   await app.close();
 });
 

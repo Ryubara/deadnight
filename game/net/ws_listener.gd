@@ -8,11 +8,11 @@ signal peer_connected(peer_id: int)
 signal peer_disconnected(peer_id: int)
 signal packet_received(peer_id: int, data: PackedByteArray)
 
-## What a peer may have waiting to be read: bytes, and packets. A client sends small packets (see
-## `PeerLimits.MAX_PACKET`), so a frame bigger than the buffer is a hostile one the engine refuses.
-const INBOUND_BUFFER := 4096
-## The engine's count limit holds for both directions: what comes in is held to 4 KB by the buffer
-## above, 178 commands at most, and what goes out to `OUTBOUND_BUFFER`.
+## What a peer may have waiting to be read: bytes, and packets. The longest message is a hello
+## (`NetWire.MAX_HELLO`), so a frame bigger than the buffer is a hostile one the engine refuses.
+const INBOUND_BUFFER := 1 << 16
+## The engine's count limit holds for both directions: what comes in is held by the buffer above
+## and what goes out to `OUTBOUND_BUFFER`.
 const MAX_QUEUED := 8192
 ## What may be waiting to be sent to a peer that is not reading (a client whose game loop froze):
 ## ticks of a second or two are some 15 to 35 KB each second, and the engine's default of 64 KB

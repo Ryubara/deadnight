@@ -223,6 +223,10 @@ func _on_packet(transport_id: int, data: PackedByteArray) -> void:
 	var pending: Pending = _pending.get(transport_id)
 	if pending == null or pending.refused or pending.routing:
 		return
+	if data.size() > NetWire.MAX_HELLO and data[0] == NetWire.Type.HELLO:
+		# The player would otherwise wait for the 10 s of `hello_within` and be told nothing.
+		_refuse(transport_id, pending, NetWire.Refusal.DENIED, "hello of %d bytes" % data.size())
+		return
 	var verdict := pending.limits.judge(data, _now())
 	if verdict == PeerLimits.Verdict.DROP:
 		return
