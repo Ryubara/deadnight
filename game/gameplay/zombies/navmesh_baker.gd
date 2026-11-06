@@ -11,6 +11,10 @@ const AGENT_HEIGHT := 1.75
 const AGENT_RADIUS := 0.5
 const AGENT_MAX_CLIMB := 0.25
 const AGENT_MAX_SLOPE := 45.0
+## The group a solid prop that is not a CSG box joins to be baked in (a breaker post, a
+## `StaticBody3D` with box shapes): a prop outside the mesh is walked into by the dead and the bots
+## alike. What opens and shuts at run time (boards, window frames) stays out of it.
+const OBSTACLE_GROUP := &"navmesh_obstacle"
 ## Contour simplification error in cells (the default 1.3 cut corners by 0.33 m at this cell size,
 ## into the bodies' margin).
 const EDGE_MAX_ERROR := 1.0
@@ -50,13 +54,23 @@ static func key(data: NavigationMeshSourceGeometryData3D) -> String:
 	return context.finish().hex_encode()
 
 
-## The collision boxes of `root`'s CSG shapes, as the baker's input.
+## The collision boxes of `root`'s CSG shapes, and of the box shapes of the bodies in
+## `OBSTACLE_GROUP`, as the baker's input.
 static func source_data(root: Node3D) -> NavigationMeshSourceGeometryData3D:
 	var data := NavigationMeshSourceGeometryData3D.new()
 	for node in root.find_children("*", "CSGShape3D", true, false):
 		var shape := node as CSGShape3D
 		if shape.use_collision:
 			data.add_faces(_box_faces(_size_of(shape)), shape.global_transform)
+	for node in root.find_children("*", "StaticBody3D", true, false):
+		if not node.is_in_group(OBSTACLE_GROUP):
+			continue
+		for child in node.get_children():
+			var collision := child as CollisionShape3D
+			if collision != null and collision.shape is BoxShape3D:
+				data.add_faces(
+					_box_faces((collision.shape as BoxShape3D).size), collision.global_transform
+				)
 	return data
 
 
