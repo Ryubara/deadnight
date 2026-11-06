@@ -446,7 +446,8 @@ func test_the_words_are_never_cut_even_the_longest() -> void:
 
 ## The card made narrow (beside the players' column on the smallest page) wraps its words onto more
 ## lines and never cuts them, keeps the type no smaller than the HUD's least, and measures what it
-## says it measures: the height `size_at` gave is the height the card has once it is laid out.
+## says it measures: the height `size_at` gave is the one the card has once it is laid out, or a
+## little more.
 func test_the_card_made_narrow_wraps_its_words_and_is_the_height_it_measured() -> void:
 	for text in [
 		"Put down 50 zombies with the submachine gun",
@@ -461,9 +462,9 @@ func test_the_card_made_narrow_wraps_its_words_and_is_the_height_it_measured() -
 		for width in [HudChallengeCard.WIDTH, 253.0, HudChallengeCard.MIN_WIDTH]:
 			var measured := card.size_at(width)
 			assert_float(measured.x).is_equal(width)
-			# A narrower card is never shorter.
-			assert_float(measured.y).is_greater_equal(last)
-			last = measured.y
+			# A narrower card never has fewer lines of words.
+			assert_float(card.words.custom_minimum_size.y).is_greater_equal(last)
+			last = card.words.custom_minimum_size.y
 			await await_idle_frame()
 			await await_idle_frame()
 			assert_float(card.get_combined_minimum_size().x).is_equal(width)
@@ -471,7 +472,12 @@ func test_the_card_made_narrow_wraps_its_words_and_is_the_height_it_measured() -
 			assert_vector(card.size).is_equal_approx(
 				card.get_combined_minimum_size(), Vector2.ONE * 0.5
 			)
-			assert_float(card.get_combined_minimum_size().y).is_equal_approx(measured.y, 0.5)
+			# The measure is never under the laid-out height (a card placed from it would stand over
+			# its neighbour) and at most a row's type over it (the count is typed smaller in a narrow
+			# card than the label's line height says).
+			var laid := card.get_combined_minimum_size().y
+			assert_float(measured.y).is_greater_equal(laid - 0.5)
+			assert_float(measured.y).is_less_equal(laid + 12.0)
 			var words := card.words
 			var size := words.get_theme_font_size(&"font_size")
 			assert_int(size).is_greater_equal(HudStyle.MIN_TEXT)

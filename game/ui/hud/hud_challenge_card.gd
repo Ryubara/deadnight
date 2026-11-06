@@ -11,6 +11,9 @@ const WIDTH := HudStyle.COLUMN
 ## The narrowest the card is made when the HUD has less room beside the players' column: the caption
 ## and the count share a row, and the words wrap to a fourth line.
 const MIN_WIDTH := 190.0
+## Under this width the count is typed at `HudStyle.TEXT` (a row of "TODAY" and "45 / 100" at the
+## large size needs 195 units, and a card 253 wide has 213 inside).
+const NARROW_BELOW := 260.0
 const HOLE_RADIUS := 6.0
 const HOLE_GAP := 26.0
 const ROW := 22.0
@@ -85,6 +88,11 @@ func set_width(width: float) -> void:
 	var wide := clampf(width, MIN_WIDTH, WIDTH)
 	custom_minimum_size.x = wide
 	words.custom_minimum_size.x = wide - float(HudStyle.PAD + HudStyle.PAD_LEFT)
+	# The count shares a row with the caption: in a narrow card it is typed small enough that the
+	# caption (TODAY, ORDER) is not cut by it.
+	var count_px := HudStyle.TEXT if wide < NARROW_BELOW else COUNT_SIZE
+	if count.get_theme_font_size(&"font_size") != count_px:
+		count.add_theme_font_size_override(&"font_size", count_px)
 	if words.text != "":
 		_wrap_words(words.text)
 	# A control that no container holds keeps the size it had until it is asked for its least.
@@ -113,7 +121,8 @@ func size_at(width: float) -> Vector2:
 	var one := font.get_string_size(words.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px)
 	var lines := maxi(1, roundi(block.y / maxf(one.y, 1.0)))
 	var lines_high := maxf(words.custom_minimum_size.y, float(lines * words.get_line_height()))
-	var high := float(HudStyle.PAD * 2) + _row.get_combined_minimum_size().y
+	var row_high := float(maxi(caption.get_line_height(), count.get_line_height()))
+	var high := float(HudStyle.PAD * 2) + row_high
 	high += lines_high + _holes.custom_minimum_size.y
 	return Vector2(wide, high)
 
