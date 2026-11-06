@@ -2269,6 +2269,11 @@ Ten of twelve cells were red on 2026-11-04, eleven on 2026-11-05 and nine in bot
    causes below. With the fix, 20 nights a cell on this branch (local, seeds 1 to 20): regular_2
    0 nights with the gate (17 and 18 in 100 before; the chance of none in 20 at 17% is 2.4%) and one idle under Roam,
    regular_4 0 (14 in 100 before; chance of none 4%) and no gate broken at all (21 in 100 before).
+   The nightly workflow dispatched on this branch (run 42174128469, 100 nights a cell) read, for the five cells that had
+   finished when this was written (nights that broke any gate, with 2026-11-05 and the `main` dispatch before): rookie_2
+   2 (1, 2), rookie_4 3 (4, 2), regular_1 0 (2, 2), regular_2 1 (18, 15), regular_4 4 (21, 15); no bot idle beside a
+   zombie with a ray gun in 500 nights, and one idle with a zombie in view of any kind (regular_4). The other seven
+   cells were still running; their result is that run's report.
 2. **The Follow cell: the person stand-in was given legs (#1011), not a bot fault.** Nights with a bot beyond 25 m for over
    20 s: 1 in 100 on 2026-11-04, 23 on 2026-11-05 (the longest 20.2 to 42.7 s); the seconds a bot is far from the
    person, a night: 40 and 119. #1011 made the stand-in shop (it walks the lot to the lockers, sprints from the dead,
