@@ -41,11 +41,20 @@ a lane card comes and goes), and only searches when the boxes, the words or the 
 the hard boxes it keeps the usual place, as before.
 
 Because the card goes beside the column and not above it, how tall the column gets does not matter: a block a fingertip
-high added to the column leaves the card clear on every page and size, and so does one 480 units high (a sweep). What
-limits the card is the ground to its right: on the smallest page at 1.25 the free band between the column's edge and the
-gains is 190 to 253 units, and with a card of the lane, a feed and the prompt all up as well the card may meet a row of
-the feed (a left hand's feed stands on the card's side) rather than a button or a card that stays: the test names that
-one case.
+high added to the column (where #1286's tag stood once), one 160 and one 480 units high, all leave the card clear on both
+pages and every size (a sweep of the final build, 8 people, with and without the 7 bots, both give the same card). What
+limits the card is the ground to its right, between the column's edge and the gains (and the box round the middle):
+how much is left at 8 people, by the width the card takes (full is 316):
+
+| Page, interface size | Card (width x height, units) | Room left |
+| --- | --- | --- |
+| both pages at 0.8 and 1.0 | 316 x 147 | full width: 316 is the card, the ground is wider |
+| 844 x 390 at 1.25 (canvas 1870) | 253 x 136 | one step under full |
+| 667 x 375 at 1.25 (canvas 1536) | 190 x 164 | none: 190 is the narrowest and the ground is 190 |
+
+With a card of the lane, a feed and the prompt all up as well, on the 667 page at 1.25 with a left hand no place misses
+everything: the card keeps off the cards and the buttons and may meet a row of the feed rather than stand over a button
+or a card that stays (the second tier of `ChallengeFit`; the test names that one case).
 
 ## Found on the way
 
