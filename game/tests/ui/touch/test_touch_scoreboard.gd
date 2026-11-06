@@ -20,7 +20,9 @@ const SLACK_CSS := 0.05
 ## The least share of its own size the ticket is shrunk to anywhere in the matrix: the smallest page
 ## at the biggest interface size with a full room is the worst, at 0.65 when this was written (the
 ## ticket stands lower there, clear of Ping, which a ticket in the middle would be 0.50 beside).
-const LEAST_SHARE := 0.60
+## A room with a bot is 0.55: the bots' tag at the strip's end (#1286) is one more place to keep
+## clear of. Without its box the same room is over 0.60.
+const LEAST_SHARE := 0.55
 ## The same with Strike up (a dead in reach): the smallest page at the biggest interface size with a
 ## full room is at the least step there (0.50), clear of Strike's circle in the middle of its rows.
 const LEAST_SHARE_WITH_STRIKE := 0.50
