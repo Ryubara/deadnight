@@ -167,9 +167,10 @@ what happens underneath:
    (the most
    alive in all the rooms together, each cut to its share; a room with a browser in it stands 40 whatever it says),
    and `MAX_ALIVE` for a cap on any one room. Bots are limited the same way, whatever the host's Bots setting asks
-   (`BotLimits`): `MAX_BOTS` (0 to 7, default 7) caps one room, `BOT_BUDGET` (default none) shares a number of bots
-   among the open rooms, and `BOTS_OFF=1` is the kill-switch: no room seats a bot, and a restart is the only thing it
-   needs. The measured cost of three bots is [in the bot research](bots.md#server-cost).
+   (`BotLimits`): `MAX_BOTS` (0 to 7, default 7) caps one room, `BOT_BUDGET` (default 2 since #1193, 0 is none;
+   [why](crowd-budget.md#rooms-of-fifteen-bodies-1193)) shares a number of bots among the open rooms, and
+   `BOTS_OFF=1` is the kill-switch: no room seats a bot, and a restart is the only thing it needs. The measured
+   cost of three bots is [in the bot research](bots.md#server-cost).
 
 Environment of the services (names only; the secrets are Railway variables, never in the repository):
 

@@ -1,5 +1,6 @@
-# Every map has a place for every seat (`NightHost.MAX_PLAYERS`, #690): eight markers, none closer
-# to another than a body is wide, so a full room never starts with two players in one spot.
+# Every map has a place for every body of a full night (`NightHost.MAX_SEATS`, #690, #1193): the 8
+# people and the seven bots, none closer to another than a body is wide, so a full room never starts
+# with two bodies in one spot. `test_spawn_fifteen.gd` stands the 15 on each map and looks.
 extends GdUnitTestSuite
 
 const MAPS: Array[String] = [
@@ -24,7 +25,7 @@ func _spawns(path: String) -> Array[Vector3]:
 func test_every_map_has_a_spawn_for_every_seat() -> void:
 	for path in MAPS:
 		assert_int(_spawns(path).size()).override_failure_message(path).is_equal(
-			NightHost.MAX_PLAYERS
+			NightHost.MAX_SEATS
 		)
 
 

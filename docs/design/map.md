@@ -654,7 +654,7 @@ and the field's stalls have painted lines.
 | --- | --- |
 | `Field`, `Concession`, `Midway`, `ProjectionBooth`, `GeneratorYard`, `BackLot`, `Road` (the ticket plaza; the node and the door keep the old name) | an area: ground, walls, props, `Lamps`, `ZombieSpawns`, a hidden `Label` |
 | `Field/Breach*`, `Field/Apron*`; `<Area>/Breach*`, `<Area>/Apron*` | a breach's boards (a `Barricade` with `metadata/barricade_id`) and the walled apron outside it (the midway's bays have the wall, `Midway/Pocket*`, and no apron); every spawn marker carries the `barricade_id` of the breach it lies behind |
-| `Field/PlayerSpawns` | eight markers on the apron below the screen, two rows of four, 3 m apart |
+| `Field/PlayerSpawns` | fifteen markers on the apron below the screen, for the most bodies a night holds (8 people and 7 bots, `NightHost.MAX_SEATS`): the first four in a row 4 m apart, the rest in the lanes between the rows of cars, 2.5 to 3 m from each other and clear of every car (`test_spawn_fifteen.gd` holds it; the 8th and the 5th of the old eight stood in cars) |
 | `Doors` | the `LotDoors` script: `bind(rules)` opens a door when the rules sell it; signal `door_opened(door_id)` |
 | `Field/ParkingLines` | the painted lines between the stalls: one `MultiMesh`, no collision |
 | `Doors/Door_*` | the five purchase doors: a group of slabs (one per way into the area) and a price label, with `metadata/cost`, `shop_id` and `requires`, written from the shop's tuning. `LotDoors.open` frees them; free `Doors` to walk everywhere (a test) |
