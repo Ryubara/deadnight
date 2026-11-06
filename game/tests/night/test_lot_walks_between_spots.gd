@@ -40,18 +40,10 @@ const STAND := Vector3(12.5, 0.4, 31.6)
 const GREYBOXES: Array[String] = [
 	"res://world/drive_in_greybox.tscn", "res://world/smallmap/smallmap_greybox.tscn"
 ]
-## The solid props still out of a mesh, by map: the second map's four lockers (Deadnight #1340).
-## Taking one into the group is a change to that map's saved meshes and the dead's walk there, so
-## it is its own pull request; the list shrinks to nothing, it does not grow.
-const STILL_OUT: Dictionary[String, Array] = {
-	"res://world/smallmap/smallmap_greybox.tscn":
-	[
-		"ShopProps/LockerStart",
-		"ShopProps/LockerSide",
-		"ShopProps/LockerUpstairs",
-		"ShopProps/LockerUpstairsA",
-	],
-}
+## The solid props still out of a mesh, by map: none since the second map's lockers joined (#1340).
+## It stays empty: a new solid prop joins the group, and a note here is for a change to a map's
+## saved meshes and the dead's walk that needs its own pull request.
+const STILL_OUT: Dictionary[String, Array] = {}
 
 var _catcher := ErrorCatcher.new()
 
