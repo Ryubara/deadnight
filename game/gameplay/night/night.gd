@@ -258,9 +258,15 @@ func start_remote(
 	remote = true
 	if night_tuning == null:
 		night_tuning = NightTuning.shipped()
+	loading.emit(0.0, "Building the lot")
+	if warm_up:
+		# The build takes the main thread for seconds: let the loading screen be drawn first.
+		await get_tree().process_frame
+		await get_tree().process_frame
 	world = NightWorld.new()
 	add_child(world)
 	await world.build(MapRegistry.of(map_id))
+	loading.emit(BUILD_SHARE, "Joining the night")
 	rules_tuning = load(GameRules.DEFAULT_TUNING_PATH)
 	var online := p_link if p_link != null else WebSocketLink.new()
 	link = online
@@ -283,7 +289,7 @@ func start_remote(
 	var began := Time.get_ticks_msec()
 	while failure["reason"] == "" and not (welcome.has("snapshot") and _has_frame(early)):
 		if (Time.get_ticks_msec() - began) / 1000.0 > seconds:
-			failure["reason"] = "No answer from %s." % url
+			failure["reason"] = "The night did not answer."
 			break
 		online.pump()
 		await get_tree().physics_frame

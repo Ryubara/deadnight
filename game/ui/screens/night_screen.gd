@@ -457,6 +457,11 @@ func _on_arrival_ended() -> void:
 
 
 func _on_connect_failed(reason: String) -> void:
+	# The loading screen stands over the card, and no night comes to take it away: left there, a
+	# failed join read as a load that never ends (#1366).
+	if _loading != null:
+		_loading.queue_free()
+		_loading = null
 	_show_overlay("Could not join", reason, false)
 
 
