@@ -169,6 +169,48 @@ func test_a_dry_bot_runs_for_rounds_with_a_dead_one_in_sight_but_not_in_reach() 
 	night.dispose()
 
 
+func test_a_dry_bot_holding_the_start_pistol_runs_for_rounds_for_the_freeze_gun_in_its_pack(
+) -> void:
+	# #1346: the freeze gun is the only gun worth rounds, no wall sells them, and the locker sold for
+	# the weapon in hand (the empty start pistol): two nights of a hundred stood the boss round out
+	# holding 1 780 points and two empty guns.
+	var night := await _dry_bot_with_a_dead_one_at(8.0)
+	night.server.combat.apply(CombatAction.give_weapon(1, &"freeze_gun"))
+	var freeze = night.server.combat.state_of(1, &"freeze_gun")
+	freeze.ammo = 0
+	freeze.reserve = 0
+	night.server.combat.apply(CombatAction.equip(1, &"house_pistol"))
+	_give(night, 1, 0)
+	_seconds(night, 3.0)
+	_give(night, 1, 400)
+	var bought := _purchases(night, &"ammo_freeze_gun")
+	_seconds(night, 90.0)
+	assert_int(bought.size()).is_greater_equal(1)
+	assert_int(freeze.reserve + freeze.ammo).is_greater(0)
+	night.dispose()
+
+
+func test_a_dry_bot_that_cannot_pay_for_the_freeze_gun_s_rounds_buys_the_start_pistols() -> void:
+	# The freeze gun's three rounds cost 150, the start pistol's thirty cost 40 (the nightly's
+	# seed 55 held 105 points and a crowbar and fed nothing for eight minutes).
+	var night := await _dry_bot_with_a_dead_one_at(8.0)
+	night.server.combat.apply(CombatAction.give_weapon(1, &"freeze_gun"))
+	var freeze = night.server.combat.state_of(1, &"freeze_gun")
+	freeze.ammo = 0
+	freeze.reserve = 0
+	night.server.combat.apply(CombatAction.equip(1, &"house_pistol"))
+	_give(night, 1, 0)
+	_seconds(night, 3.0)
+	_give(night, 1, 100)
+	var pistol = night.server.combat.state_of(1, &"house_pistol")
+	var bought := _purchases(night, &"ammo_house_pistol")
+	_seconds(night, 90.0)
+	assert_int(bought.size()).is_greater_equal(1)
+	assert_int(pistol.reserve + pistol.ammo).is_greater(0)
+	assert_int(freeze.reserve + freeze.ammo).is_equal(0)
+	night.dispose()
+
+
 # --- A person's ammunition ping ---
 
 

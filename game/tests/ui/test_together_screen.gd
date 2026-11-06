@@ -79,6 +79,11 @@ class FakeApi:
 	func detached(_parent: Node) -> TogetherApi:
 		return self
 
+	## A lobby screen that goes says `leave` from `_exit_tree`: no request leaves a unit test, and the
+	## screen this fake hangs under may be gone by then (#1355).
+	func leave(_lobby: Dictionary) -> Dictionary:
+		return {"ok": true}
+
 	func sign_in(display_name: String = "") -> Dictionary:
 		signed_as.append(display_name)
 		return {"ok": true}

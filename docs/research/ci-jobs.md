@@ -20,6 +20,12 @@ PRs that are backing us up", with 21 open pull requests, the account's 20 concur
 | `bots-nightly` | `plan`, `soak` (a matrix job of ten nights for each cell), `report` | 03:17 UTC every day and by hand; never on a pull request ([the bot soak](bots.md#the-nightly-soak-and-the-parity-batch)) |
 | `ui-windowed` | `windowed` (the `tests/ui` suites in a window under xvfb, about 40 minutes), `report` | 04:47 UTC every day and by hand; never on a pull request, never a required check; opens one issue and fails the run when a suite fails in the window, a pixel suite does not run, or it could not run ([the windowed run](windowed-ui-ci.md)) |
 
+**Scheduled runs start hours late.** GitHub queues a `schedule` event when it can, and on this repository it is about 7.5
+hours after the time written in the workflow: `bots-nightly` (03:17 UTC) of 2026-11-06 started at 10:52 UTC (run
+42205993462, 7 h 35 min late), and the first scheduled `ui-windowed` run (04:47 UTC) started at 12:28 UTC, 7 h 41 min
+late. Read a scheduled run as "the code of the last push before it started", not of the time in the file; a failure of
+one is found hours after its cause was pushed, and the run's `headSha` is the code to check it against.
+
 ## Which files start which job
 
 `.github/scripts/ci_scope.py` reads the pull request's changed files (the API, no checkout) and the `conventions` job

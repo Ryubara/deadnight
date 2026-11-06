@@ -24,7 +24,13 @@ extends Node
 ## is, its mode, target and path gap, and where each player is and what it holds; with `--detail`
 ## also each zombie's path, gate, whether it tears, who has a line to it and the boards of its
 ## gate), `--map=ID` (a map of `MapRegistry`, played by its scene and its rules overlay; default the
-## lot) and `--quiet` (no trace line a minute).
+## lot), `--give=WEAPON` (every bot starts the night with that weapon of the catalogue in its hands
+## beside the start pistol: a crane prize the bots reach late and rarely, held from the start, to
+## play the nights it ends in many times over, #1346), `--dry-last=POINTS` (when a round is down to
+## its headliner every bot is left with the start pistol and the `--give` weapon (the freeze gun by
+## default), both empty, the pistol in hand, and POINTS: the end the nightly's stalled rounds had,
+## set up in each boss round instead of waited for) and
+## `--quiet` (no trace line a minute).
 ## Prints `SOAKNIGHT {json}` for each night and `SOAKCELL {json}` at the end.
 
 const STEP := Night.STEP
@@ -96,6 +102,11 @@ func _play(seed_value: int) -> Dictionary:
 	for i in bots:
 		var id := first_bot + i
 		night.seat(id, _profile(), 1000 + 100 * seed_value + id)
+	if _args.has("give"):
+		for i in bots:
+			night.server.combat.apply(
+				CombatAction.give_weapon(first_bot + i, StringName(String(_args["give"])))
+			)
 	_set_dead(night)
 	var watch := SoakWatch.new(night, people, order)
 	var dead := DeadStats.new(night)
@@ -108,6 +119,7 @@ func _play(seed_value: int) -> Dictionary:
 	var limit := int(float(_args.get("max-minutes", 45)) * 3600.0)
 	var stall := int(float(_args.get("stall-minutes", 8)) * 3600.0)
 	var round_seen := 0
+	var dried_round := 0
 	var round_began := 0
 	var ticks := 0
 	var reason := "over"
@@ -132,6 +144,10 @@ func _play(seed_value: int) -> Dictionary:
 		watch.tick()
 		dead.tick()
 		ticks += 1
+		if _args.has("dry-last") and dried_round != round_seen and _only_the_boss_is_left(night):
+			dried_round = round_seen
+			_leave_dry(night, int(_args["dry-last"]))
+			print("DRYLAST t=%d round %d" % [ticks, round_seen])
 		if not _args.has("quiet") and ticks % (TRACE_EVERY * 60) == 0:
 			print(
 				(
@@ -189,6 +205,37 @@ func _play(seed_value: int) -> Dictionary:
 	night.dispose()
 	await get_tree().process_frame
 	return report
+
+
+## Whether the dead of the round are one headliner (`--dry-last`).
+func _only_the_boss_is_left(night: SeatedNight) -> bool:
+	if night.server.rules.zombies_remaining() != 1 or night.server.sim.zombies.size() != 1:
+		return false
+	var zombie: ZombieBody = night.server.sim.zombies.values()[0]
+	return zombie.profile != null and ZombieModels.is_boss(zombie.profile.look)
+
+
+## Leaves every bot with the start pistol and the `--give` weapon (the freeze gun by default), both
+## empty, the pistol in its hand, and `points` (`--dry-last`): the end state of the nightly's
+## stalled rounds.
+func _leave_dry(night: SeatedNight, points: int) -> void:
+	var prize := StringName(String(_args.get("give", "freeze_gun")))
+	for id: int in night.server.rules.players:
+		if not night.server.rules.players[id].bot:
+			continue
+		var others: Array = night.server.combat.carried(id).filter(
+			func(weapon_id: StringName) -> bool:
+				return weapon_id != WeaponCatalog.START_WEAPON and weapon_id != prize
+		)
+		night.server.combat.apply(CombatAction.remove_weapons(id, others))
+		night.server.combat.apply(CombatAction.give_weapon(id, prize))
+		night.server.combat.apply(CombatAction.give_weapon(id, WeaponCatalog.START_WEAPON))
+		for weapon_id: StringName in night.server.combat.carried(id):
+			var state := night.server.combat.state_of(id, weapon_id)
+			state.ammo = 0
+			state.reserve = 0
+		night.server.combat.apply(CombatAction.equip(id, WeaponCatalog.START_WEAPON))
+		night.server.rules.players[id].points = points
 
 
 ## `--dead=off|hard|timed|wade|ramp`: how the dead meet the bodies in this soak (#914). `off` lets

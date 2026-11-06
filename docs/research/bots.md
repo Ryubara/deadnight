@@ -2479,3 +2479,104 @@ new gate (3), one unexplained spot (4) and the old stalled rounds (5). A gate th
 hundred cannot go green while any of these has a rate above 1%; a rate gate (a share of nights per gate, from the
 nights above) would say more than the cell's name, but the numbers it would hold are the maintainer's to set. Parity is
 not a gate yet (`--gate-parity` is off, #767 and #772 own it) and was not looked at.
+
+## The third nightly run, and a lone bot with two empty guns (#1346)
+
+`bots-nightly` run 42205993462 (code `2c0b207e`, scheduled for 03:17 UTC and started at 10:52, 7 h 35 min late:
+schedules here run about 7.5 hours late, see [CI jobs](ci-jobs.md#which-files-start-which-job)) played 1 200 nights.
+Cells green: rookie_1, rookie_2, rookie_4, regular_2, veteran_1, veteran_2 (6 of 12; the dispatch on `main` of
+2026-11-06 had 1 green and the proving run 42174128469 had 3).
+
+**Nights that broke a gate, of 100** (the earlier readings' numbers are above, in [the first two nightly
+runs](#the-first-two-nightly-runs-1319)):
+
+| Cell | Nights | Which gate |
+| --- | ---: | --- |
+| rookie_1, rookie_2, rookie_4 | 0 | none |
+| regular_1 | 2 | a round that would not end (round 5), 426 s and 440 s down to the last dead (the subject of this section) |
+| regular_2 | 0 | none |
+| regular_4 | 4 | idle with a zombie in view over 5 s x1, round 5 down to its last dead for 155, 166 and 208 s |
+| veteran_1, veteran_2 | 0 | none |
+| veteran_4 | 1 | idle with a zombie in view over 5 s |
+| roam (3 bots and a person) | 3 | a round that would not end x1 (round 15, 391 s), round 5 for 156 and 171 s |
+| follow | 36 | 28 with a bot beyond 25 m of the person over 20 s ([cause 2 above](#the-first-two-nightly-runs-1319)), the rest long tails |
+| hold | 29 | 13 rounds that would not end, the rest tails of 152 to 413 s ([cause 3 above](#the-first-two-nightly-runs-1319)) |
+
+Only regular_1 was taken apart here; the other cells' rows are as the earlier causes say and were not read again.
+
+**The two regular_1 nights (seeds 20 and 56).** The same end both times: one bot up and not downed, holding the freeze
+gun and the start pistol both at `[0, 0, 0]`, the headliner the only dead left, in CHASE for 467 s with 0 and 1
+swings, 1 780 and 235 points unspent. In the run, regular_1 nights in which the bot ever held the freeze gun: 2 of 9
+stalled; the other 91: none (veteran_1 held it in 10 nights and none stalled). The guess in the issue, that #1330 (the
+crane prize) put the freeze gun in the bots' hands and nothing brought them to ammunition, was half right: the crane
+is how the bot gets the gun, and the rest is the shopping code (below), unchanged since the shopping phase (#597):
+what #1330 did was make a crane prize that no wall sells rounds for a thing the bots hold.
+
+*The nights do not come back.* Seeds 20 and 56 on this branch gave other nights, and so did seeds 11 to 20 and 51 to
+60 played in one process as the nightly plays them (seed 11 ended at round 16 in the run and at round 10 here; #1341
+found the same seed giving 17 and 11 rounds on the same code). The stall was therefore read from a night of this
+branch that did it: 1 stalled night in the 29 of the first hour's soaks (regular, one bot, seed 55, played in the
+process of seeds 51 to 60), round 5 down to a headliner for 446 s with both guns at `[0, 0, 0]`, whose watch (a line
+every 5 s) is the third case below.
+
+**The cause, two rules of `BotEconomy`.**
+
+1. *The rounds of the gun worth them cannot be bought with the wrong gun in hand.* `BotEconomy.useful` feeds only the
+   guns whose sustained damage a second is at least half the best one's (`USEFUL_SHARE`): the freeze gun 77, the start
+   pistol 27, so the pistol is never fed once the freeze gun is carried. The freeze gun is a crane prize with no wall,
+   and a locker "sells for the weapon in hand", which `_locker_sells` allowed only when that weapon was the gun asked
+   for or a blade. A bot that fired the freeze gun dry, swapped to the pistol, fired that dry too and was holding it
+   had no stand for any rounds: `_ammo_stand` returned `INF`, no purchase existed, the errand and the supply dash
+   (`BotErrands.dash`) found nothing to go for, and the bot stood the round out holding its points. The wall of the
+   shotgun, the rifle and the others sells rounds wherever the bot stands, so only a crane prize with no wall is
+   caught (the ray gun is the other one).
+2. *A bot too poor for the worthy gun's rounds fed nothing.* The freeze gun's three rounds cost 150; the start
+   pistol's thirty cost 40. With under 150 points and nothing to fire (the third night, seed 55: 105 points, the
+   crowbar of a crane play in hand, the freeze gun empty) the bot bought neither: the pistol is not "useful", so it
+   was not offered. It kept the headliner 6 m away (`BotProfile.boss_keep`), struck nothing and earned nothing, and
+   the only income left, mending boards, ended when every board was up.
+
+**Would a person be as stuck?** No. A person holds the empty pistol at a locker, sees "rounds for the pistol, 40" and
+buys them, or swaps to the freeze gun and pays 150; and a person with 100 points buys the pistol's thirty rounds. Both
+nights are the bot's, not the night's.
+
+**The fix (`BotEconomy`).** A locker sells for any carried gun when the gun in hand has no round in the magazine or the
+reserve (`_locker_sells`; the bot swaps at the stand, as it already does with a blade, `BotErrands._wants_swap`); a gun
+with rounds still keeps the old rule, so a bot never swaps a loaded gun for a dry one at a locker. With no round in any
+gun and the rounds of the useful gun out of its reach, it takes the cheapest rounds it can pay for (`_any_rounds`), and
+while every gun is dry, the useful gun's rounds are bought only if they leave the price of those cheapest rounds
+(`_cheapest_rounds`), so a bot never spends its way to "nothing to fire and nothing to buy it with".
+
+**Measured.** Nights cannot be waited for (2 in 100, never the same night twice), so the end state was set up in each
+boss round: `bots_soak.tscn --give=freeze_gun --dry-last=POINTS` gives each bot the freeze gun at the start of the
+night and, the moment a round is down to its headliner, leaves it the start pistol and the freeze gun, both empty, the
+pistol in hand, and POINTS. One Regular bot, seeds 700 to 719, round cap 7, a round stood 4 minutes is stalled:
+
+| POINTS | Code | Nights | Nights set up | Stalled rounds | Longest tail | Round 7 reached | Night ended with the bot down |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 500 | `main` | 20 | 12 | **4** | 205 s | 8 | 0 |
+| 1 500 | this branch | 20 | 11 | **0** | 118 s | 11 | 0 |
+| 100 | `main` | 20 | 12 | **12** | 224 s | 0 | 0 |
+| 100 | this branch | 20 | 11 | **0** | 137 s | 6 | 5 |
+
+A night is "set up" when a boss round came down to its headliner alone with the bot up (the others ended earlier: the
+bot died first, or the round was won). The first run, seeds 700 to 709 at 1 500 points with only the locker rule, read
+3 stalled of 5 set-up nights on `main` (seeds 700, 703 and 704) and 0 of 5 with it. "Night ended with the bot down" is
+the night ending with the bot down in the boss round: at 100 points a bot with thirty pistol rounds meets the
+headliner and sometimes loses, a night that ends and does not stall. No engine error in any of the 80 nights.
+
+**Tests** (each fails on `main`): `test_bot_economy_dry_guns.gd`
+(`test_a_bot_holding_a_dry_start_pistol_buys_rounds_for_the_dry_gun_worth_them`,
+`test_a_bot_with_no_round_and_too_few_points_for_the_dry_gun_buys_the_start_pistols_rounds`) on the chooser, and on
+the real server `test_bot_errand_buys.gd`
+(`test_a_dry_bot_holding_the_start_pistol_runs_for_rounds_for_the_freeze_gun_in_its_pack`,
+`test_a_dry_bot_that_cannot_pay_for_the_freeze_gun_s_rounds_buys_the_start_pistols`): a dead one stands 8 m off, the
+bot is dry with the pistol in hand, and it must walk to a locker and pay (before: no purchase in 90 s).
+
+**Left open.** (1) A bot under 40 points with no round anywhere still earns nothing (spent on a door, say): the [boss
+keep](#hold-and-a-boss-769) means it never strikes the headliner, and the quick melee has no use at 6 m. Whether a dry
+bot may close on a boss, and what the night then costs it, is a design question and was not changed. (2) The freeze
+gun's rounds cost 50 points each against the pistol's 1.3, and the bot's `useful` rule rates the freeze gun by what it
+does to ordinary dead (it shatters them), so against a headliner, which it only slows, a bot with 600 points buys
+twelve rounds that do less than the pistol's thirty. (3) Of the other cells, regular_4's three round-5 tails (155 to
+208 s) and the Follow and Hold cells were not read.

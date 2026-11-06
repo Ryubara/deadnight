@@ -26,6 +26,7 @@ const SLACK := 0.5
 var _saved_size := Vector2i.ZERO
 var _saved_scale := 1.0
 var _saved_path := ""
+var _arrival := true
 
 
 func before_test() -> void:
@@ -36,12 +37,18 @@ func before_test() -> void:
 	Settings.path = SETTINGS_PATH
 	Settings.reset_defaults()
 	TouchMode.device_is_touch = true
+	# A window plays the drop that opens a night, and the touch layer waits for it to end (the HUD,
+	# the reticle and the touch are the show's); a headless run has none (`--noarrival`). These are
+	# about the night the player has once it ends (#1348).
+	_arrival = NightScreen.arrival_enabled
+	NightScreen.arrival_enabled = false
 
 
 func after_test() -> void:
 	get_window().size = _saved_size
 	get_window().content_scale_factor = _saved_scale
 	TouchMode.device_is_touch = null
+	NightScreen.arrival_enabled = _arrival
 	MenuScale.pixel_ratio = -1.0
 	PlayerLevel.reset()
 	await RouterFixture.clear(get_tree())

@@ -62,3 +62,37 @@ ends (so it is a spring, not a snap), and settles for the exact end value.
 passed at 240 and below, the new one passes at 1000, 480, 240, 120, 60 and 10. Use it on any test that reads a
 `delta`-driven value. `UISpring` has a unit test for the sub-step frame and its carry
 (`test_a_frame_shorter_than_one_step_moves_nothing_and_is_not_lost`).
+
+## The first scheduled run (#1348)
+
+The first scheduled `ui-windowed` run (2026-11-06) failed four suites that pass headless. None was a fault of the game,
+and none was one cause: three were tests that read something a window changes, and one is a limit of the runner.
+
+- **`test_night_tap_targets`: the drop.** The suite opens its nights through the Play screen, so the guard that
+  looked for a push of the night scene never saw it, and a window played the drop: the touch layer is the show's until it
+  ends, so `touch_active()` was false and the hit areas were never measured. It failed the same way in a window on a
+  GPU, so a local window run shows it. The suite now starts its nights with no drop due, and the guard also reads
+  `play.start()` (it found `test_night_screen_credits` and `test_night_screen_report` too, which now say so). With the
+  layer up, every Pause, Ping and button circle is 44 CSS px or more at the three interface sizes: the tap targets are
+  right.
+- **`test_hud_challenge`: the card's clock.** `HudChallenge._process` adds the real length of each frame to the card's
+  clock, and the test let 40 frames run while it measured. A canvas of 2340 to 2880 units costs a software renderer
+  0.1 to 1 s a frame, so the card had held, faded and slid off by the time it was read ("the card is not shown", and
+  once "leaves the canvas" at x -19.6, mid-slide). The test steps the card by hand (`_run`, `_settle`), so its own
+  `_process` is now off in the test. The new case runs the same check at 5 frames a second (`Engine.max_fps`) in every
+  run, headless too: it failed before the change and passes after. Not a fault of the HUD: a card that holds for seconds
+  of real time is the design.
+- **`test_level_ink`: the marquee's chase.** The lobby's panel runs a chase of bulbs (`UIPanel`, a step every 0.15 s,
+  the lit set again every three), and the reading takes a place's picture three times (as it is, with the badges
+  clear, in flat colour). A bulb lit in one picture and not in the next is brighter in the direction of the
+  marker, so a bulb row under the digits was read as digit ink (`digits 660..711` for a glyph that is 32 rows tall).
+  Whether the row fell inside the digits' area, and which picture caught which bulbs, depended on the frame times: the
+  runner failed 1688 x 780 (all four levels) on the first run and 844 x 390 level 3 on the next three, the same
+  suite passed in another run, and a GPU window passes. The suite now holds the chase still (reduced motion, which stops
+  `UIPanel`'s `_process`), and a case checks that no marquee panel of the lobby is running one. The digits'
+  and the icon's own checks are unchanged (same tolerances).
+- **`test_window_fixture`: no window manager.** `test_a_minimized_window_draws_no_frame` needs the window to be
+  minimized, and `xvfb-run` starts no window manager, so the request is ignored: measured on the runner, `window_get_mode`
+  stays windowed after `WINDOW_MODE_MINIMIZED` and 30 frames are drawn in 30. The three other cases pass there, and
+  all four pass in a real window. It is in `tools/ui_windowed_known.json` with an `xvfb:` reason, as the unjudged
+  suites are ([the schedule](windowed-ui-ci.md)). The same fact is why the hang of #1207 cannot appear under `xvfb-run`.
