@@ -2584,3 +2584,82 @@ gun's rounds cost 50 points each against the pistol's 1.3, and the bot's `useful
 does to ordinary dead (it shatters them), so against a headliner, which it only slows, a bot with 600 points buys
 twelve rounds that do less than the pistol's thirty. (3) Of the other cells, regular_4's three round-5 tails (155 to
 208 s) and the Follow and Hold cells were not read.
+
+## A crawler that parks at the drive-in's west ticket booth (#1347)
+
+In the third nightly run's `regular_3_hold_person` cell, 12 of the 13 rounds that would not end had one
+crawler standing at `(-8.5, 45.2)` for 365 to 413 s. It was not stuck, and nothing about the spot is special except what
+stands next to it: the drive-in's west ticket booth, a 2.4 m box at `(-6, 45.2)`, whose west face is 1.3 m east of the
+spot.
+
+**Cause.** The way round the booth to the north and the way round it to the south are within a metre or two of one length
+from a start beside the west face. The walking mesh's search names the north way from a diagonal strip beside the face
+and the south way from both sides of it. A body asks for a new route every 0.3 m (a crawler walks 1.2 m/s), so a dead
+that took the north way walked out of the strip, was told the south way, walked back into the strip and was told the north
+way again, for ever. It moved all the time (so a stuck detector never fired) and `tearing` was false, mode 1 (CHASE). A
+person can see it and can walk to it: the capture from the player's camera shows the crawler plainly at 1.6 m with the
+ray to it clear on every frame, so the guess that it was out of reach or out of sight was wrong.
+
+**Test first.** `test_zombie_booth_fork.gd` opens the plaza, puts a person far north in the field and puts a dead on a
+0.3 m grid beside the west face (x -9.4 to -7.3, z 44.2 to 46.4), once at 1.2 m/s and once at 1.8 m/s. Every one must be
+north of the plaza's gate (z 38) within 40 s (a stroll takes 18 s). With the fix switched off: 31 crawlers and 18 walkers
+at 1.8 m/s stayed south of the gate; with it on: none.
+
+**Fix.** `ZombieRouteKeep.keeps` (moved out of `ZombieSim`, which was past the lint line limit) already kept the old
+route against a new one that is `FLIP` (6 m) longer, while the old one ended near the target (#950). It now also keeps
+it against a new route that sends the zombie back the way it is going (`ZombieRouteKeep.turns_back`: the first leg of
+the new route, past `LEG_LEAST` 0.3 m, points against the leg being walked) unless the new one is `GAIN` (4 m) shorter
+than what is left. A zombie more than `STRAY` (1 m) from its leg (shoved by the crowd, thrown by a blast) takes the
+new route whatever it gains, and a new route that goes on the same way is taken as ever, so a crowd still spreads
+round an obstacle. `test_zombie_think_cost.gd`'s two golden digests moved once, as the note beside them says; with the
+rule off they are the old ones.
+
+**Numbers** (`bots_soak.tscn`, regular, Hold, 3 bots and a person; seeds 101 to 145, before = the rule off, after = this
+change; both arms `--max-round 20`). Nights are not repeatable (#1350), so the two arms are compared by counts, not night
+by night.
+
+| Cell | Arm | Nights | Rounds that would not end | Longest tail (median / p90 / max) | Round (median) | Mean spread |
+| --- | --- | ---: | ---: | --- | ---: | ---: |
+| regular_3_hold_person | before | 45 | 9 (20%), all at `(-8.5, 45.2)` give or take 0.3 m | 115 / 400 / 404 s | 10 | 3.95 |
+| regular_3_hold_person | after | 45 | 0 | 95 / 152 / 211 s | 11 | 3.87 |
+| regular_4 (seeds 101 to 130) | before | 30 | 0 | 51 / 92 / 123 s | 11 | 37.4 |
+| regular_4 (seeds 101 to 130) | after | 30 | 0 | 50 / 86 / 117 s | 11.5 | 37.9 |
+
+The crowd's spread (how far apart the dead are when a round ends) did not fall, so holding a route did not herd them.
+The Hold cell still has tails of 150 to 210 s that are not a round that does not end (`BotHunt` skips Hold, see
+above); they were not read here.
+
+**What the hold costs a chase (review of the pull request).** `ZombieRouteKeep.keeps` has no exemption for a close
+chase, and when little of the route is left its gain test (`length > left - GAIN`) is always true, so the worry was a
+dead 2 to 4 m from a person who dodges past it keeping its old route and walking the wrong way. It does not, and the
+reason is geometry: the hold needs the new route's first leg to point more than a right angle from the leg being
+walked, and a route is replaced every 0.25 s, so the person has to get from in front of the dead to behind it within
+one repath: a pass within about a metre, which is inside the dead's reach (1.4 m). There the dead swings (no repaths
+while it swings), and when the swing ends the old route is stale (its end is more than `KEEP` from the person) and is
+let go.
+`test_zombie_dodge_past.gd` measures it on open ground (a two-point path, as the mesh gives): a crawler (1.2 m/s) and
+a walker (2.0 m/s) chasing a person 2, 3 and 4 m off, which sidesteps 0 to 3 m in steps of 0.3 and runs past to behind and
+on at 4.8 m/s (`PlayerTuning.run_speed`) and at 7.0 (`sprint_speed`), with three seeds (the dead's repath phase), and a
+person who circles the dead at radius 1.0 to 3.0 m at 2.4, 3.6 and 4.8 m/s. For the hold on and off it counts the metres
+and seconds the dead walks away from the person while within 14 m:
+
+| Case | Hold off | Hold on |
+| --- | --- | --- |
+| 12 dodge-past rows (2 run speeds, 2 dead, 3 gaps; worst of 33 runs each) | 0.00 m, 0.00 s | 0.00 m, 0.00 s |
+| 24 circling rows (2 dead, 4 radii, 3 speeds) | 0.00 m, 0.00 s | 0.00 m, 0.00 s (the hold fires in 3) |
+| Control: a dead that never repaths (dodge past / circling) | | 2.73 m, 1.37 s / 1.38 m, 1.03 s |
+
+The control shows the count can see a dead walking away. The rule makes no difference to a chase on open ground, so the
+code is as it was; the test keeps it so (the hold may add at most 0.1 m and 0.1 s). Not measured: a chase among
+obstacles, where the first leg of a route can point away from the target for other reasons (the booth is one).
+
+**Not covered.** The issue's other stall, a crawler at `(-8.5, 26.1)` (1 night of 13), is not this chatter and not the
+prize crane: the crane spots are `(-6.4, 5)`, `(6, 14)`, `(-24, -14)` and `(40, 10)`, the nearest 21 m away, and no
+shop spot is nearer than 7 m. Dead started on a 0.3 m grid from `(-10, 24)` to `(-7, 29)` (both speeds, plaza open, a
+person in the north field), with the hold off, all reached the field within 70 s, so no strip there turns a route
+back. Its cause is not found: the spot is 2.5 m outside the projection booth's west wall, by a container at `(-7.2,
+27.5)`, and what its target was is not in the night's record. Issue #1352's crawlers were not this either: its cause
+is the crane's cabinet landing on two dead (kit lesson `2026-11-06-the-crane-landed-on-two-dead-and-hid-them-from-
+every-shot.md`).
+
+Kit lesson: [a slow dead stood six minutes between two near-equal ways round a booth](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-06-a-slow-dead-chattered-between-two-ways-round-a-booth.md).

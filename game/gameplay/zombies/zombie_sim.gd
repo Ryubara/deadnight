@@ -58,12 +58,6 @@ const STRAND_SECONDS := 12.0
 ## for ever kept a round going for minutes with its last dead standing (#950).
 const SIEGE_SECONDS := 30.0
 
-## See `_keeps_its_route`: how much longer a new route has to be, how near the target the old one
-## has to end, and how little of it may be left for the zombie to go on along it.
-const ROUTE_FLIP := 6.0
-const ROUTE_KEEP := 3.5
-const ROUTE_ARRIVED := 1.0
-
 var tuning: ZombieTuning
 ## Used for the speed of a zombie off lit ground; without it light changes nothing.
 var rounds: RoundTuning
@@ -94,6 +88,9 @@ var zombies: Dictionary[int, ZombieBody] = {}
 ## server builds it once for a revision, not once a tick (#931). Anything outside the sim that
 ## writes a `ZombieBody` field calls `touch`.
 var revision: int = 0
+## Whether a route that sends a dead back the way it is going is held (`ZombieRouteKeep`, #1347).
+## Only a test that measures what the hold costs sets it false.
+var hold_back_routes := true
 ## The lures burning now (`add_lure`, `ZombieLure`).
 var lures: Array[ZombieLure] = []
 ## The solid boxes that move in a night (the prize crane's cabinet): no dead stands to swing inside
@@ -821,7 +818,7 @@ func _repath(zombie: ZombieBody, target_pos: Vector3) -> void:
 	var began := PerfProbe.begin()
 	var path := pathing.find_path(zombie.position, target_pos)
 	PerfProbe.end(&"sim.path", began)
-	if _keeps_its_route(zombie, path, target_pos):
+	if ZombieRouteKeep.keeps(zombie, path, target_pos, hold_back_routes):
 		zombie.path_gap = _flat(zombie.path[-1], target_pos)
 		return
 	zombie.path = path
@@ -829,39 +826,6 @@ func _repath(zombie: ZombieBody, target_pos: Vector3) -> void:
 	zombie.path_gap = _flat(zombie.path[-1], target_pos) if not zombie.path.is_empty() else INF
 	if lit_probe.is_valid():
 		zombie.lit = lit_probe.call(zombie.position)
-
-
-## Whether the zombie goes on along the route it has, and not the one just found. A target that
-## stands where the walking mesh is not (between two parked cars, against a wall) is reached at the
-## nearest point of the mesh, and which point that is changes as the target shuffles a metre: the
-## way round the other side of the obstacle is 20 m longer, and a dead that turned back at every
-## repath walked up and down between the two for ever while the round waited for it (#950). A new
-## route that is `ROUTE_FLIP` metres longer than what is left of the old one is not taken while the
-## old one still ends within `ROUTE_KEEP` of the target; one that is nearly walked is let go.
-func _keeps_its_route(zombie: ZombieBody, found: PackedVector3Array, target_pos: Vector3) -> bool:
-	if zombie.path.is_empty() or found.is_empty():
-		return false
-	if _flat(zombie.path[-1], target_pos) > ROUTE_KEEP:
-		return false
-	var left := _length_left(zombie)
-	return left >= ROUTE_ARRIVED and _length_of(found) > left + ROUTE_FLIP
-
-
-## Metres of the zombie's path still to walk, from where it stands.
-func _length_left(zombie: ZombieBody) -> float:
-	var path := zombie.path
-	var index := mini(zombie.path_index, path.size() - 1)
-	var length := _flat(zombie.position, path[index])
-	for i in range(index + 1, path.size()):
-		length += _flat(path[i - 1], path[i])
-	return length
-
-
-func _length_of(path: PackedVector3Array) -> float:
-	var length := 0.0
-	for i in range(1, path.size()):
-		length += _flat(path[i - 1], path[i])
-	return length
 
 
 ## The next point of the path not yet reached; the target itself when there is no path.
