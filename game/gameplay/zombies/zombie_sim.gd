@@ -104,6 +104,9 @@ var zombies: Dictionary[int, ZombieBody] = {}
 ## server builds it once for a revision, not once a tick (#931). Anything outside the sim that
 ## writes a `ZombieBody` field calls `touch`.
 var revision: int = 0
+## Whether a route that sends a dead back the way it is going is held (`_keeps_its_route`, #1347).
+## Only a test that measures what the hold costs sets it false.
+var hold_back_routes := true
 ## The lures burning now (`add_lure`, `ZombieLure`).
 var lures: Array[ZombieLure] = []
 
@@ -835,7 +838,7 @@ func _keeps_its_route(zombie: ZombieBody, found: PackedVector3Array, target_pos:
 	var length := _length_of(found)
 	if length > left + ROUTE_FLIP:
 		return true
-	return length > left - ROUTE_GAIN and _turns_back(zombie, found)
+	return hold_back_routes and length > left - ROUTE_GAIN and _turns_back(zombie, found)
 
 
 ## Whether `found` sends the zombie back the way its route has it going: the first leg of the new

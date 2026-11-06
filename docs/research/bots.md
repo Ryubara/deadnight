@@ -2554,9 +2554,36 @@ The crowd's spread (how far apart the dead are when a round ends) did not fall, 
 The Hold cell still has tails of 150 to 210 s that are not a round that does not end (`BotHunt` skips Hold, see
 above); they were not read here.
 
-**Not covered.** The issue's other stall, a crawler at `(-8.5, 26.1)` (1 night of 13), is a different place (outside the
-projection booth's west wall, by the containers) and did not show in either arm's 45 nights; it was not reproduced, so
-whether it is the same chatter at another obstacle is open. Issue #1352's crawler at `(-23.4, -12.5)`, is a
-different place again and was not read.
+**What the hold costs a chase (review of the pull request).** `_keeps_its_route` has no exemption for a close chase, and
+when little of the route is left its gain test (`length > left - ROUTE_GAIN`) is always true, so the worry was a dead
+2 to 4 m from a person who dodges past it keeping its old route and walking the wrong way. It does not, and the reason
+is geometry: the hold needs the new route's first leg to point more than a right angle from the leg being walked, and a
+route is replaced every 0.25 s, so the person has to get from in front of the dead to behind it within one repath: a
+pass within about a metre, which is inside the dead's reach (1.4 m). There the dead swings (no repaths while it swings),
+and when the swing ends the old route is stale (its end is more than `ROUTE_KEEP` from the person) and is let go.
+`test_zombie_dodge_past.gd` measures it on open ground (a two-point path, as the mesh gives): a crawler (1.2 m/s) and
+a walker (2.0 m/s) chasing a person 2, 3 and 4 m off, which sidesteps 0 to 3 m in steps of 0.3 and runs past to behind and
+on at 4.8 m/s (`PlayerTuning.run_speed`) and at 7.0 (`sprint_speed`), with three seeds (the dead's repath phase), and a
+person who circles the dead at radius 1.0 to 3.0 m at 2.4, 3.6 and 4.8 m/s. For the hold on and off it counts the metres
+and seconds the dead walks away from the person while within 14 m:
+
+| Case | Hold off | Hold on |
+| --- | --- | --- |
+| 12 dodge-past rows (2 run speeds, 2 dead, 3 gaps; worst of 33 runs each) | 0.00 m, 0.00 s | 0.00 m, 0.00 s |
+| 24 circling rows (2 dead, 4 radii, 3 speeds) | 0.00 m, 0.00 s | 0.00 m, 0.00 s (the hold fires in 3) |
+| Control: a dead that never repaths (dodge past / circling) | | 2.73 m, 1.37 s / 1.38 m, 1.03 s |
+
+The control shows the count can see a dead walking away. The rule makes no difference to a chase on open ground, so the
+code is as it was; the test keeps it so (the hold may add at most 0.1 m and 0.1 s). Not measured: a chase among
+obstacles, where the first leg of a route can point away from the target for other reasons (the booth is one).
+
+**Not covered.** The issue's other stall, a crawler at `(-8.5, 26.1)` (1 night of 13), is not this chatter and not the
+prize crane: the crane spots are `(-6.4, 5)`, `(6, 14)`, `(-24, -14)` and `(40, 10)`, the nearest 21 m away, and no
+shop spot is nearer than 7 m. Dead started on a 0.3 m grid from `(-10, 24)` to `(-7, 29)` (both speeds, plaza open, a
+person in the north field), with the hold off, all reached the field within 70 s, so no strip there turns a route
+back. Its cause is not found: the spot is 2.5 m outside the projection booth's west wall, by a container at `(-7.2,
+27.5)`, and what its target was is not in the night's record. Issue #1352's crawlers were not this either: its cause
+is the crane's cabinet landing on two dead (kit lesson `2026-11-06-the-crane-landed-on-two-dead-and-hid-them-from-
+every-shot.md`).
 
 Kit lesson: [a slow dead stood six minutes between two near-equal ways round a booth](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-06-a-slow-dead-chattered-between-two-ways-round-a-booth.md).
