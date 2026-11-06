@@ -19,6 +19,9 @@ const SETS_THE_DROP := "NightScreen\\.arrival_enabled = (false|true)\\b"
 ## What puts the night screen on the router: a push, reset or replace (`UIRouter.push(`, or a
 ## suite's own `_push(` helper) of the scene's path or of a constant (`NIGHT`) that holds it.
 const PUSHES_THE_NIGHT := '\\w*(push|reset|replace)\\w*\\(\\s*(NIGHT\\b|"[^"]*night_screen\\.tscn")'
+## The Play screen's Start, which pushes the night itself (`PlayScreen.start`): a suite that opens a
+## night through the screen a player uses names no push (#1348: `test_night_tap_targets` did).
+const STARTS_THE_NIGHT := "\\bplay\\.start\\(\\)"
 ## Another scan that names the calls in its own assertions without pushing a night.
 const EXEMPT: Array[String] = ["test_suites_leave_the_router_empty.gd"]
 ## Suites that push the night and set nothing yet, each with the issue that fixes it: empty since
@@ -98,6 +101,8 @@ func test_the_scan_tells_the_suites_apart() -> void:
 	# (`test_window_fixture` wants a warm-up fixture from any suite that names it).
 	var scene := "res://ui/screens/night_screen" + ".tscn"
 	assert_bool(_pushes_the_night('UIRouter.replace("%s")' % scene)).is_true()
+	assert_bool(_pushes_the_night("play.start()")).is_true()
+	assert_bool(_pushes_the_night("await screen.start()")).is_false()
 	assert_bool(_pushes_the_night("UIRouter.push(MENU, UITransition.Kind.CUT)")).is_false()
 	assert_bool(_pushes_the_night("UIRouter.push(NIGHT_REPORT)")).is_false()
 	assert_bool(_pushes_the_night('const NIGHT := "%s"' % scene)).is_false()
@@ -110,7 +115,10 @@ func test_the_scan_tells_the_suites_apart() -> void:
 
 
 func _pushes_the_night(text: String) -> bool:
-	return RegEx.create_from_string(PUSHES_THE_NIGHT).search(text) != null
+	return (
+		RegEx.create_from_string(PUSHES_THE_NIGHT).search(text) != null
+		or RegEx.create_from_string(STARTS_THE_NIGHT).search(text) != null
+	)
 
 
 func _sets_the_drop(text: String) -> bool:

@@ -33,6 +33,8 @@ const SOFT: Array[StringName] = [
 	&"Popups",
 	&"Gains"
 ]
+## The frame rate the test of a slow renderer is held to: a frame of 0.2 s.
+const SLOW_FRAME_FPS := 5
 ## The platform's safe area on a phone held sideways (a notch and a home bar), canvas units.
 const NOTCH := Vector4(96.0, 0.0, 96.0, 24.0)
 
@@ -41,9 +43,11 @@ var _fixture: HudFixture
 var _hud: Hud
 var _window_size := Vector2i.ZERO
 var _window_factor := 1.0
+var _max_fps := 0
 
 
 func before_test() -> void:
+	_max_fps = Engine.max_fps
 	_window_size = get_window().size
 	_window_factor = get_window().content_scale_factor
 	UIMotion.reduced = false
@@ -51,6 +55,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	Engine.max_fps = _max_fps
 	get_window().size = _window_size
 	get_window().content_scale_factor = _window_factor
 	MenuScale.pixel_ratio = -1.0
@@ -64,6 +69,9 @@ func _make(canvas: Vector2, players := 1, bots := 0) -> void:
 	add_child(_host)
 	_fixture = HudFixture.make(_host, players, 1958, false, bots)
 	_hud = _fixture.hud
+	# The card is stepped by hand (`_run`, `_settle`): its own `_process` would add the real length
+	# of every frame to its clock, and a frame is as long as the renderer makes it (#1348).
+	_hud.challenge.set_process(false)
 	_fixture.into_round_one()
 
 
@@ -267,6 +275,18 @@ func test_it_stays_clear_of_the_crosshair_and_every_other_part_at_every_canvas()
 					"%s%s%s" % [canvas, " mirrored" if mirrored else "", " touch" if touch else ""]
 				)
 				assert_array(_faults(label, canvas, [])).is_empty()
+
+
+## A frame as long as a software renderer takes for a big canvas (0.2 s here) must not run the
+## card's clock: the schedule's windowed run found the card gone when it was measured (#1348).
+## `Engine.max_fps` makes every frame at least that long, whatever the machine.
+func test_the_card_stays_up_however_long_a_frame_takes() -> void:
+	Engine.max_fps = SLOW_FRAME_FPS
+	_make(Vector2(1920, 1080), 4)
+	_busy_night()
+	_raise_the_card()
+	await _settle()
+	assert_array(_faults("slow frames", Vector2(1920, 1080), [])).is_empty()
 
 
 ## The busiest night a room has on a phone's page (#1299): eight people, and the bots on top (the
