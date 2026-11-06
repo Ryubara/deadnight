@@ -25,8 +25,12 @@ const GUNS: Array[StringName] = [
 const MIN_TURN_DEG := 30.0
 const MIN_MOVE := 0.1
 ## The most the barrel may turn in one tick at 60 a second: the revolver's flick to throw its
-## empties out turns 17.4 at its fastest; a pop (a pose switched in one tick) is several times this.
+## empties out turns 17.4 at its fastest for the 1.3 s reload it had; a pop (a pose switched in one
+## tick) is several times this. The motion is stretched over the reload time, so a quicker reload
+## (the class targets cut the pistol to 1.0 s, 21.8 a tick) turns faster in each tick: the bound
+## grows in the same ratio for a reload shorter than the reference, and stays for a longer one.
 const MAX_TICK_TURN_DEG := 20.0
+const TICK_TURN_REFERENCE_RELOAD := 1.3
 ## How far the grip may be from where it started once the reload is over: the aim loop's breathing
 ## sway alone moves it up to 3.5 cm between two moments.
 const SWAY := 0.05
@@ -145,8 +149,9 @@ func _check_reload(weapon_id: StringName, aiming: bool) -> void:
 	print("RELOAD %s %s" % [tag, run])
 	assert_float(run["turn"]).override_failure_message(tag + ": no turn").is_greater(MIN_TURN_DEG)
 	assert_float(run["move"]).override_failure_message(tag + ": no move").is_greater(MIN_MOVE)
+	var tick_turn_bound := MAX_TICK_TURN_DEG * maxf(1.0, TICK_TURN_REFERENCE_RELOAD / seconds)
 	assert_float(run["tick_turn"]).override_failure_message(tag + ": a jump").is_less(
-		MAX_TICK_TURN_DEG
+		tick_turn_bound
 	)
 	assert_float(run["left_far"]).override_failure_message(tag + ": no belt").is_greater(LEFT_AWAY)
 	assert_float(run["left_near"]).override_failure_message(tag + ": not at the weapon").is_less(

@@ -1,0 +1,34 @@
+{
+  "case": "the worst room a server can hold (#1193): round 12, 3x, 8 people and 7 bots (15 bodies, NightHost.MAX_SEATS), all holding accounts, the desktop's crowd (cap 120), played headless at a fixed step; the person is the autopilot, the other seven seats are played by bots' brains (StandInPeople)",
+  "round_from": 12,
+  "crowd_share": 0.9,
+  "min_steady_rows": 20,
+  "max": {
+    "nodes": 7500,
+    "objects": 21000,
+    "resources": 2300,
+    "orphans": 2,
+    "mem_static_mb": 310,
+    "bodies": 15,
+    "lights": 76,
+    "particles": 3,
+    "decals": 0,
+    "sounds_playing": 50,
+    "skeletons": 200,
+    "mesh_instances": 2600,
+    "canvas_items": 300,
+    "pairs": 60
+  },
+  "max_per_tick": {
+    "xp.gained": 0.35,
+    "challenge.advance": 0.48,
+    "challenge.told": 0.03
+  },
+  "max_label_ratio_of_calibration": {
+    "server.xp": 0.01,
+    "server.challenges": 0.04
+  },
+  "max_ratio_of_calibration": {
+    "frame_median_ms": 15
+  }
+}

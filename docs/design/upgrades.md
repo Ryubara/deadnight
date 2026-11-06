@@ -133,7 +133,7 @@ what each one becomes, and the **elements**.
 | Element | On | What a hit does (numbers on the re-cut hit `H`) | Why it is on this weapon |
 | --- | --- | --- | --- |
 | **Explosive rounds** | Revolver | every hit that lands bursts a **2.0 m blast** for 50% of `H` at the centre sliding to 25% at the edge, on the other zombies only (the one hit takes the hit alone, as the flare's burst does); **the interval goes from 0.28 s to 0.40 s** (the genre's explosive pistol fires slower); the shooter and teammates take nothing | the start weapon, the weakest firearm (57 a second on round 15): the genre's own explosive start pistol; the slower rate is its price, so the best re-cut in the simulator stays inside it |
-| **Shock** | Dual pistols | a hit **arcs to up to two other zombies within 3 m** for 50% of `H` each (an instant, one arc, no chain), shown as a blue-white line; the arc counts as a hit for pay | a box pair of small hits (29.75 re-cut): the arc turns two guns' rate into a crowd's |
+| **Shock** | Dual pistols | a hit **arcs to up to two other zombies within 3 m** for 50% of `H` each (an instant, one arc, no chain), shown as a blue-white line; the arc counts as a hit for pay | a box pair of small hits (35 re-cut): the arc turns two guns' rate into a crowd's |
 | **Fire** | Pump 870 | a hit sets the zombie **burning: 30 damage a second for 3 s** (90 in all), not stacking (a new hit restarts the 3 s); a zombie that burns dies on its own clock and pays its killer | the cheapest wall and the weakest late (84 a second on round 15): the 90 of burn finishes what a 231 shell leaves standing |
 | **Burning ground** | Flare gun | the burst leaves a **fire patch of 3 m radius** for the lure's whole time (`lure_seconds`, 8 s), **25 damage a second** to every zombie in it; the lure keeps the dead inside the fire | the flare does no damage at all (#439) and is the weakest weapon; the re-cut is its first reason to carry it into a late round |
 
@@ -175,19 +175,19 @@ simulator's worth of each is in [the research](../research/weapon-roster.md#what
 | Weapon | Re-cut hit | Magazine | Reserve (limit) | Round 15, body / head | Element or special |
 | --- | ---: | ---: | --- | ---: | --- |
 | House Pistol (#898, the start) | 14 | 23 | 135 (225) | 22 / 9 (300 health on the current curve) | numbers only (the explosive rounds stay on the revolver: an open question for the maintainer) |
-| Revolver | 42 | 15 | 60 (120) | 7 / 3 | **explosive rounds** (0.40 s) |
+| Revolver | 49 | 15 | 60 (120) | 7 / 4 | **explosive rounds** (0.40 s) |
 | Tommy gun | 24.5 | 45 | 180 (270) | 12 / 6 | numbers only |
 | Double-barrel | 38.5 x 8 | 3 | 24 (48) | 1 / 1 | numbers only: it is a close one-pull kill already |
 | Hunting rifle | 166 | 12 | 60 (120) | 2 / 1 | numbers only |
 | Flare gun | 0 | 2 | 4 (4) | none | **burning ground**; its damage multiplier stays nothing. **The maintainer capped its ammunition (#794): 3 shots in all as shipped (1 in the magazine, 2 in reserve), 6 re-cut (2 and 4)**, so the profile's multipliers are x2 and the table's 9 (18) is superseded |
 | Crowbar, baseball bat, fire axe | 45, 60, 150 | none | none | | **not re-cut**: no magazine to grow (today's rule) |
-| MP5 | 26.25 | 45 | 180 (270) | 11 / 6 | numbers only |
-| PPSh | 17.5 | 75 | 150 (300) | 17 / 11 | numbers only: the drum is the re-cut |
+| MP5 | 29.75 | 45 | 180 (270) | 11 / 6 | numbers only |
+| PPSh | 21 | 75 | 150 (300) | 15 / 10 | numbers only: the drum is the re-cut |
 | M4A1 | 35 | 45 | 135 (225) | 9 / 5 | numbers only |
-| M249 | 26.25 | 150 | 225 (375) | 11 / 7 | numbers only: the long belt is the re-cut; the reload stays 5.0 s |
+| M249 | 28 | 150 | 225 (375) | 11 / 7 | numbers only: the long belt is the re-cut; the reload stays 5.0 s |
 | Fifty cal | 385 | 8 | 30 (60) | 1 / 1 | numbers only: a body kill to round 17 and a head kill to 22 |
 | Pump 870 | 38.5 x 6 | 9 | 63 (99) | 2 / 2 | **fire** |
-| Dual pistols | 29.75 | 36 | 108 (180) | 10 / 5 | **shock** |
+| Dual pistols | 35 | 36 | 108 (180) | 9 / 4 | **shock** |
 | Ray gun | 525, blast 280 | 15 | 60 (90) | 1 / 1 | numbers only: a body kill to round 19, a head kill to 22; the blast's 3.0 m does not grow |
 | Freeze gun | 52.5 | 9 | 36 (54) | none | numbers only, **and the freeze's one-bolt band grows** and the bloom from 2.2 m to 2.8 m (a wonder weapon's "more devastating effect", never an element). The plan's "10 rounds to 20" was written for a freeze that took more bolts by round; the maintainer made it by kind (a brute 3), so the band is the bolts a kind needs: **a re-cut bolt freezes a brute on the second**, never below one (`RecutProfile.freeze_bolts_less`, 1) |
 

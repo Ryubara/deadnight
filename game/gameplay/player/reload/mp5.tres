@@ -14,7 +14,7 @@ weapon_turn = Vector3(50, -30, 20)
 chest_lean = 6.0
 chest_turn = 25.0
 left = 1.0
-left_point = Vector3(-0.075, -0.11, -0.07)
+left_point = Vector3(-0.16, -0.24, 0)
 left_on_part = true
 
 [sub_resource type="Resource" id="Resource_0mlks"]
@@ -25,7 +25,7 @@ weapon_turn = Vector3(50, -30, 20)
 chest_lean = 6.0
 chest_turn = 25.0
 left = 1.0
-left_point = Vector3(-0.075, -0.11, -0.07)
+left_point = Vector3(-0.16, -0.24, 0)
 left_on_part = true
 part = 1.0
 
@@ -37,7 +37,7 @@ weapon_turn = Vector3(50, -30, 20)
 chest_lean = 6.0
 chest_turn = 25.0
 left = 1.0
-left_point = Vector3(-0.075, -0.11, -0.07)
+left_point = Vector3(-0.16, -0.24, 0)
 left_on_part = true
 part = 1.0
 part_shown = false
@@ -52,7 +52,7 @@ chest_lean = 6.0
 chest_turn = 25.0
 left = 1.0
 left_space = 1
-left_point = Vector3(-0.2, 0.05, -0.05)
+left_point = Vector3(-0.32, 0.18, -0.2)
 part = 1.0
 part_shown = false
 ammo = true
@@ -65,7 +65,7 @@ weapon_turn = Vector3(50, -30, 20)
 chest_lean = 6.0
 chest_turn = 25.0
 left = 1.0
-left_point = Vector3(-0.075, -0.11, -0.07)
+left_point = Vector3(-0.16, -0.24, 0)
 left_on_part = true
 part = 1.0
 part_shown = false
@@ -79,7 +79,7 @@ weapon_turn = Vector3(50, -30, 20)
 chest_lean = 6.0
 chest_turn = 25.0
 left = 1.0
-left_point = Vector3(-0.075, -0.11, -0.07)
+left_point = Vector3(-0.16, -0.24, 0)
 left_on_part = true
 part = 1.0
 
@@ -91,7 +91,7 @@ weapon_turn = Vector3(50, -30, 20)
 chest_lean = 6.0
 chest_turn = 25.0
 left = 1.0
-left_point = Vector3(-0.075, -0.11, -0.07)
+left_point = Vector3(-0.16, -0.24, 0)
 left_on_part = true
 
 [sub_resource type="Resource" id="Resource_ch8vb"]

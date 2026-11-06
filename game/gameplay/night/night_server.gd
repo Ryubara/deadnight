@@ -450,7 +450,7 @@ func closed() -> bool:
 func _join(player_id: int, local: bool, bot := false) -> void:
 	if _bodies.has(player_id):
 		return
-	_slots[player_id] = _bodies.size()
+	_slots[player_id] = _free_slot()
 	_bodies[player_id] = world.add_body(
 		world.player_spawn(_slots[player_id]), local, drawn_bodies, bot or not drawn_bodies
 	)
@@ -470,6 +470,18 @@ func _join(player_id: int, local: bool, bot := false) -> void:
 	# What the rules say the player starts with, the firearm last so it is the one in hand.
 	for shop_id in rules.players[player_id].weapons:
 		_combat(CombatAction.give_weapon(player_id, WeaponCatalog.catalog_id(shop_id)))
+
+
+## The lowest start marker no body holds: a seat that opened is taken before a marker is shared, and
+## a night of the most bodies (`NightHost.MAX_SEATS`, 15) has a marker for each (`MapLayout`).
+func _free_slot() -> int:
+	var taken := {}
+	for slot: int in _slots.values():
+		taken[slot] = true
+	var free := 0
+	while taken.has(free):
+		free += 1
+	return free
 
 
 func _leave(player_id: int) -> void:

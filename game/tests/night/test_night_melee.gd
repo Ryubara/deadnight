@@ -146,13 +146,13 @@ func _blows_on(weapon: StringName, round_number: int, limit: int = 150) -> Array
 
 func test_the_crowbar_bat_and_axe_do_their_flat_damage_through_the_real_button() -> void:
 	# Through the real mouse button, the controller's camera ray, the sweep from the eye and the
-	# rules' health (#924): the crowbar's 55 leaves 3 of round two's 58, the bat's 60 and the axe's
-	# 150 (on round ten's 143) kill in one blow. Before, the head's x1.5 and x2.5 made them 68, 90
+	# rules' health (#924): the crowbar's and the bat's 55 leave 3 of round two's 58, the axe's
+	# 132 kills round nine's 123 in one blow. Before, the head's x1.5 and x2.5 made them 68, 90
 	# and 375 whatever the crosshair was on.
 	var expected := {
 		&"crowbar": [2, 2, 55.0],
-		&"baseball_bat": [2, 1, 60.0],
-		&"fire_axe": [10, 1, 150.0],
+		&"baseball_bat": [2, 2, 55.0],
+		&"fire_axe": [9, 1, 132.0],
 	}
 	for weapon: StringName in expected:
 		var plan: Array = expected[weapon]

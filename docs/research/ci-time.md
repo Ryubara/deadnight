@@ -36,8 +36,12 @@ no longer names folders. Every `tests/**/test_*.gd` is one item, weighed by its 
 and the items are dealt out heaviest first to the shard with the least so far; a script that is not in the file counts
 `default_seconds` (10), so a new script lands in the lightest shard and is never left out. The self-test (run in every
 shard) fails when a script is in no shard or two, or when the workflow's matrix is not the same shards or the job's
-limit is not the one the check assumes. Shard 1 starts with 100 s already counted (60 until #1265), for the main scene,
-the night run and the late-round budget run it alone does (the budget run alone is 54 to 112 s).
+limit is not the one the check assumes. Shard 1 starts with 240 s already counted (60 until #1265, 100 since), for the
+main scene, the night run and the two budget runs it alone does: the four-player late-round case (54 to 112 s on the CI
+runner, the main scene and the night about 25 more) and, since #1193, the worst room of 8 people and 7 bots (85 s of
+night, 137 s on the runner: the crowd takes a minute to reach 90 percent of its cap, and 15 bodies run at a third of the
+speed of 4). With 240 s the ten shards are expected at 449 s each, a little over the 440 s of `--report` (advisory: the
+job's own check annotates at 9 minutes and fails at 12); an eleventh shard brings them to about 410 s.
 
 Measured on six complete CI runs (five of `main`, one of the late-round budget pull request, #968). The seconds of a
 suite are the duration on its `Statistics:` line (`tools/ci_shard_time.py`, `suite_times`; the same as the gap between
