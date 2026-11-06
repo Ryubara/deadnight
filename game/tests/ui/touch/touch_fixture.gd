@@ -20,7 +20,14 @@ const ACTIONS: Array[StringName] = [
 	&"ping"
 ]
 
+## The finger's slop in canvas units on a phone's night: 10 CSS pixels at 0.36 CSS px a unit.
+const TAP_SLOP := 28.0
+
 var controls: TouchControls
+## Seconds a test has added to the layer's clock with `pass_time`. The clock the layer reads is its
+## own time (the frames it has been given, real ones or the ones a test steps by hand) plus this, so
+## a double tap's 250 and 350 ms are in the same time as the drag a test plays.
+var now := 0.0
 ## The HUD under the controls, wired to them as the night screen does (`make` with `with_hud`).
 var hud: Hud
 var host: Control
@@ -54,6 +61,8 @@ static func make(
 		fixture._add_hud()
 	# The hints would write what a test used into the player's own settings file.
 	fixture.controls.persist_hints = persist_hints
+	fixture.controls.clock = func() -> float: return fixture.controls._clock + fixture.now
+	fixture.controls.tap_slop = TAP_SLOP
 	fixture.host.add_child(fixture.controls)
 	fixture.controls.size = canvas
 	fixture.controls.refresh()
@@ -112,6 +121,8 @@ func free_all() -> void:
 		)
 		_hand_before = null
 	TouchMode.device_is_touch = null
+	if is_instance_valid(controls):
+		controls.clock = Callable()  # the clock closes over this fixture
 	if _owns_host and is_instance_valid(host):
 		host.free()
 	Input.emulate_mouse_from_touch = true
@@ -145,6 +156,11 @@ func zone_centre(action: StringName) -> Vector2:
 		if zone[&"action"] == action:
 			return (zone[&"rect"] as Rect2).get_center()
 	return Vector2.INF
+
+
+## Moves the layer's clock on.
+func pass_time(seconds: float) -> void:
+	now += seconds
 
 
 func touch(index: int, position: Vector2, pressed := true) -> void:

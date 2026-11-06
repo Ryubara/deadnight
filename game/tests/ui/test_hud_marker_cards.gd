@@ -32,9 +32,10 @@ const SMALLEST_HOLDS := 4
 ## The smallest page there is.
 const SMALLEST := Vector3(1334, 750, 1.25)
 ## The same small phone at the usual interface size: with the weapon strip a fingertip high and the
-## right thumb's ring (#1280, #1277) it holds six markers, not eight, before two meet.
+## right thumb's ring (#1280, #1277) it held six markers, not eight, before two meet. The Side
+## button (#1288) was the sixth's neighbour: without it the page holds ten, so it is eight again.
 const CROWDED := Vector3(1334, 750, 1.0)
-const CROWDED_HOLDS := 6
+const CROWDED_HOLDS := 8
 ## With Strike up (#1285) its place, in the one column the markers have, is theirs no more: the
 ## smallest page holds two markers (one a diamond) before two meet, and the crowded page holds eight
 ## with Strike and Interact both up. They are kept off every card and button all the same.

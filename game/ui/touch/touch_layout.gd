@@ -27,7 +27,6 @@ const CROUCH := &"crouch"
 const INTERACT := &"interact"
 const PAUSE := &"pause"
 const SCOREBOARD := &"scoreboard"
-const SHOULDER := &"swap_shoulder"
 ## Strike (#411, #588, #1285): the quick melee, a blow with whatever is in hand; the button presses
 ## its action. Like Interact it shows only while it applies, here a dead within reach of the blow
 ## (`TouchControls.strike_ready`), so it costs the glass nothing the rest of the time. It stands
@@ -51,10 +50,10 @@ const RING_GAP := 42.0
 ## buttons stand `FIRE_RADIUS + radius + RING_GAP` from Fire's centre, Crouch at 40 degrees below
 ## straight left, Reload at 8 above it (the same row), Aim at 56 and Jump at 104 (nearly straight
 ## up); `test_touch_layout` checks the air. Strike stands beside Reload, a thumb's roll out along
-## the row from Fire, with the 30 units of air Interact's place needs. Shoulder keeps its old
-## place until the home the audit names is built (#1275). The weapons and the grenades are the
-## HUD's own places, not buttons of this layer (#1280), and so is the tag of the bots' order
-## (`HudBotOrder`, #1286).
+## the row from Fire, with the 30 units of air Interact's place needs. The shoulder has no
+## button: a double tap on free ground (`TouchDoubleTap`, #1288). The weapons and the grenades
+## are the HUD's own places, not buttons of this layer (#1280), and so is the tag of the bots'
+## order (`HudBotOrder`, #1286).
 const BUTTONS := [
 	[INTERACT, Vector2(540.0, 500.0), 80.0],
 	[STRIKE, Vector2(575.0, 340.0), 52.0],
@@ -63,7 +62,6 @@ const BUTTONS := [
 	[AIM, Vector2(325.0, 527.0), 72.0],
 	[JUMP, Vector2(154.0, 556.0), 70.0],
 	[CROUCH, Vector2(361.0, 219.0), 62.0],
-	[SHOULDER, Vector2(545.0, 672.0), 48.0],
 ]
 ## Every button of `BUTTONS` is a right button (#1277): a finger on it also turns the view.
 ## Pause sits on the top edge, right of the HUD's left column.

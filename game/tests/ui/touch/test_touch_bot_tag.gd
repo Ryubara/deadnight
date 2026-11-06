@@ -264,6 +264,38 @@ func test_a_quick_tap_lasts_long_enough_for_a_frame_to_see() -> void:
 	assert_bool(Input.is_action_pressed(HudBotOrder.ACTION)).is_false()
 
 
+## The double tap that changes shoulder starts only from free ground (#1288): two quick taps on the
+## tag are two taps of the tag (an order, or one under the server's half second), never a shoulder
+## swap, and a tag tap between two free taps ends the pair. With the tag on the screen the double
+## tap on free ground still works.
+func test_two_taps_on_the_tag_are_never_a_shoulder_swap() -> void:
+	await _page(PAGES[0], 1.0)
+	var swaps := [0]
+	_fixture.controls.shoulder_swapped.connect(func() -> void: swaps[0] += 1)
+	_fixture.controls.clock = func() -> float: return _fixture.now
+	var tag := _tag().get_center()
+	var free := _fixture.controls.size * Vector2(0.62, 0.25)
+	assert_str(String(_fixture.controls.zone_at(free))).is_empty()
+	assert_str(String(TouchLayout.button_at(free, _fixture.controls.circles()))).is_empty()
+	for _i in 2:
+		await _fixture.touch(0, tag)
+		_fixture.pass_time(0.08)
+		await _fixture.lift(0, tag)
+		_fixture.pass_time(0.1)
+	assert_int(swaps[0]).is_equal(0)
+	# A tag tap between two free taps ends the pair; the next free tap pairs with the one after it.
+	for at in [free, tag, free]:
+		await _fixture.touch(0, at)
+		_fixture.pass_time(0.08)
+		await _fixture.lift(0, at)
+		_fixture.pass_time(0.1)
+	assert_int(swaps[0]).is_equal(0)
+	await _fixture.touch(0, free)
+	_fixture.pass_time(0.08)
+	await _fixture.lift(0, free)
+	assert_int(swaps[0]).is_equal(1)
+
+
 func test_a_finger_on_the_tag_never_starts_the_stick_or_a_look() -> void:
 	await _page(PAGES[0], 1.0)
 	var centre := _tag().get_center()

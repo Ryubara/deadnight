@@ -320,17 +320,12 @@ func test_the_setting_forces_the_controls_on_or_off() -> void:
 	settings.set_value(SettingsService.TOUCH_CONTROLS, before)
 
 
-# --- The shoulder button and the left hand ---
+# --- The shoulder (a double tap, `test_touch_double_tap`) and the left hand ---
 
 
-func test_the_shoulder_button_presses_swap_shoulder_and_a_quick_tap_still_lasts() -> void:
-	await _fixture.touch(0, _fixture.at(TouchLayout.SHOULDER))
-	assert_bool(Input.is_action_pressed(&"swap_shoulder")).is_true()
-	await _fixture.lift(0)
-	await _fixture.tap(_fixture.at(TouchLayout.SHOULDER))
-	assert_bool(Input.is_action_pressed(&"swap_shoulder")).is_true()
-	await await_millis(200)
-	assert_bool(Input.is_action_pressed(&"swap_shoulder")).is_false()
+func test_the_shoulder_has_no_button() -> void:
+	assert_bool(_fixture.controls.circles().has(&"swap_shoulder")).is_false()
+	assert_bool(TouchIcons.has_icon(&"swap_shoulder")).is_false()
 
 
 # --- The right thumb's buttons (#1277): every one looks while it drags ---

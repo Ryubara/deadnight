@@ -552,11 +552,12 @@ func _hint_problems(canvas: Vector2, mirrored: bool, boss: bool) -> Array[String
 	var found: Array[String] = []
 	var hints := touch.controls.hints
 	var safe := touch.controls.safe_rect()
-	# This HUD has no bot in the room, so no tag and no hint for it (`test_touch_bot_tag.gd`).
-	var without_bots: Array[StringName] = [
+	# Every hint but the shoulder's, which waits for the first look, and the bots', which waits
+	# for the HUD's tag (this HUD has no bot in the room: `test_touch_bot_tag.gd`).
+	var first_run: Array[StringName] = [
 		TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT, TouchHints.STRIKE
 	]
-	if hints.showing() != without_bots:
+	if hints.showing() != first_run:
 		found.append("%s: the hints showing are %s" % [label, hints.showing()])
 	var cards := _hud.popups.cards()
 	if cards.is_empty():
@@ -565,7 +566,10 @@ func _hint_problems(canvas: Vector2, mirrored: bool, boss: bool) -> Array[String
 	var kept: Array[Control] = [
 		_hud.ammo, _hud.prompt, _hud.health, _hud.perks, _hud.points, _hud.round_part
 	]
-	for id in hints.showing():
+	# The shoulder hint stands where the look hint was, once the player has looked.
+	var checked: Array[StringName] = hints.showing()
+	checked.append(TouchHints.SWAP)
+	for id in checked:
 		var rect := hints.rect_of(id)
 		if not safe.encloses(rect):
 			found.append("%s: %s %s leaves the safe area %s" % [label, id, rect, safe])
