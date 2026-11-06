@@ -532,6 +532,55 @@ the HUD is the phone's weapon control; the Swap and Grenade buttons are gone fro
 - **Not done here:** a first-run hint for the places (the hints label the stick, the look and Interact only); a cancel
   for a cooking grenade (the throw's other action `toss_grenade` has no touch control either).
 
+## The scoreboard on the players' column (#1287)
+
+The audit ([touch audit](../design/touch-audit.md)) found the Scoreboard circle a button for Tab, while the players'
+column already shows the points and names: the scoreboard's short form. A finger held on the column now holds the
+`scoreboard` action and lifting lets go; the circle, its icon and its hit area (`TouchLayout.SCOREBOARD_*`) are gone.
+
+- **The place.** `Hud.scoreboard_zone` is the points part's box grown upward to a fingertip when it is lower (a solo
+  night's one box is 66 units, 23 CSS px; the zone is 44.0 to 44.3 after), always the column's whole width
+  (316 units, 88 to 142 CSS px). It is the last of `Hud.touch_zones`, so a weapon place wins where they meet (they are
+  a gap apart) and so does a tag added to the column later. `TouchControls._touch_down` tries the buttons, then the
+  zones, then the stick's zone: a finger that begins on the column is a `button` finger of `scoreboard`, which is not a
+  `looks_when_dragged` button, so it never looks, fires or starts the stick, however far it drags, and it is never free
+  ground for the double tap of the shoulder (#1288): a hold or two taps on it swap nothing and a tap on it ends a pair
+  (`test_touch_double_tap`). The hint's bit comes after every one already saved (Strike's, the shoulder's).
+- **The ticket and the buttons.** The ticket is 896 units wide and as tall as the party (152 for one, 495 for eight,
+  838 for eight and seven bots), centred. At 844 x 390 and the usual size nothing is under it; at the biggest
+  interface size (1.25) the right thumb's ring starts 477 units from the edge on a canvas that is only 1536 wide at
+  667 x 375, and the busiest night is as tall as the page. A container puts its child's scale back to one
+  (`fit_child_in_rect`), so `BoardFit` moves and scales the holder the ticket stands in. It moves it along the screen
+  between the buttons and the column, and, since Ping stands under Pause (#1289) inside the rows of a tall ticket on the
+  small page (its box is 194 to 266 units down, 72 wide, right of the column), up or down the screen to the nearest
+  place where no button is at its rows, trying the largest size first. Measured (the matrix of
+  `test_touch_scoreboard`) on the two pages, three interface sizes, both hands and four parties: whole and in
+  the middle at 0.8 and, at 1.0, on 844 x 390 and for every party but a full room on 667 x 375 (0.85 then); at 1.25
+  one player is whole everywhere, on 844 x 390 eight people are whole and a full room is 0.80, on 667 x 375 four are
+  0.70, eight 0.70 (131 units lower than the middle for the full room, 32 for eight) and a full room 0.65 (the ticket
+  keeps clear of the column too, so the thumb that holds it does not cover it). Without the vertical move, the same
+  matrix on main after #1293 had the full room at 0.50 there (Ping's right edge took the column's place as the strip's
+  left bound: 502 units where the column had made it 376, and the strip was 417 wide for a ticket 448 wide at the
+  least step). **With Strike up** (#1285; its circle stands in the middle of the right thumb's column, so the ticket keeps
+  clear of it too: the layer's `layout_changed` hands the HUD the boxes again when it comes or goes) the matrix is
+  smaller where it is tight: on 844 x 390 at 1.25 four people are 0.90, eight 0.85 and a full room 0.75 (at 1.0 eight
+  0.95 and a full room 0.85); on 667 x 375 at 1.25 four are 0.70, eight 0.55 and a full room 0.50, the least step
+  (`BoardFit.SMALLEST`, not lowered), where the strip between the column and Strike's box is 510 units for a ticket 448
+  wide at that step and no height of the page is clear of Ping, Strike and the weapon strip at once for a larger one.
+  `test_the_ticket_fits_the_page_and_is_under_no_button_or_place` holds both clear; the usual matrix keeps its 0.60.
+  The text is then 8 to 10 CSS px, as the ticket's already is at the usual size on that page; the test holds the
+  least at 0.60.
+- **The hint.** "HOLD FOR SCORES" stands beside the column, moved up or down to the nearest place clear of the
+  weapon strip, the column and the badges, the stick's resting ring (#1294: the ring's left edge is right of the
+  badges, so a hint level with the column's middle was over it in all 48 rooms of the matrix, found when the check
+  was added), the "DRAG TO MOVE" hint above the ring, the HUD cards (the prompt) and every button, and away from the
+  column along the screen when no height beside it is free (the 667 x 375 page with a full room has none: it stands
+  right of the badges, under the ring); it goes with the first hold, and takes the next bit of
+  `controls/touch_hints_seen`, so nobody who has seen the others sees anything else new except this one.
+- **Proof.** `test_touch_scoreboard` (every page, interface size, hand and party), `test_board_fit`, and the browser
+  check `tools/web_smoke/touch_scoreboard.py` with real touches on both pages. The marker capacity did not move
+  (audit page, "Markers after the Scoreboard circle goes").
+
 ## Strike: a button that shows only while a dead is in reach (#1285)
 
 The audit (`docs/design/touch-audit.md`) made the Melee circle a contextual button: a sixth permanent circle is the
@@ -646,9 +695,7 @@ one verb no element on screen already shows) and gets the room two controls need
   6 CSS px a millimetre, and a little over), both hit areas with 6 CSS px between them, and 150 units where no fingertip
   is known (a desktop, a test). A fixed number of units cannot do it: a unit is 0.29 CSS px at 0.8 and 0.45 at 1.25, so
   a length that is 9 mm at one interface size is 7 or 11 mm at the others.
-- **The Scoreboard button** stood under Pause. #1287 takes it away (the players' column holds the board); until it
-  lands it stands right of Pause, the same length from it, so it is reachable and clear of Ping (the three hit areas
-  share no margin). Its place goes with #1287.
+- **The Scoreboard button** stood under Pause. #1287 took it away (the players' column holds the board).
 - **The stick's zone** starts below the bottom of Ping's hit area (`TouchLayout.stick_zone(safe, mirrored, below)`,
   `TouchControls._stick_zone`) where that is lower than the fifth of the height it always began at (0.8 on an 844 page:
   81 units, 23 CSS px, lower): a thumb that starts the stick never lands on the button above it.

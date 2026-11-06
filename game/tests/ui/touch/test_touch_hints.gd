@@ -12,13 +12,13 @@ const CANVASES: Array[Vector2] = [
 	Vector2(2340.0, 1080.0 * 0.8),
 ]
 const KEPT_PARTS: Array[StringName] = [
-	&"ammo", &"prompt", &"health", &"perks", &"points", &"round_part"
+	&"ammo", &"prompt", &"health", &"perks", &"points", &"round_part", &"slots"
 ]
 ## What a new player is shown with a prompt up and a dead in reach: every hint but the shoulder's,
 ## which waits for the first look, and the bots', which waits for the HUD's tag (these fixtures
 ## have none: `test_touch_bot_tag.gd`).
 const FIRST_RUN: Array[StringName] = [
-	TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT, TouchHints.STRIKE
+	TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT, TouchHints.STRIKE, TouchHints.SCOREBOARD
 ]
 const ON_THE_STICK := Vector2(300.0, 760.0)
 const ON_THE_LOOK_AREA := Vector2(1700.0, 330.0)
@@ -60,7 +60,8 @@ func test_a_new_player_sees_move_and_look_and_interact_waits_for_a_prompt() -> v
 	assert_array(_hints().showing()).is_equal([TouchHints.MOVE, TouchHints.LOOK])
 	state.set_prompt(&"buy_door", "Concession door", 350)
 	await _frames()
-	# No dead in reach, so no Strike: the other three.
+	# No dead in reach, so no Strike, and the column's hint waits for a HUD with a column
+	# (`test_touch_scoreboard`): the other three.
 	assert_array(_hints().showing()).is_equal(
 		[TouchHints.MOVE, TouchHints.LOOK, TouchHints.INTERACT]
 	)
@@ -327,6 +328,8 @@ func test_the_labels_keep_clear_of_the_buttons_and_the_hud_for_either_hand() -> 
 			add_child(host)
 			var hud_fixture := HudFixture.make(host, 4)
 			hud_fixture.hud.mirrored = mirrored
+			# The touch layout: the strip under the players' column, which the last hint points at.
+			hud_fixture.hud.touch_layout = true
 			hud_fixture.into_round_one()
 			var state := hud_fixture.hud.state
 			state.set_ammo(30, 150, "Shotgun")
@@ -337,6 +340,7 @@ func test_the_labels_keep_clear_of_the_buttons_and_the_hud_for_either_hand() -> 
 			fixture.strike_up = true
 			if mirrored:
 				fixture.left_handed()
+			fixture.controls.zones = hud_fixture.hud.touch_zones
 			fixture.controls.insets_override = insets
 			fixture.controls.refresh()
 			# The HUD keeps inside the notch as it does in the night screen.
@@ -398,3 +402,19 @@ func test_only_a_real_mouse_click_ends_touch_mode_not_motion_or_the_engine_copy_
 	UIInputMode.track(InputEventMouseButton.new())
 	assert_bool(UIInputMode.touch).is_false()
 	assert_bool(UIInputMode.pointer).is_true()
+
+
+func test_the_columns_hint_takes_the_last_bit_after_every_hint_already_saved() -> void:
+	# A saved mask means the same hints it always did: each bit is its hint's place in ORDER, so a
+	# new hint goes at the end (the shoulder's bit is 4, the bots' 5 and the column's 6).
+	assert_array(TouchHints.ORDER).is_equal(
+		[
+			TouchHints.MOVE,
+			TouchHints.LOOK,
+			TouchHints.INTERACT,
+			TouchHints.STRIKE,
+			TouchHints.SWAP,
+			TouchHints.BOTS,
+			TouchHints.SCOREBOARD
+		]
+	)

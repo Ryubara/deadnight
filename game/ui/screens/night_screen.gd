@@ -185,9 +185,10 @@ func _ready() -> void:
 	_touch.mirrored_changed.connect(_on_mirrored_changed)
 	_touch.active_changed.connect(func(active: bool) -> void: _hud.touch_layout = active)
 	_touch.layout_changed.connect(_keep_markers_off_the_buttons)
-	# The HUD's weapon places are the phone's weapon controls (#1280): the layer asks it where they
-	# are, and the world markers keep clear of them as of the buttons.
-	_touch.zones = _hud.slots.touch_zones
+	# The HUD's weapon places are the phone's weapon controls (#1280) and its players' column holds
+	# the scoreboard (#1287): the layer asks it where they are, and the world markers keep clear of
+	# them as of the buttons.
+	_touch.zones = _hud.touch_zones
 	_hud.slots_moved.connect(_keep_markers_off_the_buttons)
 	_touch.look_gain = _look_gain
 	# Strike shows while a dead is within the quick melee's reach, on this client's picture (#1285).
@@ -226,9 +227,10 @@ func _start_if_run_alone() -> void:
 		screen_enter()
 
 
-## Hands the world markers every box a finger presses: the buttons and the weapon places.
+## Hands the HUD every box a finger presses (the buttons, the weapon places, the players' column):
+## the world markers keep clear of them, and so does the scoreboard's ticket.
 func _keep_markers_off_the_buttons() -> void:
-	_hud.markers.held = _touch.button_boxes()
+	_hud.set_touch_boxes(_touch.button_boxes())
 
 
 ## True while the touch controls are on screen and taking touches.
@@ -242,9 +244,10 @@ func touch_circles() -> Dictionary:
 	return _touch.circles() if _touch != null else {}
 
 
-## The HUD's weapon places a finger presses (`HudSlots.touch_zones`): a browser test reads them.
+## The HUD's places a finger presses (`Hud.touch_zones`: the weapons and the players' column): a
+## browser test reads them.
 func touch_zones() -> Array[Dictionary]:
-	return _hud.slots.touch_zones() if _hud != null else []
+	return _hud.touch_zones() if _hud != null else []
 
 
 ## True while the Strike button shows: a dead is within reach of the quick melee (a browser test
