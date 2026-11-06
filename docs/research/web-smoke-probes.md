@@ -64,6 +64,13 @@ a bot in the night (`--late --godot <the pinned Godot>`); it counts the WebGL ca
 asks for the probes does not play the show unless it has `?arrival` (`--unasked` checks that it does not). Numbers:
 [the arrival](arrival.md).
 
+`--unasked` goes through `Main`, which loads `WebProbe` first, so it missed #1323: a bench that pushes the night screen
+itself and types its members loaded the night screen first, and the drop played. `tools/web_smoke/arrival_bench.py
+<godot> <work folder>` exports a bench scene (`game/tests/captures/arrival_bench.tscn`, with the typed members that
+loaded the night first) and fails when `NightScreen.arrival_enabled` is true at its start or the show plays (`--phone`
+opens it as the touch benches do). The benches' own `NightScreen.arrival_enabled = false` lines (`touch_assist_bench.gd`,
+`touch_melee_bench.gd`, #1328) are no longer needed once that pull request has landed with this one and can go.
+
 ## Which scale a page runs at, and the ruler (#1197)
 
 `phone_layout.py` walks the menu screens in Chromium as a phone (or `--desktop`, or `--iframe` for the Activity's frame)
