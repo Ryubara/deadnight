@@ -245,8 +245,8 @@ fades without sliding. A new step of the generator's quest (the circuit switches
 - **The reticle (#300).** A small static mark where the shots go, drawn by `HudReticle` over the middle of the screen:
   four ticks 9 units long and 3 wide round a 7-unit gap, and a 3-unit dot, in the light ink (`tokens.ink`, 92 %)
   with a 1.5-unit dark edge on every shape so it holds on the lit pools and on the dark. About 32 units across, 3 % of
-  the 1080-unit canvas height (22 px at 720p). The maintainer asked for "very simple, inspired from games like Call of
-  Duty, static and small", so it does not bloom with movement or fire, does not change colour over a zombie and is
+  the 1080-unit canvas height (22 px at 720p). The maintainer asked for a very simple reticle, static and small, after
+  games like Call of Duty, so it does not bloom with movement or fire, does not change colour over a zombie and is
   not an animation; the one thing it shows is the camera ray, which is where `AimResolver` sends the shot, so it
   stays at the centre whatever the shoulder offset or the aim zoom do. The hit markers are the
   *diagonal* ticks (starting 9 units out) and sit between the reticle's, so the two never overprint. Lengths are canvas

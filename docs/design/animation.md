@@ -425,7 +425,7 @@ crawl is gone: the controller adds it only when its file is there.
 ## Reloading
 
 A reload is a motion per mechanism, played on the solved grips (#683, after #383's tilt). Players missed reloads
-(maintainer, 2026-11-03: "Reload Animations that is more noticeable and Reload Sounds if not exists yet."), and the
+(the maintainer asked on 2026-11-03 for reloads that are easier to see, and reload sounds where none existed), and the
 reason was on the screen: from the shoulder camera (0.6 m right, 2.3 m behind) a weapon held at the hip is behind the
 Soldier's head, and #383's 35 degree tilt took it further down behind him. Measured by drawing the frame again without
 the weapon and counting the pixels that change (`tests/captures/reload_sheet.tscn --measure`, 1920 by 1080):

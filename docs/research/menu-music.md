@@ -1,8 +1,8 @@
 # The menu's music (#979)
 
-The maintainer's ask: "We definitely need some ambient music in the menu. Something that really fits a main menu, not
-annoying, something that people can listen to and stay there for a while without getting annoyed. Not too loud ... If
-it's not music it can just be ambient sounds like the wind." What we read, what we built from it and what it measures.
+The maintainer asked for ambient music in the menu (#979): music that fits a main menu, quiet and calm enough that
+people can stay on it for a long time without tiring of it, or ambient sounds such as the wind if not music. What we
+read, what we built from it and what it measures.
 The sounds are `tools/audio/menu_recipes.py`; how they play is `MenuAmbience` (`game/core/audio/menu_ambience.gd`); the
 levels against the menu's hints are #926's check ([the bed](menu-sfx.md#the-ambience-bed-926)).
 

@@ -165,8 +165,8 @@ arms.
 
 ### The hosted bots at the crane (#1322)
 
-The maintainer, playing: "the bots will use the prize pick (mystery box), but they'll never actually pick up the weapon.
-They'll just keep rolling it until eventually leaving." Counted in a real night (`bots_crane_soak.tscn`: four hosted bots
+The maintainer, playing, saw the bots use the prize crane (our mystery box) without ever taking the weapon: they kept
+playing it until it left. Counted in a real night (`bots_crane_soak.tscn`: four hosted bots
 alone in the lot, 15 game minutes, seeds 1 to 4, two at the shipped health and two at five times it, so 16 bot-nights),
 on `main` before the fix:
 

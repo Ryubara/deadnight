@@ -229,9 +229,8 @@ analysed with `tools/audio/analyze.py capture`.
 ## Footsteps (#239)
 
 The dead's voices and feet (#248), the generator's hum and its start (`WorldSounds`) and the grenades (`GrenadeSounds`)
-were already in the night when this was written; what was missing was the **players' feet**. The maintainer's brief:
-"we need to be able to hear player's footsteps but it needs to be very subtle and not obnoxious to the point where they
-have to mute it."
+were already in the night when this was written; what was missing was the **players' feet**. The maintainer asked for
+players' footsteps that can be heard but stay very subtle, never so loud that a player would want to mute them.
 
 **How shooters mix a player's own steps.** There is no published figure (no developer talk or patch note gives
 decibels), only what players and studios said when they got it wrong. Call of Duty: Modern Warfare's beta had your own
@@ -314,11 +313,11 @@ is a one-number change (`AudioService.BED_FADE_IN_DB_PER_S`) if the maintainer w
 
 ## The crickets, cut again (#781)
 
-The maintainer: "We need to lower cricket sounds by 50%, and reduce the rate at which they play by 50% as well." The
+The maintainer asked for the crickets to be 50% quieter and to chirp at half the rate. The
 crickets were already cut once (#382, -2.5 dB, above) and were still too much. Now `bed_crickets` is **-26 dB** and the
 file has half the chirps a second.
 
-**The base is the original -16 dB, and "half" is half as loud to the ear.** The first reading here took "50% quieter"
+**The base is the original -16 dB, and half means half as loud to the ear.** The first reading here took the 50%
 from the level after #382 (-18.5) and as half the amplitude (-6 dB, to -24.5); the maintainer corrected both: the 50%
 is from the original level (-16, before the cut above), and they chose half as loud to the ear. Perceived loudness
 halves for every 10 dB (the usual rule of thumb: about 2^(dB/10), the sone scale), so half as loud is -10 dB, -16 to -26.
@@ -566,8 +565,8 @@ the female takes of `voice/soldier_female/` (139 files each now), the same recip
 soldiers above; the lines are in `tools/audio/soldier_voice.json` and `soldier_voice_female.json`, appended after
 `idle` so that every earlier take keeps its file name and its seed.
 
-- **Made on the free tier.** The maintainer, 2026-11-04: "Even with no commercial rights go ahead and get them going
-  I'll get the package with commercial rights in a moment." The subscription endpoint read `tier: free` before and
+- **Made on the free tier.** The maintainer decided on 2026-11-04 to generate them before the plan with commercial
+  rights was bought, and to buy that plan afterwards. The subscription endpoint read `tier: free` before and
   after; every new manifest entry carries `"plan": "free"` and `"generated": "2026-11-04"`
   (`elevenlabs_voice.py encode --plan free --generated 2026-11-04`), and both `LICENSE.md` files list the 24 prompts.
   **They are not licensed for commercial use: regenerate them under the commercial plan before any release (#252).**

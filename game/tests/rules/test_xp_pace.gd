@@ -22,8 +22,9 @@ const SPECS := [
 	["average", 4, 5.0],
 ]
 ## A night counts at least this many kills (all players) to be a night of the kind the pace is set
-## for: the maintainer's "assume 300+ kills a game" (2026-11-04), read as 240 because the model's
-## strong solo night counts 290 over 150 nights and 249.8 over the 60 of the gate.
+## for: the maintainer set the pace for games of 300 kills or more (2026-11-04), read as 240
+## because the model's strong solo night counts 290 over 150 nights and 249.8 over the 60 of the
+## gate.
 const KILLS_FLOOR := 240.0
 ## Hours of nights to level 55 for a night of that kind.
 const HOURS_TO_55 := [7.0, 11.5]

@@ -191,8 +191,9 @@ revolver and `SimPlayer.knife` the quick melee. Two numbers moved the gate and o
 
 ## The quick melee was one hit past round 1 in the night and two in the model (#897)
 
-The maintainer: V "should not be one tapping zombies after round 1". The tables said 40 (two blows on round 1's 50
-health); the real night did 60 on every blow, one blow on rounds 1 and 2 and then two. The cause was in the sweep and
+The maintainer pointed out that the V melee should not kill a zombie in one blow after round 1. The tables said 40
+(two blows on round 1's 50 health); the real night did 60 on every blow, one blow on rounds 1 and 2 and then two. The
+cause was in the sweep and
 not the table: it leaves the eye (1.55 m) with a 0.4 m thickness and a walker's head sphere is at 1.62 m, so the zone
 was the head on every blow at every reach and aim, and the head's x1.5 turned 40 into 60. The simulator rolls the zone
 from the skill's head rate and `WeaponWorth` reads the body, so both under-valued the blow by half a hit.

@@ -1,11 +1,10 @@
 # The end of a night
 
 What happens from the moment the last player goes down until everyone is standing in the lobby again (Deadnight #973).
-The maintainer's words, 2026-11-04: *"Whenever the game ends. It simply says 'you did not make it' and shows the
-round and points earned. that's nice, but we should follow a call of duty style where it has a cinematic overview of
-the map (different camera angles as it zooms out slowly from a starting point from the current camera angle) while
-showing the scoreboard for all players and then intermissions for about 15 seconds before going back to the lobby. The
-lobby should retain itself basically."*
+The maintainer's ask, 2026-11-04: the end of a night only said that the team did not make it, with the round and the
+points. It should instead end the way Call of Duty does: a cinematic overview of the map, with several camera angles
+that zoom out slowly from where the camera already was, the scoreboard of every player on screen, then an intermission
+of about 15 seconds before everyone goes back to the lobby, which stays as it was.
 
 The genre is the reference for **feel only**. The camera moves, the board and the words are ours.
 

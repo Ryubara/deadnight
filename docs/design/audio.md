@@ -151,7 +151,7 @@ footstep (14 to 22 dB), so they are felt when they stop rather than heard.
   3.7 to 8.1 LU above the crickets ([measured](../research/audio.md#the-breaks-levels-382)), so the intermission reads as
   music over a quieter night. A bed fades in at 20 dB/s, so in a 5 s break the score is at full level for only the
   last two seconds or so before it fades out at 30 dB/s; a special round's break (15 s) plays it in full.
-- **The crickets again** (maintainer, #781). Still too much after that cut, so "50% quieter" was read from the original
+- **The crickets again** (maintainer, #781). Still too much after that cut, so the halving was read from the original
   level (-16 dB, before the cut above), and as half as loud to the ear: -10 dB, to -26 dB, because perceived loudness
   halves for every 10 dB (halving the amplitude is only -6 dB, which reads as about two thirds as loud). The chirp
   rate is half the original, the same insects with every other chirp gone. The score is now 5.9 dB over them by trim.
@@ -160,8 +160,8 @@ footstep (14 to 22 dB), so they are felt when they stop rather than heard.
 
 ### The menu's music
 
-The main menu has music and a wind (maintainer, #979: "something that people can listen to and stay there for a while
-without getting annoyed. Not too loud"). `MenuAmbience` starts five beds with the menu: a **pad** (76 s) and **bells**
+The main menu has music and a wind (maintainer, #979: music people can stay on the menu with for a while without
+tiring of it, and not loud). `MenuAmbience` starts five beds with the menu: a **pad** (76 s) and **bells**
 (113 s) on the Music bus, a **wind** (47 s, in the mids) with #926's projector and crickets on the Ambience bus, so
 Settings, Audio has a slider for each half. The three new loops are synthesised in `tools/audio/menu_recipes.py`, dark
 (nothing to speak of over 1.5 kHz), without a pulse or a hook, in D dorian over a held D and A, and share no factor in

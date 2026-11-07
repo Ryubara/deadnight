@@ -171,7 +171,7 @@ is the only way to it.
   by a number. The first rule (#858) ranked
   weapons by how weak they are per hit and put the three blades in the lowest tier, which a wall may sell; but a blow
   never runs dry, needs no reload and no rounds from the locker, so a wall that sells one sells a gun with no upkeep
-  (the maintainer: "too overpowered"). Melee comes from the start kit and the box only.
+  (the maintainer judged it too strong). Melee comes from the start kit and the box only.
 - **A definition that sets no tier is tier 3**, so a gun added to the catalogue is in the box until someone decides it
   may hang on a wall; the decision is its `wall_tier` and a row in this table.
 - **It holds on both maps.** The lot's walls are the double-barrel and the rifle; the second map's six places are
@@ -248,8 +248,8 @@ weapon: it is not in the catalogue's `IDS`, nobody buys, carries or wins it, and
 
 ### Hits to kill by round
 
-The maintainer's rule: **one blow on round 1, more from round 2** ("melee attacks with V should not be one tapping
-zombies after round 1", [#897](https://github.com/Ryubara/deadnight/issues/897)); every other melee weapon has the same
+The maintainer's rule: **one blow on round 1, more from round 2** (a melee attack with V must not kill in one
+blow after round 1, [#897](https://github.com/Ryubara/deadnight/issues/897)); every other melee weapon has the same
 table since #924. A walker has `health_for_round` health (50 + 8 a round to round 8, then x1.16 a round); a blow is flat
 (the same in every zone). Blows to kill a walker, from the real night (`tests/weapons/test_melee_hits_to_kill.gd`,
 `tests/weapons/test_quick_melee_hits_to_kill.gd`, `tests/night/test_night_melee.gd`,

@@ -2,8 +2,8 @@ class_name PlayerBlast
 extends RefCounted
 ## What an explosion does to a player's health, as pure functions: the one rule every blast that can
 ## hurt a player shares (the grenade's, the ray gun's splash on its shooter), so the curve is built
-## once. The maintainer's words: all of it in the hand and very close, less the further away,
-## nothing at the blast's edge.
+## once. The maintainer set the shape: the whole blow in the hand and very close, less with
+## distance, nothing at the blast's edge.
 ##
 ## The damage is a share of the player's `max_health`, so "full" always means down, from full health
 ## or not, and a tonic that raises the bar does not make a grenade at the feet any safer. Inside

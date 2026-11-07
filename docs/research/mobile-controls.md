@@ -287,11 +287,9 @@ coarse pointer; On and Off force it).
 
 ## The right side: one ring round Fire, every button a looking button (#1277)
 
-The maintainer (2026-11-05): "We really just need a Fire, Aim, and Jump, maybe a crouch button, and a reload button.
-But it needs to be more intuitively placed. Like the reload button needs to be right next to the fire button. Each
-individual button on the right side should be classified as a right button, and any time that a user is holding down a
-right button (basically anytime the user is holding down on right side of screen), they should still be able to look
-around", and "All of the mobile touch controls icons must be icons instead".
+The maintainer decided (2026-11-05) that the right side needs only Fire, Aim, Jump and Reload, perhaps Crouch, placed
+where a thumb expects them, with Reload right next to Fire; that every button on the right side is a looking button, so
+a thumb held anywhere on the right half still turns the view; and that every touch control shows an icon, not a word.
 
 - **Before** (the real page, 844 x 390): Aim, Reload, Jump, Grenade, Swap, Shoulder, Melee and Bots round Fire, Reload
   up and right of it with Aim between, Jump low and left. Only Fire, Aim and Grenade turned the view when dragged:
@@ -339,10 +337,9 @@ around", and "All of the mobile touch controls icons must be icons instead".
 
 ## The audit (#1275)
 
-The maintainer (2026-11-05): "we're not prioritizing a unique set of touch controls for our game, we're still
-treating the users as if they're playing the desktop version but just with touch controls", and "stuff that touch
-players can be taking advantage of on existing components without adding too many bloat controls (basically
-duplicates)". The table of every action and every element, with a verdict each, is
+The maintainer pointed out (2026-11-05) that the phone still got the desktop game with touch controls laid over it,
+not controls made for touch, and asked for the things touch players can use on the elements already on screen, without
+extra buttons that duplicate them. The table of every action and every element, with a verdict each, is
 [the phone audit](../design/touch-audit.md); this is what it rests on.
 
 - **What phone shooters do (design only, nothing copied).** Call of Duty: Mobile's own guide numbers 23 elements in its
@@ -477,8 +474,8 @@ columns a draw tries for all its markers.
 
 ## Weapons and grenades on the HUD (#1280)
 
-The maintainer: "Why do we have a swap weapons button when we clearly have a UI showing the weapons, the user could
-just click between both of them", and grenades "next to the weapons ... pressed and held to throw". The weapon strip of
+The maintainer pointed out that a Swap button repeats the HUD's weapon strip, where a tap can pick either weapon, and
+asked for the grenades next to the weapons, thrown by a press and hold. The weapon strip of
 the HUD is the phone's weapon control; the Swap and Grenade buttons are gone from the layer (`TouchLayout.BUTTONS`).
 
 - **The trap, and how it is crossed.** The HUD's root and nearly all of its nodes ignore the pointer, and the touch
@@ -613,9 +610,9 @@ design only).
 
 ## The stick's sprint latch (#1276)
 
-The maintainer, 2026-11-05: nothing on the left until the screen is pressed; the edge of the circle is the top
-speed of a walk; "if they drag above the top of the circle, it should vibrate and start sprinting until the finger is
-let go (even if they drag finger back into the circle)". What was built:
+The maintainer decided, 2026-11-05: nothing on the left until the screen is pressed; the edge of the circle is the
+top speed of a walk; a drag past the top of the circle vibrates and starts a sprint that lasts until the finger lifts,
+even if the finger comes back into the circle. What was built:
 
 - **No resting ring.** `TouchControls._draw_stick` draws nothing without a finger. A faint outer line at the sprint
   edge shows where it starts; once latched the ring turns to the accent colour with SPRINT over the knob.

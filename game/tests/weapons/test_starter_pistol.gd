@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## The start weapon is the house pistol (#898) and it takes many shots to kill a walker: the
-## maintainer's bar was "at least 3 shots to the head on round 1, 7 to the body, about 8 with leg
-## shots only", and the revolver (24 a hit, head x2.5 = 60 on a 50 health walker) one-tapped
+## maintainer's bar on round 1 is at least 3 shots to the head, 7 to the body and about 8 to the
+## legs alone, and the revolver (24 a hit, head x2.5 = 60 on a 50 health walker) one-tapped
 ## rounds 1 and 2. The table below is the shots to kill per zone per round, through the real
 ## damage path (`DamageModel`, the rules' walker health), and the end-to-end tests fire the real
 ## command at a round-one walker and count the shots.

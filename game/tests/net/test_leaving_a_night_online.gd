@@ -3,9 +3,9 @@
 # and every player a `TogetherApi` with a session of its own plus a `Night` that joined with the
 # backend's own ticket.
 #
-# The maintainer: "when players leave a match and they try joining another, it says they're already
-# in an existing night", and "why aren't lobbies immediately disbanded and player state cleared
-# whenever the lobby is empty? The lobby I left had bots in it". Every way out of a night is run
+# The maintainer reported that a player who left a match and joined another was told they were
+# still in a night, and asked that an empty lobby be disbanded and its players' state cleared at
+# once, bots or not (the lobby left behind had bots in it). Every way out of a night is run
 # here, with bots in the room, and each ends with the same check: the player creates, joins and
 # joins a night from the Server Browser's list at once, and the lobby they left is gone when no
 # person is in it.

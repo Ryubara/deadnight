@@ -1,8 +1,9 @@
 # The level's digits and its icon on one centre
 
-The maintainer, on #1115 (the level and icon beside each name): "the level number and the icons aren't really aligned
-vertically, that needs to be fixed, otherwise it looks good" (#1161). This page is what was measured, the cause and the
-fix. The test is `game/tests/ui/test_level_ink.gd`; the arithmetic is `LevelTag` and `LevelIcons.body_centre`.
+The maintainer, on #1115 (the level and icon beside each name), pointed out that the level number and the icon were
+not aligned vertically and asked for that fix, the rest being good (#1161). This page is what was measured, the
+cause and the fix. The test is `game/tests/ui/test_level_ink.gd`; the arithmetic is `LevelTag` and
+`LevelIcons.body_centre`.
 
 ## What is "the icon" and "the digits"
 

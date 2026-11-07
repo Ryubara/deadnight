@@ -207,9 +207,9 @@ hold, and one more finding: a magazine of 1 or 2 gains little from the x1.5 (the
   shatters"; "as rounds climb it takes more shots to freeze, by round 50 up to two magazines"; the Pentagon Thief
   "will only be slowed". 6 / 24, 3.8 s reload, the Box only. Ours takes the three: the freeze threshold climbs with
   the round (one, two, three bolts by tens of rounds), a boss is slowed and not frozen, and the ammunition is small.
-  The maintainer's rule ("a frozen zombie holds 3 s; any hit kills and shatters it") is kept exactly; the genre kills
-  the zombie on freezing and shatters it a few seconds later, ours holds it for the team to shatter, which makes it a
-  support weapon and a reason for a second player.
+  The maintainer's rule (a frozen zombie holds for 3 s, and any hit kills and shatters it) is kept exactly; the genre
+  kills the zombie on freezing and shatters it a few seconds later, ours holds it for the team to shatter, which makes
+  it a support weapon and a reason for a second player.
 - **Pass-through**: the genre's Wunderwaffe chains up to ten zombies "with no diminished power"; its Winter's Howl is a
   cone. Neither was copied as a pass-through: a bolt that goes through every zombie of a lane is a lane of free kills at
   any round; ours bursts on the first body and a **bloom** of 2.2 m (the freeze) or 3 m (the ray's blast) is the
@@ -250,5 +250,5 @@ A `display_name` is one line of a definition.
 - The numbers of the **fifty cal, the freeze gun and the pump** are the least certain: the simulator cannot see what
   they are for. A playtest and the first bot soak with them in the box decide.
 - Left to the maintainer: a melee re-cut (the crowbar, bat and axe have no magazine and are not re-cut), the flare gun's
-  re-cut with damage (a fire patch) against the earlier "no damage for now"
+  re-cut with damage (a fire patch) against the earlier ruling of no damage for the time being
   ([#439](https://github.com/Ryubara/deadnight/issues/439)), the gate's strong-solo ceiling, and the display names.

@@ -265,16 +265,15 @@ windows (#917): 578 m² (start 200, side 150, upstairs 217), the lap 68 m, windo
 After the use zones were spaced (#994): windows 2 / 2 / 2, the side room's south-west window gone.
 
 **Windows that make sense (the maintainer's decision, 2026-11-03, #917).** Row 15's counts are Nacht's; on our map the
-maintainer ruled that the ground floor has one window a wall ("we really only need 1 window per wall") and the upstairs
-"a few", each reached by the dead walking up outside stairs onto a deck, and that a map's layout must make sense to a
-player. So the hall has two (its third outside wall is the shop wall, with the outside stair beyond it), the side room
-two (the breach at its west end and a window at its north-east; a third in its south-west corner shared the
-breach's corner and the Swift Rescue alcove's ground, #994) and the upstairs two, both over the hall (a window of the
-other half on the same deck would join the halves outside by a shorter way than the opening, and a bot would take
-it). Row 18 still asks that each room's dead
-reach that room only, now with the ground at one level: the yard is walled into a front yard, an alley with the outside
-stair and a back yard (a bank at the upper floor's height had made it hold before, and read as two grounds); and it asks
-that the dead come in by their own window.
+maintainer ruled that the ground floor has one window a wall and the upstairs a few, each reached by the dead walking up
+outside stairs onto a deck, and that a map's layout must make sense to a player. So the hall has two (its third outside
+wall is the shop wall, with the outside stair beyond it), the side room two (the breach at its west end and a window at
+its north-east; a third in its south-west corner shared the breach's corner and the Swift Rescue alcove's ground, #994)
+and the upstairs two, both over the hall (a window of the other half on the same deck would join the halves outside by a
+shorter way than the opening, and a bot would take it). Row 18 still asks that each room's dead reach that room only,
+now with the ground at one level: the yard is walled into a front yard, an alley with the outside stair and a back yard
+(a bank at the upper floor's height had made it hold before, and read as two grounds); and it asks that the dead come in
+by their own window.
 
 ### Measured in the setup (M)
 

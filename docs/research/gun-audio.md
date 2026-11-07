@@ -1,6 +1,6 @@
 # Gun audio
 
-Why the guns sounded "distancy", thin and not alike from shot to shot (the maintainer, playing, issue #407), what was
+Why the guns sounded distant, thin and not alike from shot to shot (the maintainer, playing, issue #407), what was
 measured, what changed, and the rules every firearm follows now. The sounds themselves are
 `tools/audio/weapon_recipes.py`; how they are played is `WeaponSounds` and `ArmsCatalog`; the design is
 [Sound](../design/audio.md).

@@ -1,4 +1,4 @@
-# "Super zoomed in" on a real phone (#1310)
+# The game zoomed in on a real phone (#1310)
 
 The maintainer played on a phone and found the game larger than it should be. The cause is **not yet known**: nothing
 that headless Chrome can do to a phone page reproduces it. This page is what was measured, what was ruled out, what is
@@ -99,7 +99,7 @@ no focused field in the page (`html/experimental_virtual_keyboard=false`); #1200
 inputs must be `font-size: 16px` (kit `docs/godot/web-export.md`), and which brings the keyboard, so the iOS 26 visual
 viewport bug above becomes reachable with it.
 
-If "zoomed in" is the menu, the lever is the factor (text floor 14 CSS px, taps 44: `test_phone_floor`); it is the
+If the zoom is the menu, the lever is the factor (text floor 14 CSS px, taps 44: `test_phone_floor`); it is the
 maintainer's call, so it is not changed here.
 
 ## Reading it off a phone: `?viewcheck`
@@ -137,10 +137,10 @@ page on purpose, the `gestures` and `scale` lines (does Safari zoom it, and does
 - `ratio` `used` must be 2 or less on a phone (`cap`), unless `?dprcap=` is on the page.
 
 All of these are plain numbers of the page, so the answer says which of the candidates above is the one, or that none
-is and "zoomed in" is the design.
+is and the zoom is the design.
 
 ## What only a real phone proves
 
 iOS Safari's behaviour with `touch-action`, `user-scalable=no`, a focus and the toolbars; Discord's webview and the
 scale it gives the frame; the device's own display size, page zoom and text size; whether the picture is the size the
-maintainer meant by "should be".
+maintainer expected.

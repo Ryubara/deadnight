@@ -16,8 +16,8 @@ The Soldier is 1.4 m tall in the game (the rig at the player's 0.8 scale), a per
 real. His hands are not: his fist is 0.20 m from the index knuckle's top to the pinky's underside and his index finger
 5.7 cm thick (a real hand: 8.5 cm and 1.8 cm), 2.3 to 3 times real against a body at 0.8. The kit draws its guns for
 those hands: beside the same Soldier its AK is 1.33 times a real AK, its revolver 0.79 m. So the rule's extra is 1.3,
-the kit's own (it was 1.1 until #460, and every gun read small in the hand: the maintainer, "the player's hands are too
-big for some guns"). The rule is `WeaponHold.rule_length()`; the test checks every weapon's length in the game against
+the kit's own (it was 1.1 until #460, and every gun read small in the hand: the maintainer found the hands too big
+for some guns). The rule is `WeaponHold.rule_length()`; the test checks every weapon's length in the game against
 it, times its `size_factor`, within 5 %. Before any rule the lever rifle was 1.32 m in the game (the Soldier's whole
 height).
 

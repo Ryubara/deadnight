@@ -7,9 +7,10 @@ extends RefCounted
 ##     ItemIcons.draw(self, Rect2(at, Vector2(96, 96)), &"torso", &"jacket", false)
 ##
 ## A locked item is the same drawing with its inner detail gone: one flat shape in the outline
-## colour with the ink rim, the silhouette of the base icon (the maintainer: "Locked names `???`,
-## with a silhouette for the base icon"). A wearable has one icon whoever the soldier is; a piece
-## the art does not have yet is drawn the same, since the icon is all it gives (#1078).
+## colour with the ink rim, the silhouette of the base icon (the maintainer decided a locked item
+## shows `???` for its name and a silhouette for its icon). A wearable has one icon whoever the
+## soldier is; a piece the art does not have yet is drawn the same, since the icon is all it
+## gives (#1078).
 
 const PLATE := 100.0
 ## The ink of the outline, and the flat colour of a locked silhouette (`UITokens.outline`).

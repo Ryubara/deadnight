@@ -4,7 +4,7 @@ extends RefCounted
 ## are read off this table, so a retune of `TIER_COSTS` needs no migration of any save.
 ##
 ## The climb rises and never goes flat: a tier of five levels asks the same, and each tier asks
-## more than the one before ("it takes longer to level up the higher you go", the maintainer,
+## more than the one before (the maintainer decided levels take longer the higher they go,
 ## 2026-11-04). 18,010 XP in all to reach level 55, about 8 hours of nights at 300 or more kills
 ## (docs/design/progression.md#xp-and-the-ladder-of-55). Levels run 1 to `MAX_LEVEL`; XP past it
 ## is kept and shows a full bar, and nothing is awarded for it until prestige is decided (#1055).

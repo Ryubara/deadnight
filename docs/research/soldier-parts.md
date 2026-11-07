@@ -261,7 +261,7 @@ small patches. Looked at in Idle, Run and Duck, the far level at 24 m (the crest
 
 ## The arm's length (#978)
 
-The maintainer saw the female Soldier's arms as too long ("maybe double check it for males as well"). Measured
+The maintainer saw the female Soldier's arms as too long and asked for the male Soldier to be checked too. Measured
 (`tools/blender/measure_arms.py`, kit metres; `game/tests/art/measure_arms.tscn` for the menu's holds, game metres):
 
 - Nothing stretched an arm. The parts skeleton is the kit's bone for bone (the Soldier, Hazmat and Enemy share the

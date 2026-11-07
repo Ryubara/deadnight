@@ -129,8 +129,8 @@ func test_there_is_no_sway_while_walking_standing_or_aiming() -> void:
 
 
 func test_the_sprint_sways_half_as_much_as_it_did() -> void:
-	# The maintainer (issue #405): "camera shake when sprinting is too intensive, lower this down
-	# by 50%".
+	# The maintainer (issue #405) found the camera shake while sprinting too strong and asked for it
+	# halved.
 	# The same run as on main (full sprint, the sway fully eased in): half of main's 0.447 degrees,
 	# and each angle half of main's.
 	_sprint(true, _tuning.sprint_speed)
@@ -362,7 +362,7 @@ func test_the_players_sprint_drives_the_sway_and_stopping_or_downed_ends_it() ->
 
 func test_the_sway_stops_on_the_first_tick_in_the_air_and_stays_off_until_landing() -> void:
 	# The maintainer (issue #405): a sprint-jump with Shift still held must not sway in the air, and
-	# the sway stops "as soon as player is ever in the air", not over the ease-out.
+	# the sway stops the moment the player leaves the ground, not over the ease-out.
 	_sprint(true, _tuning.sprint_speed)
 	_render(1.0)
 	assert_float(_rig.sway.amount()).is_greater(0.99)

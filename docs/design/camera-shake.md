@@ -103,8 +103,8 @@ every tick.
 Why so small: Godot's field of view is the vertical one, so 60 degrees over 1080 pixels is about 18 pixels a degree:
 0.2 degrees of bob moves the picture about 3 pixels up and down, and 0.14 degrees of roll about 2 pixels at the edge
 of the screen. That is felt as a little life in the picture and not read as a wobble. The sway has been halved twice
-as the maintainer played: first "very subtle, a bit more than a shot" (0.45 degrees at the largest, level with the
-shotgun), then "too intensive, lower this down by 50%" (issue #405): the largest turn of the look direction is now
+as the maintainer played: first to very subtle, a little more than a shot (0.45 degrees at the largest, level with
+the shotgun), then, still too strong, to half of that (issue #405): the largest turn of the look direction is now
 0.22 degrees (pitch and yaw together), under the quarter degree the test keeps every amplitude below. Measured on the
 same run (a sprint, a sprint-jump with Shift held, the landing, in `tests/captures/sprint_camera_tune.tscn`): the
 largest turn on the ground was 0.425 degrees before and 0.2125 after, and in the air 0.425 before (it carried on) and

@@ -1,7 +1,8 @@
 # What a pull request starts on CI
 
-Why a push starts the jobs it does, and why the number is small on purpose (#447: the maintainer, 2026-11-02: "We have
-PRs that are backing us up", with 21 open pull requests, the account's 20 concurrent jobs all busy and 33 queued).
+Why a push starts the jobs it does, and why the number is small on purpose (#447: the maintainer pointed out on
+2026-11-02 that pull requests were backing up, with 21 open pull requests, the account's 20 concurrent jobs all busy
+and 33 queued).
 
 ## What each workflow does
 

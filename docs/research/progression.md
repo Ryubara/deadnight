@@ -25,7 +25,7 @@ there was no source, the row says *our reading*.
 | --- | --- | --- | --- |
 | A number with an icon per level | A glanceable sign of time put in, shown next to the name | The request names the shooter genre's icon-per-level ladder as its model. No sourced study of why the icon matters; guides treat calling cards as "badges of honor that show a player's dedication" ([Prima Games](https://primagames.com/tips/how-to-get-calling-cards-call-of-duty-modern-warfare), [Upcomer](https://upcomer.com/how-to-unlock-all-calling-cards-in-call-of-duty-modern-warfare-2), *summary*) | The icon is the flex: it has to read at a glance at 24 px, so it is a silhouette first and a detail second |
 | Calling cards and emblems from challenges | A wide banner and a small badge, mostly earned by weapon and mode challenges, with the rarest behind mastery | Hundreds exist in one release; Black Ops 6 was said to carry over 450 cards, some of them with *hidden* unlock criteria and animated "100 percent" cards ([Windows Central](https://www.windowscentral.com/gaming/here-are-all-of-the-call-of-duty-black-ops-7-dark-ops-challenges-and-the-rewards-you-can-get), [GGRecon](https://www.ggrecon.com/guides/mw2-calling-cards-how-to-get/), *summary*). One report of a glitch that granted every emblem in the database shows how much weight the client gives them ([Prima Games](https://primagames.com/?p=78288), *summary*) | A card per challenge family, a few hidden; fewer, better drawn pieces rather than hundreds; the grant is the server's, not the client's |
-| Reset for a reward (prestige) | Starts the climb again, for a badge or a perk | Already weighed in the [design page's table](../design/progression.md#what-the-research-says): Payday 2's infamy read as artificial length, Deep Rock's promotion opening new content was accepted | **Superseded:** the maintainer wants a prestige that costs something ("a loss just for flex value") with exclusive rewards; what resets is open (#1055). The ladder keeps going past the cap without taking anything until then |
+| Reset for a reward (prestige) | Starts the climb again, for a badge or a perk | Already weighed in the [design page's table](../design/progression.md#what-the-research-says): Payday 2's infamy read as artificial length, Deep Rock's promotion opening new content was accepted | **Superseded:** the maintainer wants a prestige that costs something, a loss taken for its flex value, with exclusive rewards; what resets is open (#1055). The ladder keeps going past the cap without taking anything until then |
 | Mastery by weapon | A second ladder for what you already like | Same table: long grinds, bugs | Left to its own later issue |
 | Daily and weekly tasks | Small goals that decide what to do tonight | [Challenges](challenges.md) | Built; the new cards and emblems are what they reward |
 
@@ -111,8 +111,8 @@ says a generic card layout "looks like a generic app". What we can ground:
   immersion. So each popup has a few layers (a drop with a small overshoot, a stamp, a chime) and no more.
 - **A UI that belongs to its world** beats a generic overlay (design guides; a minimalist-UI article warns that a
   cryptic over-designed diegetic UI is worse than a clean plain one; vendor blogs, *anecdotal*).
-- **Our own list**, from the [UI look rules](../design/style.md#ui-look) and the maintainer's corrections (the voice
-  lines that "sound a bit robotic": write it as a person who works there would say it):
+- **Our own list**, from the [UI look rules](../design/style.md#ui-look) and the maintainer's corrections (voice lines
+  the maintainer found robotic: write it as a person who works there would say it):
   1. **Every thing has a noun from the drive-in and a voice.** Levels are *billings*, the grid is *the wardrobe*, a
      card is a *one-sheet*, the popup is a *ticket punched*; no "Congratulations", no "Achievement unlocked".
   2. **Hand-picked, never generated, glyphs.** Fifty-five named drawings, each a real object (stub, popcorn box, key,
@@ -137,9 +137,9 @@ for the maintainer's pace of about eight hours.
 
 ### The 8-hour curve, measured
 
-The maintainer asked for about eight hours ("Maybe 8 hours of playtime. Gotta make it short"), assumed **300 or more
-kills a game** (modifiers raise the count), and wanted the climb to **scale upward** ("it takes longer to level up the
-higher you go ... so users can feel the first level up satisfaction early on"). So the cells were run again at **count
+The maintainer asked for about eight hours, a short climb, assumed **300 or more kills a game** (modifiers raise the
+count), and wanted the climb to **scale upward**: each level takes longer than the last, so a player feels the first
+level up early. So the cells were run again at **count
 multipliers 1, 2 and 5** (the match setting `count_multiplier`; the command-line tool took `--count` for the run, an
 unchanged copy of `balance_cli.gd` with one added line, not committed), 18 cells in all. A night's XP is as above, so
 a kill is its points over 100:
@@ -275,8 +275,8 @@ detail gone: one flat shape in `#3b3350` with the ink outline, on the plate of t
 
 ## The game server awards XP (#1059)
 
-The maintainer chose the game server to award XP, a kill at a time, live ("Game server is good. We'll see how much
-it stresses when we do it because XP is earned after every zombie kill and there can be hordes"). It is built, and the
+The maintainer chose the game server to award XP, a kill at a time, live, and asked for its load to be measured,
+since XP comes with every zombie kill and a night can bring hordes. It is built, and the
 horde was measured. The plan is [Who awards XP](../design/progression.md#who-awards-xp-and-live-xp).
 
 ### How it works

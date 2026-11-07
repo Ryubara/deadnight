@@ -1,8 +1,8 @@
 # Phone audit: every action, every element, a verdict
 
-The audit behind the phone's controls (#1275). The maintainer, 2026-11-05: "we're still treating the users as if
-they're playing the desktop version but just with touch controls", and "I don't like that every button acts like an
-individual keybind that has its own button, it bloats the screen and it's super confusing." The reasons and the sources
+The audit behind the phone's controls (#1275). The maintainer pointed out on 2026-11-05 that the phone still
+treated its players as if they were playing the desktop version with touch controls added, and that a button for every
+key binding crowded the screen and confused the player. The reasons and the sources
 are in [mobile controls](../research/mobile-controls.md#the-audit-1275); what the layer does today is
 [touch controls](touch-controls.md). Read on the real page (844 x 390 and 667 x 375 CSS px, ratio 2, touch mode)
 after the pull requests #1281, #1283 and #1284 had landed.

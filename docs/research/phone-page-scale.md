@@ -155,7 +155,7 @@ A real phone, a real iOS Safari (Chromium in emulation is not one), Discord's ow
 stands in, `--iframe`), text drawn by custom `_draw` (ticket titles, the plate), which `UiAudit` does not see, and the
 night's HUD (#1192, #1189).
 
-The maintainer then found the game "super zoomed in" on a real phone (#1310): `docs/research/phone-zoomed-in.md` holds
+The maintainer then found the game far too zoomed in on a real phone (#1310): `docs/research/phone-zoomed-in.md` holds
 the page-level measures (visual viewport, pixel ratio, turning, zoom) and `?viewcheck`, the readout to open on the phone.
 
 ## The host's lobby on a page (#1186)

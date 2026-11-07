@@ -1,9 +1,10 @@
 # Character controller: omni movement
 
-The maintainer, after playing: "we can't sprint while walking backwards. Our character controller needs improvements
-for omni movement. It needs to feel good to play", with the third-person controller of Ghost Recon Wildlands as the feel
-to reach. This page is our own design for that feel. [Player controller](player-controller.md) has the structure (the
-command, the state, the simulation) and [shoulder camera](shoulder-camera.md) the camera; this is what the body does.
+The maintainer, after playing, pointed out that the player could not sprint while walking backwards and asked for a
+character controller that moves well in every direction and feels good to play, with the third-person controller
+of Ghost Recon Wildlands as the feel to reach. This page is our own design for that feel.
+[Player controller](player-controller.md) has the structure (the command, the state, the simulation) and
+[shoulder camera](shoulder-camera.md) the camera; this is what the body does.
 
 ## What the reference does, and what we know of it
 

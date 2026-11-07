@@ -1,7 +1,7 @@
 # Why the muzzle flash read weak, and how it was measured
 
-The maintainer, playing, said the muzzle flash "could be improved, need agent to investigate why it's a bit weaker than
-it seems" (issue #408). #322 had reworked it and #323 had put it on each gun's `Muzzle`; both were checked by a test of
+The maintainer, playing, found the muzzle flash weaker than it should be and asked for the cause to be looked into
+(issue #408). #322 had reworked it and #323 had put it on each gun's `Muzzle`; both were checked by a test of
 its frames and its position and by a close-up capture next to the gun. Nobody had measured it from the shoulder camera.
 This page is the measure, the cause, and what the numbers are now. The design is in [Shot feedback](../design/shot-feedback.md#how-strong-the-flash-must-be).
 

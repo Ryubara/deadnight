@@ -71,9 +71,9 @@ the model lives there; the ceiling is a rule about the web build, not a retune, 
 ## Desktop and game server: 100 and more alive (#453, #156)
 
 The web numbers above are the browser's. The ceiling of 40 held on every platform, so a desktop (and a game server)
-never had a budget of its own: the maintainer, on an RTX 5080: "over 100 zombies at once on non-web, easily, without
-lagging; I guess at that point it is stress on the server". Three budgets, measured at 40, 120 and 160 alive (80 on
-the client):
+never had a budget of its own: the maintainer, on an RTX 5080, reported over 100 zombies at once outside the web
+without lag, and judged that past that point the load is on the server. Three budgets, measured at 40, 120 and 160
+alive (80 on the client):
 
 ![The server's tick on Railway and on this PC, and the desktop client's frame, by the crowd](crowd-budget-platforms.png)
 

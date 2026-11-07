@@ -344,11 +344,11 @@ back (#53, protocol version 3):
 
 ### A client that freezes (#483)
 
-The maintainer's report: after a hitch (the first flare shot loading its effect) the player "flies all over the map until
-only the skybox shows". The server logs had nothing to show for it (joins, stats and leaves; the server saw a client that
-went quiet and came back), so the cause came from a reproduction, `test_client_freeze.gd`: the server as a process of
-its own, the client over the real socket with 100 ms each way, a person walking with the keys, and the client's thread
-stopped with `OS.delay_msec` for 0.5, 2 and 5 s.
+The maintainer reported that after a hitch (the first flare shot loading its effect) the player flew wildly across the
+map until only the sky could be seen. The server logs had nothing to show for it (joins, stats and leaves; the server
+saw a client that went quiet and came back), so the cause came from a reproduction, `test_client_freeze.gd`: the server
+as a process of its own, the client over the real socket with 100 ms each way, a person walking with the keys, and the
+client's thread stopped with `OS.delay_msec` for 0.5, 2 and 5 s.
 
 - **The cause was `Reconciler`, and a freeze only set it off.** A correction moved the body but left the remembered
   positions of the commands still unanswered where they were. The server's answers are a round trip behind, so the next

@@ -1,8 +1,8 @@
 # Cosmetic rarity: tiers, names, signals, and what the top tier costs
 
-Issue #1053 (the maintainer, 2026-11-04, on the progression plan #977): "maybe we can give cosmetics a rarity instead?
-But then that means some cosmetics need to look crazy. Like have crazy shader effects like imagine wings with blue fire
-coming off it that has glow effects etc." Research only: nothing here ships. The test effect lives in
+Issue #1053 (the maintainer, 2026-11-04, on the progression plan #977) suggested giving cosmetics a rarity instead,
+which means the top ones must look striking, with strong shader effects: wings trailing glowing blue fire was the
+example. Research only: nothing here ships. The test effect lives in
 `game/tests/captures/cosmetic_fx_bench.*` (not in any shipped scene; the web export leaves `tests/` out) and is
 measured by `tools/web_smoke/cosmetic_fx_cost.py`. The plan it serves is `docs/research/progression.md` (rules 11 and
 12:

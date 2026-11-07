@@ -2,8 +2,8 @@ class_name BotPlayState
 extends RefCounted
 ## How boldly a bot plays, driven by its health and the danger about it
 ## (`docs/research/bots.md#play-states-693`).
-## The maintainer: "aggressive if they're high on health, but more safe e.g. keeping their distance
-## when they're low health."
+## The maintainer asked for bots that play aggressively on high health and safely on low health,
+## keeping their distance (#693, 2026-11-03).
 ##
 ## - `AGGRESSIVE` (healthy): the bot as it always was: it takes kills, may walk up to a zombie that
 ##   is not coming (`may_push`), and keeps only the profile's own retreat margin.
