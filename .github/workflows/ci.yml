@@ -185,8 +185,8 @@ jobs:
       - name: Hold the late-round worst case to its budget
         if: matrix.shard == 1
         # Round 12 at 3x with four players (the person and three bots) and the desktop's crowd, played headless at a fixed
-        # step with a sample a second of the engine's counts (`PerfSampler`). The counts are the same on every machine, so
-        # they are held tight; the frame is held as a multiple of a fixed piece of GDScript timed in the same process
+        # step with a sample a second of the engine's counts (`PerfSampler`). The counts are the same on every machine (and on
+        # every day: the accounts' dailies are dealt for a fixed day, #1372), so they are held tight; the frame is held as a multiple of a fixed piece of GDScript timed in the same process
         # (tools/perf/budget.json, docs/research/performance.md). A leak, a pool that stopped being returned or a cost
         # that grew fails here, not in the maintainer's hands. Every player holds an account (`--xp=1`), so the XP award
         # runs as it does on a game server: how often it tells a seat (a count) and what it costs (a share of the

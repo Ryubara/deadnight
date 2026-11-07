@@ -32,6 +32,9 @@ extends Node
 ##   `xp=1`       every player (the bots too: only here) holds an account, so the night awards XP
 ##                as a game server would and the XP's counts and time are in the rows
 ##                (`xp.gained`, `server.xp`; tools/perf/budget.json holds them)
+##   `day=N`      the day number (days since 1970, UTC) the accounts' dailies are dealt for with
+##                `xp=1`; the bench's own day (`BENCH_DAY`), never the machine's: which three
+##                dailies are dealt changes how often a challenge advances (#1372)
 ##   `challenges=0`  with `xp=1`, the accounts' challenge boards are not followed (the arm without
 ##                the tracker; on by default: `challenge.advance`, `challenge.told`,
 ##                `server.challenges`)
@@ -54,6 +57,11 @@ const NIGHT := "res://ui/screens/night_screen.tscn"
 const DEFAULT_ROUNDS := 5
 const DEFAULT_HOLD := 20.0
 const DEFAULT_SECONDS := 600.0
+## The day (days since 1970, UTC: 2026-01-01) the accounts of an `xp=1` run are dealt their dailies
+## for. The machine's day would deal other dailies on other days, and `challenge.advance` a tick
+## (tools/perf/budget.json) follows which three they are: 0.13 one day, 0.23 the next on the same
+## commit (#1372).
+const BENCH_DAY := 20454
 const PLAYER_HEALTH := 1.0e6
 ## A "second" of the worst-second measure, in milliseconds of frame time.
 const SECOND_MS := 1000.0
@@ -78,6 +86,7 @@ var _jumped := false
 var _traced := false
 var _hud_probed := false
 var _accounts: Dictionary[int, bool] = {}
+var _clock_pinned := false
 var _stand_ins: StandInPeople
 ## False for a long run (`frames=0`): the per-frame rows would be the growth being measured.
 var _keep_frames := true
@@ -289,8 +298,27 @@ func _start_at_round(night: Night) -> void:
 		(rules.players[id] as PlayerState).points = points
 
 
+## The clock of a bench's accounts: it stands at noon of `day`, whatever the machine's date.
+static func bench_clock(day: int = BENCH_DAY) -> ChallengeClock:
+	return ChallengeClock.fixed(
+		float(day) * ChallengeClock.DAY_SECONDS + ChallengeClock.DAY_SECONDS / 2.0
+	)
+
+
+## Puts the XP award and the challenge boards on `clock` (before an account sits down: the board
+## is dealt, and the tracker made, from the clock they hold then).
+static func pin_clock(xp: XpAward, challenges: ChallengeAward, clock: ChallengeClock) -> void:
+	xp.clock = clock
+	challenges.clock = clock
+
+
 ## Gives every player of the night an account the moment they sit down (`xp=1`).
 func _register_accounts(night: Night) -> void:
+	if not _clock_pinned:
+		_clock_pinned = true
+		pin_clock(
+			night.server.xp, night.server.challenges, bench_clock(_args.get_int("day", BENCH_DAY))
+		)
 	var rules := night.server.rules
 	for id: int in rules.players:
 		if not _accounts.has(id):
