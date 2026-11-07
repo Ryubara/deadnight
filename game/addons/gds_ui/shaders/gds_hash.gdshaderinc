@@ -1,4 +1,4 @@
-// Sine-free hashes (Hoskins' hash11 and hash12), shared by the Deadnight skin and the film burn.
+// Sine-free hashes (Hoskins' hash11 and hash12), shared by a game's own skin shaders and the film burn.
 // `fract(sin(x) * 43758.5)` loses precision at large arguments, shows stripes and differs between
 // GPUs; these use only fract, multiply and add, so a desktop and a WebGL2 browser agree.
 // Both take any real input (negative too) and return a value in [0, 1).
