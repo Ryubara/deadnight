@@ -6,7 +6,7 @@ extends UIScroll
 ## title above, buttons below) keeps its own height and stays on the screen; the rows in between
 ## scroll. Without it a card built from a column is as tall as its tallest state, and a screen
 ## shorter than that (a phone held sideways is 540 units, a laptop's browser frame 720 px) lets it
-## run under the footer or off the edge (Deadnight #980).
+## run under the footer or off the edge.
 ##
 ## Put it inside the card (a `UIPanel`, or any control whose height is the screen's concern), give
 ## it one child, the content. The card is the nearest ancestor that is not a plain container
