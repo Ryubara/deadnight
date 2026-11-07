@@ -461,6 +461,18 @@ shard runs it (about 1.5 minutes) and writes what it measured into the job summa
   summary say where it should sit;
 - **a labelled section over its share of the frame** (`server.xp`, `server.challenges`): see the next section.
 
+### The day the accounts are dealt for (#1372)
+
+`challenge.advance` a tick is a count, but not a count of the engine alone: it follows which three dailies the
+accounts are dealt, and a daily is dealt from the day number. The bench's accounts used the machine's clock, so the same
+commit read 0.13 on 2026-11-06 and 0.23 on 2026-11-07 (limit 0.18) and the step failed every pull request that day. The
+run now pins the XP award's and the challenge boards' clock to a fixed day (`AutopilotRun.BENCH_DAY`, 2026-01-01; `--day=N`
+asks another, to measure one), and `test_autopilot_run.gd` deals three machine dates the same dailies. Measured on the
+pinned day, four players: `challenge.advance` 0.1546 (limit 0.18, 16 percent over, as `xp.gained` 0.1027 against 0.12),
+`challenge.told` 0.005 (0.01); the worst room: 0.4071 (0.48) and 0.0124 (0.03). The limits are unchanged: the day the
+machine happened to be on had read 0.13 to 0.23 and 0.41 to 0.61 under them. A count that reads a date, a random seed or
+the wall clock is not a count the limit can hold until the run fixes it.
+
 ### What the label limits mean
 
 `server.challenges` and `server.xp` are `PerfProbe` sections of a few microseconds a frame (the median of the steady

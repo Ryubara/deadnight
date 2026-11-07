@@ -115,3 +115,41 @@ func test_a_late_round_with_bots_is_asked_for_by_arguments() -> void:
 	var settings := AutopilotRun.settings_from(asked)
 	assert_int(settings.bots).is_equal(3)
 	assert_int(AutopilotRun.settings_from(NetArgs.new(PackedStringArray())).bots).is_equal(0)
+
+
+## The dailies an account is dealt when the machine's date is `machine_day`, with the bench's clock
+## pinned (`pin`) or the machine's left on the accounts.
+func _dailies_dealt(machine_day: int, pin: bool) -> Array[StringName]:
+	var machine := ChallengeClock.fixed(float(machine_day) * ChallengeClock.DAY_SECONDS + 600.0)
+	var xp := XpAward.new([&"fuel_can"], machine)
+	var award := ChallengeAward.new(xp, [&"fuel_can"])
+	award.catalog = ChallengeCatalog.load_default()
+	award.clock = machine
+	if pin:
+		AutopilotRun.pin_clock(xp, award, AutopilotRun.bench_clock())
+	assert_bool(award.seat(1, "bench-1")).is_true()
+	award.arrived("bench-1", 404, ChallengeAward.NO_BOARD)
+	var ids: Array[StringName] = []
+	for daily in award.profile_of("bench-1").dailies:
+		ids.append(daily["id"])
+	return ids
+
+
+func test_the_bench_deals_the_same_dailies_on_any_date_of_the_machine() -> void:
+	# `challenge.advance` a tick (tools/perf/budget.json) follows which three dailies are dealt:
+	# it read 0.13 on 2026-11-06 and 0.23 on 2026-11-07 on one commit (#1372).
+	var yesterday := _dailies_dealt(20763, true)
+	var today := _dailies_dealt(20764, true)
+	var long_ago := _dailies_dealt(20401, true)
+	assert_array(yesterday).has_size(3)
+	assert_array(today).is_equal(yesterday)
+	assert_array(long_ago).is_equal(yesterday)
+	# The teeth: left on the machine's clock, the same two dates deal other dailies.
+	assert_array(_dailies_dealt(20764, false)).is_not_equal(_dailies_dealt(20763, false))
+
+
+func test_the_bench_clock_stands_still_on_the_bench_day() -> void:
+	var clock := AutopilotRun.bench_clock()
+	assert_int(clock.day()).is_equal(AutopilotRun.BENCH_DAY)
+	assert_float(clock.local_seconds()).is_equal(clock.local_seconds())
+	assert_int(AutopilotRun.bench_clock(20000).day()).is_equal(20000)
