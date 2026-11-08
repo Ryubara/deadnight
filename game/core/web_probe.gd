@@ -285,6 +285,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"clipboard": "",
 		"clipboard_detail": "",
 		"focus": "",
+		"fields": "",
+		"lift": 0.0,
 		# Which scale the page runs at (#1197): its CSS size, the canvas, the content scale factor
 		# and the canvas in units, as `page_w,page_h|canvas_w,canvas_h|factor|units_w,units_h`.
 		"layout": "",
@@ -316,6 +318,8 @@ static func snapshot(top: Control) -> Dictionary:
 		while focus != null and String(focus.name).begins_with("@"):
 			focus = focus.get_parent()
 		data["focus"] = String(focus.name) if focus != null else ""
+	data["fields"] = _field_spots(top)
+	data["lift"] = UIRouter.offset.y
 	data["gamepad"] = GamepadProbe.note(GamepadProbe.read())
 	var clipboard := WebClipboard.read()  # what the page layer saw of copy and paste
 	data["clipboard"] = WebClipboard.note(clipboard)
@@ -507,6 +511,25 @@ static func _button_spots(screen: NightScreen) -> String:
 	return _spots(screen)
 
 
+## The screen's shown, editable text fields as `name:x,y,w,h`: the centre and the size, as fractions
+## of the window, so a browser test taps a field with a finger without knowing the layout.
+static func _field_spots(screen: Control) -> String:
+	if not screen.is_inside_tree():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var spots: Array[String] = []
+	for node in screen.find_children("*", "LineEdit", true, false):
+		var field := node as LineEdit
+		if not field.is_visible_in_tree() or not field.editable:
+			continue
+		# Where the field is drawn: the lift of the keyboard (`KeyboardLift`) moves the router's layer.
+		var rect := Rect2(field.get_global_transform_with_canvas().origin, field.size)
+		var at := rect.get_center() / size
+		var fraction := rect.size / size
+		spots.append("%s:%.4f,%.4f,%.4f,%.4f" % [field.name, at.x, at.y, fraction.x, fraction.y])
+	return "|".join(spots)
+
+
 ## `page_w,page_h|canvas_w,canvas_h|factor|units_w,units_h|css_per_unit` of the screen's window.
 static func _layout(top: Control) -> String:
 	var window := top.get_window()
@@ -660,7 +683,7 @@ static func _spots(screen: Control) -> String:
 			text = (button as MenuItemButton).title
 		elif not button is UIButton:
 			continue
-		var at := button.get_global_rect().get_center() / size
+		var at := button.get_global_transform_with_canvas() * (button.size / 2.0) / size
 		spots.append("%s:%.4f,%.4f" % [text, at.x, at.y])
 	var browser := screen as ServerBrowserScreen
 	if browser != null:

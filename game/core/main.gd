@@ -43,6 +43,8 @@ func _ready() -> void:
 	PhoneRender.apply(get_viewport())
 	add_child(WebProbe.new())
 	add_child(WebClipboard.new())  # copy and paste inside a Discord Activity's frame (#516)
+	add_child(WebKeyboard.new())  # the phone's keyboard for a text field (#1183)
+	add_child(KeyboardLift.new())  # and the field kept above it
 	_add_overlays()
 	await get_tree().process_frame
 	TogetherApi.activity = args.has("instance_id")

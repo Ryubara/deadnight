@@ -64,6 +64,8 @@ a bot in the night (`--late --godot <the pinned Godot>`); it counts the WebGL ca
 asks for the probes does not play the show unless it has `?arrival` (`--unasked` checks that it does not). Numbers:
 [the arrival](arrival.md).
 
+Typing on a phone (`phone_keyboard.py`, `phone_join.py`) is on its own page: [phone keyboard](phone-keyboard.md).
+
 `--unasked` goes through `Main`, which loads `WebProbe` first, so it missed #1323: a bench that pushes the night screen
 itself and types its members loaded the night screen first, and the drop played. `tools/web_smoke/arrival_bench.py
 <godot> <work folder>` exports a bench scene (`game/tests/captures/arrival_bench.tscn`, with the typed members that
