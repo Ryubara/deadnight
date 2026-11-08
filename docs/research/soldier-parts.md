@@ -58,7 +58,7 @@ and `soldier_clips.py`'s clips unchanged, then:
 ## The female Soldier (#678)
 
 How her parts are made is on [characters](../design/characters.md#the-character) and in the kit's
-[character variants](https://ryubara.github.io/gdstudio/blender/variants/#a-second-body-on-the-same-parts). What we
+[character variants](https://ryubara.github.io/gdstudio/tools/blender/variants/#a-second-body-on-the-same-parts). What we
 learned:
 
 - **The file's clips are frozen.** `soldier_clips.py` grew after this file was last built (sprint, strike, downed,

@@ -1,7 +1,7 @@
 # The arrival: what it costs, and what building it taught
 
 Issue #1057. What the helicopter drop is, and how to tune it, is in [the arrival](../design/arrival.md); this page is the
-measured side. Kit page for the next cutscene of this kind: [A cutscene one client plays](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/client-cutscene.md).
+measured side. Kit page for the next cutscene of this kind: [A cutscene one client plays](https://ryubara.github.io/gdstudio/engines/godot/client-cutscene/).
 
 ## The budget
 
@@ -60,7 +60,7 @@ default 0 of its `static var _asked := -1` as "no": the drop played for 6.5 s on
 (`WebProbe.asked()` was true a moment later). The cache now has no initialiser (0 is unread), so the order no longer
 matters; `tools/web_smoke/arrival_bench.py` opens a night the way a bench does and fails if the show plays, and
 `test_static_caches_start_at_the_default.gd` fails for a static variable that starts on a number other than zero.
-Kit page: [Static variables and the order scripts load in](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/static-variables.md).
+Kit page: [Static variables and the order scripts load in](https://ryubara.github.io/gdstudio/engines/godot/static-variables/).
 
 ## The sound
 
@@ -75,7 +75,7 @@ numbers, not by ear: the sound is for the maintainer's ears.
 ## What went wrong on the way
 
 - The first camera sat behind the drive-in's screen (the spot is by it), and the helicopter was cropped by the top edge
-  ([lesson in the kit](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-04-a-cutscene-camera-at-a-fixed-offset-stood-behind-the-lots-screen.md)).
+  ([lesson in the kit](https://ryubara.github.io/gdstudio/engines/godot/client-cutscene/)).
 - A new rules action needs a sample in `test_validation.gd` ([lesson](../lessons/2026-11-04-a-new-rules-action-had-no-sample-in-the-validation-suite.md)).
 - A new run-time light, sound export and sound group each failed a suite that pins the lights and sound tables
   ([lesson](../lessons/2026-11-04-pinning-tests-in-other-folders-failed-for-a-new-light-and-a-new-sound-field.md)).

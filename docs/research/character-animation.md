@@ -108,7 +108,7 @@ arms reaching out and down, and the hands go on the belly.
 - **Locking two branches of a tree.** Godot 4.7 exposes every clip node's play position as
   `parameters/<path>/current_position` (and the last step as `current_delta`); seeking the carry there plus the step,
   every frame, keeps it on the Run's frame at any pace (measured within 0.002 s). See the kit's
-  [AnimationTree page](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/animation-tree.md).
+  [AnimationTree page](https://ryubara.github.io/gdstudio/engines/godot/animation-tree/).
 
 ## Godot headless
 

@@ -659,7 +659,7 @@ the nearest by walk and answers to the order. A ping to a bot that is not short 
   either of two tied routes (0.75 m apart, in about a run in four). So the replay test seats bots that stand and fight
   (`retreat_margin = 0`) on the open field, compares the rules' state (the round, the dead left, each player's place in
   quarter metres, health, ammunition, points, kills) and leaves the dead's places out, and checks that a fight
-  happened; it passed twelve runs in twelve ([lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-02-a-walking-body-makes-two-runs-of-the-same-commands-differ.md)).
+  happened; it passed twelve runs in twelve ([lesson](https://ryubara.github.io/gdstudio/engines/godot/fixed-step-repeatability/#the-test)).
   *Update (#1350):* the hair and the tied routes seen here may be the lot's age at the first tick (see
   [performance](performance.md), "Why two runs of one night differ"): with the lot kept to 24 physics frames three
   walking bots and the crowd kept every place to the last bit over 900 ticks in nights built 0 and 3 frames apart, and
@@ -2667,4 +2667,4 @@ tearing) at `(-8.4, 45.4)`, and a 60 s probe entry at `(-8.6, 45.0)` in round 11
 were not this either: its cause is the crane's cabinet landing on two dead (kit lesson
 `2026-11-06-the-crane-landed-on-two-dead-and-hid-them-from-every-shot.md`).
 
-Kit lesson: [a slow dead stood six minutes between two near-equal ways round a booth](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-06-a-slow-dead-chattered-between-two-ways-round-a-booth.md).
+Kit lesson: [a slow dead stood six minutes between two near-equal ways round a booth](https://ryubara.github.io/gdstudio/gamedev/simulation/#space).
