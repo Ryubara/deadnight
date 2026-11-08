@@ -1,8 +1,8 @@
 # Hip fire in third-person shooters
 
 What third-person shooters do when the player fires without aiming down the sights, and what Deadnight does (#300,
-maintainer feedback 2026-11-01: "the hitscan lands where expected [...] but the character doesn't rotate
-automatically, and also doesn't auto zoom in as if they were aiming, just like other third person controllers").
+maintainer feedback 2026-11-01: the shots landed where expected, but the character neither turned nor zoomed in as if
+aiming, as other third-person controllers do).
 The numbers and the code are in [the shoulder camera](shoulder-camera.md#hip-fire).
 
 ## What is public, and what is not
@@ -22,16 +22,16 @@ document is the *mechanism*, and it is the same everywhere:
 ## What Deadnight does, and why
 
 - **Hip fire turns the body and raises the weapon, and never zooms** (the maintainer, #464, 2026-11-02, after testing
-  the Discord Activity: "When a player hip fires let's remove the zoom effect at all. We'll just reserve the aim zoom
-  just for aim as intended. We can always revisit the zoom on hipfire again later on."). The history: a first version
+  the Discord Activity, decided to drop the zoom from hip fire entirely and keep it for aiming, open to revisiting
+  later). The history: a first version
   gave hip fire its own half zoom and left the weapon on the aim button alone (a second, partial aim: the gun jumped
   into the aim pose when the button was pressed); #417 made it the aim held for a moment, one weight for the camera,
-  the body and the hands (`aiming or fire_age < hold`), on the maintainer's "the logic should be the same camera wise
-  with or without aiming" (#300); the zoom then showed up where it was not wanted, in aim, shoot, release (#428, #433:
-  a shot fired while aiming no longer restarts the hold) and finally on every shot. Now the camera reads the aim button
-  only (60 to 40 degrees and back, `test_hip_fire.gd`, `test_aim_release.gd`), and the body's turn, the legs' aim gait
-  and the weapon's pose read the hold (`PlayerMotionState.holds_aim`). Revisiting a small hip-fire zoom later is one
-  more input of `ThirdPersonCamera`; nothing else has to change.
+  the body and the hands (`aiming or fire_age < hold`), on the maintainer's point that the camera logic should be the
+  same with or without aiming (#300); the zoom then showed up where it was not wanted, in aim, shoot, release (#428,
+  #433: a shot fired while aiming no longer restarts the hold) and finally on every shot. Now the camera reads the aim
+  button only (60 to 40 degrees and back, `test_hip_fire.gd`, `test_aim_release.gd`), and the body's turn, the legs'
+  aim gait and the weapon's pose read the hold (`PlayerMotionState.holds_aim`). Revisiting a small hip-fire zoom later
+  is one more input of `ThirdPersonCamera`; nothing else has to change.
 - **Face the view while the aim is held** (not always, as the combat kit above does): walking should still turn the
   soldier to where he runs, because the dead come from every side and the player flees as much as fights. The hold
   (0.8 s) hides the swing back between single shots and keeps the camera from pulsing between the slowest weapon's
@@ -52,11 +52,10 @@ document is the *mechanism*, and it is the same everywhere:
 
 ## Turn first, then shoot (#477)
 
-The maintainer, playing the Discord Activity (2026-11-02): "when hipfiring and it rotates character as intended --
-that's good but the character needs to be able to rotate to where their cursor is before the gun fires, because for
-example if I'm walking the opposite way and I'm looking behind me to hipfire a zombie, I should expect my character to
-turn around and fire by the time my character makes the full rotation and it meets the center of my screen ... if I'm
-still rotating while I press it the fire will hold until it reaches the center or normalizes." The turn was already
+The maintainer, playing the Discord Activity (2026-11-02), found the hip-fire turn right but asked that the character
+finish turning to the cursor before the gun fires: a player walking one way who hip-fires at a zombie behind expects
+the shot once the body has come round to the centre of the screen, and a press made mid-turn holds the shot until
+then. The turn was already
 there (the hold above); the shot was not tied to it: the server shot on the trigger alone, from the camera ray, so a
 soldier walking away fired through his own back on the press and turned afterwards.
 

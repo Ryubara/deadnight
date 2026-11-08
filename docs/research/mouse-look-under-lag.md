@@ -1,8 +1,8 @@
 # Mouse look under lag
 
-Why the mouse look went "weird" when frames dropped, how it was measured, and what fixed it (issue #905). The
-maintainer, playing a night with three bots in the editor: "our mouse movement gets a bit weird when it lags, no other
-games do this when it lags". The general rules are in the kit's page "Mouse look at any frame rate"
+Why the mouse look went wrong when frames dropped, how it was measured, and what fixed it (issue #905). The
+maintainer, playing a night with three bots in the editor, found that the mouse look misbehaved whenever the game
+lagged, which other games do not do. The general rules are in the kit's page "Mouse look at any frame rate"
 (`docs/godot/mouse-look.md`); this page has the game's numbers.
 
 ## What the shooters do, and what we already did

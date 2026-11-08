@@ -244,7 +244,7 @@ started. The defaults are today's game exactly, and every shipped test runs on t
   `--perk-limit`; a value the game does not take stops the server, and a ticket that names a setting the server does
   not know is refused by name.
 - **Bots.** <a id="bots"></a>`bots` (`MatchSettings.MAX_BOTS` = 7) is how many `BotClient`s the night seats beside the
-  people. **A bot holds no seat** (#1179, the maintainer: "bots are no longer included in the 8 player cap"): the 8 of
+  people. **A bot holds no seat** (#1179: the maintainer decided bots no longer count toward the 8-player cap): the 8 of
   `NightHost.MAX_PLAYERS` are people alone, and a bot's id starts at `NightBots.FIRST_ID` = 101 (101 to 107), so it never
   collides with a person's (1 to 8) however they come and go; a night holds at most `NightHost.MAX_SEATS` = 15 bodies.
   `NightBots` (`game/gameplay/night/night_bots.gd`) is the one place that decides, for Solo (`Night`) and a room
@@ -692,8 +692,8 @@ rounds.health_growth=1.06` (see the research page).
 ## Eight players (#690)
 
 A room and a solo night held up to eight seats, people and bots together (the maintainer's decision, 2026-11-03); since
-issue 1179 the eight are people and the bots come on top, with **no balance work done for it yet** (the maintainer: "don't
-worry about balancing for now"; a night of 8 people and 7 bots counts as 15 players to the rules). The
+issue 1179 the eight are people and the bots come on top, with **no balance work done for it yet** (the maintainer put
+balancing aside for now; a night of 8 people and 7 bots counts as 15 players to the rules). The
 scaling is the same four numbers, linear in the players after the first, and was **not retuned**: each player adds 0.6
 of the solo count, 0.5 of the solo spawn rate and 6 to the alive cap, and a boss night one headliner for every 3 beyond
 the first (three at eight) with +100% boss health each. What they come to at 1, 2, 4 and 8 players:
@@ -727,7 +727,7 @@ against the range **14 to 20** and checks that eight players go further than fou
 
 ## The bosses 25% tougher (#688)
 
-The maintainer asked for it after player feedback ("the bosses need to be 25% more tankier"). The headliner is the only
+The maintainer asked for it after player feedback that the bosses needed 25% more health. The headliner is the only
 boss type (`boss = true`), so the one change is `health_multiplier` **13 to 16.25** (13 times 1.25) in
 `default_tuning.tres`; the weak spot's x2.2, the blow, the speed, the extra-player step and the pay are untouched. The
 rookie-boss tuning (#568, #662) set nothing here: it changed the Rookie bot's `read`, not the boss.

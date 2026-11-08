@@ -5,11 +5,10 @@ kill quota and a chain of steps of its own, and with both met the team calls a h
 were measured with the real player body, real bots and real nights (`game/tests/captures/extraction_probe.tscn`), and
 each one says how.
 
-The maintainer, 2026-11-04: *"Every map needs to meet a quota, and also steps that have been completed to be able to
-extract. Steps that are unique to the map itself."* *"the players are an elite military unit and get dropped off at
-locations and you see a helicopter in the sky that drops them off to take out the zombies and fix up the area before
-extract"*. *"we need to make sure the map-level steps aren't too easy and if they are easy then it may need to get
-expanded upon a bit."* And earlier: *"Users would get really bored playing the same thing without a way to win at all."*
+The maintainer's ask, 2026-11-04: every map has a quota and a set of steps, unique to that map, that must be done
+before the team can extract. The players are an elite military unit that a helicopter drops off to clear out the dead
+and fix up the area before they extract. The map's steps must not be too easy, and are expanded if they are. Before
+that, he pointed out that players would get bored of a night that has no way to win at all.
 
 ## What I need from you
 

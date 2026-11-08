@@ -103,8 +103,8 @@ counted by `Settings.write_count`). Captures: `tests/captures/menu_shell_tour.ts
 and exported as the main scene of a web build it publishes where each button is (`window.hoverRects`) for a browser to
 hover (#628, before and after).
 
-- **Panels ran under the footer and off the edge (#980).** The maintainer: "containers shouldn't be too tall or bleed
-  below areas where it shouldn't such as the footer area where it says 'Enter Select Esc Back Q E Tabs'". Each panel
+- **Panels ran under the footer and off the edge (#980).** The maintainer pointed out that panels were too tall
+  and ran into places they should not, such as the footer that holds the key hints. Each panel
   was a full-rect column in a `Control`, or a card in a `CenterContainer`: a container grows to its content and nothing
   clips it. The Loadout tab's wardrobe ended 47 units under the hints on the 1080 canvas (757 high and 1020 wide on a
   phone's 372 by 818 panel), the Settings screen was 741 to 1103 units high and 1280 wide, Play together 897, Join 599,

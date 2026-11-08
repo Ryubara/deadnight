@@ -411,12 +411,11 @@ things", so the set is small and each ping has one meaning.
 
 ## Orders: Follow, Roam and Hold (#641)
 
-The maintainer, 2026-11-02, answering the within-12 m gate of #564: "Bots should be able to free roam and do their own
-thing. The only time they really go to the player is when the player needs a revive or if the player ping somewhere with
-middle click on mouse (needs a control for mobile/gamepad). Perhaps we can build a behavior system that listens to
-commands from the player, like a command wheel for the bots to either stick with the player, or "fan out", or "hold".
-Those three things "Follow", "Roam", "Hold" ...". So the bots no longer follow by default, and decision 5 (orders by
-pings only) is superseded: pings stay, and three standing orders are added. The command wheel that gives them is #642.
+The maintainer, 2026-11-02, answering the within-12 m gate of #564, asked for bots that roam freely and come to the
+player only for a revive or a ping (middle click, with a control still needed on phone and gamepad), and suggested a
+system of player commands, a command wheel with three orders: Follow, Roam and Hold. So the bots no longer follow by
+default, and decision 5 (orders by pings only) is superseded: pings stay, and three standing orders are added. The
+command wheel that gives them is #642.
 
 | Order | What the bot does | Where it is in the tree |
 | --- | --- | --- |
@@ -498,8 +497,8 @@ that one, raise that one) and the claim table sit above every order.
 
 ## Play states: aggressive, careful, safe (#693)
 
-The maintainer, 2026-11-03: "Bots need different playstates, aggressive if they're high on health, but more safe e.g.
-keeping their distance when they're low health." The seed was #676's soak: a Hold bot is the one most often downed,
+The maintainer asked on 2026-11-03 for bots with different play states: aggressive on high health, safer on low
+health, keeping their distance. The seed was #676's soak: a Hold bot is the one most often downed,
 because it never backs away.
 
 **The states.** `BotPlayState` (`game/gameplay/bots/bot_play_state.gd`, plain data, the only file with the logic; the
@@ -580,9 +579,8 @@ medic spot (there is none in the lot).
 
 ## Needs against orders (#692)
 
-The maintainer, 2026-11-03: "Bots should be smart enough to get their own ammo e.g. find the nearest ammo stash when
-ammo is running low. Basically setting their task to grab ammo, but this needs a consideration on how it will conflict
-when player requests to "follow" etc."
+The maintainer asked on 2026-11-03 for bots that fetch their own ammunition from the nearest stash when they run low,
+with thought given to how that task conflicts with an order such as Follow.
 
 **What was there.** The economy (`BotEconomy`, #597) already bought rounds for a bot in a lull (the floor of
 `BotProfile.ammo_floor_mags` magazines) and at once under one magazine, and a person's ammunition ping (#647/#670)

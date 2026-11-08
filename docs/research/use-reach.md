@@ -1,7 +1,7 @@
 # Use reach: distance, side and sight
 
-Deadnight #831, 2026-11-03. The maintainer: "double check collision detectors e.g. that we don't get prompted to
-interact with an object through walls". Every thing a player can use is judged by one server call, and the prompt a
+Deadnight #831, 2026-11-03. The maintainer asked for the use checks to be verified, so that no prompt offers
+a thing through a wall. Every thing a player can use is judged by one server call, and the prompt a
 client draws is that call's answer.
 
 ## Where a use is decided
@@ -64,9 +64,9 @@ something; both revive tests failed. The second map's floors were already guarde
 
 ## Spacing and the press (#908)
 
-Deadnight #908, 2026-11-03. The maintainer, at round 12 with three bots: "sometimes I'll be boarding something, and
-then I'll accidentally interact with a weapon on the wall or a perk or something else next to it, the interactions need
-to be properly spaced with one another to prevent accidental inputs and losing your weapons."
+Deadnight #908, 2026-11-03. The maintainer, at round 12 with three bots, reported that while boarding a
+window he sometimes bought a wall weapon, a perk or another thing next to it by accident, and asked for the things a
+player can use to be spaced apart so that no press is taken by the wrong one and no weapon is lost that way.
 
 **Cause.** Three things together. Every use reached 3.2 m (`use_reach`, set by the first playable night and never
 revisited), so a zone was a disc 6.4 m across, and nothing kept two of them apart: the lot's spot test asked for 3.2 m

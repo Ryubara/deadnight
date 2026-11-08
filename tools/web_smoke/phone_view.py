@@ -1,6 +1,6 @@
 r"""Whether a phone page shows the game at the scale it should, and whether a zoom can get stuck (issue #1310).
 
-The maintainer played on a real phone and found the game "super zoomed in". Every earlier phone measure (`phone_layout.py`)
+The maintainer played on a real phone and found the game far too zoomed in. Every earlier phone measure (`phone_layout.py`)
 reads the game's own numbers in headless Chrome at one fixed viewport. This one reads the page's: the layout viewport
 (`innerWidth`), the visual viewport (`visualViewport.scale`, size, offset), the pixel ratio the page reports and the one the
 device has, and the canvas's box and pixels, then holds them against what they must be:

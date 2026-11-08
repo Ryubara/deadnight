@@ -166,8 +166,9 @@ extends Resource
 @export_range(0.0, 10.0, 0.05, "or_greater", "suffix:m") var arm_length := 2.3
 @export_range(0.0, 10.0, 0.05, "or_greater", "suffix:m") var arm_length_aim := 1.8
 ## Vertical field of view in degrees, and the same while aiming. The default is 60 (it was 70) and
-## the aim view 40 (it was 60): at the maintainer's word, issue #405 ("too far outward", closer to
-## the character). The one aim weight blends the two, so a shot from the hip zooms 60 to 40 too.
+## the aim view 40 (it was 60): the maintainer found the view too wide and asked for it closer
+## to the character (issue #405). The one aim weight blends the two, so a shot from the hip
+## zooms 60 to 40 too.
 @export_range(20.0, 120.0, 0.5, "suffix:deg") var fov := 60.0
 @export_range(10.0, 120.0, 0.5, "suffix:deg") var fov_aim := 40.0
 ## Radius of the sphere swept from the pivot to the lens, so the camera never clips a wall.

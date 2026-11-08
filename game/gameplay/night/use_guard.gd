@@ -1,8 +1,8 @@
 class_name UseGuard
 extends RefCounted
-## Which presses of `use` may buy (#908). The maintainer, boarding a window: "I'll accidentally
-## interact with a weapon on the wall or a perk or something else next to it ... losing your
-## weapons". A board is put back by holding use, and a person taps it again to go on: a press that
+## Which presses of `use` may buy (#908). The maintainer reported that boarding a window bought the
+## wall weapon or perk next to it by accident, and a weapon bought that way can cost the ones in
+## hand. A board is put back by holding use, and a person taps it again to go on: a press that
 ## carries on mending is not a press to buy, and a weapon bought with the hands full throws the one
 ## in hand away. So, per player:
 ##

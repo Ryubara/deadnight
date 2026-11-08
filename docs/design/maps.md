@@ -45,8 +45,8 @@ The small indoor map's entry (`small_indoor.tres`) has `scene_path`, a picture (
 
 ## Levels open maps
 
-Decision 17 of [the progression plan](progression.md#maps) (the maintainer, 2026-11-04: "Maps locked by levels: yes",
-"Host's level decides the map", and for the back rooms "it's not too early. Level 10 is fine."). `MapInfo.unlock_level`
+Decision 17 of [the progression plan](progression.md#maps) (the maintainer, 2026-11-04: levels lock maps, the host's
+level decides which maps a night offers, and level 10 is not too early for the back rooms). `MapInfo.unlock_level`
 is data, so moving a map is one line in its `.tres`; `MapRegistry.RESERVED_UNLOCKS` keeps the rungs 25 and 40 for maps
 three and four. With the 8-hour curve level 10 comes after about half an hour of play.
 

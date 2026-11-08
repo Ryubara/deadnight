@@ -70,7 +70,7 @@ static func open_at(level: int) -> Array[MapInfo]:
 
 
 ## `id` when a host of `level` may choose it, else the default map's id: a lobby whose host is below
-## a map's level does not offer it (the maintainer, 2026-11-04: "Host's level decides the map").
+## a map's level does not offer it (the maintainer decided the host's level picks, 2026-11-04).
 static func fit_host(id: String, level: int) -> String:
 	return id if is_open(id, level) else DEFAULT
 

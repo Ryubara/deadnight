@@ -57,13 +57,13 @@ carries the reward's XP, not the grants).
 
 ## The box (the maintainer's question)
 
-`HudPlayerBox` puts the card behind the **whole points box** (the issue's reading: "calling cards ... next to their
-names"). The points stay on the seat's armband colour on a tab that runs in from the right edge (`HudPointsTab`), so
-they are exactly as readable as without a card; the level and the name sit on a strip of the same colour
-(`HudNameTab`, drawn by the points tab: no node of its own, the canvas-item budget is full) as long as they are, so
-every glyph is on the colour its ink was chosen for. The order icon, level, gap, name is untouched (a test compares
-the rectangles with and without a card). Turning it into "the card replaces the portrait" is `HudPlayerBox._card`'s
-rectangle: `_box()` is the card's today, the portrait square would be `Vector2.ONE * height`.
+`HudPlayerBox` puts the card behind the **whole points box** (the issue's reading: the calling card goes beside the
+player's name). The points stay on the seat's armband colour on a tab that runs in from the right edge
+(`HudPointsTab`), so they are exactly as readable as without a card; the level and the name sit on a strip of the
+same colour (`HudNameTab`, drawn by the points tab: no node of its own, the canvas-item budget is full) as long as
+they are, so every glyph is on the colour its ink was chosen for. The order icon, level, gap, name is untouched (a
+test compares the rectangles with and without a card). Turning it into "the card replaces the portrait" is
+`HudPlayerBox._card`'s rectangle: `_box()` is the card's today, the portrait square would be `Vector2.ONE * height`.
 
 A first version laid a veil of the seat's colour over the card and pulled any darker part toward it until the words had
 4.5:1; the cards came out flat brown and the armband's colour was gone, so the tab and an outline in the seat's colour
@@ -103,7 +103,7 @@ or dashes in the four colours of a palette, so another frame is a line of `plate
 
 **Only challenges the night counts.** The three challenge frames name stats the night produces today (`round`,
 `revives`, `nights`); `test_plate_frames` fails on a frame whose challenge asks for a stat that is not in
-`ChallengeStats.FIXED`. The "beat this map" frames (the maintainer's example) are #1072: they need extraction (#1056)
+`ChallengeStats.FIXED`. Frames for beating a map (the maintainer's example) are #1072: they need extraction (#1056)
 and, for "reach a round on a named map", a per-map stat the tally does not have (`NightTally` never learns the map).
 
 **How it reaches everyone.** The same way as the card and the emblem, with a third key: `equipped.frame` on the profile,

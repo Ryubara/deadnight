@@ -48,9 +48,9 @@ bot dies in the first rounds at count x5) are slower, so a horde modifier is not
 `game/tests/rules/test_xp_pace.gd` reads the cells through `ShippedCells` (`game/tests/rules/shipped_cells.gd`), the
 cache the balance gate also reads, and `BalancePace` (`game/tools/balance/balance_pace.gd`) turns a cell into XP and
 minutes. The bands (level 55 in 7 to 11.5 hours, level 10 in 20 to 40 minutes, the first level inside 3 minutes, the
-last between 10 and 30 minutes) apply to the nights that count at least 240 kills, the maintainer's "300+ kills a game"
-read loosely because the model's strong solo night counts 290 at 150 nights and 249.8 at 60; the first-level band holds
-in every cell.
+last between 10 and 30 minutes) apply to the nights that count at least 240 kills, the maintainer's target of over 300
+kills a game read loosely because the model's strong solo night counts 290 at 150 nights and 249.8 at 60; the
+first-level band holds in every cell.
 
 **CI cost:** the gate's own six cells took 54 to 61 s on worker threads on this machine; the pace suite, run after it
 in the same process, added **6 cells in 13 s** (average and strong solo and average four at count x2 and x5; the three

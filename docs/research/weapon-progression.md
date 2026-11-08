@@ -6,9 +6,9 @@ simulator measured, and what I would build, with every point a **choice** for th
 [Permanent progression](../design/progression.md) (its rules 1 and 2 are replaced below). Other games are studied for
 understanding only: no name, number, icon, layout or asset of any of them is used here or in the plan.
 
-The maintainer's question, in his words: *"prestiging comes with resetting everything a player has, so what will
-reset? Prestiging comes with a loss just for flex value and we lack that currently"*, and, later the same day, *"the
-higher level player would ideally have a slightly better kit but that's a reward for them playing more"*. Weapons and
+The maintainer's question (#977, 2026-11-04): a prestige usually resets what a player has, so what does ours reset?
+Its loss is what gives it flex value, and the game has none today. Later the same day the maintainer decided that a
+higher-level player has a slightly better kit, as the reward for playing more. Weapons and
 tonics stay free for everyone; the climb is about 8 hours.
 
 ## The answer in six lines
@@ -18,14 +18,14 @@ tonics stay free for everyone; the climb is about 8 hours.
    the skill picks, and the attachments and re-cut finishes earned by using weapons. A prestige costs one more climb,
    about **8 hours** for an average solo player (the number is measured below).
 2. **What stays.** Everything that records a feat rather than time: calling cards and emblems, challenge and
-   "beat this map" frames, weapon skins earned by a feat, lifetime stats, and everything prestige itself gives. **Maps
+   frames for beating a map, weapon skins earned by a feat, lifetime stats, and everything prestige itself gives. **Maps
    stay unlocked** (access to the game is not a flex), and each prestige lets the player **keep one item** for good
    (the genre's permanent unlock).
 3. **What it gives.** A visible mark (a star on the level icon, a card, an emblem, a frame), a few exclusives, and an
    XP bonus on the next climb (+5 percent a prestige, at most +25) which is convenience, not combat power. Exclusives
    lean on extraction ([#1056](https://github.com/Ryubara/deadnight/issues/1056)): the best of each prestige is
    earned by winning a night on that climb.
-4. **How slight is "slightly".** Measured with the balance simulator: a full level-55 kit worth **about +5 percent
+4. **How slight is slightly.** Measured with the balance simulator: a full level-55 kit worth **about +5 percent
    rounds reached and +9 percent kills** to an average solo player, and about **+12 percent points** to the one wearing
    it beside three level-1 teammates, whose own points hardly move (+1 percent) ([the
    tables](#what-a-slightly-better-kit-does)).
@@ -33,7 +33,7 @@ tonics stay free for everyone; the climb is about 8 hours.
 5. **The honest part.** Because the power is small by design, the *power* a prestige takes back is small too. The
    loss that carries the flex is the visible one: the level back to 1, the wardrobe back to two of each, the kit
    rebuilt. If the maintainer wants a bigger loss than that, the only honest lever is a bigger kit, and the simulator
-   says where that stops being "slightly" (about double: [below](#where-slightly-stops)).
+   says where that stops being slight (about double: [below](#where-slightly-stops)).
 6. **The systems.** Attachments (earned by weapon-class kills, 3 slots, two options each) and skill picks (one of two
    at every fifth level) carry the power; gun modifiers (a choice of how the re-cut goes) and weapon skins carry
    identity. Attachment art is the expensive part ([cost](#what-it-costs-to-build)).
@@ -157,7 +157,7 @@ Each is a choice (marked **Choice**): include, change or drop.
   prestige, because a feat earned them. Prestige adds exclusive skins (below).
 - **Character costumes** stay as in [the progression plan](progression.md): level-gated pieces are part of what resets.
 
-## What a "slightly better" kit does
+## What a slightly better kit does
 
 The model: `NightSim` (the balance simulator, [how it works](balance-simulator.md)) with a **loadout laid over chosen
 players**: damage, reload, magazine and fire interval as multipliers on the weapon, accuracy, head rate and mobility
@@ -234,7 +234,7 @@ card is a whole percent or a whole point.
 
 What the tables say:
 
-- **"Slightly" in numbers.** For a Regular the level-55 kit is **+5 percent rounds reached, +9 percent kills and +9
+- **Slightly, in numbers.** For a Regular the level-55 kit is **+5 percent rounds reached, +9 percent kills and +9
   percent points a night** (solo). A Veteran gets more (+8, +16, +15) because he is on the longer end of the curve where
   a magazine and a reload buy more. That is the budget I propose: *the full kit lifts a Regular's or a Veteran's mean
   round by at
@@ -255,7 +255,7 @@ What the tables say:
   full level-55 lobby roughly one round better than the gate says. That is the reward, but it must be a number someone
   watches: the guard test below reads both.
 
-### Where "slightly" stops
+### Where slightly stops
 
 The same measures with the kit at larger sizes (all levers scaled together):
 
@@ -337,9 +337,9 @@ class (from 150 solo nights; the box's draw decides the mix, which is a model of
   quarter-share kills by the time the climb ends, and the favourite classes finish their three slots in 3
   to 8 hours. In a team of four the split is even more uneven (the shotgun and rifle take three quarters of the kills),
   which is another reason for the share.
-- **The maintainer's "300+ kills a game"** (modifiers raise the count) is about 2.4 times the Regular's 128. The hours
-  above fall by the same factor under a high-count setting; the thresholds are data and are retuned from telemetry,
-  as the progression page already says of the XP.
+- **The maintainer's assumption of 300 or more kills a game** (modifiers raise the count) is about 2.4 times the
+  Regular's 128. The hours above fall by the same factor under a high-count setting; the thresholds are data and are
+  retuned from telemetry, as the progression page already says of the XP.
 
 ## Prestige: what resets, what stays
 
@@ -353,7 +353,7 @@ class (from 150 solo nights; the box's draw decides the mix, which is a model of
 | Maps | Nothing (see below) | Every map already unlocked | |
 | Cards and emblems | Nothing | Every calling card and emblem, including the tier ones (they record that the level was reached once) | One of each per prestige |
 | Weapon skins | Nothing | Every skin a feat earned | An exclusive skin per prestige, earned on the climb by extracting |
-| Challenges | Dailies and orders in progress; level-based ones | Lifetime counters and finished ones, "beat this map" frames | |
+| Challenges | Dailies and orders in progress; level-based ones | Lifetime counters and finished ones, frames for beating a map | |
 | Weapons and tonics | Nothing: free to all | | |
 
 Prestige is a property of the account, **a Guest account included**: a Guest earns XP like any other (the maintainer,
@@ -376,7 +376,7 @@ back either.
   whose absence only annoys. **Option B** (re-lock to level 10): possible, cheap to build, and I would not. **Option
   C** (re-lock and let the Keepsake save a map): the same cost with a worse choice. **Choice** 5.
 - **Level-locked cosmetics reset**, except: the Keepsake, anything a challenge or an extraction gave, the free set. The
-  plate frames from levels (29, 37, 50, 55) reset; the "beat this map" frames (answer 10: exclusive ones from
+  plate frames from levels (29, 37, 50, 55) reset; the frames for beating a map (answer 10: exclusive ones from
   challenges) stay, because a night won earned them.
 - **A look is never lost silently.** On prestige the profile remembers the worn look; the wardrobe shows the locked
   pieces dark, as it does for a new player, with the level that reopens each; a saved outfit shows "complete again at
@@ -420,7 +420,7 @@ A prestiged player has lost **the kit for a while and the outfit for a while**:
   (about 5 percent of a Regular's rounds), half of it after two hours, and gone by level 55, hour 8.5**. If the loss must
   *hurt in play*, it will not; it is a few percent for a few hours.
 - What does hurt is the **identity**: back to two of each, level 1 over the head, a star beside it, the outfit that took
-  8 hours dark again. That is what the maintainer's word "flex" asks for: the loss is *seen*, and the star says it was
+  8 hours dark again. That is the flex the maintainer asked for: the loss is *seen*, and the star says it was
   chosen.
 - Two honest consequences. (1) **The Keepsake and the exclusives soften it on purpose**, and the research says the
   softening is what keeps players from resenting it; (2) **the more powerful the kit, the more the loss counts in
@@ -433,8 +433,8 @@ A prestiged player has lost **the kit for a while and the outfit for a while**:
 
 The XP curve is the one built for [#1058](https://github.com/Ryubara/deadnight/issues/1058) (the design page's
 [curve](../design/progression.md#the-curve), 18,010 XP to level 55; an earlier draft of this page used a 17,465 XP
-table, now replaced). It is a third of the first plan's 53,250 XP, **and it climbs**: the maintainer's *"it takes longer
-to level up the higher you go ... first level up satisfaction early on"*. The cost to leave a level, per tier of five
+table, now replaced). It is a third of the first plan's 53,250 XP, **and it climbs**, as the maintainer asked: each
+level takes longer than the last, so the first level up comes early. The cost to leave a level, per tier of five
 (the last tier has four levels), with the opening night's 50 XP credited once:
 
 | Tier | Levels | XP to leave each | | Tier | Levels | XP to leave each |
@@ -499,7 +499,7 @@ Each is mine to recommend and his to decide.
 | 6 | Skills: pairs or a tree | **A pair at every fifth level**, swappable. Or a tree |
 | 7 | Prestige exclusives | One earned by an extraction on the climb; prestige itself does not need one |
 | 8 | XP bonus | +5 percent a prestige, at most +25 percent |
-| 9 | Attachments by class kills | **By class**, a quarter share to the other classes. Or by weapon (starves the rare guns), or by account level (the maintainer's "play more" but not "use the weapon") |
+| 9 | Attachments by class kills | **By class**, a quarter share to the other classes. Or by weapon (starves the rare guns), or by account level (rewards playing more, as the maintainer asked, but not using the weapon) |
 | 10 | Gun modifiers | The re-cut finish, **second wave**, after attachments and skills |
 | 11 | Attachment art | Parts on the three sockets the models already have, shared across weapons ([cost](#what-it-costs-to-build)) |
 

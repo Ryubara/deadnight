@@ -1,6 +1,6 @@
 # Glows and lights stay on their side of a wall
 
-Issue #832 (the maintainer: "light doesn't bleed through walls, and one of the signs with a glow halo had it too").
+Issue #832 (the maintainer: light must not bleed through walls, and one sign's glow halo did).
 The Compatibility renderer casts no shadow, so a halo, a pool or a cone of haze is an additive quad that only the depth
 test hides, and a lamp is an unshadowed light. Each reaches into the next room as soon as its card, or its range, does.
 

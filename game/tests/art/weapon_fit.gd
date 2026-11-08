@@ -1,7 +1,7 @@
 class_name WeaponFit
 extends RefCounted
-## How a weapon's size fits the Soldier's hand (Deadnight #460, the maintainer: "the player's hands
-## are too big for some guns"), from the model's hand sockets and its triangles, at a `model_scale`:
+## How a weapon's size fits the Soldier's hand (Deadnight #460: the maintainer pointed out hands too
+## big for some guns), from the model's hand sockets and its triangles, at a `model_scale`:
 ##
 ## - `grip`: the handle below the trigger finger (from the `Trigger`'s level down the `Grip`
 ##   socket's line to the butt) over the Soldier's fingers below the index (middle and pinky,

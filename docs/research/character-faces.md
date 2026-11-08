@@ -58,10 +58,10 @@ phone). Rendered by `tools/blender/render_soldier_heads.py` with back faces cull
 
 A mouth is a part of its own (#1061): the `mouth` slot, `mouth__<id>` and hers `mouth__<id>__female`, one mesh for every
 head of a character (the heads share one shape, and a test holds each mouth on each). They are free to everyone: nothing
-gates them, and the maintainer's words are the rule ("Customizing your character's features shouldn't be locked behind
-progression"). Each is built from a shape seen from the front, in the fixed swatch `mouth` (#2a1414, as dark as the eyes
-so it reads on every skin tone), its middle at z 1.672, standing 4 mm out of the face and 12 mm into it. His full width
-is 0.135 m and hers 0.115 m.
+gates them, by the maintainer's rule that a character's features are never locked behind progression. Each is built
+from a shape seen from the front, in the fixed swatch `mouth` (#2a1414, as dark as the eyes so it reads on every
+skin tone), its middle at z 1.672, standing 4 mm out of the face and 12 mm into it. His full width is 0.135 m and
+hers 0.115 m.
 
 | Id | Row reads | Shape, in kit metres | At 64 px |
 | --- | --- | --- | --- |

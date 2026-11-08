@@ -1,8 +1,8 @@
 # Hit zones follow the bodies
 
 Shots at zombies are tested against analytic zones (`Hitbox`, `HitShapes`: spheres and capsules), never the mesh, so
-the server can rewind any zombie ([weapons](weapons.md)). The maintainer's report (#694: "Bullets landing on Zombie
-crawlers is a bit hit or miss especially when hitting their forehead") found that the zones did not follow the bodies.
+the server can rewind any zombie ([weapons](weapons.md)). The maintainer's report (#694: shots on crawlers
+landed unreliably, above all at the forehead) found that the zones did not follow the bodies.
 
 ## What was wrong
 

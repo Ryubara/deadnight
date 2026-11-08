@@ -1,8 +1,8 @@
 # The lobby
 
 Where friends gather before a night: who is here, who hosts, when it starts, and what a latecomer sees. It answers the
-maintainer's questions of 2026-11-02 ("are players able to join mid match, or no?", "it's kind of difficult to know if
-players are in your lobby before you start"; Deadnight #515). The platform side (endpoints, expiry) is in
+maintainer's questions of 2026-11-02 (whether players can join a match already under way, and how to tell who is in
+your lobby before the start, which was hard to see; Deadnight #515). The platform side (endpoints, expiry) is in
 [the platform backend](../research/platform-backend.md#the-lobby-before-the-night); the networking decision is in
 [networking](networking.md).
 
@@ -143,8 +143,8 @@ and the invite window stay.
 
 ## Leaving and moving: every state, and what ends it
 
-The rule (Deadnight #1177, the maintainer: *"we need this streamlined and fixed with a seamless experience in being able
-to easily jump between lobbies"*): a player is in **one lobby at a time, open or started**, and **create and join
+The rule (Deadnight #1177: the maintainer asked for moving between lobbies to be streamlined, fixed and seamless): a
+player is in **one lobby at a time, open or started**, and **create and join
 move them**: they take the player out of the lobby they were in, and a player is never refused for being somewhere
 else (there is no `already_in_lobby` any more). A lobby with **no person** in it (bots do not count) is gone at once,
 with its code, its seats and its match. Every normal way out ends the state at once; the timers below are only the
@@ -208,9 +208,9 @@ cause.
 
 ### What the list shows, and the page's last word (#1188)
 
-The maintainer: *"Why aren't lobbies immediately disbanded of and we clear player state whenever the lobby is empty?"*
-A player alone on the waiting room who closed the tab sent nothing, so the lobby waited for its 10-minute backstop and
-the Server Browser would list a dead night that a player could press. Two parts, both needed, because neither covers what
+The maintainer asked why a lobby was not disbanded, with its players' state cleared, the moment it emptied. A player
+alone on the waiting room who closed the tab sent nothing, so the lobby waited for its 10-minute backstop and the
+Server Browser would list a dead night that a player could press. Two parts, both needed, because neither covers what
 the other does.
 
 **The list does not show a lobby nobody has been heard from in** (`LobbyService.isHeard`, used by `GET /lobbies`,
@@ -336,9 +336,9 @@ is never dropped for it (the lobby expires after ten idle minutes, as before).
 ## The Server Browser (#1180)
 
 The list of public nights as a screen (`ServerBrowserScreen`), where the Play tab's second start was the card that
-found the first open night. The maintainer: *"which shows existing lobbies organized by rows, each row a faded
-background image of the map, the number of players on it ... and the map name"*, *"server browsers should show both
-lobbies and existing matches"* and *"a seamless experience in being able to easily jump between lobbies"*. It opens
+found the first open night. The maintainer asked for a list of the existing lobbies in rows,
+each row over a faded picture of its map with the number of players and the map's name; for the browser to show
+matches in progress as well as lobbies; and for moving between lobbies to be seamless. It opens
 from the **Play tab** (*Server browser*, the second start), from the **Play together screen** (its first choice) and
 from **inside a lobby** (the *Server browser* button under the seats).
 
@@ -403,8 +403,8 @@ night that fills, a night that ends, moving between lobbies, the 429) and the br
 
 `GET /lobbies` (signed in; `TogetherApi.list_nights`) lists the **public** nights a player can be shown to join: waiting
 or in progress, with room first, then the most people, then the newest, at most 50 (`total` says how many there are).
-The list carries both **lobbies** that still wait and **matches** in progress (the maintainer: "server browsers should
-show both lobbies and existing matches"). A row is
+The list carries both **lobbies** that still wait and **matches** in progress (the maintainer asked for both
+in one list). A row is
 `{id, code, map, hostName, players, maxPlayers, bots, kind, state, round, full}`:
 
 - `players` is **people only**, out of `maxPlayers` (8): a bot holds no seat, so it is in `bots` (what the host set), never

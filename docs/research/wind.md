@@ -1,8 +1,8 @@
 # The drive-in's wind
 
-The maintainer's ask (issue #782): "an ambient wind sound. Not loud, subtle and noticeable, different ranges every time
-it plays to simulate variety. Well made based on how other game developers handle this, catered toward that zombie
-apocalyptic empty vibe feel." What shipped games do, what we built from it, and what it measures. The sounds are
+The maintainer asked (issue #782) for an ambient wind: quiet, subtle but noticeable, different each time it plays so
+that it does not repeat, made the way other game developers do it, and suited to the empty feel of a zombie apocalypse.
+What shipped games do, what we built from it, and what it measures. The sounds are
 `tools/audio/wind_recipes.py`; how they play is `WindSounds` and `WindPlan` (`game/gameplay/night/`); the design is
 [Sound](../design/audio.md#the-wind).
 

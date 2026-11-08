@@ -1,8 +1,8 @@
 # A press that carries on a repair buys nothing, and a weapon that would replace the one in hand is
-# bought only by a press made once its card has been read (#908). The maintainer, boarding a window:
-# "I'll accidentally interact with a weapon on the wall or a perk or something else next to it ...
-# losing your weapons". Driven like a client on the lot: commands through the link (`use` the
-# press, `use_held` the level), a tick is 1/60 s.
+# bought only by a press made once its card has been read (#908). The maintainer reported that
+# boarding a window bought the wall weapon or perk next to it by accident, which can cost the
+# weapons in hand. Driven like a client on the lot: commands through the link (`use` the press,
+# `use_held` the level), a tick is 1/60 s.
 extends GdUnitTestSuite
 
 const BREACH := &"nw"

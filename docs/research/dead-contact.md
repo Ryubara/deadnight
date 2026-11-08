@@ -1,8 +1,8 @@
 # The player and the dead
 
-How a player's body meets the dead (issue #914): the maintainer, playing round 12 at 3x with three bots, said the player
-"shouldn't be able to run through zombies, but should also be able to nudge zombies out of the way if they run against
-them enough". Code: `game/gameplay/player/dead_*.gd`, `ZombieSim.nudge`; tests: `game/tests/player/test_dead_block.gd`,
+How a player's body meets the dead (issue #914): the maintainer, playing round 12 at 3x with three bots, asked that the
+player no longer run through zombies, yet be able to nudge them out of the way by pushing against them long enough.
+Code: `game/gameplay/player/dead_*.gd`, `ZombieSim.nudge`; tests: `game/tests/player/test_dead_block.gd`,
 `test_dead_shove.gd`, `game/tests/net/test_dead_online.gd`; measurements: `game/tests/captures/dead_variants.gd`,
 `dead_walk.gd`, `dead_cost.gd`, `bots_soak.gd --dead=...`.
 

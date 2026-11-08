@@ -133,7 +133,7 @@ in progress is let go of only by a rule.
 
 ## Decided (2026-11-02, #505)
 
-The maintainer approved all eight as built ("Go for it"). Each is a field of the tuning resource or a small change, so it
+The maintainer approved all eight as built. Each is a field of the tuning resource or a small change, so it
 can be retuned in the inspector.
 
 1. **Solo self-revive**: none, **except with the revive perk** (#687): a downed player with the Swift Rescue Lemonade and

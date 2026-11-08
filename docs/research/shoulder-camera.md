@@ -113,13 +113,12 @@ What changed in the way it works, not only the numbers:
 ## Hip fire
 
 Firing without aiming turns the body to the view and raises the weapon, and **does nothing to the camera**: no zoom, no
-shoulder or arm change, no sprint effect eased out (the maintainer, 2026-11-02, testing the Discord Activity, #464: "When
-a player hip fires let's remove the zoom effect at all. We'll just reserve the aim zoom just for aim as intended. We can
-always revisit the zoom on hipfire again later on."). How it got here: #300 gave hip fire its own half zoom and the gun
-jumped between poses; #417 made hip fire *the aim held for a moment* with one weight for the camera, the body and the
-hands; #433 stopped a shot fired while aiming from starting that hold; #464 took the camera out of it. What other games
-do, and what is and is not sourced, is in [hip fire](hip-fire.md). The numbers are on `PlayerTuning` (the *Hip fire*
-group), so they are editable in the Godot editor:
+shoulder or arm change, no sprint effect eased out (the maintainer's decision in #464, 2026-11-02, testing the Discord
+Activity: hip fire has no zoom at all, the zoom belongs to aiming alone, and a hip-fire zoom can be looked at again
+later). How it got here: #300 gave hip fire its own half zoom and the gun jumped between poses; #417 made hip fire *the
+aim held for a moment* with one weight for the camera, the body and the hands; #433 stopped a shot fired while aiming
+from starting that hold; #464 took the camera out of it. What other games do, and what is and is not sourced, is in [hip
+fire](hip-fire.md). The numbers are on `PlayerTuning` (the *Hip fire* group), so they are editable in the Godot editor:
 
 | Value | Number | Why |
 | --- | --- | --- |

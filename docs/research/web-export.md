@@ -647,8 +647,8 @@ over 3 s, 1,125 of them in a phase):
 
 ## Copy and paste inside a Discord Activity (#516)
 
-The maintainer: "Copy paste doesn't work when in discord activity". Two separate causes, both measured with
-`tools/web_smoke/activity.py --clipboard` (a cross-origin iframe, under `gds quiet`, in the headless shell whose
+The maintainer reported that copy and paste did not work inside the Discord Activity. Two separate causes, both measured
+with `tools/web_smoke/activity.py --clipboard` (a cross-origin iframe, under `gds quiet`, in the headless shell whose
 clipboard is the browser's own, so the person's is never touched):
 
 - **The frame may not use the clipboard API.** In an iframe of another origin `clipboard-read` and `clipboard-write`

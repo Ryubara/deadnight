@@ -18,31 +18,31 @@ directly. Nothing is sold. A player who wants to can **prestige** at the top, an
 
 ## Decisions
 
-What the maintainer decided on 2026-11-04 (answers to the proposal, and later the same day), with their words where
-they matter, and where each lands. Where this table differs from the earlier plan, the table wins
+What the maintainer decided on 2026-11-04 (answers to the proposal, and later the same day, #977), and where each
+lands. Where this table differs from the earlier plan, the table wins
 ([what changed](#what-changed-from-the-earlier-plan)).
 
 | # | Decision | Lands in |
 | --- | --- | --- |
-| 1 | **Levels 1 to 55**, each with its own icon; the second map at level 10; art in waves ("Art in waves: yes") | [The ladder](#the-ladder), [Level icons](#level-icons), #1060, #1078 |
-| 2 | **Pace about 8 hours** to level 55: "Maybe 8 hours of playtime. Gotta make it short" | [The curve](#the-curve), #1058 |
-| 3 | **The climb scales upward**: "It shouldn't really be 9 minutes a level unless you're just averaging it out. It should scale upward like call of duty e.g. it takes longer to level up the higher you go. That way users can feel the first level up satisfaction early on" | [The curve](#the-curve), #1058 |
+| 1 | **Levels 1 to 55**, each with its own icon; the second map at level 10; the art comes in waves (approved) | [The ladder](#the-ladder), [Level icons](#level-icons), #1060, #1078 |
+| 2 | **Pace about 8 hours** to level 55: the climb is kept short | [The curve](#the-curve), #1058 |
+| 3 | **The climb scales upward**: not a flat 9 minutes a level (that is only the average); as in Call of Duty, each level takes longer than the one before, so a player feels the first level up early | [The curve](#the-curve), #1058 |
 | 4 | **300 or more kills a game** is the assumption (modifiers raise the count); the curve is measured at count multipliers 1, 2 and 5 | [The curve](#the-curve), research page |
-| 5 | **The game server awards XP, per kill, live**: "Game server is good. We'll see how much it stresses when we do it because XP is earned after every zombie kill and there can be hordes." A signed-in solo night stays on the player's machine, capped by the backend | [Who awards XP](#who-awards-xp-and-live-xp), #1059, #1075 |
-| 6 | **No offline XP**, **no rested XP**, **a first-game-of-the-day XP bonus**: yes; dailies pay XP. **Only accounts earn XP, because the server tracks it; a Guest account is one**: "only signed in accounts earn XP since we only track XP on the server. But even \"Guest\" accounts will be tracked on server." A night with no account at all earns nothing. Guest accounts expire after 7 days unless used again (kept in the game's own storage, fine for the Discord Activity); built in #1080, a returning guest within 7 days is the same account | [Where XP comes from](#where-xp-comes-from), [Storage and trust](#storage-and-trust), #1058 |
-| 7 | **No account currency** for now ("Disabled; XP based"). In-night points for buying stay | [In one paragraph](#in-one-paragraph) |
-| 8 | **All weapons and tonics free** from the first night. **A higher level has a slightly better kit**: "yeah the higher level player would ideally have a slightly better kit but that's a reward for them playing more." | [Rules](#rules-we-hold-ourselves-to), [Combat bonuses](#combat-bonuses), #1055 |
-| 9 | **Popups in real time**, as soon as they trigger, during play; XP and milestones credit live, not at a round's end. "Animations for this stuff need to be good" | [Popups, motion and sound](#popups-motion-and-sound), #1064 |
+| 5 | **The game server awards XP, per kill, live**, and its load is measured once it is built, since XP comes with every zombie kill and a night can bring hordes. A signed-in solo night stays on the player's machine, capped by the backend | [Who awards XP](#who-awards-xp-and-live-xp), #1059, #1075 |
+| 6 | **No offline XP**, **no rested XP**, **a first-game-of-the-day XP bonus**: yes; dailies pay XP. **Only accounts earn XP, because XP is tracked on the server alone; a Guest account is one, tracked there too**. A night with no account at all earns nothing. Guest accounts expire after 7 days unless used again (kept in the game's own storage, fine for the Discord Activity); built in #1080, a returning guest within 7 days is the same account | [Where XP comes from](#where-xp-comes-from), [Storage and trust](#storage-and-trust), #1058 |
+| 7 | **No account currency** for now: it is off, and progress is XP alone. In-night points for buying stay | [In one paragraph](#in-one-paragraph) |
+| 8 | **All weapons and tonics free** from the first night. **A higher level has a slightly better kit**, as the reward for playing more | [Rules](#rules-we-hold-ourselves-to), [Combat bonuses](#combat-bonuses), #1055 |
+| 9 | **Popups in real time**, as soon as they trigger, during play; XP and milestones credit live, not at a round's end. Their animations must be of high quality | [Popups, motion and sound](#popups-motion-and-sound), #1064 |
 | 10 | **Sounds**: a record scratch of our own making when a challenge is done; an honourable, battlefield-like sound for a level up (snare and brass; bigger on a tier) | [Popups, motion and sound](#popups-motion-and-sound), #1062 |
 | 11 | **Progression voice lines**: several celebration lines for every progression event, male and female, ElevenLabs, heard by every client; made on the free tier, regenerated under the commercial plan before release | [Voice lines](#voice-lines), #1063, #252 |
 | 12 | **Wardrobe**: a grid; locked names are `???` with a silhouette of the base icon and the unlock instructions on hover; **no fitting room**; mouths are free | [Wardrobe](#wardrobe-costumes-and-the-locks), #1065, #1061 |
-| 13 | **Costumes** in their own tab, each with a **"Default"** colour option, and the player's own colours from the palette they have unlocked ("costumes in their default colors will have a Default option, and the users will have the ability to choose their own colors") | [Wardrobe](#wardrobe-costumes-and-the-locks), #1066 |
-| 14 | **Plate frames**: part of levels 1 to 55, plus exclusive ones from challenges ("beat this map"); calling cards and emblems yes; **no title phrases, no ticket book, no applause** | [The plate](#plate-calling-cards-emblems-and-frames), #1070, #1071, #1072 |
-| 15 | **Poster sets**: "a great addition" | [Poster sets](#poster-sets), #1073 |
+| 13 | **Costumes** in their own tab, each with a **"Default"** colour option, and the player's own colours from the palette they have unlocked: a costume's default colours are one option, and the player may choose their own instead | [Wardrobe](#wardrobe-costumes-and-the-locks), #1066 |
+| 14 | **Plate frames**: part of levels 1 to 55, plus exclusive ones from challenges (such as beating a map); calling cards and emblems yes; **no title phrases, no ticket book, no applause** | [The plate](#plate-calling-cards-emblems-and-frames), #1070, #1071, #1072 |
+| 15 | **Poster sets**: approved, and welcomed | [Poster sets](#poster-sets), #1073 |
 | 16 | **Night report credits** yes | [The night report and credits](#the-night-report-and-credits), #1068, #1069 |
 | 17 | **Maps locked by levels**; the host's level decides | [Maps](#maps), #1067 |
 | 18 | **Level shown over heads by default**; bots keep their usual difficulties and have **no level** | [The level over a head](#the-level-over-a-head), #1077 |
-| 19 | **Prestige** is optional, with exclusive rewards, and costs a loss: "Prestiging comes with a loss just for flex value and we lack that currently" | [Prestige](#prestige) (**Open**, #1055) |
+| 19 | **Prestige** is optional, with exclusive rewards, and costs a loss, kept for the flex value the game lacks today | [Prestige](#prestige) (**Open**, #1055) |
 | 20 | **Extraction**: a way to win a night; an elite unit dropped by helicopter | [Extraction](#extraction), #1056, #1057 |
 | 21 | **Rarity**: wanted, with wild shader looks (wings with blue fire and glow); and weapon modifiers, skills, attachments and cool skins to research | [Research still to come](#research-still-to-come-rarity-modifiers-attachments-skills), #1053, #1055 |
 | 22 | **Left out**: Bad Weather nights, the fitting room, rested XP, the ticket book, applause, title phrases | [What changed](#what-changed-from-the-earlier-plan) |
@@ -61,8 +61,8 @@ the Marquee) was written before the request for a 55-level ladder. The maintaine
 | --- | --- | --- |
 | **Billing**, an account level 1 to 50 that widens a pool of weapons, tonics and flashlights | **The ladder of 55**: cosmetics, colours, costumes, maps, cards, emblems and frames | All weapons and tonics are free (decision 8) |
 | "A level-1 and a level-50 player stand in the same lot and are equally dangerous"; rule 1: permanent data never raises a number in the rounds | **A higher level has a slightly better kit** | The maintainer approved a slight combat edge as the reward for playing more; weapons and tonics stay free |
-| No prestige ("Encore", no reset) | **Prestige is wanted and costs something** (open) | "Prestiging comes with a loss just for flex value" |
-| *Stubs*, a cosmetic currency | **No currency**: items by level and challenge directly | "Disabled; XP based" |
+| No prestige ("Encore", no reset) | **Prestige is wanted and costs something** (open) | A prestige's loss is what gives it flex value |
+| *Stubs*, a cosmetic currency | **No currency**: items by level and challenge directly | Currency is off; progress is XP alone |
 | No daily first-win bonus | **A first-game-of-the-day XP bonus** | Approved. It is paid for finishing a round, never for logging in |
 | Rested XP replaces login rewards | **No rested XP** | Not wanted |
 | Offline and solo earn like a team, merged on sign-in | **No offline XP**; no merge | XP exists only for an account the server tracks, a Guest account included |
@@ -72,11 +72,11 @@ the Marquee) was written before the request for a 55-level ladder. The maintaine
 | Bots wear a level near the lobby's average | **Bots have no level** and keep their usual difficulties | Approved |
 | Title phrases, ticket book, applause, fitting room, Bad Weather | **Dropped** | Not wanted (title phrases: the maintainer was unsure, dropping was recommended) |
 | Night Report lines *Lamps*, *Holdings*, *Mentor* and *Solo +10%*; the Night Report paying stubs | The simpler [XP lines](#where-xp-comes-from) (Rounds, Points, Upkeep, Headliner, Rescue, the bonuses) | The proposal replaced them and the maintainer approved the proposal's XP table; each line is a stat the night already counts |
-| 22 to 32 hours to level 55 (53,250 XP) | **About 8 hours** (18,010 XP), a rising curve | "Gotta make it short" |
+| 22 to 32 hours to level 55 (53,250 XP) | **About 8 hours** (18,010 XP), a rising curve | The climb is kept short |
 
 !!! note "Rules 1 and 2 are replaced for combat kit (2026-11-04)"
-    The maintainer approved a slightly better kit for players who have played more: "the higher level player would
-    ideally have a slightly better kit but that's a reward for them playing more". Weapons and tonics stay free for
+    The maintainer approved a slightly better kit for players who have played more, as the reward for playing more
+    (#977, 2026-11-04). Weapons and tonics stay free for
     everyone, and the night's economy, rounds and fuel stay the same for all. How slight, what resets on a prestige and
     what stays: [Attachments, modifiers, skills, skins and prestige](../research/weapon-progression.md). The
     level-1 and level-50 sentence above and rules 1 and 2 below are read with that page.
@@ -116,10 +116,10 @@ page](../research/progression.md#where-the-ethical-lines-are). Changed rules say
 
 | # | Rule | Because |
 | --- | --- | --- |
-| 1 | **The night resets.** Starting points, fuel, circuits and the lot are the same for every player, and a level never changes the economy or the rounds' tuning. *Changed:* a higher level may carry a **slightly better kit** (the maintainer's approval, [combat bonuses](#combat-bonuses)); the size of the edge is set by research (#1055) and audited, so a level-1 player still wins nights | Power creep and split lobbies, held to "slight" |
+| 1 | **The night resets.** Starting points, fuel, circuits and the lot are the same for every player, and a level never changes the economy or the rounds' tuning. *Changed:* a higher level may carry a **slightly better kit** (the maintainer's approval, [combat bonuses](#combat-bonuses)); the size of the edge is set by research (#1055) and audited, so a level-1 player still wins nights | Power creep and split lobbies, held to a slight edge |
 | 2 | **Unlocks widen first.** Every weapon and tonic is available to everyone from the first night. What a level unlocks is cosmetic, a map, or the slight kit edge | Rule-changing beats stat-changing; old and new players stay in one balance |
 | 3 | **One gate per item.** An item is earned by exactly one of: a level or a named challenge or poster set. Never two in series. *Was:* a Billing level, a mastery level, an order or stubs | Stacked gates are what players call grind |
-| 4 | **Nothing is for sale and there is no currency.** *Was:* stubs bought only cosmetics | Keeps pay-to-win off the table; "Disabled; XP based" |
+| 4 | **Nothing is for sale and there is no currency.** *Was:* stubs bought only cosmetics | Keeps pay-to-win off the table; currency is off and progress is XP alone |
 | 5 | **Playing always pays.** Win or lose, solo or four, a night earns; challenges add to it | Halo's lesson, Back 4 Blood's lesson |
 | 6 | **A missed day owes nothing.** Daily challenges expire at each daily reset (the maintainer, 2026-11-02, [decision](#decision-daily-challenges)): no banking, no carry-over, no streak, no login reward. *Changed:* the **first game of the day** pays a small XP bonus, for finishing a round, never for logging in | FOMO and burnout; a daily is an offer for one day, never a debt |
 | 7 | **No random power.** Randomness in a night (the crane) is fine; randomness in what a player *has* is not | Darktide, Vermintide |
@@ -161,8 +161,9 @@ is **no streak, no login reward, no rested XP** and no currency.
 
 ### Who awards XP, and live XP
 
-The maintainer asked how other games do it and chose: the **game server awards XP per kill, live**, and "we'll see how
-much it stresses when we do it". The design keeps the cost per kill small and puts the measurement in the build:
+The maintainer asked how other games do it and chose: the **game server awards XP per kill, live**, with the load it
+puts on the server to be measured once built. The design keeps the cost per kill small and puts the measurement in
+the build:
 
 - **A running tally per seat on the server.** A kill adds its points (a hundredth of an XP each) to the killer's
   tally; rounds, boards, doors, cans and bosses add when they happen. **The backend is never written per kill.** The
@@ -183,8 +184,8 @@ much it stresses when we do it". The design keeps the cost per kill small and pu
 ### The curve
 
 The XP to leave a level is set per tier of five (a table, not a formula, so it reads and retunes by hand), and **it
-rises**: the maintainer wants the first level up early and the top ones far slower ("It should scale upward like call of
-duty"). Only raw XP is stored; the level is computed from this table, so a retune needs no migration.
+rises**: the maintainer wants the first level up early and the top ones far slower, a climb that scales upward
+as in Call of Duty. Only raw XP is stored; the level is computed from this table, so a retune needs no migration.
 
 | Tier | Levels | XP to leave each | | Tier | Levels | XP to leave each |
 | --- | --- | ---: | --- | --- | --- | ---: |
@@ -217,9 +218,9 @@ cans, bosses, dailies and the first game of the day) add about 15 percent. So:
 Reading it: the first level takes about a minute and the last one 15 to 22 minutes, **seven times longer**; the
 average solo player reaches 55 in 8.5 hours of nights alone (about 7.5 with the lines the model leaves out), the
 strong in 7.8 and the slowest cell in 11. **Level 10, the second map, arrives after 24 to 34 minutes: about half an
-hour, the third night for an average solo player.** The maintainer asked to be told this (it "may arrive in under half
-an hour"): it does for the average and strong cells and for the cells with 300 or more kills. The maintainer
-answered that level 10 "is fine" and approved the curve ("The XP simulator is good"). At count x5
+hour, the third night for an average solo player.** The maintainer asked to be told if it arrives in under half an
+hour: it does for the average and strong cells and for the cells with 300 or more kills. The maintainer
+answered that level 10 there is fine and approved the curve and the XP simulator. At count x5
 the simulator's bots die in the first rounds, so XP an hour is lower, not higher: a horde modifier is not a way to
 level faster here. Bots are not people: the curve is meant to be retuned from the first real nights' telemetry.
 
@@ -303,7 +304,7 @@ over it later.
 
 ### Combat bonuses
 
-The maintainer approved a **slightly better kit for a higher level** ("a reward for them playing more"), replacing the
+The maintainer approved a **slightly better kit for a higher level**, as a reward for playing more, replacing the
 first plan's rule that a level 1 and a level 55 player have the same tools. Weapons and tonics stay free to
 everyone. **How slight, and what it is** (a little more starting ammunition, a small reload edge, an attachment or a
 skill) is for the research in #1055 (weapon modifiers, attachments, skills and skins). Until it reports, nothing here
@@ -373,8 +374,8 @@ hour: not a loophole. Level 10 arrives after about half an hour ([the curve](#th
 - **No title phrases** (a free line under the name from word cards): the maintainer was unsure and dropping was
   recommended, so a card carries its printed title only. **No ticket book. No applause.**
 - **Frames come from two places:** the ladder (**part of levels 1 to 55**: Chrome 29, Brass 37, Neon 50, Gold 55 to
-  start; more are a line each) and **exclusive ones from challenges**, such as "beat this map". The "beat this map"
-  frames wait for **extraction** (#1056) and are their own issue (#1072).
+  start; more are a line each) and **exclusive ones from challenges**, such as beating a map. The frames for beating a
+  map wait for **extraction** (#1056) and are their own issue (#1072).
 - Cards are **composed from shared parts** (a scene of reel, ticket, car, bulbs, saucer, a palette, a title), so about
   40 are a week of art, not 40 paintings; emblems are drawn once each.
 - **Built (#1070):** cards and emblems, the 21 feats that give them, the equip screen (Loadout tab, the Plate button), the
@@ -398,9 +399,9 @@ gives a card. What the research behind it found is in [Challenges](../research/c
 
 ### Decision: daily challenges
 
-The maintainer asked for daily challenges (2026-11-02, #399: "daily challenges and stuff to meet ... checkpoint
-progress prompts in the UI during gameplay ... a really well thought out design ... modern and sleek, not
-AI-ified") and then decided their shape: **dailies expire at each daily reset. No banking, no carry-over and no
+The maintainer asked for daily challenges (2026-11-02, #399): goals to meet, progress prompts in the UI during play,
+and a carefully thought-out design that looks modern and sleek rather than machine-made. Then the maintainer decided
+their shape: **dailies expire at each daily reset. No banking, no carry-over and no
 streaks.** That changes rule 6, which used to say "nothing expires". The research
 ([Challenges](../research/challenges.md)) leaned the other way (Fortnite and Overwatch both moved toward progress
 that carries over, and the CHI Play study found fear of missing out is one of three ways players take dailies); the
@@ -762,13 +763,13 @@ real time and every client can hear its celebration.
 
 ![Poster sets](../research/progression-poster-set.png)
 
-*A mock-up, not the game.* The maintainer: "a great addition". A **poster set** is six challenges themed as a fake
-B-movie ("Attack of the Fifty-Foot Generator"): each one done uncovers a panel of the poster, and finishing all six
-wins the set's calling card and emblem. A set shows on the Challenges tab as its poster with its panels and six rows,
-and in the night report when finished. Every challenge in a set is one the night counts (rule 15: the mock's "restart
-the generator" and "kill with shock" need their stats first), so the first release has two sets from the feats
-counted then and a set is a line of data for any six that are counted since. Posters are composed from shared parts
-like the cards, and sets are solo-safe (no Together challenge in one). Build: #1073.
+*A mock-up, not the game.* The maintainer approved and welcomed it (2026-11-04). A **poster set** is six challenges
+themed as a fake B-movie ("Attack of the Fifty-Foot Generator"): each one done uncovers a panel of the poster, and
+finishing all six wins the set's calling card and emblem. A set shows on the Challenges tab as its poster with its
+panels and six rows, and in the night report when finished. Every challenge in a set is one the night counts (rule 15:
+the mock's "restart the generator" and "kill with shock" need their stats first), so the first release has two sets from
+the feats counted then and a set is a line of data for any six that are counted since. Posters are composed from shared
+parts like the cards, and sets are solo-safe (no Together challenge in one). Build: #1073.
 
 **Built (#1073).** Two sets of six, made of 12 of the feats the night counts (21 when they were chosen, 43 since the
 stats of #1074 arrived; the other feats wait for sets of their own, none of which may list a stat that needs a crowd,
@@ -836,16 +837,16 @@ of the two tickets share the screen's height, to a floor, so eight players fit t
   perforation. A **level card** is wide: the icon on the left, `LEVEL UP`, the big number, a row of punch holes toward
   the next. An **unlock card** is half the height: the item's thumbnail (the wardrobe's own), `NEW TOP`, the
   wardrobe's name for it. A small XP gain is a line on the level bar, not a card.
-- **Motion** (one language; "Animations for this stuff need to be good"): the level card drops in 0.25 s with a small
+- **Motion** (one language, held to a high bar, decision 9): the level card drops in 0.25 s with a small
   overshoot, the icon scales 0.8 to 1.1 to 1 (a stamp); unlock cards follow 0.15 s apart; each holds 2.6 s (unlock 2.0
   s, tier 3.6 s) and slides up when the one above leaves; **three visible at most**, the oldest leaves first; a queue
   of eight, then the lowest are merged ("3 new items"). Reduced motion fades without sliding. A setting: all, big ones
   only, off. **Good animation is an acceptance check of the popup issue (#1064), proved by clips, including a stack of
   cards arriving during a fight**, read frame by frame and attached for the maintainer to judge.
 - **Sound** (recipes of our own, synthesised: a *moment* is the top weight of the sound ladder, [menu
-  sounds](../research/menu-sfx.md)). The maintainer asked for a **record scratch** ("like how Tony Hawk's Pro Skater
-  has done it") when a challenge is done and something **"more honorable sounding or battlefield-like"** for a level
-  up. The scratch is a style reference: **no audio is taken from any game**; both are made here (#1062):
+  sounds](../research/menu-sfx.md)). The maintainer asked for a **record scratch** when a challenge is done, in the
+  manner of Tony Hawk's Pro Skater, and a **more honourable, battlefield-like sound** for a level up. The scratch is
+  a style reference: **no audio is taken from any game**; both are made here (#1062):
 
 | Cue | Sound | Length | Peak |
 | --- | --- | ---: | --- |
@@ -881,19 +882,18 @@ menus (`MenuPopups`); how it works, and what the tests measure, is
 
 ## Voice lines
 
-The maintainer: **new voice lines for progression events, heard by all clients**, **multiple celebration lines for
-every event so they do not repeat**, and "We will always be using ElevenLabs. I'll get us more credits and a
-commercial license." So (#1063): several celebration takes each for a level up, a tier up, an unlock, a challenge done
-(the line after the record scratch), a poster set, a card, emblem or frame, and the first game of the day, male and
-female, made with ElevenLabs. Every client hears them through the server events the XP issues emit: `SoldierVoice`
-already makes a voice from a server event, and a teammate's level up is heard by everyone. **Priority:** they outrank
-combat chatter but not urgent lines (hurt, downed, a boss, a warning). **Made (#1063, 2026-11-04)**: 24 takes in each
-voice on the free tier, at the maintainer's word ("go ahead and get them going, I'll get the package with commercial
-rights in a moment"); they are **not licensed for commercial use** and are regenerated under the commercial plan before
-release ([#252](https://github.com/Ryubara/deadnight/issues/252)). The server's `level_up`, `tier_up` and
-`unlock_earned` and the challenge tracker's `challenge_done` (#1135) are wired to them for every client
-([research](../research/audio.md#the-progression-voice-lines-1063),
-[sound design](audio.md#the-soldiers-voices)).
+The maintainer asked for **new voice lines for progression events, heard by all clients**, and **multiple celebration
+lines for every event so they do not repeat**, and decided that the voices always come from ElevenLabs, with more
+credits and a commercial licence to follow. So (#1063): several celebration takes each for a level up, a tier up, an
+unlock, a challenge done (the line after the record scratch), a poster set, a card, emblem or frame, and the first game
+of the day, male and female, made with ElevenLabs. Every client hears them through the server events the XP issues emit:
+`SoldierVoice` already makes a voice from a server event, and a teammate's level up is heard by everyone. **Priority:**
+they outrank combat chatter but not urgent lines (hurt, downed, a boss, a warning). **Made (#1063, 2026-11-04)**: 24
+takes in each voice on the free tier, because the maintainer said to start now and buy the plan with commercial rights
+shortly after; they are **not licensed for commercial use** and are regenerated under the commercial plan before release
+([#252](https://github.com/Ryubara/deadnight/issues/252)). The server's `level_up`, `tier_up` and `unlock_earned` and
+the challenge tracker's `challenge_done` (#1135) are wired to them for every client
+([research](../research/audio.md#the-progression-voice-lines-1063), [sound design](audio.md#the-soldiers-voices)).
 
 ## Level icons
 
@@ -914,8 +914,8 @@ release ([#252](https://github.com/Ryubara/deadnight/issues/252)). The server's 
 
 The HUD's ally marker (`HudMarkers`, drawn in screen space) shows a name above a triangle. It becomes **icon, level,
 name**: the icon from the 64 px atlas at 24 px, the level right beside it, a little padding, then the name, in the
-same marker so it keeps its place rules. This is the maintainer's order ("icon, then level to the right of it, with a
-bit of padding to the right and it shows the players name"), and it is the same **everywhere** a level shows: over a
+same marker so it keeps its place rules. This is the order the maintainer set: the icon, the level to its right, a
+little padding, then the player's name; and it is the same **everywhere** a level shows: over a
 head, in the bottom-left player boxes, on the scoreboard, in the night report and in the lobby's seat list. Two gaps
 decide it and live in one place, `LevelTag`: `ICON_GAP` (4) between the icon and the level, tight, and `NAME_GAP` (12)
 between the level and the name, visibly larger. A row with no level (a bot, a seat without one, the setting off) is
@@ -939,9 +939,9 @@ the font draws the digits and where the art's body is, not from a box
 
 ## Prestige
 
-**Open.** The maintainer: "Prestige is optional. There can be exclusive rewards earned for prestiging. But normally
-prestiging comes with resetting everything a player has, so what will reset? Prestiging comes with a loss just for
-flex value and we lack that currently." So the first plan's "keep everything, add a gold star" is **rejected**:
+**Open.** The maintainer decided (2026-11-04) that prestige is optional and may earn exclusive rewards, and pointed
+out that a prestige usually resets what a player has, which leaves open what ours resets; its loss is what gives it
+flex value, and the game has none today. So the first plan's "keep everything, add a gold star" is **rejected**:
 prestige must cost something. What resets, and which rewards are exclusive, depends on the research in #1055. Until
 then **no prestige is built and nothing is filed**; XP past level 55 is stored and shows a full bar. The research
 ([prestige](../research/progression.md#incremental-games-prestige-and-frequent-small-rewards)) is the evidence: resets
@@ -950,19 +950,17 @@ read as artificial length when they give nothing back, and are accepted when the
 ## Extraction
 
 A night can be won. Filed as **#1056** (the design, a proposal for the maintainer: each point is a choice)
-and **#1057** (the helicopter drop that opens a night). The maintainer's words: "Every map needs to meet a quota, and
-also steps that have been completed to be able to extract. Steps that are unique to the map itself." and "there needs
-to be maybe a kill quota, and steps to complete to escape like map-level steps. But we need to make sure the map-level
-steps aren't too easy and if they are easy then it may need to get expanded upon a bit."
+and **#1057** (the helicopter drop that opens a night). The maintainer set the shape: to extract, a map has a quota to
+meet (perhaps a kill quota) and steps to complete that are unique to that map; those steps must not be too easy, and
+an easy one is expanded.
 
-**The story** is that the players are **an elite military unit dropped by helicopter** at locations "to take out the
-zombies and fix up the area before extract". On arrival, "when a player spawns in they hear a helicopter sound in the
-distance. And a cutscene plays that aims at an angled sky view downward that shows them 'landing' from a rope and a
-light shines below the helicopter and then after that their screen fades black and they 'spawn in' -- this will still
-work for clients that join late too, other clients won't see it and keeps everything moving smoothly." (That replaces
-the earlier idea of "caught in the middle of the start of a zombie apocalypse".)
+**The story** is that the players are **an elite military unit dropped by helicopter** at locations to clear the
+zombies and fix up the area before they extract. On arrival a player hears a helicopter in the distance, and a short
+cutscene looks down from an angled sky view as they land from a rope under the helicopter's light; then the screen
+fades to black and they spawn. It works for a client who joins late too, and only the arriving player sees it, so
+nothing waits. (That replaces the earlier idea of players caught at the very start of a zombie apocalypse.)
 
-What it means for progression: what a win pays in XP and the "beat this map" plate frames (#1072) are extraction's to
+What it means for progression: what a win pays in XP and the plate frames for beating a map (#1072) are extraction's to
 settle (#1056 lists them). Nothing in the ladder assumes a win; win-based challenges wait. A popup never shows during
 the arrival drop.
 
@@ -971,10 +969,10 @@ the arrival drop.
 - **Cosmetic rarity** (#1053): the maintainer wants it, with wild shader looks (wings with blue fire and glow). It
   needs research on how other games do rarity and a name for the tiers. **The ladder does not assume its outcome**:
   the unlock table has names and levels only.
-- **Weapon modifiers, attachments, skills and skins** (#1055, with prestige): "I think we may need to start looking
-  into weapon modifiers, skills, attachments, and cool skins ... how attachments can play a part (BO3 did attachments
-  and skins pretty good in zombies ...) but gun modifiers and maybe character skills (like skill tree) would be worth
-  looking into." They bear on the combat bonuses ("how slight") and on what prestige resets.
+- **Weapon modifiers, attachments, skills and skins** (#1055, with prestige): the maintainer asked us to start
+  researching weapon modifiers, skills, attachments and skins: how attachments can play a part (Black Ops 3 Zombies
+  did attachments and skins well), plus gun modifiers and perhaps character skills such as a skill tree. They bear on
+  the combat bonuses (how slight the edge is) and on what prestige resets.
 - **Parked: mastery and trims.** The earlier plan's per-weapon mastery (levels 1 to 10 from points earned with a
   weapon) and side-grade *trims*, with an audit that a trim stays within five percent of the base, is kept below as
   input to #1055, not as a plan: weapons are free to all, and a mastery ladder is a second ladder the maintainer has
@@ -999,9 +997,9 @@ base on rounds reached and points per round.
   migrates. The challenge save keeps its own lifetime counters.
 - **Where:** the backend's saved progress (`PUT/GET /saves/:slot`, an envelope with a revision and a schema version,
   64 KiB; a profile is a few kilobytes): slot `profile`, and slot `challenges` for the board. **No offline XP:** XP
-  exists only for an account the server tracks, and **a Guest account is one** (the maintainer, 2026-11-04: "only
-  signed in accounts earn XP since we only track XP on the server. But even \"Guest\" accounts will be tracked on
-  server"). A local file is a cache and a retry queue for that account's own writes, never a second store, and **there
+  exists only for an account the server tracks, and **a Guest account is one** (the maintainer, 2026-11-04: only
+  signed-in accounts earn XP, since XP is tracked on the server alone, and Guest accounts are tracked there too). A
+  local file is a cache and a retry queue for that account's own writes, never a second store, and **there
   is no merge of an offline save**. A night with no account at all (the backend cannot be reached) earns nothing. A
   night never waits on the backend: a failed write is sent again.
 - **A Guest account lasts 7 days without a sign-in** (built, #1080). The backend signs a guest in with a long-lived
@@ -1009,8 +1007,8 @@ base on rounds reached and points per round.
   IndexedDB on the web); the same account, with its saves, comes back each time it is signed in to within 7 days of
   the last sign-in, and each sign-in restarts the 7 days. An account idle for 7 days is deleted with its saves; a
   Discord account never is. A forged or expired credential makes a new guest, never another's account. Clearing the
-  browser's data is a new guest. Moving a guest to Discord or another source is not built (the maintainer: "we'll talk
-  about this more down the line"). How: [Guest accounts](../research/platform-backend.md#guest-accounts).
+  browser's data is a new guest. Moving a guest to Discord or another source is not built (the maintainer left it for a
+  later discussion). How: [Guest accounts](../research/platform-backend.md#guest-accounts).
 - **Writes are round-end reports, never per kill.** The game server posts each seat's XP at each round's end and at
   the night's end, keyed by match and round so a retry cannot double-pay; only a server the platform started may post
   one. A signed-in solo client writes its profile at round ends and the backend **caps** it: at most about 120 XP a
@@ -1066,7 +1064,7 @@ base on rounds reached and points per round.
 ## First hours
 
 From the measured cells (average solo, nights only, with the opening night's 50 XP): the table says where a player is
-after a time, so "the first level up satisfaction early on" can be read off.
+after a time, so how early the first level up comes (decision 3) can be read off.
 
 | Time played | Level, average solo | Level, average four | Just arrived (average solo) |
 | ---: | ---: | ---: | --- |
