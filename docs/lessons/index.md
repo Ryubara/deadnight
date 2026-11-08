@@ -1,7 +1,9 @@
 # Lessons
 
 Problems we hit building Deadnight and how we solved them. Before solving something, search these pages: it may have
-happened before. Problems that are not about this game belong in the kit's lessons.
+happened before. What holds for any game goes into the section of the kit's
+[topic pages](https://ryubara.github.io/gdstudio/studio/rules/) it belongs to, in a kit pull request; the kit keeps no
+lessons of its own (gdstudio #770).
 
 ## Adding a lesson
 

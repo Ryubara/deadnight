@@ -374,7 +374,7 @@ How the pieces are made, so the other groups match:
   `window_board.tscn`, a board in `board.tscn`'s shape that a `Barricade` takes as it is.
 - **The palette** is `game/assets/smallmap/smallmap_palette.png` for every group (the build writes it). Its swatches
   are the sRGB values in `smallmap_kit.py`: the first build stored them as linear and every piece came out
-  far too dark ([lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-02-a-palette-written-as-linear-came-out-dark.md)).
+  far too dark ([lesson](https://ryubara.github.io/gdstudio/tools/blender/modular-kits/)).
 
 ![The kit's walls and openings beside the Soldier, a zombie and the drive-in props on the 0.5 m grid](kit-walls-sheet.jpg)
 

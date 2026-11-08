@@ -2,7 +2,7 @@
 
 The maintainer felt a small stutter at each kill in the browser, and then at each shot. This page is what the
 frames showed, where the time went, and what was changed. The general Godot findings are in the kit page
-[Audio](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/audio.md). First-use stutters (a program built the
+[Audio](https://ryubara.github.io/gdstudio/engines/godot/audio/). First-use stutters (a program built the
 first time something is drawn) are a different thing: [First-use hitches](first-use-hitches.md).
 
 ## How it was measured

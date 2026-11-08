@@ -400,7 +400,7 @@ The maintainer listened to samples and approved the configuration below, which i
 
 ### How the lines were written
 
-The first sample failed ("Reload... catch your breath" read like a narrator: [lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-01-voice-lines-written-as-captions-sounded-robotic.md)).
+The first sample failed ("Reload... catch your breath" read like a narrator: [lesson](https://ryubara.github.io/gdstudio/gamedev/audio/voice-lines/#2-writing-the-lines)).
 Each line is first person, with contractions, a filler or a breath, an exclamation where it fits, and uneven
 length (10 to 139 characters); the feeling is in the words and the v4 tag (`[breathing hard]`, `[laughs]`,
 `[shouting]`) only adds to it. A test fails a line that is a bare caption (`test_soldier_voice_catalog.gd`). Barks run

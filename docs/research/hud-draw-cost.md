@@ -2,7 +2,7 @@
 
 The performance sweep (#906) found the HUD at about 125 of 400 draw calls with a late-round crowd, 1.5 to 3 ms a frame,
 nearly all of it drawing and not script. This page is what made the calls and what was done about them. What applies to
-every game is the kit's page [Canvas draw calls](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/canvas-draw-calls.md).
+every game is the kit's page [Canvas draw calls](https://ryubara.github.io/gdstudio/engines/godot/canvas-draw-calls/).
 
 ## Why a card cost 10 to 15 calls
 

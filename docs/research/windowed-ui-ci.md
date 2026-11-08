@@ -10,7 +10,7 @@ request and never a required check, so it cannot block a merge.
 Windowed GdUnit4 runs on a stock `ubuntu-24.04` runner under `xvfb-run` with Mesa's software GL and the Compatibility
 renderer: Godot 4.7.2 and GdUnit4 6.2.2 as pinned, no change to `tools.toml`. Godot reports
 `OpenGL API 4.5 (Core Profile) Mesa 25.2.8 ... llvmpipe`. The recipe is the kit's
-[Windowed GdUnit on a Linux runner](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/windowed-gdunit-on-linux.md).
+[Windowed GdUnit on a Linux runner](https://ryubara.github.io/gdstudio/engines/godot/windowed-gdunit-on-linux/).
 
 | Step | Seconds |
 | --- | --- |
@@ -29,7 +29,7 @@ The whole job takes about 41 minutes (setup 50 s). The same folder on a real win
   and pass, on real pixels. The job reports a pixel suite that skips there, or runs no case, as "did not run",
   not as a pass.
 - **The hang does not appear.** The kit's
-  [hang](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-04-a-windowed-gdunit-run-hung-the-night-suites-after-a-ui-suite.md)
+  [hang](https://ryubara.github.io/gdstudio/engines/godot/no-focus/#what-to-know)
   (a UI suite that pushes mouse events, then `test_night_crosshair`, in one process) finished in 57 s on the runner.
   Deadnight #1207 finds `test_night_screen` hanging after `test_night_crosshair` in one windowed session on a real
   machine: running one process per suite, each with its own timeout, keeps both out of the schedule.
