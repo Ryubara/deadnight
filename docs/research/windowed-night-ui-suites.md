@@ -64,7 +64,7 @@ window back and waits for two drawn frames, and 21 suites that open a night with
 `test_window_fixture` has the cause on the real window (a minimized window draws 0 frames in 30; after the fixture the
 frames come; without the restore the fixture's own error names it after 5 s) and a headless guard that lists a suite
 that opens a night (`night_screen.tscn`, or `warm_up = true`) and does not call the fixture (21 listed before the fix).
-The kit's page is [A minimized window draws nothing](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/minimized-window.md).
+The kit's page is [A minimized window draws nothing](https://ryubara.github.io/gdstudio/engines/godot/minimized-window/).
 
 Windowed, with the fix: crosshair then screen 15 of 15 in 54.7 s, screen then crosshair 15 of 15 in 53.6 s, no
 failures, no timeout changed. Before: both orders killed at 200 s and 150 s.

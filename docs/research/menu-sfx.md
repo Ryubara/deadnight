@@ -10,7 +10,7 @@ cues had existed since #87; nothing said which control plays what, so nothing ca
 
 This page is Deadnight's answer. The general research (which component takes a sound, weights, repetition, levels,
 touch, accessibility, the sources and how far to trust each) is the kit's [Menu and interface
-sounds](https://github.com/Ryubara/gdstudio/blob/main/docs/audio/ui-sounds.md). The code is
+sounds](https://ryubara.github.io/gdstudio/gamedev/audio/ui-sounds/). The code is
 `game/core/audio/ui_sound_table.gd` (the table), `ui_sounds.gd` (the rules) and `tools/audio/ui_recipes.py` (the
 sounds).
 

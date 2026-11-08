@@ -93,7 +93,7 @@ of GDScript.
 `game/tools/bench/think_cost.gd` (`gds godot -- --headless --path game -s res://tools/bench/think_cost.gd`): the median
 of `sim.think`, the step and the counts of the dead thinking and swinging. Copy it to another checkout to compare two
 commits, and run both together. For a change under 20 %, copy the old script under another class name and time both in
-one process ([Performance budgets](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/performance-budgets.md)
+one process ([Performance budgets](https://ryubara.github.io/gdstudio/engines/godot/performance-budgets/)
 in the kit docs); two processes on this machine moved by more than the cut.
 
 `test_zombie_think_cost.gd` keeps the proof: a digest of a scripted night of 60 dead (a gate with boards, a lure, a

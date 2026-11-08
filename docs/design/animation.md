@@ -113,7 +113,7 @@ How they are sized, shouldered and aimed (the size rule, the per-weapon numbers,
 
 - **Attach** each weapon to the `Index1.R` bone (a `BoneAttachment3D`), the bone the kit Soldier carries his weapons
   on. A weapon's origin is its grip; its transform on the bone is the kit **Shotgun** hold for guns and the kit
-  **Shovel** hold for melee (weapons follow `game/assets/weapons/`, the kit's [weapons page](https://github.com/Ryubara/gdstudio/blob/main/docs/blender/weapons.md)
+  **Shovel** hold for melee (weapons follow `game/assets/weapons/`, the kit's [weapons page](https://ryubara.github.io/gdstudio/tools/blender/weapons/)
   and its `render_hold.py`, which prints the hold in the bone's space). Measured in Godot on the built Soldier (the
   kit weapons left in the hand with `build_soldier.py --keep-held Shotgun,Shovel`, divided by the kit files' own
   node transforms), the weapon scene's transform under a `BoneAttachment3D` on `Index1.R` is:

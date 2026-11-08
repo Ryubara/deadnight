@@ -3,7 +3,7 @@
 The maintainer reported stutters in the deployed web build the first time something shows: the first shot, the first
 zombie. This page is what was measured (issue #319), what Godot offers for the Compatibility renderer, and how the
 night now pays for it behind a loading screen. General Godot knowledge is in the kit page
-[First-use hitches](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/first-use-hitches.md).
+[First-use hitches](https://ryubara.github.io/gdstudio/engines/godot/first-use-hitches/).
 
 ## What Godot offers for the Compatibility renderer
 

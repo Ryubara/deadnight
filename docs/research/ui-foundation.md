@@ -153,11 +153,11 @@ above, and both came from looking at the behaviour, not the code:
   popped screen slid off behind the one it revealed. The fix raises the right screen itself and does not rely on child
   order ([a pop mirrors the push](#a-pop-mirrors-the-push)); the test is `test_a_slide_pop_mirrors_the_push`.
 - **A freed screen stalled the router for good** ([the rules](#a-freed-screen-must-not-stall-the-router)); the kit has
-  it as a [lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-01-a-screen-freed-mid-transition-locked-the-router-for-good.md).
+  it as a [lesson](https://ryubara.github.io/gdstudio/engines/godot/ui-controls/).
 
 The general findings (a script `_draw` on a `Button` paints over its text, tweens on a node with disabled processing
 never run, `hint_screen_texture` needs a back-buffer copy, set the default clear colour) are in the kit's
-[UI controls page](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/ui-controls.md). The router sets the clear
+[UI controls page](https://ryubara.github.io/gdstudio/engines/godot/ui-controls/). The router sets the clear
 colour from the token `bg` (`UIRouter._ready`), so a fade never passes through the engine's grey. What to check when
 adding a transition is the [checklist](https://github.com/Ryubara/deadnight/blob/main/game/addons/gds_ui/README.md#adding-a-router-transition)
 next to the code.

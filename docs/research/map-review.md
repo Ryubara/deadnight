@@ -3,7 +3,7 @@
 A design review of the drive-in lot and the second map ("the back rooms"), done as a level designer would
 ([#833](https://github.com/Ryubara/deadnight/issues/833), 2026-11-03). Every area was walked from the player's
 shoulder camera and judged against the kit's [map review
-checklist](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/map-review.md) (built from published level-design
+checklist](https://ryubara.github.io/gdstudio/engines/godot/map-review/) (built from published level-design
 writing, with its sources). Every claim about leaving a map or skipping a door was **proved by moving the real player
 body**, not by eye. The findings are ranked by how much they hurt play, each with its issue.
 

@@ -153,7 +153,7 @@ A bed cannot be raised over its own level, and the roof wind's upstairs room res
 -16 dB (`SmallMapSoundTuning.ROOF_HEADROOM_DB`) and every room reads 3 dB lower: the heard level at rest is the same
 (kit [Swelling a bed][kit-swell]). The yard loops are 3D players and have no such limit.
 
-[kit-swell]: https://github.com/Ryubara/gdstudio/blob/main/docs/godot/audio.md#swelling-a-bed-with-an-event
+[kit-swell]: https://ryubara.github.io/gdstudio/engines/godot/audio/#swelling-a-bed-with-an-event
 
 **Why 6 dB on the yard and 3 on the roof.** A first try had both at 3 dB, and the yard's swell barely showed: the
 loops there are heard through a window, 10 dB or more under the rest of the bus, and a 3 dB swell on a sound that far

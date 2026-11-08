@@ -3,7 +3,7 @@
 A maintainer playing round 12 at 3x with three bots on a desktop, in the editor, said the game lags, that nobody knew
 its limits, and that "we're just not cleaning up objects properly" might be why. This page is what was measured, what
 was found and what is held in CI now. The method that applies to every game is the kit's
-[Performance budgets](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/performance-budgets.md); the web and
+[Performance budgets](https://ryubara.github.io/gdstudio/engines/godot/performance-budgets/); the web and
 phone work before this is [phone-frames.md](phone-frames.md), [web-heap.md](web-heap.md) and
 [crowd-budget.md](crowd-budget.md).
 

@@ -16,7 +16,7 @@ beams.
 Found by hiding every node on a shader one at a time and counting the pixels that change in the shell's region: the
 shell was the one node with the crane's inline shader (tint 0.45, 0.8, 1.0). Kit lesson:
 [a pale column was blamed on the wrong
-node](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-03-a-pale-column-was-blamed-on-the-wrong-node.md).
+node](https://ryubara.github.io/gdstudio/engines/godot/measuring-effects-on-screen/#a-soft-rim-and-which-node-it-is).
 
 ## The change
 

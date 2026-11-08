@@ -69,7 +69,7 @@ over a button. `HudChallengeCard.size_at` now measures from the parts (the lines
 and `size_at` for the others, looks again each frame, and the card keeps its size at its least. On the real page the
 same words took a third line at 0.8 (the first web run found the card 175 high where the headless run said 147), so
 the busiest case is run in Chrome as well
-([lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-05-a-card-measured-its-height-before-the-layout-gave-it-its-width.md)).
+([lesson](https://ryubara.github.io/gdstudio/engines/godot/ui-controls/#a-card-that-looks-for-free-ground)).
 
 ## Tests
 

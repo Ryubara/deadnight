@@ -3,7 +3,7 @@
 Issue #728 measured a 13-minute autopilot night in the web build and found the page's JS heap, after a forced garbage
 collection, growing from 148 to 815 MB while the engine's own nodes, resources and video memory were flat. The
 issue asked what holds it. The kit's page for what applies to every game is [The web page's
-heap](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/web-heap.md); this page is Deadnight's numbers.
+heap](https://ryubara.github.io/gdstudio/engines/godot/web-heap/); this page is Deadnight's numbers.
 
 ## Answer
 
@@ -168,7 +168,7 @@ Three things still ran a script in the page, 9 a second in the menu and 4 in a n
   second. The cause: the web runtime hands a script's `true` back as the integer 1, so `framed == true` on that `int`
   is an invalid operation; a release build ends the function there without an error and the line that kept the answer
   never ran. Found by logging with a second `eval` after each statement; fixed with `GamepadProbe.truthy` (`bool()`),
-  with a unit test of the types ([lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-04-a-cached-answer-was-asked-again-because-eval-returns-an-int.md)).
+  with a unit test of the types ([lesson](https://ryubara.github.io/gdstudio/engines/godot/web-export/#export-only)).
   It also means the "click the game once" hint never worked in a Discord frame before.
 - `WebClipboard.read` (4 a second) was the snapshot's. The snapshot (`WebProbe.snapshot`, a walk of the screen's
   nodes four times a second) is now built only when the page asks (`WebProbe.asked`): a plain page gets no

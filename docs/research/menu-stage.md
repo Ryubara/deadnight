@@ -21,7 +21,7 @@ The live drive-in behind the reworked main menu (issue #397; the design is in [M
   sideways shift is worked out for at most 16:9: a wider window keeps the soldier beside the same panels. A test
   projects the focus and checks it lands at `frame_x`.
 - **No Tween.** The camera, the idle and the dead advance from `advance(delta)`; a capture or a test steps them by
-  hand, so the picture repeats (the [Tween lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-01-tweens-do-not-move-in-hand-stepped-tests.md)).
+  hand, so the picture repeats (the [Tween lesson](https://ryubara.github.io/gdstudio/engines/godot/test-speed/#what-hand-stepping-needs)).
 - **The weapon is held by the game's own hand pose** at 0 degrees of pitch with the soldier turned side-on to the
   camera, so he reads as looking down the lot. The first try, the aim clip alone, held a rifle in one hand pointing at
   the lens; the low-ready pose made him hunch. The showcase weapons are the ones the night puts in a hand today
